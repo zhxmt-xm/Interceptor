@@ -872,6 +872,12 @@ export const fakeInterceptorFixture = {
             { name: 'settings_get_core_process_status', title: 'Core process status', description: 'Read the Core process lifecycle, not listener or upstream health.', kind: 'query' },
             { name: 'settings_get_system_proxy_status', title: 'System proxy status', description: 'Read system proxy ownership and upstream reachability without raw OS configuration.', kind: 'query' },
             { name: 'settings_get_certificate_status', title: 'Certificate status', description: 'Read public Root CA identity, trust, and HTTPS decryption state without local paths.', kind: 'query' },
+            { name: 'settings_generate_certificate', title: 'Generate Root CA', description: 'Generate or replace an untrusted Root CA without installing trust.', kind: 'change' },
+            { name: 'settings_install_certificate', title: 'Install Root CA', description: 'Install the existing Root CA for all users through native system authorization.', kind: 'change' },
+            { name: 'settings_uninstall_certificate', title: 'Uninstall Root CA', description: 'Remove only the current Root CA from system trust without deleting its material.', kind: 'change' },
+            { name: 'settings_delete_certificate', title: 'Delete Root CA', description: 'Uninstall any current Root CA trust, then delete its local certificate material.', kind: 'change' },
+            { name: 'settings_reveal_certificate', title: 'Reveal Root CA', description: 'Reveal the existing public Root CA in the system file manager.', kind: 'change' },
+            { name: 'settings_view_certificate', title: 'View Root CA', description: 'Open the existing public Root CA in the system certificate viewer.', kind: 'change' },
             { name: 'settings_get_tls_insecure_hosts', title: 'Insecure TLS hosts', description: 'Read configured hosts that skip upstream TLS certificate verification.', kind: 'query' },
             { name: 'settings_get_tls_passthrough', title: 'TLS passthrough settings', description: 'Read TLS passthrough host patterns and their current revision.', kind: 'query' },
             { name: 'settings_list_app_containers', title: 'AppContainer access', description: 'Read supported Windows AppContainer identities and loopback exemption state.', kind: 'query' },
@@ -2403,8 +2409,8 @@ export function installFakeInterceptor({
       summary: { ...agentSessionSnapshot.summary, itemCount: items.length, updatedAt: createdAt + 4 },
       items, turns: [turn], currentTurn: turn, sequence: items.length,
     };
-  } else if (/^(tls|preferences|app-containers)-settings-/.test(agentSessionState)) {
-    const match = /^(tls|preferences|app-containers)-settings-(.+)-(pending|allowed)$/.exec(agentSessionState);
+  } else if (/^(tls|preferences|certificates|app-containers)-settings-/.test(agentSessionState)) {
+    const match = /^(tls|preferences|certificates|app-containers)-settings-(.+)-(pending|allowed)$/.exec(agentSessionState);
     const group = `${match[1]}-settings`;
     const name = match[2];
     const allowed = match[3] === 'allowed';
@@ -2428,6 +2434,34 @@ export function installFakeInterceptor({
         description: 'Remove loopback exemptions for every currently listed AppContainer; preserve exemptions outside this list.',
         effect: 'AppContainers affected: 2\nCurrently exempt: 2\nChanges persist after Interceptor exits.',
         arguments: {}, value: { supported: true, containers: [{ exempt: false }, { exempt: false }] },
+      },
+      settings_generate_certificate: {
+        description: 'Generate or replace an untrusted Root CA without installing trust.',
+        effect: 'Generate Root CA\nRoot CA present: false\nRoot CA trusted: false', arguments: {},
+        value: { present: true, trusted: false, mitmEnabled: false },
+      },
+      settings_install_certificate: {
+        description: 'Install the existing Root CA for all users through native system authorization.',
+        effect: 'Install Root CA\nRoot CA present: true\nRoot CA trusted: false', arguments: {},
+        value: { present: true, trusted: true, mitmEnabled: false },
+      },
+      settings_uninstall_certificate: {
+        description: 'Remove only the current Root CA from system trust without deleting its material.',
+        effect: 'Uninstall Root CA\nRoot CA present: true\nRoot CA trusted: true', arguments: {},
+        value: { present: true, trusted: false, mitmEnabled: false },
+      },
+      settings_delete_certificate: {
+        description: 'Uninstall any current Root CA trust, then delete its local certificate material.',
+        effect: 'Delete Root CA\nRoot CA present: true\nRoot CA trusted: true', arguments: {},
+        value: { present: false, trusted: false, mitmEnabled: false },
+      },
+      settings_reveal_certificate: {
+        description: 'Reveal the existing public Root CA in the system file manager.',
+        effect: 'Reveal Root CA\nRoot CA present: true\nRoot CA trusted: false', arguments: {}, value: { requested: true },
+      },
+      settings_view_certificate: {
+        description: 'Open the existing public Root CA in the system certificate viewer.',
+        effect: 'View Root CA\nRoot CA present: true\nRoot CA trusted: false', arguments: {}, value: { requested: true },
       },
       settings_set_language: {
         description: 'Apply and remember the selected UI language without changing other settings.',

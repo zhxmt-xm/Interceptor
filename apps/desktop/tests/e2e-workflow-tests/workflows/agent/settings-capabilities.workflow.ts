@@ -73,6 +73,12 @@ const TOOL_NAMES = [
   'settings_get_core_process_status',
   'settings_get_system_proxy_status',
   'settings_get_certificate_status',
+  'settings_generate_certificate',
+  'settings_install_certificate',
+  'settings_uninstall_certificate',
+  'settings_delete_certificate',
+  'settings_reveal_certificate',
+  'settings_view_certificate',
   'settings_get_tls_insecure_hosts',
   'settings_get_tls_passthrough',
   'settings_list_app_containers',
@@ -194,13 +200,13 @@ test('agent.tools.settings-capabilities persists independent default-on switches
     )), TOOL_GROUP_AUTOMATION_PREFIX);
     expect(groupIds).toEqual(TOOL_GROUP_IDS);
 
-    // 业务断言：fresh profile的62行、124个Agent/MCP开关必须全部开启。
-    // Business assertion: all 124 Agent/MCP switches across 62 fresh-profile rows start enabled.
+    // 业务断言：fresh profile的68行、136个Agent/MCP开关必须全部开启。
+    // Business assertion: all 136 Agent/MCP switches across 68 fresh-profile rows start enabled.
     const switches = getByAutomationId(
       desktopApp.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(switches).toHaveCount(124);
+    await expect(switches).toHaveCount(136);
     expect(await switches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ))).toBe(true);
@@ -283,7 +289,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       secondRelaunch.page,
       AUTOMATION_IDS.agent.tools.capabilities,
     ).getByRole('switch');
-    await expect(restoredSwitches).toHaveCount(124);
+    await expect(restoredSwitches).toHaveCount(136);
     evidence.allEnabledRestored = await restoredSwitches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ));

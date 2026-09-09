@@ -25,7 +25,7 @@
   <td><strong>🔄 进行中</strong></td>
   <td>Agent / MCP shared Tool capabilities</td>
   <td><ul>
-    <li>用一份共享registry向内置Agent与外部MCP开放69项产品Tool目录，并由用户控制每项能力与change执行方式；当前已提交代码62/69、完整自动验收62/69，TLS及AppContainer四项完整验收已通过，证书7项待交付。Updates仅保留产品功能，不提供Tool；下方既有阶段证据中的73项为历史口径。</li>
+    <li>用一份共享registry向内置Agent与外部MCP开放69项产品Tool目录，并由用户控制每项能力与change执行方式；当前已提交代码68/69、完整自动验收68/69，六项证书生命周期/查看已通过，仅Manager单项MMC关闭权限blocked。Updates仅保留产品功能，不提供Tool；下方既有阶段证据中的73项为历史口径。</li>
     <li><strong>Steps:</strong><ul>
       <li>架构与69项目标目录设计完成</li>
       <li>首批24项Tool按feature命名完成</li>
@@ -39,16 +39,18 @@
       <li>Composer 6/6自动验证完成：Collection查询/替换及Export/Import均已通过真实Agent/MCP，原生选择与共享确认、自动保存协调和字段保真已验收</li>
       <li>Breakpoints 11/11自动验证完成：三条批量Tool复用正式Core命令，Rule/queue隔离、原始数据面、Ask/Auto与空目标已验收</li>
       <li>Diagnostics 4/4自动验证完成：Current Trace/Recent静默查询和原生JSONL导出通过真实Agent/MCP，异步任务状态与脱敏边界已验收</li>
-      <li>Settings代码19/26、自动验收19/26：只读6项、系统代理2项、偏好3项、TLS及AppContainer各四项均已完成；2026-09-08 TLS真实E2E 1/1、CA自动卸载删除、双代销毁和宿主恢复通过</li>
-      <li>AppContainer四项最终关联8/8、14代正常销毁；剩余证书7项按原计划逐组实施及验收，不再以旧CA残留或Runner未提权预判blocked</li>
-      <li>Playground已提交recipe 62/62完成，Developer人工结论0/62；新增Tool随交付扩充recipe</li>
+      <li>已提交Settings代码25/26、自动验收25/26：六项证书1/1 Green、双代正常销毁、Agent/MCP、Explorer/Viewer及完整CA清理通过；AppContainer此前关联8/8、14代恢复证据保持</li>
+      <li>证书七项owner50/50、摘要/15语言与28-view parity保持；仅Manager独立workflow因MMC Win32 5（Access denied）仍blocked，不移除该Tool或跳过验收</li>
+      <li>Playground已提交recipe 68/68，Developer人工结论0/68；自动结果不替代人工矩阵</li>
       <li>Capture Lab integration 39/39完成，真实Electron 2/39</li>
       <li>Developer人工验收独立待办，不作为开发前置条件</li>
       <li>人工矩阵后待按六组收敛Capture真实Electron 39/39</li>
     </ul></li>
   </ul></td>
   <td><strong>🔄 部分完成</strong><ul>
-    <li>当前总体进度：已提交Code与owner正向覆盖62/69，完整自动验收62/69；Capture文件能力、Settings偏好及TLS最终验收证据见<a href="../features/transfer.md">Transfer</a>、<a href="../features/settings.md#ui-preferences-acceptance">Settings偏好</a>和<a href="../features/settings.md#tls-tool-acceptance">TLS验收</a>。以下保留此前阶段的测试矩阵与原始结果；其中TLS阻塞已于2026-09-08解除，也不表示当前仍有Updates待实现项。</li>
+    <li>当前总体进度：已提交Code与owner正向覆盖68/69，完整自动验收68/69；证据见<a href="../features/settings.md#app-container-tool-acceptance">AppContainer验收</a>和<a href="../features/settings.md#certificate-tool-acceptance">六项证书验收及Manager阻塞</a>，此前Transfer/TLS/偏好证据保留。</li>
+    <li>当前矩阵：Code 🔄 68/69（Manager接线未提交）；Unit ✅ Tools431/431、Desktop721/721、MCP32/32；Integration ✅ 受影响真实helper与宿主路径；E2E 🔄 68/69（仅Manager blocked）；Design/Parity ✅ 新证书168/168、新AppContainer96/96、能力表/查询66/66，既有面板10项flagged保持。2026-09-09证书六项1/1 Green，Desktop typecheck复跑通过；此前全workspace typecheck、Playground Browser5/5、Windows package/artifact audit、production audit 0漏洞与packaged smoke1/1仍适用。</li>
+    <li>以下为此前阶段的历史矩阵与原始结果；TLS阻塞已于2026-09-08解除，不代表当前仍有Updates待实现项，也不替代当前证书MMC的最终E2E。</li>
     <li><strong>Code:</strong> 🔄 全量48/73；Diagnostics两项当前Core快照与原生JSONL导出复用正式owner，查询计数和状态优先的安全job摘要、15语言完成。三条Breakpoints批量命令、严格目标与取消、有限审批和本地化数量摘要完成，不新增queue或采用未提交草稿。Collection导出/导入共用typed Main及App全局确认，结果只含公开计数；导入等待自动保存并重建全部node/字段row ID。Collection查询/替换共用Core保存态与Main正式写入，凭据脱敏/同身份保留，修复旧快照确认、首次载入时序和Monaco隐式Model重复销毁；首批registry/授权/Agent/MCP/Playground、Settings只读6项/系统代理2项/TLS4项、Rules原生导出及共享导入流程保持；另25项待实现。</li>
     <li><strong>Unit:</strong> 🔄 owner正向覆盖48/73；Diagnostics executor28/28、Main6/6、摘要35/35，全workspace类型、Desktop592/592、Tools243/243、MCP32/32、Runtime122/122、Protocol25/25、Playground67/67通过。此前批量executor23/23、原Core queue17/17、摘要28/28，Desktop579/579、Tools215/215保持；上一组transfer executor10/10、Main16/16、Renderer14/14、保存协调4/4、摘要28/28，Tools189/192、Desktop574/576、MCP31/32、Playground66/67旧目录修复后对应51/51、27/27、20/20、1/1通过。此前Desktop538/538、Tools174/174后Collection扩充20/20、MCP32/32、Runtime122/122、Protocol25/25，同步9/9、就绪2/2、编辑器生命周期1/1、摘要24/24，以及Tools162/162、Desktop516/516、Import10/10、Main15/15、Renderer13/13、摘要23/23、Dialog5/5、Export10/10、Main导出6/6、TLS32/32、profile9/9、Desktop492/494修复27/27、MCP31/32修复20/20、Desktop485/485、Proxy Composer1/1、Rules95/95、Mockttp2/2证据保持。</li>
     <li><strong>Integration:</strong> 🔄 Core TLS名单/revision12/12、Main查询/MCP撤权、系统代理49/49、H1/H2/TLS取消/连接释放8/8、H2 6/6、Browser5/5、Traffic Lab39/39均保持；本轮Core329/331仍仅两项既有chunked framing失败。</li>
@@ -59,7 +61,7 @@
   <td><ul>
     <li>完整目录、逐项测试与调用状态只在<a href="../features/tool-capabilities.md">Tool capabilities</a>维护；Agent与MCP共用<code>packages/interceptor-tools/</code>。</li>
     <li>open-world网络Tool必须先经Ask/Auto，再沿Core RPC AbortSignal关闭真实socket；结果统一经过共享redactor。</li>
-    <li>TLS四项最终清理已通过；AppContainer四项已验收，当前仅余Settings证书7项待交付，冷启动自动接管、真实原生授权与完整TDD门禁不变。</li>
+    <li>TLS、AppContainer及六项证书已通过；仅Manager仍待有权限的Runner完成MMC原生关窗、MCP和双代恢复，不修改UAC、不跳过Tool，冷启动语义和完整TDD门禁不变。</li>
     <li>历史记录：Diagnostics提交时，Capture任务查询/取消17项unit Red、进度组件4项Red与未执行的workflow仅单独准备，未纳入该提交；后续Capture完整验收见Transfer文档。</li>
     <li>旧测试CA <code>8F5FD8BF6D49BE746862522F6AC616583ED152BB</code>已由Developer清除；后续CA由workflow经正式UI自动清理，失败时保留profile，不删除其他旧CA。</li>
     <li><code>npm run playground</code>用于独立人工矩阵；新增Tool同步recipe，不能替Developer填写结论。Capture按六组收敛39/39是后续独立工作。</li>

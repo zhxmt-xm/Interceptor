@@ -165,7 +165,7 @@ test('mcp.browser-playground-cors connects a current-protocol Browser client', a
     const toolList = await sendBrowserMcpRequest(browserPage, configuration, 2, 'tools/list');
     const toolNames = JSON.parse(toolList.body).result.tools
       .map((tool: { name: string }) => tool.name) as string[];
-    expect(toolNames).toHaveLength(62);
+    expect(toolNames).toHaveLength(68);
     expect(toolNames).toContain('capture_get_proxy_status');
     expect(toolNames).toContain('capture_get_transfer_job');
     expect(toolNames).toContain('capture_cancel_transfer_job');

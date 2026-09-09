@@ -75,6 +75,15 @@ describe('Agent messages', () => {
     expect(agentToolMessages['zh-CN']['agent.tools.noParameters']).toBe('无参数');
   });
 
+  it.each(['folder', 'viewer'])('localizes the certificate %s request in every language', (target) => {
+    const key = `agent.tools.certificateWindow.${target}`;
+    for (const language of LANGUAGE_IDS) {
+      const catalog: Readonly<Record<string, string>> = agentToolMessages[language];
+      expect(catalog[key], language).toEqual(expect.any(String));
+      expect(catalog[key]?.trim().length, language).toBeGreaterThan(0);
+    }
+  });
+
   it('keeps every language aligned with the Agent execution catalog', () => {
     const englishKeys = Object.keys(agentExecutionMessages.en).sort();
     for (const language of LANGUAGE_IDS) {

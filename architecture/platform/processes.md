@@ -88,6 +88,10 @@ Capture、Rules、Composer、Breakpoints、Diagnostics、Settings所有权分组
 [唯一能力目录](../features/tool-capabilities.md)。共享host的`invoke`只执行Core命令，`invokeMain`只执行typed Main命令。Settings的四项Main状态查询经
 `DesktopApplication`既有Action Gate进入CoreRuntime/SystemProxy/Certificate/AppContainer正式owner，
 两项TLS查询沿用Core RPC；Tool结果白名单不包含本机路径、私钥或完整系统代理配置。
+证书生成、安装、卸载、删除、定位和查看的IPC/Agent/MCP共用`DesktopApplication`的对应方法。
+生成前检查当前CA未受信任；删除先卸载当前信任。四项状态变更完成Core同步后广播既有`tlsSettingsChanged`，
+已挂载面板重读正式状态；Tool只投影公开身份和信任字段，定位/查看仅返回`requested`，路径只由Main使用。
+六项真实Agent/MCP与自动清理证据见[证书验收](../features/settings.md#certificate-tool-acceptance)；系统证书管理器Tool仍独立待验收。
 `capture.body.export`由Main验证当前Exchange/Body归属与Core代际，再经原生Save Dialog和既有
 `body.export.start`保存完整编码字节；对话框返回后重新确认身份，路径只在Main/Core内流转。UI与Tool共用
 文件名推导和任务启动，Tool只返回安全任务摘要，不读取正文、不增加Preload API或第二套文件写入。

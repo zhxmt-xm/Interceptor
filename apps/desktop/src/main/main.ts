@@ -682,6 +682,18 @@ class DesktopApplication {
         'settings.system-proxy.enable': () => this.enableSystemProxy(abortSignal),
         'settings.system-proxy.restore': () => this.restoreSystemProxy(abortSignal),
         'settings.certificate.status': () => this.buildCertificateInfo(),
+        'settings.certificate.generate': () => this.generateCertificate(abortSignal),
+        'settings.certificate.install': () => this.installCertificate(abortSignal),
+        'settings.certificate.uninstall': () => this.uninstallCertificate(abortSignal),
+        'settings.certificate.delete': () => this.deleteCertificate(abortSignal),
+        'settings.certificate.reveal': async () => {
+          await this.revealCertificate(abortSignal);
+          return { requested: true };
+        },
+        'settings.certificate.view': async () => {
+          await this.viewCertificate(abortSignal);
+          return { requested: true };
+        },
         'settings.app-containers.list': () => this.listAppContainers(),
         'settings.app-container.enable': (payload) => this.enableAppContainer(payload.appContainerSid, abortSignal),
         'settings.app-container.disable': (payload) => this.disableAppContainer(payload.appContainerSid, abortSignal),
@@ -1692,61 +1704,32 @@ class DesktopApplication {
     // 生成（或重新生成）Root CA；生成不自动信任，需用户单独安装后才启用 MITM。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.caGenerate, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      return this.runMainAction('main.certificate.generate', async () => {
-        await this.requireCertificateService().regenerate();
-        await this.syncCoreCertificate();
-        return this.buildCertificateInfo();
-      });
+      return this.generateCertificate();
     });
 
     // 安装已生成的 CA 到本地计算机信任库（需提权），随后启用 MITM。要求 CA 已生成，
     // 不在此自动生成——生成是用户显式的独立操作。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.caInstall, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      const service = this.requireCertificateService();
-      const status = await service.getStatus();
-      if (!status.present) {
-        throw new Error('Root CA has not been generated yet.');
-      }
-      return this.runMainAction('main.trust-store.install', async () => {
-        await this.trustStore.install(service.getCertificatePath());
-        await this.syncCoreCertificate();
-        return this.buildCertificateInfo();
-      });
+      return this.installCertificate();
     });
 
     // 按 SHA-1 thumbprint 从信任库精确移除 CA，随后禁用 MITM。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.caUninstall, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      const thumbprints = await this.requireCertificateService().getThumbprints();
-      return this.runMainAction('main.trust-store.uninstall', async () => {
-        if (thumbprints) {
-          await this.trustStore.uninstall(thumbprints.sha1);
-        }
-        await this.syncCoreCertificate();
-        return this.buildCertificateInfo();
-      });
+      return this.uninstallCertificate();
     });
 
     // 删除本地生成的 CA 材料（证书/私钥/元数据）；若仍在信任库先移除（提权）避免孤儿信任。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.caDelete, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      const service = this.requireCertificateService();
-      const thumbprints = await service.getThumbprints();
-      if (thumbprints && (await this.trustStore.isTrusted(thumbprints.sha1))) {
-        await this.trustStore.uninstall(thumbprints.sha1);
-      }
-      await service.delete();
-      await this.syncCoreCertificate();
-      return this.buildCertificateInfo();
+      return this.deleteCertificate();
     });
 
     // 在系统文件管理器中定位 Root CA 证书文件（只读；私钥文件不暴露）。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.caReveal, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      shell.showItemInFolder(
-        this.requireCertificateService().getCertificatePath(),
-      );
+      return this.revealCertificate();
     });
 
     // 打开系统证书查看对话框查看 Root CA 详情。.pem 扩展名不被系统证书查看器
@@ -1754,14 +1737,7 @@ class DesktopApplication {
     // （Windows 证书对话框 / macOS Keychain）。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.caView, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      const certPath = this.requireCertificateService().getCertificatePath();
-      const cerPath = certPath.replace(/\.pem$/i, '.cer');
-      const pem = await readFile(certPath, 'utf8');
-      await writeFile(cerPath, new X509Certificate(pem).raw);
-      const error = await shell.openPath(cerPath);
-      if (error) {
-        await shell.openPath(certPath);
-      }
+      return this.viewCertificate();
     });
 
     // 打开系统证书管理器（Windows certmgr.msc 当前用户存储 / macOS 钥匙串访问）。
@@ -2669,6 +2645,80 @@ class DesktopApplication {
     } else if (result.status.owned) {
       this.diagnostics.info(`${phase}.journal-loaded`, { outcome: 'success' });
     }
+  }
+
+  private async generateCertificate(abortSignal?: AbortSignal): Promise<CertificateInfo> {
+    return this.runMainAction('main.certificate.generate', async () => {
+      abortSignal?.throwIfAborted();
+      if (await this.isCaTrusted()) throw new Error('Uninstall the trusted Root CA before generating a replacement.');
+      abortSignal?.throwIfAborted();
+      await this.requireCertificateService().regenerate();
+      return this.finishCertificateChange();
+    });
+  }
+
+  private async installCertificate(abortSignal?: AbortSignal): Promise<CertificateInfo> {
+    return this.runMainAction('main.trust-store.install', async () => {
+      abortSignal?.throwIfAborted();
+      const certificateService = this.requireCertificateService();
+      if (!(await certificateService.getStatus()).present) throw new Error('Root CA has not been generated yet.');
+      abortSignal?.throwIfAborted();
+      await this.trustStore.install(certificateService.getCertificatePath());
+      return this.finishCertificateChange();
+    });
+  }
+
+  private async uninstallCertificate(abortSignal?: AbortSignal): Promise<CertificateInfo> {
+    return this.runMainAction('main.trust-store.uninstall', async () => {
+      abortSignal?.throwIfAborted();
+      const thumbprints = await this.requireCertificateService().getThumbprints();
+      abortSignal?.throwIfAborted();
+      if (thumbprints) await this.trustStore.uninstall(thumbprints.sha1);
+      return this.finishCertificateChange();
+    });
+  }
+
+  private async deleteCertificate(abortSignal?: AbortSignal): Promise<CertificateInfo> {
+    return this.runMainAction('main.certificate.delete', async () => {
+      abortSignal?.throwIfAborted();
+      const certificateService = this.requireCertificateService();
+      const thumbprints = await certificateService.getThumbprints();
+      const trusted = thumbprints !== null && await this.trustStore.isTrusted(thumbprints.sha1);
+      abortSignal?.throwIfAborted();
+      if (trusted && thumbprints) await this.trustStore.uninstall(thumbprints.sha1);
+      await certificateService.delete();
+      return this.finishCertificateChange();
+    });
+  }
+
+  private async finishCertificateChange(): Promise<CertificateInfo> {
+    try {
+      await this.syncCoreCertificate(true);
+      return await this.buildCertificateInfo();
+    } finally {
+      this.broadcastTlsSettingsChanged();
+    }
+  }
+
+  private async revealCertificate(abortSignal?: AbortSignal): Promise<void> {
+    abortSignal?.throwIfAborted();
+    const certificateService = this.requireCertificateService();
+    if (!(await certificateService.getStatus()).present) throw new Error('Root CA has not been generated yet.');
+    abortSignal?.throwIfAborted();
+    shell.showItemInFolder(certificateService.getCertificatePath());
+  }
+
+  private async viewCertificate(abortSignal?: AbortSignal): Promise<void> {
+    abortSignal?.throwIfAborted();
+    const certificateService = this.requireCertificateService();
+    if (!(await certificateService.getStatus()).present) throw new Error('Root CA has not been generated yet.');
+    const certPath = certificateService.getCertificatePath();
+    const cerPath = certPath.replace(/\.pem$/i, '.cer');
+    const pem = await readFile(certPath, 'utf8');
+    abortSignal?.throwIfAborted();
+    await writeFile(cerPath, new X509Certificate(pem).raw);
+    const error = await shell.openPath(cerPath);
+    if (error && await shell.openPath(certPath)) throw new Error('Unable to open the system certificate viewer.');
   }
 
   private async isCaTrusted(): Promise<boolean> {

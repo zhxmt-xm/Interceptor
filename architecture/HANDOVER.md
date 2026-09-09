@@ -1,27 +1,27 @@
 # Interceptor Handover
 
-> Tracked commit: `e535a200`
+> Tracked commit: `3ec30418`
 > Branch: `main`，直接提交，没有额外 PR 边界
-> 最后更新：2026-09-08
+> 最后更新：2026-09-09
 
 ## Task List
 
-- [ ] **进行中 · Tool代码62/69 · 完整自动验收62/69**：TLS四项及AppContainer四项已完成验收，剩余证书7项未交付；Updates不属于Tool范围。
-    - 已验收/目标：Capture `17/17`、Rules `5/5`、Composer `6/6`、Breakpoints `11/11`、Diagnostics `4/4`、Settings `19/26`。
-    - Settings代码19/26；授权开关不是Settings业务Tool。已提交registry/recipe62项、124个开关，Developer人工结论0/62。
-    - 偏好真实关联5/5、最后目标2/2、parity244/244、package/artifact audit/smoke通过；依赖未变，复用HAR阶段production audit零漏洞结果。
-    - 详细证据见[偏好验收](features/settings.md#ui-preferences-acceptance)与[Archive验收](features/transfer.md#archive-tool-acceptance)，此前HAR、Body与任务证据保留；上述提交已推送至`e57909e6`。
-    - 2026-09-08 TLS最终复验：真实workflow `1/1` Green（30.2s），两代Main/Core `11608/44884`、`34820/2212`均正常销毁；CA自动安装、卸载、删除，根证书库、WinINet/journal及8888恢复。
-        - 旧孤立CA已由Developer删除。本轮只修正E2E盘符断言误匹配schema URL，产品、依赖和设计未改；不重复全量回归。
-        - Green证据归档在TEMP下`interceptor-tls-final-e2e-20260908-160438.zip`；旧失败和修复过程见[TLS验收](features/settings.md#tls-tool-acceptance)。
-    - AppContainer四项已闭环：owner34/34、最终关联真实E2E8/8、14代正常销毁，完整exemption/WinINet/journal恢复；详见[AppContainer验收](features/settings.md#app-container-tool-acceptance)。
-    - 最终证据在TEMP下`interceptor-settings-tools-final-e2e-20260908.zip`；该次在包含未提交证书改动的69项worktree验证，Tools431/431、Desktop721/721、MCP32/32、全workspace typecheck与package/audit/smoke通过。
-    - 下一步：按[能力计划](features/tool-capabilities.md)收尾证书7项；其进行中修改保留在worktree，本次不混入，Main已提交共享方法28项。
-        - 每组保持契约、unit/integration及真实E2E Red/Green、原生授权和退出恢复门禁，通过后独立commit并立即push。
-        - 不以参数测试或只读查询代替真实写入，不模拟UAC，不重新加入已撤销的Updates Tool。
-    - 保持冷启动自动接管、原生Dialog、UAC和脱敏要求；复用仍有效的结果，不重复全量回归。
-    - 本组不替代并行Playground/fixture重构的验收；后续改动影响哪组，就复跑该组检查。
-    - Cancel/rename提交点、运行中导出与Clear的lease/snapshot继续作为独立欠账。
+- [ ] **进行中 · 已提交代码68/69 · 完整自动验收68/69**：六项证书生命周期/查看已闭环，仅Manager独立E2E见下一条；Updates不属于Tool范围。
+    - 已验收/目标：Capture `17/17`、Rules `5/5`、Composer `6/6`、Breakpoints `11/11`、Diagnostics `4/4`、Settings `25/26`；已提交registry/recipe68项、136个独立开关，Developer人工结论0/68。
+    - 2026-09-09证书六项真实E2E `1/1` Green；两代Main/Core `47704/19820`、`35384/17472`正常销毁，Agent/MCP、四次Explorer/Viewer开关、十二项入口撤权与重启零重放通过。
+    - CA信任/材料、Root集合、WinINet/journal及8888恢复；证据在TEMP下`interceptor-certificates-six-e2e-green-20260909-002441.zip`，详见[证书验收](features/settings.md#certificate-tool-acceptance)。
+    - 2026-09-08最终关联真实E2E `8/8` Green，14代Main/Core均正常销毁；包括AppContainer、原批量UI/排序、Settings只读、TLS、全局授权与MCP Browser/Desktop。
+    - AppContainer最后两代`49008/19980`、`16136/46764`；完整exemption集合、WinINet/journal恢复，8888释放。证据在TEMP下`interceptor-settings-tools-final-e2e-20260908.zip`，详见[AppContainer验收](features/settings.md#app-container-tool-acceptance)。
+    - 当前Tools431/431、Desktop721/721、MCP32/32、全workspace typecheck、Playground Browser5/5通过；Windows package、artifact audit（1,294 files / 392,939,357 bytes）、production audit 0漏洞、packaged smoke1/1通过。
+    - 新AppContainer parity96/96、证书168/168、能力表/查询66/66全匹配；旧AppContainer面板保留相同10项flagged、最大3.8px，未改旧CSS或完整parity报告。
+    - TLS收尾已由`e535a200`推送；AppContainer已由`3ec30418`独立提交推送。六项证书独立提交，Manager未验收代码和4张设计图继续保留在worktree，不混入已验收增量。
+    - 原偏好、Archive/HAR与Body证据保留；Cancel/rename提交点、导出与Clear的lease/snapshot仍是独立欠账。
+- [ ] **blocked · `settings_open_certificate_manager` 最终真实E2E**：未提交的代码、owner、摘要/15语言和4-view parity已准备；MMC原生关闭、MCP及重启未闭环。
+    - Explorer/Viewer已由六项独立流程验收。MMC的`WM_GETTITLEBARINFOEX`实际返回Win32 `5: Access denied`，按钮坐标全0；不能改UAC、自动提权或移除Manager Tool绕过验收。
+    - 最新只读核对已无MMC残留；下一步需Developer在仓库根目录的管理员PowerShell执行`npm run test:e2e:workflow --workspace @interceptor/desktop -- --grep "settings.tools.certificate-manager"`。
+    - 权限拒绝trace/metadata及日志归档在TEMP下`interceptor-certificates-mmc-access-denied-20260908.zip`，详细状态见[证书验收](features/settings.md#certificate-tool-acceptance)。
+    - 窗口清理与CA清理已分开。旧测试残留`2C77CBDB3B4B03CAA25DA055BEDA5593840E1687`已通过保留profile及真实UI自动恢复1/1，证据在TEMP下`interceptor-certificates-profile-recovery-20260908.zip`；一次性脚本已移除。
+    - 当前只保留测试前6张Interceptor CA，8888与journal均已恢复且无MMC残留；系统恢复不替代Manager Tool自动关窗的通过证据，该单项不能标为passed。
 - [ ] **blocked · VS Code Copilot MCP互操作**：2026-09-01已使用真实VS Code `1.135.0`（commit `08d4889f9e`）与Copilot读取Interceptor复制的通用Streamable HTTP配置。Host成功识别并启动`interceptor`，但首个HTTP请求返回`400`，随后Host回退legacy SSE并收到预期`405 Method not allowed`，未进入`tools/list`。VS Code bundle固定`LATEST_PROTOCOL_VERSION="2025-11-25"`；Interceptor官方SDK v2端点固定`2026-07-28`并使用`legacy: 'reject'`，协议代际不一致是当前唯一阻塞。产品已决定只支持最新协议，不增加legacy兼容；真实Host canary等待VS Code升级到`2026-07-28`后按[features/mcp.md](features/mcp.md)原矩阵复验。
 - [ ] **代码完成 · 待Developer人工验收 · Web Playground**：唯一方案与使用流程见[features/playground.md](features/playground.md)和[../apps/playground/README.md](../apps/playground/README.md)。`apps/playground/`默认进入App式Capture Lab，提供39项HTTP/Body/Encoding/WebSocket/H2/gRPC/TLS真实场景、可编辑/Reset的协议Draft、场景专属Setup/Observe、分页面可拖拽560px Response Detail与窄窗水平访问；MCP独立页继续提供最新协议直连、在线Tool目录、Raw JSON、Call/Abort、脱敏交换、24项recipe、人工结论与报告导出。Main只保留`/mcp`路由、反射式CORS preflight与Bearer，认证后交SDK。Traffic Lab integration覆盖39/39；当前真实Electron + 系统Edge只代表性执行`h1-json`与`ws-text`两项，即2/39，验证H1正文与WebSocket双向frame进入真实Capture并完整销毁，不表示39项均已经过产品E2E。提交前复审再精确Red于WebSocket握手事实重组、Secure首跑竞态、CONNECT停滞无法取消、跨transport Draft错配、Traffic/MCP旧结果回写和两页共享Detail宽度，当前全部Green。最终Playground Vitest`67/67`、Browser`5/5`、设计专项`5/5`、全workspace typecheck、两边build、Windows package、artifact audit（`1,294 files / 392,778,609 bytes`）、production audit 0漏洞与packaged smoke`1/1` Green。完整design长跑为`61/65`，末4项仅`beforeEach page.goto`超时且独立复跑`4/4` Green；全仓unit仅Proxy Core两项既有Mockttp chunked framing债务失败，同一`570c5447`基线精确复现`2 failed / 6 passed`。代码未替Developer勾选任何Tool；Tool自动主线完成后仍需逐项人工点击24项并保存脱敏报告，随后Capture E2E按六组从2/39收敛到39/39。
     首批Tool自动主线已完成：Agent接线、owner正向unit与真实Agent/MCP调用均24/24。Diagnostics最终真实workflow在`401af972`精确Red、当前`1/1` Green，两代Main/Core `11444/35300`、`42312/18808`均优雅销毁、释放8888并恢复系统副作用，重启Model/origin增量0；Tools`66/66`、Desktop`458/458`、Runtime`122/122`、Core Protocol`25/25`、MCP`32/32`、Playground`67/67`、design interaction`71/71`与全workspace typecheck Green。Diagnostics明暗parity`18/18`、0 missing、0 flagged、0px；完整Parity为`210 views / 1,474 targets / 1,442 matched / 32既有missing / 303既有flagged`，Windows package、artifact audit（`1,294 files / 392,826,512 bytes`）、production audit 0漏洞与packaged smoke`1/1` Green；Proxy Core`329/331`仅保留两项既有chunked framing失败。Developer逐项人工矩阵独立待验收，不替用户填写结论，也不作为剩余43项Tool开发的前置条件；Settings只读六项本轮已闭环，接着实施系统代理启用/恢复组。首批自动验收历史证据见[features/tool-capabilities.md](features/tool-capabilities.md#9-历史阶段证据)。

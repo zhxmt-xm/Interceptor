@@ -38,6 +38,9 @@ export function AgentToolResultSummary({
     case 'certificateStatus':
       content = `${t(!summary.present ? 'settings.notGenerated' : summary.trusted ? 'settings.trusted' : 'settings.notInstalled')} · HTTPS ${t(summary.mitmEnabled ? 'agent.tools.enabled' : 'agent.tools.disabled')}`;
       break;
+    case 'certificateWindow':
+      content = t(`agent.tools.certificateWindow.${summary.target}`);
+      break;
     case 'systemProxyRestore':
       content = t(summary.restored ? 'agent.tools.proxyRestored' : 'agent.tools.proxyRestoreSkipped', {
         reason: summary.reason ?? '-',

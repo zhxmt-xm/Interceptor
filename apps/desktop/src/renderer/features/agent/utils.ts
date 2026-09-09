@@ -55,6 +55,7 @@ export type AgentToolResultSummary =
   | { readonly kind: 'systemProxy'; readonly supported: boolean; readonly owned: boolean; readonly enabled: boolean }
   | { readonly kind: 'systemProxyRestore'; readonly restored: boolean; readonly reason?: string }
   | { readonly kind: 'certificateStatus'; readonly present: boolean; readonly trusted: boolean; readonly mitmEnabled: boolean }
+  | { readonly kind: 'certificateWindow'; readonly target: 'folder' | 'viewer' }
   | { readonly kind: 'decryption'; readonly trusted: boolean; readonly mitmEnabled: boolean; readonly decrypting: boolean }
   | { readonly kind: 'tlsHosts'; readonly count: number }
   | { readonly kind: 'tlsPassthrough'; readonly revision: number; readonly count: number }
@@ -262,11 +263,16 @@ export function summarizeAgentToolResult(
         ...(typeof value['reason'] === 'string' ? { reason: value['reason'] } : {}),
       };
     }
-    if (name === 'settings_get_certificate_status'
+    if (['settings_get_certificate_status', 'settings_generate_certificate', 'settings_install_certificate',
+      'settings_uninstall_certificate', 'settings_delete_certificate'].includes(name)
       && typeof value['present'] === 'boolean'
       && typeof value['trusted'] === 'boolean'
       && typeof value['mitmEnabled'] === 'boolean') {
       return { kind: 'certificateStatus', present: value['present'], trusted: value['trusted'], mitmEnabled: value['mitmEnabled'] };
+    }
+    if (value['requested'] === true) {
+      if (name === 'settings_reveal_certificate') return { kind: 'certificateWindow', target: 'folder' };
+      if (name === 'settings_view_certificate') return { kind: 'certificateWindow', target: 'viewer' };
     }
     if ((name === 'settings_get_tls_insecure_hosts' || name === 'settings_replace_tls_insecure_hosts') && Array.isArray(value['hosts'])) {
       return { kind: 'tlsHosts', count: value['hosts'].length };

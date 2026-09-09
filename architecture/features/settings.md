@@ -683,8 +683,46 @@ passthrough额外要求`expectedRevision`；空数组仅表示清空该名单，
     需验证四项Ask/Auto、已挂载UI刷新、host规范化、stale revision、撤权、重启配置恢复及Model零重放，
     最后验证CA信任、WinINet、journal、进程和8888全部恢复。
 
+<a id="certificate-tool-acceptance"></a>
+### 7.4 证书 Tool 契约（六项已验收，Manager blocked）
+
+- 2026-09-09：六项证书生命周期/查看已完成真实Agent/MCP、Explorer/Viewer关窗与双代恢复；仅Manager的独立原生流程仍blocked。
+    - `settings.tools.certificates`为1/1 Green（54.2s，Runner总计55.9s）；两代Main/Core为`47704/19820`、`35384/17472`，均`gracefulDestroyVerified=true`。
+    - 六项Agent/MCP成功调用、各六次Deny、受信任重生成拒绝、四次原生窗口打开/关闭、十二项入口撤权及重启Model请求增量0通过。
+    - 完整Root指纹集合恢复，测试CA信任和材料自动清理；WinINet/journal恢复、8888释放、成功profile删除，无MMC残留。
+    - trace、两代metadata与日志归档在TEMP下`interceptor-certificates-six-e2e-green-20260909-002441.zip`，SHA-256为`B7939C70D90485DB94E61BB943BBD520C4E00CAF7393AE3E92A2DF9261F401EC`。
+    - 关窗时保持置顶直到确认句柄消失，再在finally释放；旧实现过早释放置顶。空目录Explorer三次连续验证及上述真实流程均通过，一次性脚本已删除。
+- 本提交包含六项registry、Main命令与IPC共用方法；Manager接线仍保留在worktree。此前owner50/50、摘要64/64、Tools431/431、Desktop721/721、MCP32/32与全workspace类型结果仍适用，本轮Desktop typecheck再次通过。
+    - 前置unit日志在TEMP下`interceptor-certificates-owner-red-20260908.log`；真实Red证据在`interceptor-certificates-discovery-red-20260908.zip`。
+    - Explorer与系统证书查看器已在真实Agent流程打开、鼠标关闭并验证句柄消失；Win11 Explorer未暴露`AutomationId="Close"`，驱动使用系统标题栏Close几何，按本轮句柄/进程代际确认所有权，不依赖证书文件在清理后仍存在。
+    - MMC的标题栏查询返回Win32 `5`（Access denied），窗口enabled但关闭按钮坐标全0；单独Manager真实调用同样复现，日志在TEMP下`interceptor-certificates-mmc-inspection-20260908.log`。需要具备目标窗口访问权限的E2E Runner，不能绕过权限或跳过原生窗口验收。
+    - 窗口与CA清理分别执行；六项已完成最终恢复。Manager不生成CA，其MCP、双代重启及原生关闭仍待有权限的Runner执行，不计入完整自动验收。
+    - 七项摘要经历7条Red后Green，三条窗口请求文案经历3条Red后15语言完整；与AppContainer合并后的摘要64/64、Tools431/431、Desktop721/721、MCP32/32及全workspace typecheck通过。
+    - 证书专项parity28 views / 168 targets全部匹配、0 missing/flagged、最大0.5px；其中六项为24 views / 144 targets，随本提交保留24张新图；Manager四张及含Manager行的两张能力表图留在worktree。此前Windows package、artifact audit及smoke仍适用，产品和设计未再变化；这些结果不替代Manager独立E2E。
+- 七项均为`change`，只接受空对象，拒绝路径、证书字节、私钥、指纹覆盖或任意外部程序参数；不增加Preload API。
+
+| Tool | Main命令与共用方法 | 结果 |
+| --- | --- | --- |
+| `settings_generate_certificate` | `settings.certificate.generate` / `generateCertificate()` | 公开证书状态 |
+| `settings_install_certificate` | `settings.certificate.install` / `installCertificate()` | 公开证书状态 |
+| `settings_uninstall_certificate` | `settings.certificate.uninstall` / `uninstallCertificate()` | 公开证书状态 |
+| `settings_delete_certificate` | `settings.certificate.delete` / `deleteCertificate()` | 公开证书状态 |
+| `settings_reveal_certificate` | `settings.certificate.reveal` / `revealCertificate()` | `{ requested: true }` |
+| `settings_view_certificate` | `settings.certificate.view` / `viewCertificate()` | `{ requested: true }` |
+| `settings_open_certificate_manager` | 产品入口已有，Tool接线未提交，MMC权限验收blocked | 目标为`{ requested: true }` |
+
+- 公开证书状态固定为`present/trusted/supported/mitmEnabled/fingerprint/subject/createdAt/expiresAt`；不返回`path`、私钥或helper输出。
+- IPC、Agent与MCP调用同一个Main业务方法；四项状态操作完成后同步Core并广播既有`tlsSettingsChanged`，已挂载Certificates面板必须即时更新。
+- Generate与UI保持一致：受信任时拒绝重新生成，旧身份和信任不变；未受信任时允许生成或重新生成，不自动安装、不改解密意图。
+- Install要求证书已生成，不隐式生成；Uninstall只移除当前profile的证书信任；Delete在仍受信任时先卸载，再删除本地材料，避免孤立信任。
+- Reveal/View要求当前证书存在；Manager不依赖当前CA。三项只请求正式系统窗口，`requested`不冒充已完成窗口交互或信任修改。
+- Generate与Delete标记为destructive；七项均不开放任意网络或程序执行。Ask摘要只使用操作名和公开状态，Deny、审批前取消及撤权不产生副作用。
+- Windows UAC或macOS Authorization沿产品现有路径；不改授权策略。开始写入前检查取消，已开始的操作完成Core同步与通知，不伪造回滚成功。
+- 真实验收分为`settings.tools.certificates`六项生命周期/查看与`settings.tools.certificate-manager`单项MMC，两者各自覆盖Agent/MCP、Ask/Auto、撤权、重启零重放及完整宿主恢复；只有前者生成/安装测试CA。
+- Manager的权限阻塞不阻止六项独立验证，但必须继续保留Manager完整验收，不能将其移除或计为通过。
+
 <a id="app-container-tool-acceptance"></a>
-### 7.4 AppContainer Tool 契约（自动验收完成）
+### 7.5 AppContainer Tool 契约（自动验收完成）
 
 - 四项均为独立`change`，复用`AppContainerService`及现有helper，不改Windows权限策略。
 
@@ -714,10 +752,10 @@ passthrough额外要求`expectedRevision`；空数组仅表示清空该名单，
     - 归档在TEMP下`interceptor-settings-tools-final-e2e-20260908.zip`，SHA-256为`CA646E05D6C3C0D4F096E5C573331E0AEA21579C4286A538524BDDC6B2D0B7D7`。
 - 新Tool parity16 views / 96 targets全匹配、0 missing/flagged、最大0.5px；能力表及Settings查询明暗4 views / 66 targets全匹配、0px。
     - 原面板与批量确认一并复跑；面板保留原报告中相同的明暗各5项flagged、最大3.8px，批量确认0 missing/flagged。未修改CSS，不把既有视觉债务改记为通过。
-    - 图片及结构化报告在TEMP下`interceptor-app-container-parity-20260908`与`interceptor-settings-capability-parity-20260908`；16张Tool图随本组提交；两张Settings目录图同时包含未提交证书行，保留在worktree随证书工作项处理。
+    - 图片及结构化报告在TEMP下`interceptor-app-container-parity-20260908`与`interceptor-settings-capability-parity-20260908`；16张AppContainer图已提交，两张含Manager行的Settings目录图仍留在worktree，随Manager工作项处理。
 - Windows package、artifact audit（1,294 files / 392,939,357 bytes）、production audit 0漏洞与packaged smoke1/1通过；新增`onAppContainersChanged`已进入Preload精确白名单。
 - 初轮Auto因长Chat与模拟Provider回复未完成失败；改为经真实UI创建独立Auto Chat并重新discovery，同流程Green，未改变产品上下文限制。该失败不是产品Red。
-- 上述8条在69项registry的当前worktree验证，未提交的证书七项仍有独立MMC权限阻塞；本组Green不代替证书、人工矩阵或Capture39项的验收。
+- 上述8条于2026-09-08在69项registry的worktree验证，记录不代表当时已提交69项。2026-09-09六项证书已独立取得Green，仅Manager仍有MMC权限阻塞；AppContainer Green不替代Manager、人工矩阵或Capture39项的验收。
 
 ## 8. 安全边界汇总
 

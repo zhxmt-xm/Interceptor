@@ -5,6 +5,12 @@ export interface MainToolResultPayloads {
   'settings.app-container.disable': MainToolResultPayloads['settings.app-containers.list'];
   'settings.app-containers.enable-all': MainToolResultPayloads['settings.app-containers.list'];
   'settings.app-containers.disable-all': MainToolResultPayloads['settings.app-containers.list'];
+  'settings.certificate.generate': MainToolResultPayloads['settings.certificate.status'];
+  'settings.certificate.install': MainToolResultPayloads['settings.certificate.status'];
+  'settings.certificate.uninstall': MainToolResultPayloads['settings.certificate.status'];
+  'settings.certificate.delete': MainToolResultPayloads['settings.certificate.status'];
+  'settings.certificate.reveal': { requested: true };
+  'settings.certificate.view': { requested: true };
   'settings.language.set': { language: string };
   'settings.theme.set': { theme: 'warm' | 'light' | 'ember' | 'dark' };
   'settings.export-privacy-defaults.set': { maskAuthorization: boolean; maskCookies: boolean; warnBeforeUnmasked: boolean };

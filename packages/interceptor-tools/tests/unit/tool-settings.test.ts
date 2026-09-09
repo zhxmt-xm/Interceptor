@@ -52,6 +52,12 @@ const EXPECTED_SETTINGS_COPY = [
   ['settings_get_core_process_status', 'Core process status', 'Read the Core process lifecycle, not listener or upstream health.'],
   ['settings_get_system_proxy_status', 'System proxy status', 'Read system proxy ownership and upstream reachability without raw OS configuration.'],
   ['settings_get_certificate_status', 'Certificate status', 'Read public Root CA identity, trust, and HTTPS decryption state without local paths.'],
+  ['settings_generate_certificate', 'Generate Root CA', 'Generate or replace an untrusted Root CA without installing trust.'],
+  ['settings_install_certificate', 'Install Root CA', 'Install the existing Root CA for all users through native system authorization.'],
+  ['settings_uninstall_certificate', 'Uninstall Root CA', 'Remove only the current Root CA from system trust without deleting its material.'],
+  ['settings_delete_certificate', 'Delete Root CA', 'Uninstall any current Root CA trust, then delete its local certificate material.'],
+  ['settings_reveal_certificate', 'Reveal Root CA', 'Reveal the existing public Root CA in the system file manager.'],
+  ['settings_view_certificate', 'View Root CA', 'Open the existing public Root CA in the system certificate viewer.'],
   ['settings_get_tls_insecure_hosts', 'Insecure TLS hosts', 'Read configured hosts that skip upstream TLS certificate verification.'],
   ['settings_get_tls_passthrough', 'TLS passthrough settings', 'Read TLS passthrough host patterns and their current revision.'],
   ['settings_list_app_containers', 'AppContainer access', 'Read supported Windows AppContainer identities and loopback exemption state.'],
@@ -84,7 +90,7 @@ describe('Tool Settings projection', () => {
     ]);
     expect(groups.flatMap((group) => group.tools.map((tool) => tool.name)))
       .toEqual(INTERCEPTOR_TOOL_NAMES);
-    expect(groups.flatMap((group) => group.tools)).toHaveLength(62);
+    expect(groups.flatMap((group) => group.tools)).toHaveLength(68);
     expect(groups.every((group) => (
       group.tools.every((tool) => tool.name.startsWith(`${group.id}_`))
     ))).toBe(true);

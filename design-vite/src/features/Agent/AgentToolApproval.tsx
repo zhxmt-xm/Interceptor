@@ -27,6 +27,36 @@ const TOOL_CONTENT = {
     effect: 'Remove loopback exemptions for every currently listed AppContainer; preserve exemptions outside this list.\nAppContainers affected: 2\nCurrently exempt: 2\nChanges persist after Interceptor exits.',
     result: 'Apps 2 · Exempt 0',
   },
+  settings_generate_certificate: {
+    description: 'Generate or replace an untrusted Root CA without installing trust.',
+    effect: 'Generate or replace an untrusted Root CA without installing trust.\nGenerate Root CA\nRoot CA present: false\nRoot CA trusted: false',
+    result: 'Not installed · HTTPS Disabled',
+  },
+  settings_install_certificate: {
+    description: 'Install the existing Root CA for all users through native system authorization.',
+    effect: 'Install the existing Root CA for all users through native system authorization.\nInstall Root CA\nRoot CA present: true\nRoot CA trusted: false',
+    result: 'Trusted · HTTPS Disabled',
+  },
+  settings_uninstall_certificate: {
+    description: 'Remove only the current Root CA from system trust without deleting its material.',
+    effect: 'Remove only the current Root CA from system trust without deleting its material.\nUninstall Root CA\nRoot CA present: true\nRoot CA trusted: true',
+    result: 'Not installed · HTTPS Disabled',
+  },
+  settings_delete_certificate: {
+    description: 'Uninstall any current Root CA trust, then delete its local certificate material.',
+    effect: 'Uninstall any current Root CA trust, then delete its local certificate material.\nDelete Root CA\nRoot CA present: true\nRoot CA trusted: true',
+    result: 'Not generated · HTTPS Disabled',
+  },
+  settings_reveal_certificate: {
+    description: 'Reveal the existing public Root CA in the system file manager.',
+    effect: 'Reveal the existing public Root CA in the system file manager.\nReveal Root CA\nRoot CA present: true\nRoot CA trusted: false',
+    result: 'Certificate folder requested',
+  },
+  settings_view_certificate: {
+    description: 'Open the existing public Root CA in the system certificate viewer.',
+    effect: 'Open the existing public Root CA in the system certificate viewer.\nView Root CA\nRoot CA present: true\nRoot CA trusted: false',
+    result: 'Certificate viewer requested',
+  },
   capture_export_archive: {
     description: 'Export all captured traffic as a native Interceptor Archive through the native Save Dialog.',
     effect: 'Save a complete Capture snapshot including bodies, credentials and native evidence without redaction; starting the job does not mean it has completed.\nExport the complete Capture snapshot, including bodies, credentials and native evidence without redaction.\nChoose the destination using the native Save Dialog.',

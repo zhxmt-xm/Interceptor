@@ -47,6 +47,7 @@ import { TOOL_BODY_PREVIEW_MAX_BYTES } from '../constants';
 import { buildSettingsQueryTools } from '../settings/queries';
 import { buildSystemProxyTools } from '../settings/system-proxy';
 import { buildTlsTools } from '../settings/tls';
+import { buildCertificateTools } from '../settings/certificates';
 import { buildAppContainerTools } from '../settings/app-containers';
 import { buildPreferenceTools } from '../settings/preferences';
 import { buildRulesExportTool } from '../rules/export';
@@ -155,6 +156,12 @@ export const INTERCEPTOR_TOOL_NAMES = [
   'settings_get_core_process_status',
   'settings_get_system_proxy_status',
   'settings_get_certificate_status',
+  'settings_generate_certificate',
+  'settings_install_certificate',
+  'settings_uninstall_certificate',
+  'settings_delete_certificate',
+  'settings_reveal_certificate',
+  'settings_view_certificate',
   'settings_get_tls_insecure_hosts',
   'settings_get_tls_passthrough',
   'settings_list_app_containers',
@@ -183,6 +190,7 @@ export function buildInterceptorToolRegistry(
     ...buildSettingsQueryTools(),
     ...buildSystemProxyTools(),
     ...buildTlsTools(),
+    ...buildCertificateTools(),
     ...buildAppContainerTools(),
     ...buildPreferenceTools(),
     buildRulesExportTool(),

@@ -195,6 +195,46 @@ TLS专项16 views / 96 targets / 0 missing / 0 flagged / 最大0.5px与package/a
 34 missing / 305 flagged；TLS专项96/96、0 missing/flagged、最大0.5px。以上不替代本条workflow的
 最终CA信任清理；该阶段保持blocked，直到2026-09-08恢复旧残留并取得上述最终Green。
 
+<a id="settings-tools-certificates"></a>
+## `settings.tools.certificates`
+
+**状态**：passed；六项Agent/MCP、Explorer/Viewer真实关窗及双代清理通过；Manager单项仍待原生权限验收
+**策略**：native-ui + privileged UI；Windows；host-safety-guard；两代Electron
+
+### Steps
+
+1. 捕获宿主基线，创建空profile并启动真实Electron；通过UI配置本地Model Provider。发现六项证书生命周期及查看Tool，
+	不注入Store或伪造证书材料。进入Certificates，确认未生成且未受信任。
+2. Agent以Ask调用Generate并Deny，确认身份、信任和原生窗口均不变；Allow生成CA，当前面板立即显示公开身份。
+	Auto在未受信任状态重新生成，确认身份变化、没有旧CA进入信任库，解密意图不变。
+3. Agent通过Install完成真实系统授权，确认该CA已进入LocalMachine Root；当前面板显示trusted。
+	再次Generate必须拒绝，证书身份及信任不变，不能绕过UI的受信任禁用状态。
+4. Agent分别调用Reveal、View；观察真实文件管理器和证书查看器窗口。
+	用真实键鼠关闭本轮拥有的窗口，不改写Shell、原生Dialog或UAC结果，不关闭用户原有窗口。
+5. Agent执行Uninstall，确认仅移除当前CA信任且材料保留；再次Install后直接Delete，确认先卸载信任再删除材料，
+	当前面板回到未生成状态。Ask拒绝与取消分支均不得进入实际写入或打开窗口。
+6. 通过正式Settings UI开启MCP并创建本轮Client，用产品产生的Token连接。经MCP复跑六项正向操作、Ask/Auto及
+	原生窗口验证；证书和输入均由本workflow的产品操作产生，不自行写文件或种入信任库。
+7. 分别关闭六项Agent/MCP授权，确认旧Chat及Client不能再执行，CA、信任、窗口和Model请求没有额外副作用。
+	留下未受信任的本轮CA用于重启验证，隐藏敏感文本后正常关闭第一代。
+8. 验证第一代Main/Core/Renderer/Worker全退、8888释放及WinINet/journal恢复；使用同profile启动第二代，
+	确认证书身份及授权状态保持、Model请求增量0、没有重复原生窗口或自动安装。
+9. 通过正式UI卸载仍存在的本轮信任、删除本轮CA并关闭本轮原生窗口；保存脱敏证据、trace和两代metadata。
+	正常退出并验证整个Root指纹集合、WinINet/journal、进程和8888恢复，最后删除profile；失败保留profile。
+
+### 证据
+
+- 2026-09-09最终Green：本条1/1（54.2s，Runner总计55.9s），两代Main/Core为`47704/19820`、`35384/17472`，均`gracefulDestroyVerified=true`。
+- 六项Agent/MCP、各六次Deny、受信任重生成拒绝、四次Explorer/Viewer打开关闭、十二项入口撤权及重启零重放通过；Root集合、WinINet/journal恢复、8888释放，成功profile删除。
+- 原关窗驱动在鼠标事件处理前立即释放置顶；改为等待句柄消失后释放，空目录三次连续关窗与真实流程均通过。一次性检查脚本已删除，未修改产品或Windows权限。
+- 完整证据在TEMP下`interceptor-certificates-six-e2e-green-20260909-002441.zip`；Manager的Win32访问拒绝继续由未提交的独立workflow验收，不以本条通过替代。
+- 2026-09-08：原合并workflow在MMC关闭处被Win32权限拒绝，后面的MCP及重启尚未执行。现将六项生命周期/查看与Manager独立验收，原始Red和失败证据继续保留，不减少任何Tool的要求。
+- 原生窗口失败与CA清理已隔离，最新完整尝试Root指纹集合恢复、8888释放；此前一次CA残留通过保留profile及正式UI自动恢复1/1，证据在TEMP下`interceptor-certificates-profile-recovery-20260908.zip`。一次性辅助诊断/恢复流程已删除，不作为永久测试。
+- 原七项发现缺失的Red覆盖本六项；不能把selector、UAC、构建或环境失败算产品Red。
+- Green记录六项Agent/MCP调用、公开身份、受信任重生成拒绝、面板同步、Explorer/Viewer及其关闭、撤权和重启零重放。
+- 保留两代`gracefulDestroyVerified=true`及Root指纹集合前后相同的证据；不记录私钥、Token、实际证书路径或完整代理配置。
+- 外部授权或原生窗口交互若确实不可用，记录具体失败和人工恢复方式，不把只读查询或单元测试当成完整验收。
+
 <a id="settings-tools-app-containers"></a>
 ## `settings.tools.app-containers`
 
@@ -218,7 +258,7 @@ TLS专项16 views / 96 targets / 0 missing / 0 flagged / 最大0.5px与package/a
 - 2026-09-08最终关联8/8 Green，共14代`gracefulDestroyVerified=true`；本条两代Main/Core为`49008/19980`、`16136/46764`。
 - Agent/MCP四项Ask Deny/Allow与Auto、单项/批量范围、独立撤权、挂载UI和typed摘要均通过；每轮Auto使用真实新Chat并重新发现，未修改产品上下文规则。
 - 完整exemption集合hash在finally恢复，枚举外SID不变；重启Model请求增量0、WinINet/journal及8888恢复，成功profile删除。证据归档在TEMP下`interceptor-settings-tools-final-e2e-20260908.zip`。
-- 本轮在含未提交证书改动的69项worktree验证138个授权开关；证书MMC workflow仍独立blocked，不由本条或packaged smoke代替。
+- 这次2026-09-08关联运行使用69项registry、138个授权开关的worktree，记录不等于已提交数量；Manager的独立MMC验收仍blocked，不由本条或packaged smoke代替。
 - Red只能来自四项Tool缺失或目标业务缺口；权限、selector或构建失败保持blocked，不算产品Red。
 - Green记录四项Agent/MCP调用、两列授权、挂载UI即时同步、单项/批量范围及两代正常销毁。
 - 初始与最终完整exemption集合hash必须相同，枚举外SID保持不变；不保存完整机器SID清单、helper路径、凭据或代理配置。
