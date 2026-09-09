@@ -323,6 +323,7 @@ Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original
 - 视觉：Request/Response × Text/File × light/dark 8个view均`0 missing / 0 flagged / 0px`；design interaction `13/13`。
 - 销毁：Green Main/Core PID为`45548/23816`，`gracefulDestroyVerified=true`；产品Save生成的临时文件已删除，8888无listener、无Interceptor/Electron残留，WinINet恢复`127.0.0.1:7890`。
 - 2026-09-09空文件布局修复后，同一真实workflow复跑1/1（26.2s）通过，Main/Core `31924/17444`正常销毁并恢复8888、WinINet/journal；断点unit19/19和Desktop typecheck通过。四个空文件明暗parity的12个区域目标全部匹配、最大0.6px，其他标题/页脚仍有旧偏差；详细Red/Green见[文件区域验证](../../../../../architecture/features/breakpoints.md#72-文件替换空态视觉修复)，最终归档`interceptor-breakpoint-file-final-green-20260909-211705.zip`。
+- 2026-09-10原生文件输入修复：WScript粘贴后文件名字段为空，helper改用Win32 `SendInput`真实Ctrl+A/Ctrl+V，核对焦点字段HWND，在输入期间保持置顶，路径读回后恢复剪贴板，finally释放置顶；不直接设置字段值或改写Dialog返回值。最终Save/Open、Text/File与Final writer同一workflow1/1（27.2s总运行），unit19/19及Desktop typecheck通过，Main/Core `24060/48540`正常销毁且host guard恢复。TEMP归档`interceptor-breakpoint-chrome-native-green-20260910-001235.zip`，SHA256 `130C9FF733352048E1363069450FC0AD862677D30E3D2431C008997E06708A76`。该记录只确认原生输入与数据面验证，不代表其他未提交的UI布局已验收。
 
 <a id="rules-tools-export"></a>
 ## `rules.tools.export`

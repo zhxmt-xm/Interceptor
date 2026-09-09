@@ -165,6 +165,59 @@ public static class NativeForegroundWindow {
   private const uint SwpNoMove = 0x0002;
   private const uint SwpShowWindow = 0x0040;
 
+  [StructLayout(LayoutKind.Sequential)]
+  private struct KeyboardInput {
+    public ushort VirtualKey;
+    public ushort ScanCode;
+    public uint Flags;
+    public uint Time;
+    public UIntPtr ExtraInfo;
+  }
+
+  [StructLayout(LayoutKind.Sequential)]
+  private struct MouseInput {
+    public int X;
+    public int Y;
+    public uint MouseData;
+    public uint Flags;
+    public uint Time;
+    public UIntPtr ExtraInfo;
+  }
+
+  [StructLayout(LayoutKind.Explicit)]
+  private struct InputData {
+    [FieldOffset(0)] public KeyboardInput Keyboard;
+    [FieldOffset(0)] public MouseInput Mouse;
+  }
+
+  [StructLayout(LayoutKind.Sequential)]
+  private struct Input {
+    public uint Type;
+    public InputData Data;
+  }
+
+  [DllImport("user32.dll", SetLastError = true)]
+  private static extern uint SendInput(uint count, Input[] inputs, int size);
+
+  public static void SendControlShortcut(ushort virtualKey) {
+    Input[] inputs = {
+      KeyInput(0x11, false), KeyInput(virtualKey, false),
+      KeyInput(virtualKey, true), KeyInput(0x11, true)
+    };
+    if (SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(Input))) != inputs.Length) {
+      throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+    }
+  }
+
+  private static Input KeyInput(ushort virtualKey, bool released) {
+    return new Input {
+      Type = 1,
+      Data = new InputData {
+        Keyboard = new KeyboardInput { VirtualKey = virtualKey, Flags = released ? 2u : 0u }
+      }
+    };
+  }
+
   [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr windowHandle);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr windowHandle);
@@ -212,7 +265,6 @@ $dialogAction = '${action.type}'
 $targetPath = [System.Text.Encoding]::Unicode.GetString(
   [System.Convert]::FromBase64String('${encodedPath}')
 )
-$shell = New-Object -ComObject WScript.Shell
 $fileNameCondition = [System.Windows.Automation.OrCondition]::new(
   [System.Windows.Automation.PropertyCondition]::new(
     [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
@@ -454,7 +506,6 @@ try {
   }
   [NativeForegroundWindow]::RaiseWindow($dialogWindowHandle)
   Click-Control $fileNameBounds
-  [NativeForegroundWindow]::ReleaseWindow($dialogWindowHandle)
   if (-not (Test-FocusedOwnedDialog $dialogWindowHandle $dialogProcessId)) {
     throw '真实文件对话框在点击文件名字段后没有获得前台焦点。'
   }
@@ -462,19 +513,32 @@ try {
   if (
     -not $focusedElement -or
     $focusedElement.Current.ClassName -ne 'Edit' -or
-    @('1001', '1148') -notcontains $focusedElement.Current.AutomationId
+    @('1001', '1148') -notcontains $focusedElement.Current.AutomationId -or
+    $focusedElement.Current.NativeWindowHandle -ne $fileNameField.Current.NativeWindowHandle
   ) {
     throw '真实文件对话框的文件名字段未获得输入焦点。'
   }
-  $shell.SendKeys('^a')
+  [NativeForegroundWindow]::SendControlShortcut(0x41)
   $previousClipboard = [System.Windows.Forms.Clipboard]::GetDataObject()
   try {
     [System.Windows.Forms.Clipboard]::SetText($targetPath)
     if (-not (Test-FocusedOwnedDialog $dialogWindowHandle $dialogProcessId)) {
       throw '真实文件对话框在输入路径前失去所有权或焦点。'
     }
-    $shell.SendKeys('^v')
-    [System.Threading.Thread]::Sleep(300)
+    [NativeForegroundWindow]::SendControlShortcut(0x56)
+    $valuePattern = $fileNameField.GetCurrentPattern(
+      [System.Windows.Automation.ValuePattern]::Pattern
+    )
+    $pasteDeadline = [DateTime]::UtcNow.AddSeconds(3)
+    while ($valuePattern.Current.Value -ne $targetPath -and [DateTime]::UtcNow -lt $pasteDeadline) {
+      if (-not (Test-FocusedOwnedDialog $dialogWindowHandle $dialogProcessId)) {
+        throw '真实文件对话框在等待输入完成时失去所有权或焦点。'
+      }
+      [System.Threading.Thread]::Sleep(50)
+    }
+    if ($valuePattern.Current.Value -ne $targetPath) {
+      throw "真实文件对话框没有收到目标路径。actual=$($valuePattern.Current.Value)"
+    }
   } finally {
     if ($null -ne $previousClipboard) {
       [System.Windows.Forms.Clipboard]::SetDataObject($previousClipboard, $true)
@@ -482,20 +546,15 @@ try {
       [System.Windows.Forms.Clipboard]::Clear()
     }
   }
-  $valuePattern = $fileNameField.GetCurrentPattern(
-    [System.Windows.Automation.ValuePattern]::Pattern
-  )
-  if ($valuePattern.Current.Value -ne $targetPath) {
-    throw "真实文件对话框没有收到目标路径。actual=$($valuePattern.Current.Value)"
-  }
   if (-not (Test-FocusedOwnedDialog $dialogWindowHandle $dialogProcessId)) {
     throw '真实文件对话框在提交前失去所有权或焦点。'
   }
   Click-Control $submitBounds
 } catch {
-  [NativeForegroundWindow]::ReleaseWindow($dialogWindowHandle)
   Close-FileDialog $dialog $dialogWindowHandle $dialogProcessId
   throw
+} finally {
+  [NativeForegroundWindow]::ReleaseWindow($dialogWindowHandle)
 }
 }
 

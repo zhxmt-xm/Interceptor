@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `9ebed1eb`
+> Tracked commit: `793ecbd0`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-10
 
