@@ -1,6 +1,6 @@
 # Feature: Breakpoints
 
-> 最后更新：2026-09-06
+> 最后更新：2026-09-09
 > Core 模块：`apps/proxy-core/src/proxy-core/rules/internal/breakpoint-queue.ts`
 > Renderer 模块：`apps/desktop/src/renderer/features/breakpoints/`（数据层）
 >       `apps/desktop/src/renderer/features/capture/BreakpointManager|BreakpointInspector/`（UI）
@@ -114,6 +114,8 @@ RuleService 先按 priority / action 声明顺序完成全部非-breakpoint acti
 header marker；重复同名值只标实际变化的实例。
 
 Body replacement使用[Rules Body effect](rules.md#73-body-effect-已实现)的同一最终写入者模型：`edit.body`生成`source:'text'`，`edit.bodyFilePath`生成`source:'file'`，effect绑定承载当前breakpoint action的ruleId。Request保留入站Original并另存Final；Response只保存Final并明确Original unavailable。Off或只编辑header时不制造body effect。
+
+File模式未选文件时按现有设计显示112px最小高度的居中容器和32px高的Upload按钮，按钮不横向拉满；文字11.5px、`--text-2`。未选文件保留带警告图标的Using original状态，分组折叠图标为13px，不撑高标题。选中文件仍使用既有预览卡，不改Open Dialog、正文或转发行为。该样式差异由真实文件替换流程和Request/Response明暗parity验证。
 
 2026-08-20 TDD证据：最终`breakpoints.execute-edited`源码在`89d8dda`仅回植后续公开automation ID与driver helper后，暂停快照精确缺失priority更晚的`x-e2e-before-breakpoint`，Execute edited后的Capture也缺少绑定breakpoint ruleId的`set x-edit-stage` marker；当前同一workflow`1/1` Green。Red/Green metadata分别记录Main/Core PID `31404/3812`与`46424/29380`，均`gracefulDestroyVerified=true`且8888释放、系统代理恢复。该证据只闭环final Rule state与header effect；HTTP framing矩阵仍由[HTTP消息编辑](http-message-editing.md)单独验收。
 
@@ -416,6 +418,15 @@ timeout控件。Red Main/Core PID依次为`34028/1940`、`32556/29092`、`31380/
 `BREAKPOINT_QUEUE_LIMIT`、nullable suspension和queue-full状态后，同一测试25条全部pending并保持插入顺序。
 MCP无timeout调用先Red于未发出Core命令，删除工具schema、解析和payload字段后Green；MCP全量`46/46`
 与typecheck通过。最终全仓门禁与最新parity数字见`architecture/HANDOVER.md`。
+
+### 7.2 文件替换空态视觉修复
+
+- 原空文件按钮被纵向flex拉满，parity宽度差302.1px，按钮高度34px且字号/颜色不符；产品还缺少File为空时的警告图标，Using original文字横向错位14px。Replacement分组的30px折叠按钮另使标题比设计多2px。
+- 现仅在`BreakpointInspector`补空文件容器与共享Button的局部样式，图标使用Upload；File和Text为空时按既有设计显示10px警告图标，13px折叠控件不再撑高标题。没有调整位移抵消差异，没有改设计稿、原始PNG、文件API或网络转发。
+- 前置真实UI和302px parity Red归档为TEMP下`interceptor-breakpoint-file-presentation-red-20260909-210935.zip`，SHA256 `3440F775BAF9B408DAF9FE6F1C9E1BE6589AFF680C51B0DAC3828EAB42074086`，Main/Core `17452/22284`正常退出。
+- 最终Request/Response x light/dark四个空文件视图共12个区域目标（标题、Using original、Choose file）全部matched，最大0.6px、无字号/颜色差；22个HTTP视图为240 matched、2 missing、94 flagged，剩余集中在暂停标题、Headers及页脚，不把局部修复写成整组全绿。
+- 断点编辑/Store unit19/19、Desktop typecheck通过；真实`rules.body-effect-evidence`1/1（26.2s）验证112px容器、32px按钮、真实Save/Open、File替换的转发与Capture证据，Main/Core `31924/17444`正常退出，8888、WinINet/journal恢复。
+- 最终trace/metadata、完整区域截图和22视图parity归档`interceptor-breakpoint-file-final-green-20260909-211705.zip`，SHA256 `4FCC1E36F4ACED2F34DC6AD6AAEAE599DF55948C7BD658D0DB905FCD10FE5A6B`。未修改原生Dialog驱动或新增测试工具测试。
 
 ## 8. 验收要点
 

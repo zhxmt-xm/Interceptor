@@ -302,7 +302,7 @@ Rule不仅能编辑和保存，也真实作用于Proxy数据面；匹配/不匹�
 3. 停用Breakpoint，通过Rules UI创建request Text body rule并Apply；用chunked POST隔离已登记framing债务，确认origin收到Final、Capture marker绑定普通rule，Original/Final分别可读。
 4. 创建response Text body rule并Apply；origin返回chunked正文，确认客户端和Capture都是Final，marker绑定该rule、source=Text，Original control disabled且状态为unavailable。
 5. 同时启用普通request writer与request Breakpoint；Breakpoint Text覆盖普通writer后，确认只显示Breakpoint marker，普通writer marker不存在，Original仍是客户端入站正文。
-6. 经产品BodyViewer Save和真实Save Dialog生成唯一文件；创建response Breakpoint并通过真实Open Dialog选择同一文件，显式删除冲突的`transfer-encoding`后Forward edited，确认source=File、绝对路径未进入Renderer/evidence、客户端与Capture Final字节等于文件、Original unavailable。
+6. 经产品BodyViewer Save和真实Save Dialog生成唯一文件；创建response Breakpoint，File未选择时验证112px居中区域与32px高、11.5px字号的按钮并保存区域截图。通过真实Open Dialog选择同一文件，显式删除冲突的`transfer-encoding`后Forward edited，确认source=File、绝对路径未进入Renderer/evidence、客户端与Capture Final字节等于文件、Original unavailable。
 7. 同一阶段额外发送Continue unmodified与只编辑header的请求，确认原文不变且不出现body marker。
 8. Native Archive round-trip保真与标准HAR只含Final、不含body effect历史的边界下沉到transfer unit/integration，本workflow不直接构造导入文件。
 9. 保存Original/Final、ruleId/source/availability、origin观察、trace、日志与metadata；正常Close并验证Main/Core/Worker退出、8888释放、系统代理恢复并删除临时文件/profile。
@@ -322,6 +322,7 @@ Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original
 - Green：RuleService `27/27`、Body effect三态`2/2`、Breakpoint File相关`2/2`、Archive/HAR`9/9`通过；真实Electron同一workflow`1/1`通过上述Text/File/request/response/final-writer/负例矩阵。
 - 视觉：Request/Response × Text/File × light/dark 8个view均`0 missing / 0 flagged / 0px`；design interaction `13/13`。
 - 销毁：Green Main/Core PID为`45548/23816`，`gracefulDestroyVerified=true`；产品Save生成的临时文件已删除，8888无listener、无Interceptor/Electron残留，WinINet恢复`127.0.0.1:7890`。
+- 2026-09-09空文件布局修复后，同一真实workflow复跑1/1（26.2s）通过，Main/Core `31924/17444`正常销毁并恢复8888、WinINet/journal；断点unit19/19和Desktop typecheck通过。四个空文件明暗parity的12个区域目标全部匹配、最大0.6px，其他标题/页脚仍有旧偏差；详细Red/Green见[文件区域验证](../../../../../architecture/features/breakpoints.md#72-文件替换空态视觉修复)，最终归档`interceptor-breakpoint-file-final-green-20260909-211705.zip`。
 
 <a id="rules-tools-export"></a>
 ## `rules.tools.export`

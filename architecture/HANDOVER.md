@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `42381f68`
+> Tracked commit: `2f981c00`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-09
 
@@ -8,7 +8,7 @@
 
 - [ ] **blocked · VS Code Copilot MCP互操作**：2026-09-01已使用真实VS Code `1.135.0`（commit `08d4889f9e`）与Copilot读取Interceptor复制的通用Streamable HTTP配置。Host成功识别并启动`interceptor`，但首个HTTP请求返回`400`，随后Host回退legacy SSE并收到预期`405 Method not allowed`，未进入`tools/list`。VS Code bundle固定`LATEST_PROTOCOL_VERSION="2025-11-25"`；Interceptor官方SDK v2端点固定`2026-07-28`并使用`legacy: 'reject'`，协议代际不一致是当前唯一阻塞。产品已决定只支持最新协议，不增加legacy兼容；真实Host canary等待VS Code升级到`2026-07-28`后按[features/mcp.md](features/mcp.md)原矩阵复验。
 - [ ] **待验证 · HTTP Execute edited wire correctness**：建立真实 H1 / H2 集成测试，逐项锁定 `Content-Length`、`content-encoding`、transfer-encoding 与 framing。必须先用测试证明问题，再修改转发实现，不能先靠 Renderer 重写 header 猜测修复。该项由另一 session 继续；本次提交不包含 framing / encoding 行为修改或 wire 专属测试。
-- [ ] **验收进行中 · Breakpoint parity 几何收敛**：HTTP request/response旧场景仍有既有差异：常规状态最大约1.6–3.3px，response text明暗各有1个target missing，file-empty按钮仍有302.1px层级差。本轮已删除不存在的queue-full明暗场景并消除Original body重复外框；HTTP queue head/Queued/menu、WebSocket setup/head/Queued、Rules action明暗14 views全部`0 missing / 0 flagged`，最大0.8px。2026-08-25当前完整报告为`142 views / 992 targets / 958 matched / 34 missing / 306 flagged / 平均2.52%`；Rules overflow高度修正后明暗18个target仍为0 missing / 0 flagged，最大0.3px，详见visual parity report。
+- [ ] **验收进行中 · Breakpoint parity标题与页脚**：2026-09-09空文件区域302.1px偏差已修复，Request/Response明暗12个区域目标全部匹配、最大0.6px；真实文件替换1/1、断点逻辑19/19及Desktop typecheck通过。22个HTTP断点视图仍有94个flagged（暂停标题、Headers和页脚按钮）及response text明暗各1个target missing，继续按独立item收敛；最新证据见[Breakpoint文件区域](features/breakpoints.md#72-文件替换空态视觉修复)。历史HTTP queue head/Queued/menu、WebSocket setup/head/Queued、Rules action明暗14 views为`0 missing / 0 flagged`、最大0.8px；2026-08-25完整报告`142 views / 992 targets / 958 matched / 34 missing / 306 flagged / 平均2.52%`及Rules overflow明暗18个target、最大0.3px证据仍保留，不冒充本次全量复跑。
 - [ ] **待设计 · rule detail note**：提示移到底栏尚无确认设计；当前 `.vnote` 继续保留在滚动区末尾。
 - [ ] **待验证 · 上游认证代理**：公司 SSO / `Proxy-Authorization` 尚未验证；WinINet 不保存凭据，需要设计用户手工提供方式。
 - [ ] **待验证/待实现 · macOS系统代理**：三字段journal、多network service快照与三态恢复已有unit/integration；仍缺真实macOS Electron crash/relaunch、Authorization与系统副作用恢复证据。多service可能各有上游代理，合并语义尚未确定，upstream检测仍待实现。

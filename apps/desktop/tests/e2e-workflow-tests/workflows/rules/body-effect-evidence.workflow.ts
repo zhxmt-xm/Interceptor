@@ -467,12 +467,38 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
       desktopApp.capturePort(),
       fileTargetPath,
     );
+    void fileResponse.catch(() => undefined);
     await selectPausedRequest(page, fileTargetPath);
     await getByAutomationId(
       page,
       AUTOMATION_IDS.breakpoints.replacement.file,
     ).click();
-    await getByAutomationId(page, AUTOMATION_IDS.breakpoints.chooseFile).click();
+    const chooseFile = getByAutomationId(page, AUTOMATION_IDS.breakpoints.chooseFile);
+    const filePresentation = await chooseFile.evaluate((button) => {
+      const area = button.parentElement;
+      if (!area) throw new Error('Replacement file area is missing.');
+      const areaStyle = getComputedStyle(area);
+      const buttonStyle = getComputedStyle(button);
+      const buttonBounds = button.getBoundingClientRect();
+      const areaBounds = area.getBoundingClientRect();
+      return {
+        minHeight: areaStyle.minHeight,
+        alignItems: areaStyle.alignItems,
+        justifyContent: areaStyle.justifyContent,
+        buttonHeight: buttonBounds.height,
+        buttonFontSize: buttonStyle.fontSize,
+        fillsAreaWidth: buttonBounds.width >= areaBounds.width,
+      };
+    });
+    await testInfo.attach('breakpoint-file-empty-presentation.json', {
+      body: Buffer.from(JSON.stringify(filePresentation)), contentType: 'application/json',
+    });
+    await chooseFile.locator('..').screenshot({ path: testInfo.outputPath('breakpoint-file-empty.png') });
+    expect(filePresentation).toMatchObject({
+      minHeight: '112px', alignItems: 'center', justifyContent: 'center',
+      buttonHeight: 32, buttonFontSize: '11.5px', fillsAreaWidth: false,
+    });
+    await chooseFile.click();
     await submitWindowsFileDialogPath(mainProcessOwner, generatedFile);
     await page.bringToFront();
     const selectedFile = getByAutomationId(

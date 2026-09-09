@@ -4,10 +4,10 @@ import {
   ChevronDown,
   CircleAlert,
   FileText,
-  FolderOpen,
   Play,
   Plus,
   Slash,
+  Upload,
   X,
 } from 'lucide-react';
 import { Spin } from 'antd';
@@ -314,8 +314,8 @@ export function BreakpointInspector({
                     : t('breakpoints.usingOriginalHint')
               }
             >
-              {draft.replacement === 'text' && !usingReplacement ? (
-                <CircleAlert size={12} strokeWidth={2} />
+              {draft.replacement !== 'off' && !usingReplacement ? (
+                <CircleAlert size={10} strokeWidth={2} />
               ) : null}
               <span>
                 {usingReplacement
@@ -358,11 +358,12 @@ export function BreakpointInspector({
               <span>{t('breakpoints.originalForwarded')}</span>
             </div>
           ) : draft.replacement === 'file' ? (
-            <div className={styles.fileArea}>
+            <div className={cx(styles.fileArea, draft.file === null && styles.fileEmpty)}>
               {draft.file === null ? (
                 <Button
                   automationId={AUTOMATION_IDS.breakpoints.chooseFile}
-                  icon={FolderOpen}
+                  className={styles.chooseFile}
+                  icon={Upload}
                   onClick={() => void pickFile()}
                 >
                   {t('breakpoints.chooseFile')}
