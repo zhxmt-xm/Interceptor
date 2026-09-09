@@ -77,6 +77,20 @@ test('capture.scenarios.websocket captures directional text binary and controlle
         const screenshotPath = testInfo.outputPath('websocket-control-empty-state.png');
         await page.screenshot({ path: screenshotPath });
         await testInfo.attach('websocket-control-empty-state', { path: screenshotPath, contentType: 'image/png' });
+        const presentation = await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.directionAll).evaluate((control) => {
+          const toolbar = control.closest('[role="radiogroup"]')?.parentElement;
+          const message = toolbar?.nextElementSibling?.firstElementChild?.firstElementChild;
+          if (!(message instanceof HTMLElement)) throw new Error('The WebSocket message state is not visible.');
+          const style = getComputedStyle(message);
+          return { hasStateStyles: message.className.trim().length > 0, color: style.color, fontSize: style.fontSize,
+            display: style.display, minHeight: style.minHeight, textAlign: style.textAlign, placeItems: style.placeItems };
+        });
+        await testInfo.attach('websocket-empty-presentation.json', {
+          body: Buffer.from(JSON.stringify(presentation)), contentType: 'application/json',
+        });
+        expect(presentation).toMatchObject({ hasStateStyles: true, display: 'grid', minHeight: '116px',
+          fontSize: '12px', textAlign: 'center', placeItems: 'center' });
+        expect(presentation.color).not.toBe('rgb(0, 0, 0)');
       }
       evidence.push({ scenarioId: expected.id, exchangeId, sent: expected.sent.length, received: expected.received.length });
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();

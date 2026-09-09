@@ -145,12 +145,12 @@ export function WebSocketMessages({
 
       <div className={styles.frameList}>
         <div className={styles.frameScroll} ref={scrollRef} onScroll={handleScroll}>
-          {loading ? <div className={styles.empty}>{t('capture.loadingMessages')}</div> : null}
+          {loading ? <div className={styles.empty} data-parity="websocket-message-state">{t('capture.loadingMessages')}</div> : null}
           {!loading && error ? (
-            <div className={styles.empty}>{t('capture.failedLoadMessages', { error })}</div>
+            <div className={styles.empty} data-parity="websocket-message-state">{t('capture.failedLoadMessages', { error })}</div>
           ) : null}
           {!loading && !error && timelineItems.length === 0 ? (
-            <div className={styles.empty}>{t('capture.noWebSocketMessages')}</div>
+            <div className={styles.empty} data-parity="websocket-message-state">{t('capture.noWebSocketMessages')}</div>
           ) : null}
           {timelineItems.length > 0 ? (
             <div className={styles.viewport} style={{ height: virtualizer.getTotalSize() }}>

@@ -74,6 +74,7 @@ export const INITIAL_DESIGN_STATE: DesignState = {
   breakpointQueueSelection: 'http-head', breakpointQueueMenu: '', ruleBreakpointAction: '',
   websocketBreakpoint: 'disabled', websocketBreakpointDirection: 'both',
   websocketBreakpointFrames: ['message'], websocketMessageDirection: 'sent', websocketMessagePayload: 'text',
+  websocketMessagesState: 'ready',
   websocketUpgradeResponse: 'accepted', ctxmenu: '', boot: '', hasFilter: false,
 };
 
@@ -90,6 +91,7 @@ export function reduceDesignState(state: DesignState, patch: DesignStatePatch): 
       ctxmenu: patch.ctxmenu ?? '',
       search: patch.search ?? '',
       scene: patch.scene ?? 'http',
+      websocketMessagesState: patch.websocketMessagesState ?? 'ready',
       tab: patch.tab ?? 'headers',
       composerTab: patch.composerTab ?? 'headers',
       composerResponseTab: patch.composerResponseTab ?? 'body',
@@ -194,6 +196,7 @@ export function designRootAttributes(state: DesignState): Record<string, string 
     'data-websocket-breakpoint-frames': state.websocketBreakpointFrames.join(','),
     'data-websocket-message-direction': state.websocketMessageDirection,
     'data-websocket-message-payload': state.websocketMessagePayload,
+    'data-websocket-messages-state': state.websocketMessagesState,
     'data-websocket-upgrade-response': state.websocketUpgradeResponse,
     'data-rule-typography': state.ruleTypography, 'data-ctxmenu': optional(state.ctxmenu), 'data-boot': optional(state.boot),
   };

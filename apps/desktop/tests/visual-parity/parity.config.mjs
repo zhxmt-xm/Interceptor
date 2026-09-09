@@ -1905,6 +1905,23 @@ export const views = [
   }),
   ...HTTP_BREAKPOINT_VIEWS,
   ...BREAKPOINT_QUEUE_VIEWS,
+  ...['light', 'dark'].flatMap((theme) => ['loading', 'empty', 'error'].map((messageState) => ({
+    id: `capture-websocket-messages-${messageState}${theme === 'dark' ? '-dark' : ''}`,
+    theme,
+    websocketMessagesState: messageState,
+    designState: {
+      view: 'capture', theme, sidebar: 'collapsed', overlay: '', detail: 'open',
+      scene: 'websocket', tab: 'messages', breakpointState: '', websocketMessagesState: messageState,
+    },
+    designShot: `${theme}/capture/websocket-messages-${messageState}.png`,
+    rendererActions: [{ type: 'clickText', text: '/socket' }, { type: 'clickText', text: 'Messages' }],
+    targets: [
+      { name: 'Inspector host', parity: 'capture-inspector-host' },
+      { name: 'Inspector status', parity: 'capture-inspector-status' },
+      'Messages',
+      { name: 'Message state', parity: 'websocket-message-state' },
+    ],
+  }))),
   {
     id: 'capture-websocket',
     theme: 'light',

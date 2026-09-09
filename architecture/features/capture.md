@@ -277,9 +277,13 @@ stateDiagram-v2
 - 同一真实HTTP流程还暴露迟到应用归属更新丢失耗时、413终态回退；owner三项及UI Red归档`interceptor-capture-terminal-summary-red-20260909-200755.zip`，SHA256 `5EEA9E45C7CF18E4FAE4FB2E35C6A562C77527C7D6813605827D409B6E681510`。`TrackedExchange.completedAt`保留收尾时间，后续摘要沿用终态/耗时，不再显示等待。
 - 最终owner early-response7/7、应用归属9/9、整个Proxy module102/102，HTTP真实workflow1/1（19.4s）、完整矩阵8/8。HTTP单项证据`interceptor-http-item-green-20260909-201206.zip`，SHA256 `A805FCAD46DA468F5FA02A8528A0A54041C6E4EB4EAB19724B9BBC6548F3AF1A`，Main/Core `45688/44448`正常退出；其他协议共用收尾以上方八条矩阵验证，不将413规则扩大到其他状态码。
 
-#### 与当前实现的差异
+#### WebSocket消息状态
 
-- WebSocket Messages空态引用`styles.empty`，但`WebSocketMessages.module.css`缺少`.empty`规则，导致默认黑字贴边；本轮仅保存真实`ws-control`空态截图确认，未改UI设计。纯控制帧不属于数据消息，0条Messages不是采集失败。
+- WebSocket Messages原先引用不存在的`styles.empty`，导致加载、空结果和错误信息采用默认字号/颜色并贴边；现已补116px最小高度的grid居中状态区、12px字体和`--text-3`，长信息可换行。帧采集、方向筛选、payload及断点行为不变；只有控制帧时0条数据消息是预期结果。
+- 设计补齐loading/empty/error三态的明暗六张PNG；`websocketMessagesState`默认ready且由页面切换和截图流程重置，356张旧图SHA256保持不变。产品只增加局部CSS及状态元素的parity标记，没有测试数据或隐藏API。
+- 前置真实UI与parity Red归档为TEMP下`interceptor-websocket-message-state-red-20260909-203133.zip`，SHA256 `93B60A04F592A71A870F0677078A27818E95A29701CE9BDB8BDB97D814E74DA7`，Main/Core `45156/49560`正常退出；原状态区少100px高度、字号13px且颜色不符。
+- 最终真实WebSocket四场景1/1（19.2s）、现有历史/方向unit3/3、Desktop/design typecheck通过；Main/Core `31728/34944`正常退出，8888及WinINet/journal恢复。明暗三态6/6状态区matched、最大0.6px且无字号/颜色差异；同页Inspector host保留既有1.6px高度差，不作为本项新修复或全页parity全绿。
+- 最终trace/metadata、parity JSON与截图归档`interceptor-websocket-message-state-green-20260909-203912.zip`，SHA256 `09AABB44F67EF585F11DB3D9A454ABD5870C16881C314B220464C58C6E1D8835`。未新增设计/fixture工具测试，验收对象为真实产品显示与消息行为。
 
 ## 5. 调用流程
 

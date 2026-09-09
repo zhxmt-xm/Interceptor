@@ -27,6 +27,17 @@
   max-height: 360px;
   overflow-y: auto;
 }
+.empty {
+  display: grid;
+  min-height: 116px;
+  place-items: center;
+  padding: 12px;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
 .viewport {
   position: relative;
   width: 100%;

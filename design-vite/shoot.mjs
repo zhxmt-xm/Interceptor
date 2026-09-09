@@ -516,6 +516,9 @@ for (const theme of ['light', 'dark']) {
   }
   shots.push({ feature: 'capture', theme, variant: 'body-full', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: 'body-full', detail: 'open', tab: 'response', bodyPreview: 'code' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-websocket', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages' } });
+  for (const messageState of ['loading', 'empty', 'error']) {
+    shots.push({ feature: 'capture', theme, variant: `websocket-messages-${messageState}`, state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketMessagesState: messageState } });
+  }
   shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-setup', interaction: 'websocket-breakpoint-setup', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketBreakpoint: 'setup', websocketBreakpointDirection: 'both', websocketBreakpointFrames: ['message'] } });
   shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-enabled', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: '', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'both', websocketBreakpointFrames: ['message'] } });
   shots.push({ feature: 'capture', theme, variant: 'websocket-breakpoint-paused-sent', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages', breakpointState: 'websocket', breakpointBody: 'ready', websocketBreakpoint: 'enabled', websocketBreakpointDirection: 'both', websocketMessageDirection: 'sent', websocketMessagePayload: 'text' } });
@@ -689,6 +692,7 @@ async function shoot(list) {
       breakpointPanel: '',
       breakpointMessage: '',
       websocketBreakpoint: 'disabled',
+      websocketMessagesState: 'ready',
       pop: false,
       pop2: '',
       ctxmenu: '',
@@ -806,6 +810,7 @@ async function shoot(list) {
       websocketBreakpointFrames: ['message'],
       websocketMessageDirection: 'sent',
       websocketMessagePayload: 'text',
+      websocketMessagesState: 'ready',
       ruleTypography: 'composer',
       composer: '',
       collection: 'open',

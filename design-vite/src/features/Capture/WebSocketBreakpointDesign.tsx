@@ -5,6 +5,7 @@ import { useDesignState } from '../../state/useDesignState';
 import { WebSocketBreakpointControl } from './WebSocketBreakpointControl';
 import { WebSocketBreakpointInspector } from './WebSocketBreakpointInspector';
 import { WebSocketControlFrameRows } from './WebSocketControlFrameRows';
+import { WebSocketMessageState } from './WebSocketMessageState';
 import { WebSocketQueuedBreakpoint } from './WebSocketQueuedBreakpoint';
 import { WebSocketUpgradeBreakpointInspector } from './WebSocketUpgradeBreakpointInspector';
 
@@ -41,6 +42,7 @@ export function WebSocketBreakpointDesign(): React.JSX.Element | null {
     <>
       {controlHost ? createPortal(<WebSocketBreakpointControl />, controlHost) : null}
       {framesHost ? createPortal(<WebSocketControlFrameRows />, framesHost) : null}
+      {framesHost ? createPortal(<WebSocketMessageState />, framesHost) : null}
       {messagePayloadHost && state.breakpointState === 'websocket'
         ? createPortal(
             state.breakpointQueueSelection === 'websocket-queued'

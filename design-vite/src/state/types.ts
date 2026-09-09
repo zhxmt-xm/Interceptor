@@ -235,6 +235,7 @@ export interface DesignState {
   readonly websocketBreakpointFrames: readonly WebSocketBreakpointFrame[];
   readonly websocketMessageDirection: WebSocketMessageDirection;
   readonly websocketMessagePayload: WebSocketMessagePayload;
+  readonly websocketMessagesState: 'ready' | 'loading' | 'empty' | 'error';
   readonly websocketUpgradeResponse: WebSocketUpgradeResponse;
   readonly ruleTypography: 'composer' | 'current';
   readonly ctxmenu: TreeContextMenu;

@@ -1,0 +1,19 @@
+:global([data-websocket-messages-state]:not([data-websocket-messages-state="ready"])) :global(.wsrows) {
+  flex: none;
+}
+
+:global([data-websocket-messages-state]:not([data-websocket-messages-state="ready"])) :global(.wsrows) > :not(.websocketMessageState) {
+  display: none;
+}
+
+.websocketMessageState {
+  display: grid;
+  min-height: 116px;
+  place-items: center;
+  padding: 12px;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+  overflow-wrap: anywhere;
+}

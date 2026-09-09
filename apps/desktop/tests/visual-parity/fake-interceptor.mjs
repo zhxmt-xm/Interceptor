@@ -1059,6 +1059,7 @@ export function installFakeInterceptor({
   pausedBreakpoints = false,
   pausedBreakpointPhase = null,
   pausedWebSocketBreakpoint = false,
+  websocketMessagesState = 'ready',
   breakpointBodyState = 'request-ready',
   breakpointFile = null,
   breakpointsEnabled = true,
@@ -3630,6 +3631,11 @@ export function installFakeInterceptor({
     getExchangeDetail: async (exchangeId) =>
       fixture.capture.details[exchangeId] ?? null,
     queryWebSocketFrames: async (request) => {
+      if (websocketMessagesState === 'loading') return new Promise(() => undefined);
+      if (websocketMessagesState === 'error') throw new Error('Connection unavailable');
+      if (websocketMessagesState === 'empty') {
+        return { items: [], hasMore: false, breakpoint: websocketBreakpoint };
+      }
       const cursor = request.cursor ? Number(request.cursor) : 0;
       const eligible = fixture.capture.websocketFrames.filter(
         (item) =>

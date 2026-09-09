@@ -167,6 +167,7 @@
 - **Agent Diagnostics结果**：沿用现有Tool activity列表，依次显示`discover_tools`与`diagnostics_query`；query不出现审批。结果行仅显示记录数、分页状态和丢弃数，不展开attributes；四条记录示例与明暗`panel-diagnostics-tools`截图保持一致，不新增卡片或布局变体。
 - **Agent Provider类型菜单**：每个option固定`32px`高，左右内边距`8px`，Provider图标`14px`，图文间距`8px`，文字`12px / 500`；菜单按最长option自然宽度收敛，最长文字右侧保持`8px`，不使用Ant默认的大号菜单密度。
 - **Agent Model Select宽度**：按钮按图标、模型名和chevron的实际内容宽度收敛，不拉伸填满Composer Grid第一列；短名称不留空白，长名称只在超过可用列宽时ellipsis。图文与chevron间距保持`6px`，chevron右侧内边距`7px`。
+- **WebSocket消息状态**：Messages列表加载、无数据消息、加载失败时保留已有边框和方向工具栏；状态区最小高度`116px`，用grid居中，内容内边距`12px`，文字`12px/1.6`、`--text-3`，长错误文本可换行。普通消息行、消息payload与断点界面不变；仅Ping/Pong/Close的连接可以没有数据消息。
 - **状态栏**:录制红点 · 代理地址(mono)· System Proxy 绿点 · 计数 · 右侧速率(mono)。
 
 ## 交互状态
