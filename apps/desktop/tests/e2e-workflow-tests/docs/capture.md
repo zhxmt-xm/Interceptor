@@ -2,6 +2,26 @@
 
 本文件定义 Capture 工作区的完整 E2E 流程。每条 workflow 都独立启动 Electron、独占 profile、trace 和 loopback fixture，并从 fresh App 写到 Close/destroy。
 
+<a id="capture-body-fullscreen"></a>
+## `capture.body.fullscreen`
+
+**状态**：passed；现有行为覆盖，未修改产品实现，未人为制造Red
+**策略**：真实Capture Request/Response；共享BodyViewer/BodyFullscreen；真实剪贴板
+
+### Steps
+
+1. fresh profile经录制UI开启Capture，真实POST请求通过8888进入本轮origin，分别返回JSON与HTML；不注入Store或正文引用。
+2. 在Request/Response选择Raw，核对MIME和原始正文，通过正式Fullscreen按钮打开唯一dialog；内联与全屏不出现两份正文视图。
+3. 真实点击弹层Header的Copy，剪贴板必须逐字等于原始正文；Header的Close退出后保持Raw与相同正文。
+4. 再次打开并切Hex，用Escape关闭后仍选中Hex；返回Raw并通过内联Copy确认原始字节不变。响应HTML只作为代码显示。
+5. 保存每个正文的身份、Copy/模式断言、trace与截图；Renderer不得有page error，fixture正常退出Main/Core/Worker并恢复8888、WinINet/journal。
+
+### 验证证据
+
+- 2026-09-09 BodyViewer内容、模式和CodeViewer生命周期既有基线15/15 Green，Desktop typecheck通过；真实workflow1/1（12.0s）。没有业务实现或UI样式修改，不新增设计/parity基准，不把本条作为其他全屏调用点的专属E2E证据。
+- JSON请求31字节、JSON响应49字节、HTML响应66字节均验证Raw原文、Header Copy、Close、再次打开、Hex与Escape关闭后的模式保持；三张真实dialog截图均为1060x660逻辑像素，Renderer无page error。
+- Main/Core `15836/41732`均正常销毁，8888、WinINet/journal恢复；TEMP归档`interceptor-body-fullscreen-green-20260909-205316.zip`，SHA256 `BEE96AB10FF1894DAD5C2B1C22C354469D4EDE11CA76A0ED5350476BA998FE32`，含trace、metadata、三份截图与测试日志。
+
 ## 多协议测试输入
 
 测试侧只提供真实 loopback origin 和客户端，不替换 App 内部实现：

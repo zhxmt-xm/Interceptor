@@ -285,6 +285,12 @@ stateDiagram-v2
 - 最终真实WebSocket四场景1/1（19.2s）、现有历史/方向unit3/3、Desktop/design typecheck通过；Main/Core `31728/34944`正常退出，8888及WinINet/journal恢复。明暗三态6/6状态区matched、最大0.6px且无字号/颜色差异；同页Inspector host保留既有1.6px高度差，不作为本项新修复或全页parity全绿。
 - 最终trace/metadata、parity JSON与截图归档`interceptor-websocket-message-state-green-20260909-203912.zip`，SHA256 `09AABB44F67EF585F11DB3D9A454ABD5870C16881C314B220464C58C6E1D8835`。未新增设计/fixture工具测试，验收对象为真实产品显示与消息行为。
 
+#### 正文全屏验收
+
+- `capture.body.fullscreen`验证Capture的JSON请求/响应及HTML Raw正文：通过原有Fullscreen进入1060x660共享弹层，Header Copy逐字复制原文，Close和Escape退出后保留Raw/Hex模式，再次打开仍使用同一份捕获内容，不出现两份正文视图。
+- 本item只补已有行为的真实E2E和验收文档，产品、设计及依赖均未修改；既有正文/模式/编辑器生命周期15/15与Desktop typecheck通过，真实workflow1/1（12.0s）。范围是Windows当前语言下的Capture入口，不冒充Composer、WebSocket和gRPC调用点分别执行过全屏E2E。
+- Main/Core `15836/41732`正常退出，8888、WinINet/journal恢复。TEMP归档`interceptor-body-fullscreen-green-20260909-205316.zip`，SHA256 `BEE96AB10FF1894DAD5C2B1C22C354469D4EDE11CA76A0ED5350476BA998FE32`；含三份真实弹层截图、trace、metadata及基线测试。未改变行为，不人为制造Red或另写测试设施测试。
+
 ## 5. 调用流程
 
 ### 5.1 HTTP/HTTPS 常规请求（主路径）

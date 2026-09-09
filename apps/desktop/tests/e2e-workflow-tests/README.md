@@ -10,7 +10,7 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 - `packaged-smoke` 在最终 Forge package 上复跑同一 workflow contract，并追加 production package 安全与资源边界；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、127条Inventory与128份详细workflow规格已建立；管理员MMC原生专项仅保留排除说明，不计入workflow。已实现的spec按owning feature放入`workflows/<feature>/`，Inventory只有满足对应前置测试及Green/销毁证据的条目才能标passed；仅补既有行为覆盖不人为制造Red。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、128条Inventory与129份详细workflow规格已建立；管理员MMC原生专项仅保留排除说明，不计入workflow。已实现的spec按owning feature放入`workflows/<feature>/`，Inventory只有满足对应前置测试及Green/销毁证据的条目才能标passed；仅补既有行为覆盖不人为制造Red。
 
 ## 零 Mock 硬性原则
 
@@ -174,6 +174,7 @@ diagnostics.row.<traceKey>
 | `capture.navigate-tls-passthrough` | 从TLS tunnel跳到最具体的覆盖pattern并短暂高亮 | privileged UI | passed |
 | `capture.facets-clear-menu` | Facet顺序、Breakpoint菜单和Clear同步回归 | privileged UI | planned |
 | `capture.detail-body-fill` | Detail Response BodyViewer填满剩余高度 | privileged UI | passed |
+| `capture.body.fullscreen` | Request/Response全屏、真实Copy、关闭/再开、Raw/Hex模式保持 | os-side-effect | passed |
 | `capture.list.virtual-scroll` | 大列表虚拟滚动和状态保持 | shared | planned |
 | `capture.inspector.body-modes` | Auto/Text/JSON/Hex精确正文 | shared | planned |
 | `capture.protocols.without-mitm` | HTTP/WS完整捕获，HTTPS/WSS仅tunnel | shared | planned |
