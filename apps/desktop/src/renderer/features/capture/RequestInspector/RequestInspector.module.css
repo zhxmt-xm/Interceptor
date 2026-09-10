@@ -64,6 +64,7 @@
 .url {
   font-family: var(--font-mono);
   font-size: 12.5px;
+  line-height: normal;
   white-space: nowrap;
   overflow-x: auto;
   flex: 1;

@@ -15,7 +15,7 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
   test.setTimeout(120_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'capture.body.fullscreen' });
   const { page } = desktopApp;
-  const evidence: Array<{ path: string; side: string; bodyBytes: number; copyVerified: boolean; modePreserved: boolean }> = [];
+  const evidence: Array<{ path: string; side: string; bodyBytes: number; copyVerified: boolean; urlCopyVerified: boolean; modePreserved: boolean }> = [];
 
   // 准备：从真实录制UI开始，所有正文均由本轮客户端和origin经代理产生。
   // Arrange: begin with real Recording UI and produce every body through this client's proxied origin traffic.
@@ -28,6 +28,14 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
     const row = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow).filter({ hasText: response.path });
     await expect(row).toHaveCount(1);
     await row.click();
+    const inspectorHead = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).locator('..');
+    await expect(inspectorHead).toContainText(`127.0.0.1${response.path}`);
+    await inspectorHead.hover();
+    const inspectorButtons = inspectorHead.getByRole('button');
+    await expect(inspectorButtons).toHaveCount(2);
+    await inspectorButtons.first().click();
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()))
+      .toBe(httpTrafficRunner.url(response.path));
     const bodies = response.mediaType === 'application/json'
       ? [{ side: 'request', body: REQUEST_BODY, mediaType: 'application/json' }, { side: 'response', body: response.body, mediaType: response.mediaType }] as const
       : [{ side: 'response', body: response.body, mediaType: response.mediaType }] as const;
@@ -86,7 +94,7 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
         await rawMode.click();
         await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy).click();
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(expected.body);
-        evidence.push({ path: response.path, side: expected.side, bodyBytes: Buffer.byteLength(expected.body), copyVerified: true, modePreserved: true });
+        evidence.push({ path: response.path, side: expected.side, bodyBytes: Buffer.byteLength(expected.body), copyVerified: true, urlCopyVerified: true, modePreserved: true });
       });
     }
     await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();

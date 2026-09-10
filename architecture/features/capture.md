@@ -285,6 +285,15 @@ stateDiagram-v2
 - 最终真实WebSocket四场景1/1（19.2s）、现有历史/方向unit3/3、Desktop/design typecheck通过；Main/Core `31728/34944`正常退出，8888及WinINet/journal恢复。明暗三态6/6状态区matched、最大0.6px且无字号/颜色差异；同页Inspector host保留既有1.6px高度差，不作为本项新修复或全页parity全绿。
 - 最终trace/metadata、parity JSON与截图归档`interceptor-websocket-message-state-green-20260909-203912.zip`，SHA256 `09AABB44F67EF585F11DB3D9A454ABD5870C16881C314B220464C58C6E1D8835`。未新增设计/fixture工具测试，验收对象为真实产品显示与消息行为。
 
+#### Inspector标题行高
+
+- URL行高的本项验收通过：只在`.url`显式使用normal，不改字体、字号、URL展示或Copy行为。旧报告少1.6px的高度差在真实静态字体加载后消失，15个现有场景的URL宽高差均为0；不以此声明整页位置和像素全部匹配。
+- 2026-09-10首次恢复parity时，消息空态URL高度为设计14px、Renderer17px，设计Inter/JetBrains Mono FontFace为error，Renderer本地字体loaded。`document.fonts.ready`只表示加载结束，不保证成功；这轮回退字体产生的3px差异不算产品偏差，TEMP诊断`interceptor-inspector-font-load-probe-20260910.log`保留。
+- 网络恢复后逐视图确认Inter/JetBrains Mono静态字体loaded；六个消息loading/empty/error明暗状态共24目标全部matched、0 missing/flagged、最大0.6px，gRPC与TLS tunnel的URL宽高和位置也一致。临时字体检查探针已删除，`parity.mjs`无diff，未改设计字体、源码或PNG，也未覆盖仓库报告。
+- 四个旧HTTP/Rule筛选/侧栏parity场景补`detail: 'open'`，使设计侧与Renderer打开详情的操作一致，原URL目标不再缺失。位置偏差仍明确保留：普通HTTP横向14px，Rule筛选纵向-53px，深色展开/浅色收起侧栏横向160/-160px；旧WebSocket展开与其他页面目标差异不属于本次行高修复。
+- 既有`capture.body.fullscreen`追加真实URL显示、hover和Copy断言，不通过Preload直接调用。当前真实E2E1/1、Desktop typecheck通过，Main/Core `9668/5996`正常退出，host guard确认8888、WinINet/journal及登记进程恢复；原正文全屏、Copy和关闭/重开操作同跑。
+- 最终15场景的字体日志、JSON/Markdown、Renderer/diff截图与E2E trace、metadata、类型结果及三份源码hash归档为TEMP下`interceptor-inspector-url-green-20260910-133816.zip`，SHA256 `D3E57A744F14A809FC3351740EBE34E3B05CE8056D05EF771DE9320E1D2A15DE`；清单单列4个旧位置差异，不冒充全页Green。
+
 #### 正文全屏验收
 
 - `capture.body.fullscreen`验证Capture的JSON请求/响应及HTML Raw正文：通过原有Fullscreen进入1060x660共享弹层，Header Copy逐字复制原文，Close和Escape退出后保留Raw/Hex模式，再次打开仍使用同一份捕获内容，不出现两份正文视图。

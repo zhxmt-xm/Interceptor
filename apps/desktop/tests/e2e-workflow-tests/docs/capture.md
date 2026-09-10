@@ -11,7 +11,7 @@
 ### Steps
 
 1. fresh profile经录制UI开启Capture，真实POST请求通过8888进入本轮origin，分别返回JSON与HTML；不注入Store或正文引用。
-2. 在Request/Response选择Raw，核对MIME和原始正文，通过正式Fullscreen按钮打开唯一dialog；内联与全屏不出现两份正文视图。
+2. 选择Capture行后核对标题中的自产host/path，hover标题并真实点击Copy，剪贴板必须是带scheme和origin端口的完整URL。在Request/Response选择Raw，核对MIME和原始正文，通过正式Fullscreen按钮打开唯一dialog；内联与全屏不出现两份正文视图。
 3. 真实点击弹层Header的Copy，剪贴板必须逐字等于原始正文；Header的Close退出后保持Raw与相同正文。
 4. 再次打开并切Hex，用Escape关闭后仍选中Hex；返回Raw并通过内联Copy确认原始字节不变。响应HTML只作为代码显示。
 5. 保存每个正文的身份、Copy/模式断言、trace与截图；Renderer不得有page error，fixture正常退出Main/Core/Worker并恢复8888、WinINet/journal。
@@ -21,6 +21,7 @@
 - 2026-09-09 BodyViewer内容、模式和CodeViewer生命周期既有基线15/15 Green，Desktop typecheck通过；真实workflow1/1（12.0s）。没有业务实现或UI样式修改，不新增设计/parity基准，不把本条作为其他全屏调用点的专属E2E证据。
 - JSON请求31字节、JSON响应49字节、HTML响应66字节均验证Raw原文、Header Copy、Close、再次打开、Hex与Escape关闭后的模式保持；三张真实dialog截图均为1060x660逻辑像素，Renderer无page error。
 - Main/Core `15836/41732`均正常销毁，8888、WinINet/journal恢复；TEMP归档`interceptor-body-fullscreen-green-20260909-205316.zip`，SHA256 `BEE96AB10FF1894DAD5C2B1C22C354469D4EDE11CA76A0ED5350476BA998FE32`，含trace、metadata、三份截图与测试日志。
+- 2026-09-10 Inspector URL行高修复后，当前workflow新增标题显示与完整URL Copy断言，1/1 Green、Desktop typecheck通过；Main/Core `9668/5996`正常销毁，host guard恢复通过。原正文三组模式/Copy/弹层断言同跑；TEMP归档`interceptor-inspector-url-green-20260910-133816.zip`，SHA256 `D3E57A744F14A809FC3351740EBE34E3B05CE8056D05EF771DE9320E1D2A15DE`。15个URL宽高已匹配，4个旧页面位置差异独立保留，详见[Inspector行高](../../../../../architecture/features/capture.md#inspector标题行高)。
 
 ## 多协议测试输入
 

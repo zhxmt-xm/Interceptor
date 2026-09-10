@@ -101,7 +101,7 @@ const INITIAL_VIEWS = [
   {
     id: 'capture',
     theme: 'light',
-    designState: { view: 'capture', theme: 'light', sidebar: 'expanded' },
+    designState: { view: 'capture', theme: 'light', sidebar: 'expanded', detail: 'open' },
     designShot: 'light/shell-v2/capture.png',
     rendererActions: [{ type: 'clickText', text: '/user', index: 0 }],
     targets: [
@@ -2686,6 +2686,7 @@ export const views = [
       view: 'capture',
       theme: 'light',
       sidebar: 'expanded',
+      detail: 'open',
       ruleFilter: 'rule-auth',
     },
     designShot: 'light/capture/rule-filter.png',
@@ -3566,7 +3567,7 @@ export const views = [
   {
     id: 'shell-v2-capture-dark',
     theme: 'dark',
-    designState: { view: 'capture', theme: 'dark', sidebar: 'expanded' },
+    designState: { view: 'capture', theme: 'dark', sidebar: 'expanded', detail: 'open' },
     designShot: 'dark/shell-v2/capture.png',
     rendererActions: [{ type: 'clickText', text: '/user' }],
     targets: [
@@ -3578,7 +3579,7 @@ export const views = [
   {
     id: 'shell-v2-capture-collapsed',
     theme: 'light',
-    designState: { view: 'capture', theme: 'light', sidebar: 'collapsed' },
+    designState: { view: 'capture', theme: 'light', sidebar: 'collapsed', detail: 'open' },
     designShot: 'light/shell-v2/capture-collapsed.png',
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
