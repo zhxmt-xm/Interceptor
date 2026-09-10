@@ -209,6 +209,9 @@
 ### 设计来源与选型
 
 - 唯一设计稿是 `design-vite/`，组件和 design token 以 [design-vite/design-system.md](design-vite/design-system.md) 为准。
+- UI 设计有改动时，必须先取得用户明确确认。
+	- 确认时用清单列出每处改动的页面、组件、具体位置和内容，并提供对应的改动前后截图；新设计提供拟议效果截图。
+	- 未确认前只做方案预览，不改产品 UI 或正式设计基准。
 - 创建、修改、评审 UI 设计时，使用 `.github/skills/ui-design-mockup/`。
 	- 设计变化时同步设计稿和 `shots/`。
 - 实现现有设计或修复还原差异时，使用 `.github/skills/ui-parity-check/`。
