@@ -224,6 +224,16 @@ function httpBreakpointView(theme, { variant, phase, body }) {
       appSelector: 'input[aria-label="Response status"]',
     }] : []),
     isResponse ? 'Response headers' : 'Request headers',
+    {
+      name: 'Header name input',
+      designSelector: '.headerFieldsEditorRows input[aria-label="Header name"]',
+      appSelector: 'input[data-automation-id^="breakpoints.header."][data-automation-id$=".name"]',
+    },
+    {
+      name: 'Header value input',
+      designSelector: '.headerFieldsEditorRows input[aria-label="Header value"]',
+      appSelector: 'input[data-automation-id^="breakpoints.header."][data-automation-id$=".value"]',
+    },
     'Original body',
     ...(body !== 'loading' ? [{
       name: 'Original body ready',

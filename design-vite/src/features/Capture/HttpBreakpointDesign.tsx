@@ -129,6 +129,7 @@ export function HttpBreakpointDesign(): React.JSX.Element | null {
             </CollapsibleSection>
           ) : null}
           <HeaderFieldsEditor
+            effectPlacement="below"
             initialFields={response ? RESPONSE_HEADERS : REQUEST_HEADERS}
             title={response ? 'Response headers' : 'Request headers'}
           />

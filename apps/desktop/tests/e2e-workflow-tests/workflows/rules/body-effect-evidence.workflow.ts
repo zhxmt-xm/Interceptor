@@ -617,3 +617,134 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
     contentType: 'application/json',
   });
 });
+
+test('rules.body-effect-evidence keeps breakpoint header effects aligned', async ({
+  desktopApp,
+  httpTrafficRunner: loopbackLab,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  testInfo.annotations.push({ type: 'renderer-workflow', description: 'rules.body-effect-evidence' });
+  const { page } = desktopApp;
+
+  // 准备：真实Recording与loopback流量，不注入Rule或暂停快照。
+  // Arrange: use real Recording and loopback traffic without injecting Rules or paused snapshots.
+  await startRecording(desktopApp);
+  for (const phase of ['request', 'response'] as const) {
+    const operation = phase === 'request' ? 'set' : 'append';
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.rules).click();
+    await getByAutomationId(page, AUTOMATION_IDS.rules.rootMenuSurface).click({ button: 'right' });
+    await getByAutomationId(page, AUTOMATION_IDS.rules.create).click();
+    const ruleRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.ruleRow).last();
+    const ruleId = await dynamicId(ruleRow, AUTOMATION_ID_PREFIXES.ruleRow);
+    await getByAutomationId(page, AUTOMATION_IDS.rules.editorName).fill(`E2E ${phase} header layout`);
+    await getByAutomationId(page, AutomationIdFactory.ruleMatcherField(ruleId, 0, 'value')).fill('127.0.0.1');
+    await getByAutomationId(page, AutomationIdFactory.ruleActionField(ruleId, 0, 'name')).fill('x-effect-layout');
+    await getByAutomationId(page, AutomationIdFactory.ruleActionField(ruleId, 0, 'value')).fill('from-rule');
+    await getByAutomationId(page, AutomationIdFactory.ruleActionField(ruleId, 0, 'operation')).click();
+    await getByAutomationId(page, AutomationIdFactory.ruleActionField(ruleId, 0, `operation-option.${operation}`)).click();
+    await getByAutomationId(page, AUTOMATION_IDS.rules.addAction).click();
+    await getByAutomationId(page, AUTOMATION_IDS.rules.actionOption.breakpoint).click();
+    if (phase === 'response') {
+      for (const actionIndex of [0, 1]) {
+        await getByAutomationId(page, AutomationIdFactory.ruleActionField(ruleId, actionIndex, 'phase')).click();
+        await getByAutomationId(page, AutomationIdFactory.ruleActionField(ruleId, actionIndex, 'phase-option.response')).click();
+      }
+    }
+    await getByAutomationId(page, AutomationIdFactory.ruleToggle(ruleId)).click();
+    await getByAutomationId(page, AUTOMATION_IDS.rules.apply).click();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.rules.apply)).toBeDisabled();
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+    const requestPath = `/e2e/header-effect-layout-${phase}`;
+    loopbackLab.respondWith(requestPath, {
+      body: '{}',
+      headers: { 'content-type': 'application/json', 'x-effect-layout': 'origin', 'x-ordinary-layout': 'unchanged' },
+    });
+    const inFlight = loopbackLab.run('h1-json', {
+      kind: 'http',
+      protocol: 'h1',
+      method: 'GET',
+      path: requestPath,
+      body: '',
+      headers: { 'x-effect-layout': 'client', 'x-ordinary-layout': 'unchanged' },
+    }, desktopApp.capturePort());
+    void inFlight.catch(() => undefined);
+    await selectPausedRequest(page, requestPath);
+    const effect = page.locator(
+      `[data-automation-id^="breakpoints.header."][data-automation-id$=".effect"][data-effect="${operation}"]`,
+    ).first();
+    await expect(effect).toBeVisible();
+    const effectId = await effect.getAttribute('data-automation-id');
+    if (!effectId) throw new Error('Header effect automation ID is missing.');
+    const valueInput = getByAutomationId(page, effectId.replace(/\.effect$/, '.value'));
+    await expect(valueInput).toHaveValue('from-rule');
+
+    // 布局证据：先保存真实区域与几何，再软断言以便两阶段都正常放行。
+    // Layout evidence: capture real geometry before soft assertions so both phases can still resume normally.
+    await page.mouse.move(0, 0);
+    const names = page.locator('[data-automation-id^="breakpoints.header."][data-automation-id$=".name"]');
+    const geometry = await names.evaluateAll((elements) => elements.map((nameInput) => {
+      const nameBounds = nameInput.getBoundingClientRect();
+      const automationId = nameInput.getAttribute('data-automation-id')!;
+      const value = document.querySelector(`[data-automation-id="${automationId.replace(/\.name$/, '.value')}"]`)!;
+      const marker = document.querySelector(`[data-automation-id="${automationId.replace(/\.name$/, '.effect')}"]`);
+      const row = nameInput.parentElement!;
+      const valueBounds = value.getBoundingClientRect();
+      const markerBounds = marker?.getBoundingClientRect();
+      return {
+        nameWidth: nameBounds.width,
+        valueLeft: valueBounds.left,
+        valueWidth: valueBounds.width,
+        rowHeight: row.getBoundingClientRect().height,
+        overflow: row.scrollWidth > row.clientWidth,
+        effect: marker && markerBounds ? {
+          gap: markerBounds.top - valueBounds.bottom,
+          rightDelta: markerBounds.right - valueBounds.right,
+          height: markerBounds.height,
+          fontSize: getComputedStyle(marker).fontSize,
+        } : null,
+      };
+    }));
+    await testInfo.attach(`header-effect-${phase}.json`, {
+      body: Buffer.from(JSON.stringify(geometry)), contentType: 'application/json',
+    });
+    const screenshotPath = testInfo.outputPath(`header-effect-${phase}.png`);
+    await names.first().locator('../..').screenshot({ path: screenshotPath });
+    await testInfo.attach(`header-effect-${phase}`, { path: screenshotPath, contentType: 'image/png' });
+    for (const row of geometry) {
+      expect.soft(Math.abs(row.nameWidth - geometry[0]!.nameWidth)).toBeLessThan(1);
+      expect.soft(Math.abs(row.valueLeft - geometry[0]!.valueLeft)).toBeLessThan(1);
+      expect.soft(Math.abs(row.valueWidth - geometry[0]!.valueWidth)).toBeLessThan(1);
+      expect.soft(row.overflow).toBe(false);
+      expect.soft(row.rowHeight).toBe(row.effect ? 44 : 30);
+      if (row.effect) {
+        expect.soft(row.effect).toMatchObject({ gap: 2, height: 12, fontSize: '9px' });
+        expect.soft(Math.abs(row.effect.rightDelta)).toBeLessThan(0.1);
+      }
+    }
+
+    // 用户操作与数据断言：编辑后恢复值，增删普通行，再正常放行验证原有Rule结果。
+    // User actions and data assertions: restore an edited value, add/remove a row, then resume and verify the Rule result.
+    await valueInput.fill('temporary-edit');
+    await expect(valueInput).toHaveValue('temporary-edit');
+    await valueInput.fill('from-rule');
+    await addBreakpointHeader(page, 'x-layout-added', 'temporary');
+    await removeBreakpointHeader(page, 'x-layout-added');
+    await getByAutomationId(page, AUTOMATION_IDS.breakpoints.continueUnmodified).click();
+    const execution = await inFlight;
+    expect(execution.error).toBeUndefined();
+    const result = execution.response;
+    if (!result) throw new Error('The client did not receive a response.');
+    expect(result.statusCode).toBe(200);
+    if (phase === 'request') {
+      expect((await observe(loopbackLab, requestPath)).headers['x-effect-layout']).toBe('from-rule');
+    } else {
+      expect(String(result.headers['x-effect-layout'])).toContain('from-rule');
+      expect(String(result.headers['x-effect-layout'])).toContain('origin');
+    }
+    await setRuleEnabled(page, ruleId, false);
+  }
+
+  // 清理：fixture关闭真实应用并验证进程、端口、WinINet和journal恢复。
+  // Cleanup: the fixture closes the real application and verifies process, port, WinINet, and journal restoration.
+  expect(desktopApp.rendererPageErrors()).toEqual([]);
+});

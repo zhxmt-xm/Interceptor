@@ -16,11 +16,13 @@ export interface HeaderField {
 interface HeaderFieldsEditorProps {
   readonly initialFields: readonly HeaderField[];
   readonly title: string;
+  readonly effectPlacement?: 'inline' | 'below';
 }
 
 export function HeaderFieldsEditor({
   initialFields,
   title,
+  effectPlacement = 'inline',
 }: HeaderFieldsEditorProps): React.JSX.Element {
   const [fields, setFields] = useState<HeaderField[]>([...initialFields]);
   const [open, setOpen] = useState(true);
@@ -38,7 +40,11 @@ export function HeaderFieldsEditor({
     >
       <div className={styles.headerFieldsEditorRows}>
         {fields.map((field) => (
-          <div className={styles.headerFieldsEditorRow} key={field.id}>
+          <div
+            className={styles.headerFieldsEditorRow}
+            data-effect-placement={effectPlacement}
+            key={field.id}
+          >
             <Input
               aria-label="Header name"
               className={styles.headerFieldsEditorInput}

@@ -119,6 +119,8 @@ File模式未选文件时按现有设计显示112px最小高度的居中容器�
 
 断点面板局部使用设计同样的normal行高；Header行内部间距6px，行组与Add header之间8px，页脚三个按钮均使用9px横向内边距。上述还原不改变空Text语义：当前`replacesBody()`在原文已知时允许空字符串作为显式替换，设计的Using original标签尚未表达此区别；该语义差异需另行确认，不为消除parity missing改业务或基准。
 
+2026-09-10用户确认并完成验收的Header effect布局：保留现有输入框，name/value两列在所有行保持等宽；`Rule set`/`Rule appended`位于对应value输入框下方2px，右边缘对齐，字号9px、行高12px，无标签边框或底色。普通行30px、行间距6px不变，只有带effect的行增加14px。字段、effect语义、增删和放行命令不变；普通Inspector的Header marker和WebSocket握手设计不随本次改变，证据见[Header effect布局](#74-header-effect下置布局)。
+
 2026-08-20 TDD证据：最终`breakpoints.execute-edited`源码在`89d8dda`仅回植后续公开automation ID与driver helper后，暂停快照精确缺失priority更晚的`x-e2e-before-breakpoint`，Execute edited后的Capture也缺少绑定breakpoint ruleId的`set x-edit-stage` marker；当前同一workflow`1/1` Green。Red/Green metadata分别记录Main/Core PID `31404/3812`与`46424/29380`，均`gracefulDestroyVerified=true`且8888释放、系统代理恢复。该证据只闭环final Rule state与header effect；HTTP framing矩阵仍由[HTTP消息编辑](http-message-editing.md)单独验收。
 
 ### 4.2 响应断点
@@ -442,6 +444,16 @@ MCP无timeout调用先Red于未发出Core命令，删除工具schema、解析和
 - 最终同一`rules.body-effect-evidence`1/1（27.2s总运行）、unit19/19及Desktop typecheck通过，Main/Core `24060/48540`正常退出，host guard确认8888、WinINet/journal及登记进程恢复。TEMP归档`interceptor-breakpoint-chrome-native-green-20260910-001235.zip`，SHA256 `130C9FF733352048E1363069450FC0AD862677D30E3D2431C008997E06708A76`，包含trace、两轮辅助失败、Green/类型日志及四份源码hash。
 - 2026-09-10网络恢复后，22个视图逐一确认设计Inter/JetBrains Mono静态FontFace为loaded，再执行parity；240 matched、0 flagged、最大0.8px，2个missing仍仅为Response空Text的Using original标签。已查看明暗代表截图，原有362张PNG逐张hash不变，此前新增22张缺失断点PNG没有重绘；设计源码、配对目标和仓库报告未改。
 - 最终字体验证日志、22视图JSON/Markdown、Renderer/diff截图及产品/新增PNG的hash归档为TEMP下`interceptor-breakpoint-chrome-font-verified-20260910-132342.zip`，SHA256 `929F4F85EF2A3BF0BD56DFDF02F8379AEE05DB34112AEFABF2CAF2CE2082A42A`；四份源码hash与上述真实E2E Green一致，复用unit19/19和Desktop typecheck，不重复运行无变化的原生流程。
+
+### 7.4 Header effect下置布局
+
+- 2026-09-10用户已查看并确认下置、靠右、紧贴输入框的小字方案；正式设计与Renderer使用2px间距、9px字号和12px行高。所有行输入框等宽，无effect行不保留说明空行；不改变规则执行、Header数据或Forward edited/Continue行为。
+- 前置断点编辑/Store单测19/19 Green。真实`rules.body-effect-evidence keeps breakpoint header effects aligned`先在旧产品CSS取得Red：有effect行的name/value分别窄约21/30px，marker仍在右侧且为9.5px/18px；两阶段编辑、增删和规则结果断言正常。有效Red为TEMP下`interceptor-header-effect-e2e-valid-red-20260910-174123`，Main/Core `35408/15892`正常退出且宿主guard恢复。
+- 初次测试误用简化客户端返回值、首次Green尝试严格比较0.00009px浮点偏差、Desktop typecheck缺少draft元数据的记录均保留；修正后重新执行，不将这些测试代码问题当产品Red。最终typecheck（Desktop/design）通过，owner单测19/19 Green。
+- 最终同一文件两条真实E2E为2/2 Green（38.0s），覆盖原有Text/File、原生Save/Open与新增request set/response append的下置布局、input编辑与增删。Main/Core两代`5928/30284`、`27632/35448`均正常退出；fixture完成`verifyRestored()`，登记PID全退、8888释放、WinINet恢复`127.0.0.1:7890`，无journal恢复错误。
+- 26个相关parity视图为296 matched、0 flagged、最大0.8px；2个missing仍是已登记的Response空Text `Using original`，本项不改变其语义。平均pixel diff 2.5793%，保留列表数据等既有差异，不宣称整页或整仓parity全绿。
+- 更新22张受影响HTTP设计PNG，新增4张此前缺失的队首/菜单基准，其余366张PNG逐张hash不变。设计共享Header编辑器的`effectPlacement="below"`只由HTTP调用，WebSocket握手继续inline；直接预览已核对其明暗布局未变。
+- TEMP归档`interceptor-header-effect-verified-20260910-1811.zip`，SHA256 `3C5A8AC9FE5FE8406B2AAE34B7B4B5E9F1FDDF9FA75D03A7783024927516E5DF`，保存有效Red、最终E2E/trace/metadata、26视图报告与截图、改前设计图、失败记录、类型/单测日志及6份相关源码hash。
 
 ## 8. 验收要点
 

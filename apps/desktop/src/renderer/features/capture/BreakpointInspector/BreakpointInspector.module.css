@@ -126,9 +126,24 @@
 
 .headerRow {
   display: grid;
-  align-items: center;
-  gap: 6px;
-  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) auto 28px;
+  align-items: start;
+  gap: 2px 6px;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) max-content;
+}
+
+.headerRow > .cellInput:first-child {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.headerRow > .cellInput:nth-child(2) {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.headerRow > button {
+  grid-column: 3;
+  grid-row: 1;
 }
 
 .cellInput {
@@ -152,28 +167,29 @@
 
 .headerEffectSlot {
   display: flex;
+  grid-column: 2;
+  grid-row: 2;
   min-width: 0;
   justify-content: flex-end;
 }
 
+.headerEffectSlot:empty {
+  display: none;
+}
+
 .headerEffect {
   display: inline-flex;
-  height: 18px;
+  height: 12px;
   align-items: center;
-  padding: 0 6px;
-  border: 1px solid color-mix(in srgb, var(--green) 24%, transparent);
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--green) 10%, transparent);
   color: var(--green);
   font-family: var(--font-ui);
-  font-size: 9.5px;
-  font-weight: 600;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 12px;
   white-space: nowrap;
 }
 
 .headerEffect[data-effect='append'] {
-  border-color: color-mix(in srgb, var(--blue) 24%, transparent);
-  background: color-mix(in srgb, var(--blue) 10%, transparent);
   color: var(--blue);
 }
 

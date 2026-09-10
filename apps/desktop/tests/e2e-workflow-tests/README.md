@@ -214,7 +214,7 @@ diagnostics.row.<traceKey>
 | `rules.validate-apply` | Validate、Apply、revision和持久化 | shared | planned |
 | `rules.apply-conflict` | 乐观并发冲突恢复 | shared | planned/blocked |
 | `rules.runtime-hit` | 规则真实作用于Proxy数据面 | shared | planned |
-| `rules.body-effect-evidence` | Final writer、Original三态与Text/File正文证据 | native-ui + privileged UI | passed |
+| `rules.body-effect-evidence` | Final writer、Original三态、Text/File正文证据与Header effect布局 | native-ui + privileged UI | passed |
 | `rules.import-tree` | 真实Save→Open、取消、纯追加、身份重生成与持久化 | native-ui | passed |
 | `rules.tools.export` | Agent/MCP审批与原生导出、已保存树/草稿隔离、撤权和双代销毁 | native-ui | passed |
 | `rules.tools.import` | Agent/MCP共享导入确认、全新身份追加、草稿持久化与双代销毁 | native-ui | passed |

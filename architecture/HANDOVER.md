@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `816c9448`
+> Tracked commit: `340fd47c`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-10
 
@@ -9,7 +9,7 @@
 - [ ] **blocked · VS Code Copilot MCP互操作**：2026-09-01已使用真实VS Code `1.135.0`（commit `08d4889f9e`）与Copilot读取Interceptor复制的通用Streamable HTTP配置。Host成功识别并启动`interceptor`，但首个HTTP请求返回`400`，随后Host回退legacy SSE并收到预期`405 Method not allowed`，未进入`tools/list`。VS Code bundle固定`LATEST_PROTOCOL_VERSION="2025-11-25"`；Interceptor官方SDK v2端点固定`2026-07-28`并使用`legacy: 'reject'`，协议代际不一致是当前唯一阻塞。产品已决定只支持最新协议，不增加legacy兼容；真实Host canary等待VS Code升级到`2026-07-28`后按[features/mcp.md](features/mcp.md)原矩阵复验。
 - [ ] **待验证 · HTTP Execute edited wire correctness**：建立真实 H1 / H2 集成测试，逐项锁定 `Content-Length`、`content-encoding`、transfer-encoding 与 framing。必须先用测试证明问题，再修改转发实现，不能先靠 Renderer 重写 header 猜测修复。该项由另一 session 继续；本次提交不包含 framing / encoding 行为修改或 wire 专属测试。
     - 原“Local E2E 第一条 workflow”归入本项：`breakpoints.execute-edited`已有header-only、body-only、header+body三段，包含gzip解码和继承Content-Length断言；历史文档记录1/1 Green及Main/Core `46424/29380`正常销毁。final Rule state/header effect有对应历史Red，但完整H1/H2 wire矩阵仍未Green，Inventory继续`planned`。首条workflow的trace/metadata复核与最终验收在本项完成，不单独重复跟踪；本轮只核对现有源码和[规格](../apps/desktop/tests/e2e-workflow-tests/docs/breakpoints.md#breakpoints-execute-edited)，未重新运行或补造历史证据。
-- [ ] **待确认 · HTTP空Text替换标签**：产品`replacesBody()`在`bodyAvailable=true`时将空Text视为显式清空，设计`PayloadEditor`却显示Using original，造成response Text明暗各1个parity missing；不是textarea缺失。暂不改产品语义或设计基准，不算通过，不阻断无关item。历史其他parity证据仍保留在[断点阶段记录](features/breakpoints.md#7-逻辑队列阶段证据与剩余差异)。
+- [ ] **待确认 · HTTP空Text替换标签**：产品`replacesBody()`在`bodyAvailable=true`时将空Text视为显式清空，设计`PayloadEditor`却显示Using original，造成response Text明暗各1个parity missing；不是textarea缺失。最新Header下置验收中仍仅这2个标签missing，296个匹配目标无flag，证据见[Header effect布局](features/breakpoints.md#74-header-effect下置布局)。暂不改产品语义或设计基准，不算通过，不阻断无关item。
 - [ ] **代码完成 · 待 E2E前置证据核对 · UTF-8预览截断**：当前实现与验证证据已随`b0708672`提交并推送。显式预览截断标记与TextDecoder流式解码保留完整字符，完整正文/真实坏字节/Hex/Save/Core不变。四组unit Red及最终7文件40/40、Desktop typecheck通过；恢复授权后HTTP正文、压缩、WebSocket、gRPC四条真实workflow分别1/1 Green，覆盖5 MiB边界、Raw/Copy、消息offset和完整Save，四代进程/8888/WinINet/journal及gRPC CA恢复。实现前因禁跑E2E未取得真实Red，历史缺口继续保留，不回滚补造、不声明前置门禁齐全。归档与hash见[UTF-8预览](features/capture.md#utf-8预览截断)。
 - [ ] **待设计 · rule detail note**：提示移到底栏尚无确认设计；当前 `.vnote` 继续保留在滚动区末尾。
 - [ ] **待确认 · 上游认证配置与SSO**：现有HTTP Basic能力已补本地产品集成覆盖，HTTP、HTTPS passthrough/MITM和WebSocket认证成功且源站/Capture不含凭据；HTTP/WS缺失或错误凭据不直连回退，noProxy保持隔离。两份既有测试22/22 Green（新增10例）、Core typecheck通过，未改产品、WinINet或系统证书，E2E/浏览器均0。TEMP证据`interceptor-upstream-basic-local-green-20260909-230438.zip`，SHA256 `61E4AC2244F12FB0ACC50555F9BB78198C160E53EE2E9CB78AAC8AA6FFC29F9E`；该独立验证项不代表公司SSO或用户凭据配置已完成，后者及安全保存方式仍待设计，详见[Settings上游代理](features/settings.md)。
@@ -17,7 +17,7 @@
 - [ ] **待验证 · WPAD**：仅 Auto Detect 环境没有可传给 proxy-agent 的 URL，当前按直连处理。
 - [ ] **待验收 · 既有 UI parity**：Composer / Rules DOM、Inspector分组与正文工具条变化后尚未整体收敛；2026-08-25当前完整复跑为`142 views / 992 targets / 958 matched / 34 missing / 306 flagged / 平均2.52%`。Rules action tag overflow高度修正后明暗2 views、18个target全部`0 missing / 0 flagged`、最大0.3px；既有14个逻辑队列/无timeout场景与Original body wrapper证据保持。原有债务仍集中在Capture、Settings、Breakpoint file-empty与旧Shell，详见`apps/desktop/tests/visual-parity/parity-report.md`。
     - 普通Capture当前38 matched、0 missing、22 flagged，Rule筛选3 matched、0 missing、1 flagged。列布局、状态栏端点16px宽差、Breakpoint按钮继承字号、Header区域及其他WebSocket/gRPC/tunnel差异继续保留；`Rule appended`仍向下53px。场景修正不改产品或设计基准，证据见[侧栏场景](features/capture.md#capture侧栏parity场景)、[筛选场景](features/capture.md#capture筛选parity场景)、[默认控件目标](features/capture.md#capture默认控件parity目标)，不把局部修复写成整页通过。
-    - Header布局待设计：`Kv`的`cache-control`/`content-type`文字单行，透明18px Copy按钮却独占第二行，行高36px；设计稿仅Request URL与Status Code有Copy，Header各行没有对应设计，不能为parity删掉产品复制能力。两行额外36px只解释部分累积偏移，不等于完整53px原因。TEMP实测`interceptor-header-row-layout-20260910-145312.log`，诊断探针已删除，产品未改；跳过本项继续其他可执行item。
+    - 普通Inspector的Copy布局待设计：`Kv`的`cache-control`/`content-type`文字单行，透明18px Copy按钮却独占第二行，行高36px；设计稿仅Request URL与Status Code有Copy，Header各行没有对应设计，不能为parity删掉产品复制能力。两行额外36px只解释部分累积偏移，不等于完整53px原因。TEMP实测`interceptor-header-row-layout-20260910-145312.log`，诊断探针已删除；此项与已验收的断点Header effect下置不是同一组件，`Kv`产品未改。
 - [ ] **待验收 · 首个真实 tag release**：仍缺仓库外 Windows 签名证书、Apple Developer ID、公证凭据与真实 macOS runner 证据。
 - [ ] **长期任务**：SSE、长上传 / 下载、gRPC streaming、Pause / Resume、Clear、容量与文件任务继续以 [backlog/TODO.md](backlog/TODO.md) 为准，只有代码和验收均完成后才可勾选。
 

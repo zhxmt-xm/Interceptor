@@ -6,9 +6,33 @@
 
 .headerFieldsEditorRow {
   display: grid;
+}
+
+.headerFieldsEditorRow[data-effect-placement='inline'] {
   grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) auto 28px;
   align-items: center;
   gap: 6px;
+}
+
+.headerFieldsEditorRow[data-effect-placement='below'] {
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr) max-content;
+  align-items: start;
+  gap: 2px 6px;
+}
+
+.headerFieldsEditorRow[data-effect-placement='below'] > input:first-child {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.headerFieldsEditorRow[data-effect-placement='below'] > input:nth-child(2) {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.headerFieldsEditorRow[data-effect-placement='below'] > button {
+  grid-column: 3;
+  grid-row: 1;
 }
 
 .headerFieldsEditorInput {
@@ -30,24 +54,46 @@
   justify-content: flex-end;
 }
 
+.headerFieldsEditorRow[data-effect-placement='below'] > .headerFieldsEditorEffectSlot {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.headerFieldsEditorRow[data-effect-placement='below'] > .headerFieldsEditorEffectSlot:empty {
+  display: none;
+}
+
 .headerFieldsEditorEffect {
   display: inline-flex;
-  height: 18px;
   align-items: center;
+  color: var(--green);
+  font-family: var(--font-ui);
+  white-space: nowrap;
+}
+
+.headerFieldsEditorRow[data-effect-placement='inline'] .headerFieldsEditorEffect {
+  height: 18px;
   padding: 0 6px;
   border: 1px solid color-mix(in srgb, var(--green) 24%, transparent);
   border-radius: 5px;
   background: color-mix(in srgb, var(--green) 10%, transparent);
-  color: var(--green);
-  font-family: var(--font-ui);
   font-size: 9.5px;
   font-weight: 600;
-  white-space: nowrap;
+}
+
+.headerFieldsEditorRow[data-effect-placement='below'] .headerFieldsEditorEffect {
+  height: 12px;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 12px;
+}
+
+.headerFieldsEditorRow[data-effect-placement='inline'] .headerFieldsEditorEffect[data-effect='append'] {
+  border-color: color-mix(in srgb, var(--blue) 24%, transparent);
+  background: color-mix(in srgb, var(--blue) 10%, transparent);
 }
 
 .headerFieldsEditorEffect[data-effect='append'] {
-  border-color: color-mix(in srgb, var(--blue) 24%, transparent);
-  background: color-mix(in srgb, var(--blue) 10%, transparent);
   color: var(--blue);
 }
 

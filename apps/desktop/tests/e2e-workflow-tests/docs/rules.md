@@ -292,7 +292,7 @@ Rule不仅能编辑和保存，也真实作用于Proxy数据面；匹配/不匹�
 <a id="rules-body-effect-evidence"></a>
 ## `rules.body-effect-evidence`
 
-**状态**：passed
+**状态**：passed（Body与Header effect布局两条真实用例）
 **策略**：native-ui + privileged UI
 
 ### Steps
@@ -307,6 +307,14 @@ Rule不仅能编辑和保存，也真实作用于Proxy数据面；匹配/不匹�
 8. Native Archive round-trip保真与标准HAR只含Final、不含body effect历史的边界下沉到transfer unit/integration，本workflow不直接构造导入文件。
 9. 保存Original/Final、ruleId/source/availability、origin观察、trace、日志与metadata；正常Close并验证Main/Core/Worker退出、8888释放、系统代理恢复并删除临时文件/profile。
 
+### Header effect布局追加用例
+
+1. 独立启动真实Electron并开始Recording；通过Rules UI分别创建request/set和response/append规则，各自同时包含同阶段Breakpoint，字段为`x-effect-layout`、值为`from-rule`。
+2. loopback请求和响应均包含普通Header；选择真实paused行，确认快照存在相应effect且value为`from-rule`。
+3. 保存每个阶段的Header区域截图与几何JSON；断言所有name/value输入框等宽，effect距value下方2px、右对齐、9px字号和12px高，普通行30px、effect行44px，行内没有横向溢出。
+4. 通过input临时修改value再恢复，通过Add/Remove增删一行；Continue unmodified放行，request在origin验证set值，response在客户端验证append值，确认布局调整未改变规则结果。
+5. 两阶段均完成后停用测试规则，保存trace/metadata并正常Close；fixture验证Main/Core/Worker、8888、WinINet和journal恢复。
+
 ### 预期效果
 
 Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original与Final，Response明确Original unavailable；Text/File、request/response、最终写入者与Rules导航一致，不泄漏本地文件路径。
@@ -315,6 +323,7 @@ Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original
 
 - 实现前同一workflow必须因`requestBodyEffect/responseBodyEffect`与Inspector marker/version controls不存在而Red，不能用selector、fixture、原生Dialog或构建失败代替。
 - unit/integration Red先于产品实现，分别锁定RuleService最终写入者、Breakpoint Text/File、Capture存储、Native Archive与HAR边界；当前实现后同一矩阵与真实Electron workflow全部Green并完成销毁证据。
+- Header布局只改变显示，现有断点编辑/Store unit基线19/19 Green；新增真实UI几何断言必须在修改产品CSS前因旧布局而Red，再以同一用例取得Green，不把selector或环境失败算Red。
 
 ### TDD证据
 
@@ -325,6 +334,7 @@ Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original
 - 2026-09-09空文件布局修复后，同一真实workflow复跑1/1（26.2s）通过，Main/Core `31924/17444`正常销毁并恢复8888、WinINet/journal；断点unit19/19和Desktop typecheck通过。四个空文件明暗parity的12个区域目标全部匹配、最大0.6px，其他标题/页脚仍有旧偏差；详细Red/Green见[文件区域验证](../../../../../architecture/features/breakpoints.md#72-文件替换空态视觉修复)，最终归档`interceptor-breakpoint-file-final-green-20260909-211705.zip`。
 - 2026-09-10原生文件输入修复：WScript粘贴后文件名字段为空，helper改用Win32 `SendInput`真实Ctrl+A/Ctrl+V，核对焦点字段HWND，在输入期间保持置顶，路径读回后恢复剪贴板，finally释放置顶；不直接设置字段值或改写Dialog返回值。最终Save/Open、Text/File与Final writer同一workflow1/1（27.2s总运行），unit19/19及Desktop typecheck通过，Main/Core `24060/48540`正常销毁且host guard恢复。TEMP归档`interceptor-breakpoint-chrome-native-green-20260910-001235.zip`，SHA256 `130C9FF733352048E1363069450FC0AD862677D30E3D2431C008997E06708A76`。该记录只确认原生输入与数据面验证，不代表其他未提交的UI布局已验收。
 - 标题/页脚随后完成有效静态字体下的22视图复核：240 matched、0 flagged、最大0.8px，2个Response空Text标签missing独立待确认；产品源码hash与上述真实E2E一致，未重跑无变化的文件流程。新增22张此前缺失的设计PNG，旧362张hash不变；最终parity归档及范围见[标题与页脚](../../../../../architecture/features/breakpoints.md#73-标题与页脚还原)。
+- 2026-09-10 Header effect下置：旧CSS真实Red记录输入框宽差、右侧marker与9.5px/18px旧尺寸；最终本文件2/2 Green（38.0s），含request set、response append、等宽输入、2px下置/右对齐/9px文字、编辑增删和正常放行。两代Main/Core `5928/30284`、`27632/35448`退出且宿主guard恢复；unit19/19、Desktop/design typecheck通过。26视图296 matched、0 flagged，2个旧空Text标签missing保留；完整证据见[Header effect布局](../../../../../architecture/features/breakpoints.md#74-header-effect下置布局)。
 
 <a id="rules-tools-export"></a>
 ## `rules.tools.export`
