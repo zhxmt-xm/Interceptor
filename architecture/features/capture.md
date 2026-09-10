@@ -294,6 +294,14 @@ stateDiagram-v2
 - 既有`capture.body.fullscreen`追加真实URL显示、hover和Copy断言，不通过Preload直接调用。当前真实E2E1/1、Desktop typecheck通过，Main/Core `9668/5996`正常退出，host guard确认8888、WinINet/journal及登记进程恢复；原正文全屏、Copy和关闭/重开操作同跑。
 - 最终15场景的字体日志、JSON/Markdown、Renderer/diff截图与E2E trace、metadata、类型结果及三份源码hash归档为TEMP下`interceptor-inspector-url-green-20260910-133816.zip`，SHA256 `D3E57A744F14A809FC3351740EBE34E3B05CE8056D05EF771DE9320E1D2A15DE`；清单单列4个旧位置差异，不冒充全页Green。
 
+#### Capture侧栏parity场景
+
+- `shell-v2-capture-dark`与`shell-v2-capture-collapsed`原先把Renderer默认收起态用反了，分别产生160/-160px位置差异；现通过正常Toggle sidebar操作与设计的expanded/collapsed状态一致，不改产品布局。
+- 标题文字使用显式`measureText: true`测量DOM Range，避免把Renderer的`flex: 1`空白算作标题宽度；其他目标仍测元素盒子，字号/字重/颜色与1px阈值不变。
+- 两个旧`shell-v2` PNG路径不存在。使用未修改的设计稿和已有截图脚本，新增深色展开/浅色收起且打开Headers详情的两张截图；旧384张PNG逐张hash不变。
+- 定向parity为2视图、6 matched、0 missing、0 flagged，最大0.5px；像素差分别2.9166%/2.7429%，已查看代表图及diff。列表数据、图标和正文区域仍有既有差异，本项只修验收场景，不声明整页或全套parity通过，也不把该结果当真实E2E。
+- TEMP归档`interceptor-capture-sidebar-verified-20260910-143141.zip`，SHA256 `6282C701A367BA72BDDD56B944C7BEA9222C066BBF7811A90B11A326F3D2D2AA`，包含JSON/Markdown、Renderer/diff与设计截图、执行日志、旧图hash清单及5份源码/资产hash。本项不改产品、网络或第三方，不新增工具自身的unit/integration测试。
+
 #### UTF-8预览截断
 
 - 代码与最终E2E通过，但缺实现前真实E2E Red：有限文本预览的上限落在UTF-8字符中间时，只暂缓尾部未完整的字符，不显示由预览截断制造的替换字符。完整正文中的非法UTF-8以及预览内部的非法字节仍显示替换字符，不能删除所有替换字符来掩盖坏数据。

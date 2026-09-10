@@ -122,6 +122,14 @@ async function collect(page, rootSelector, targets, side) {
     if (!element || !box || !origin) {
       continue;
     }
+    if (typeof target !== 'string' && target.measureText === true) {
+      box = await element.evaluate((node) => {
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const bounds = range.getBoundingClientRect();
+        return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+      });
+    }
     const styleKeys = typeof target === 'string'
       ? STYLE_KEYS
       : target.styleKeys ?? STYLE_KEYS;

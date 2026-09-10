@@ -614,6 +614,8 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'statusbar-upstream-down', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', upstream: 'down' } });
 }
 // Default shell: a dedicated global window header with feature tools inside content.
+shots.push({ feature: 'capture', theme: 'dark', variant: 'inspector-sidebar-expanded', state: { view: 'capture', theme: 'dark', sidebar: 'expanded', overlay: '', detail: 'open', tab: 'headers' } });
+shots.push({ feature: 'capture', theme: 'light', variant: 'inspector-sidebar-collapsed', state: { view: 'capture', theme: 'light', sidebar: 'collapsed', overlay: '', detail: 'open', tab: 'headers' } });
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'shell-v2', theme, variant: 'capture', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' } });
   shots.push({ feature: 'shell-v2', theme, variant: 'capture-collapsed', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '' } });

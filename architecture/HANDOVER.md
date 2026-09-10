@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `b0708672`
+> Tracked commit: `83abf1f4`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-10
 
@@ -16,7 +16,7 @@
 - [ ] **待验证/待实现 · macOS系统代理**：三字段journal、多network service快照与三态恢复已有unit/integration；仍缺真实macOS Electron crash/relaunch、Authorization与系统副作用恢复证据。多service可能各有上游代理，合并语义尚未确定，upstream检测仍待实现。
 - [ ] **待验证 · WPAD**：仅 Auto Detect 环境没有可传给 proxy-agent 的 URL，当前按直连处理。
 - [ ] **待验收 · 既有 UI parity**：Composer / Rules DOM、Inspector分组与正文工具条变化后尚未整体收敛；2026-08-25当前完整复跑为`142 views / 992 targets / 958 matched / 34 missing / 306 flagged / 平均2.52%`。Rules action tag overflow高度修正后明暗2 views、18个target全部`0 missing / 0 flagged`、最大0.3px；既有14个逻辑队列/无timeout场景与Original body wrapper证据保持。原有债务仍集中在Capture、Settings、Breakpoint file-empty与旧Shell，详见`apps/desktop/tests/visual-parity/parity-report.md`。
-    - 2026-09-10四个旧场景补`detail: open`后，URL宽高一致但位置债务仍在：普通HTTP横向14px，Rule筛选纵向-53px，深色展开/浅色收起侧栏横向分别160/-160px；其他WebSocket/gRPC/tunnel页面的旧目标差异也未修复。不把URL行高修复当成整页parity通过，证据见[Inspector行高](features/capture.md#inspector标题行高)。
+    - 剩余已定位差异为普通HTTP横向14px、Rule筛选纵向-53px，以及其他WebSocket/gRPC/tunnel页面旧目标差异。深色展开/浅色收起的160/-160px已确认是parity侧栏操作相反，修正后两视图6目标全部匹配、最大0.5px；标题测量只针对实际文字，两张缺失像素基准已补且旧384张图hash不变。该工具修复不代表整页parity通过，证据见[侧栏场景](features/capture.md#capture侧栏parity场景)；历史URL行高证据仍见[Inspector行高](features/capture.md#inspector标题行高)。
 - [ ] **待验收 · 首个真实 tag release**：仍缺仓库外 Windows 签名证书、Apple Developer ID、公证凭据与真实 macOS runner 证据。
 - [ ] **长期任务**：SSE、长上传 / 下载、gRPC streaming、Pause / Resume、Clear、容量与文件任务继续以 [backlog/TODO.md](backlog/TODO.md) 为准，只有代码和验收均完成后才可勾选。
 

@@ -54,8 +54,13 @@ node design-vite/shoot.mjs                             # 渲染所有状态 → 
 node design-vite/shoot.mjs --feature=import-export     # 只更新一个 feature，保留其他 shots
 node design-vite/shoot-scenes.mjs                      # 更新主题 switcher 场景
 
+node design-vite/shoot.mjs --feature=capture --variant=inspector-sidebar-expanded
+node design-vite/shoot.mjs --feature=capture --variant=inspector-sidebar-collapsed
+
 node design-vite/tools/compare-shots.mjs <baselineDir> [feature]
 ```
+
+两条`inspector-sidebar-*`命令分别生成深色展开与浅色收起侧栏的Headers详情图；`--variant`按完整名称筛选，不清理同目录的其他截图。
 
 `compare-shots.mjs` 是回归工具：改动前先把 `shots/` 另存一份，改完重出再拿它当基线对比，差异图写到 `shots-diff/`。**百分比会骗人**（侧栏图标全丢时只报约 1%），必须看差异图；**多张图差异值完全相同，说明是同一个公共元素，不是多个独立缺陷**。
 

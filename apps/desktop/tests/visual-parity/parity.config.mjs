@@ -3568,10 +3568,13 @@ export const views = [
     id: 'shell-v2-capture-dark',
     theme: 'dark',
     designState: { view: 'capture', theme: 'dark', sidebar: 'expanded', detail: 'open' },
-    designShot: 'dark/shell-v2/capture.png',
-    rendererActions: [{ type: 'clickText', text: '/user' }],
+    designShot: 'dark/capture/inspector-sidebar-expanded.png',
+    rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+      { type: 'clickText', text: '/user' },
+    ],
     targets: [
-      { name: 'Capture header', parity: 'window-header-title' },
+      { name: 'Capture header', parity: 'window-header-title', measureText: true },
       'Recording',
       { name: 'Inspector host', parity: 'capture-inspector-host' },
     ],
@@ -3580,13 +3583,12 @@ export const views = [
     id: 'shell-v2-capture-collapsed',
     theme: 'light',
     designState: { view: 'capture', theme: 'light', sidebar: 'collapsed', detail: 'open' },
-    designShot: 'light/shell-v2/capture-collapsed.png',
+    designShot: 'light/capture/inspector-sidebar-collapsed.png',
     rendererActions: [
-      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickText', text: '/user' },
     ],
     targets: [
-      { name: 'Capture header', parity: 'window-header-title' },
+      { name: 'Capture header', parity: 'window-header-title', measureText: true },
       'Recording',
       { name: 'Inspector host', parity: 'capture-inspector-host' },
     ],

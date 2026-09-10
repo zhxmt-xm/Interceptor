@@ -451,6 +451,14 @@ Capture 是默认 view，可省略。
 
 文本不适合做唯一标识时，可在设计与产品两侧增加有产品语义的可访问名称。只有确实无法通过可访问语义定位时，才考虑相同的 `data-parity` 标识。
 
+纯文字标签可以显式设置`measureText: true`，通过DOM `Range`测量文字边界，而不是用于占位的flex元素宽度。例如：
+
+```js
+{ name: 'Capture header', parity: 'window-header-title', measureText: true }
+```
+
+该选项只适用于未裁切的文字标签，不用于按钮命中区、面板、滚动或省略状态；这些仍按元素盒子测量。字体样式比较、1px阈值与整页pixel diff不变，未设置该选项的target保持原有行为。Capture侧栏场景还必须按Renderer默认收起态显式决定是否点击Toggle sidebar，不能靠整体偏移补偿掩盖两侧状态不一致。
+
 ## Fake Interceptor
 
 `fake-interceptor.mjs` 包含：
