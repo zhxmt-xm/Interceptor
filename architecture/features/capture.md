@@ -318,6 +318,13 @@ stateDiagram-v2
 - 定向结果为38 matched、0 missing、22 flagged，pixel diff 2.8843%；搜索框与passthrough匹配，最大0.6px。Breakpoint按钮几何匹配但继承字号13.3333px/13px仍被报告，端点宽差16px、列表与Header差异继续保留，不调整阈值或声明整页通过。
 - 配置脚本语法及编辑器检查通过，已查看Renderer和diff截图；不新增工具自身测试，未执行真实E2E。TEMP归档`interceptor-capture-targets-verified-20260910-151852.zip`，SHA256 `F743CB9FF4C8A2D0050CE99CA1C8C4BEA14C4B619FD893EF65297BED132B96BF`，包含前后JSON、报告、日志、Renderer/diff、未修改的基准与4份输入hash。
 
+#### Capture列表fixture对齐
+
+- parity默认列表补齐设计稿已有的5条PNG、HTML、Markdown、视频请求摘要和应用归属，列表由13条变为18条；只改`fake-interceptor.mjs`，不修改产品、正文fixture或设计基准。
+- 同一普通Capture视图的`List app cell unknown`纵向差从-260.1px降到-0.1px，4px横向列差仍保留。38个目标中只有此项几何变化超过0.2px；全页仍38 matched、0 missing、22 flagged、最大52.8px，pixel diff 2.9208%，不声明全页通过。
+- 既有规则筛选、HTTP断点、WebSocket空态、gRPC、Tunnel五个代表入口均可打开：HTTP断点12目标与WebSocket空态4目标全匹配；Rule marker仍偏53px，gRPC/Tunnel分别2/4个flag且像素基准缺失，继续作为独立欠账，不归为本项已修复。
+- 证据保存在TEMP下`interceptor-capture-list-fixture-20260910-182434`及`interceptor-capture-fixture-regression-20260910-182601-*`的JSON、Markdown、日志与截图。配置语法和编辑器检查通过；本项是验收fixture修改，不新增工具自身测试，也不运行无关产品E2E。
+
 #### UTF-8预览截断
 
 - 代码与最终E2E通过，但缺实现前真实E2E Red：有限文本预览的上限落在UTF-8字符中间时，只暂缓尾部未完整的字符，不显示由预览截断制造的替换字符。完整正文中的非法UTF-8以及预览内部的非法字节仍显示替换字符，不能删除所有替换字符来掩盖坏数据。
