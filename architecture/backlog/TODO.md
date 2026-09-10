@@ -84,7 +84,7 @@
 - [x] `proxyConfig` 用回调求值，切换上游不重启监听器；Core 重启后经 `onCoreProcessReady` 重新下发。
 - [x] 集成测试（真实上游代理 + 真实源站）：直连、经上游、切换即时生效、`noProxy` 绕过。
 - [ ] macOS 尚未接入：快照按网络服务分开存，多服务可能各自配不同代理，需先定义合并语义。
-- [ ] 认证代理（`Proxy-Authorization`）尚未验证；WinINet 不保存凭据，需要用户手工提供。
+- [ ] 现有HTTP Basic已通过本地集成22/22，包含HTTP/HTTPS/WS及凭据隔离；公司SSO、真实认证环境和用户凭据入口/安全保存仍待设计验证，WinINet不保存凭据。见[Settings](../features/settings.md#36-已知兼容风险)。
 - [ ] 仅 Auto Detect（WPAD）环境没有可传给 proxy-agent 的 URL，目前按直连处理。
 - [ ] Settings 尚未向用户展示当前上游代理，排查只能看 `proxy.upstream-configured` 诊断。
 
