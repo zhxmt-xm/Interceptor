@@ -307,9 +307,16 @@ stateDiagram-v2
 - 普通`capture`场景补Renderer侧栏展开操作，消除由状态不一致导致的Inspector横向14px误报；修正不存在的旧PNG路径，使用浅色展开且打开Headers详情的独立新基准。
 - `capture-rule-filter`改用现有Rule facet选项，不再定位已不存在的pill；通过正常UI展开侧栏、收起Application分组。设计adapter按`rule-auth`/`rule-stub`分别选中Auth/Stub，不再把任何非空Rule筛选都选成Stub。明暗Auth/Stub/All六个直接预览状态均正确、页面无异常，design typecheck与脚本语法通过。
 - 当前普通Capture为34 matched、4 missing、20 flagged，pixel diff 2.9224%；Rule筛选为3 matched、0 missing、1 flagged，pixel diff 1.6490%。两场景Inspector与Rule facet尺寸、位置均匹配；原先归在Inspector的-53px误报实际来自`Rule appended`的53px偏移，列布局、旧目标、Header区域仍待修复，不声明全页通过。
-- Header区域的局部诊断确认：`Kv`的`cache-control`与`content-type`各只有一行文字，但透明18px Copy按钮位于下一行，行高变成36px，累计推低后续字段。日志为TEMP下`interceptor-header-row-layout-20260910-145312.log`；临时探针已删除。此项未修改产品，后续需同时确定Copy位置与长值换行，不能删复制功能或用固定偏移抵消。
+- Header区域的局部诊断确认：`Kv`的`cache-control`与`content-type`各只有一行文字，但透明18px Copy按钮位于下一行，行高变成36px，累计推低后续字段；两行额外36px只解释部分偏移，尚未完整解释53px。设计fixture仅Request URL与Status Code有`kv-copy`，Header各行没有对应设计。日志为TEMP下`interceptor-header-row-layout-20260910-145312.log`；临时探针已删除。此项未修改产品，需先确定Header Copy位置与长值换行，不能删复制功能或用固定偏移抵消。
 - 本项新增浅色`inspector-sidebar-expanded`与`rule-filter-auth`两张基准，旧386张PNG逐张hash不变。截图脚本增加`--theme`筛选，只生成当前主题；未改产品、第三方或HTTP wire逻辑，未执行真实E2E或新增设计工具测试。
 - TEMP归档`interceptor-capture-rule-scenes-verified-20260910-144808.zip`，SHA256 `29A4002042B9CB886E98CB9CCA7C5BD75A83B993B221777F35B9A872985F1C70`，保留两场景JSON/Markdown/像素diff、直接预览和类型日志、旧图清单及5份源码/资产hash。
+
+#### Capture默认控件parity目标
+
+- 普通Capture保留38个检查目标：旧`Breakpoints`文字改为现有Breakpoint Manager工具栏按钮；空查询场景比较实际搜索框，不定位设计稿仅有查询词时显示的文字；端点与HTTPS passthrough按设计稿中的现有元素配对。
+- 该场景显式设置fake `mitmActive: false`，与现有设计默认passthrough状态一致；此前harness默认开启MITM，导致设计与Renderer状态不一致。产品设置、设计稿和基准截图均未修改。
+- 定向结果为38 matched、0 missing、22 flagged，pixel diff 2.8843%；搜索框与passthrough匹配，最大0.6px。Breakpoint按钮几何匹配但继承字号13.3333px/13px仍被报告，端点宽差16px、列表与Header差异继续保留，不调整阈值或声明整页通过。
+- 配置脚本语法及编辑器检查通过，已查看Renderer和diff截图；不新增工具自身测试，未执行真实E2E。TEMP归档`interceptor-capture-targets-verified-20260910-151852.zip`，SHA256 `F743CB9FF4C8A2D0050CE99CA1C8C4BEA14C4B619FD893EF65297BED132B96BF`，包含前后JSON、报告、日志、Renderer/diff、未修改的基准与4份输入hash。
 
 #### UTF-8预览截断
 

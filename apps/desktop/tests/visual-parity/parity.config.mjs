@@ -101,6 +101,7 @@ const INITIAL_VIEWS = [
   {
     id: 'capture',
     theme: 'light',
+    mitmActive: false,
     designState: { view: 'capture', theme: 'light', sidebar: 'expanded', detail: 'open' },
     designShot: 'light/capture/inspector-sidebar-expanded.png',
     rendererActions: [
@@ -111,7 +112,11 @@ const INITIAL_VIEWS = [
       'Capture',
       'Rules & Map',
       'Composer',
-      'Breakpoints',
+      {
+        name: 'Breakpoint toolbar button',
+        designSelector: '.breakctl',
+        appSelector: '[data-automation-id="capture.breakpoint-manager"]',
+      },
       'Diagnostics',
       'Local traffic',
       'Settings',
@@ -122,7 +127,12 @@ const INITIAL_VIEWS = [
       { name: 'Filter groups', parity: 'capture-filter-groups' },
       { name: 'Filter item all', parity: 'capture-filter-item-all' },
       { name: 'Filter item', parity: 'capture-filter-item' },
-      { name: 'Filter search', parity: 'capture-filter-search-value' },
+      {
+        name: 'Filter search',
+        designSelector: '.listbar-search .omni',
+        appSelector: 'div:has(> input[data-parity="capture-filter-search-value"])',
+        styleKeys: ['borderTopWidth', 'borderRadius', 'backgroundColor'],
+      },
       { name: 'Filter clear all', parity: 'capture-filter-clear-all' },
       { name: 'List app header', parity: 'capture-list-app-header' },
       { name: 'List app cell', parity: 'capture-list-app-cell' },
@@ -139,8 +149,16 @@ const INITIAL_VIEWS = [
       { name: 'List size cell', parity: 'capture-list-size-cell' },
       { name: 'List time header', parity: 'capture-list-time-header' },
       { name: 'List time cell', parity: 'capture-list-time-cell' },
-      { name: 'Status endpoint', parity: 'capture-status-endpoint' },
-      { name: 'Status passthrough', parity: 'capture-status-passthrough' },
+      {
+        name: 'Status endpoint',
+        designSelector: '.capture-endpoint',
+        appSelector: '[data-parity="capture-status-endpoint"]',
+      },
+      {
+        name: 'Status passthrough',
+        designSelector: '.capture-passthrough',
+        appSelector: '[data-parity="capture-status-passthrough"]',
+      },
       'Rule replaced',
       'Rule set',
       'Rule appended',
