@@ -196,6 +196,7 @@ export function BodyView({
       bytes={loaded.bytes}
       mediaType={body.mediaType}
       size={body.encodedSize}
+      previewTruncated={preview.decode ? loaded.decodeStatus === 'limited' : preview.limited}
       fullscreenTitle={fullscreenTitle}
       notes={bodyNotes()}
       onSave={saveBody}

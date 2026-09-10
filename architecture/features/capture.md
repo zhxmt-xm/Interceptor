@@ -294,6 +294,26 @@ stateDiagram-v2
 - 既有`capture.body.fullscreen`追加真实URL显示、hover和Copy断言，不通过Preload直接调用。当前真实E2E1/1、Desktop typecheck通过，Main/Core `9668/5996`正常退出，host guard确认8888、WinINet/journal及登记进程恢复；原正文全屏、Copy和关闭/重开操作同跑。
 - 最终15场景的字体日志、JSON/Markdown、Renderer/diff截图与E2E trace、metadata、类型结果及三份源码hash归档为TEMP下`interceptor-inspector-url-green-20260910-133816.zip`，SHA256 `D3E57A744F14A809FC3351740EBE34E3B05CE8056D05EF771DE9320E1D2A15DE`；清单单列4个旧位置差异，不冒充全页Green。
 
+#### UTF-8预览截断
+
+- 代码与最终E2E通过，但缺实现前真实E2E Red：有限文本预览的上限落在UTF-8字符中间时，只暂缓尾部未完整的字符，不显示由预览截断制造的替换字符。完整正文中的非法UTF-8以及预览内部的非法字节仍显示替换字符，不能删除所有替换字符来掩盖坏数据。
+- 截断事实由读取正文的调用点通过`previewTruncated`明确传入`BodyViewer`，区分未压缩预览上限和Core解压输出`limited`；`decodeUtf8`使用标准TextDecoder的`stream`选项，文本、Raw及文本Copy使用同一解码结果。未知MIME的内容探测同步识别预览边界，实际坏字节与二进制控制字节仍走Hex。
+- WebSocket帧行、FramePayload Copy和gRPC JSON payload Copy复用同一解码，按各自消息长度判断是否超出预览上限，不用整个gRPC body是否结束推断消息边界。捕获数据本身残缺不等同预览上限，不因此隐藏真实坏字节。
+- Hex、Body Store、Save及导出仍使用原始字节，预览大小和既有截断提示不变；未新增非UTF-8字符集支持，未改Core或网络协议。Composer等没有传截断标记的完整正文调用保留原行为。
+- 四组有效unit Red分别覆盖2/3/4字节UTF-8尾部、BodyViewer显示/Copy接线、消息Copy和未知MIME探测；最终7份相关unit40/40及Desktop typecheck Green。TEMP归档`interceptor-utf8-preview-pending-e2e-20260909-224752.zip`，SHA256 `537171D9CBD29D4171C616E573F5233EFD5F186EE734524D5DD1BFD3EE8E3FDF`，包含Red/Green日志及11份源码hash。
+- 上述历史归档形成时用户禁止E2E；恢复授权后四条既有真实workflow各自追加边界验证并分别1/1 Green，不是修改前Red或一次四条合跑。2026-09-10最终7文件40/40和Desktop typecheck复跑通过，日志`interceptor-utf8-final-checks-20260910-004253.log`。
+- HTTP分别覆盖2/3/4字节字符、普通文本/未知MIME/代码Raw、工具栏Copy和真实编辑器全选复制；原生Save生成的完整正文SHA256一致，包含预览之外的字符。压缩workflow覆盖gzip解码明文5 MiB边界；原有`min(encodedSize, 5 MiB)`请求长度保持不变，最初小gzip测试预期错误不算产品Red。
+- WebSocket覆盖大消息完整往返、行预览、专用Copy和展开正文；gRPC覆盖Request/Response大JSON与相邻小消息，按每条payload长度和offset复制/显示，不混入下一条envelope。大文本只用长度与SHA256作剪贴板断言，不向日志返回整个正文。
+- 四代Main/Core正常退出，host guard确认8888、WinINet/journal和登记进程恢复；gRPC通过正式UI卸载/删除本轮CA、移除例外、停用MITM并比较Root集合。未修改设计或截图；非法UTF-8与Hex原字节保留由unit验证，真实Save另验证完整文件。
+- 本次保存已通过最终验证的实现、测试及证据。实现前因禁E2E缺少真实Red，历史缺口仍保留；不回滚代码、不复制仓库补造证据，不将本次提交视为前置门禁已齐。提交前已核验11份实现/单测源码与原归档hash一致，四份最终E2E归档hash、trace、Green日志及正常退出metadata完整。
+
+| 最终真实E2E | Main/Core | TEMP归档 | SHA256 |
+| --- | --- | --- | --- |
+| HTTP正文 1/1 | `51180/27120` | `interceptor-utf8-http-green-20260910-003002.zip` | `CFC6C97448E58155740670589DFE47002ABB0D0F736778BAD7DC594EE4736196` |
+| 压缩解码 1/1 | `25284/11364` | `interceptor-utf8-encoding-green-20260910-003432.zip` | `6F098AB753E521710D12D7DC34BA17C09878AAE45C6EC7BF8AFC4C2DC5F812A3` |
+| WebSocket 1/1 | `24244/14348` | `interceptor-utf8-websocket-green-20260910-003725.zip` | `41BD814E57B68F9A47C4DD8B8724DA38FF680001D0E79A0D3743C1309FF608E7` |
+| gRPC 1/1 | `36504/43572` | `interceptor-utf8-grpc-green-20260910-004310.zip` | `A6F2AC42072642240ED75DC23C183F79760DADCF3E5FFF5298E57164C87A537D` |
+
 #### 正文全屏验收
 
 - `capture.body.fullscreen`验证Capture的JSON请求/响应及HTML Raw正文：通过原有Fullscreen进入1060x660共享弹层，Header Copy逐字复制原文，Close和Escape退出后保留Raw/Hex模式，再次打开仍使用同一份捕获内容，不出现两份正文视图。

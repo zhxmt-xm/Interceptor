@@ -97,6 +97,8 @@
 Raw模式必须显示捕获的原始内容，不能残留Code模式自动格式化后的缩进；2026-09-09真实HTML场景发现该故障，先补BodyViewer模式隔离owner测试与真实UI Red，再修复。
 每场景独立关闭并重开Inspector，先确认正文长度和radio选中状态；代码模型经真实全选/复制校验，仅归一Windows剪贴板CRLF。模式卸载不得重复销毁Monaco模型，最终Renderer page error必须为0。
 
+2026-09-10补充UTF-8最终验收1/1：真实响应使5 MiB边界落在2/3/4字节字符内，分别检查普通文本、未知MIME、代码Raw、工具栏Copy和真实编辑器全选复制；只比较长度/尾部/SHA256，不向trace返回整份大正文。真实Save生成完整正文并校验SHA256，包含预览之外的字节。Main/Core `51180/27120`正常退出且host guard通过。非法字节与Hex保真由相关unit40/40验证；实现前用户禁止E2E，缺真实Red，不能把最终Green当成前置证据。归档及完整边界见[UTF-8预览](../../../../../architecture/features/capture.md#utf-8预览截断)。
+
 <a id="capture-scenarios-body-media"></a>
 ## `capture.scenarios.body-media`
 
@@ -125,6 +127,8 @@ Raw模式必须显示捕获的原始内容，不能残留Code模式自动格式�
 4. 不改变应用语言、不用本地化文案定位；每场景关闭Inspector，避免旧正文控件竞态。
 5. 保存逐场景、trace和截图，要求Renderer无page error；fixture验证origin及Main/Core/Worker退出、8888/WinINet/journal恢复。
 
+UTF-8追加步骤：通过同一真实origin发送超过5 MiB的gzip输入，解码明文在5 MiB处只包含中文字符的前两个字节；Raw/Copy和编辑器全选复制必须只有完整前缀。2026-09-10当前workflow1/1、Main/Core `25284/11364`正常退出且host guard通过；原`min(encodedSize, 5 MiB)`读取契约不变，首次小gzip预期错误不算产品Red，归档见[UTF-8预览](../../../../../architecture/features/capture.md#utf-8预览截断)。
+
 <a id="capture-scenarios-websocket"></a>
 ## `capture.scenarios.websocket`
 
@@ -143,6 +147,8 @@ Raw模式必须显示捕获的原始内容，不能残留Code模式自动格式�
 
 2026-09-09空态样式复验1/1（19.2s）通过，Main/Core `31728/34944`正常销毁并恢复8888、WinINet/journal；归档`interceptor-websocket-message-state-green-20260909-203912.zip`，SHA256 `09AABB44F67EF585F11DB3D9A454ABD5870C16881C314B220464C58C6E1D8835`。parity六个消息状态区匹配，外层Inspector标题保留既有1.6px差异；前置Red与细节见[Capture状态验证](../../../../../architecture/features/capture.md#websocket消息状态)。
 
+2026-09-10追加真实大文本消息：5 MiB预览边界落在四字节字符内，origin和客户端收到完整消息，行预览、专用Copy、展开正文Copy与编辑器内容仅保留完整字符前缀。当前workflow1/1，Main/Core `24244/14348`正常退出且host guard通过；原四场景同时复跑。实现前真实Red缺口与归档见[UTF-8预览](../../../../../architecture/features/capture.md#utf-8预览截断)。
+
 <a id="capture-scenarios-grpc"></a>
 ## `capture.scenarios.grpc`
 
@@ -157,6 +163,8 @@ Raw模式必须显示捕获的原始内容，不能残留Code模式自动格式�
 4. 用真实Copy核对proto Hex、JSON文本及gzip原始压缩字节；Malformed仅响应末尾少两个字节，请求保持完整，UI声明长度保留，Copy只返回实际字节。
 5. status 13的Response消息为0，UI显示`grpc-status: 13`和`grpc-message: Playground failure`，不制造响应消息。
 6. 保存逐场景身份、trace与截图，Renderer无page error；finally通过UI停用MITM、移除例外、卸载/删除本轮CA并比较Root集合，fixture验证Main/Core/Worker、8888、WinINet/journal恢复。
+
+2026-09-10追加多消息边界：Request与Response各两条JSON消息，分别把三/四字节字符放在大消息5 MiB边界，并用完整小消息验证相邻offset；专用Copy、Raw Copy与编辑器内容逐条比较长度/SHA256，不读入下一条envelope。当前workflow1/1，Main/Core `36504/43572`正常退出，Root集合及host guard恢复通过；原五场景同跑，未覆盖gRPC streaming生命周期。实现前真实Red缺口与归档见[UTF-8预览](../../../../../architecture/features/capture.md#utf-8预览截断)。
 
 <a id="capture-scenarios-tls"></a>
 ## `capture.scenarios.tls`

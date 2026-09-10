@@ -36,6 +36,7 @@ export interface BodyViewerProps {
   mediaType: string | undefined;
   /** Evidence-owned byte size; defaults to the provided byte buffer length. */
   size?: number;
+  previewTruncated?: boolean;
   /** 全屏弹窗的标题；不给就不提供全屏入口。 */
   fullscreenTitle?: string;
   /** 关于这份正文的提示行：预览截断、解码失败等，按传入顺序显示在正文上方。 */
@@ -65,6 +66,7 @@ export function BodyViewer({
   bytes,
   mediaType,
   size = bytes.byteLength,
+  previewTruncated = false,
   fullscreenTitle,
   notes,
   onSave,
@@ -83,7 +85,7 @@ export function BodyViewer({
   const copy = useClipboardCopy();
   const viewerRef = useRef<CodeViewerHandle>(null);
   const nextFormatId = useRef(0);
-  const format = useMemo(() => bodyFormat(mediaType, bytes), [mediaType, bytes]);
+  const format = useMemo(() => bodyFormat(mediaType, bytes, previewTruncated), [mediaType, bytes, previewTruncated]);
   const [selected, setSelected] = useState<{ kind: BodyKind; mode: BodyMode } | null>(null);
   const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
@@ -91,8 +93,8 @@ export function BodyViewer({
   const [fullscreen, setFullscreen] = useState(false);
 
   const text = useMemo(
-    () => (format.kind === 'image' || format.kind === 'media' ? '' : decodeUtf8(bytes)),
-    [bytes, format.kind],
+    () => (format.kind === 'image' || format.kind === 'media' ? '' : decodeUtf8(bytes, previewTruncated)),
+    [bytes, format.kind, previewTruncated],
   );
   const pretty = useMemo(
     () => (format.kind === 'json' ? formatJsonBody(text) ?? text : text),

@@ -1,7 +1,11 @@
+import { createHash } from 'node:crypto';
+import { readFile, rm } from 'node:fs/promises';
+
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { submitWindowsFileDialogPath } from '../../fixtures/ui/windows-file-dialog';
 
 const TEXT_SCENARIOS = [
   { id: 'body-json', mode: 'raw', body: '{"ready":true,"items":[1,2,3]}' },
@@ -74,6 +78,71 @@ test('capture.scenarios.bodies displays the captured text document and form bodi
         }
       }
       evidence.push({ scenarioId: expected.id, row: await row.getAttribute('data-automation-id'), bytes: Buffer.byteLength(expected.body) });
+      await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
+    });
+  }
+
+  // 截断边界：真实响应使5 MiB落在多字节字符内，只比较剪贴板摘要，不向trace返回完整大正文。
+  // Truncation boundary: real responses split UTF-8 characters at 5 MiB; compare clipboard digests without returning large bodies to the trace.
+  const previewLimit = 5 * 1024 * 1024;
+  for (const boundary of [
+    { id: 'two-byte', character: '\u00e9', partialBytes: 1, mime: 'text/plain; charset=utf-8', mode: 'default' },
+    { id: 'three-byte', character: '\u4e2d', partialBytes: 2, mime: 'application/x-interceptor-text', mode: 'default' },
+    { id: 'four-byte', character: '\ud83d\ude42', partialBytes: 3, mime: 'text/javascript; charset=utf-8', mode: 'raw' },
+  ] as const) {
+    await test.step(`utf8-preview-${boundary.id}`, async () => {
+      const requestPath = `/e2e/body-preview/${boundary.id}`;
+      const visibleText = 'a'.repeat(previewLimit - boundary.partialBytes);
+      const body = Buffer.from(`${visibleText}${boundary.character}after-preview`);
+      trafficLab.httpTrafficRunner.respondWith(requestPath, { headers: { 'content-type': boundary.mime }, body });
+      const response = await trafficLab.httpTrafficRunner.requestThroughProxy(desktopApp.capturePort(), requestPath);
+      expect(response.statusCode).toBe(200);
+      expect(Buffer.byteLength(response.body)).toBe(body.byteLength);
+      const row = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow).filter({ hasText: requestPath });
+      await expect(row).toHaveCount(1);
+      await row.click();
+      await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.response).click();
+      const mode = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyMode[boundary.mode]);
+      await mode.click();
+      await expect(mode).toHaveAttribute('aria-checked', 'true');
+      const expectedClipboard = {
+        length: visibleText.length,
+        tail: 'a'.repeat(12),
+        digest: createHash('sha256').update(visibleText).digest('hex'),
+      };
+      const clipboardSummary = () => page.evaluate(async () => {
+        const text = (await navigator.clipboard.readText()).replaceAll('\r\n', '\n');
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+        return { length: text.length, tail: text.slice(-12),
+          digest: Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('') };
+      });
+      await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy).click();
+      await expect.poll(clipboardSummary).toEqual(expectedClipboard);
+      const bodyPane = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane);
+      await bodyPane.click();
+      await page.keyboard.press('ControlOrMeta+A');
+      await page.keyboard.press('ControlOrMeta+C');
+      await expect.poll(clipboardSummary).toEqual(expectedClipboard);
+      evidence.push({ scenarioId: `utf8-preview-${boundary.id}`, row: await row.getAttribute('data-automation-id'), bytes: body.byteLength });
+
+      // 原始保存：文件由产品Save产生，包含完整尾字符和预览范围以外的字节。
+      // Raw export: the product Save action must retain the complete character and bytes beyond the preview limit.
+      if (boundary.id === 'four-byte' && process.platform === 'win32') {
+        const destination = testInfo.outputPath('utf8-full-body.txt');
+        try {
+          await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.save).click();
+          await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), destination);
+          await expect.poll(async () => {
+            try { return createHash('sha256').update(await readFile(destination)).digest('hex'); }
+            catch (error) {
+              if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+              throw error;
+            }
+          }).toBe(createHash('sha256').update(body).digest('hex'));
+        } finally {
+          await rm(destination, { force: true });
+        }
+      }
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
     });
   }

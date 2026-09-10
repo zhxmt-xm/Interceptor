@@ -8,6 +8,7 @@ import {
   isTextMime,
 } from '../../BodyViewer/bodyFormats';
 import {
+  decodeUtf8,
   formatJsonBody,
   hexLine,
   hexLineCount,
@@ -68,9 +69,46 @@ describe('body format resolution', () => {
     // A declared type wins over the payload: servers lie about octet-stream, not about JSON.
     expect(bodyFormat('text/html', encode('{"ok":true}')).kind).toBe('code');
   });
+
+  it.each([undefined, 'application/octet-stream'])('recognizes limited UTF-8 text without an explicit text MIME (%s)', (mediaType) => {
+    const text = new Uint8Array([0x61, 0xe4, 0xbd]);
+    const json = new Uint8Array([...encode('{"text":"'), 0xe4, 0xbd]);
+
+    expect(bodyFormat(mediaType, text, true).kind).toBe('text');
+    expect(bodyFormat(mediaType, json, true).kind).toBe('json');
+    expect(bodyFormat(mediaType, text, false).kind).toBe('binary');
+    expect(bodyFormat(mediaType, new Uint8Array([0x61, 0xff, 0xe4, 0xbd]), true).kind).toBe('binary');
+    expect(bodyFormat(mediaType, new Uint8Array([0x00, 0xe4, 0xbd]), true).kind).toBe('binary');
+  });
 });
 
 describe('body text helpers', () => {
+  it.each(['\u00e9', '\u4e2d', '\u{1f642}'])('omits only the unfinished UTF-8 suffix in a truncated preview of %s', (character) => {
+    const prefix = encode('body: ');
+    const source = encode(`body: ${character}`);
+    for (let suffixLength = 1; suffixLength < encode(character).byteLength; suffixLength += 1) {
+      const preview = source.slice(0, prefix.byteLength + suffixLength);
+      const originalBytes = preview.slice();
+
+      expect(decodeUtf8(preview, true)).toBe('body: ');
+      expect(preview).toEqual(originalBytes);
+    }
+  });
+
+  it('retains complete characters and malformed bytes in a truncated preview', () => {
+    const complete = encode('body: \u00e9\u4e2d\u{1f642}');
+    expect(decodeUtf8(complete, true)).toBe('body: \u00e9\u4e2d\u{1f642}');
+    expect(decodeUtf8(new Uint8Array([0x61, 0xff, 0x62, 0xe4, 0xbd]), true))
+      .toBe('a\ufffdb');
+    expect(decodeUtf8(new Uint8Array([0xc0, 0xaf, 0x80]), true)).toBe('\ufffd\ufffd\ufffd');
+  });
+
+  it('reports incomplete UTF-8 in a complete body instead of hiding malformed data', () => {
+    const incomplete = new Uint8Array([0x61, 0xe4, 0xbd]);
+    expect(decodeUtf8(incomplete)).toBe('a\ufffd');
+    expect(decodeUtf8(incomplete, false)).toBe('a\ufffd');
+  });
+
   it('formats JSON behind an XSSI guard prefix and keeps the guard visible', () => {
     expect(formatJsonBody(')]}\'\n{"ok":true}')).toBe(')]}\'\n{\n  "ok": true\n}');
     expect(formatJsonBody('while(1);{"ok":true}')).toBe('while(1);\n{\n  "ok": true\n}');

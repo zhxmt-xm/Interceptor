@@ -14,6 +14,7 @@ import {
   BODY_PREVIEW_MAX_BYTES,
   IMAGE_PREVIEW_MAX_BYTES,
 } from '../../../shared/desktop-api';
+import { decodeUtf8 } from '../../components/BodyViewer/bodyText';
 import {
   CAPTURE_FACET_IDS,
   FAILED_FACET_VALUE,
@@ -708,9 +709,9 @@ export function frameRelativeTime(
 }
 
 /** 二进制载荷复制为十六进制、文本载荷复制为原文。 */
-export function payloadClipboardText(bytes: Uint8Array, asText: boolean): string {
+export function payloadClipboardText(bytes: Uint8Array, asText: boolean, previewTruncated = false): string {
   return asText
-    ? new TextDecoder().decode(bytes)
+    ? decodeUtf8(bytes, previewTruncated)
     : Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(' ');
 }
 

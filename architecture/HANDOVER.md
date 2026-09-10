@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `d27951bf`
+> Tracked commit: `211cabc7`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-10
 
@@ -9,6 +9,7 @@
 - [ ] **blocked · VS Code Copilot MCP互操作**：2026-09-01已使用真实VS Code `1.135.0`（commit `08d4889f9e`）与Copilot读取Interceptor复制的通用Streamable HTTP配置。Host成功识别并启动`interceptor`，但首个HTTP请求返回`400`，随后Host回退legacy SSE并收到预期`405 Method not allowed`，未进入`tools/list`。VS Code bundle固定`LATEST_PROTOCOL_VERSION="2025-11-25"`；Interceptor官方SDK v2端点固定`2026-07-28`并使用`legacy: 'reject'`，协议代际不一致是当前唯一阻塞。产品已决定只支持最新协议，不增加legacy兼容；真实Host canary等待VS Code升级到`2026-07-28`后按[features/mcp.md](features/mcp.md)原矩阵复验。
 - [ ] **待验证 · HTTP Execute edited wire correctness**：建立真实 H1 / H2 集成测试，逐项锁定 `Content-Length`、`content-encoding`、transfer-encoding 与 framing。必须先用测试证明问题，再修改转发实现，不能先靠 Renderer 重写 header 猜测修复。该项由另一 session 继续；本次提交不包含 framing / encoding 行为修改或 wire 专属测试。
 - [ ] **待确认 · HTTP空Text替换标签**：产品`replacesBody()`在`bodyAvailable=true`时将空Text视为显式清空，设计`PayloadEditor`却显示Using original，造成response Text明暗各1个parity missing；不是textarea缺失。暂不改产品语义或设计基准，不算通过，不阻断无关item。历史其他parity证据仍保留在[断点阶段记录](features/breakpoints.md#7-逻辑队列阶段证据与剩余差异)。
+- [ ] **代码完成 · 待 E2E前置证据核对 · UTF-8预览截断**：显式预览截断标记与TextDecoder流式解码保留完整字符，完整正文/真实坏字节/Hex/Save/Core不变。四组unit Red及最终7文件40/40、Desktop typecheck通过；恢复授权后HTTP正文、压缩、WebSocket、gRPC四条真实workflow分别1/1 Green，覆盖5 MiB边界、Raw/Copy、消息offset和完整Save，四代进程/8888/WinINet/journal及gRPC CA恢复。本轮按用户继续处理剩余改动的要求保存当前实现与验证证据；实现前因禁跑E2E未取得真实Red，缺口继续保留，不回滚补造、不声明前置门禁齐全。归档与hash见[UTF-8预览](features/capture.md#utf-8预览截断)。
 - [ ] **待设计 · rule detail note**：提示移到底栏尚无确认设计；当前 `.vnote` 继续保留在滚动区末尾。
 - [ ] **待确认 · 上游认证配置与SSO**：现有HTTP Basic能力已补本地产品集成覆盖，HTTP、HTTPS passthrough/MITM和WebSocket认证成功且源站/Capture不含凭据；HTTP/WS缺失或错误凭据不直连回退，noProxy保持隔离。两份既有测试22/22 Green（新增10例）、Core typecheck通过，未改产品、WinINet或系统证书，E2E/浏览器均0。TEMP证据`interceptor-upstream-basic-local-green-20260909-230438.zip`，SHA256 `61E4AC2244F12FB0ACC50555F9BB78198C160E53EE2E9CB78AAC8AA6FFC29F9E`；该独立验证项不代表公司SSO或用户凭据配置已完成，后者及安全保存方式仍待设计，详见[Settings上游代理](features/settings.md)。
 - [ ] **待验证/待实现 · macOS系统代理**：三字段journal、多network service快照与三态恢复已有unit/integration；仍缺真实macOS Electron crash/relaunch、Authorization与系统副作用恢复证据。多service可能各有上游代理，合并语义尚未确定，upstream检测仍待实现。

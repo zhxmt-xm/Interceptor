@@ -1,10 +1,13 @@
-import { Children, isValidElement, type ReactElement, type ReactNode } from 'react';
+import { Children, isValidElement, type ComponentProps, type ReactElement, type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BodyViewer } from '../../BodyViewer/BodyViewer';
+import { BodyToolbar } from '../../BodyViewer/BodyToolbar/BodyToolbar';
+import { HexView } from '../../BodyViewer/HexView/HexView';
+import { toHexDump } from '../../BodyViewer/bodyText';
 import { CodeViewer, type CodeViewerProps } from '../../CodeViewer/CodeViewer';
 
-const fixture = vi.hoisted(() => ({ selected: null as { kind: string; mode: string } | null, stateIndex: 0 }));
+const fixture = vi.hoisted(() => ({ selected: null as { kind: string; mode: string } | null, stateIndex: 0, copy: vi.fn() }));
 
 vi.mock('react', async (importOriginal) => {
   const original = await importOriginal<typeof import('react')>();
@@ -19,22 +22,23 @@ vi.mock('react', async (importOriginal) => {
 });
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }) }));
 vi.mock('../../CodeViewer/CodeViewer', () => ({ CodeViewer: () => null }));
-vi.mock('../../share/useClipboardCopy', () => ({ useClipboardCopy: () => vi.fn() }));
+vi.mock('../../share/useClipboardCopy', () => ({ useClipboardCopy: () => fixture.copy }));
 
-function findCodeViewer(node: ReactNode): ReactElement<CodeViewerProps> {
+function findBodyComponent<Props>(node: ReactNode, component: unknown): ReactElement<Props> {
   const pending = Children.toArray(node);
   while (pending.length > 0) {
     const candidate = pending.shift();
     if (!isValidElement<{ children?: ReactNode }>(candidate)) continue;
-    if (candidate.type === CodeViewer) return candidate as ReactElement<CodeViewerProps>;
+    if (candidate.type === component) return candidate as ReactElement<Props>;
     pending.push(...Children.toArray(candidate.props.children));
   }
-  throw new Error('Missing code body viewer.');
+  throw new Error('Missing body component.');
 }
 
 beforeEach(() => {
   fixture.selected = null;
   fixture.stateIndex = 0;
+  fixture.copy.mockClear();
 });
 
 describe('BodyViewer Code and Raw modes', () => {
@@ -44,13 +48,45 @@ describe('BodyViewer Code and Raw modes', () => {
     ['text/css', 'body{color:red}'],
   ])('isolates formatted and raw editor models for %s even with identical input text', (mediaType, source) => {
     const bytes = new TextEncoder().encode(source);
-    const code = findCodeViewer(BodyViewer({ bytes, mediaType }));
+    const code = findBodyComponent<CodeViewerProps>(BodyViewer({ bytes, mediaType }), CodeViewer);
     fixture.selected = { kind: 'code', mode: 'raw' };
     fixture.stateIndex = 0;
-    const raw = findCodeViewer(BodyViewer({ bytes, mediaType }));
+    const raw = findBodyComponent<CodeViewerProps>(BodyViewer({ bytes, mediaType }), CodeViewer);
 
     expect(code.props.value).toBe(source);
     expect(raw.props.value).toBe(source);
     expect(raw.key).not.toBe(code.key);
+  });
+
+  it.each([true, false])('uses the explicit preview truncation flag (%s) for both text and Copy', (previewTruncated) => {
+    const bytes = new Uint8Array([0x61, 0xe4, 0xbd]);
+    const body = BodyViewer({ bytes, mediaType: 'text/plain', previewTruncated });
+    const code = findBodyComponent<CodeViewerProps>(body, CodeViewer);
+    const toolbar = findBodyComponent<ComponentProps<typeof BodyToolbar>>(body, BodyToolbar);
+    const expected = previewTruncated ? 'a' : 'a\ufffd';
+
+    expect(code.props.value).toBe(expected);
+    toolbar.props.onCopy!();
+    expect(fixture.copy).toHaveBeenCalledExactlyOnceWith(expected);
+  });
+
+  it('retains every preview byte in Hex display and Copy', () => {
+    const bytes = new Uint8Array([0x61, 0xe4, 0xbd]);
+    fixture.selected = { kind: 'text', mode: 'hex' };
+    const body = BodyViewer({ bytes, mediaType: 'text/plain', previewTruncated: true });
+    const hex = findBodyComponent<ComponentProps<typeof HexView>>(body, HexView);
+    const toolbar = findBodyComponent<ComponentProps<typeof BodyToolbar>>(body, BodyToolbar);
+
+    expect(hex.props.bytes).toBe(bytes);
+    toolbar.props.onCopy!();
+    expect(fixture.copy).toHaveBeenCalledExactlyOnceWith(toHexDump(bytes));
+  });
+
+  it('keeps an untyped limited UTF-8 body in Text mode instead of misclassifying the cutoff as binary', () => {
+    const bytes = new Uint8Array([0x61, 0xe4, 0xbd]);
+    const body = BodyViewer({ bytes, mediaType: undefined, previewTruncated: true });
+    const code = findBodyComponent<CodeViewerProps>(body, CodeViewer);
+
+    expect(code.props.value).toBe('a');
   });
 });

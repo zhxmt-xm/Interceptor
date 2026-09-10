@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   headersWithoutCookies,
   headersWithRuleEffects,
+  payloadClipboardText,
   requestCookiePairs,
   responseCookiePairs,
   responseTimingSegments,
@@ -79,5 +80,23 @@ describe('capture row format', () => {
       { id: 'download', durationMs: 120, offsetPercent: 80, widthPercent: 20 },
     ]);
     expect(responseTimingSegments(1_000, undefined, 1_600)).toEqual([]);
+  });
+});
+
+describe('payload clipboard text', () => {
+  it('omits only an unfinished UTF-8 suffix in a limited text preview', () => {
+    const bytes = new Uint8Array([0x61, 0xff, 0x62, 0xe4, 0xbd]);
+
+    expect(payloadClipboardText(bytes, true, true)).toBe('a\ufffdb');
+    expect(payloadClipboardText(bytes, true)).toBe('a\ufffdb\ufffd');
+    expect(payloadClipboardText(bytes, true, false)).toBe('a\ufffdb\ufffd');
+  });
+
+  it('keeps every byte when copying binary payloads regardless of the preview limit', () => {
+    const bytes = new Uint8Array([0x61, 0xff, 0x62, 0xe4, 0xbd]);
+    const expected = '61 ff 62 e4 bd';
+
+    expect(payloadClipboardText(bytes, false, true)).toBe(expected);
+    expect(payloadClipboardText(bytes, false, false)).toBe(expected);
   });
 });

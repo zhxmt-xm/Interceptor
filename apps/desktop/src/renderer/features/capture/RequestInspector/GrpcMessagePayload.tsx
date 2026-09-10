@@ -44,7 +44,7 @@ export function GrpcMessagePayload({
       Math.min(message.payloadLength, BODY_PREVIEW_MAX_BYTES),
     ).then((chunk) =>
       navigator.clipboard.writeText(
-        payloadClipboardText(chunk.bytes, json === true),
+        payloadClipboardText(chunk.bytes, json === true, message.payloadLength > BODY_PREVIEW_MAX_BYTES),
       ),
     );
   };

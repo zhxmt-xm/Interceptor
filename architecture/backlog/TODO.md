@@ -213,7 +213,7 @@
 ### 23. Charset 与截断语义
 
 - [ ] 按完整 `Content-Type` charset 解码 UTF-8、GBK/GB18030、Shift-JIS、ISO-8859-1 等；未知 charset 明确回退。
-- [ ] 1 MiB 截断若落在 UTF-8 多字节字符中间，应回退到最后一个完整 code point；不能无提示插入 `�`。
+- [ ] UTF-8预览截断边界：当前实现与最终验证证据随本项保存，前置E2E Red缺口保留。显式截断标记和TextDecoder只暂缓尾部半个字符，真实坏字节与Hex原始数据保留；2026-09-10 unit40/40、Desktop typecheck及HTTP/压缩/WebSocket/gRPC四条真实workflow分别1/1 Green，含完整Save和系统恢复。实现前用户禁止E2E，不回滚补造历史Red、不将提交当作前置门禁通过；证据见[Capture预览](../features/capture.md#utf-8预览截断)。
 - [ ] 大 JSON 截断后不能标为“有效 JSON”；显示“JSON preview truncated”，关闭错误的完整格式化/校验结论。
 - [ ] HTML/XML 截断是预览，不应让用户误以为文档结构完整。
 - [ ] unsupported / corrupt content-encoding 要区分“编码不支持”和“数据损坏”，并提供 raw Hex 与保存原始正文。

@@ -28,6 +28,7 @@ export function FramePreview({ frame }: FramePreviewProps): React.JSX.Element {
     if (!hash || !window.interceptor?.readBody) {
       return;
     }
+    const previewTruncated = (frame.payload?.encodedSize ?? 0) > BODY_PREVIEW_MAX_BYTES;
     let active = true;
     void readCompleteBody(
       hash,
@@ -37,7 +38,7 @@ export function FramePreview({ frame }: FramePreviewProps): React.JSX.Element {
       .then((chunk) => {
         if (active) {
           setPreview(
-            payloadClipboardText(chunk.bytes, frame.opcode === 1).replace(/\s+/g, ' '),
+            payloadClipboardText(chunk.bytes, frame.opcode === 1, previewTruncated).replace(/\s+/g, ' '),
           );
         }
       })

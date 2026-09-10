@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
@@ -96,6 +98,64 @@ test('capture.scenarios.websocket captures directional text binary and controlle
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
     });
   }
+
+  // 预览边界：真实大消息跨过5 MiB，网络保留完整字符，行预览与两种Copy只保留完整前缀。
+  // Preview boundary: a real message crosses 5 MiB; forwarding retains every byte while row previews and both Copy actions keep complete characters.
+  await test.step('websocket-utf8-preview-boundary', async () => {
+    const requestPath = '/e2e/websocket/utf8-preview-boundary';
+    const visibleText = 'w'.repeat(5 * 1024 * 1024 - 3);
+    const payload = `${visibleText}\ud83d\ude42after-preview`;
+    const client = await trafficLab.webSocketTrafficRunner.openThroughProxy(desktopApp.capturePort(), requestPath);
+    try {
+      client.sendText(payload);
+      await client.waitForText(payload);
+      expect(trafficLab.webSocketTrafficRunner.hasMessage(payload)).toBe(true);
+      await client.closeGracefully(1000, 'utf8-complete');
+      const row = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow).filter({ hasText: requestPath });
+      await expect(row).toHaveCount(1);
+      const rowId = await row.getAttribute('data-automation-id');
+      if (!rowId?.startsWith(AUTOMATION_ID_PREFIXES.captureRequestRow)) throw new Error('Missing UTF-8 WebSocket identity.');
+      const exchangeId = rowId.slice(AUTOMATION_ID_PREFIXES.captureRequestRow.length);
+      await row.click();
+      await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.messages).click();
+      await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.directionSent).click();
+      const framePrefix = `${AUTOMATION_ID_PREFIXES.websocketFrame}${exchangeId}.`;
+      const frames = getByAutomationIdPrefix(page, framePrefix);
+      await expect(frames).toHaveCount(1);
+      await expect.poll(() => frames.evaluate((frame) => {
+        const text = frame.textContent ?? '';
+        const start = text.indexOf('w'.repeat(12));
+        const preview = text.slice(start).match(/^w*/)?.[0] ?? '';
+        return { length: preview.length, hasReplacementCharacter: text.includes('\ufffd') };
+      })).toEqual({ length: visibleText.length, hasReplacementCharacter: false });
+      const frameId = await frames.getAttribute('data-automation-id');
+      const sequence = Number(frameId?.slice(framePrefix.length));
+      expect(Number.isSafeInteger(sequence)).toBe(true);
+      await frames.click();
+      const expectedClipboard = { length: visibleText.length, digest: createHash('sha256').update(visibleText).digest('hex') };
+      const clipboardSummary = () => page.evaluate(async () => {
+        const text = (await navigator.clipboard.readText()).replaceAll('\r\n', '\n');
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+        return { length: text.length,
+          digest: Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('') };
+      });
+      await getByAutomationId(page, AutomationIdFactory.websocketPayloadCopy(exchangeId, sequence)).click();
+      await expect.poll(clipboardSummary).toEqual(expectedClipboard);
+      await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy).click();
+      await expect.poll(clipboardSummary).toEqual(expectedClipboard);
+      await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane).click();
+      await page.keyboard.press('ControlOrMeta+A');
+      await page.keyboard.press('ControlOrMeta+C');
+      await expect.poll(clipboardSummary).toEqual(expectedClipboard);
+      await frames.click();
+      await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.directionAll).click();
+      await expect(frames).toHaveCount(2);
+      evidence.push({ scenarioId: 'websocket-utf8-preview-boundary', exchangeId, sent: 1, received: 1 });
+      await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
+    } finally {
+      if (!client.isClosed()) await client.closeGracefully(1000, 'workflow-cleanup');
+    }
+  });
 
   // 证据与清理：控制帧不制造数据消息；fixture保存trace并验证连接、进程、8888与宿主恢复。
   // Evidence and cleanup: control frames do not create data messages; fixtures save traces and verify connections, processes, port 8888, and host restoration.

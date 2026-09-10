@@ -5,8 +5,8 @@ export function stripXssiGuard(text: string): string {
   return text.slice(XSSI_GUARD.exec(text)?.[0]?.length ?? 0);
 }
 
-export function decodeUtf8(bytes: Uint8Array): string {
-  return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+export function decodeUtf8(bytes: Uint8Array, truncated = false): string {
+  return new TextDecoder('utf-8', { fatal: false }).decode(bytes, { stream: truncated });
 }
 
 /** 只把对象/数组根视为 JSON 文档，避免把 `42`、`"text"` 这类纯文本当成 JSON。 */

@@ -29,13 +29,14 @@ export function FramePayload({
     if (!frame.payload?.bodyHash) {
       return;
     }
+    const previewTruncated = frame.payload.encodedSize > BODY_PREVIEW_MAX_BYTES;
     void readCompleteBody(
       frame.payload.bodyHash,
       0,
       Math.min(frame.payload.encodedSize, BODY_PREVIEW_MAX_BYTES),
     ).then((chunk) =>
       navigator.clipboard.writeText(
-        payloadClipboardText(chunk.bytes, frame.opcode === 1),
+        payloadClipboardText(chunk.bytes, frame.opcode === 1, previewTruncated),
       ),
     );
   };

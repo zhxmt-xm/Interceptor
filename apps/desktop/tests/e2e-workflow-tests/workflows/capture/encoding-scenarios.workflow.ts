@@ -1,3 +1,6 @@
+import { createHash, randomBytes } from 'node:crypto';
+import { gzipSync } from 'node:zlib';
+
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
@@ -60,6 +63,45 @@ test('capture.scenarios.encoding decodes compressed bodies and preserves damaged
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
     });
   }
+
+    // 解码边界：压缩输入超过5 MiB，Core按明文字节截断，保留边界前的完整字符。
+    // Decoded boundary: compressed input exceeds 5 MiB and Core limits decoded bytes without displaying an incomplete final character.
+    await test.step('gzip-decoded-utf8-boundary', async () => {
+      const previewLimit = 5 * 1024 * 1024;
+      const requestPath = '/e2e/encoding/decoded-utf8-boundary';
+      const visibleText = randomBytes(previewLimit).toString('base64').slice(0, previewLimit - 2);
+      const remainingText = randomBytes(previewLimit / 2).toString('base64');
+      const encoded = gzipSync(Buffer.from(`${visibleText}\u4e2d${remainingText}`));
+      expect(encoded.byteLength).toBeGreaterThan(previewLimit);
+      trafficLab.httpTrafficRunner.respondWith(requestPath, {
+        headers: { 'content-type': 'text/javascript; charset=utf-8', 'content-encoding': 'gzip' },
+        body: encoded,
+      });
+      const response = await trafficLab.httpTrafficRunner.requestThroughProxy(desktopApp.capturePort(), requestPath);
+      expect(response.statusCode).toBe(200);
+      const row = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow).filter({ hasText: requestPath });
+      await expect(row).toHaveCount(1);
+      await row.click();
+      await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.response).click();
+      const raw = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyMode.raw);
+      await raw.click();
+      await expect(raw).toHaveAttribute('aria-checked', 'true');
+      const expectedClipboard = { length: visibleText.length, digest: createHash('sha256').update(visibleText).digest('hex') };
+      const clipboardSummary = () => page.evaluate(async () => {
+        const text = (await navigator.clipboard.readText()).replaceAll('\r\n', '\n');
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+        return { length: text.length,
+          digest: Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('') };
+      });
+      await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy).click();
+      await expect.poll(clipboardSummary).toEqual(expectedClipboard);
+      await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane).click();
+      await page.keyboard.press('ControlOrMeta+A');
+      await page.keyboard.press('ControlOrMeta+C');
+      await expect.poll(clipboardSummary).toEqual(expectedClipboard);
+      evidence.push({ scenarioId: 'gzip-decoded-utf8-boundary', encodedBytes: encoded.byteLength });
+      await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
+    });
 
   // 证据与清理：保存逐场景字节事实；fixture保存trace并完整关闭origin/产品、恢复WinINet与journal。
   // Evidence and cleanup: retain per-scenario byte facts; fixtures save traces, close origins/product processes, and restore WinINet and journal.

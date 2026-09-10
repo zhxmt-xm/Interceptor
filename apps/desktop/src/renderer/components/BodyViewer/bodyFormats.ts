@@ -158,10 +158,10 @@ const FORMATS: Record<BodyKind, Omit<BodyFormat, 'kind' | 'language'>> = {
 };
 
 /** 未知 MIME 时探测内容：合法 UTF-8 且无二进制控制字符才算文本。 */
-export function looksLikeText(bytes: Uint8Array): boolean {
+export function looksLikeText(bytes: Uint8Array, previewTruncated = false): boolean {
   let decoded: string;
   try {
-    decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes, { stream: previewTruncated });
   } catch {
     return false;
   }
@@ -189,12 +189,12 @@ function looksLikeJson(bytes: Uint8Array): boolean {
  * 解析正文的展示形态。MIME 是主依据；只有 MIME 缺失或声明为通用二进制时才看内容，
  * 因为服务端谎报 `octet-stream` 比谎报具体类型常见得多。
  */
-export function bodyFormat(mime: string | undefined, bytes?: Uint8Array): BodyFormat {
-  const kind = resolveKind(mime, bytes);
+export function bodyFormat(mime: string | undefined, bytes?: Uint8Array, previewTruncated = false): BodyFormat {
+  const kind = resolveKind(mime, bytes, previewTruncated);
   return { kind, language: languageFor(kind, mime), ...FORMATS[kind] };
 }
 
-function resolveKind(mime: string | undefined, bytes?: Uint8Array): BodyKind {
+function resolveKind(mime: string | undefined, bytes: Uint8Array | undefined, previewTruncated: boolean): BodyKind {
   if (isMediaMime(mime)) {
     return 'media';
   }
@@ -220,7 +220,7 @@ function resolveKind(mime: string | undefined, bytes?: Uint8Array): BodyKind {
   if (!bytes) {
     return 'binary';
   }
-  if (!looksLikeText(bytes)) {
+  if (!looksLikeText(bytes, previewTruncated)) {
     return 'binary';
   }
   return looksLikeJson(bytes) ? 'json' : 'text';
