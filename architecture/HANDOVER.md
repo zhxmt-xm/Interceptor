@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `83abf1f4`
+> Tracked commit: `81115618`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-10
 
@@ -16,12 +16,14 @@
 - [ ] **待验证/待实现 · macOS系统代理**：三字段journal、多network service快照与三态恢复已有unit/integration；仍缺真实macOS Electron crash/relaunch、Authorization与系统副作用恢复证据。多service可能各有上游代理，合并语义尚未确定，upstream检测仍待实现。
 - [ ] **待验证 · WPAD**：仅 Auto Detect 环境没有可传给 proxy-agent 的 URL，当前按直连处理。
 - [ ] **待验收 · 既有 UI parity**：Composer / Rules DOM、Inspector分组与正文工具条变化后尚未整体收敛；2026-08-25当前完整复跑为`142 views / 992 targets / 958 matched / 34 missing / 306 flagged / 平均2.52%`。Rules action tag overflow高度修正后明暗2 views、18个target全部`0 missing / 0 flagged`、最大0.3px；既有14个逻辑队列/无timeout场景与Original body wrapper证据保持。原有债务仍集中在Capture、Settings、Breakpoint file-empty与旧Shell，详见`apps/desktop/tests/visual-parity/parity-report.md`。
-    - 剩余已定位差异为普通HTTP横向14px、Rule筛选纵向-53px，以及其他WebSocket/gRPC/tunnel页面旧目标差异。深色展开/浅色收起的160/-160px已确认是parity侧栏操作相反，修正后两视图6目标全部匹配、最大0.5px；标题测量只针对实际文字，两张缺失像素基准已补且旧384张图hash不变。该工具修复不代表整页parity通过，证据见[侧栏场景](features/capture.md#capture侧栏parity场景)；历史URL行高证据仍见[Inspector行高](features/capture.md#inspector标题行高)。
+    - 普通Capture当前34 matched、4 missing、20 flagged，Rule筛选3 matched、0 missing、1 flagged；Inspector与Auth facet已匹配，实际剩下`Rule appended`向下53px。列布局、旧目标、Header区域及其他WebSocket/gRPC/tunnel目标差异继续保留。场景修正不改产品，证据见[侧栏场景](features/capture.md#capture侧栏parity场景)、[筛选场景](features/capture.md#capture筛选parity场景)，不把局部修复写成整页通过。
+    - Header布局已确认局部原因：`Kv`的`cache-control`/`content-type`文字单行，透明18px Copy按钮却独占第二行，行高36px；后续需确定Copy与长值的设计位置，不删复制功能或用偏移抵消。TEMP实测`interceptor-header-row-layout-20260910-145312.log`，诊断探针已删除，产品未改。
 - [ ] **待验收 · 首个真实 tag release**：仍缺仓库外 Windows 签名证书、Apple Developer ID、公证凭据与真实 macOS runner 证据。
 - [ ] **长期任务**：SSE、长上传 / 下载、gRPC streaming、Pause / Resume、Clear、容量与文件任务继续以 [backlog/TODO.md](backlog/TODO.md) 为准，只有代码和验收均完成后才可勾选。
 
 ## Constraints
 
+- 单个item的commit或push失败时，记录原因与恢复命令，继续其他可执行且已授权的item；提交或网络失败本身不是整轮任务的停止条件。用户已开启且Git已配置的代理可以直接使用，不再用空`http.proxy`覆盖它。
 - 2026-09-09用户已明确恢复E2E授权，继续按item执行真实Electron验证；原生窗口流程独占前台。之前暂停期间E2E/浏览器运行均为0的记录是历史证据，不能改写为通过；需要最终E2E的item在取得Green与完整退出恢复前仍保持“代码完成 · 待 E2E”。
 - 本地App、packaged smoke与真实Electron E2E必须经过已实现的宿主guard；不得以“进程已退出/8888无listener”替代完整WinINet、共享crash journal与测试进程代际恢复验证。
 - Windows当前token未提权不等于账户不属于Administrators；不得给workflow另加管理员启动门禁。安装/卸载CA仍由产品正式请求Windows授权，不修改UAC策略；出现真实授权提示时由Developer在本机处理。

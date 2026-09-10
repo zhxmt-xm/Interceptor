@@ -19,6 +19,9 @@ const onlyFeature = process.argv
 const onlyVariant = process.argv
   .find((argument) => argument.startsWith('--variant='))
   ?.split('=')[1];
+const onlyTheme = process.argv
+  .find((argument) => argument.startsWith('--theme='))
+  ?.split('=')[1];
 
 // Every shot declares { feature, theme, variant, state, full? }.
 // Output path is shots/<theme>/<feature>/<variant>.png so light and dark stay separated.
@@ -615,7 +618,9 @@ for (const theme of ['light', 'dark']) {
 }
 // Default shell: a dedicated global window header with feature tools inside content.
 shots.push({ feature: 'capture', theme: 'dark', variant: 'inspector-sidebar-expanded', state: { view: 'capture', theme: 'dark', sidebar: 'expanded', overlay: '', detail: 'open', tab: 'headers' } });
+shots.push({ feature: 'capture', theme: 'light', variant: 'inspector-sidebar-expanded', state: { view: 'capture', theme: 'light', sidebar: 'expanded', overlay: '', detail: 'open', tab: 'headers' } });
 shots.push({ feature: 'capture', theme: 'light', variant: 'inspector-sidebar-collapsed', state: { view: 'capture', theme: 'light', sidebar: 'collapsed', overlay: '', detail: 'open', tab: 'headers' } });
+shots.push({ feature: 'capture', theme: 'light', variant: 'rule-filter-auth', state: { view: 'capture', theme: 'light', sidebar: 'expanded', overlay: '', detail: 'open', tab: 'headers', ruleFilter: 'rule-auth' } });
 for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'shell-v2', theme, variant: 'capture', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '' } });
   shots.push({ feature: 'shell-v2', theme, variant: 'capture-collapsed', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '' } });
@@ -640,7 +645,8 @@ const FULL_CSS = `
 
 const selectedShots = shots.filter((shot) =>
   (!onlyFeature || shot.feature === onlyFeature) &&
-  (!onlyVariant || shot.variant === onlyVariant),
+  (!onlyVariant || shot.variant === onlyVariant) &&
+  (!onlyTheme || shot.theme === onlyTheme),
 );
 
 // Only clean feature directories owned by this run; preserve scene scripts.

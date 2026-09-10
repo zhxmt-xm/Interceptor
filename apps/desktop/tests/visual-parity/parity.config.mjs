@@ -102,8 +102,11 @@ const INITIAL_VIEWS = [
     id: 'capture',
     theme: 'light',
     designState: { view: 'capture', theme: 'light', sidebar: 'expanded', detail: 'open' },
-    designShot: 'light/shell-v2/capture.png',
-    rendererActions: [{ type: 'clickText', text: '/user', index: 0 }],
+    designShot: 'light/capture/inspector-sidebar-expanded.png',
+    rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+      { type: 'clickText', text: '/user', index: 0 },
+    ],
     targets: [
       'Capture',
       'Rules & Map',
@@ -2689,14 +2692,21 @@ export const views = [
       detail: 'open',
       ruleFilter: 'rule-auth',
     },
-    designShot: 'light/capture/rule-filter.png',
+    designShot: 'light/capture/rule-filter-auth.png',
     rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickRole', role: 'button', name: 'Expand folder', index: 1 },
       { type: 'clickText', text: 'Rewrite auth header' },
       { type: 'clickRole', role: 'button', name: 'Show matching requests' },
+      { type: 'clickText', text: 'Application' },
     ],
     targets: [
-      { name: 'Rule filter pill', parity: 'capture-rule-filter-pill' },
+      {
+        name: 'Rule filter option',
+        designSelector: '[data-parity="capture-rule-option-rule-auth"]',
+        appSelector: '[data-parity="capture-filter-item"]:has-text("Rewrite auth header")',
+        styleKeys: ['fontSize', 'fontWeight', 'color', 'backgroundColor'],
+      },
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       'Rule appended',
     ],

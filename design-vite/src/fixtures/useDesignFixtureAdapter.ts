@@ -268,7 +268,8 @@ export function useDesignFixtureAdapter(
     const root = rootRef.current;
     if (!root) return;
     root.querySelectorAll<HTMLElement>('.fitem[data-demo]').forEach((row) => row.classList.toggle('on', row.dataset.demo === (state.filterActive ? 'on' : 'off')));
-    root.querySelectorAll<HTMLElement>('.fitem[data-rule]').forEach((row) => row.classList.toggle('on', row.dataset.rule === (state.ruleFilter ? 'stub' : 'all')));
+    const selectedRule = state.ruleFilter ? state.ruleFilter.replace(/^rule-/, '') : 'all';
+    root.querySelectorAll<HTMLElement>('.fitem[data-rule]').forEach((row) => row.classList.toggle('on', row.dataset.rule === selectedRule));
     updateState({ hasFilter: syncFilterBadge(root) });
   }, [rootRef, state.filterActive, state.ruleFilter, updateState]);
 
