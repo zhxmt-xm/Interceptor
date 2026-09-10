@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>202609101751 · 用固定时间格式命名改动说明</title>
+  <style>
+    :root { color-scheme: light; color: #252c2c; background: #fafbfb; font-family: "Microsoft YaHei UI", "Noto Sans SC", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { max-width: 960px; margin: auto; padding: 28px; display: grid; gap: 24px; }
+    header, section { display: grid; gap: 12px; min-width: 0; }
+    section { border-top: 1px solid #d1dada; padding-top: 18px; }
+    h1, h2, p { margin: 0; }
+    h1 { font-size: 24px; line-height: 1.4; }
+    h2 { font-size: 18px; }
+    p, li, td, th { font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
+    code { font-family: "Cascadia Code", Consolas, monospace; font-size: 12px; overflow-wrap: anywhere; }
+    .muted { color: #5c6a6a; }
+    ul { margin: 0; padding-left: 20px; }
+    table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+    th, td { border-bottom: 1px solid #dde3e3; text-align: left; vertical-align: top; padding: 9px 10px; }
+    th { background: #eef2f2; }
+    @media (max-width: 640px) { main { padding: 16px; } h1 { font-size: 20px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="muted">2026-09-10 17:51 +08:00 · 工程与文档</p>
+      <h1>用固定时间格式命名改动说明</h1>
+      <p>标题：<code>docs: name change reports with minute timestamps</code></p>
+      <p>改动说明不再依赖提交后才知道的 commit ID。文件按分钟时间、类别、feature 和简述命名，报告与对应代码在同一次提交中保存。</p>
+    </header>
+    <section>
+      <h2>工程与文档</h2>
+      <p>位置：<code>AGENTS.md</code> → 提交与交付 → Commit 改动说明。</p>
+      <table>
+        <thead><tr><th>改前</th><th>改后</th></tr></thead>
+        <tbody>
+          <tr><td>用本次 commit ID 命名，只能在提交后生成，报告须由下一次提交收录。</td><td>固定格式 <code>YYYYMMDDHHmm_类别_feature_简述.html</code>；文件名和正文都不要求本次 commit ID。</td></tr>
+          <tr><td>最新代码和它的说明不能一起入库。</td><td>验证完成后生成 HTML，报告和本工作项代码同次提交。</td></tr>
+          <tr><td>报告文件名不便按时间排列。</td><td>12 位本地时间精确到分钟；同名冲突加 <code>_02</code>，生成后不随 commit 时间改名。</td></tr>
+        </tbody>
+      </table>
+      <p>文件名使用主要类别：UI 为 <code>ui</code>、Main 为 <code>main</code>、Core 为 <code>core</code>、Agent/MCP 为 <code>agent-mcp</code>、工程与文档为 <code>docs</code>。跨范围改动仍在报告正文分块。</p>
+      <p>保留简单约定：一个 commit 一份 HTML；CSS 和实际截图全部内嵌；不创建索引、图片目录或 JSON Schema。</p>
+      <p>已有文档报告按其时间改名为 <code>202609101725_docs_commit-report_guidelines.html</code>，报告文件的 SHA256 未因改名变化。它记录上一 commit 当时的约定；本报告记录后续的命名调整。</p>
+      <p><code>architecture/HANDOVER.md</code> 的跟踪点更新到已推送的 <code>816c9448</code>。用户原有的 AGENTS worktree 规则修改未纳入。</p>
+    </section>
+    <section>
+      <h2>验证</h2>
+      <ul>
+        <li>通过：<code>git -c core.whitespace=cr-at-eol diff --check -- AGENTS.md architecture/HANDOVER.md</code>。</li>
+        <li>通过：定向条款检查确认 12 位分钟时间格式、报告同次提交、五个类别，以及无索引、无 schema。</li>
+        <li>通过：已存在报告改名前后 SHA256 相同，历史内容未重写。</li>
+        <li>产品测试不适用：本工作项只变更文档和报告文件，没有改动产品或设计。</li>
+      </ul>
+    </section>
+    <section>
+      <h2>边界</h2>
+      <p>这份报告不写本次未知的 commit ID。Git 自身记录它属于哪次提交，不需要额外提交或 amend。</p>
+      <p>没有 UI 改动，因此不附无关截图。已批准的 Header effect 布局由独立工作项实现和验收。</p>
+    </section>
+  </main>
+</body>
+</html>

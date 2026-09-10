@@ -336,18 +336,21 @@
 
 ### Commit 改动说明
 
-- 每个工作项 commit 对应 `commit-changes/<完整commit ID>.html`，不创建索引或图片目录。
+- 每个工作项 commit 对应 `commit-changes/YYYYMMDDHHmm_类别_feature_简述.html`，不创建索引或图片目录。
+	- 时间使用本地时区、精确到分钟，例如 `202609101748_ui_breakpoints_header-effect.html`；同名冲突追加 `_02`，生成后不随提交时间改名。
 	- CSS 和截图全部内嵌，单个 HTML 可独立离线打开；不外联图片，不含凭据或敏感数据。
-	- commit 后先尝试 push，再生成报告；报告随下一次正常提交入库，不单独为报告 commit 或 amend。push 失败不停止其他工作项。
+	- 验证完成后生成报告，与该工作项代码同一次提交；不要求报告写本次 commit ID，不为报告另建 commit 或 amend。push 失败不停止其他工作项。
 - 只列实际涉及的大类；测试代码随所属功能归类，unit、integration、E2E、parity 的运行结果统一放“验证”。
 
 | 大类 | 范围 |
 | --- | --- |
-| UI | 设计稿、Renderer、页面、组件和交互 |
-| Main | Electron Main、Preload、IPC 和窗口 |
-| Core | 代理、协议、worker、存储和数据面 |
-| Agent/MCP | Agent、模型、Tool、MCP 与授权 |
-| 工程与文档 | 构建、依赖、测试设施、脚本、CI 和文档 |
+| UI (`ui`) | 设计稿、Renderer、页面、组件和交互 |
+| Main (`main`) | Electron Main、Preload、IPC 和窗口 |
+| Core (`core`) | 代理、协议、worker、存储和数据面 |
+| Agent/MCP (`agent-mcp`) | Agent、模型、Tool、MCP 与授权 |
+| 工程与文档 (`docs`) | 构建、依赖、测试设施、脚本、CI 和文档 |
+
+文件名使用主要大类的括号内标识；`feature` 和简述用简短英文小写，多词用 `-` 连接。
 
 - UI 改动写清页面、组件、具体位置，直接展示同主题、尺寸和状态的前后截图；标明设计预览或产品截图。
 	- 新设计仍需先确认。缺改前截图时如实说明，不伪造；纯文档改动不放无关 UI 图。
@@ -355,7 +358,7 @@
 - 按以下简短模板编写，不要求 JSON Schema 或额外机器数据：
 
 ```text
-Commit：ID、标题、时间、parent
+提交：标题、时间
 摘要：这次解决了什么
 改动：按大类列位置、改前、改后、原因与影响
 UI 对比：前后实际截图及设计确认状态（有 UI 改动时）

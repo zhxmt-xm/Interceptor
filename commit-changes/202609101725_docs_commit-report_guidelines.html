@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>816c9448 · 精简每个 commit 的改动说明</title>
+  <style>
+    :root { color-scheme: light; color: #252c2c; background: #fafbfb; font-family: "Microsoft YaHei UI", "Noto Sans SC", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { max-width: 1040px; margin: auto; padding: 28px; display: grid; gap: 24px; }
+    header, section { display: grid; gap: 12px; min-width: 0; }
+    section { border-top: 1px solid #d1dada; padding-top: 18px; }
+    h1, h2, h3, p, dl { margin: 0; }
+    h1 { font-size: 24px; line-height: 1.45; }
+    h2 { font-size: 18px; }
+    h3 { font-size: 15px; }
+    p, li, td, th { font-size: 14px; line-height: 1.7; }
+    p, dd, td { overflow-wrap: anywhere; }
+    code { font-family: "Cascadia Code", Consolas, monospace; font-size: 12px; overflow-wrap: anywhere; }
+    dl { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 7px 12px; font-size: 13px; }
+    dt, .muted { color: #5c6a6a; }
+    dd { margin: 0; min-width: 0; }
+    ul { margin: 0; padding-left: 20px; }
+    table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+    th, td { border-bottom: 1px solid #dde3e3; text-align: left; vertical-align: top; padding: 9px 10px; }
+    th { font-weight: 600; background: #eef2f2; }
+    .passed { color: #08775d; font-weight: 600; }
+    @media (max-width: 640px) { main { padding: 16px; } h1 { font-size: 20px; } dl { grid-template-columns: minmax(0, 1fr); gap: 4px; } dd { margin-bottom: 6px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="muted">Commit 改动说明 · 工程与文档</p>
+      <h1>精简每个 commit 的改动说明</h1>
+      <dl>
+        <dt>Commit</dt><dd><code>816c944863596744b9b8a465eea7bfaa043606b1</code></dd>
+        <dt>标题</dt><dd>docs: keep per-commit change reports concise and self-contained</dd>
+        <dt>时间</dt><dd>2026-09-10 17:25:45 +08:00</dd>
+        <dt>Parent</dt><dd><code>ffc897aed0f031703c04fc16f301ce09e6ddcc1a</code></dd>
+        <dt>范围</dt><dd>2 份文档；产品、设计稿、测试与依赖均未修改。</dd>
+      </dl>
+      <p>为后续工作项约定可单独打开的 HTML 改动说明，保留具体位置、功能前后对比、实际截图与验证结果。规则保持简短，不引入报告系统、索引页或 JSON Schema。</p>
+    </header>
+    <section>
+      <h2>工程与文档</h2>
+      <h3>1. 每个 commit 一份说明</h3>
+      <p>位置：<code>AGENTS.md</code> → 第八章“提交与交付”→“Commit 改动说明”。</p>
+      <table>
+        <thead><tr><th>改前</th><th>改后</th></tr></thead>
+        <tbody>
+          <tr><td>没有统一的逐 commit HTML 保存位置与内容约定。</td><td>保存为 <code>commit-changes/&lt;完整commit ID&gt;.html</code>；一个 commit 对应一个文件。</td></tr>
+          <tr><td>改动说明可能只存在于聊天或临时审阅页。</td><td>固定记录摘要、改动位置、改前与改后、原因与影响、UI 对比、验证和遗留问题。</td></tr>
+          <tr><td>报告分类与截图保存方式没有统一约定。</td><td>按 UI、Main、Core、Agent/MCP、工程与文档五个大类，只列涉及的部分；CSS 与截图全部内嵌，不外联。</td></tr>
+        </tbody>
+      </table>
+      <p>影响：生成报告的协作约定改变，产品运行行为不变。unit、integration、E2E、parity 不再各占一个改动大类，其执行结果统一列在“验证”。</p>
+      <h3>2. 保持 commit 范围最小</h3>
+      <p>位置：<code>AGENTS.md</code> →“提交边界”。新增最小可独立验收工作项要求，不夹带无关清理或格式化，也不把一个功能的实现与必需测试拆散。</p>
+      <p>生成顺序：commit 成功后先尝试 push，再按真实 ID 生成 HTML；报告随下一次正常提交入库，不为报告另建 commit 或 amend，避免 ID 与文件名互相改变。</p>
+      <h3>3. 同步跟踪点</h3>
+      <p>位置：<code>architecture/HANDOVER.md</code> 开头。Tracked commit 从 <code>8338b5fa</code> 更新为 <code>ffc897ae</code>，其余任务状态未改。</p>
+    </section>
+    <section>
+      <h2>验证</h2>
+      <ul>
+        <li><span class="passed">通过</span>：<code>git -c core.whitespace=cr-at-eol diff --check -- AGENTS.md architecture/HANDOVER.md</code>。</li>
+        <li><span class="passed">通过</span>：定向结构检查确认报告规则为 28 行、5 个大类，保留文本模板，无 JSON Schema 和索引要求。</li>
+        <li><span class="passed">通过</span>：编辑器未报告新增错误；staged diff 已单独审阅，用户原有 worktree 规则修改未纳入。</li>
+        <li>未运行产品 typecheck、unit、integration、E2E 或 parity：本 commit 只修改文档，不改变产品或设计。</li>
+      </ul>
+    </section>
+    <section>
+      <h2>遗留与边界</h2>
+      <p>无 UI 改动，因此不附无关截图。已获用户确认的 Header effect 布局属于下一个独立工作项，尚未由本 commit 实现。</p>
+      <p>本说明在所属 commit 生成后编写，将随下一次正常提交归档；没有自动生成器、后台服务或索引需要维护。</p>
+    </section>
+  </main>
+</body>
+</html>
