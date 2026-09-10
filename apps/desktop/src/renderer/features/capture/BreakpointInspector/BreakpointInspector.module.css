@@ -5,6 +5,7 @@
   flex: 1;
   flex-direction: column;
   background: var(--panel);
+  line-height: normal;
 }
 
 .head {
@@ -115,6 +116,12 @@
   color: var(--green);
   font-family: var(--font-mono);
   font-size: 11px;
+}
+
+.headerRows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .headerRow {
@@ -498,10 +505,6 @@
   height: 30px;
   padding: 0 9px;
   font-size: 11px;
-}
-
-.foot .footPrimary {
-  padding: 0 10px;
 }
 
 .spacer {

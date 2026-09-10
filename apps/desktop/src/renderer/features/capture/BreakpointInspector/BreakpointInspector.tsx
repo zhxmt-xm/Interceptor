@@ -3,10 +3,10 @@ import {
   Check,
   ChevronDown,
   CircleAlert,
+  CircleSlash,
   FileText,
   Play,
   Plus,
-  Slash,
   Upload,
   X,
 } from 'lucide-react';
@@ -188,51 +188,53 @@ export function BreakpointInspector({
             title={isResponse ? t('breakpoints.responseHeaders') : t('breakpoints.requestHeaders')}
             count={draft.headers.length}
           >
-            {draft.headers.map((header) => (
-              <div key={header.id} className={styles.headerRow}>
-                <input
-                  className={styles.cellInput}
-                  aria-label={t('breakpoints.headerName')}
-                  data-automation-id={AutomationIdFactory.breakpointHeaderField(header.id, 'name')}
-                  value={header.name}
-                  spellCheck={false}
-                  onChange={(event) => updateHeader(header.id, { name: event.target.value })}
-                />
-                <input
-                  className={styles.cellInput}
-                  aria-label={t('breakpoints.headerValue')}
-                  data-automation-id={AutomationIdFactory.breakpointHeaderField(header.id, 'value')}
-                  value={header.value}
-                  spellCheck={false}
-                  onChange={(event) => updateHeader(header.id, { value: event.target.value })}
-                />
-                <span className={styles.headerEffectSlot}>
-                  {header.ruleEffect ? (
-                    <span
-                      className={styles.headerEffect}
-                      data-effect={header.ruleEffect}
-                      data-automation-id={AutomationIdFactory.breakpointHeaderField(
-                        header.id,
-                        'effect',
-                      )}
-                    >
-                      {t(`capture.ruleEffect.${header.ruleEffect}`)}
-                    </span>
-                  ) : null}
-                </span>
-                <IconButton
-                  icon={X}
-                  label={t('breakpoints.removeHeader')}
-                  size="sm"
-                  strokeWidth={2.2}
-                  automationId={AutomationIdFactory.breakpointHeaderField(
-                    header.id,
-                    'remove',
-                  )}
-                  onClick={() => removeHeader(header.id)}
-                />
-              </div>
-            ))}
+            <div className={styles.headerRows}>
+              {draft.headers.map((header) => (
+                <div key={header.id} className={styles.headerRow}>
+                  <input
+                    className={styles.cellInput}
+                    aria-label={t('breakpoints.headerName')}
+                    data-automation-id={AutomationIdFactory.breakpointHeaderField(header.id, 'name')}
+                    value={header.name}
+                    spellCheck={false}
+                    onChange={(event) => updateHeader(header.id, { name: event.target.value })}
+                  />
+                  <input
+                    className={styles.cellInput}
+                    aria-label={t('breakpoints.headerValue')}
+                    data-automation-id={AutomationIdFactory.breakpointHeaderField(header.id, 'value')}
+                    value={header.value}
+                    spellCheck={false}
+                    onChange={(event) => updateHeader(header.id, { value: event.target.value })}
+                  />
+                  <span className={styles.headerEffectSlot}>
+                    {header.ruleEffect ? (
+                      <span
+                        className={styles.headerEffect}
+                        data-effect={header.ruleEffect}
+                        data-automation-id={AutomationIdFactory.breakpointHeaderField(
+                          header.id,
+                          'effect',
+                        )}
+                      >
+                        {t(`capture.ruleEffect.${header.ruleEffect}`)}
+                      </span>
+                    ) : null}
+                  </span>
+                  <IconButton
+                    icon={X}
+                    label={t('breakpoints.removeHeader')}
+                    size="sm"
+                    strokeWidth={2.2}
+                    automationId={AutomationIdFactory.breakpointHeaderField(
+                      header.id,
+                      'remove',
+                    )}
+                    onClick={() => removeHeader(header.id)}
+                  />
+                </div>
+              ))}
+            </div>
             <button
               type="button"
               className={styles.addHeader}
@@ -417,7 +419,7 @@ export function BreakpointInspector({
 
       <div className={styles.foot}>
         <Button
-          icon={Slash}
+          icon={CircleSlash}
           variant="danger"
           className={styles.footButton}
           disabled={resolving}
@@ -438,7 +440,7 @@ export function BreakpointInspector({
         <Button
           icon={Play}
           variant="primary"
-          className={cx(styles.footButton, styles.footPrimary)}
+          className={styles.footButton}
           disabled={resolving}
           onClick={() => void resolveSelected('continue', true)}
           automationId={AUTOMATION_IDS.breakpoints.executeEdited}

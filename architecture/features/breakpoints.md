@@ -117,6 +117,8 @@ Body replacement使用[Rules Body effect](rules.md#73-body-effect-已实现)的�
 
 File模式未选文件时按现有设计显示112px最小高度的居中容器和32px高的Upload按钮，按钮不横向拉满；文字11.5px、`--text-2`。未选文件保留带警告图标的Using original状态，分组折叠图标为13px，不撑高标题。选中文件仍使用既有预览卡，不改Open Dialog、正文或转发行为。该样式差异由真实文件替换流程和Request/Response明暗parity验证。
 
+断点面板局部使用设计同样的normal行高；Header行内部间距6px，行组与Add header之间8px，页脚三个按钮均使用9px横向内边距。上述还原不改变空Text语义：当前`replacesBody()`在原文已知时允许空字符串作为显式替换，设计的Using original标签尚未表达此区别；该语义差异需另行确认，不为消除parity missing改业务或基准。
+
 2026-08-20 TDD证据：最终`breakpoints.execute-edited`源码在`89d8dda`仅回植后续公开automation ID与driver helper后，暂停快照精确缺失priority更晚的`x-e2e-before-breakpoint`，Execute edited后的Capture也缺少绑定breakpoint ruleId的`set x-edit-stage` marker；当前同一workflow`1/1` Green。Red/Green metadata分别记录Main/Core PID `31404/3812`与`46424/29380`，均`gracefulDestroyVerified=true`且8888释放、系统代理恢复。该证据只闭环final Rule state与header effect；HTTP framing矩阵仍由[HTTP消息编辑](http-message-editing.md)单独验收。
 
 ### 4.2 响应断点
@@ -427,6 +429,19 @@ MCP无timeout调用先Red于未发出Core命令，删除工具schema、解析和
 - 最终Request/Response x light/dark四个空文件视图共12个区域目标（标题、Using original、Choose file）全部matched，最大0.6px、无字号/颜色差；22个HTTP视图为240 matched、2 missing、94 flagged，剩余集中在暂停标题、Headers及页脚，不把局部修复写成整组全绿。
 - 断点编辑/Store unit19/19、Desktop typecheck通过；真实`rules.body-effect-evidence`1/1（26.2s）验证112px容器、32px按钮、真实Save/Open、File替换的转发与Capture证据，Main/Core `31924/17444`正常退出，8888、WinINet/journal恢复。
 - 最终trace/metadata、完整区域截图和22视图parity归档`interceptor-breakpoint-file-final-green-20260909-211705.zip`，SHA256 `4FCC1E36F4ACED2F34DC6AD6AAEAE599DF55948C7BD658D0DB905FCD10FE5A6B`。未修改原生Dialog驱动或新增测试工具测试。
+
+### 7.3 标题与页脚还原
+
+- 标题、Header行组与页脚排版的本项验收通过。2026-09-09曾暂停E2E，随后用户恢复授权；2026-09-10真实Save/Open文件替换Green，设计字体恢复后相关22视图复核通过。空Text标签语义单列待确认，不作为本项排版变更，也不把本次结果写成整仓parity全绿。
+- 产品只改`BreakpointInspector`排版：面板使用局部normal行高；Header行内部6px gap，行组与Add header之间仍为8px；移除主按钮额外横向内边距，页脚三个按钮统一9px，Drop使用设计已有的CircleSlash。Header字段、文件选择、解决命令与Core数据面均不变。
+- 暂停前22个HTTP断点视图240 matched、0 flagged，最大几何差0.8px，全部22视图有像素比较；2个missing均为response Text的Using original标签，不是Replacement textarea缺失。设计和产品的textarea均为420x94px；产品原文已知时允许空Text替换，设计未区分这一语义，另行确认，不通过修改产品或配对标签掩盖。
+- 未改设计源码。22张HTTP断点PNG原先不存在，本轮使用既有截图脚本补生成；原有362张PNG逐张SHA256保持不变，清单为TEMP下`interceptor-breakpoint-existing-shots-20260909.json`。parity结果为`interceptor-breakpoint-chrome-{237,242,247,252,257}.json`及同名`.md`，日志为`interceptor-breakpoint-chrome-matrix-20260909.log`。
+- 断点Store/编辑unit19/19和Desktop typecheck已通过，日志`interceptor-breakpoint-chrome-checks-20260909.log`。最终真实`rules.body-effect-evidence`在原生文件窗口文件名控件获取前台焦点时失败，不是布局或数据断言Red；Main/Core `46384/40556`虽为`gracefulDestroyVerified=true`，仍不能算该workflow通过，日志为`interceptor-breakpoint-chrome-e2e-20260909.log`。
+- 用户禁止E2E后，本轮只运行unit19/19及Desktop typecheck，日志`interceptor-breakpoint-no-e2e-checks-20260909-215929.log`；仅读回暂停前的22视图parity与362张原图hash，未运行浏览器或E2E。进度归档`interceptor-breakpoint-chrome-pending-e2e-20260909-220030.zip`，SHA256 `4A619F1D64B0A7A7B56224DDA25501BE7E479FB0EAD35DDBA8DFBE9FC9C7F976`，清单明确标记`code-complete-pending-e2e`并保存4份相关源码hash。
+- 恢复后独占前台执行时，两轮原生文件名框在WScript粘贴后仍为空；辅助改为Win32 `SendInput`真实Ctrl+A/Ctrl+V，核对焦点字段HWND、保持置顶至finally、确认字段真实值后恢复剪贴板。不直接设置字段值、改写Dialog返回值或新增设施测试。
+- 最终同一`rules.body-effect-evidence`1/1（27.2s总运行）、unit19/19及Desktop typecheck通过，Main/Core `24060/48540`正常退出，host guard确认8888、WinINet/journal及登记进程恢复。TEMP归档`interceptor-breakpoint-chrome-native-green-20260910-001235.zip`，SHA256 `130C9FF733352048E1363069450FC0AD862677D30E3D2431C008997E06708A76`，包含trace、两轮辅助失败、Green/类型日志及四份源码hash。
+- 2026-09-10网络恢复后，22个视图逐一确认设计Inter/JetBrains Mono静态FontFace为loaded，再执行parity；240 matched、0 flagged、最大0.8px，2个missing仍仅为Response空Text的Using original标签。已查看明暗代表截图，原有362张PNG逐张hash不变，此前新增22张缺失断点PNG没有重绘；设计源码、配对目标和仓库报告未改。
+- 最终字体验证日志、22视图JSON/Markdown、Renderer/diff截图及产品/新增PNG的hash归档为TEMP下`interceptor-breakpoint-chrome-font-verified-20260910-132342.zip`，SHA256 `929F4F85EF2A3BF0BD56DFDF02F8379AEE05DB34112AEFABF2CAF2CE2082A42A`；四份源码hash与上述真实E2E Green一致，复用unit19/19和Desktop typecheck，不重复运行无变化的原生流程。
 
 ## 8. 验收要点
 

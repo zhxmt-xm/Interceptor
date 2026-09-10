@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `793ecbd0`
+> Tracked commit: `647de014`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-10
 
@@ -8,7 +8,7 @@
 
 - [ ] **blocked · VS Code Copilot MCP互操作**：2026-09-01已使用真实VS Code `1.135.0`（commit `08d4889f9e`）与Copilot读取Interceptor复制的通用Streamable HTTP配置。Host成功识别并启动`interceptor`，但首个HTTP请求返回`400`，随后Host回退legacy SSE并收到预期`405 Method not allowed`，未进入`tools/list`。VS Code bundle固定`LATEST_PROTOCOL_VERSION="2025-11-25"`；Interceptor官方SDK v2端点固定`2026-07-28`并使用`legacy: 'reject'`，协议代际不一致是当前唯一阻塞。产品已决定只支持最新协议，不增加legacy兼容；真实Host canary等待VS Code升级到`2026-07-28`后按[features/mcp.md](features/mcp.md)原矩阵复验。
 - [ ] **待验证 · HTTP Execute edited wire correctness**：建立真实 H1 / H2 集成测试，逐项锁定 `Content-Length`、`content-encoding`、transfer-encoding 与 framing。必须先用测试证明问题，再修改转发实现，不能先靠 Renderer 重写 header 猜测修复。该项由另一 session 继续；本次提交不包含 framing / encoding 行为修改或 wire 专属测试。
-- [ ] **验收进行中 · Breakpoint parity标题与页脚**：2026-09-09空文件区域302.1px偏差已修复，Request/Response明暗12个区域目标全部匹配、最大0.6px；真实文件替换1/1、断点逻辑19/19及Desktop typecheck通过。22个HTTP断点视图仍有94个flagged（暂停标题、Headers和页脚按钮）及response text明暗各1个target missing，继续按独立item收敛；最新证据见[Breakpoint文件区域](features/breakpoints.md#72-文件替换空态视觉修复)。历史HTTP queue head/Queued/menu、WebSocket setup/head/Queued、Rules action明暗14 views为`0 missing / 0 flagged`、最大0.8px；2026-08-25完整报告`142 views / 992 targets / 958 matched / 34 missing / 306 flagged / 平均2.52%`及Rules overflow明暗18个target、最大0.3px证据仍保留，不冒充本次全量复跑。
+- [ ] **待确认 · HTTP空Text替换标签**：产品`replacesBody()`在`bodyAvailable=true`时将空Text视为显式清空，设计`PayloadEditor`却显示Using original，造成response Text明暗各1个parity missing；不是textarea缺失。暂不改产品语义或设计基准，不算通过，不阻断无关item。历史其他parity证据仍保留在[断点阶段记录](features/breakpoints.md#7-逻辑队列阶段证据与剩余差异)。
 - [ ] **待设计 · rule detail note**：提示移到底栏尚无确认设计；当前 `.vnote` 继续保留在滚动区末尾。
 - [ ] **待确认 · 上游认证配置与SSO**：现有HTTP Basic能力已补本地产品集成覆盖，HTTP、HTTPS passthrough/MITM和WebSocket认证成功且源站/Capture不含凭据；HTTP/WS缺失或错误凭据不直连回退，noProxy保持隔离。两份既有测试22/22 Green（新增10例）、Core typecheck通过，未改产品、WinINet或系统证书，E2E/浏览器均0。TEMP证据`interceptor-upstream-basic-local-green-20260909-230438.zip`，SHA256 `61E4AC2244F12FB0ACC50555F9BB78198C160E53EE2E9CB78AAC8AA6FFC29F9E`；该独立验证项不代表公司SSO或用户凭据配置已完成，后者及安全保存方式仍待设计，详见[Settings上游代理](features/settings.md)。
 - [ ] **待验证/待实现 · macOS系统代理**：三字段journal、多network service快照与三态恢复已有unit/integration；仍缺真实macOS Electron crash/relaunch、Authorization与系统副作用恢复证据。多service可能各有上游代理，合并语义尚未确定，upstream检测仍待实现。
