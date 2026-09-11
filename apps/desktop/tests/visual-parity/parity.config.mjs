@@ -97,13 +97,47 @@ const COMPOSER_IMPORT_TARGETS = [
   'Import 9 requests',
 ];
 
-const INITIAL_VIEWS = [
+const SETTINGS_PROXY_TARGETS = [
+  'Local listener, operating-system routing, ownership and guarded recovery.',
+  'Owned',
+  'Listener',
+  'Listening',
+  'Address',
   {
-    id: 'capture',
-    theme: 'light',
+    name: 'Listener address',
+    designSelector: '.srow:has(.scap > b:text-is("Address")) .mono2',
+    appSelector: 'div:has(> div > b:text-is("Address")) > div > span:text-is("127.0.0.1:8888")',
+  },
+  'System Proxy',
+  'Owned by Interceptor',
+  'Current configuration',
+  'Bypass',
+  'PAC / Auto detect',
+  'Recovery',
+  'Protected',
+];
+
+const CAPTURE_FILTER_CLEAR_TARGETS = [
+  {
+    name: 'Filter clear all',
+    designSelector: '.cfilters-clear',
+    appSelector: '[data-parity="capture-filter-clear-all"] button',
+    styleKeys: ['color', 'backgroundColor', 'borderTopWidth', 'borderRadius', 'opacity'],
+  },
+  {
+    name: 'Filter clear icon',
+    designSelector: '.cfilters-clear > svg',
+    appSelector: '[data-parity="capture-filter-clear-all"] button > svg',
+    styleKeys: ['color'],
+  },
+];
+
+const INITIAL_VIEWS = ['light', 'dark'].map((theme) => ({
+    id: theme === 'dark' ? 'capture-dark' : 'capture',
+    theme,
     mitmActive: false,
-    designState: { view: 'capture', theme: 'light', sidebar: 'expanded', detail: 'open' },
-    designShot: 'light/capture/inspector-sidebar-expanded.png',
+    designState: { view: 'capture', theme, sidebar: 'expanded', detail: 'open' },
+    designShot: `${theme}/capture/inspector-sidebar-expanded.png`,
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickText', text: '/user', index: 0 },
@@ -116,6 +150,13 @@ const INITIAL_VIEWS = [
         name: 'Breakpoint toolbar button',
         designSelector: '.breakctl',
         appSelector: '[data-automation-id="capture.breakpoint-manager"]',
+        styleKeys: ['color', 'backgroundColor', 'borderTopWidth', 'borderRadius', 'opacity'],
+      },
+      {
+        name: 'Breakpoint toolbar icon',
+        designSelector: '.breakctl > svg',
+        appSelector: '[data-automation-id="capture.breakpoint-manager"] > svg',
+        styleKeys: ['color'],
       },
       'Diagnostics',
       'Local traffic',
@@ -133,7 +174,7 @@ const INITIAL_VIEWS = [
         appSelector: 'div:has(> input[data-parity="capture-filter-search-value"])',
         styleKeys: ['borderTopWidth', 'borderRadius', 'backgroundColor'],
       },
-      { name: 'Filter clear all', parity: 'capture-filter-clear-all' },
+      ...CAPTURE_FILTER_CLEAR_TARGETS,
       { name: 'List app header', parity: 'capture-list-app-header' },
       { name: 'List app cell', parity: 'capture-list-app-cell' },
       { name: 'List app cell unknown', parity: 'capture-list-app-cell-unknown' },
@@ -165,8 +206,7 @@ const INITIAL_VIEWS = [
       'Rule removed',
       'Recording',
     ],
-  },
-];
+}));
 
 const BREAKPOINT_FILE_BY_PHASE = {
   request: {
@@ -1953,17 +1993,19 @@ export const views = [
       { name: 'Message state', parity: 'websocket-message-state' },
     ],
   }))),
-  {
-    id: 'capture-websocket',
-    theme: 'light',
+  ...['light', 'dark'].map((theme) => ({
+    id: theme === 'dark' ? 'capture-websocket-dark' : 'capture-websocket',
+    theme,
+    mitmActive: false,
     designState: {
       view: 'capture',
-      theme: 'light',
-      sidebar: 'expanded',
+      theme,
+      sidebar: 'collapsed',
+      detail: 'open',
       scene: 'websocket',
       tab: 'messages',
     },
-    designShot: 'light/capture/inspector-websocket.png',
+    designShot: `${theme}/capture/inspector-websocket.png`,
     rendererActions: [
       { type: 'clickText', text: '/socket' },
       { type: 'clickText', text: 'Messages' },
@@ -1973,22 +2015,40 @@ export const views = [
       },
     ],
     targets: [
-      'Capture',
+      { name: 'Capture header', parity: 'window-header-title', measureText: true },
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       { name: 'Inspector status', parity: 'capture-inspector-status' },
       'Messages',
-      'Pause on message',
+      {
+        name: 'Message breakpoint button',
+        designSelector: '.ws-breakpoint-control-host button',
+        appSelector: '[data-automation-id="capture.websocket.breakpoint.toggle"]',
+        styleKeys: ['color', 'backgroundColor', 'borderTopWidth', 'borderRadius'],
+      },
       'Received text',
       'Binary',
     ],
-  },
+  })),
   ...['light', 'dark'].map((theme) => ({
     id: `statusbar-upstream-down${theme === 'dark' ? '-dark' : ''}`,
     theme,
     designState: { view: 'capture', theme, sidebar: 'collapsed', upstream: 'down' },
     designShot: `${theme}/capture/statusbar-upstream-down.png`,
     upstreamDown: true,
-    targets: [{ name: 'Status upstream', parity: 'capture-status-upstream' }],
+    mitmActive: false,
+    targets: [
+      {
+        name: 'Status endpoint',
+        designSelector: '.capture-endpoint',
+        appSelector: '[data-parity="capture-status-endpoint"]',
+      },
+      {
+        name: 'Status passthrough',
+        designSelector: '.capture-passthrough',
+        appSelector: '[data-parity="capture-status-passthrough"]',
+      },
+      { name: 'Status upstream', parity: 'capture-status-upstream' },
+    ],
   })),
   ...['light', 'dark'].flatMap((theme) => {
     const rendererOpenMessages = [
@@ -2275,17 +2335,19 @@ export const views = [
       '_gh_sess',
     ],
   },
-  {
-    id: 'capture-grpc',
-    theme: 'light',
+  ...['light', 'dark'].map((theme) => ({
+    id: theme === 'dark' ? 'capture-grpc-dark' : 'capture-grpc',
+    theme,
+    mitmActive: false,
     designState: {
       view: 'capture',
-      theme: 'light',
-      sidebar: 'expanded',
+      theme,
+      sidebar: 'collapsed',
+      detail: 'open',
       scene: 'grpc',
       tab: 'grpc',
     },
-    designShot: 'light/capture/inspector-grpc.png',
+    designShot: `${theme}/capture/inspector-grpc.png`,
     rendererActions: [
       { type: 'clickText', text: '/orders.v1.OrderService/Watch' },
       { type: 'clickText', text: 'Messages' },
@@ -2301,7 +2363,7 @@ export const views = [
       'Response message 2',
       'No descriptor loaded. Payload is shown as raw binary.',
     ],
-  },
+  })),
   {
     id: 'capture-tunnel',
     theme: 'light',
@@ -2735,6 +2797,7 @@ export const views = [
         appSelector: '[data-parity="capture-filter-item"]:has-text("Rewrite auth header")',
         styleKeys: ['fontSize', 'fontWeight', 'color', 'backgroundColor'],
       },
+      ...CAPTURE_FILTER_CLEAR_TARGETS,
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       'Rule appended',
     ],
@@ -3145,12 +3208,16 @@ export const views = [
       },
     ],
   },
-  {
-    id: 'settings',
-    theme: 'light',
+  ...['light', 'dark'].map((theme) => ({
+    id: theme === 'dark' ? 'settings-dark' : 'settings',
+    theme,
     rendererNav: 'Settings',
-    designState: { view: 'settings', theme: 'light', sidebar: 'expanded', settings: 'certificates' },
-    designShot: 'light/shell-v2/settings.png',
+    designState: { view: 'settings', theme, sidebar: 'expanded', settings: 'certificates' },
+    designShot: `${theme}/settings/framed.png`,
+    rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+      { type: 'clickAutomation', automationId: 'settings.section.certificates' },
+    ],
     targets: [
       'Root Certificate Authority',
       'Trust status',
@@ -3163,7 +3230,7 @@ export const views = [
       'Add host',
       'api.internal.local',
     ],
-  },
+  })),
   {
     id: 'settings-proxy',
     theme: 'light',
@@ -3175,22 +3242,11 @@ export const views = [
       settings: 'proxy',
     },
     designShot: 'light/settings/proxy.png',
-    rendererActions: [{ type: 'clickText', text: 'Proxy & Listener' }],
-    targets: [
-      'Local listener, operating-system routing, ownership and guarded recovery.',
-      'Owned',
-      'Listener',
-      'Listening',
-      'Address',
-      '127.0.0.1:8888',
-      'System Proxy',
-      'Owned by Interceptor',
-      'Current configuration',
-      'Bypass',
-      'PAC / Auto detect',
-      'Recovery',
-      'Protected',
+    rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+      { type: 'clickText', text: 'Proxy & Listener' },
     ],
+    targets: SETTINGS_PROXY_TARGETS,
   },
   {
     id: 'settings-proxy-dark',
@@ -3203,14 +3259,11 @@ export const views = [
       settings: 'proxy',
     },
     designShot: 'dark/settings/proxy.png',
-    rendererActions: [{ type: 'clickText', text: 'Proxy & Listener' }],
-    targets: [
-      'Local listener, operating-system routing, ownership and guarded recovery.',
-      'Owned',
-      'Listening',
-      'Owned by Interceptor',
-      'Protected',
+    rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+      { type: 'clickText', text: 'Proxy & Listener' },
     ],
+    targets: SETTINGS_PROXY_TARGETS,
   },
   ...['light', 'dark'].map((theme) => ({
     id: `settings-app-containers${theme === 'dark' ? '-dark' : ''}`,
@@ -3649,9 +3702,7 @@ export const views = [
     },
     designShot: feature === 'rules'
       ? 'dark/rules/tree-url.png'
-      : feature === 'composer'
-        ? 'dark/composer/framed.png'
-        : `dark/shell-v2/${feature}.png`,
+      : `dark/${feature}/framed.png`,
     rendererActions: feature === 'rules'
       ? EXPAND_RULE_TREE_ACTIONS
       : feature === 'composer'
@@ -3663,7 +3714,12 @@ export const views = [
             { type: 'clickText', text: 'Repositories' },
             { type: 'clickRole', role: 'button', name: 'Send' },
           ]
-        : undefined,
+        : [
+            { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+            ...(feature === 'settings'
+              ? [{ type: 'clickAutomation', automationId: 'settings.section.certificates' }]
+              : []),
+          ],
     targets: feature === 'rules'
       ? [
           {
@@ -3703,7 +3759,7 @@ export const views = [
             '201 Created',
           ]
       : [
-          { name: `${title} header`, parity: 'window-header-title' },
+          { name: `${title} header`, parity: 'window-header-title', measureText: true },
           'Capture',
           'Local traffic',
           ...featureTargets,

@@ -140,6 +140,7 @@ UTF-8追加步骤：通过同一真实origin发送超过5 MiB的gzip输入，解
 1. fresh profile经UI开启Recording，依次运行已有Text、Binary、Bidirectional和Control默认场景，每个独立WebSocket经8888产生真实101握手并以1000关闭。
 2. 选择自产Capture行，进入Messages并切换Sent/Received/All；Text各方向1条，Binary各方向1条，双向场景Sent 1条/Received 2条。
 3. 文本载荷分别为`hello from client`、`client message`、`origin message`；Binary为`00 01 02 03 ff`，逐行展开并用真实Copy验证完整值。
+	展开后的载荷标题必须显示当前语言的方向和类型，不得泄漏`capture.text`等资源键；通过自产帧的Copy automation ID定位标题，不切换语言或用翻译文案定位。文本发送/接收两态分别保存真实截图。
 4. Control场景完成Ping/Pong/Close协议交互；按现有产品语义不把控制帧伪造为数据消息行，Messages为0条。空态保留116px最小高度、12px字体及grid居中布局，不退回未应用样式的默认黑字。
 5. 每条场景关闭Inspector，不串连接；保存逐场景身份、trace与截图，Renderer无page error，fixture验证连接、Main/Core/Worker、8888和WinINet/journal恢复。
 
@@ -148,6 +149,8 @@ UTF-8追加步骤：通过同一真实origin发送超过5 MiB的gzip输入，解
 2026-09-09空态样式复验1/1（19.2s）通过，Main/Core `31728/34944`正常销毁并恢复8888、WinINet/journal；归档`interceptor-websocket-message-state-green-20260909-203912.zip`，SHA256 `09AABB44F67EF585F11DB3D9A454ABD5870C16881C314B220464C58C6E1D8835`。parity六个消息状态区匹配，外层Inspector标题保留既有1.6px差异；前置Red与细节见[Capture状态验证](../../../../../architecture/features/capture.md#websocket消息状态)。
 
 2026-09-10追加真实大文本消息：5 MiB预览边界落在四字节字符内，origin和客户端收到完整消息，行预览、专用Copy、展开正文Copy与编辑器内容仅保留完整字符前缀。当前workflow1/1，Main/Core `24244/14348`正常退出且host guard通过；原四场景同时复跑。实现前真实Red缺口与归档见[UTF-8预览](../../../../../architecture/features/capture.md#utf-8预览截断)。
+
+2026-09-11载荷标题资源键修复取得真实Red（Main/Core `42540/1756`）与最终1/1 Green（56.9s，`35356/9584`），两代正常销毁且host guard恢复。标题通过当前语言UI读取，不切换语言；四场景与5MiB预览原断言保留。unit7/7、含catalog16/16及Desktop类型通过，证据见[WebSocket载荷标题](../../../../../architecture/features/capture.md#websocket载荷标题)，不将本项Red用于弥补UTF-8历史缺口。
 
 <a id="capture-scenarios-grpc"></a>
 ## `capture.scenarios.grpc`
@@ -513,10 +516,11 @@ option选择与分组展开是正交状态；选择或取消option只更新筛�
 ### Steps
 
 1. 创建独立profile、trace与loopback origin，启动真实Electron并等待App、Core与8888；通过真实UI开始Recording。
-2. 展开Method facet，经8888发送一条测试自产GET并等待Capture行与GET option/count=1可见；点击该行建立selection。
-3. 在facet快照刚完成更新后立即点击`capture.clear`，等待Capture行数量变为0。
-4. 不使用Playwright auto-retry，直接在同一断言点读取Method group count、GET option数量与当前选中行数量；必须同时为`0 / 0 / 0`。
-5. 保存Clear前后原始DOM快照、trace、日志与metadata；正常Close并验证Main/Core退出、8888释放、系统代理恢复和profile删除。
+2. 展开Method facet，经8888发送一条测试自产GET；通过Recording按钮暂停新录制，保留已有行。等待自产Capture行、GET option与非零计数可见，点击该行建立selection。系统代理可能捕获其他应用的CONNECT/GET，不假设全局Method或GET计数恰好为1；保存清空前实际计数。
+3. 核对清空筛选按钮disabled且opacity为0.35；真实点击GET option后按钮enabled且opacity为1。点击清空筛选，GET恢复`aria-pressed=false`、按钮重新disabled且opacity为0.35；自产请求和Inspector仍可见，不把清空筛选实现为清空记录。
+4. 在facet快照完成更新后点击`capture.clear`，等待Capture行数量变为0。
+5. 不使用Playwright auto-retry，直接在同一断言点读取Method group count、GET option数量与当前选中行数量；必须同时为`0 / 0 / 0`。
+6. 保存Clear前后原始DOM快照、trace、日志与metadata；正常Close并验证Main/Core退出、8888释放、系统代理恢复和profile删除。
 
 ### 预期效果
 

@@ -208,6 +208,7 @@ export function CaptureListbar({
           <IconButton
             icon={FunnelX}
             size="sm"
+            className={styles.filtersClear}
             disabled={!filtered}
             label={t('capture.clearAllFilters')}
             onClick={clearAllFilters}

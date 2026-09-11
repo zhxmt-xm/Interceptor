@@ -1,5 +1,6 @@
+import { theme } from 'antd';
 import { Pause } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { WebSocketBreakpointSettings } from '../../../../shared/desktop-api';
@@ -32,7 +33,11 @@ export function WebSocketBreakpointControl({
   onDisable,
 }: WebSocketBreakpointControlProps): React.JSX.Element {
   const { t } = useTranslation();
+  const { token } = theme.useToken();
   const [setupOpen, setSetupOpen] = useState(false);
+  const hoverStyle = {
+    '--icon-button-hover-background': token.colorFillTertiary,
+  } as CSSProperties;
 
   if (breakpoint) {
     return (
@@ -65,7 +70,7 @@ export function WebSocketBreakpointControl({
         />
       )}
     >
-      <span>
+      <span style={hoverStyle}>
         <IconButton
           icon={Pause}
           size="sm"

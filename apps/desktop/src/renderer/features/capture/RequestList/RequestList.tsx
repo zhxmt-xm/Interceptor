@@ -105,7 +105,7 @@ export function RequestList({
       <div className={styles.list}>
       <div
         className={styles.head}
-        style={{ paddingRight: 18 + scrollbarWidth }}
+        style={{ paddingRight: 14 + scrollbarWidth }}
       >
         <span data-parity="capture-list-app-header" />
         <span>{t('capture.method')}</span>

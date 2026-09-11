@@ -42,6 +42,12 @@ test('capture.clear-facets clears rows, selection and facets in one visible tran
     { method: 'GET' },
   )).resolves.toMatchObject({ statusCode: 200 });
 
+  // 冻结新录制，不假设系统代理接管期间只有本轮请求；既有请求与facet仍保留供Clear验证。
+  // Freeze new recording without assuming exclusive system traffic; keep existing rows and facets for Clear assertions.
+  const recording = getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle);
+  await recording.click();
+  await expect(recording).toHaveAttribute('aria-pressed', 'false');
+
   const rows = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow);
   const requestRow = rows.filter({ hasText: requestPath }).last();
   await expect(requestRow).toBeVisible();
@@ -56,12 +62,34 @@ test('capture.clear-facets clears rows, selection and facets in one visible tran
     page,
     AutomationIdFactory.captureFacetOption('method', 'GET'),
   );
-  await expect(methodGroupCount).toHaveText('1');
+  await expect(methodGroupCount).toHaveText(/^[1-9]\d*$/);
   await expect(getOption).toBeVisible();
-  await expect(getByAutomationId(
+  const getCount = getByAutomationId(
     page,
     AutomationIdFactory.captureFacetOptionCount('method', 'GET'),
-  )).toHaveText('1');
+  );
+  await expect(getCount).toHaveText(/^[1-9]\d*$/);
+
+  // 筛选清除只重置筛选，不清记录或selection；按钮随有效筛选在禁用与启用间切换。
+  // Clearing filters preserves records and selection; the button follows inactive and active filter states.
+  const clearFilters = getByAutomationId(page, AUTOMATION_IDS.capture.clearFilters);
+  await expect(clearFilters).toBeDisabled();
+  await expect(clearFilters).toHaveCSS('opacity', '0.35');
+  await getOption.click();
+  await expect(getOption).toHaveAttribute('aria-pressed', 'true');
+  await expect(clearFilters).toBeEnabled();
+  await expect(clearFilters).toHaveCSS('opacity', '1');
+  await clearFilters.click();
+  await expect(getOption).toHaveAttribute('aria-pressed', 'false');
+  await expect(clearFilters).toBeDisabled();
+  await expect(clearFilters).toHaveCSS('opacity', '0.35');
+  await expect(requestRow).toBeVisible();
+  await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close)).toBeVisible();
+
+  const beforeClear = {
+    methodGroupCount: (await methodGroupCount.textContent())?.trim() ?? null,
+    getCount: (await getCount.textContent())?.trim() ?? null,
+  };
 
   // Clear完成后只等待列表业务结果，再原始读取selection与facet，禁止auto-retry掩盖600ms旧快照。
   // After Clear, wait only for the list result, then read selection and facets raw so auto-retry cannot hide the stale 600 ms snapshot.
@@ -88,6 +116,7 @@ test('capture.clear-facets clears rows, selection and facets in one visible tran
   const evidencePath = testInfo.outputPath('capture-clear-facets.json');
   await writeFile(evidencePath, JSON.stringify({
     requestPath,
+    beforeClear,
     immediateState,
   }, null, 2), 'utf8');
   await testInfo.attach('capture-clear-facets', {

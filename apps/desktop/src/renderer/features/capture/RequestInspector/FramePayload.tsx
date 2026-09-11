@@ -49,7 +49,7 @@ export function FramePayload({
             ? t('capture.sent')
             : t('capture.received')}{' '}
           {frame.opcode === 1
-            ? t('capture.text').toLocaleLowerCase(i18n.language)
+            ? t('breakpoints.replacementText').toLocaleLowerCase(i18n.language)
             : t('capture.binary').toLocaleLowerCase(i18n.language)}
         </b>
         <Count>

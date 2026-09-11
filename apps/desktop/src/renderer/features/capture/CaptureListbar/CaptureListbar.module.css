@@ -96,6 +96,12 @@
   box-shadow: 0 0 0 2px var(--filter);
   pointer-events: none;
 }
+.filtersClear {
+  color: var(--text-3);
+}
+.filtersClear:disabled {
+  opacity: 0.35;
+}
 .recording {
   display: flex;
   align-items: center;

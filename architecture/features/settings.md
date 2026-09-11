@@ -88,6 +88,12 @@ Renderer瞬态导航反馈，不写workspace、不进入URL，也不由Main/Core
 
 ## 2. 证书与 HTTPS MITM
 
+### Certificates面板parity场景
+
+- 2026-09-11旧`settings`场景补正常Toggle sidebar与Certificates导航，解决expanded/collapsed导致的160px差异；旧`light/shell-v2/settings.png`不存在，改为复用已有明暗`settings/framed.png`，不生成或修改基准。
+- 明暗各10 matched、0 missing、2 flagged；`MITM active`与`Show in file manager`仍各约1px位置差，继续报告。像素对比由n/a恢复为约1.46%/1.45%，证书fixture字段、说明和图标的既有差异不冒充产品已修复。
+- 产品、证书/系统状态、fake数据与设计稿未改；只运行受影响parity和脚本语法检查，不增加工具自身测试或重复证书E2E。TEMP证据前缀`interceptor-settings-certificates-20260911`；[工作项报告](../../commit-changes/202609111558_ui_parity_progress.html#settings-certificates)记录范围与遗留。
+
 ### 2.1 三对密钥
 
 | 密钥对 | 持有者 | 用途 |
@@ -341,6 +347,13 @@ Windows系统代理崩溃恢复已完成：跨profile App crash/relaunch、Core-
 | macOS | `macos/helper.swift`，Authorization Services + SystemConfiguration，枚举当前 Network Set 全部活动 service，单 session 内 set/commit/apply |
 
 只允许 loopback listener。
+
+#### Proxy面板parity场景
+
+- 2026-09-11只修改`settings-proxy`明暗验收配置：通过正常Toggle sidebar先展开侧栏，与设计的expanded状态一致；Listener地址限定到Address行，不再误配侧栏或Current configuration的重复端点。
+- 浅色原13目标有12个flag，主要是160px侧栏状态差异与地址误配；最终明暗各13/13 matched、0 missing/flagged、最大0.9px，像素差约1.25%/1.23%。深色补齐与浅色相同的检查目标，不放宽阈值。
+- 产品、设计稿、PNG基准、fake数据与完整parity报告均未改；直接运行受影响场景和脚本语法检查，没有新增工具自身测试，也不重复运行系统代理业务E2E。
+- TEMP前缀`interceptor-settings-proxy-20260911`保存前后JSON/Markdown、Renderer/diff与日志；[工作项报告](../../commit-changes/202609111558_ui_parity_progress.html#settings-proxy)说明实际范围。其他Settings与Shell差异独立保留。
 
 ### 3.4 上游代理链式转发 [已实现，仅 Windows]
 

@@ -1,9 +1,13 @@
 .control {
   flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid transparent;
+  color: var(--text);
 }
 
-.armed,
-.armed:hover {
+.armed {
+  --icon-button-hover-background: color-mix(in srgb, var(--yellow) 14%, transparent);
+  --icon-button-hover-color: var(--yellow);
   background: color-mix(in srgb, var(--yellow) 14%, transparent);
   color: var(--yellow);
 }

@@ -68,7 +68,16 @@ test('capture.scenarios.websocket captures directional text binary and controlle
           const sequence = Number(frameId?.slice(framePrefix.length));
           expect(Number.isSafeInteger(sequence)).toBe(true);
           await frame.click();
-          await getByAutomationId(page, AutomationIdFactory.websocketPayloadCopy(exchangeId, sequence)).click();
+          const payloadCopy = getByAutomationId(page, AutomationIdFactory.websocketPayloadCopy(exchangeId, sequence));
+          const payloadTitle = payloadCopy.locator('..').locator('b');
+          await expect(payloadTitle).toBeVisible();
+          if (expected.id === 'ws-text') {
+            const screenshotPath = testInfo.outputPath(`websocket-${directionId}-title.png`);
+            await page.screenshot({ path: screenshotPath });
+            await testInfo.attach(`websocket-${directionId}-title`, { path: screenshotPath, contentType: 'image/png' });
+          }
+          await expect(payloadTitle).not.toContainText('capture.');
+          await payloadCopy.click();
           await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(payload);
           await frame.click();
         }

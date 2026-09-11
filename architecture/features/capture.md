@@ -285,6 +285,21 @@ stateDiagram-v2
 - 最终真实WebSocket四场景1/1（19.2s）、现有历史/方向unit3/3、Desktop/design typecheck通过；Main/Core `31728/34944`正常退出，8888及WinINet/journal恢复。明暗三态6/6状态区matched、最大0.6px且无字号/颜色差异；同页Inspector host保留既有1.6px高度差，不作为本项新修复或全页parity全绿。
 - 最终trace/metadata、parity JSON与截图归档`interceptor-websocket-message-state-green-20260909-203912.zip`，SHA256 `09AABB44F67EF585F11DB3D9A454ABD5870C16881C314B220464C58C6E1D8835`。未新增设计/fixture工具测试，验收对象为真实产品显示与消息行为。
 
+#### WebSocket载荷标题
+
+- FramePayload与相邻FrameRow复用已有`breakpoints.replacementText`，展开标题使用本地化方向和Text/Binary类型，不再引用未定义的`capture.text`；消息内容、Copy、样式和帧选择不变。
+- 2026-09-11前置渲染unit的两个文本标题Red，二进制/历史队列5项Green；首次Monaco/Node环境错误不算产品Red。真实WebSocket在当前中文环境复现资源键泄漏，Main/Core `42540/1756`正常销毁，保存trace与标题截图后才改产品。
+- 最终同组unit7/7、加i18n catalog共16/16、Desktop typecheck通过；真实`capture.scenarios.websocket`1/1（56.9s），文本、二进制、双向、控制帧及5MiB边界/Copy同时通过，Main/Core `35356/9584`正常销毁，fixture验证8888、WinINet/journal与登记进程恢复。
+- WebSocket旧parity明确为collapsed/open状态，标题用DOM Range、断点入口按真实图标按钮配对；保留`Received text`目标并补深色。已有设计场景缺失的明暗`inspector-websocket.png`各生成1张，392张旧PNG逐张SHA256不变，设计源码未改。
+- 最终明暗14 matched、0 missing、6 flagged，平均像素差2.73%；每主题仍有断点按钮颜色/边框、载荷标题字号/位置、Binary行位置三个既有样式差异，最大25.6px，未算整页通过。TEMP前缀`interceptor-websocket-title-20260911`与`interceptor-websocket-scene-20260911`保存前置/最终证据；[报告](../../commit-changes/202609111558_ui_parity_progress.html#websocket-title)内嵌真实Electron同场景标题前后图。
+
+#### gRPC消息行高
+
+- `GrpcMessages.message`局部使用`line-height: normal`，保持38px行高、10.5px字号、字体、列宽、消息选择与Copy不变。原`Message 2`和`gzip compressed`文字盒因继承Shell行高比设计少1.1px，前置parity已复现；修复后两目标宽高与位置差均0。
+- gRPC验收场景明确collapsed/open与默认passthrough状态，补深色；从已有未修改的设计场景生成明暗`inspector-grpc.png`各1张，394张旧PNG逐张SHA256不变。最终16/16目标matched、0 missing/flagged、最大0.6px；像素差2.72%/2.93%，不把目标匹配当整张图逐像素相同。
+- 2026-09-11既有row-format/Capture Store unit33/33、Desktop typecheck通过，真实`capture.scenarios.grpc`1/1（2.1m）；原五类gRPC与多消息5MiB边界/Copy同跑，Main/Core `36412/33540`正常销毁，本轮CA/Root集合、8888、WinINet/journal恢复。未改用户流程或补造历史E2E Red。
+- TEMP前缀`interceptor-grpc-rows-20260911`与`interceptor-protocol-scenes-20260911-grpc-*`保留前后parity、截图、旧图hash及真实trace/metadata；[报告](../../commit-changes/202609111558_ui_parity_progress.html#grpc-rows)内嵌同一Renderer场景的消息行前后图。Tunnel配置与剩余差异仍在同一UI parity item中分步处理，不另拆commit或报告。
+
 #### Inspector标题行高
 
 - URL行高的本项验收通过：只在`.url`显式使用normal，不改字体、字号、URL展示或Copy行为。旧报告少1.6px的高度差在真实静态字体加载后消失，15个现有场景的URL宽高差均为0；不以此声明整页位置和像素全部匹配。
@@ -324,6 +339,31 @@ stateDiagram-v2
 - 同一普通Capture视图的`List app cell unknown`纵向差从-260.1px降到-0.1px，4px横向列差仍保留。38个目标中只有此项几何变化超过0.2px；全页仍38 matched、0 missing、22 flagged、最大52.8px，pixel diff 2.9208%，不声明全页通过。
 - 既有规则筛选、HTTP断点、WebSocket空态、gRPC、Tunnel五个代表入口均可打开：HTTP断点12目标与WebSocket空态4目标全匹配；Rule marker仍偏53px，gRPC/Tunnel分别2/4个flag且像素基准缺失，继续作为独立欠账，不归为本项已修复。
 - 证据保存在TEMP下`interceptor-capture-list-fixture-20260910-182434`及`interceptor-capture-fixture-regression-20260910-182601-*`的JSON、Markdown、日志与截图。配置语法和编辑器检查通过；本项是验收fixture修改，不新增工具自身测试，也不运行无关产品E2E。
+
+#### Capture状态栏列间距
+
+- `CaptureStatusbar.bar`补齐设计已有的三列`gap: 16px`，其余内容、状态、交互与30px状态栏高度不变；没有重写端点文字或用偏移抵消差异。设计稿、PNG基准与完整parity报告未改。
+- 2026-09-11同一`capture`场景前置parity为端点宽差16px，修复后宽差0、最大0.5px；38目标中只有端点结果变化，flagged由22降到21，pixel diff仍为2.9208%。列表与Header既有差异继续保留。
+- 现有`statusbar-upstream-down`明暗场景补端点与passthrough目标，并显式使用与设计一致的`mitmActive: false`；6/6目标匹配、0 missing/flagged、最大0.5px。两场景原PNG缺失，像素检查为n/a，不新增或改写基准补造通过。
+- Capture Store与Proxy readiness既有unit29/29、Desktop typecheck通过；未修改用户流程，复跑真实`capture.recording.pause-resume`1/1（22.3s）。Main/Core `14636/40784`正常销毁，fixture验证8888、WinINet、共享journal与登记进程恢复；不把该回归当其他流程的前置Red。
+- TEMP证据前缀`interceptor-capture-status-20260911-125914`包含前后JSON/Markdown/Renderer截图、明暗检查、类型与unit日志、真实E2E trace/metadata。离线改动报告见[状态栏列间距](../../commit-changes/202609111558_ui_parity_progress.html#capture-statusbar)。
+
+#### Capture列表列轨道
+
+- `RequestList`表头与`RequestRow`采用设计已有的`20/66/minmax(0,1fr)/52/40/44/48/52px`列轨道，gap10px、左右14px；表头继续补偿真实scrollbar宽度。文字使用局部normal行高，不改字体、34px表头或52px请求行。
+- 删除旧600px压缩档；按设计500px隐藏Proto/Type，380px再隐藏Size/Time，后者Method为62px。Path保持可缩小与省略，不以150px最小宽度撑破列表。未改设计稿、PNG或全局token。
+- 2026-09-11前置普通Capture为15个列表目标有差异，最大34px；最终明暗30个列表目标全部0px。两主题各38 matched、0 missing、6 flagged，剩余2个控件与4个Header marker不属于列表修复；平均像素差约2.85%。深色复用已有`inspector-sidebar-expanded.png`。
+- 一次性产品Renderer探针先确认570px等窄列表的8px gap/12px padding及表头错列；修复后明暗14组检查通过，实际列表218–730px，列隐藏、表头对齐、无列溢出和34/52px高度一致。探针没有注入Store或产品测试入口，用完删除。
+- 既有Capture Store/Proxy readiness unit29/29及最终Desktop typecheck通过。真实`capture.clear-facets`首轮因系统CONNECT流量使Method计数2而失败，Main/Core `36604/26256`正常退出；这不是产品Red。workflow改为自产请求后经Recording按钮暂停新录制，保存非零原始计数，不再假定系统流量独占；Clear后同帧`rows/Inspector/Method count/GET option`全零断言保持。
+- 最终真实workflow1/1（7.6s），Main/Core `13700/42588`正常销毁，fixture验证8888、WinINet/journal和登记进程恢复。证据前缀为TEMP下`interceptor-capture-list-20260911-1310`，默认改前复用`interceptor-capture-status-20260911-125914-after`；[离线报告](../../commit-changes/202609111558_ui_parity_progress.html#capture-list)内嵌同主题、尺寸、状态的默认与窄列表前后截图。
+
+#### Capture图标控件目标与状态
+
+- Breakpoint toolbar原target报告未用于显示的继承字号；Filter clear原target是包裹`IconButton`的span，颜色不是实际按钮颜色。parity现对纯图标控件比较实际button的颜色、背景、边框、圆角、opacity及SVG几何/颜色，不修改1px阈值或文字目标的字体检查。Breakpoint产品实现未改。
+- 新目标先确认Filter clear真实差异：禁用opacity0.55而设计0.35，启用使用`--text-2`而设计`--text-3`。仅在`CaptureListbar`给现有IconButton传局部class并还原这两项，hover沿用共享按钮；共享IconButton、设计稿与PNG不变。
+- 2026-09-11普通Capture明暗各40 matched、0 missing、4 flagged，所有控件目标匹配；剩余4个Header marker不属于本项。Rule筛选为5 matched、0 missing、1个既有marker flag。临时深色启用/明暗hover的12个目标（含定位锚点）全部匹配、最大0.5px；这些状态没有专属PNG，仅记录DOM几何，不伪造像素结果。
+- Capture Store/Proxy readiness unit29/29、Desktop typecheck通过；现有真实`capture.clear-facets`增加禁用opacity、GET筛选启用、清空筛选后再禁用及记录/Inspector保留断言，随后仍验证Clear记录的同帧全零。最终1/1（15.1s），Main/Core `31884/34744`正常销毁，fixture验证8888、WinINet/journal与登记进程恢复。
+- TEMP前缀`interceptor-capture-controls-20260911`保存禁用/启用前后parity、明暗/hover检查、unit/types及真实E2E trace/metadata；[离线报告](../../commit-changes/202609111558_ui_parity_progress.html#capture-filter-clear)内嵌两组同状态产品Renderer截图。临时状态检查脚本用完删除，没有新增工具自身测试。
 
 #### UTF-8预览截断
 

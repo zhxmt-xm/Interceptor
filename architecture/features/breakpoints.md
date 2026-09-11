@@ -133,6 +133,11 @@ File模式未选文件时按现有设计显示112px最小高度的居中容器�
 
 ### 4.3 WebSocket 帧断点
 
+- 消息断点入口按已有设计保持30×30px、1px透明边框、默认`--text`；默认hover取Ant Button的`colorFillTertiary`，启用后hover保留黄色。`IconButton`只增加可选hover CSS变量，未提供时默认值不变；不提高选择器特异性覆盖共享样式。
+- 2026-09-11前置parity确认默认色/边框和启用hover差异；真实Close workflow以0px边框取得Red，Main/Core `31368/37908`正常销毁。后续150%缩放的0.666667px是CSS物理像素取整，首次Green尝试因此误报（`13356/6960`正常销毁），不算产品回归；最终断言按devicePixelRatio核对边框，30px尺寸和透明颜色检查保持。
+- 最终真实`breakpoints.websocket-close`1/1（8.3s），启用hover颜色不变且origin收到编辑后的1001；Main/Core `26524/29720`正常销毁，fixture验证8888、WinINet/journal与登记进程恢复。相关unit26/26、Desktop typecheck通过；临时消息断点八态与普通IconButton六态共42/42目标匹配、最大0.6px，普通按钮默认样式不变。
+- WebSocket明暗主场景14 matched、0 missing、4个正文标题/Binary行旧flag，按钮目标全匹配；平均像素差2.73%。未改设计或PNG，不算整页通过。TEMP证据前缀`interceptor-websocket-toggle-20260911`，含真实Red/Green、状态矩阵、截图和trace；[工作项报告](../../commit-changes/202609111558_ui_parity_progress.html#websocket-toggle)内嵌真实按钮前后图。
+
 ```mermaid
 sequenceDiagram
     autonumber

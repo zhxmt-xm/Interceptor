@@ -1,12 +1,13 @@
 .row {
   display: grid;
-  grid-template-columns: 20px 74px minmax(150px, 1fr) 56px 34px 46px 50px 54px;
+  grid-template-columns: 20px 66px minmax(0, 1fr) 52px 40px 44px 48px 52px;
   align-items: center;
   justify-items: start;
-  gap: 12px;
-  padding: 0 18px;
+  gap: 10px;
+  padding: 0 14px;
   height: 52px;
   font-size: 12.5px;
+  line-height: normal;
   border: 0;
   border-bottom: 1px solid var(--border);
   background: transparent;
@@ -18,16 +19,9 @@
   width: 100%;
 }
 /* 列宽档位与表头一致；容器查询的参照系是列表容器。 */
-@container (max-width: 600px) {
+@container (max-width: 500px) {
   .row {
-    grid-template-columns: 20px 62px minmax(140px, 1fr) 48px 30px 40px 44px 48px;
-    gap: 8px;
-    padding: 0 12px;
-  }
-}
-@container (max-width: 470px) {
-  .row {
-    grid-template-columns: 20px 62px minmax(140px, 1fr) 48px 44px 48px;
+    grid-template-columns: 20px 66px minmax(0, 1fr) 52px 48px 52px;
   }
   .row > .proto,
   .row > .type {
@@ -36,7 +30,7 @@
 }
 @container (max-width: 380px) {
   .row {
-    grid-template-columns: 20px 62px minmax(140px, 1fr) 48px;
+    grid-template-columns: 20px 62px minmax(0, 1fr) 52px;
   }
   .row > .size,
   .row > .time {

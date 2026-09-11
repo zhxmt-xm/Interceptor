@@ -15,8 +15,8 @@
   height: 18px;
 }
 .button:not(:disabled):hover {
-  background: var(--hover);
-  color: var(--text);
+  background: var(--icon-button-hover-background, var(--hover));
+  color: var(--icon-button-hover-color, var(--text));
 }
 .button:disabled {
   color: var(--text-3);

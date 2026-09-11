@@ -36,10 +36,22 @@ test('breakpoints.websocket-close forwards a close-code-only edit end to end', a
     AUTOMATION_IDS.capture.inspector.tab.messages,
   ).click();
 
-  await getByAutomationId(
+  const breakpointToggle = getByAutomationId(
     page,
     AUTOMATION_IDS.capture.websocket.breakpointToggle,
-  ).click();
+  );
+  const toggleScreenshot = testInfo.outputPath('websocket-breakpoint-toggle.png');
+  await page.screenshot({ path: toggleScreenshot });
+  await testInfo.attach('websocket-breakpoint-toggle', { path: toggleScreenshot, contentType: 'image/png' });
+  await expect(breakpointToggle).toHaveCSS('width', '30px');
+  await expect(breakpointToggle).toHaveCSS('height', '30px');
+  const border = await breakpointToggle.evaluate((button) => ({
+    width: Number.parseFloat(getComputedStyle(button).borderTopWidth),
+    pixelRatio: window.devicePixelRatio,
+  }));
+  expect(border.width * border.pixelRatio).toBeCloseTo(Math.max(1, Math.floor(border.pixelRatio)), 4);
+  await expect(breakpointToggle).toHaveCSS('border-top-color', 'rgba(0, 0, 0, 0)');
+  await breakpointToggle.click();
   const messageFrame = getByAutomationId(
     page,
     AUTOMATION_IDS.capture.websocket.breakpointFrame.message,
@@ -56,6 +68,18 @@ test('breakpoints.websocket-close forwards a close-code-only edit end to end', a
     page,
     AUTOMATION_IDS.capture.websocket.breakpointEnable,
   ).click();
+
+  // 已启用按钮的hover必须保留黄色状态，不被共享图标按钮的默认反馈覆盖。
+  // An armed button keeps its warning appearance on hover instead of inheriting the generic icon feedback.
+  await expect(getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointEnable)).toBeHidden();
+  await page.mouse.move(0, 0);
+  const armedStyle = await breakpointToggle.evaluate((button) => {
+    const computed = getComputedStyle(button);
+    return { color: computed.color, background: computed.backgroundColor };
+  });
+  await breakpointToggle.hover();
+  await expect(breakpointToggle).toHaveCSS('color', armedStyle.color);
+  await expect(breakpointToggle).toHaveCSS('background-color', armedStyle.background);
 
   client.sendCloseFrame(1000);
   const closeCode = getByAutomationId(page, AUTOMATION_IDS.breakpoints.closeCode);

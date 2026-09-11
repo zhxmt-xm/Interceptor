@@ -9,15 +9,16 @@
 }
 .head {
   display: grid;
-  grid-template-columns: 20px 74px minmax(150px, 1fr) 56px 34px 46px 50px 54px;
+  grid-template-columns: 20px 66px minmax(0, 1fr) 52px 40px 44px 48px 52px;
   align-items: center;
   justify-items: start;
-  gap: 12px;
-  padding: 0 18px;
+  gap: 10px;
+  padding: 0 14px;
   flex: 0 0 34px;
   height: 34px;
   font-family: var(--font-ui);
   font-size: 12px;
+  line-height: normal;
   font-weight: 600;
   color: var(--text-3);
   border-bottom: 1px solid var(--border);
@@ -26,18 +27,9 @@
 .head > span {
   white-space: nowrap;
 }
-/* 变窄时先压缩间距与固定列；只有真的放不下才按 Proto/Type → Size/Time 的顺序让位，
-   这四列在筛选分栏里都可达，而 Path · Host 无处替代。 */
-@container (max-width: 600px) {
+@container (max-width: 500px) {
   .head {
-    grid-template-columns: 20px 62px minmax(140px, 1fr) 48px 30px 40px 44px 48px;
-    gap: 8px;
-    padding: 0 12px;
-  }
-}
-@container (max-width: 470px) {
-  .head {
-    grid-template-columns: 20px 62px minmax(140px, 1fr) 48px 44px 48px;
+    grid-template-columns: 20px 66px minmax(0, 1fr) 52px 48px 52px;
   }
   .head > :nth-child(5),
   .head > :nth-child(6) {
@@ -46,7 +38,7 @@
 }
 @container (max-width: 380px) {
   .head {
-    grid-template-columns: 20px 62px minmax(140px, 1fr) 48px;
+    grid-template-columns: 20px 62px minmax(0, 1fr) 52px;
   }
   .head > :nth-child(7),
   .head > :nth-child(8) {
