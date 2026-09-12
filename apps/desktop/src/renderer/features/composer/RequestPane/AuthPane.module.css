@@ -9,11 +9,23 @@
 }
 
 .row {
-  display: grid;
-  grid-template-columns: 84px minmax(0, 1fr);
+  display: flex;
   gap: 12px;
   align-items: center;
   max-width: 620px;
+}
+
+.row > * {
+  flex: 0 0 auto;
+}
+
+.row > :nth-child(2) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.row > :first-child {
+  flex: 0 0 84px;
 }
 
 .label {

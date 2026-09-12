@@ -143,7 +143,7 @@ export function WebSocketMessages({
         />
       </div>
 
-      <div className={styles.frameList}>
+      <div className={cx(styles.frameList, selectedPending && selectedPendingIsHead && styles.pausedFrameList)}>
         <div className={styles.frameScroll} ref={scrollRef} onScroll={handleScroll}>
           {loading ? <div className={styles.empty} data-parity="websocket-message-state">{t('capture.loadingMessages')}</div> : null}
           {!loading && error ? (
@@ -174,7 +174,6 @@ export function WebSocketMessages({
                       key={pending.id}
                       ref={virtualizer.measureElement}
                       data-index={virtualRow.index}
-                      className={cx(styles.virtualItem, styles.pendingVirtualItem)}
                       style={{
                         position: 'absolute',
                         top: 0,
@@ -231,7 +230,6 @@ export function WebSocketMessages({
                     key={frame.seq}
                     ref={virtualizer.measureElement}
                     data-index={virtualRow.index}
-                    className={styles.virtualItem}
                     style={{
                       position: 'absolute',
                       top: 0,

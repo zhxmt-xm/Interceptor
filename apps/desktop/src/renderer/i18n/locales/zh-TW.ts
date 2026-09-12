@@ -226,6 +226,8 @@ export const zhTWCatalog = {
   'capture.connectionMetadataOnly': '未產生或信任本機 CA。只會儲存連線中繼資料。',
   'capture.mitmActiveForNewConnections': 'MITM 已對新連線啟用。請重新連線此用戶端以檢查其 HTTPS 流量。',
   'capture.httpsSetupDescription': '只有在需要檢查 HTTPS 請求與回應內容時，才設定本機根憑證。',
+  'capture.httpsClientApps': '用戶端應用',
+  'capture.httpsInternet': '網際網路',
   'capture.proxyRestartsSameAddress': '本機 Proxy 將在相同位址重新啟動。',
   'capture.httpsRemainsEncrypted': '設定完成前，HTTPS 將繼續以加密方式不中斷傳輸。',
   'capture.startDecrypting': '開始解密',

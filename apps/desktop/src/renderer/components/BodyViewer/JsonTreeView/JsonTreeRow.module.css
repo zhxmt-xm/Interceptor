@@ -20,21 +20,28 @@
   background: var(--accent-soft);
 }
 
-/* The chevron hangs into the indent slot so a leaf and its expandable sibling keep
-   the same text origin. */
-.toggle {
-  display: grid;
+.disclosure {
+  display: inline-flex;
   width: 15px;
   height: 15px;
   flex: 0 0 auto;
-  margin-left: -15px;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle {
+  display: flex;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
   padding: 0;
   border: 0;
   border-radius: 4px;
   background: transparent;
   color: var(--text-3);
   cursor: pointer;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
 }
 
 .toggle svg {

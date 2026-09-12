@@ -36,6 +36,20 @@ test('capture.scenarios.tls distinguishes opaque tunnels from decrypted H1 and H
     await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.response)).toHaveCount(0);
     await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane)).toHaveCount(0);
     evidence.push({ scenarioId: passthrough.id, protocol: 'tls', row: await tunnelRow.getAttribute('data-automation-id') });
+
+    // 打开并取消HTTPS设置，连接示意存在但不得生成CA或改变未解密状态。
+    // Open and cancel HTTPS setup; show the route without generating a CA or decrypting traffic.
+    await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.setupHttps).click();
+    const setup = page.getByRole('dialog');
+    await expect(setup).toBeVisible();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.capture.httpsSetup.connectionChain)).toBeVisible();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.capture.httpsSetup.generate)).toBeEnabled();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.capture.httpsSetup.install)).toBeDisabled();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.capture.httpsSetup.startDecrypting)).toBeDisabled();
+    await setup.screenshot({ path: testInfo.outputPath('https-setup-connection-chain.png') });
+    await getByAutomationId(page, AUTOMATION_IDS.capture.httpsSetup.cancel).click();
+    await expect(setup).toHaveCount(0);
+    await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane)).toHaveCount(0);
     await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
 
     // 用户操作：在真实Certificates UI生成安装本轮CA并启用MITM，不操作MMC或系统设置后门。

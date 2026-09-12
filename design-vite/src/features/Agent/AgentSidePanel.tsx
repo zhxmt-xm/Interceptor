@@ -14,7 +14,7 @@ export function AgentSidePanel(): React.JSX.Element | null {
   const unconfigured = state.agentProvider === 'unconfigured';
   return (
     <aside
-      className={`${styles.agentSidePanel} ${unconfigured ? styles.agentSidePanelUnconfigured : ''}`}
+      className={styles.agentSidePanel}
       data-parity="agent-panel"
     >
       <span className={styles.agentPanelResizeHandle} aria-hidden="true" />

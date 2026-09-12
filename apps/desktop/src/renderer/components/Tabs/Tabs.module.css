@@ -38,8 +38,9 @@
   color: var(--text-3);
 }
 .overflowTrigger {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 30px;
   height: 30px;
   flex: 0 0 auto;

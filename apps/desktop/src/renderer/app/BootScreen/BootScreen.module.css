@@ -3,8 +3,8 @@
   position: fixed;
   inset: 0;
   z-index: 200;
-  display: grid;
-  grid-template-rows: 46px minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   background: var(--bg);
   overflow: hidden;
 }
@@ -41,6 +41,7 @@
   position: relative;
   z-index: 1;
   display: flex;
+  flex: 0 0 46px;
   align-items: center;
   justify-content: flex-end;
   padding: 0 8px;
@@ -50,8 +51,11 @@
 .stage {
   position: relative;
   z-index: 1;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
 }
 
 .splash {
@@ -118,8 +122,9 @@
   width: 96px;
   height: 96px;
   border-radius: 26px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #fff;
   background: linear-gradient(140deg, var(--accent), var(--purple));
   box-shadow: 0 20px 54px -18px color-mix(in srgb, var(--accent) 80%, transparent);

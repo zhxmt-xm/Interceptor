@@ -1,18 +1,14 @@
 .agentSidePanel {
   position: relative;
   grid-area: agent;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   width: auto;
   min-width: 0;
   min-height: 0;
-  grid-template-rows: 44px minmax(0, 1fr) auto;
   container-type: inline-size;
   border-left: 1px solid var(--border-2);
   background: var(--panel);
-}
-
-.agentSidePanel.agentSidePanelUnconfigured {
-  grid-template-rows: 44px minmax(0, 1fr);
 }
 
 .agentPanelResizeHandle {

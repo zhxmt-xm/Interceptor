@@ -270,6 +270,20 @@ test('capture.navigate-tls-passthrough locates the persisted pattern', async ({
       AutomationIdFactory.tlsPassthroughHost(PASSTHROUGH_HOST),
     );
     await expectInsideViewport(target, desktopApp.page);
+    const targetLayout = await target.evaluate((element) => {
+      const content = element.children[1]!;
+      const hostName = content.querySelector('code')!;
+      const hint = content.lastElementChild!;
+      return {
+        hostLineHeight: getComputedStyle(hostName).lineHeight,
+        hintLineHeight: getComputedStyle(hint).lineHeight,
+        textGap: getComputedStyle(content).gap,
+        height: element.getBoundingClientRect().height,
+      };
+    });
+    expect(targetLayout).toMatchObject({ hostLineHeight: '14px', hintLineHeight: '14px', textGap: '2px' });
+    expect(targetLayout.height).toBeGreaterThanOrEqual(66);
+    await testInfo.attach('tls-passthrough-target-layout', { body: Buffer.from(JSON.stringify(targetLayout)), contentType: 'application/json' });
     await expect(target).toHaveAttribute('data-highlighted', 'false', { timeout: 4_500 });
 
     // 中文：重复导航必须重新产生高亮，而不是持久保存旧状态。

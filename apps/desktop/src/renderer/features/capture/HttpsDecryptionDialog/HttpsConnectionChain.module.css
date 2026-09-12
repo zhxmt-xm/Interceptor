@@ -1,0 +1,146 @@
+.chain {
+  display: grid;
+  grid-template-columns: 44px 92px 44px 92px 44px;
+  grid-template-rows: 46px auto;
+  justify-content: center;
+  align-items: center;
+  justify-items: center;
+  row-gap: 9px;
+  padding-top: 4px;
+}
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  grid-row: 1;
+}
+.client,
+.internet {
+  width: 36px;
+  height: 36px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+}
+.client svg,
+.internet svg {
+  width: 16px;
+  height: 16px;
+}
+.client {
+  grid-column: 1;
+}
+.internet {
+  grid-column: 5;
+}
+.interceptor {
+  position: relative;
+  grid-column: 3;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  color: #fff;
+  background: linear-gradient(140deg, var(--accent), var(--purple));
+  box-shadow: 0 8px 20px -7px color-mix(in srgb, var(--accent) 75%, transparent);
+}
+.interceptor svg {
+  width: 22px;
+  height: 22px;
+}
+.interceptor::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 19px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  animation: chain-pulse 2.6s ease-out infinite;
+}
+@keyframes chain-pulse {
+  from { inset: -3px; opacity: 0.9; }
+  to { inset: -14px; opacity: 0; }
+}
+.name {
+  grid-row: 2;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.clientName {
+  grid-column: 1;
+}
+.interceptorName {
+  grid-column: 3;
+  color: var(--text-2);
+}
+.internetName {
+  grid-column: 5;
+}
+.wire {
+  grid-row: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.inbound {
+  grid-column: 2;
+}
+.outbound {
+  grid-column: 4;
+}
+.segment {
+  flex: 1;
+  position: relative;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 30%, transparent), var(--accent));
+}
+.flow {
+  position: absolute;
+  top: 50%;
+  left: 62%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--accent);
+  box-shadow: 0 0 10px 2px color-mix(in srgb, var(--accent) 55%, transparent);
+  animation: chain-flow 1.5s linear infinite;
+}
+@keyframes chain-flow {
+  from { left: 0%; }
+  to { left: 100%; }
+}
+.badge {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  color: var(--text-3);
+}
+.badge svg {
+  width: 14px;
+  height: 14px;
+}
+.route {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.lock {
+  color: var(--yellow);
+  border-color: color-mix(in srgb, var(--yellow) 40%, transparent);
+}
+.lock.decrypting {
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 45%, transparent);
+}

@@ -3,8 +3,9 @@
   height: 16px;
   border-radius: 5px;
   border: 1.5px solid var(--border-2);
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #fff;
   flex: 0 0 auto;
   cursor: pointer;

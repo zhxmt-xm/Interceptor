@@ -71,7 +71,7 @@ export function CollectionTreeNode({
           onDoubleClick={() => setRenamingNode(node.id)}
           {...drag.rowProps(node.id)}
         >
-          <MethodBadge method={node.method} className={styles.itemMethod} />
+          <MethodBadge method={node.method} size="xs" className={styles.itemMethod} />
           <HighlightedName
             name={node.name}
             keyword={keyword}

@@ -108,8 +108,9 @@ export function CollapsibleSection({
           padding: 0,
         },
         icon: {
-          width: 13,
-          height: 13,
+          width: labelExtra ? 24 : 13,
+          height: labelExtra ? 24 : 13,
+          justifyContent: labelExtra ? 'flex-end' : 'center',
           marginInlineStart: 'auto',
         },
       }}

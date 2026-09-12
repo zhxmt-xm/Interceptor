@@ -64,10 +64,9 @@
   background: var(--accent);
 }
 
-/* label 是 UI 字体、count 是等宽字体，基线对齐才不会错开。 */
 .label {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
   line-height: 20px;
   font-style: normal;

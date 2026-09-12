@@ -491,6 +491,7 @@ for (const theme of ['light', 'dark']) {
   for (const tab of ['request', 'response', 'timing', 'cookies', 'tls']) {
     shots.push({ feature: 'capture', theme, variant: `inspector-${tab}`, state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', tab } });
   }
+  shots.push({ feature: 'capture', theme, variant: 'inspector-request-expanded', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', detail: 'open', tab: 'request' } });
   shots.push({ feature: 'capture', theme, variant: 'inspector-copy-actions', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', detail: 'open', tab: 'headers', copy: 'error' } });
   shots.push({ feature: 'capture', theme, variant: 'request-rule-menu', interaction: 'request-menu', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', tab: 'headers', requestMenu: '' } });
   shots.push({ feature: 'capture', theme, variant: 'rule-filter', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', tab: 'headers', ruleFilter: 'rule-stub' } });
@@ -595,6 +596,7 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'composer', theme, variant: 'history', state: { ...base, composerHistory: 'open' } });
   shots.push({ feature: 'composer', theme, variant: 'collection-collapsed', state: { ...base, collection: 'closed' } });
   shots.push({ feature: 'composer', theme, variant: 'collection-folder-menu', state: { ...base, ctxmenu: 'composer-folder' } });
+  shots.push({ feature: 'composer', theme, variant: 'collection-folder-selected', state: base, interaction: 'composer-folder-selected' });
   shots.push({ feature: 'composer', theme, variant: 'collection-rename', state: { ...base, collectionRename: 'on' } });
   shots.push({ feature: 'composer', theme, variant: 'collection-folder-actions', state: base, hover: '.cgrp[data-grp="checkout"] > .cgrp-h' });
 }
@@ -910,6 +912,10 @@ async function shoot(list) {
     if (s.interaction === 'rule-action-tags') {
       await page.getByRole('button', { name: 'Show all 4 actions' }).hover();
       await page.getByRole('tooltip').waitFor();
+    }
+    if (s.interaction === 'composer-folder-selected') {
+      await page.locator('.ccol [data-grp="github-repos"] > .cgrp-h .cgrp-namebtn').click();
+      await page.mouse.move(0, 0);
     }
     if (
       s.interaction !== 'request-menu'

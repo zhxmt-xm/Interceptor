@@ -85,10 +85,11 @@
 }
 
 .popover dl {
-  display: grid;
+  display: flex;
   gap: 5px;
   margin: 0;
   padding: 8px 0;
+  flex-direction: column;
 }
 
 .popover dt,

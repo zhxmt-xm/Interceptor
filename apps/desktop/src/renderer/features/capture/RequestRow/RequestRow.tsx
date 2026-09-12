@@ -122,7 +122,7 @@ export const RequestRow = memo(function RequestRow({
           </span>
           <span className={styles.hostName} data-parity="capture-list-host-cell">
             {summary.secure ? <Lock size={11} strokeWidth={2.2} /> : null}
-            {summary.host ?? '—'}
+            <span className={styles.hostText}>{summary.host ?? '—'}</span>
           </span>
         </span>
         {pausedPhase ? (

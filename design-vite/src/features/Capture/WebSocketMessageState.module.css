@@ -7,9 +7,10 @@
 }
 
 .websocketMessageState {
-  display: grid;
+  display: flex;
   min-height: 116px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   padding: 12px;
   color: var(--text-3);
   font-size: 12px;

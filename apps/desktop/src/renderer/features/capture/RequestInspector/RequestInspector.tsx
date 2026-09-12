@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS, type AutomationId } from '../../../../shared/automation-ids';
-import { cx, IconButton, MethodBadge, sizeLabel, StatusBadge, useClipboardCopy } from '../../../components';
+import { cx, IconButton, sizeLabel, StatusBadge, useClipboardCopy } from '../../../components';
 import { useBreakpointsStore } from '../../breakpoints';
 import {
   breakpointQueuePosition,
@@ -195,7 +195,12 @@ export function RequestInspector({
       <div className={styles.head}>
         <div className={styles.summaryCard}>
           {view ? (
-            <span className={styles.methodChip} data-parity="capture-inspector-method">{view.method.toUpperCase()}</span>
+            <span
+              className={cx(styles.methodChip, view.method.toUpperCase() === 'POST' && styles.postMethodChip)}
+              data-parity="capture-inspector-method"
+            >
+              {view.method.toUpperCase()}
+            </span>
           ) : null}
           <span className={styles.urlWrap}>
             <Tooltip title={view ? url : ''} placement="topLeft" mouseEnterDelay={0.4}>
@@ -298,7 +303,7 @@ export function RequestInspector({
                 <Kv
                   rows={[
                     [t('capture.requestUrl'), url],
-                    [t('capture.requestMethod'), <MethodBadge method={view.method} />, undefined, view.method.toUpperCase()],
+                    [t('capture.requestMethod'), view.method.toUpperCase(), 'a'],
                     [t('capture.statusCode'), <StatusValue kind={statusKind(view.statusCode)}>{statusText}</StatusValue>, undefined, statusText],
                     [t('capture.protocol'), protocolLabel(view.protocol).toUpperCase()],
                     ...(detail?.streamId !== undefined

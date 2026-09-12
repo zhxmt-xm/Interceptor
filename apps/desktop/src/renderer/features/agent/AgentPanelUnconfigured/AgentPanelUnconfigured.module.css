@@ -1,5 +1,6 @@
 .empty {
   display: flex;
+  flex: 1;
   min-width: 0;
   min-height: 0;
   flex-direction: column;
@@ -11,11 +12,12 @@
 }
 
 .icon {
-  display: grid;
+  display: flex;
   width: 42px;
   height: 42px;
   margin-bottom: 4px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
   border-radius: 10px;
   background: var(--accent-soft);

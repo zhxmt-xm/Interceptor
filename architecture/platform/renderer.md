@@ -42,6 +42,7 @@ HTTP breakpoint 仍使用整面板 `BreakpointInspector`，两条路径只共享
 `components/` 是扁平库，每个组件独立子目录（`Component.tsx` + `Component.module.css`）；含 Flyout（portal 锚定弹层）、ThemeSwitcher、LanguageSwitcher（侧栏底部）。`Tabs` 在容器放不下时把尾部项收进 `…` Flyout（隐藏测量层 + `ResizeObserver`），保证面板头高度固定。
 
 - `IconButton`可按调用点提供`--icon-button-hover-background`与`--icon-button-hover-color`，未提供仍使用`--hover`/`--text`。WebSocket消息断点用它保持armed黄色和Ant默认text按钮反馈，不改变共享默认主题；禁用态仍不响应hover。
+- `Button`由组件控制图标和独立label的`inline-flex`及`align-items: center`，button再用`justify-content: center`居中内容组。md/compact/sm继续分别为34/32/28px，不在通知等调用方覆盖位置；检查实际父布局规则、内容范围和正常gap，不以字形像素边界或自算矩形中心定义对齐，也不添加独立位移、裁字或行高补偿。
 
 ## 6. 共享树交互
 
@@ -118,6 +119,7 @@ App只更新DOM属性，不在确认之后重复写存储。隐私单字段patch
 
 - 2026-09-11旧Shell Settings/Diagnostics深色场景显式展开侧栏，Settings另明确打开Certificates；标题使用已有`measureText`读取DOM Range，不将flex剩余空间当作字宽。复用现有`dark/<feature>/framed.png`，不生成或更新基准。Rules/Composer配置输出不变。
 - 两个场景共10/10 matched、0 missing/flagged、最大0.9px，像素差Diagnostics约1.27%、Settings约1.45%。原Diagnostics为2 missing及标题1253.9px宽差；只修验收场景，不声明业务区域或整套parity通过。产品Shell、全局样式和tokens未改，不新增工具自身测试或重跑无关E2E；TEMP前缀`interceptor-shell-scenes-20260911`，报告见[Shell场景修正](../../commit-changes/202609111558_ui_parity_progress.html#shell-scenes)。
+- 后续旧Shell Composer去掉多余的目录选择并在设计侧显式选中请求；Diagnostics浅色补展开侧栏和既有framed路径，两场景10/10、最大0.9px。Rules状态的13px误差来自设计测完整状态项、产品仅测内层文字；统一测完整状态项并另测7px圆点后，Undo/深色Shell Rules两场景6/6、最大0.1px。产品和设计源码均未修改，不生成基准，不把旧Shell Rules缺失PNG的n/a算像素通过；TEMP `interceptor-parity-{shell-followup,rules-status}-20260911*`。
 - 六视图双主题、900×600 与四语言状态共 42 张截图，无页面级溢出。
 - Agent阶段1共36个专项parity view、248个target，`0 missing / 0 flagged`；首层Panel与Settings空态四图
 	合计`30/30 matched`，整体最大几何差`0.7px`。

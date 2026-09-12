@@ -2,6 +2,7 @@
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
+  justify-content: center;
   gap: 7px;
   height: 34px;
   padding: 0 14px;
@@ -20,8 +21,20 @@
   background: color-mix(in srgb, var(--panel) 94%, var(--text));
 }
 .button svg {
+  display: block;
+  flex: 0 0 auto;
   width: 15px;
   height: 15px;
+}
+.label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+.compact {
+  height: 32px;
+  padding: 0 11px;
 }
 .small {
   height: 28px;

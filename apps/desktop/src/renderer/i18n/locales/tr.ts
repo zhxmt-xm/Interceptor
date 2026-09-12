@@ -227,6 +227,8 @@ export const trCatalog = {
   'capture.connectionMetadataOnly': 'Yerel CA oluşturulmadı veya güvenilir olarak işaretlenmedi. Yalnızca bağlantı meta verileri saklanır.',
   'capture.mitmActiveForNewConnections': 'MITM yeni bağlantılar için etkin. HTTPS trafiğini incelemek için bu istemciyi yeniden bağlayın.',
   'capture.httpsSetupDescription': 'Yerel kök sertifikayı yalnızca HTTPS istek ve yanıt içeriklerini incelemeniz gerektiğinde ayarlayın.',
+  'capture.httpsClientApps': 'İstemci uyg.',
+  'capture.httpsInternet': 'İnternet',
   'capture.proxyRestartsSameAddress': 'Yerel proxy aynı adreste yeniden başlatılır.',
   'capture.httpsRemainsEncrypted': 'Kurulum tamamlanana kadar HTTPS şifreli ve kesintisiz olarak aktarılmaya devam eder.',
   'capture.startDecrypting': 'Şifre çözmeyi başlat',

@@ -84,15 +84,12 @@
   height: 22px;
   padding: 0 6px;
   font-weight: 650;
-  line-height: 10px;
 }
 
 .collapsibleSectionBadge[data-tone="success"] > span,
 .collapsibleSectionBadge[data-tone="warning"] > span {
   display: inline-flex;
-  height: 10px;
   align-items: center;
-  line-height: 10px;
 }
 
 .collapsibleSectionBadge[data-tone="success"] {

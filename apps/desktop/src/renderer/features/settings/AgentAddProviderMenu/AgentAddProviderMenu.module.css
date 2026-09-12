@@ -1,9 +1,10 @@
 .providerOptionIcon {
-  display: grid;
+  display: flex;
   width: 14px;
   height: 14px;
   flex: 0 0 14px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
 }
 
 .providerOptionIcon > svg {

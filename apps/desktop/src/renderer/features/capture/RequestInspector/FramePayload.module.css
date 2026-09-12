@@ -1,6 +1,6 @@
 .payload {
   padding: 11px 12px 15px;
-  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   background: var(--filter);
 }
 .payloadHead {

@@ -25,10 +25,11 @@
 }
 
 .mcpConfirmationIcon {
-  display: grid;
+  display: flex;
   width: 34px;
   height: 34px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
   background: color-mix(in srgb, var(--red) 12%, transparent);
   color: var(--red);

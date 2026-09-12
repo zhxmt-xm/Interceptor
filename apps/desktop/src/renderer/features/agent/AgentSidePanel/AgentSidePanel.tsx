@@ -26,7 +26,7 @@ export function AgentSidePanel({ onClose, onConfigure }: AgentSidePanelProps): R
   const configured = models.length > 0;
   return (
     <aside
-      className={`${styles.panel} ${configured ? '' : styles.unconfigured}`}
+      className={styles.panel}
       data-agent-context="none"
       data-agent-provider={configured ? 'configured' : 'unconfigured'}
       data-automation-id={AUTOMATION_IDS.agent.panel.root}

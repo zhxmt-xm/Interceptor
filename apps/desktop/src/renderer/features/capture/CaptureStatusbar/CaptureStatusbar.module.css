@@ -1,6 +1,5 @@
 .bar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  display: flex;
   align-items: center;
   gap: 16px;
   width: 100%;
@@ -18,13 +17,18 @@
   min-width: 0;
 }
 
+.slot:first-child,
 .slotEnd {
-  justify-self: end;
+  flex: 1;
+}
+
+.slotEnd {
+  justify-content: flex-end;
 }
 
 .breakpointBar {
   display: flex;
-  grid-column: 1 / -1;
+  flex: 1;
   align-items: center;
   gap: 12px;
   min-width: 0;

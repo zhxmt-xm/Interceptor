@@ -188,8 +188,34 @@ test('composer.collection.tree-interactions keeps tree intent and layout indepen
       AutomationIdFactory.composerCollectionFolderTarget(folderId),
     ).boundingBox()));
   expect(folderBoxes.every(Boolean)).toBe(true);
-  expect(folderBoxes[1]!.x).toBeGreaterThan(folderBoxes[0]!.x);
-  expect(folderBoxes[2]!.x).toBeGreaterThan(folderBoxes[1]!.x);
+  expect(folderBoxes[1]!.x - folderBoxes[0]!.x).toBeCloseTo(30, 1);
+  expect(folderBoxes[2]!.x - folderBoxes[1]!.x).toBeCloseTo(26, 1);
+  const methodAlignment = await persistedRequest.evaluate((row) => {
+    const badge = row.firstElementChild!;
+    const title = row.lastElementChild!;
+    const rowBounds = row.getBoundingClientRect();
+    const badgeBounds = badge.getBoundingClientRect();
+    const titleBounds = title.getBoundingClientRect();
+    const range = document.createRange();
+    range.selectNodeContents(badge);
+    const textBounds = range.getBoundingClientRect();
+    const rowCenter = rowBounds.y + rowBounds.height / 2;
+    const badgeStyle = getComputedStyle(badge);
+    return {
+      display: badgeStyle.display,
+      alignItems: badgeStyle.alignItems,
+      justifyContent: badgeStyle.justifyContent,
+      badgeWidth: badgeBounds.width,
+      badgeHeight: badgeBounds.height,
+      badgeCenterDelta: badgeBounds.y + badgeBounds.height / 2 - rowCenter,
+      titleCenterDelta: titleBounds.y + titleBounds.height / 2 - rowCenter,
+      textTop: textBounds.top - badgeBounds.top,
+      textBottom: badgeBounds.bottom - textBounds.bottom,
+      textLeft: textBounds.left - badgeBounds.left,
+      textRight: badgeBounds.right - textBounds.right,
+      pixelRatio: window.devicePixelRatio,
+    };
+  });
   const evidencePath = testInfo.outputPath('collection-tree-state.json');
   await writeFile(evidencePath, JSON.stringify({
     folderIds: [level1Id, level2Id, level3Id],
@@ -199,9 +225,26 @@ test('composer.collection.tree-interactions keeps tree intent and layout indepen
     remountPersistence,
     widthBefore,
     widthAfter,
+    methodAlignment,
   }, null, 2), 'utf8');
   await testInfo.attach('collection-tree-state', {
     path: evidencePath,
     contentType: 'application/json',
   });
+
+  // 标签通过flex在固定尺寸中居中文字，外框与标题保持居中对齐。
+  // Center badge text with flex in a fixed frame, and align the frame with its title.
+  expect(methodAlignment).toMatchObject({
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    badgeWidth: 40,
+    badgeHeight: 16,
+  });
+  expect(methodAlignment.badgeCenterDelta).toBeCloseTo(0, 1);
+  expect(methodAlignment.titleCenterDelta).toBeCloseTo(0, 1);
+  expect(Math.abs(methodAlignment.textTop - methodAlignment.textBottom))
+    .toBeLessThanOrEqual(1 / methodAlignment.pixelRatio);
+  expect(Math.abs(methodAlignment.textLeft - methodAlignment.textRight))
+    .toBeLessThanOrEqual(1 / methodAlignment.pixelRatio);
 });

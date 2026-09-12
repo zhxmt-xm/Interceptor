@@ -227,6 +227,8 @@ export const jaCatalog = {
   'capture.connectionMetadataOnly': 'ローカル CA は生成も信頼もされていません。接続メタデータのみが保存されます。',
   'capture.mitmActiveForNewConnections': 'MITM は新しい接続に対して有効です。このクライアントを再接続すると、HTTPS トラフィックを検査できます。',
   'capture.httpsSetupDescription': 'HTTPS のリクエストとレスポンスの内容を調べる必要がある場合にのみ、ローカルルート証明書を設定します。',
+  'capture.httpsClientApps': 'クライアント',
+  'capture.httpsInternet': 'インターネット',
   'capture.proxyRestartsSameAddress': 'ローカルプロキシは同じアドレスで再起動します。',
   'capture.httpsRemainsEncrypted': 'セットアップが完了するまで、HTTPS は暗号化されたまま中断なく転送されます。',
   'capture.startDecrypting': '復号を開始',

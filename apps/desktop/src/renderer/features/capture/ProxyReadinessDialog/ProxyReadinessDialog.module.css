@@ -23,8 +23,9 @@
   width: 30px;
   height: 30px;
   flex: 0 0 auto;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
   color: var(--yellow);
   background: color-mix(in srgb, var(--yellow) 13%, transparent);
@@ -78,7 +79,7 @@
 }
 .note {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 9px;
   padding: 10px 12px;
   border-radius: 9px;
@@ -89,7 +90,6 @@
 }
 .note svg {
   flex: 0 0 auto;
-  margin-top: 1px;
   color: var(--accent);
 }
 .error {

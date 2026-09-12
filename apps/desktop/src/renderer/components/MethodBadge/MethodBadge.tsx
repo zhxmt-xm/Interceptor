@@ -6,6 +6,7 @@ import { classifyMethod } from './utils';
 
 export interface MethodBadgeProps {
   method: string;
+  size?: 'md' | 'sm' | 'xs';
   className?: string;
   style?: CSSProperties;
 }
@@ -13,12 +14,22 @@ export interface MethodBadgeProps {
 /** Monospace HTTP-method pill, colored per method. */
 export function MethodBadge({
   method,
+  size = 'md',
   className,
   style,
 }: MethodBadgeProps): React.JSX.Element {
   const { label, tone } = classifyMethod(method);
   return (
-    <span className={cx(styles.badge, tone && styles[tone], className)} style={style}>
+    <span
+      className={cx(
+        styles.badge,
+        size === 'sm' && styles.small,
+        size === 'xs' && styles.extraSmall,
+        tone && styles[tone],
+        className,
+      )}
+      style={style}
+    >
       {label}
     </span>
   );

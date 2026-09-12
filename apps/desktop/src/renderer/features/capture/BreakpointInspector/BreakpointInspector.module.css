@@ -45,14 +45,22 @@
 }
 
 .context {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
   gap: 8px;
   min-height: 38px;
   padding: 0 14px;
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--yellow) 6%, transparent);
+}
+
+.context > * {
+  flex: 0 0 auto;
+}
+
+.context > :nth-child(2) {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .phase {
@@ -87,14 +95,14 @@
 }
 
 .statusRow {
-  display: grid;
-  grid-template-columns: auto 72px minmax(0, 1fr);
+  display: flex;
   height: 40px;
   align-items: center;
   gap: 8px;
 }
 
 .statusInput {
+  flex: 0 0 72px;
   width: 72px;
   height: 30px;
   padding: 0 8px;
@@ -113,6 +121,8 @@
 }
 
 .statusRow > span {
+  flex: 1;
+  min-width: 0;
   color: var(--green);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -360,7 +370,6 @@
   font-size: 10px;
   font-weight: 650;
   letter-spacing: 0;
-  line-height: 10px;
   text-transform: none;
 }
 
@@ -371,9 +380,7 @@
 
 .sourceTag > span {
   display: inline-flex;
-  height: 10px;
   align-items: center;
-  line-height: 10px;
 }
 
 .fileArea {
@@ -416,11 +423,12 @@
 }
 
 .fileIcon {
-  display: grid;
+  display: flex;
   width: 30px;
   height: 30px;
   flex: 0 0 auto;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border-radius: 7px;
   background: var(--panel);
   color: var(--text-2);

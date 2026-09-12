@@ -330,19 +330,19 @@ TLS专项16 views / 96 targets / 0 missing / 0 flagged / 最大0.5px与package/a
 <a id="settings-app-containers-ordering"></a>
 ## `settings.app-containers.ordering`
 
-**状态**：passed
+**状态**：原排序流程passed；2026-09-12列表行高代码完成，新增布局断言待E2E
 **策略**：shared；Windows
 
 ### Steps
 
-1. 创建独立空 profile/evidence，启动真实 Electron，等待 App/Core/8888/readiness；取消 readiness，不修改系统代理。
-2. 进入 Settings → App Containers，等待真实 Windows helper 枚举完成；读取公共 SID 行 automation ID 和 `data-exempt`，不得用显示名、翻译文案或 CSS class 判断顺序。
+1. 由host-safety-guard保存宿主基线，创建独立空profile/evidence并启动真实Electron，等待Core、8888与冷启动系统代理自动接管；保持当前语言，不操作exemption或UAC。
+2. 进入 Settings → App Containers，等待真实 Windows helper 枚举完成；读取公共 SID 行 automation ID 和 `data-exempt`，不得用显示名、翻译文案或 CSS class 判断顺序。保存每行名称15px、包名14px行高；存在推荐标签时验证20px框、inline-flex center及与名称的中心差不超过1/devicePixelRatio。
 3. 确认所有 enabled 行连续位于 disabled 行之前；同一状态内保持 helper 的名称顺序。当前宿主必须同时存在 enabled 与 disabled 样本，才可作为 retrospective Red/Green 证据。
 4. 从真实行 SID 中选择一个能缩小结果集的搜索值，通过 `settings.app-containers.search` 输入；确认结果是过滤前列表的有序子序列，且仍满足 enabled-first。
 5. 清空搜索，确认完整 SID 顺序逐项恢复；全程不得点击单项 switch、Enable all 或确认按钮，不触发 UAC、不改 exemption。
-6. 附加 `app-container-ordering.json`，记录过滤前、过滤后和恢复后的 SID/`exempt` 状态；确认 Renderer page error 为 0。
+6. 附加 `app-container-ordering.json`，记录过滤前、过滤后和恢复后的SID/`exempt`状态及rowLayouts；确认Renderer page error为0。
 7. 保存 screenshot、trace、Main/Renderer 日志和 metadata；通过 `shell.window.close` 正常关闭 App。
-8. 验证 Main、Renderer、Core、Worker 全退，8888 释放且 `gracefulDestroyVerified=true`；删除 profile。
+8. 验证Main、Renderer、Core、Worker全退、8888释放、完整WinINet/journal恢复且`gracefulDestroyVerified=true`；删除profile。
 
 ### 预期效果
 
@@ -350,6 +350,7 @@ TLS专项16 views / 96 targets / 0 missing / 0 flagged / 最大0.5px与package/a
 
 ### 证据
 
+- 2026-09-12布局断言仅预留，用户暂停后未运行前置/最终E2E；以下排序业务与产物证据为历史结果，不外推到新布局。
 - 实现前 Red：真实 Windows helper integration 返回 `141` 条记录但只有 `138` 个唯一 SID；同一 `settings.app-containers.ordering` workflow 进入面板后，Main 因 `AppContainer helper returned a duplicate SID` 拒绝快照，真实列表完全不可用。Red Main PID `21104`、Core PID `36468`，失败后仍为 `gracefulDestroyVerified=true`且 8888 释放。
 - 当前 Green：helper 在 native 枚举边界按 SID 去重，package 内 helper 为 `138 records / 138 unique SIDs`；Main 继续拒绝任何回归的重复 helper JSON。真实 workflow 为 `1/1` Green，初始 `138` 行（`1 enabled / 137 disabled`），enabled 行位于首位，真实 SID 搜索缩小为 `1` 行，清空后 `138` 行逐项恢复。Main PID `34512`、Core PID `33872`、listener `8888`、`gracefulDestroyVerified=true`，Renderer page error 为 0，未触发 UAC或修改 exemption。
 - Renderer ordering unit `2/2`、真实 helper integration `1/1`、Main service unit `10/10`，聚焦合计 `13/13`；Desktop 串行全量 `320/320` 与 typecheck 通过。
@@ -611,6 +612,24 @@ Refresh读取真实Core usage；Clear必须二次确认；Cancel零副作用；C
 
 Privacy defaults即时持久并真实驱动HAR Export初始状态；风险组合提供明确警告；重启后保持。
 
+<a id="settings-tls-compatibility"></a>
+## `settings.tls-compatibility`
+
+**状态**：planned；2026-09-12最终真实1/1及恢复通过，保留暂停期行高前置E2E缺口
+**策略**：真实TLS流量与产品UI；host-safety-guard；涉及CA时使用正式授权与清理路径
+
+### Steps
+
+1. 保存完整宿主与Root基线，创建独立profile，启动真实Electron并保持当前语言；由正式Certificates UI准备本流程需要的测试CA与MITM。
+2. CONNECT实际目标为loopback origin；五个测试自产多级`.test`域名只用于TLS SNI，不依赖外部DNS。TLS client显式只信任另一份独立CA，真实拒绝代理证书，等待Core/Main兼容性事件显示弹窗；不改系统信任、调用Renderer Store或注入假事件。
+3. 使用`settings.tls-compatibility.host-list`及`AutomationIdFactory.tlsCompatibilityHost/Pattern`定位列表、host和候选；验证每个真实host对应一行，主host为11.5px自然行高。列表超过264px时可用滚轮和Home/End访问全部行，后续行不得因累计高度不足提前。候选项默认精确host勾选，父域wildcard不自动选中；保存使用`settings.tls-compatibility.add-selected`。
+4. 全部取消候选后主动作禁用；重新选择合法候选，经正常UI批量保存，Settings显示相同结果。另一次真实提示使用Not now退出，不增加持久化pattern。
+5. 保存host/行尺寸、选择状态、实际TLS证据和截图；清理本流程添加的pattern、测试CA与信任，正常关闭产品，验证Main/Core/Worker退出、8888释放和完整WinINet/journal/Root恢复。
+
+2026-09-12首轮既有行为1/1（17.3s，13940/39212）和unit18/18之后，仅补公共automation ID，业务/视觉不变；ID版1/1（23.6s，3600/41668）。最终显式JSON归档版1/1（27.6s，14788/41168），六次真实`SELF_SIGNED_CERT_IN_CHAIN`、五host行尺寸、默认精确选择、wheel/Home/End、全部取消禁用、两项批量保存与Not now通过，origin应用字节0。三代均正常销毁，CA/Root及完整宿主恢复。
+
+最终TEMP `interceptor-tls-compatibility-20260912-evidence`及同名log包含`tls-compatibility.json`、选择截图、trace和metadata；unit18/18、Desktop类型、三场景parity24/24另存同前缀。暂停期行高修改缺少前置真实E2E，不能以公共ID变更前的Green代替，不回滚或另建worktree补造；Inventory保留planned。
+
 <a id="settings-updates-check"></a>
 ## `settings.updates.check`
 
@@ -663,17 +682,19 @@ Local诚实显示unsupported；packaged只用当前GitHub身份读取固定私�
 **状态**：planned
 **策略**：shared（有效available/downloaded仅packaged真实检查）
 
+2026-09-11通知compact尺寸代码完成，unit10/10、四场景parity64/64及浏览器外框/Dismiss检查通过；2026-09-12补真实Button文字子项的2项Red及17/17 Green、Download/Open组合居中。用户已恢复E2E，共享Button在真实正文/HTTPS流程2/2通过，但不是本workflow的通过证据。当前没有通知专属可执行workflow和公共automation ID；仍需真实packaged新release及GitHub授权，不注入Update store或伪造状态。暂停期前置Red与通知最终Green均缺失，详见[更新通知按钮](../../../../../architecture/features/settings.md#更新通知按钮)。
+
 ### Steps
 
-1. 创建profile/evidence，启动packaged App和trace/CDP driver，等待App/Core/8888/readiness；点击 `capture.readiness.cancel`，确认System Proxy仍未owned，并检查Header通知只受真实Update状态控制。
-2. 通过真实Update check进入Available；确认Header notification出现且不占Header布局/不遮挡窗口控制。
-3. 点击notification中的真实navigation/download automation action。
+1. 创建profile/evidence，由host-safety-guard保存宿主基线；启动packaged App和trace/CDP driver，等待Core、8888及冷启动系统代理自动接管。保持当前语言，使用能显示通知的窗口宽度，并检查通知只受真实Update状态控制。
+2. 通过真实Update check进入Available；确认notification不遮挡窗口控制，动作高32px、水平padding 11px、15px图标和真实文字均居中，两者组合在整个button框内的水平/垂直中心差不超过1/devicePixelRatio；按钮与44px通知栏也居中。保存文字DOM Range和图标/按钮边界，不仅核对CSS声明。Settings页的普通Download按钮仍34px。
+3. 经公共automation ID点击通知中的真实Download动作；记录原始尺寸与截图，不以翻译文案或CSS class定位控件。
 4. 确认Settings Updates和Header notification共享同一状态，不重复创建任务。
-5. 等待下载完成进入Downloaded，确认notification文案/action同步。
+5. 等待下载完成进入Downloaded，确认notification文案/action同步，Open同样使用32px紧凑规格，普通Settings Open installer按钮保持34px。
 6. 点击notification的Open installer action并取消安装器。
-7. 返回各workspace，确认notification可见性只由available/downloaded控制。
+7. 返回各workspace，确认available/downloaded显示通知、其余状态隐藏；点击Dismiss后通知隐藏但Settings动作仍可用。busy时通知动作禁用，Dismiss不随之禁用。
 8. 保存evidence并Close。
-9. 验证销毁和下载临时文件清理。
+9. 验证Main/Core/Worker全退、8888释放、完整WinINet/journal恢复和本次下载临时文件清理。
 10. 删除profile。
 
 ### 预期效果

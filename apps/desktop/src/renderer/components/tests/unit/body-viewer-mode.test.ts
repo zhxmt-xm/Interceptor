@@ -1,10 +1,13 @@
 import { Children, isValidElement, type ComponentProps, type ReactElement, type ReactNode } from 'react';
+import { FileVideo2 } from 'lucide-react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BodyViewer } from '../../BodyViewer/BodyViewer';
 import { BodyToolbar } from '../../BodyViewer/BodyToolbar/BodyToolbar';
 import { HexView } from '../../BodyViewer/HexView/HexView';
+import { UnavailableBody } from '../../BodyViewer/UnavailableBody/UnavailableBody';
 import { toHexDump } from '../../BodyViewer/bodyText';
+import { Button } from '../../Button/Button';
 import { CodeViewer, type CodeViewerProps } from '../../CodeViewer/CodeViewer';
 
 const fixture = vi.hoisted(() => ({ selected: null as { kind: string; mode: string } | null, stateIndex: 0, copy: vi.fn() }));
@@ -88,5 +91,26 @@ describe('BodyViewer Code and Raw modes', () => {
     const code = findBodyComponent<CodeViewerProps>(body, CodeViewer);
 
     expect(code.props.value).toBe('a');
+  });
+});
+
+describe('Unavailable media body controls', () => {
+  it.each([false, true])('preserves the small Save action and loading state (%s)', (saving) => {
+    const saveBody = vi.fn();
+    const body = UnavailableBody({
+      icon: FileVideo2,
+      mediaType: 'video/mp4',
+      measures: '24 MB',
+      reason: 'Media is saved without starting a player.',
+      saving,
+      onSave: saveBody,
+    });
+    const action = findBodyComponent<ComponentProps<typeof Button>>(body, Button);
+
+    expect(action.props.size).toBe('sm');
+    expect(action.props.loading).toBe(saving);
+    expect(action.props.children).toBe('body.save');
+    action.props.onClick?.();
+    expect(saveBody).toHaveBeenCalledOnce();
   });
 });

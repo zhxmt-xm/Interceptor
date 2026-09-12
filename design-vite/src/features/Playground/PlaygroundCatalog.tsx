@@ -12,7 +12,7 @@ export function PlaygroundCatalog(): React.JSX.Element {
   return (
     <aside className={styles.playgroundCatalog}>
       <div className={styles.playgroundCatalogTitle}><strong>{state.playgroundSection === 'mcp' ? 'Tools' : 'Scenarios'}</strong><span>{state.playgroundSection === 'mcp' ? 'Live catalog' : 'Capture matrix'}</span></div>
-      <div className={`${styles.playgroundCatalogToolbar} ${state.playgroundSection === 'mcp' ? styles.withCommand : ''}`}><label className={styles.playgroundSearch}><Search aria-hidden="true" /><input aria-label="Search catalog" placeholder="Search" /></label>{state.playgroundSection === 'mcp' ? <button aria-label="Refresh tools" type="button"><RefreshCw aria-hidden="true" /></button> : null}</div>
+      <div className={styles.playgroundCatalogToolbar}><label className={styles.playgroundSearch}><Search aria-hidden="true" /><input aria-label="Search catalog" placeholder="Search" /></label>{state.playgroundSection === 'mcp' ? <button aria-label="Refresh tools" type="button"><RefreshCw aria-hidden="true" /></button> : null}</div>
       <div className={styles.playgroundCatalogScroll}>
         {state.playgroundSection === 'mcp' ? PLAYGROUND_TOOL_GROUPS.map((group) => (
           <section className={styles.playgroundGroup} key={group.id}>

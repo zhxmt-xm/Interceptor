@@ -366,10 +366,10 @@ Drop真实中止目标数据面；请求不继续转发；pending badge、client
 1. 为该test创建独立`userData`目录并启动仓库本地production bundle；开启BrowserContext trace，等待`app.root`、带真实PID的Core状态和`127.0.0.1:8888`可连接。
 2. Fresh profile首次出现Proxy readiness时点击`capture.readiness.cancel`；点击`capture.recording.toggle`，在再次出现的readiness点击`capture.readiness.enable`并完成Windows授权，等待Recording的`aria-pressed=true`。
 3. Playground的`WebSocketTrafficRunner`在random loopback port启动真实`WebSocketServer`。共用的`ProxiedWebSocketClient`经8888发送absolute-form HTTP Upgrade；Node解析响应，并校验真实`HTTP/1.1 101`和`Sec-WebSocket-Accept`后才算连接建立。
-4. 等待包含`/e2e/websocket-close`的动态`capture.request-row.<exchangeId>`并点击；点击`capture.inspector.tab.messages`。保存消息断点按钮截图，验证30×30px和1px透明边框，再点击`capture.websocket.breakpoint.toggle`打开当前连接的setup。样式修复不改变默认方向、frame选项或后续Close code断言。
+4. 等待包含`/e2e/websocket-close`的动态`capture.request-row.<exchangeId>`并点击；点击`capture.inspector.tab.messages`。origin通过真实连接发送四条自产历史消息，客户端全部收到且列表每行38px。保存消息断点按钮截图，验证30×30px和1px透明边框，再点击`capture.websocket.breakpoint.toggle`打开当前连接的setup。
 5. 断言`capture.websocket.breakpoint.frame.message`初始`aria-pressed=true`；点击它取消，再点击`capture.websocket.breakpoint.frame.close`并断言选中。保持默认Both directions，点击`capture.websocket.breakpoint.enable`。
 	鼠标移开后记录已启用按钮颜色与背景，再hover并断言二者不变，保留黄色状态；默认/启用两态均保持30×30px。边框按当前devicePixelRatio核对一条CSS像素的实际物理像素，150%缩放的0.666667px不当作缺失边框。
-6. 客户端调用`sendCloseFrame(1000)`，由`ws.Sender`编码masked Close帧，不提前改变连接状态或开始关闭超时。等待`breakpoints.close-code`可见且value=1000，证明真实close帧已在Capture原行暂停。
+6. 客户端调用`sendCloseFrame(1000)`，由`ws.Sender`编码masked Close帧，不提前改变连接状态或开始关闭超时。等待`breakpoints.close-code`可见且value=1000；队首编辑时消息列表外框126px，真实滚轮可访问底部暂停帧。暂停说明、方向和队列按钮必须由同一层`display:flex; align-items:center`排布，箭头与phase文字也使用flex center，不用baseline或字形位置容差代替。Replacement标题36px、折叠控件13px，折叠/恢复仅改变内容可见性，Off始终选中；保存暂停布局截图。
 7. 只把`breakpoints.close-code`填为1001，不切换Replacement mode；点击`breakpoints.execute-edited`。轮询真实origin的`close`事件并要求code=1001。
 8. 附加`websocket-origin-observation.json`、最终截图、trace、Main/Renderer日志和metadata。fixture销毁客户端与server-side sockets，进入Settings→Proxy恢复owned配置，再正常Close并验证Main/Core PID退出、8888可重新bind和profile删除。
 
@@ -387,6 +387,8 @@ closeCode与body是正交编辑；没有body replacement时仍必须转发用户
 `interceptor-websocket-client-green-20260907`。关闭码仍由用户在真实UI修改，不通过客户端改造绕过产品流程。
 
 2026-09-11消息断点入口样式修复：真实边框Red Main/Core `31368/37908`，最终1/1 Green（8.3s）`26524/29720`，两代正常销毁与host guard恢复；最终仍验证origin收到1001，并检查armed hover保持。相关unit26/26、Desktop类型和14场景42目标通过。首次150%缩放断言误报保留、不算产品Red，详见[消息断点入口](../../../../../architecture/features/breakpoints.md#43-websocket-帧断点)。
+
+2026-09-12 Replacement标题先取得38/36px真实Red（`30236/30268`）和xs组件Red，修复后unit32/32、Desktop类型及首轮真实1/1（20.3s，`24084/43976`）。扩充历史消息/滚轮/折叠断言后最终1/1（11.5s，`6428/19436`），38px行、126px列表、13px折叠控件、36px标题与Off保持均通过，origin仍收到1001。三代均`gracefulDestroyVerified=true`，完整宿主恢复；证据在TEMP `interceptor-ws-heading-20260912-e2e-{red,green,scroll}`及同名log。暂停期phase/列表/分隔的历史前置缺口不由标题Red代替。
 
 <a id="breakpoints-resize"></a>
 ## `breakpoints.resize`

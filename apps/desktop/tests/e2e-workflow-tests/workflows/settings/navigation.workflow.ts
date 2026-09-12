@@ -55,6 +55,7 @@ test('settings.navigation keeps the active section across workspace navigation',
     step: string;
     currentSections: AutomationId[];
   }> = [];
+  const baselineViolations: Array<{ sectionId: string; tag: string; alignItems: string; alignSelf: string }> = [];
 
   // 准备：fresh profile 已通过真实 App/Core/listener readiness，普通导航进入 Settings 默认 section。
   // Arrange: a fresh profile passed real App/Core/listener readiness; normal navigation opens the default Settings section.
@@ -71,7 +72,25 @@ test('settings.navigation keeps the active section across workspace navigation',
   for (const sectionId of SETTINGS_SECTION_IDS) {
     await getByAutomationId(page, sectionId).click();
     await expectCurrentSection(page, sectionId, sectionEvidence, `select:${sectionId}`);
+    if (sectionId === AUTOMATION_IDS.settings.section.appContainers) {
+      await expect(getByAutomationId(page, AUTOMATION_IDS.settings.appContainers.search)).toBeVisible();
+    }
+    const violations = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>('body *')]
+      .filter(element => element.checkVisibility())
+      .flatMap(element => {
+        const style = getComputedStyle(element);
+        return /baseline/.test(`${style.alignItems} ${style.alignSelf}`)
+          ? [{ tag: element.tagName, alignItems: style.alignItems, alignSelf: style.alignSelf }]
+          : [];
+      }));
+    baselineViolations.push(...violations.map(violation => ({ sectionId, ...violation })));
+    if (violations.length > 0) await page.screenshot({ path: testInfo.outputPath(`${sectionId}-baseline.png`) });
   }
+
+  // 布局断言：默认页面不使用baseline对齐，不以字形或矩形中心容差代替CSS规则。
+  // Layout assertion: default pages do not use baseline alignment; glyph or geometry tolerance is not the CSS contract.
+  await writeFile(testInfo.outputPath('settings-layout.json'), JSON.stringify({ baselineViolations }, null, 2), 'utf8');
+  expect(baselineViolations).toEqual([]);
 
   // 键盘交互：Agent section 必须是可聚焦的原生命令，并可用 Enter 激活。
   // Keyboard interaction: the Agent section must be a focusable native command activated with Enter.

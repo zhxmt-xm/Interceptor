@@ -70,11 +70,6 @@
   background: var(--accent);
 }
 
-.docMethod {
-  padding: 2px 6px;
-  font-size: 9.5px;
-}
-
 .docName {
   min-width: 0;
   overflow: hidden;
@@ -83,8 +78,9 @@
 }
 
 .close {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 18px;
   height: 18px;
   flex: 0 0 auto;

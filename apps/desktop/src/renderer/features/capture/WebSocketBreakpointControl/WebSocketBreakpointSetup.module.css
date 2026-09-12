@@ -18,10 +18,22 @@
 }
 
 .settingRow {
-  display: grid;
-  grid-template-columns: 74px minmax(0, 1fr);
+  display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.settingRow > * {
+  flex: 0 0 auto;
+}
+
+.settingRow > :nth-child(2) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.settingRow > :first-child {
+  flex: 0 0 74px;
 }
 
 .settingRow > span {
@@ -31,14 +43,25 @@
 }
 
 .frameRow {
-  display: grid;
-  grid-template-columns: 74px minmax(0, 1fr);
-  align-items: start;
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
 
+.frameRow > * {
+  flex: 0 0 auto;
+}
+
+.frameRow > :nth-child(2) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.frameRow > :first-child {
+  flex: 0 0 74px;
+}
+
 .frameRow > span {
-  padding-top: 5px;
   color: var(--text-2);
   font-size: 11.5px;
   font-weight: 550;

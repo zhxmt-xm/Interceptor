@@ -102,10 +102,7 @@ export function ImportConfirmDialog({
               {fileName}
             </span>
           </div>
-          <div
-            className={styles.summary}
-            style={{ '--import-stat-columns': stats.length } as React.CSSProperties}
-          >
+          <div className={styles.summary}>
             {stats.map((stat) => (
               <div key={stat.automationId} className={styles.stat} data-emphasis={stat.emphasis}>
                 <span>{stat.label}</span>

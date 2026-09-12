@@ -9,7 +9,7 @@ export interface IconButtonProps {
   icon: LucideIcon;
   /** Accessible label (rendered as aria-label) and default tooltip text. */
   label: string;
-  size?: 'md' | 'sm';
+  size?: 'md' | 'sm' | 'xs';
   strokeWidth?: number;
   disabled?: boolean;
   /** Shows a spinner and blocks clicks while an async action runs. */
@@ -39,7 +39,7 @@ export function IconButton({
   automationId,
   pressed,
 }: IconButtonProps): React.JSX.Element {
-  const iconSize = size === 'sm' ? 15 : 18;
+  const iconSize = size === 'xs' ? 13 : size === 'sm' ? 15 : 18;
   const blocked = disabled || loading;
   const defaultTip = tooltip === undefined ? label : tooltip;
   const tip = blocked && disabledTooltip ? disabledTooltip : defaultTip;
@@ -47,7 +47,12 @@ export function IconButton({
     <button
       type="button"
       disabled={blocked}
-      className={cx(styles.button, size === 'sm' && styles.small, className)}
+      className={cx(
+        styles.button,
+        size === 'sm' && styles.small,
+        size === 'xs' && styles.extraSmall,
+        className,
+      )}
       onClick={onClick}
       aria-label={label}
       aria-pressed={pressed}

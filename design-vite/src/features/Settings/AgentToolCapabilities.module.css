@@ -172,9 +172,10 @@
 }
 
 .toolCapabilitiesEmpty {
-  display: grid;
+  display: flex;
   min-height: 88px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   color: var(--text-3);
   font-size: 11px;
 }

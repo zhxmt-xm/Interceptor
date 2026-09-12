@@ -226,6 +226,8 @@ export const nlCatalog = {
   'capture.connectionMetadataOnly': 'Er is geen lokale CA gegenereerd of vertrouwd. Alleen verbindingsmetadata wordt opgeslagen.',
   'capture.mitmActiveForNewConnections': 'MITM is actief voor nieuwe verbindingen. Verbind deze client opnieuw om het HTTPS-verkeer te inspecteren.',
   'capture.httpsSetupDescription': 'Stel alleen een lokaal basiscertificaat in wanneer u de inhoud van HTTPS-aanvragen en -antwoorden moet inspecteren.',
+  'capture.httpsClientApps': 'Clientapps',
+  'capture.httpsInternet': 'Internet',
   'capture.proxyRestartsSameAddress': 'De lokale proxy wordt opnieuw gestart op hetzelfde adres.',
   'capture.httpsRemainsEncrypted': 'Totdat de configuratie is voltooid, blijft HTTPS versleuteld en ononderbroken doorlopen.',
   'capture.startDecrypting': 'Ontsleuteling starten',

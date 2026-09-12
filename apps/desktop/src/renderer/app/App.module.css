@@ -55,8 +55,9 @@
 .sidebarToggle {
   width: 30px;
   height: 30px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 0;
   margin-right: 2px;
   border: 0;

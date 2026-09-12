@@ -300,6 +300,108 @@ stateDiagram-v2
 - 2026-09-11既有row-format/Capture Store unit33/33、Desktop typecheck通过，真实`capture.scenarios.grpc`1/1（2.1m）；原五类gRPC与多消息5MiB边界/Copy同跑，Main/Core `36412/33540`正常销毁，本轮CA/Root集合、8888、WinINet/journal恢复。未改用户流程或补造历史E2E Red。
 - TEMP前缀`interceptor-grpc-rows-20260911`与`interceptor-protocol-scenes-20260911-grpc-*`保留前后parity、截图、旧图hash及真实trace/metadata；[报告](../../commit-changes/202609111558_ui_parity_progress.html#grpc-rows)内嵌同一Renderer场景的消息行前后图。Tunnel配置与剩余差异仍在同一UI parity item中分步处理，不另拆commit或报告。
 
+#### HTTPS设置连接示意
+
+- 当前实现：补齐已有设计中的Client apps、Interceptor、Internet三个节点、流向箭头及TLS锁。新增`HttpsConnectionChain`子组件位于说明段落前，恢复缺失的71px示意与16px间距，不移动标题；Generate、Install、Start decrypting的命令和可用状态不变。
+- 锁颜色和图标由弹窗已读取的有效MITM状态决定，没有新业务调用或按钮；15种现有语言补齐两个节点标签。图标复用Lucide，节点/标签/图标分别以Grid和Flex居中，不使用文字基线或位移补偿。
+- 渲染单测先因缺少Client apps而Red；最终组件4项与i18n9项共13/13，Desktop typecheck通过。parity三场景24 matched、0 missing，标题及连接示意全部匹配；浅色Cancel仍有约1px的原有字体度量flag，不能写整组全绿。新旧画面像素差平均0.44%，设计源码与基准未改。
+- 非E2E直接预览覆盖明暗两主题与en/zh-CN/ja/fr四语言，8组节点/标签/图标中心差小于0.1px、无标签越界和Renderer异常；Cancel正常关闭。临时全局禁动画曾导致Modal退出/截图异常，最终改用Playwright截图动画处理后复跑通过，错误截图已从报告替换，未改产品动画。
+- 同一[工作项报告](../../commit-changes/202609111558_ui_parity_progress.html#https-connection-chain-images)内嵌明暗前后图，去掉已撤回的Timing图组，保留其他34张原图，共38图；1320/390排版与最终画面检查通过。TEMP `interceptor-https-chain-20260911-review/`保存逐节点度量、中文截图和报告原稿，原始DOM见`interceptor-https-title-20260911-dom/`。
+- 2026-09-12恢复E2E后组件/i18n13/13、Desktop类型通过；`capture.scenarios.tls`与真实正文流程联合2/2（45.7s），本workflow Main/Core13768/41652正常退出，新增连接示意/Generate可用/Install及Start禁用/Cancel检查通过，后续真实CA、H1/H2、Root集合和宿主恢复均通过。TEMP `interceptor-update-button-centering-20260912-e2e/`保留trace、截图和metadata。暂停期缺少实现前E2E Red仍是历史缺口，不把当前Green当成前置证据。
+
+#### Timing正文行高
+
+- 当前已撤回本轮新增的`--interceptor-line-height`，恢复改前Timing布局。文字仍为原字号，Grid的`align-items:center`、列宽、12px列间距、7px上下padding、6px进度条和时序计算均未变。
+- 用户反馈后的复核：加入token曾将行高28.140625px增至32.5625px，但改前/当时外框中心差均小于0.01px，不能将行高匹配称为居中改善；临时两层flex还会把可见文字下移约1px，已弃用。未使用基线、裁剪、位移或额外padding方案，原始证据在TEMP `interceptor-centering-audit-20260911/`。
+- 原token版unit8/8、类型、字体parity明暗8/8和E2E Red/Green（42888/42628、26812/19300）仅为当时结果，不能代表当前Timing与设计无差异；深色既有设计补图仍保留，404张旧图hash未变。历史产物位于TEMP `interceptor-timing-20260911*`，报告不再展示被撤回的行高改动作为改善。
+- 当前真实Inspector检查改为同排标签框、数值框和进度条的中心差，不强制某个token。撤回前后同一检查1/1（18.3s/20.1s），Main/Core46032/4400、32356/33148均正常销毁及宿主恢复，row-format8/8、Desktop类型通过；这些结果全部先于用户最新暂停E2E指令。TEMP `interceptor-timing-alignment-review-20260911-*`保留当前截图和trace，不据外框检查宣称用户视觉认可。
+
+#### 请求正文分组的计数标签
+
+- 2026-09-11实时设计的计数标签保留MIME/单位大小写与normal字距；共享`SectionHeader.count`原先继承标题uppercase与0.05em字距，使`json · 63 B`宽出6.3px。组件已补normal字距和`text-transform:none`，该宽差归零，标题、按钮尺寸、折叠及正文行为不变。
+- `capture-request-json`已修正侧栏/detail/MITM场景状态，并定位到实时`CollapsibleSection`，不再使用被替换的`.sh`节点。前置数据记录计数宽差6.3px、空Query提示少4.8px；后者独立处理，不用一起修改多个高度凑数。
+- 正文unit前后25/25，Desktop类型通过；真实Request计数字距Expected normal/Received0.575px取得Red后，正文/Inspector折叠/Composer响应折叠三条workflow 3/3（38.9s）。Main/Core39052/10868、22468/42288、20096/42056均正常销毁并通过宿主guard；TEMP `interceptor-section-count-20260911*`保留证据。不新增设计或验收工具自身的测试。
+- 空Query提示的高度差单独修复：设计继承Ant Design正文token，产品原先继承Shell1.23，当前字体下相差4.8px。`KvSection.empty`已直接采用现有`--interceptor-line-height`，不扩大padding；同一真实Request流程先取得20.1923px/15.375px的Red再Green，空提示高度差归零。
+- 最后的正文高度差约1px来自共享标题继承Shell数值行高，设计实时标题显式normal；按设计明确`SectionHeader.header`字体行高，保留24px最小高度、8px下padding和12px分组间距。现有Request/Response流程先加标题行高断言取得Red，再改CSS，不对正文容器追加高度补偿。
+- 最终三处样式各自取得真实Red：计数字距0.575px（Main/Core33788/32076）、空Query行高15.375px而非token对应20.1923px（26456/35356）、标题14.145px而非normal（14552/20908），全部正常销毁。空Query中间Green18716/39004也保留，不冒充最终版本。
+- 最终正文unit25/25、Desktop typecheck通过；正文全屏/Inspector折叠/Composer响应折叠3/3（36.2s），Main/Core17844/13592、11620/20908、3812/17672均正常退出并通过宿主guard。标题、计数、空Query与正文模式/Copy断言全部保留，TEMP `interceptor-section-typography-20260911*`保存最终结果。
+- 明暗Request八项目标各8/8、0 missing/flagged、最大0.5px，标题/计数/空Query几何均0px，正文高差-0.4px；十个相邻视图148 matched，仅保留普通Capture共8个既有Header Copy flag。既有收起态PNG不适用于展开侧栏，新增明暗`inspector-request-expanded`两图，402张旧图SHA256不变；对应像素差2.43%/2.47%，正文工具栏能力差异不冒充逐像素相同。
+- [同一工作项报告](../../commit-changes/202609111558_ui_parity_progress.html#request-typography-images)加入浅色同请求前后图，红框定位空Query与正文标题/起点，原32张内嵌图保持；34张图在1320/390宽度正常显示，无折叠或横向溢出。临时报告脚本已删除，原始裁切数据在TEMP `interceptor-section-typography-20260911-review/`。
+
+#### 受限正文提示行高
+
+- `BodyViewer.note`的11.5px文字原先继承Shell紧行高，两行提示少8.8px，正文起点相应提前。只补`line-height: var(--interceptor-line-height)`；9px/11px padding、8px gap、图标居中、预览范围与Copy/Save保持。
+- 旧parity把设计13px的`.bpane`外壳与12px产品编辑器比较。现在分别检查实际编辑器外框、Monaco第一行及提示条；真实文字两边均为12px/21px，不修改代码字号来迎合无文字外壳。
+- 2026-09-12前置parity复现8.8px提示差；修改后正文行为unit9/9、Desktop typecheck通过。明暗两场景6/6 matched、0 missing/flagged、最大0.4px，提示和代码行位置差0px；像素差2.73%/2.75%，不宣称整页像素相同。只新增缺失深色`body-limited.png`，407张已有设计PNG的hash不变。
+- 受限与解码失败两种提示在明暗、1600x900及1000x700窗口共八组检查通过；小窗口经真实splitter达到360px Inspector，文字换行无溢出，提示图标中心差0px。切换Hex后提示保持；未触发Save或真实网络E2E。
+- 同一item报告52张图片，原50张原样保持；新前后图只裁切提示条和正文上边框，排除异步格式化阶段不同的代码内容。1320/390宽度图片加载、全部展开且无横溢出。初次浏览器检查因嵌套`:scope`定位超时，改用完整body-view直接子节点选择器后通过，不算产品Red；预留workflow同步修正，临时脚本已删除。
+- 非E2E证据位于TEMP `interceptor-limited-body-20260912-{before.md,after.md,unit-green.log,typecheck.log,final.md,final.json,design-hashes.json,review/evidence.json}`。暂停期间缺失的本次布局前置E2E继续保留，不回滚补造。
+- 2026-09-12恢复授权后`body-scenarios.workflow.ts`与媒体/TLS导航/AppContainer同组4/4（52.7s），相关unit33/33；真实5MiB UTF-8、提示行高/间距/图标、Raw/Copy及完整Save断言通过。该workflow Main/Core1952/18392正常销毁，8888/WinINet/journal恢复，trace/metadata及同名log位于TEMP `interceptor-e2e-resumed-20260912-body-settings`；最终Green不代表前置门禁齐全。
+
+非E2E复验命令：
+
+```powershell
+npm run test --workspace @interceptor/desktop -- src/renderer/components/tests/unit/body-viewer-mode.test.ts
+npm run typecheck --workspace @interceptor/desktop
+node apps/desktop/tests/visual-parity/parity.mjs --view=capture-body-preview-limited --out-dir="$env:TEMP/interceptor-limited-body-review-shots" --report="$env:TEMP/interceptor-limited-body-review.md" --result-json="$env:TEMP/interceptor-limited-body-review.json"
+```
+
+深色使用`--view=capture-body-preview-limited-dark`及独立输出名。真实E2E复验：
+
+```powershell
+npm run e2e:prepare-local --workspace @interceptor/desktop
+node node_modules/@playwright/test/cli.js test --config=apps/desktop/tests/e2e-workflow-tests/playwright.config.ts apps/desktop/tests/e2e-workflow-tests/workflows/capture/body-scenarios.workflow.ts --reporter=line --output="$env:TEMP/interceptor-limited-body-e2e"
+```
+
+#### 媒体正文占位布局
+
+- `UnavailableBody`沿用既有设计的40px图标框、13px MIME、11.5px大小、12px说明和28px `Button sm`。内容按`content/details`两层flex分组：图标到详情10px、详情内7px、说明到Save 13px；MIME为自然行高，大小复用正文token。没有用margin、transform或调用方CSS移动按钮。
+- 前置六项直接测量确认MIME/大小行高与间距不足；保存/loading行为先补入现有`body-viewer-mode`测试并取得9/9基线，修改后同组9/9、Desktop typecheck通过。原格式、Raw、Hex、Copy及Save回调保持。
+- 2026-09-12明暗两场景12/12 matched、0 missing/flagged、最大0.4px；六项内部元素位置均匹配，Save纵向差0px。新增既有`body-media`场景的两张缺失PNG，405张旧图hash不变；像素差2.15%/2.27%，不宣称整页像素相同。
+- 浏览器检查音频、视频、超限图片、损坏图片四类正文，明暗与1600x900/1000x700共16组；1000px窗口经真实splitter操作达到现有Inspector最小360px、正文324px。文字换行和Save完整可见、无横溢出，最大水平中心差0.0078125px。音视频与超限图片readBody均0次，损坏图片实际尝试读取并显示不可预览原因；没有创建播放器或触发保存。
+- 同一item报告增加相同67 MB视频的浅色前后图与红框；50张图片、原48张原样保留，1320/390宽度图片加载、全部展开且无横溢出。证据在TEMP `interceptor-media-body-20260911-{before,unit-baseline}*`及`interceptor-media-body-20260912-{unit-green.log,typecheck.log,final.md,final.json,design-hashes.json,review/evidence.json}`。
+- 一次性检查初次错误假定正文宽度不超过320px，随后错误限定损坏图片只读取一次；按产品360px Inspector下限及实际读取边界更正后通过，两次属于检查假设失败，不算产品Red。脚本已删除，未新增验收工具自身测试。
+- 2026-09-12恢复授权后[媒体workflow](../../apps/desktop/tests/e2e-workflow-tests/workflows/capture/body-media-scenarios.workflow.ts)与正文/TLS导航/AppContainer同组4/4（52.7s），相关unit33/33；真实PNG/Hex、WAV/MP4完整Save及gap/行高/居中断言通过。Main/Core3880/18464正常销毁，8888/WinINet/journal恢复，trace/metadata及同名log位于TEMP `interceptor-e2e-resumed-20260912-body-settings`。
+- 暂停期布局前置E2E缺口仍保留。2026-09-12相邻encoding、普通WebSocket、queue-isolation三条真实3/3（1.4m），encoding Main/Core19740/5544正常销毁及宿主恢复，损坏/压缩正文与完整保存路径已单独复验；TEMP `interceptor-ui-adjacent-20260912-e2e`及同名log保留trace/metadata，不以媒体workflow外推该结果。
+
+非E2E复验命令：
+
+```powershell
+npm run test --workspace @interceptor/desktop -- src/renderer/components/tests/unit/body-viewer-mode.test.ts
+npm run typecheck --workspace @interceptor/desktop
+node apps/desktop/tests/visual-parity/parity.mjs --view=capture-body-media-save --out-dir="$env:TEMP/interceptor-media-body-review-shots" --report="$env:TEMP/interceptor-media-body-review.md" --result-json="$env:TEMP/interceptor-media-body-review.json"
+```
+
+深色使用`--view=capture-body-media-save-dark`及独立输出名。真实E2E复验：
+
+```powershell
+npm run e2e:prepare-local --workspace @interceptor/desktop
+node node_modules/@playwright/test/cli.js test --config=apps/desktop/tests/e2e-workflow-tests/playwright.config.ts apps/desktop/tests/e2e-workflow-tests/workflows/capture/body-media-scenarios.workflow.ts --reporter=line --output="$env:TEMP/interceptor-media-body-e2e"
+```
+
+#### TLS Tunnel元数据与方法标签
+
+- `TlsTunnelPanel.rows`使用设计已有的18px行高，避免五行元数据累计过矮、底部说明提前约18.5px；`RequestInspector.methodChip`局部使用normal，消除CONNECT文字盒1.1px高度差。不改字号、padding、内容或TLS行为。
+- 行距结论：TLS与普通Inspector `Kv.key/value`均为11.5px mono、18px单行高度、9px行间距，单行内容起点相隔27px。此次只补TLS遗漏的行高，`gap:9px 16px`没有增加；长值换行或带控件的详情行按实际内容增高，不与gRPC的38px消息列表行混为同一规格。
+- 2026-09-11普通/深色/MITM两态及入口共五个常驻parity场景33/33 matched、0 missing/flagged、最大0.8px，平均像素差2.32%；HTTP/WebSocket/gRPC方法标签的几何亦已检查，后续POST配色验证见下文，不把行高验证当作配色证据。
+- 配置明确collapsed/open状态并补齐深色目标；从未修改的已有设计场景生成四张缺失的`inspector-tunnel`/`inspector-tunnel-mitm-active`明暗PNG，396张旧图逐张SHA256保持不变。没有调整几何阈值或覆盖完整parity报告。
+- 相关row-format/Capture Store unit33/33、Desktop typecheck通过；真实`capture.scenarios.tls`1/1（25.2s），未解密Tunnel、解密H1/H2、正文读取和本轮CA清理保持，Main/Core `24704/21152`正常退出，Root集合、8888、WinINet/journal及登记进程恢复。
+- TEMP前缀`interceptor-tunnel-item-20260911`保存五场景报告、标签邻近检查、旧图hash、unit/types及真实trace/metadata；改前元数据截图为`interceptor-protocol-scenes-20260911-tunnel-aligned-shots/capture-tunnel-light.png`。变化追加到同一[UI parity报告](../../commit-changes/202609111558_ui_parity_progress.html#tls-tunnel)，不单独新建commit或HTML。
+
+#### Inspector POST配色
+
+- `RequestInspector`根据实际method给POST标签附加局部class，使用设计既有的`--yellow`与14%黄色背景；GET/CONNECT及其他现有方法仍保留原样。不复用列表徽标的16%底色，不改字体、字号、行高、padding或请求行为。
+- 2026-09-11前置gRPC parity确认POST文字/背景为蓝色；修改后HTTP/WebSocket/gRPC/Tunnel明暗八个方法目标均无样式或尺寸差异，gRPC明暗18/18 matched、0 missing/flagged。其余HTTP Header marker与WebSocket正文差异未纳入本步，设计源码和PNG均未改。
+- `row-format`/Capture Store unit33/33、Desktop typecheck通过；已有真实`capture.scenarios.grpc`1/1（2.2m），原五场景、消息选择/Copy与多消息5MiB边界同跑，Main/Core `23260/34540`正常退出，CA/Root集合、8888、WinINet/journal和登记进程恢复。
+- TEMP前缀`interceptor-method-colour-20260911`保存前置/最终parity、单测/类型和真实trace/metadata；改动与同主题前后图继续追加在[同一UI parity报告](../../commit-changes/202609111558_ui_parity_progress.html#inspector-post)。没有新增item、commit或HTML。
+
+#### Request Method详情值
+
+- General中的Request Method按现有设计显示完整大写协议值和accent文字，不是方法标签；Copy仍复制完整大写值。列表、筛选、断点和Composer中的方法标签继续复用`MethodBadge`。
+- 2026-09-11使用flex组件时定位到产品在这个普通文字字段误用标签：原20px背景画在18px行外，inline-flex后该行增加2px。前置General method value目标记录dh2px及颜色不符；按原设计恢复文字后，明暗方法值和后续Client App均匹配，保留每主题4个既有Header Copy布局flag，不通过负margin、裁剪或压缩标签掩盖行盒。
+- 现有`capture.body.fullscreen`新增Request Method普通文字与真实Copy断言；最终1/1（13.5s），完整POST复制、URL、Request/Response正文、模式保持和全屏原断言通过。Main/Core22464/11152正常销毁，宿主guard核验8888、WinINet、共享journal及登记进程恢复；TEMP `interceptor-method-value-20260911-e2e*`保留trace/metadata。没有新建工具自身测试。
+- TLS和普通文本Kv仍为18px行高、9px行间距，Request Method还原后无需改变这个规则；新图片和组件flex回归均保留在同一UI parity item，不另建commit或报告。
+
 #### Inspector标题行高
 
 - URL行高的本项验收通过：只在`.url`显式使用normal，不改字体、字号、URL展示或Copy行为。旧报告少1.6px的高度差在真实静态字体加载后消失，15个现有场景的URL宽高差均为0；不以此声明整页位置和像素全部匹配。
@@ -1534,6 +1636,8 @@ interface CaptureEventSink {
 **gRPC framing 不读整段正文**：`grpc/entry.ts` 的 `GrpcService` 通过 `grpc/utils/index.ts` 解析 5 字节 envelope——每条只从 Blob 读 5B header，再按 payload length 跳到下一个 offset。payload 继续走既有的 range 读取，不需要新的存储结构。
 
 **BodyViewer嵌套滚动契约**：正文pane内容溢出时由pane自身滚动；到达顶部/底部后继续同方向wheel必须交给Inspector外层scroll，不能由Monaco永久消费。产品`CodeViewer`与design-vite `MonacoFixture`都必须显式使用`alwaysConsumeMouseWheel:false`。外框可用`overflow:hidden`裁切圆角，但不得关闭Monaco内部scrollbar或阻断边界后的scroll chaining。
+
+**Compact正文高度待确认**：2026-09-11浏览器直接测量规则替换的Request/Response，三行正文的Monaco contentHeight为86px、Renderer外框96px；`CodeViewer.COMPACT_FRAME_HEIGHT=10`显式预留8px滚动条槽和2px边框，设计`MonacoFixture`则直接用contentHeight作为带边框外框高度。一次性缩到设计86px的对照中，内部viewport84px、scrollHeight86px，产生2px垂直滚动；不能把全部10px都说成必需，也不应为尺寸一致隐藏滚动。当前短正文额外8px并非内容所需，设计又少算2px边框；共享WebSocket/gRPC查看器的高度约定需要设计确认后统一，产品/正式设计/PNG均未修改。TEMP `interceptor-compact-body-20260911/evidence.json`和两张原尺寸截图保存实际测量，不是E2E或新的parity Green。
 
 **BodyViewer高度与滚动证据**：`BodySection`通过grow Section把正文pane贯通到Inspector剩余高度。现行`capture.detail-body-fill` workflow字节级移植到修复前`039dd42`后，response pane高度与18px底部padding先通过，但Monaco到达底部后的wheel使外层`scrollTop`保持`8.666666984558105`，取得真实Electron retrospective Red；`800bbca`加入`alwaysConsumeMouseWheel:false`后，当前同一workflow为`1/1` Green并完成Main/Core销毁、8888释放与系统代理恢复。
 

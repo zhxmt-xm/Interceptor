@@ -14,11 +14,12 @@
   background: color-mix(in srgb, var(--panel-2) 38%, var(--panel));
 }
 .number {
-  display: grid;
+  display: flex;
   width: 24px;
   height: 24px;
   flex: 0 0 auto;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border: 1.5px solid var(--accent);
   border-radius: 50%;
   color: var(--accent);

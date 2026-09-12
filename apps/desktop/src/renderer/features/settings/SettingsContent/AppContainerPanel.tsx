@@ -341,7 +341,7 @@ export function AppContainerPanel(): React.JSX.Element {
         }}
         aria-labelledby="app-container-bulk-title"
       >
-        <header className={cx(styles.dialogHeader, styles.bulkDialogHeader)}>
+        <header className={styles.dialogHeader}>
           <span className={cx(
             styles.dialogIcon,
             bulkAction === 'disable' && styles.dialogIconDanger,

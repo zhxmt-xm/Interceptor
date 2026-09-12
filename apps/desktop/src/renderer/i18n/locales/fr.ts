@@ -227,6 +227,8 @@ export const frCatalog = {
   'capture.connectionMetadataOnly': 'Aucune autorité de certification locale n’a été générée ou approuvée. Seules les métadonnées de connexion sont stockées.',
   'capture.mitmActiveForNewConnections': 'Le MITM est actif pour les nouvelles connexions. Reconnectez ce client pour inspecter son trafic HTTPS.',
   'capture.httpsSetupDescription': 'Configurez un certificat racine local uniquement lorsque vous devez inspecter le contenu des requêtes et réponses HTTPS.',
+  'capture.httpsClientApps': 'Apps clientes',
+  'capture.httpsInternet': 'Internet',
   'capture.proxyRestartsSameAddress': 'Le proxy local redémarre à la même adresse.',
   'capture.httpsRemainsEncrypted': 'Tant que la configuration n’est pas terminée, HTTPS reste chiffré et transite sans interruption.',
   'capture.startDecrypting': 'Commencer le déchiffrement',

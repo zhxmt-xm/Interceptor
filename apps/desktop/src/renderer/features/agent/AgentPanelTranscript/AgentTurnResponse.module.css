@@ -1,16 +1,17 @@
 .assistantMessage {
-  display: grid;
+  display: flex;
   min-width: 0;
-  grid-template-columns: 26px minmax(0, 1fr);
-  align-items: start;
+  align-items: flex-start;
   gap: 9px;
 }
 
 .avatar {
-  display: grid;
+  display: flex;
+  flex: 0 0 26px;
   width: 26px;
   height: 26px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border-radius: 7px;
   background: var(--accent-soft);
   color: var(--accent);
@@ -23,6 +24,7 @@
 
 .response {
   display: flex;
+  flex: 1;
   min-width: 0;
   flex-direction: column;
   gap: 10px;
@@ -54,7 +56,8 @@
 
 .markdown ul,
 .markdown ol {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
   padding-left: 17px;
 }

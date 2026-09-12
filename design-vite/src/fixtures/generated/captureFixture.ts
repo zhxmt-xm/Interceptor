@@ -4875,8 +4875,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "shop.example.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "shop.example.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -5050,8 +5057,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "api.example.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "api.example.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -5229,8 +5243,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "api.github.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "api.github.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -5401,8 +5422,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "accounts.google.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "accounts.google.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -5569,8 +5597,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "login.microsoftonline.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "login.microsoftonline.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -5737,8 +5772,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "cdn.jsdelivr.net"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "cdn.jsdelivr.net"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -5905,8 +5947,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "fonts.gstatic.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "fonts.gstatic.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -6072,8 +6121,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "api.stripe.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "api.stripe.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -6239,8 +6295,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "graph.microsoft.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "graph.microsoft.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -6406,8 +6469,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "cdn.example.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "cdn.example.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -6573,8 +6643,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "shop.datang-ev.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "shop.datang-ev.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -6740,8 +6817,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "raw.githubusercontent.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "raw.githubusercontent.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -6907,8 +6991,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "cdn.example.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "cdn.example.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -7074,8 +7165,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "video.example.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "video.example.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -7241,8 +7339,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "orders.example.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "orders.example.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -7393,8 +7498,15 @@ export const captureFixture: FixtureNode = {
                                   },
                                   "children": [
                                     {
-                                      "type": "text",
-                                      "value": "realtime.example.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "realtime.example.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -7585,8 +7697,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "api.github.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "api.github.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -7754,8 +7873,15 @@ export const captureFixture: FixtureNode = {
                                   },
                                   "children": [
                                     {
-                                      "type": "text",
-                                      "value": "api.internal.local"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "api.internal.local"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -7922,8 +8048,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "assets.example.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "assets.example.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -8090,8 +8223,15 @@ export const captureFixture: FixtureNode = {
                                       ]
                                     },
                                     {
-                                      "type": "text",
-                                      "value": "telemetry.example.com"
+                                      "type": "element",
+                                      "tag": "span",
+                                      "attributes": {},
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "value": "telemetry.example.com"
+                                        }
+                                      ]
                                     }
                                   ]
                                 }
@@ -11951,8 +12091,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "https://api.github.com/user"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "https://api.github.com/user"
+                                            }
+                                          ]
                                         },
                                         {
                                           "type": "element",
@@ -12002,8 +12151,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "GET"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "GET"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -12113,8 +12271,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "H2"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "H2"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -12139,8 +12306,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "api.github.com"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "api.github.com"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -12209,8 +12385,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "142 ms"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "142 ms"
+                                            }
+                                          ]
                                         }
                                       ]
                                     }
@@ -12300,8 +12485,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "private, max-age=60, s-maxage=60"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "private, max-age=60, s-maxage=60"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -12326,8 +12520,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "gzip"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "gzip"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -12352,8 +12555,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "application/json; charset=utf-8"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "application/json; charset=utf-8"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -12378,8 +12590,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "Fri, 10 Jul 2026 12:00:00 GMT"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "Fri, 10 Jul 2026 12:00:00 GMT"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -12404,8 +12625,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "GitHub.com"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "GitHub.com"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -12430,8 +12660,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "max-age=31536000; includeSubDomains"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "max-age=31536000; includeSubDomains"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -12505,8 +12744,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "after"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "after"
+                                            }
+                                          ]
                                         },
                                         {
                                           "type": "element",
@@ -12610,8 +12858,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "application/vnd.github.v3+json"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "application/vnd.github.v3+json"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -12636,8 +12893,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "gzip, deflate, br"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "gzip, deflate, br"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -12662,8 +12928,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "Bearer github_pat_11A…"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "Bearer github_pat_11A…"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -12688,8 +12963,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "Interceptor/1.0.0 (macOS; arm64)"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "Interceptor/1.0.0 (macOS; arm64)"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -12714,8 +12998,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "test"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "test"
+                                            }
+                                          ]
                                         },
                                         {
                                           "type": "element",
@@ -12873,8 +13166,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "GET"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "GET"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -12899,8 +13201,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "/user"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "/user"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -12925,8 +13236,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "HTTP/2"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "HTTP/2"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -12951,8 +13271,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "https"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "https"
+                                            }
+                                          ]
                                         }
                                       ]
                                     }
@@ -14893,21 +15222,30 @@ export const captureFixture: FixtureNode = {
                                                   "type": "element",
                                                   "tag": "span",
                                                   "attributes": {
-                                                    "class": "jtog on"
+                                                    "class": "jdisclosure"
                                                   },
                                                   "children": [
                                                     {
                                                       "type": "element",
-                                                      "tag": "svg",
-                                                      "attributes": {},
+                                                      "tag": "span",
+                                                      "attributes": {
+                                                        "class": "jtog on"
+                                                      },
                                                       "children": [
                                                         {
                                                           "type": "element",
-                                                          "tag": "use",
-                                                          "attributes": {
-                                                            "href": "#i-chev"
-                                                          },
-                                                          "children": []
+                                                          "tag": "svg",
+                                                          "attributes": {},
+                                                          "children": [
+                                                            {
+                                                              "type": "element",
+                                                              "tag": "use",
+                                                              "attributes": {
+                                                                "href": "#i-chev"
+                                                              },
+                                                              "children": []
+                                                            }
+                                                          ]
                                                         }
                                                       ]
                                                     }
@@ -14952,6 +15290,15 @@ export const captureFixture: FixtureNode = {
                                                 "class": "jrow d1"
                                               },
                                               "children": [
+                                                {
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {
+                                                    "class": "jdisclosure",
+                                                    "aria-hidden": "true"
+                                                  },
+                                                  "children": []
+                                                },
                                                 {
                                                   "type": "element",
                                                   "tag": "span",
@@ -15008,6 +15355,15 @@ export const captureFixture: FixtureNode = {
                                                   "type": "element",
                                                   "tag": "span",
                                                   "attributes": {
+                                                    "class": "jdisclosure",
+                                                    "aria-hidden": "true"
+                                                  },
+                                                  "children": []
+                                                },
+                                                {
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {
                                                     "class": "jkey"
                                                   },
                                                   "children": [
@@ -15060,21 +15416,30 @@ export const captureFixture: FixtureNode = {
                                                   "type": "element",
                                                   "tag": "span",
                                                   "attributes": {
-                                                    "class": "jtog"
+                                                    "class": "jdisclosure"
                                                   },
                                                   "children": [
                                                     {
                                                       "type": "element",
-                                                      "tag": "svg",
-                                                      "attributes": {},
+                                                      "tag": "span",
+                                                      "attributes": {
+                                                        "class": "jtog"
+                                                      },
                                                       "children": [
                                                         {
                                                           "type": "element",
-                                                          "tag": "use",
-                                                          "attributes": {
-                                                            "href": "#i-chev-right"
-                                                          },
-                                                          "children": []
+                                                          "tag": "svg",
+                                                          "attributes": {},
+                                                          "children": [
+                                                            {
+                                                              "type": "element",
+                                                              "tag": "use",
+                                                              "attributes": {
+                                                                "href": "#i-chev-right"
+                                                              },
+                                                              "children": []
+                                                            }
+                                                          ]
                                                         }
                                                       ]
                                                     }
@@ -15149,21 +15514,30 @@ export const captureFixture: FixtureNode = {
                                                   "type": "element",
                                                   "tag": "span",
                                                   "attributes": {
-                                                    "class": "jtog on"
+                                                    "class": "jdisclosure"
                                                   },
                                                   "children": [
                                                     {
                                                       "type": "element",
-                                                      "tag": "svg",
-                                                      "attributes": {},
+                                                      "tag": "span",
+                                                      "attributes": {
+                                                        "class": "jtog on"
+                                                      },
                                                       "children": [
                                                         {
                                                           "type": "element",
-                                                          "tag": "use",
-                                                          "attributes": {
-                                                            "href": "#i-chev"
-                                                          },
-                                                          "children": []
+                                                          "tag": "svg",
+                                                          "attributes": {},
+                                                          "children": [
+                                                            {
+                                                              "type": "element",
+                                                              "tag": "use",
+                                                              "attributes": {
+                                                                "href": "#i-chev"
+                                                              },
+                                                              "children": []
+                                                            }
+                                                          ]
                                                         }
                                                       ]
                                                     }
@@ -15238,6 +15612,15 @@ export const captureFixture: FixtureNode = {
                                                   "type": "element",
                                                   "tag": "span",
                                                   "attributes": {
+                                                    "class": "jdisclosure",
+                                                    "aria-hidden": "true"
+                                                  },
+                                                  "children": []
+                                                },
+                                                {
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {
                                                     "class": "jidx"
                                                   },
                                                   "children": [
@@ -15286,6 +15669,15 @@ export const captureFixture: FixtureNode = {
                                                 "class": "jrow d2"
                                               },
                                               "children": [
+                                                {
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {
+                                                    "class": "jdisclosure",
+                                                    "aria-hidden": "true"
+                                                  },
+                                                  "children": []
+                                                },
                                                 {
                                                   "type": "element",
                                                   "tag": "span",
@@ -15342,6 +15734,15 @@ export const captureFixture: FixtureNode = {
                                                   "type": "element",
                                                   "tag": "span",
                                                   "attributes": {
+                                                    "class": "jdisclosure",
+                                                    "aria-hidden": "true"
+                                                  },
+                                                  "children": []
+                                                },
+                                                {
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {
                                                     "class": "jpunct"
                                                   },
                                                   "children": [
@@ -15364,6 +15765,15 @@ export const captureFixture: FixtureNode = {
                                                 "class": "jrow d1"
                                               },
                                               "children": [
+                                                {
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {
+                                                    "class": "jdisclosure",
+                                                    "aria-hidden": "true"
+                                                  },
+                                                  "children": []
+                                                },
                                                 {
                                                   "type": "element",
                                                   "tag": "span",
@@ -15420,6 +15830,15 @@ export const captureFixture: FixtureNode = {
                                                   "type": "element",
                                                   "tag": "span",
                                                   "attributes": {
+                                                    "class": "jdisclosure",
+                                                    "aria-hidden": "true"
+                                                  },
+                                                  "children": []
+                                                },
+                                                {
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {
                                                     "class": "jkey"
                                                   },
                                                   "children": [
@@ -15468,6 +15887,15 @@ export const captureFixture: FixtureNode = {
                                                 "class": "jrow d1"
                                               },
                                               "children": [
+                                                {
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {
+                                                    "class": "jdisclosure",
+                                                    "aria-hidden": "true"
+                                                  },
+                                                  "children": []
+                                                },
                                                 {
                                                   "type": "element",
                                                   "tag": "span",
@@ -15524,6 +15952,15 @@ export const captureFixture: FixtureNode = {
                                                   "type": "element",
                                                   "tag": "span",
                                                   "attributes": {
+                                                    "class": "jdisclosure",
+                                                    "aria-hidden": "true"
+                                                  },
+                                                  "children": []
+                                                },
+                                                {
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {
                                                     "class": "jkey"
                                                   },
                                                   "children": [
@@ -15572,6 +16009,15 @@ export const captureFixture: FixtureNode = {
                                                 "class": "jrow"
                                               },
                                               "children": [
+                                                {
+                                                  "type": "element",
+                                                  "tag": "span",
+                                                  "attributes": {
+                                                    "class": "jdisclosure",
+                                                    "aria-hidden": "true"
+                                                  },
+                                                  "children": []
+                                                },
                                                 {
                                                   "type": "element",
                                                   "tag": "span",
@@ -16991,8 +17437,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "Jul 16, 2026, 12:00:00 PM"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "Jul 16, 2026, 12:00:00 PM"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -17017,8 +17472,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "142 ms"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "142 ms"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -17043,8 +17507,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "63 B"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "63 B"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -17069,8 +17542,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "1.2 KB"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "1.2 KB"
+                                            }
+                                          ]
                                         }
                                       ]
                                     }
@@ -17182,8 +17664,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "8f2a9c1b4e…"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "8f2a9c1b4e…"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -17208,8 +17699,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "yes"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "yes"
+                                            }
+                                          ]
                                         }
                                       ]
                                     }
@@ -17299,8 +17799,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "VszN7pQ…9Qb2"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "VszN7pQ…9Qb2"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -17325,8 +17834,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": ".github.com"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": ".github.com"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -17351,8 +17869,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "/"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "/"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -17377,8 +17904,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "Session"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "Session"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -17403,8 +17939,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "HttpOnly · Secure · SameSite=Lax"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "HttpOnly · Secure · SameSite=Lax"
+                                            }
+                                          ]
                                         }
                                       ]
                                     }
@@ -17604,8 +18149,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "TLS 1.3"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "TLS 1.3"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -17630,8 +18184,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "TLS_AES_128_GCM_SHA256"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "TLS_AES_128_GCM_SHA256"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -17656,8 +18219,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "X25519"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "X25519"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -17682,8 +18254,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "h2"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "h2"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -17708,8 +18289,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "api.github.com"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "api.github.com"
+                                            }
+                                          ]
                                         }
                                       ]
                                     }
@@ -18235,8 +18825,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "accounts.google.com"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "accounts.google.com"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -18261,8 +18860,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "443"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "443"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -18287,8 +18895,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "TLS passthrough"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "TLS passthrough"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -18313,8 +18930,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "open"
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "open"
+                                            }
+                                          ]
                                         }
                                       ]
                                     },
@@ -18339,8 +18965,17 @@ export const captureFixture: FixtureNode = {
                                       },
                                       "children": [
                                         {
-                                          "type": "text",
-                                          "value": "No body captured."
+                                          "type": "element",
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "kv-value-text"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "value": "No body captured."
+                                            }
+                                          ]
                                         }
                                       ]
                                     }
@@ -19466,12 +20101,10 @@ export const captureFixture: FixtureNode = {
       "type": "text",
       "value": "\n          "
     },
-
     {
       "type": "text",
       "value": "\n          "
     },
-
     {
       "type": "text",
       "value": "\n          "

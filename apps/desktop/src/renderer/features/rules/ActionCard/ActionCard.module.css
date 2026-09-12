@@ -16,8 +16,9 @@
   height: 28px;
   flex: 0 0 auto;
   border-radius: 8px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .icon svg {
   width: 15px;

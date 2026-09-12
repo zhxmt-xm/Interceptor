@@ -175,11 +175,12 @@
 }
 
 .payloadEditorFileIcon {
-  display: grid;
+  display: flex;
   width: 30px;
   height: 30px;
   flex: 0 0 auto;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border-radius: 7px;
   background: var(--panel);
   color: var(--text-2);

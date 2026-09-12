@@ -54,7 +54,7 @@ export function DocumentTabs(): React.JSX.Element {
                 }
               }}
             >
-              <MethodBadge method={request.method} className={styles.docMethod} />
+              <MethodBadge method={request.method} size="sm" />
               <span className={styles.docName}>{request.name}</span>
               <button
                 type="button"

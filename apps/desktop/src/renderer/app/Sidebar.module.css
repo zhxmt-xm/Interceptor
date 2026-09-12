@@ -26,8 +26,9 @@
   height: 30px;
   flex: 0 0 auto;
   border-radius: 9px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #fff;
   background: linear-gradient(140deg, var(--accent), var(--purple));
   box-shadow: 0 4px 12px -3px color-mix(in srgb, var(--accent) 55%, transparent);

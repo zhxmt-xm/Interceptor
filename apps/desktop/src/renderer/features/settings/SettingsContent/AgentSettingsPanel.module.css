@@ -30,11 +30,12 @@
 }
 
 .icon {
-  display: grid;
+  display: flex;
   width: 36px;
   height: 36px;
   flex: 0 0 36px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border-radius: 9px;
   background: var(--accent-soft);
   color: var(--accent);

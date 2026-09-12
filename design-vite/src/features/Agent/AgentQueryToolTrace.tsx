@@ -80,8 +80,8 @@ export function AgentQueryToolTrace({ variant }: AgentQueryToolTraceProps): Reac
             <span className={styles.toolTraceStatus}><CheckCircle2 aria-label="Completed" /></span>
             <div className={styles.toolTraceCopy}>
               <code>{step.name}</code>
-              <span><b>Arguments</b>{step.arguments}</span>
-              <span><b>Result</b>{step.result}</span>
+              <span><b>Arguments</b><span className={styles.toolTraceValue}>{step.arguments}</span></span>
+              <span><b>Result</b><span className={styles.toolTraceValue}>{step.result}</span></span>
             </div>
           </li>
         ))}

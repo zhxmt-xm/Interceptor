@@ -24,17 +24,26 @@
 }
 
 .mcpApprovalHeader {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  align-items: start;
+  display: flex;
+  align-items: center;
   gap: 11px;
 }
 
+.mcpApprovalHeader > * {
+  flex: 0 0 auto;
+}
+
+.mcpApprovalHeader > :nth-child(2) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .mcpApprovalHeader > span {
-  display: grid;
+  display: flex;
   width: 34px;
   height: 34px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
   background: color-mix(in srgb, var(--yellow) 13%, transparent);
   color: var(--yellow);
@@ -80,10 +89,9 @@
 }
 
 .mcpApprovalDetails > div {
-  display: grid;
+  display: flex;
   min-height: 34px;
-  grid-template-columns: 76px minmax(0, 1fr);
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);
@@ -94,6 +102,7 @@
 }
 
 .mcpApprovalDetails dt {
+  flex: 0 0 76px;
   color: var(--text-3);
   font-size: 9.5px;
   font-weight: 600;
@@ -101,6 +110,7 @@
 }
 
 .mcpApprovalDetails dd {
+  flex: 1;
   min-width: 0;
 }
 

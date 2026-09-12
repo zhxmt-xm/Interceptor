@@ -36,6 +36,20 @@ test('breakpoints.websocket-close forwards a close-code-only edit end to end', a
     AUTOMATION_IDS.capture.inspector.tab.messages,
   ).click();
 
+  // 建立真实历史消息，验证38px分隔行和暂停后的内部滚动，而不是裁掉历史内容。
+  // Create real history frames to verify 38px rows and scrolling while a frame is paused.
+  for (const index of [0, 1, 2, 3]) {
+    const message = `${requestPath}/history-${index}`;
+    webSocketLab.sendFromOrigin(message);
+    await client.waitForText(message);
+  }
+  const historyRows = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.websocketFrame);
+  await expect(historyRows).toHaveCount(4);
+  for (const historyRow of await historyRows.all()) {
+    await expect(historyRow).toHaveCSS('height', '38px');
+  }
+  const frameScroll = historyRows.first().locator('..').locator('..').locator('..');
+
   const breakpointToggle = getByAutomationId(
     page,
     AUTOMATION_IDS.capture.websocket.breakpointToggle,
@@ -85,6 +99,41 @@ test('breakpoints.websocket-close forwards a close-code-only edit end to end', a
   const closeCode = getByAutomationId(page, AUTOMATION_IDS.breakpoints.closeCode);
   await expect(closeCode).toBeVisible();
   await expect(closeCode).toHaveValue('1000');
+  await expect(frameScroll.locator('..')).toHaveCSS('height', '126px');
+  await frameScroll.hover();
+  await page.mouse.wheel(0, 400);
+  await expect.poll(() => frameScroll.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+  const pausedFrame = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.breakpointPending);
+  await expect(pausedFrame).toHaveCount(1);
+  await expect(pausedFrame).toBeInViewport({ ratio: 0.9 });
+  await pausedFrame.click();
+
+  // 暂停行必须由同一层flex负责居中，不以中心坐标或字形像素容差替代布局规则。
+  // The pause row uses flex centering; geometry and glyph tolerances do not replace the layout contract.
+  const pauseContext = getByAutomationId(page, AUTOMATION_IDS.breakpoints.queueMenu).locator('xpath=ancestor::div[1]');
+  await expect(pauseContext).toHaveCSS('display', 'flex');
+  await expect(pauseContext).toHaveCSS('align-items', 'center');
+  await expect(pauseContext.locator(':scope > span').first()).toHaveCSS('align-items', 'center');
+
+  // 替换标题由模式控件决定高度，折叠图标不得用30px按钮把它撑高。
+  // The mode control sets the replacement heading height; the collapse icon must not enlarge it.
+  const replacementHeader = getByAutomationId(
+    page,
+    AUTOMATION_IDS.breakpoints.replacement.off,
+  ).locator('..').locator('..');
+  await expect(replacementHeader).toHaveCSS('height', '36px');
+  const collapseReplacement = replacementHeader.locator(':scope > button');
+  await expect(collapseReplacement).toHaveCSS('width', '13px');
+  await expect(collapseReplacement).toHaveCSS('height', '13px');
+  const replacementBlocks = replacementHeader.locator('..').locator(':scope > div');
+  await expect(replacementBlocks).toHaveCount(2);
+  await collapseReplacement.click();
+  await expect(replacementBlocks).toHaveCount(1);
+  await collapseReplacement.click();
+  await expect(replacementBlocks).toHaveCount(2);
+  await expect(getByAutomationId(page, AUTOMATION_IDS.breakpoints.replacement.off)).toHaveAttribute('aria-checked', 'true');
+  await page.mouse.move(0, 0);
+  await page.screenshot({ path: testInfo.outputPath('websocket-pause-layout.png') });
   await closeCode.fill('1001');
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.executeEdited).click();
 

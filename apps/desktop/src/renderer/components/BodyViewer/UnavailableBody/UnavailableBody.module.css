@@ -7,7 +7,7 @@
   flex: 1 1 0;
   min-height: 0;
   flex-direction: column;
-  gap: 7px;
+  gap: 13px;
   padding: 0 40px;
   border: 1px solid var(--border-2);
   border-radius: 10px;
@@ -15,15 +15,34 @@
   text-align: center;
 }
 
+.content,
+.details {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+}
+
+.content {
+  gap: 10px;
+}
+
+.details {
+  gap: 7px;
+}
+
 .icon {
-  display: grid;
+  display: flex;
   width: 40px;
   height: 40px;
   flex: 0 0 auto;
   border-radius: 12px;
   background: var(--panel);
   color: var(--text-2);
-  place-items: center;
+  align-items: center;
+  justify-content: center;
 }
 
 .icon svg {
@@ -36,12 +55,14 @@
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 600;
+  line-height: normal;
 }
 
 .measures {
   color: var(--text-2);
   font-family: var(--font-mono);
   font-size: 11.5px;
+  line-height: var(--interceptor-line-height);
 }
 
 .reason {

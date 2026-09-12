@@ -33,6 +33,7 @@ export function UpdateNotification(): React.JSX.Element | null {
       <Button
         icon={downloaded ? ExternalLink : Download}
         variant="primary"
+        size="compact"
         disabled={busy}
         onClick={() => void (
           downloaded ? UpdateActions.openDownloaded() : UpdateActions.download()

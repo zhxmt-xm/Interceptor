@@ -230,6 +230,8 @@ export const plCatalog = {
   'capture.connectionMetadataOnly': 'Nie wygenerowano ani nie oznaczono jako zaufanego lokalnego urzędu certyfikacji. Zapisywane są tylko metadane połączenia.',
   'capture.mitmActiveForNewConnections': 'MITM jest aktywny dla nowych połączeń. Połącz ponownie tego klienta, aby sprawdzić jego ruch HTTPS.',
   'capture.httpsSetupDescription': 'Skonfiguruj lokalny certyfikat główny tylko wtedy, gdy musisz sprawdzać treść żądań i odpowiedzi HTTPS.',
+  'capture.httpsClientApps': 'Aplikacje',
+  'capture.httpsInternet': 'Internet',
   'capture.proxyRestartsSameAddress': 'Lokalny serwer proxy uruchomi się ponownie pod tym samym adresem.',
   'capture.httpsRemainsEncrypted': 'Do czasu ukończenia konfiguracji HTTPS pozostaje zaszyfrowany i działa bez przerw.',
   'capture.startDecrypting': 'Rozpocznij odszyfrowywanie',

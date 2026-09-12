@@ -39,6 +39,9 @@ Blocked仍必须由Developer在Playground逐项点击并观察产品与origin后
 
 ## 4. 执行约束
 
+- parity使用显式`headless:true`的Edge和`windowsHide:true`的Node子进程，不创建可见测试窗口，不调用系统键鼠、前置或置顶。页面内的Playwright DOM操作不需要OS前台焦点；真实Electron窗口恢复、Open/Save和UAC不属于这一层，用户暂停时保留原用例，等待明确通知后执行。
+- parity设计页在同一批次复用，每个场景先清理`overlay: ''`、`mcpToolApproval: ''`并重置`mitm: 'inactive'`，再应用自身`designState`；显式浮层和active场景优先。明暗“MITM Tunnel→普通Capture”、“Composer Export loading→选中目录”及MCP审批后的Composer不能残留上一场景的遮罩。不新增工具自身单测，不改变产品MITM或文件操作。
+- 字符串parity目标先以设计侧确定测量对象：设计实际为button时，Renderer也量同名可见button，否则两边仍量文字节点。同名按钮优先选择文字内容完全匹配的按钮，避免Cancel误配右上角同名图标；必要时为重复按钮使用明确的footer selector。显式selector与`measureText`不变，不放宽原几何及样式阈值；几何差值用于定位产品/设计差异，不代替实际flex布局规则验收。
 - **Proxy Core 全套必须 `--no-file-parallelism`**。大压缩流、真实文件 I/O 与随机端口并行会产生 5 秒假超时；与 desktop 并行运行时 `proxy/tests/integration/h2.test.ts` 会假失败。
 - **禁止并行运行 `build:core` 与依赖 `dist` 的集成测试**。`build.mjs` 每次先递归删除 `dist`，而真实代理集成测试运行时依赖该目录，并行会导致瞬时 `ECONNRESET`。必须构建完成后再顺序跑测试。
 - 集成测试用 `describe.skipIf(!existsSync(workerBundle))` 保护，worker bundle 不存在时整体跳过。

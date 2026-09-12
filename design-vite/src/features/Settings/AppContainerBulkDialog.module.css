@@ -2,8 +2,9 @@
   position: absolute;
   z-index: 100;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: color-mix(in srgb, var(--sidebar) 62%, rgba(0, 0, 0, 0.75));
 }
 
@@ -25,8 +26,6 @@
 }
 
 .header h2 {
-  position: relative;
-  top: -2px;
   flex: 1;
   margin: 0;
   font-size: 14.5px;
@@ -34,11 +33,12 @@
 }
 
 .icon {
-  display: grid;
+  display: flex;
   width: 30px;
   height: 30px;
   flex: 0 0 auto;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
   background: color-mix(in srgb, var(--yellow) 14%, transparent);
   color: var(--yellow);
@@ -86,9 +86,6 @@
 }
 
 .summary strong {
-  position: relative;
-  top: -3px;
-  left: 2px;
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 10.5px;
@@ -97,7 +94,7 @@
 
 .warning {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 9px;
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--yellow) 25%, var(--border));
@@ -126,17 +123,9 @@
 
 .footer {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 20px 16px;
+  gap: 10px;
+  padding: 14px 20px;
   border-top: 1px solid var(--border);
-}
-
-.footer > button:first-child {
-  position: relative;
-  left: -2px;
-}
-
-.footer > button:last-child {
-  width: 235px;
 }

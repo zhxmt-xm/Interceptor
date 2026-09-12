@@ -15,7 +15,7 @@ interface JsonTreeRowProps {
 const OPEN_BRACKET: Record<string, string> = { object: '{', array: '[' };
 const CLOSE_BRACKET: Record<string, string> = { object: '}', array: ']' };
 
-/** 一行树节点；缩进由 padding-left 提供，chevron 悬挂在缩进槽里不额外占列。 */
+/** 一行树节点；深度控制缩进，折叠控件使用每行一致的独立槽。 */
 export function JsonTreeRow({
   node,
   expanded,
@@ -31,20 +31,22 @@ export function JsonTreeRow({
       style={{ paddingLeft: `${4 + node.depth * 15}px` }}
       onContextMenu={(event) => onContextMenu(event, node)}
     >
+      <span className={styles.disclosure} aria-hidden={!container || node.closing ? true : undefined}>
+        {container && !node.closing ? (
+          <button
+            type="button"
+            className={styles.toggle}
+            aria-expanded={expanded}
+            onClick={() => onToggle(node.path)}
+          >
+            <Chevron aria-hidden="true" />
+          </button>
+        ) : null}
+      </span>
       {node.closing ? (
         <span className={styles.punctuation}>{CLOSE_BRACKET[node.kind]}</span>
       ) : (
         <>
-          {container ? (
-            <button
-              type="button"
-              className={styles.toggle}
-              aria-expanded={expanded}
-              onClick={() => onToggle(node.path)}
-            >
-              <Chevron aria-hidden="true" />
-            </button>
-          ) : null}
           {node.label === null ? null : (
             <>
               <span className={node.isIndex ? styles.index : styles.key}>{node.label}</span>

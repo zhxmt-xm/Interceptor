@@ -3,13 +3,11 @@
   flex-direction: column;
   gap: 12px;
   min-height: 0;
-  margin-top: -6px;
 }
 .toolbar {
   display: flex;
   align-items: center;
   gap: 9px;
-  margin-inline: -4px;
 }
 .spacer {
   flex: 1;
@@ -21,6 +19,10 @@
   border: 1px solid var(--border);
   border-radius: 8px;
 }
+.pausedFrameList {
+  height: 126px;
+  flex: 0 0 auto;
+}
 .frameScroll {
   position: relative;
   min-height: 116px;
@@ -28,9 +30,10 @@
   overflow-y: auto;
 }
 .empty {
-  display: grid;
+  display: flex;
   min-height: 116px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   padding: 12px;
   color: var(--text-3);
   font-size: 12px;
@@ -42,12 +45,6 @@
   position: relative;
   width: 100%;
 }
-.virtualItem {
-  border-bottom: 1px solid var(--border);
-}
-.pendingVirtualItem {
-  border-bottom: 0;
-}
 .frame {
   display: grid;
   width: 100%;
@@ -57,7 +54,7 @@
   height: 38px;
   padding: 0 10px;
   border: 0;
-  border-bottom: 0;
+  border-bottom: 1px solid var(--border);
   background: transparent;
   color: var(--text);
   font-family: var(--font-mono);
@@ -77,6 +74,7 @@
   box-shadow: inset 2px 0 var(--yellow);
 }
 .frame.queuedFrame {
+  border-bottom: 0;
   background: color-mix(in srgb, var(--yellow) 5%, var(--panel));
   color: var(--text-3);
 }
@@ -86,10 +84,11 @@
   box-shadow: inset 2px 0 var(--yellow);
 }
 .direction {
-  display: grid;
+  display: flex;
   width: 22px;
   height: 22px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border-radius: 6px;
 }
 .outgoing {

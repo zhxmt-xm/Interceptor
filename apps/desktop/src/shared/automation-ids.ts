@@ -159,6 +159,7 @@ export const AUTOMATION_IDS = {
       enable: 'capture.readiness.enable',
     },
     httpsSetup: {
+      connectionChain: 'capture.https-setup.connection-chain',
       generate: 'capture.https-setup.generate',
       install: 'capture.https-setup.install',
       startDecrypting: 'capture.https-setup.start-decrypting',
@@ -465,6 +466,8 @@ export const AUTOMATION_IDS = {
   },
   settings: {
     tlsCompatibility: {
+      hostList: 'settings.tls-compatibility.host-list',
+      addSelected: 'settings.tls-compatibility.add-selected',
       dismiss: 'settings.tls-compatibility.dismiss',
     },
     section: {
@@ -608,6 +611,14 @@ export class AutomationIdFactory {
   /** Identify one persisted TLS passthrough row by its normalized host pattern. */
   static tlsPassthroughHost(host: string): string {
     return `settings.tls-passthrough.host.${encodeURIComponent(host)}`;
+  }
+
+  static tlsCompatibilityHost(host: string): string {
+    return `settings.tls-compatibility.host.${encodeURIComponent(host)}`;
+  }
+
+  static tlsCompatibilityPattern(host: string, pattern: string): string {
+    return `settings.tls-compatibility.pattern.${encodeURIComponent(host)}:${encodeURIComponent(pattern)}`;
   }
 
   /** Identify one enumerated Windows AppContainer row by its stable SID. */

@@ -93,6 +93,7 @@ Renderer瞬态导航反馈，不写workspace、不进入URL，也不由Main/Core
 - 2026-09-11旧`settings`场景补正常Toggle sidebar与Certificates导航，解决expanded/collapsed导致的160px差异；旧`light/shell-v2/settings.png`不存在，改为复用已有明暗`settings/framed.png`，不生成或修改基准。
 - 明暗各10 matched、0 missing、2 flagged；`MITM active`与`Show in file manager`仍各约1px位置差，继续报告。像素对比由n/a恢复为约1.46%/1.45%，证书fixture字段、说明和图标的既有差异不冒充产品已修复。
 - 产品、证书/系统状态、fake数据与设计稿未改；只运行受影响parity和脚本语法检查，不增加工具自身测试或重复证书E2E。TEMP证据前缀`interceptor-settings-certificates-20260911`；[工作项报告](../../commit-changes/202609111558_ui_parity_progress.html#settings-certificates)记录范围与遗留。
+- 2026-09-11定向DOM诊断确认两侧字体均成功加载，但设计实际使用静态Inter、Renderer为Inter Variable。标题文字宽90.375/89.40625px、Show in file manager按钮宽178.359375/177.734375px；标题gap9px、按钮gap7px/padding14px完全相同。相邻文字宽度差解释MITM badge与按钮组约1px偏移，不用margin或固定宽度消除报告；字体选择未经确认不变更，也不将其标为parity通过。原始字体集合和DOM边界保存在TEMP `interceptor-certificates-geometry-20260911.json`，临时诊断脚本已删除。
 
 ### 2.1 三对密钥
 
@@ -495,6 +496,59 @@ AppContainer 列表保持 Main 按名称提供的原始相对顺序，只在 Ren
 后续只有 `aadcdn.msauth.net` / `fonts.gstatic.com` 的低置信 reset，因此“登录成功但 gateway 仍报错”
 不能继续归因于这 4 项未生效，需要按新 dialog 收集下一批实际失败 host 或排查非 TLS 层。
 
+#### AppContainer列表行高
+
+- `AppContainerPanel`名称使用既有设计15px行高、包名14px行高；包名原15px使四行列表累计增高，底部说明偏移3.8px。推荐标签恢复20px框，通过inline-flex双轴居中，不用padding或位移定位文字；12.5px名称、11.5px包名、10.5px推荐标签字号及横向gap保持。
+- 排序/搜索unit基线与修改后均2/2，Desktop typecheck通过。2026-09-12明暗列表与四个批量确认弹窗共52 matched、0 missing、4 flagged；列表高度与底部说明已匹配，四个弹窗20/20无flag。不能把剩余字体差异算通过。
+- 四个flag是明暗两组名称字宽及相邻推荐标签位置：静态Inter为171.96875px，Renderer Inter Variable为171.015625px，差0.953125px。两边字号12.5px、字重550、行高15px及字距相同，实际FontFace均loaded；没有字体加载失败，不擅自换字体或加偏移。设计CSS首选Inter Variable但实际下载的是Inter，验证必须按完整字体列表，不只检查第一项。
+- 浏览器明暗搜索缩小/空结果/清空恢复、单项与批量Cancel均通过，豁免写入调用0次；推荐标签与名称中心差0px、文字Range与标签框中心差0.5px。没有运行真实Electron、Windows helper、UAC或修改系统exemption。
+- 同一item报告54张内嵌图片，原52张保持；名称/推荐标签/包名局部前后图已查看，1320/390宽度无溢出、全部展开。设计源码和既有PNG未变，一次性检查脚本已删除。TEMP `interceptor-app-containers-20260912-{before,package,rows,final}.{md,json}`、`-review/evidence.json`保存逐步测量、字体事实和浏览器结果；六场景最终像素均值1.06%，不代表全页像素一致。
+- 2026-09-12恢复授权后只读`app-container-ordering.workflow.ts`与正文/媒体/TLS导航同组4/4（52.7s），相关unit33/33；真实排序、搜索、名称/包名/推荐标签和rowLayouts通过，不修改系统exemption。Main/Core43056/38856正常销毁，8888/WinINet/journal恢复；trace/metadata及同名log位于TEMP `interceptor-e2e-resumed-20260912-body-settings`。暂停期前置E2E缺口及四个字体flag仍保留。
+
+非E2E复验：
+
+```powershell
+npm run test --workspace @interceptor/desktop -- src/renderer/features/settings/tests/unit/app-container-ordering.test.ts
+npm run typecheck --workspace @interceptor/desktop
+node apps/desktop/tests/visual-parity/parity.mjs --view=settings-app-containers --out-dir="$env:TEMP/interceptor-app-container-review-shots" --report="$env:TEMP/interceptor-app-container-review.md" --result-json="$env:TEMP/interceptor-app-container-review.json"
+```
+
+深色使用`settings-app-containers-dark`与独立输出名。真实E2E复验：
+
+```powershell
+npm run e2e:prepare-local --workspace @interceptor/desktop
+node node_modules/@playwright/test/cli.js test --config=apps/desktop/tests/e2e-workflow-tests/playwright.config.ts apps/desktop/tests/e2e-workflow-tests/workflows/settings/app-container-ordering.workflow.ts --reporter=line --output="$env:TEMP/interceptor-app-container-e2e"
+```
+
+#### TLS列表与兼容性弹窗行高
+
+- `TlsPassthroughPanel`沿用现有设计的host/说明14px行高、文字组2px gap和20px推荐标签框；标签以flex双轴居中。说明选择器收窄为`.hostCopy > span`，不再覆盖推荐标签再提高优先级抵消。字号、66px最小行高、图标及保存行为不变。
+- `TlsCompatibilityDialog`仅给`.hostCopy > code`补自然行高，消除主host每行少约0.9px、第三行累计提前1.7px；候选项、复选框、264px滚动列表与Not now/保存流程保持。
+- 2026-09-12 TLS Renderer unit前后18/18、Desktop typecheck通过；明暗列表、弹窗、添加后列表及Capture跳转共7场景44/44 matched、0 missing/flagged、最大0.9px，像素均值0.82%。两个Capture跳转场景无专属PNG，像素仍为n/a，不把几何结果当像素验收。
+- 直接浏览器明暗验证标签框与host中心差0px、文字与框0.5px；非法输入零保存，fake Preload添加/删除各一次后恢复原wildcard，弹窗滚轮scrollTop达到94px，全不选时禁用、重新选择后启用、Not now零保存。没有运行真实TLS、系统代理、CA、UAC或E2E。
+- 连续场景首次42 matched/2 design missing：设计adapter的`syncTlsRows()`直接移除/克隆行，使后续React高亮节点丢失。仅重置`tlsPatterns`仍未解决；parity显式设置wildcard，并在上一场景声明`tlsPatterns`后重建设计页，同序列44/44。未改产品、设计adapter或基准，也未新增工具自身测试。
+- 同一item报告58张内嵌图、原54张保持，1320/390宽度图片与红框已查看，全部展开且无溢出。TEMP `interceptor-tls-{rows,dialog}-20260912-{before,after}`、`interceptor-tls-layout-20260912-page-isolated.{md,json}`与`interceptor-tls-layout-20260912-review/evidence.json`保留证据；一次性脚本已删除。初次浏览器断言把计算`flex`误当作非`inline-flex`，改按blockification规则检查实际双轴居中后通过，不算产品Red。
+- 2026-09-12恢复授权后`capture.navigate-tls-passthrough`与正文/媒体/AppContainer同组4/4（52.7s），相关unit33/33；真实Capture跳转、target行高/gap及原持久化断言通过。Main/Core13656/3184正常销毁，CA/Root和8888/WinINet/journal恢复；trace/metadata及同名log位于TEMP `interceptor-e2e-resumed-20260912-body-settings`。暂停期前置E2E缺口仍保留。
+- 新增[兼容性workflow](../../apps/desktop/tests/e2e-workflow-tests/workflows/settings/tls-compatibility.workflow.ts)：客户端CONNECT到本流程loopback origin，以自产多级`.test`域名作为SNI，只信任另一份独立CA，六次真实`SELF_SIGNED_CERT_IN_CHAIN`经Core/Main事件触发弹窗，不依赖外部DNS或注入Store。五host默认精确项、父域wildcard默认未选、264px列表wheel/Home/End、全取消禁用、精确host/wildcard批量保存及后续Not now零添加均通过，origin应用字节0。
+- 首轮既有行为1/1（17.3s，Main/Core13940/39212）及18/18 unit基线后，仅增加列表/行/候选/保存公共automation ID；布局和业务不变。ID版18/18、Desktop类型与真实1/1（23.6s，3600/41668），明暗/添加后三场景24/24、最大0.6px、像素均值0.62%。显式保存JSON后的最终真实1/1（27.6s，14788/41168），三代均正常销毁并恢复CA/Root/8888/WinINet/journal。
+- TEMP `interceptor-tls-compatibility-20260912-evidence`及同名log含最终`tls-compatibility.json`、选择截图、trace与metadata；早期`-first`/`-ids`、unit/typecheck/parity结果分别保留。`testInfo.attach({ body })`在line reporter下没有独立JSON，最终改为UTF-8文件并以path附加；未新增验收工具自身测试。暂停期行高前置E2E缺口保留，Inventory仍planned，不以最终Green补造历史Red。
+
+非E2E复验：
+
+```powershell
+npm run test --workspace @interceptor/desktop -- src/renderer/features/settings/tests/unit/tlsCompatibilityStore.test.ts
+npm run typecheck --workspace @interceptor/desktop
+node apps/desktop/tests/visual-parity/parity.mjs --view=settings-tls-passthrough --out-dir="$env:TEMP/interceptor-tls-layout-review-shots" --report="$env:TEMP/interceptor-tls-layout-review.md" --result-json="$env:TEMP/interceptor-tls-layout-review.json"
+```
+
+其余场景为`settings-tls-passthrough-dark`、`tls-compatibility-dialog`及其`-dark`、`tls-compatibility-dialog-add`、`capture-tls-passthrough-target`及其`-dark`，使用独立输出名。真实列表导航E2E复验：
+
+```powershell
+npm run e2e:prepare-local --workspace @interceptor/desktop
+node node_modules/@playwright/test/cli.js test --config=apps/desktop/tests/e2e-workflow-tests/playwright.config.ts apps/desktop/tests/e2e-workflow-tests/workflows/capture/navigate-tls-passthrough.workflow.ts --reporter=line --output="$env:TEMP/interceptor-tls-layout-e2e"
+node node_modules/@playwright/test/cli.js test --config=apps/desktop/tests/e2e-workflow-tests/playwright.config.ts workflows/settings/tls-compatibility.workflow.ts --reporter=line --output="$env:TEMP/interceptor-tls-compatibility-e2e"
+```
+
 ### 3.6 已知兼容风险
 
 macOS 尚未接入上游检测：快照按网络服务分开存，多服务（Wi-Fi / 以太网 / VPN）可能各自配不同代理，需先定义合并语义。
@@ -572,6 +626,34 @@ sequenceDiagram
 **生命周期**：`DesktopApplication` 在创建窗口前恢复并刷新授权，再构造 updater；授权服务随后只按过期时间维护一个 refresh timer。授权布尔态变化会取消旧检查/下载并清除旧 Release 状态。状态分别经 `github-auth:status` 与 `update:status` 广播。退出时停止 Device Flow、token/update timers 与活动下载。packaged Renderer 始终从受保护 ASAR 经 `interceptor://app` 协议加载，**不存在远程代码覆盖层**。
 
 **转 public**：这套登录仅服务当前 private 仓库阶段。开源后删除 `GitHubAuthService`、auth IPC/store/UI 与 `authentication-required`，updater 恢复匿名固定仓库请求；发布资产校验和手动下载流程保留。
+
+### 更新通知按钮
+
+- 既有设计的通知动作按钮为32px高、水平padding 11px；Renderer原先使用Button默认34px和14px，使按钮宽出约6px并挤占标题空间。
+- `Button`增加`size="compact"`，只定义这两项尺寸；`UpdateNotification`显式选择它。默认`md`和`sm`、12.5px字号、550字重、15px图标和7px gap保持，不在通知CSS覆盖共享组件样式。
+- `available`仍调用`UpdateActions.download()`，`downloaded`仍调用`UpdateActions.openDownloaded()`；busy时禁用动作，Dismiss独立可用，其余状态不显示通知。没有新增IPC、下载或安装步骤。
+- 2026-09-11非E2E证据：通知两项尺寸选择先Red，同组10/10 Green、Desktop typecheck通过；available/downloaded明暗4场景64/64、0 missing/flagged、最大0.9px。四组通知按钮与外框、图标与按钮中心差均为0px；Settings普通动作仍34px，Dismiss后页面动作保持可见。
+- 同一item报告加入两种通知的同尺寸浅色前后图，48张图片、原44张原样保留；1320/390宽度无横向溢出且对比全部展开。证据位于TEMP下`interceptor-update-notification-20260911-{unit-red.log,unit-green.log,typecheck.log,parity.md,parity.json,review/}`。
+- 2026-09-12用户指出图标与文字未居中后补查：原检查仅包含按钮与图标外框，遗漏直接文本子项；英文Download可见文字约高1px。共享`Button`现在将文字放入独立flex label，并在button层使用双轴center，固定图标不收缩；通知调用方不补CSS，三档32/34/28px尺寸、字号与动作不变。
+- 首轮直接Button测试先2项Red，再与通知行为共17/17 Green，Desktop类型通过。明暗Download/Open的图标盒与文字盒中心差0px，盒子组合左右留白12/12px、上下8.5/8.5px，原宽高保持；这些数值不代表可见字形居中。八个通知/弹窗/正文场景100 matched、0 missing，仅保留HTTPS Cancel约1px既有flag；按钮目标按完整可访问名称测控件，非按钮文字仍测原节点，不把新label span误当按钮尺寸。
+- 当前构建真实正文/HTTPS TLS流程2/2（45.7s），Main/Core20144/2344、13768/41652均正常销毁，CA/Root、8888、WinINet和共享journal恢复通过。这证明共享按钮在这些真实调用处正常，不替代更新通知真实release下载及安装器打开验收。
+- 同一[报告近景](../../commit-changes/202609111558_ui_parity_progress.html#button-content-alignment-images)补本次修正前后Download/Open实际截图，旧通知的两张改后图替换为当前组件，其他56张图保持，共62图在1320/390宽度加载/排版检查通过。TEMP `interceptor-update-button-centering-20260912*`保留原始四侧度量、单测、八场景parity和真实E2E证据，临时脚本已删除。
+- 2026-09-12用户再次反馈“不居中”后，在完整Renderer截图的绝对坐标按DPR1/1.5/2检查白色图标/字形，不使用元素裁切后的图片中心代替按钮实际中心。当前normal版本的Download可见整组约右偏0.37–0.62px、下偏0.33–0.5px；Open文字下偏1.5–1.75px。去掉内层flex的临时对比没有改变像素，因此不能继续把问题归于flex层数。
+- 设计`.btn`没有独立行高覆盖；已删除此前给label加的`line-height: normal`，恢复从Button继承排版，未增加行高数值、margin、transform、基线对齐、文字裁剪或字体替换。DPR1.5/2下Open文字下偏减至1px/0.75px，但Download整组仍右偏0.45px/0.37px、下偏0.33px/0.5px；仍不算视觉问题完全解决。偏移方向询问只收到用户不在的自动答复，不视为允许更改既有设计约束。
+- 最新20/20 Button/通知unit前后Green、Desktop类型、八场景100 matched/0 missing/仅旧Cancel 1 flag；当前bundle正文全屏/Copy/关闭重开真实1/1（21.9s），Main/Core42516/42800正常销毁及8888/WinINet/journal恢复。TEMP `interceptor-button-visible-center-20260912*`保存初始实测、两种无产品改动预览、最终继承版、单测/类型/parity/E2E及报告来源hash；这条真实流程不代替通知下载/安装。
+- 报告当前64图：本轮近景改前使用反馈时真实normal版本、改后使用当前继承版，通知两张改后图也同步更新；六张相关图以外的58张图片源保持，用户和其他会话的其他内容保留。1320/390加载、红框和全部展开状态已查看，一次性脚本已删除；不再写“图标和文字整体完全居中”。
+- 下载行另有设计差异：设计保留隐藏的后续`.srow`，使当前可见末行仍有1px底边框；Renderer真实末行无边框，changelog因此提前约1.1px。直接测量15 matched、0 missing、2 flagged；不修改产品行高或添加偏移，也不修改设计基准掩盖差异。证据为TEMP下`interceptor-updates-row-20260911.{md,json}`。
+- **待视觉确认 · 待通知专属E2E**：用户2026-09-12已恢复E2E；现有[通知规格](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-update-notification)仍planned，没有对应可执行workflow。真实available/downloaded需要packaged App、GitHub授权与可用的新release；条件满足后实施该规格并保存完整Main/Core/Worker、8888及WinINet/journal恢复证据，不能用fake Preload或其他按钮调用处E2E代替。暂停期没有前置E2E Red、最新可见居中反馈尚未完全解决的事实继续保留。
+
+非E2E复验命令：
+
+```powershell
+npm run test --workspace @interceptor/desktop -- src/renderer/features/settings/tests/unit/update-notification.test.ts
+npm run typecheck --workspace @interceptor/desktop
+node apps/desktop/tests/visual-parity/parity.mjs --view=settings-updates-available --out-dir="$env:TEMP/interceptor-update-notification-review-shots" --report="$env:TEMP/interceptor-update-notification-review.md" --result-json="$env:TEMP/interceptor-update-notification-review.json"
+```
+
+其余通知场景ID为`settings-updates-available-dark`、`settings-updates-downloaded`、`settings-updates-downloaded-dark`；分别使用独立输出名，保留各场景证据。
 
 ## 5. 存储状态
 

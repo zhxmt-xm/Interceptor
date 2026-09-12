@@ -80,7 +80,7 @@
 
 - **活动栏（侧栏）**：展开 = 图标 + 文字 + 分组标签（WORKSPACE / SESSION）+ 底部 Settings / Language / Theme；折叠 = 纯图标居中。折叠态的 active 只用 `--accent-soft` 圆角底 + `--accent` 图标表示，**不加角标圆点**（右上角圆点留给未来的事件提示，例如断点命中）；Session 的在线绿点不受此限。展开态 active 用 `--accent-soft` 底 + 左侧 3px 竖条。
 - **主题 / 语言切换器**（侧栏底部，取代旧 Account）：触发行本身是一条 nav——主题展开为「当前时段图标 + Theme + 强调点」、语言为「地球 + Language + 代码」，折叠时主题只留当前时段图标、语言只留代码。点击弹出 **flyout**：以按钮为锚**向右弹出、底边与按钮底边对齐、留一小段水平间隙**，portal 到 `body` 以逃逸侧栏 `overflow`，点击外部 / Esc 关闭。语言项使用各语言自己的名称；超过可用高度时列表在 420px 内滚动，不改变锚点位置。主题 flyout 四项按**一天时序** Warm→Light→Ember→Dark，图标与文字保持中性色；hover 时从右侧浮现该时段的**中式写意山水**（日月循抛物线：晨左低 → 午中高 → 暮右低 → 夜居中；画面内缩留边 + 左侧 `--panel` 渐变保证标签可读），当前主题显示 `--accent` 勾。
-- **Method 徽标**:mono `10.5/600`,`color-mix(field 13–16%, transparent)` 底 + 字段色字,圆角 6。
+- **Method 徽标**:mono `10.5/600`,`color-mix(field 13–16%, transparent)` 底 + 字段色字,圆角 6。组件以`inline-flex`、`align-items:center`、`justify-content:center`在固定高度中居中文字；md高20px、sm高17px/字号9.5px、xs高16px/字号9px。Collection用40x16px的xs徽标，外层请求行继续`flex + align-items:center`，让标签框与名称框居中；DocumentTabs用sm。调用方只选择尺寸或设置外层列宽，不覆盖字号和padding；不用基线、文字裁剪或位移替代居中。
 - **Status**:`6px` 圆点 + mono `12`,用状态语义色。
 - **Capture 筛选分栏**（list 左侧，`208px`，`--filter` 底）：Capture 的**唯一筛选入口**，取代旧的 omni pill + Add filter 级联弹层与 list 上方的协议 Segmented。
   - 顶部一行 `40px` 与右侧列表工具栏同轨，内放 `30px` 搜索框（`--panel` 底、左内边距放大镜、右侧 clear），只做自由文本过滤。
@@ -179,7 +179,7 @@
 - active(nav):`--accent-soft` + `--accent`。
 - focus-visible:`0 0 0 3px color-mix(in srgb, var(--accent) 26%, transparent)`。
 - 过渡:`120–180ms ease`;尊重 `prefers-reduced-motion`。
-- **同一行内混排文字时不要用 `align-items:center`**：`center` 对齐的是**盒子中心**，字体或字号一不同（如 Inter 标题 + mono 计数、状态码 + 耗时 + 大小）基线就会错开。要么**统一字体与字号**后用 `center`（如响应状态组全部 mono `11.5px`，同 Capture list status），要么改用 `align-items:baseline` 并把圆点/图标这类无基线元素单独 `align-self:center`。**带背景的块状徽标（method chip、status pill）不适用此条**，它们本来就该居中。另外注意：**flex 容器的基线取自它的第一个 flex item**，若首个 item 是无文字的圆点，整个容器的基线会退化为圆点底边。
+- **垂直居中统一使用 flex**：产品 UI、Playground 和设计稿中的同行文字、计数、状态、图标、徽标和按钮，都由对应的 `display:flex` / `inline-flex` 容器设置 `align-items:center`；混排字体或字号也不改用 baseline。禁止 `align-items:baseline`、`align-self:baseline` 等基线对齐，不按字形像素边界或自算矩形中心补偿。正常控件尺寸、gap、padding 和换行行高仍遵守组件规格，但不得为凑对齐另加 px 位移、margin、padding、行高或文字裁剪；先修正真正负责这一行的布局，不为对齐擅自换字体。
 - loading:与 Core 交互的异步操作(录制开关、导入/导出提交、HTTPS 安装、诊断修复等)在进行中显示旋转 spinner 并阻断重复触发;只替换图标、不改按钮文案。
 - tooltip:所有图标按钮统一用 **Ant Design Tooltip** 承载名称提示(取代原生 `title`),`0.4s` 延迟;禁用态用 `disabledTooltip` 说明禁用原因(如无流量可导出)。
 - dropdown:Rules 的 `Add condition` / `Add action` 使用 Ant Design Popover `placement="right"` + `autoAdjustOverflow`：优先紧贴按钮右侧并垂直居中，右侧不足时自动翻到左侧，垂直不足时只做边界位移。面板自然高度不滚动；仅当内容高于 `100vh - 16px` 时内部滚动。Select 选项行高 `34px`，列表按内容自然增高到 `320px`，超过后才滚动。

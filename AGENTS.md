@@ -235,6 +235,10 @@
 - 颜色、间距、圆角使用共享 design token，不硬编码偏离设计的值。
 	- token 通过 ConfigProvider 和 `:root[data-theme]` 下的 CSS 变量提供。
 - 全局 CSS 只放重置、根级变量、字体和无障碍媒体查询。
+- 产品 UI、Playground 和设计稿需要垂直居中的同行元素，统一由对应的 `flex` / `inline-flex` 容器设置 `align-items: center`。
+	- 禁止使用 `baseline` 对齐，包括混排字体、字号、计数、状态文字和图标。
+	- 不用字形像素边界或自算矩形中心替代布局规则，不为对齐单独添加 px 位移、margin、padding、行高或文字裁剪。
+	- 正常控件尺寸、内容间距和换行行高按设计保留；发现补偿时先修正拥有该行的布局，不擅自改变字体或业务。
 
 ### 滚动与尺寸
 

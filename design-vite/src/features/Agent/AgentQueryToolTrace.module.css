@@ -45,9 +45,8 @@
 }
 
 .toolTrace li {
-  display: grid;
-  grid-template-columns: 14px minmax(0, 1fr);
-  align-items: start;
+  display: flex;
+  align-items: flex-start;
   gap: 7px;
   padding: 7px 8px;
   border-bottom: 1px solid var(--border);
@@ -58,9 +57,11 @@
 }
 
 .toolTraceStatus {
-  display: grid;
+  display: flex;
+  flex: 0 0 14px;
   height: 15px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
 }
 
 .toolTraceStatus svg {
@@ -71,6 +72,7 @@
 
 .toolTraceCopy {
   display: flex;
+  flex: 1;
   min-width: 0;
   flex-direction: column;
   gap: 2px;
@@ -87,9 +89,9 @@
 }
 
 .toolTraceCopy > span {
-  display: grid;
+  display: flex;
+  align-items: center;
   min-width: 0;
-  grid-template-columns: 48px minmax(0, 1fr);
   gap: 5px;
   overflow: hidden;
   color: var(--text-3);
@@ -100,6 +102,15 @@
 }
 
 .toolTraceCopy b {
+  flex: 0 0 48px;
   color: var(--text-2);
   font-weight: 600;
+}
+
+.toolTraceValue {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

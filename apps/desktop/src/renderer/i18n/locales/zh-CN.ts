@@ -226,6 +226,8 @@ export const zhCNCatalog = {
   'capture.connectionMetadataOnly': '未生成或信任本地 CA。仅存储连接元数据。',
   'capture.mitmActiveForNewConnections': 'MITM 已对新连接启用。请重新连接此客户端以检查其 HTTPS 流量。',
   'capture.httpsSetupDescription': '仅在需要检查 HTTPS 请求和响应内容时设置本地根证书。',
+  'capture.httpsClientApps': '客户端应用',
+  'capture.httpsInternet': '互联网',
   'capture.proxyRestartsSameAddress': '本地代理将在同一地址上重新启动。',
   'capture.httpsRemainsEncrypted': '设置完成前，HTTPS 将继续以加密方式不间断传输。',
   'capture.startDecrypting': '开始解密',

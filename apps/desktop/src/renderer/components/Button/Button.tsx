@@ -10,7 +10,7 @@ export interface ButtonProps {
   children: ReactNode;
   icon?: LucideIcon;
   variant?: 'default' | 'primary' | 'danger';
-  size?: 'md' | 'sm';
+  size?: 'md' | 'compact' | 'sm';
   iconPosition?: 'start' | 'end';
   iconStrokeWidth?: number;
   disabled?: boolean;
@@ -52,6 +52,7 @@ export function Button({
       aria-label={ariaLabel}
       className={cx(
         styles.button,
+        size === 'compact' && styles.compact,
         size === 'sm' && styles.small,
         variant === 'primary' && styles.primary,
         variant === 'danger' && styles.danger,
@@ -65,7 +66,7 @@ export function Button({
       ) : Icon && iconPosition === 'start' ? (
         <Icon size={15} strokeWidth={iconStrokeWidth} />
       ) : null}
-      {children}
+      <span className={styles.label}>{children}</span>
       {!loading && Icon && iconPosition === 'end' ? (
         <Icon size={15} strokeWidth={iconStrokeWidth} />
       ) : null}

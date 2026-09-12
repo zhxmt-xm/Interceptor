@@ -17,8 +17,9 @@
   width: 30px;
   height: 30px;
   flex: 0 0 auto;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
   color: var(--red);
   background: color-mix(in srgb, var(--red) 12%, transparent);

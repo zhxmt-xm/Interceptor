@@ -105,6 +105,29 @@ test('capture.scenarios.bodies displays the captured text document and form bodi
       const mode = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyMode[boundary.mode]);
       await mode.click();
       await expect(mode).toHaveAttribute('aria-checked', 'true');
+      const previewNote = page.locator(
+        `[data-automation-id="${AUTOMATION_IDS.capture.inspector.bodyView}"] > div:has(> svg)`,
+      ).first();
+      await expect(previewNote).toBeVisible();
+      const noteLayout = await previewNote.evaluate((note) => {
+        const style = getComputedStyle(note);
+        const box = note.getBoundingClientRect();
+        const iconBox = note.querySelector('svg')!.getBoundingClientRect();
+        return {
+          fontSize: style.fontSize,
+          lineHeight: style.lineHeight,
+          bodyLineHeight: style.getPropertyValue('--interceptor-line-height'),
+          padding: style.padding,
+          gap: style.gap,
+          iconCenterDelta: iconBox.y + iconBox.height / 2 - box.y - box.height / 2,
+          pixelRatio: devicePixelRatio,
+        };
+      });
+      expect(noteLayout).toMatchObject({ fontSize: '11.5px', padding: '9px 11px', gap: '8px' });
+      expect(Number.parseFloat(noteLayout.lineHeight)).toBeCloseTo(11.5 * Number.parseFloat(noteLayout.bodyLineHeight), 2);
+      expect(Math.abs(noteLayout.iconCenterDelta)).toBeLessThanOrEqual(1 / noteLayout.pixelRatio);
+      await testInfo.attach(`${boundary.id}-preview-note-layout`, { body: Buffer.from(JSON.stringify(noteLayout)), contentType: 'application/json' });
+      await testInfo.attach(`${boundary.id}-preview-note`, { body: await previewNote.screenshot(), contentType: 'image/png' });
       const expectedClipboard = {
         length: visibleText.length,
         tail: 'a'.repeat(12),

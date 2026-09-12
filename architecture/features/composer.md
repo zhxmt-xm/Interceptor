@@ -325,3 +325,30 @@ XML走`xml-formatter`。任一formatter失败都必须恢复调用前原文、�
 - [ ] TLS 证书链完整且已去重。
 - [ ] `tls.probe` 不产生任何 HTTP 流量。
 - [x] Collection 整行拖拽保留完整子树，且移动/新建均不能超过 3 级目录。
+
+### Collection目录选中与缩进
+
+- 2026-09-11前置差异：目录每层26px，请求使用8px加每层26px，导致嵌套目录文字/箭头向左4px、请求文字向右4px。`CollectionTreeNode.module.css`已按设计还原首层嵌套30px、后续每层26px；根目录0px、根请求8px与30px行高保持。
+- 选中目录的名称、计数和箭头从text/text-2/text-3还原为accent；已有轮廓背景和正在编辑但未选中的请求open样式保持，不改变文档与目录落点语义。
+- 明暗目录选中前置12 matched、0 missing、10 flagged，修复后12/12。首两轮计数missing由鼠标停留造成，已让两侧移出目录，属于场景问题；交错目录/请求场景还复现设计选择残留，主场景通过正常点击Create repo建立明确选择后，四场景30/30、0 missing/flagged，最大0.9px。
+- 现有真实tree-interactions补精确30px/26px断言，取得Expected30/Received26的Red后再改CSS；最终1/1（17.8s），Main/Core Red25204/33300、Green13080/42900均正常销毁且宿主guard通过。unit12/12与Desktop类型通过，原三级约束、rename/Core回载与splitter断言保留。
+- 既有截图脚本新增正常目录点击，`node design-vite/shoot.mjs --feature=composer --variant=collection-folder-selected`生成两张缺失PNG，400张旧图SHA256不变。四场景像素结果见TEMP `interceptor-composer-folder-20260911-isolated.md`，所有原始报告、截图、trace/metadata和hash清单位于同前缀；[同一item报告](../../commit-changes/202609111558_ui_parity_progress.html#composer-folder)仅保留change及同状态明暗前后图。
+
+### 方法标签样式差异
+
+- 用户明确的两层居中：GET/POST文字在标签框内双轴居中，标签框再与右侧名称框居中；不是文字基线或字形包围框中心对齐。名称的字体、字号、行高和单行省略保持，不采用基线、`text-box`裁剪、负margin或位移方案。
+- 前置诊断：旧Collection在调用方覆写9px字号、2px上下padding，共享组件继承11.07px行高，标签15.0625px，文字框上1px/下2.0625px。真实Collection在旧构建上得到Expected normal/Received11.07px的Red，Main/Core29008/20324正常退出；中间normal版本的Green只作为阶段证据，不是最终实现。
+- 最终`MethodBadge`采用`inline-flex + align-items:center + justify-content:center`，组件管理md20px、sm17px、xs16px高度及对应字号/水平padding；Collection传xs，只保留40px列宽与不收缩设置，DocumentTabs传sm。两处字号/padding覆写已删除，`CollectionTreeNode.item`仍是30px行、flex center，标签内部行高不承担定位职责；设计同步这些既有尺寸与flex。
+- 明暗主场景加入Collection GET/POST、Document POST三个直接标签目标，两主题24/24、0 missing/flagged。最终明暗定向检查含GET/POST、1000x700窄窗口长标题：40x16px标签、30px行、文字上下各2px，标签框与名称框中心差0px；长标题仍正常ellipsis。1320/390报告截图、原始Renderer和DOM证据位于TEMP `interceptor-method-badge-flex-20260911-review/`。
+- 最终业务测试45/45、Desktop typecheck与本地构建通过；真实Collection和Capture正文流程2/2（31.3s），Main/Core分别19136/14604、9492/1800，均正常销毁并通过8888、WinINet、共享journal和登记进程恢复。Collection在DPR1.5实测文字上下2/2px、左右11.4896/11.5px，两个外框中心差0px；验证双轴flex与尺寸，不再把line-height值当居中判据。
+- 同一[工作项报告](../../commit-changes/202609111558_ui_parity_progress.html#method-badge-images)首组为最终flex产品前后图；三张旧Composer改后图已换为当前产品，23张原图保留，连同普通方法字段对比共32张内嵌图全部加载，1320/390无横向溢出或折叠。原始诊断及被否定的临时候选留在TEMP历史证据中，不落产品或正式设计；本轮临时脚本已删除。
+- 设计字体Inter/JetBrains Mono实际加载成功，Composer主场景和目录选中明暗四张图与既有PNG像素差均为0，不更新基准。Capture临时预览仍处于断点而非普通请求状态，其2.29%/2.24%差值不能归因于标签或作为基准更新依据；该组合不计通过，Capture采用正式parity的普通请求场景结果。设计产物及比较记录位于TEMP `interceptor-method-badge-flex-20260911-design/`，没有写入或覆盖旧PNG。
+- 共享样式全量覆盖最终为391 views、2735 targets、2732 matched、3 missing、115 flagged；Composer主场景/目录状态与TLS九视图69/69，普通Capture明暗各42 matched及4个既有Header Copy flag。首轮340:345因导出等待overlay残留中断，`parity.mjs`补每场景overlay重置后该批和剩余批完成；已完成前340个经配置核对不受重置影响。完整逐ID覆盖与来源在TEMP `interceptor-method-badge-flex-20260911-complete.{md,json}`，不把其他UI欠账升级为通过。
+
+### Collection请求行parity
+
+- 2026-09-11主场景打开Create repo后多点了Repositories，导致Renderer选目录而设计选请求。仅移除场景的这次点击，字体/颜色两项flag缩小为字号一项；不改产品的目录落点与打开文档分离语义。
+- `CollectionTreeNode.module.css`的请求名称从12px还原为设计12.5px；30px行高、目录字号、缩进、选中/打开状态和拖拽保持。主场景明暗共用目标，既有framed基准未修改。
+- 前置主场景parity记录字号12.5px/12px；修复后明暗18/18、0 missing/flagged，Collection行几何全部0px，全场景最大0.9px。像素差1.51%/1.52%仍包含其他正文/数据差异，不表示全页逐像素相等。
+- 行为和数据格式不变：现有`composer-store`前后12/12，Desktop typecheck通过；真实`composer.collection.tree-interactions`前后1/1（11.5s/17.2s），保留三级目录、新建落点、行内rename、Core回载与splitter断言。Main/Core 35828/27528、28932/36364均`gracefulDestroyVerified=true`，Main/Core/Worker、8888、WinINet与共享journal恢复由driver核验。
+- TEMP证据前缀`interceptor-composer-targets-20260911`保留场景修正前、仅修选择状态、字号修正后三阶段报告与截图；`interceptor-composer-rows-20260911`保存明暗parity、unit、类型、构建和两次真实流程trace/metadata。临时截图脚本已删除；[同一item报告](../../commit-changes/202609111558_ui_parity_progress.html#composer-rows)仅展示change及同状态红框前后图，原20张内嵌图不变，22张均加载、1320/390宽度无横向溢出或折叠。

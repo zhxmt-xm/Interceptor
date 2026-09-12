@@ -2,8 +2,9 @@
   position: absolute;
   inset: 0;
   z-index: 122;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 28px;
   background: rgba(0, 0, 0, .36);
   backdrop-filter: blur(2px);
@@ -22,17 +23,26 @@
 }
 
 .mcpClientDialogHeader {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  align-items: start;
+  display: flex;
+  align-items: center;
   gap: 11px;
 }
 
+.mcpClientDialogHeader > * {
+  flex: 0 0 auto;
+}
+
+.mcpClientDialogHeader > :nth-child(2) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .mcpClientDialogHeader > span {
-  display: grid;
+  display: flex;
   width: 34px;
   height: 34px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
   background: var(--accent-soft);
   color: var(--accent);
@@ -63,9 +73,9 @@
 }
 
 .mcpClientDialogFields {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  display: flex;
   gap: 10px;
+  flex-direction: column;
 }
 
 .mcpClientDialogFields label {

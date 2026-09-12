@@ -20,10 +20,11 @@
 }
 
 .controlFrameDirection {
-  display: grid;
+  display: flex;
   width: 22px;
   height: 22px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border-radius: 6px;
   background: color-mix(in srgb, var(--blue) 13%, transparent);
   color: var(--blue);

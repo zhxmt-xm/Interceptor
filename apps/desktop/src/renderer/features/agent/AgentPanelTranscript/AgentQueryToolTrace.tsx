@@ -61,7 +61,7 @@ export function AgentQueryToolTrace({ calls, results }: AgentQueryToolTraceProps
                 <code>{call.name}</code>
                 <span>
                   <b>{t('agent.tools.arguments')}</b>
-                  {argumentsText ?? t('agent.tools.noParameters')}
+                  <span className={styles.toolTraceValue}>{argumentsText ?? t('agent.tools.noParameters')}</span>
                 </span>
                 <span
                   data-automation-id={AutomationIdFactory.agentToolResult(call.callId)}
@@ -122,9 +122,11 @@ export function AgentQueryToolTrace({ calls, results }: AgentQueryToolTraceProps
                   data-diagnostics-dropped-count={summary?.kind === 'diagnostics' ? summary.droppedCount : undefined}
                 >
                   <b>{t('agent.tools.result')}</b>
-                  {summary === null
-                    ? t('agent.tools.running')
-                    : <AgentToolResultSummary summary={summary} />}
+                  <span className={styles.toolTraceValue}>
+                    {summary === null
+                      ? t('agent.tools.running')
+                      : <AgentToolResultSummary summary={summary} />}
+                  </span>
                 </span>
               </div>
             </li>

@@ -155,7 +155,7 @@ export function WebSocketBreakpointInspector({
               label={replacementCollapsed
                 ? t('breakpoints.expandSection')
                 : t('breakpoints.collapseSection')}
-              size="sm"
+              size="xs"
               className={cx(
                 styles.sectionCollapse,
                 replacementCollapsed && styles.sectionCollapsed,
@@ -204,7 +204,7 @@ export function WebSocketBreakpointInspector({
         <Button
           icon={Play}
           variant="primary"
-          className={cx(styles.footButton, styles.footPrimary)}
+          className={styles.footButton}
           disabled={resolving}
           onClick={() => void resolveSelected('continue', true)}
           automationId={AUTOMATION_IDS.breakpoints.executeEdited}

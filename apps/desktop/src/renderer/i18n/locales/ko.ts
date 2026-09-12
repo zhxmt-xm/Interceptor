@@ -227,6 +227,8 @@ export const koCatalog = {
   'capture.connectionMetadataOnly': '로컬 CA가 생성되거나 신뢰되지 않았습니다. 연결 메타데이터만 저장됩니다.',
   'capture.mitmActiveForNewConnections': '새 연결에는 MITM이 활성화되어 있습니다. 이 클라이언트를 다시 연결하여 HTTPS 트래픽을 검사하세요.',
   'capture.httpsSetupDescription': 'HTTPS 요청 및 응답 내용을 검사해야 할 때만 로컬 루트 인증서를 설정합니다.',
+  'capture.httpsClientApps': '클라이언트 앱',
+  'capture.httpsInternet': '인터넷',
   'capture.proxyRestartsSameAddress': '로컬 프록시가 동일한 주소에서 다시 시작됩니다.',
   'capture.httpsRemainsEncrypted': '설정이 완료될 때까지 HTTPS는 암호화된 상태로 중단 없이 전달됩니다.',
   'capture.startDecrypting': '복호화 시작',

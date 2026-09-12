@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button, Checkbox, IconButton } from '../../../components';
-import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
+import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
 import {
   TlsCompatibilityActions,
   useTlsCompatibilityStore,
@@ -121,12 +121,13 @@ export function TlsCompatibilityDialog({
       </header>
       <div className={styles.content}>
         <p>{t('settings.tlsPassthrough.compatibilitySummary')}</p>
-        <div className={styles.hostList}>
+        <div className={styles.hostList} data-automation-id={AUTOMATION_IDS.settings.tlsCompatibility.hostList}>
           {compatibilityEvents.map((event) => (
             <div
               className={styles.hostRow}
               key={`${event.generation}:${event.host}`}
               data-parity={`tls-compatibility-host-${event.host}`}
+              data-automation-id={AutomationIdFactory.tlsCompatibilityHost(event.host)}
             >
               <span className={styles.hostIcon}><LockOpen aria-hidden="true" /></span>
               <div className={styles.hostCopy}>
@@ -139,6 +140,7 @@ export function TlsCompatibilityDialog({
                     <Checkbox
                       checked={selectedPatterns.has(pattern)}
                       onChange={busy ? undefined : () => togglePattern(pattern)}
+                      automationId={AutomationIdFactory.tlsCompatibilityPattern(event.host, pattern)}
                     />
                     <code>{pattern}</code>
                   </label>
@@ -167,6 +169,7 @@ export function TlsCompatibilityDialog({
           loading={busy}
           disabled={selectedPatterns.size === 0}
           onClick={addSelectedPatterns}
+          automationId={AUTOMATION_IDS.settings.tlsCompatibility.addSelected}
         >
           {t('settings.tlsPassthrough.addSelectedPatterns', {
             count: selectedPatterns.size,

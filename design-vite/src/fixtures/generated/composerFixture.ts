@@ -4596,8 +4596,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "201 Created"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "201 Created"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -4622,8 +4631,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "application/json; charset=utf-8"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "application/json; charset=utf-8"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -4648,8 +4666,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "1243"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "1243"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -4674,8 +4701,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "https://api.github.com/repos/acme/interceptor"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "https://api.github.com/repos/acme/interceptor"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -4700,8 +4736,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "4993"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "4993"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -4726,8 +4771,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "C4A2:1F0B:9D31A2"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "C4A2:1F0B:9D31A2"
+                                }
+                              ]
                             }
                           ]
                         }
@@ -4817,8 +4871,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "Bearer github_pat_11A…"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "Bearer github_pat_11A…"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -4843,8 +4906,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "application/json"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "application/json"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -4869,8 +4941,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "application/vnd.github+json"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "application/vnd.github+json"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -4895,8 +4976,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "api.github.com"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "api.github.com"
+                                }
+                              ]
                             }
                           ]
                         }
@@ -5004,8 +5094,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "VszN7pQ…9Qb2"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "VszN7pQ…9Qb2"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -5030,8 +5129,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": ".github.com"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": ".github.com"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -5056,8 +5164,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "/"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "/"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -5082,8 +5199,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "Session"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "Session"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -5108,8 +5234,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "HttpOnly · Secure · SameSite=Lax"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "HttpOnly · Secure · SameSite=Lax"
+                                }
+                              ]
                             }
                           ]
                         }
@@ -5519,8 +5654,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "140.82.121.6:443"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "140.82.121.6:443"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -5545,8 +5689,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "TLS 1.3 · h2"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "TLS 1.3 · h2"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -5571,8 +5724,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "TLS_AES_128_GCM_SHA256"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "TLS_AES_128_GCM_SHA256"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -5597,8 +5759,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "168 B"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "168 B"
+                                }
+                              ]
                             }
                           ]
                         },
@@ -5623,8 +5794,17 @@ export const composerFixture: FixtureNode = {
                           },
                           "children": [
                             {
-                              "type": "text",
-                              "value": "1.2 KB"
+                              "type": "element",
+                              "tag": "span",
+                              "attributes": {
+                                "class": "kv-value-text"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "value": "1.2 KB"
+                                }
+                              ]
                             }
                           ]
                         }

@@ -5,8 +5,9 @@
   flex: 0 0 auto;
 }
 .toggle {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 21px;
   height: 21px;
   padding: 0 2px;

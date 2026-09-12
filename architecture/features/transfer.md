@@ -1,12 +1,32 @@
 # Feature: Transfer
 
-> 最后更新：2026-07-26
+> 最后更新：2026-09-12
 > Core 模块：`apps/proxy-core/src/proxy-core/transfer/`、`har/`、`archive/`、`capture/entry.ts`
 > Renderer 入口：Capture 工作栏的 Import / Export 菜单
 
 ## 1. 职责与边界
 
 Transfer 统一承载所有**异步文件任务**：HAR 交换、Native Archive 全保真存档、单个正文导出。
+
+### 导出弹窗警示样式
+
+- 2026-09-11定位：`HarTransferDialog`使用`styles.warning`但对应CSS定义缺失，HAR限制说明及敏感数据警告失去背景、文字颜色与内边距。按已有设计和相邻`JobProgress`警示样式补齐，不改变警告内容、脱敏选项、导出范围或任务生命周期。
+- 前置parity直接测警示区，确认缺少11px/13px padding和黄色12%背景，区域矮24px；标题随弹窗内容尺寸偏移，不使用位移修补。深色场景补正常UI选中请求；All traffic仅测名称文字，不把示例241/18计数影响的剩余空间当字宽。
+- 2026-09-11用户暂停E2E期间先执行相关单测、类型和浏览器parity；当时未运行真实文件导出、取消与宿主恢复，不以fake Preload预览代替真实验证。
+- 暂停期开发结果：Transfer进度单测前后4/4、Desktop typecheck通过；明暗HAR各8/8，0 missing/flagged、最大0.6px，标题不再偏24.5px。HAR masked/unmasked和Archive说明/敏感警告共8个明暗状态已直接预览，15px图标、红黄警示、脱敏开关和Cancel正常，无Renderer异常；该轮没有点击导出确认或写业务文件。
+- TEMP `interceptor-har-warning-20260911*`保留前置parity、最终JSON/截图、单测/类型和逐状态度量。Archive最初在入场动画中测到3px图标，属于检查时机错误；等动画完成后复跑通过，未修改产品动画。[同一item报告](../../commit-changes/202609111558_ui_parity_progress.html#har-warning-images)加入实际明暗前后图，原38图不变、共42图在1320/390宽度检查通过。
+- 2026-09-12恢复授权后`capture.tools.har-transfer`最终1/1（36.9s）、Transfer unit4/4，真实警示、原生Save/Open、Agent/MCP授权与取消、脱敏、范围、完整正文及重启均通过。Main/Core10744/41872、40052/2720两代`gracefulDestroyVerified=true`，8888/WinINet/journal恢复；TEMP `interceptor-e2e-resumed-20260912-har-paused`含trace/metadata，同名log保存结果。
+- 首轮MCP all导出包含2条自产POST及1条背景CONNECT，3/2计数失败不是产品Red；Main/Core24560/13904仍正常销毁。workflow后半段Clear/Import前用真实Recording按钮暂停，固定导入数据集，保留all/filter/selected和2/4/6计数断言，不改产品或过滤导出结果；首轮证据在TEMP `interceptor-e2e-resumed-20260912-har`。
+- Archive同日真实1/1（46.4s），说明/敏感警示、产品Cancel、原生Save/Open、HTTP/WebSocket完整恢复、Agent/MCP权限及2/4/6/8/10追加计数、重启零重放通过。Main/Core10756/32024、10568/11492两代`gracefulDestroyVerified=true`及宿主恢复；TEMP `interceptor-e2e-resumed-20260912-archive-dpi`及同名log保留trace、metadata和两张不含背景正文的弹窗截图。首轮40px断言忽略DPR1.5边框取整，40828/35836正常销毁，属于测试失败而非产品Red。
+- HAR/Archive最终真实验收已通过，暂停期间缺失的前置E2E仍保留。复验先运行`npm run e2e:prepare-local --workspace @interceptor/desktop`，再运行`node node_modules/@playwright/test/cli.js test --config=apps/desktop/tests/e2e-workflow-tests/playwright.config.ts workflows/capture/tools-har-transfer.workflow.ts workflows/capture/tools-archive-transfer.workflow.ts --reporter=line`。
+
+### Import与Export菜单条目
+
+- 前置parity直接测量菜单条目、文字和扩展名：产品32px条目比既有设计小8px，文字字重/颜色不同，扩展名缺少背景、边框与内边距。按现有设计恢复FileCommand的Grid居中、12.5px/520文字与扩展名提示，Flyout沿用共享7px内边距，调用方只提供236px面板宽度。
+- Import/Export四项仍通过各自原onClick打开对应HAR/Archive弹窗；菜单语义、automation ID、文件协议值与真实文件操作不变。E2E暂停期间只做直接浏览器交互与parity检查，不把菜单打开视为文件导入/导出已验收。
+- 暂停期开发结果：四个明暗菜单24/24、0 missing/flagged，最大0.6px；8组正常UI点击均打开正确弹窗，Cancel与菜单外点击可关闭，无Renderer异常。图标、名称和扩展名的垂直中心差均0px，条目40px；Desktop typecheck通过。
+- 原菜单前置parity与最终矩阵、八组中心度量在TEMP `interceptor-file-command-20260911*`。检查曾过早断言菜单已隐藏，等待正常退出动画后复跑通过，没有修改产品动画。[同一item报告](../../commit-changes/202609111558_ui_parity_progress.html#file-command-images)加入浅色前后图，42张旧图保持、共44张，1320/390无溢出或折叠。
+- 2026-09-12上文HAR与Archive真实workflow均已通过菜单Grid、扩展名及实际Export/Import断言；四代正常销毁与宿主恢复。Archive额外锁定16px行高、9px/10px padding和扩展名2px/6px padding，总高为38px加边框；DPR2为40px，DPR1.5因边框物理像素取整为39.3333px，不改产品迎合固定40px。暂停期前置E2E缺口保持。
 
 | 归属 | 内容 |
 | --- | --- |

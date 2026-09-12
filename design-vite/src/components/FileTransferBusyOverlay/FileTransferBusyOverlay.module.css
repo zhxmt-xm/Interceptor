@@ -2,8 +2,9 @@
   position: absolute;
   z-index: 120;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: color-mix(in srgb, var(--sidebar) 62%, rgba(0, 0, 0, 0.75));
   cursor: wait;
 }

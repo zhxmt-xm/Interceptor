@@ -75,6 +75,7 @@ if (!onlyView && !sliceMatch) {
     const result = spawnSync(process.execPath, args, {
       cwd: repoRoot,
       stdio: 'inherit',
+      windowsHide: true,
     });
     if (result.status !== 0) {
       throw new Error(`Visual parity batch ${start}:${end} failed with exit code ${result.status}.`);
@@ -82,6 +83,9 @@ if (!onlyView && !sliceMatch) {
     const batch = JSON.parse(await readFile(batchResultPath, 'utf8'));
     viewSummaries.push(...batch.viewSummaries);
     elementDiffs.push(...batch.elementDiffs);
+    if (resultJsonPath) {
+      await writeFile(resultJsonPath, JSON.stringify({ viewSummaries, elementDiffs }), 'utf8');
+    }
     await rm(batchResultPath, { force: true });
     await rm(batchReportPath, { force: true });
   }
@@ -98,16 +102,32 @@ const median = (numbers) => {
   return sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
 };
 
-async function collect(page, rootSelector, targets, side) {
+async function collect(page, rootSelector, targets, side, designReference) {
   const origin = await page.locator(rootSelector).first().boundingBox();
   const result = {};
   for (const target of targets) {
     const name = typeof target === 'string' ? target : target.name;
     const selector = typeof target === 'string' ? undefined : target[`${side}Selector`];
+    const namedButtons = typeof target === 'string' && (side === 'design' || designReference?.[name]?.button)
+      ? await page.getByRole('button', { name, exact: true }).all()
+      : [];
+    const textCandidates = [];
+    if (typeof target === 'string') {
+      for (const candidate of await page.getByText(name, { exact: true }).all()) {
+        if (!await candidate.isVisible()) continue;
+        textCandidates.push(side === 'app' && designReference?.[name]?.button
+          ? candidate.locator('xpath=ancestor-or-self::*[self::button or @role="button"][1]')
+          : candidate);
+      }
+    }
+    const textButtons = [];
+    for (const button of namedButtons) {
+      if ((await button.textContent())?.trim() === name) textButtons.push(button);
+    }
     const candidates = selector
       ? await page.locator(selector).all()
       : typeof target === 'string'
-        ? await page.getByText(name, { exact: true }).all()
+        ? [...textCandidates, ...textButtons, ...namedButtons.filter(button => !textButtons.includes(button))]
         : await page.locator(`[data-parity="${target.parity}"]`).all();
     let element = null;
     let box = null;
@@ -138,6 +158,7 @@ async function collect(page, rootSelector, targets, side) {
       return Object.fromEntries(keys.map((key) => [key, computed[key]]));
     }, styleKeys);
     result[name] = {
+      button: await element.evaluate(node => node.tagName === 'BUTTON' || node.getAttribute('role') === 'button'),
       x: box.x - origin.x,
       y: box.y - origin.y,
       w: box.width,
@@ -187,6 +208,7 @@ async function applyRendererActions(page, actions = []) {
         });
         break;
       case 'assertInsideViewport':
+        await page.locator(action.selector).filter({ visible: true }).first().waitFor({ state: 'visible' });
         await page.locator(action.selector).filter({ visible: true }).evaluateAll((elements) => {
           if (elements.length === 0) throw new Error('Expected a visible popup');
           for (const element of elements) {
@@ -311,24 +333,26 @@ await server.listen();
 url = server.resolvedUrls?.local?.[0] ?? 'http://localhost:5199/';
 console.log('renderer:', url, '\n');
 
-browser = await chromium.launch({ channel: 'msedge' });
+browser = await chromium.launch({ channel: 'msedge', headless: true });
 designPreview = await startDesignPreview(designRoot);
 designSession = await openDesignPage();
 let designPage = designSession.page;
 let designPageViewCount = 0;
+let previousDesignState = null;
 
 let totalFlags = 0;
 const viewSummaries = [];
 const elementDiffs = [];
 
 for (const view of views) {
-  if (designPageViewCount === 24) {
+  if (designPageViewCount === 24 || previousDesignState?.tlsPatterns) {
     await designSession.context.close();
     designSession = await openDesignPage();
     designPage = designSession.page;
     designPageViewCount = 0;
   }
   designPageViewCount += 1;
+  previousDesignState = view.designState;
   console.log(`== ${view.id} (${view.theme}) ==`);
   let pixelDiffPercent = null;
   let viewFlags = 0;
@@ -339,9 +363,12 @@ for (const view of views) {
     document.body.classList.toggle('menu-interaction-shot', menuInteraction);
   }, view.id === 'capture-breakpoint-create-menu' || view.id.startsWith('breakpoint-queue-menu'));
   await designPage.evaluate((state) => window.__setState?.({
+    overlay: '',
     fileMenu: '',
     settings: 'certificates',
     update: 'up-to-date',
+    mitm: 'inactive',
+    tlsPatterns: null,
     requestMenu: '',
     ruleFilter: '',
     bodyPreview: '',
@@ -373,6 +400,7 @@ for (const view of views) {
     agentRemoveModelTarget: '',
     agentRemovedModels: [],
     agentAddedProfile: null,
+    mcpToolApproval: '',
     ...state,
   }), view.designState);
   await designPage.evaluate(() => document.fonts?.ready);
@@ -564,7 +592,7 @@ for (const view of views) {
   }
 
   const design = await collect(designPage, '.app', view.targets, 'design');
-  const app = await collect(appPage, '[data-collapsed]', view.targets, 'app');
+  const app = await collect(appPage, '[data-collapsed]', view.targets, 'app', design);
   const targetNames = view.targets.map((target) =>
     typeof target === 'string' ? target : target.name);
   const matched = targetNames.filter((name) => design[name] && app[name]);

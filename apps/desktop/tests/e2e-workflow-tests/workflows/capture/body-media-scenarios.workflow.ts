@@ -62,6 +62,39 @@ test('capture.scenarios.body-media previews images and hex and saves media witho
         await expect(body.locator('audio, video, iframe')).toHaveCount(0);
         const save = body.getByRole('button');
         await expect(save).toHaveCount(1);
+        const layout = await save.evaluate((button) => {
+          const host = button.parentElement!;
+          const content = host.firstElementChild!;
+          const icon = content.firstElementChild!;
+          const details = content.lastElementChild!;
+          const mime = details.querySelector('b')!;
+          const size = details.querySelector('span')!;
+          const hostBox = host.getBoundingClientRect();
+          return {
+            contentGap: getComputedStyle(content).gap,
+            detailGap: getComputedStyle(details).gap,
+            actionGap: getComputedStyle(host).gap,
+            actionHeight: button.getBoundingClientRect().height,
+            mimeFontSize: getComputedStyle(mime).fontSize,
+            mimeLineHeight: getComputedStyle(mime).lineHeight,
+            sizeFontSize: getComputedStyle(size).fontSize,
+            sizeLineHeight: getComputedStyle(size).lineHeight,
+            bodyLineHeight: getComputedStyle(size).getPropertyValue('--interceptor-line-height'),
+            centerDeltas: [icon, ...details.children, button].map((element) => {
+              const box = element.getBoundingClientRect();
+              return box.x + box.width / 2 - hostBox.x - hostBox.width / 2;
+            }),
+            pixelRatio: devicePixelRatio,
+          };
+        });
+        expect(layout).toMatchObject({
+          contentGap: '10px', detailGap: '7px', actionGap: '13px', actionHeight: 28,
+          mimeFontSize: '13px', mimeLineHeight: 'normal', sizeFontSize: '11.5px',
+        });
+        expect(Number.parseFloat(layout.sizeLineHeight)).toBeCloseTo(11.5 * Number.parseFloat(layout.bodyLineHeight), 2);
+        for (const centerDelta of layout.centerDeltas) expect(Math.abs(centerDelta)).toBeLessThanOrEqual(1 / layout.pixelRatio);
+        await testInfo.attach(`${expected.id}-layout`, { body: Buffer.from(JSON.stringify(layout)), contentType: 'application/json' });
+        await testInfo.attach(`${expected.id}-placeholder`, { body: await body.screenshot(), contentType: 'image/png' });
         const destination = testInfo.outputPath(`${expected.id}.${expected.id === 'body-audio' ? 'wav' : 'mp4'}`);
 
         // 原生保存：真实点击唯一Save并操作系统对话框，只读核对产品生成文件的独立预期字节。

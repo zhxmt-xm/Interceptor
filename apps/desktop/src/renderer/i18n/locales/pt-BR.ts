@@ -227,6 +227,8 @@ export const ptBRCatalog = {
   'capture.connectionMetadataOnly': 'Nenhuma CA local foi gerada ou considerada confiável. Somente metadados da conexão são armazenados.',
   'capture.mitmActiveForNewConnections': 'O MITM está ativo para novas conexões. Reconecte este cliente para inspecionar o tráfego HTTPS.',
   'capture.httpsSetupDescription': 'Configure um certificado raiz local somente quando precisar inspecionar o conteúdo de solicitações e respostas HTTPS.',
+  'capture.httpsClientApps': 'Apps cliente',
+  'capture.httpsInternet': 'Internet',
   'capture.proxyRestartsSameAddress': 'O proxy local será reiniciado no mesmo endereço.',
   'capture.httpsRemainsEncrypted': 'Até a conclusão da configuração, o HTTPS continua criptografado e sem interrupções.',
   'capture.startDecrypting': 'Iniciar descriptografia',

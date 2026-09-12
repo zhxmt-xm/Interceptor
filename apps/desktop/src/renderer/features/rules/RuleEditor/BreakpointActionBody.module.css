@@ -5,10 +5,22 @@
 }
 
 .row {
-  display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
+  display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.row > * {
+  flex: 0 0 auto;
+}
+
+.row > :nth-child(2) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.row > :first-child {
+  flex: 0 0 92px;
 }
 
 .label {

@@ -26,8 +26,7 @@
 }
 
 .row {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto auto;
+  display: flex;
   gap: 10px;
   align-items: center;
   height: 30px;
@@ -39,11 +38,16 @@
   cursor: pointer;
 }
 
+.row > :first-child {
+  flex: 0 0 40px;
+}
+
 .row:hover {
   background: var(--hover);
 }
 
 .url {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   font-family: var(--font-mono);
@@ -54,6 +58,7 @@
 }
 
 .status {
+  flex: 0 0 auto;
   font-family: var(--font-mono);
   font-size: 11.5px;
   font-weight: 600;
@@ -73,6 +78,7 @@
 }
 
 .time {
+  flex: 0 0 auto;
   font-family: var(--font-mono);
   font-size: 11.5px;
   color: var(--text-3);

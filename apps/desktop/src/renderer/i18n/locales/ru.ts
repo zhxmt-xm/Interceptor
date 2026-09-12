@@ -230,6 +230,8 @@ export const ruCatalog = {
   'capture.connectionMetadataOnly': 'Локальный центр сертификации не создан и не добавлен в доверенные. Сохраняются только метаданные соединения.',
   'capture.mitmActiveForNewConnections': 'MITM активен для новых подключений. Переподключите этот клиент, чтобы проверить его HTTPS-трафик.',
   'capture.httpsSetupDescription': 'Настраивайте локальный корневой сертификат только тогда, когда нужно проверять содержимое HTTPS-запросов и ответов.',
+  'capture.httpsClientApps': 'Клиенты',
+  'capture.httpsInternet': 'Интернет',
   'capture.proxyRestartsSameAddress': 'Локальный прокси-сервер перезапустится на том же адресе.',
   'capture.httpsRemainsEncrypted': 'До завершения настройки HTTPS остаётся зашифрованным и работает без перерывов.',
   'capture.startDecrypting': 'Начать расшифровку',

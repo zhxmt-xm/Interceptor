@@ -1,9 +1,10 @@
 .breakpointIcon {
-  display: grid;
+  display: flex;
   width: 28px;
   height: 28px;
   flex: 0 0 28px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
   background: color-mix(in srgb, var(--yellow) 14%, transparent);
   color: var(--yellow);
@@ -21,10 +22,22 @@
 }
 
 .breakpointRow {
-  display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
+  display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.breakpointRow > * {
+  flex: 0 0 auto;
+}
+
+.breakpointRow > :nth-child(2) {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.breakpointRow > :first-child {
+  flex: 0 0 92px;
 }
 
 .breakpointLabel {

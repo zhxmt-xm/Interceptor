@@ -84,4 +84,54 @@ test('capture.inspector.section-collapse keeps sections independent and accessib
     }, null, 2)),
     contentType: 'application/json',
   });
+
+  // 核对同排文字单元格与进度条居中，不把字体token值当成对齐结果。
+  // Check centered timing cells and bars without treating a font token value as alignment evidence.
+  await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.timing).click();
+  const timingContentId = await getByAutomationId(
+    page,
+    AUTOMATION_IDS.capture.inspector.section.timing,
+  ).getAttribute('aria-controls');
+  expect(timingContentId).toBeTruthy();
+  const timingRows = page.locator(`[id="${timingContentId}"] > div:first-child > div`);
+  await expect(timingRows).toHaveCount(2);
+  const timingTypography = await timingRows.evaluateAll((rows) => rows.map((row) => {
+    const rowBounds = row.getBoundingClientRect();
+    const center = rowBounds.y + rowBounds.height / 2;
+    return {
+      rowHeight: rowBounds.height,
+      alignItems: getComputedStyle(row).alignItems,
+      pixelRatio: window.devicePixelRatio,
+      cells: [...row.children].map((element) => {
+        const style = getComputedStyle(element);
+        const bounds = element.getBoundingClientRect();
+        return {
+          text: element.textContent,
+          fontSize: Number.parseFloat(style.fontSize),
+          lineHeight: style.lineHeight,
+          height: bounds.height,
+          centerDelta: bounds.y + bounds.height / 2 - center,
+        };
+      }),
+    };
+  }));
+  await testInfo.attach('timing-typography', {
+    body: Buffer.from(JSON.stringify(timingTypography, null, 2)),
+    contentType: 'application/json',
+  });
+  for (const row of timingTypography) {
+    expect(row.alignItems).toBe('center');
+    expect(row.cells).toHaveLength(3);
+    for (const cell of row.cells.slice(0, 2)) {
+      expect(cell.text).toBeTruthy();
+      expect(cell.fontSize).toBeGreaterThan(0);
+    }
+    for (const cell of row.cells) {
+      expect(cell.height).toBeGreaterThan(0);
+      expect(Math.abs(cell.centerDelta)).toBeLessThanOrEqual(1 / row.pixelRatio);
+    }
+  }
+  await page.locator(`[id="${timingContentId}"] > div:first-child`).screenshot({
+    path: testInfo.outputPath('timing-alignment.png'),
+  });
 });

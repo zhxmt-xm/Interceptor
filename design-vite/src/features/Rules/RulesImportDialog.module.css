@@ -2,8 +2,9 @@
   position: absolute;
   z-index: 100;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: color-mix(in srgb, var(--sidebar) 62%, rgba(0, 0, 0, 0.75));
 }
 
@@ -25,8 +26,6 @@
 }
 
 .importHeader h2 {
-  position: relative;
-  top: -2px;
   flex: 1;
   margin: 0;
   font-size: 14.5px;
@@ -34,11 +33,12 @@
 }
 
 .importIcon {
-  display: grid;
+  display: flex;
   width: 30px;
   height: 30px;
   flex: 0 0 auto;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--accent);
@@ -87,13 +87,14 @@
 }
 
 .importSummary {
-  display: grid;
+  display: flex;
   gap: 8px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .importStat {
   display: flex;
+  flex: 1;
+  min-width: 0;
   flex-direction: column;
   gap: 4px;
   padding: 12px 14px;
@@ -153,9 +154,10 @@
 }
 
 .importSkippedList li {
-  display: grid;
+  display: flex;
   padding: 6px 12px;
   gap: 2px;
+  flex-direction: column;
 }
 
 .importSkippedPath {

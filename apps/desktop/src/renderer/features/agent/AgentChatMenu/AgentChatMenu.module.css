@@ -12,10 +12,9 @@
 }
 
 .item {
-  display: grid;
+  display: flex;
   width: 100%;
   min-height: 44px;
-  grid-template-columns: 20px minmax(0, 1fr) 14px;
   align-items: center;
   gap: 8px;
   padding: 5px 7px;
@@ -26,6 +25,15 @@
   font-family: var(--font-ui);
   text-align: left;
   cursor: pointer;
+}
+
+.item > * {
+  flex: 0 0 auto;
+}
+
+.item > :nth-child(2) {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .item:hover,
@@ -73,10 +81,11 @@
 }
 
 .actions {
-  display: grid;
+  display: flex;
   gap: 2px;
   padding-top: 5px;
   border-top: 1px solid var(--border);
+  flex-direction: column;
 }
 
 .actions button {

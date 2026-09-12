@@ -148,11 +148,11 @@ Composer的method、URL、protocol、headers、query、body和auth均从默认�
 4. 对request行发起真实contextmenu，选择Rename并在同一行内input提交；立即切到Rules再返回Composer，越过600ms保存窗口后确认rename与URL仍由Core恢复，且request ID不变。
 5. 点击根目录作为新建落点，确认目录`aria-pressed=true`但URL editor仍保留当前request；点击`composer.collection.tree`空白，确认只清目录选择且URL仍不变。
 6. 拖动`composer.collection-splitter`，确认Collection宽度线性变化且当前request/目录树保持可用。
-7. 附加目录ID、缩进、菜单disabled、remount persistence、selection、URL与splitter几何；正常Close并验证Main/Core/Renderer退出、8888释放和profile删除。
+7. 核对首层嵌套目录缩进30px、再下一层增加26px；方法标签在40x16px框内以flex双轴center居中文字，标签框与标题中心对齐，文字上下/左右留白差均不超过一个设备像素。附加目录ID、缩进、菜单disabled、remount persistence、selection、URL、splitter与标签文字几何；正常Close并验证Main/Core/Renderer退出、8888释放和profile删除。
 
 ### TDD证据要求
 
-- 当前提交先运行同一workflow；若全部Green，则必须在最接近该交互修复前的历史提交取得retrospective Red，不能把现状Green冒充TDD。
+- 新增或修复交互行为时先取得同一workflow的有效Red；行为与数据格式不变且现有覆盖足够时，确认基线Green后再修改并复跑，不回滚或制造历史Red。
 - 有效Red必须来自selection、rename、三级约束、menu或splitter业务缺口；selector、构建、listener或fixture失败不算Red。
 - Green必须覆盖同一组UI操作、evidence与完整销毁。
 
@@ -161,6 +161,9 @@ Composer的method、URL、protocol、headers、query、body和auth均从默认�
 - Red：rename提交后立即切到Rules再返回Composer，越过两倍600ms保存窗口后Core回载得到`count=0 / name=null / url=null`，证明feature卸载取消了节流保存并让旧快照清空整棵树。
 - Green：将`useCollection`同步owner提升到常驻App；同一workflow `1/1`，remount恢复同一request ID、rename与URL；三级目录x坐标`92 / 118 / 144`，第三级New subfolder disabled，目录选择/空白取消不关闭文档，splitter `320→399.5px`。
 - 销毁：Main/Core退出、8888释放，`gracefulDestroyVerified=true`。
+- 2026-09-11请求行字号还原：行为与数据格式不变，同一workflow前后1/1（11.5s/17.2s），Main/Core 35828/27528、28932/36364正常销毁并通过宿主guard。unit前后12/12，字号差由现有parity先定位再验证，明暗18/18；本workflow与业务断言没有改写。证据见[Collection请求行parity](../../../../../architecture/features/composer.md#collection请求行parity)。
+- 2026-09-11目录缩进还原：首层30px断言在原产品上得到26px的有效Red，修复后同一workflow 1/1（17.8s）；后续层26px、原选择/rename/持久化/splitter断言保持。Main/Core Red25204/33300、Green13080/42900均正常销毁并通过宿主guard；[完整证据](../../../../../architecture/features/composer.md#collection目录选中与缩进)。方法标签内部对齐未由本workflow验证，另行保留差异。
+- 2026-09-11最终方法标签flex：旧继承行高11.07px取得真实Red（29008/20324正常销毁）后，最终断言改为用户要求的双轴flex、40x16px框、框与名称中心、文字四侧留白。与Capture同一构建联合2/2（31.3s）；本workflow Main/Core19136/14604正常销毁并恢复宿主，DPR1.5实测上下2/2px、左右11.4896/11.5px，两个外框中心差0px。此项补足上一阶段未覆盖的标签内部对齐，原树交互断言保持；[最终证据](../../../../../architecture/features/composer.md#方法标签样式差异)。
 
 ### 预期效果
 

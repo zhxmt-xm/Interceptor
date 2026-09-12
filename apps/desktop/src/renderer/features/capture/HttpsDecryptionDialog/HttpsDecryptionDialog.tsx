@@ -9,6 +9,7 @@ import { Button, cx, IconButton, StatusBadge } from '../../../components';
 import { describeError } from '../utils';
 
 import styles from './HttpsDecryptionDialog.module.css';
+import { HttpsConnectionChain } from './HttpsConnectionChain';
 import { SetupStep } from './SetupStep';
 
 export interface HttpsDecryptionDialogProps {
@@ -109,6 +110,7 @@ export function HttpsDecryptionDialog({
         </header>
 
         <div className={styles.body}>
+          <HttpsConnectionChain decrypting={enabled} />
           <p>{t('capture.httpsSetupDescription')}</p>
           <div className={styles.steps}>
             <SetupStep

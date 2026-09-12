@@ -132,6 +132,8 @@ export function CaptureListbar({
           open={managerOpen}
           onOpenChange={setManagerOpen}
           placement="bottomLeft"
+          className={styles.breakpointMenu}
+          padding={0}
           content={
             <BreakpointManager
               onOpenRule={(ruleId) => {

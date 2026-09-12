@@ -16,7 +16,7 @@
 
 .warning {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 11px;
   margin-bottom: 14px;
   padding: 12px 14px;
@@ -29,7 +29,6 @@
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
-  margin-top: 1px;
   color: var(--yellow);
 }
 
@@ -88,7 +87,7 @@
 
 .listHead {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 11px 16px;
@@ -107,20 +106,27 @@
   font-size: 9.5px;
   font-weight: 500;
   letter-spacing: 0;
-  line-height: 13px;
   text-transform: none;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .row {
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
   gap: 12px;
   min-height: 66px;
   padding: 13px 16px;
   border-bottom: 1px solid var(--border);
+}
+
+.row > * {
+  flex: 0 0 auto;
+}
+
+.row > :nth-child(2) {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .row:last-of-type {
@@ -129,10 +135,11 @@
 
 .icon,
 .recommendedIcon {
-  display: grid;
+  display: flex;
   width: 30px;
   height: 30px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
   background: var(--panel-2);
   color: var(--text-2);
@@ -168,18 +175,24 @@
   color: var(--text);
   font-size: 12.5px;
   font-weight: 550;
+  line-height: 15px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .recommended {
+  display: inline-flex;
+  height: 20px;
   flex: 0 0 auto;
-  padding: 3px 8px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent);
   font-size: 10.5px;
   font-weight: 600;
+  line-height: 14px;
 }
 
 .packageName {
@@ -187,7 +200,7 @@
   color: var(--text-3);
   font-family: var(--font-mono);
   font-size: 11.5px;
-  line-height: 15px;
+  line-height: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -263,7 +276,6 @@
   width: 15px;
   height: 15px;
   flex: 0 0 auto;
-  margin-top: 1px;
   color: var(--accent);
 }
 
@@ -288,8 +300,9 @@
   width: 30px;
   height: 30px;
   flex: 0 0 auto;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
   background: color-mix(in srgb, var(--yellow) 13%, transparent);
   color: var(--yellow);
@@ -310,11 +323,6 @@
   margin: 0;
   font-size: 14.5px;
   font-weight: 640;
-}
-
-.bulkDialogHeader h2 {
-  position: relative;
-  top: -2px;
 }
 
 .dialogContent {
@@ -360,7 +368,7 @@
 .dialogWarning,
 .dialogNote {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   padding: 11px 13px;
   border-radius: 10px;
@@ -380,7 +388,6 @@
   width: 15px;
   height: 15px;
   flex: 0 0 auto;
-  margin-top: 1px;
 }
 
 .dialogNote svg {
@@ -402,17 +409,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 11px 12px;
+  padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 9px;
   background: var(--panel-2);
   color: var(--text-3);
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .bulkSummary strong {
-  position: relative;
-  top: -3px;
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 10.5px;
@@ -425,8 +430,6 @@
 }
 
 .bulkWarning {
-  position: relative;
-  top: 2px;
   gap: 9px;
   padding: 10px 12px;
   border: 1px solid color-mix(in srgb, var(--yellow) 25%, var(--border));

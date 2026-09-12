@@ -133,6 +133,13 @@ File模式未选文件时按现有设计显示112px最小高度的居中容器�
 
 ### 4.3 WebSocket 帧断点
 
+- 2026-09-12最新对齐约定：暂停说明、方向和队列按钮由同一层`flex + align-items:center`排布，phase内部图标与文字也使用flex center；设计稿遵守相同规则，不使用baseline或为居中单独补px。该条替代此前以Grid几何中心和行高微调判定对齐的做法，先由现有Close workflow验证旧实现Red，再实施与复验。
+- WebSocket Replacement标题按既有PayloadEditor设计为36px，模式控件28px加标题下padding8px；折叠图标使用13px控件规格，不用30px的sm按钮撑到38px。共享IconButton通过xs规格表达，默认md/sm保持；现有Close workflow先取得标题38/36px真实Red，再改UI，关闭码1000到1001的协议断言保持。
+- 2026-09-12标题修复先取得xs组件Red和真实38/36px Red（Main/Core30236/30268）；共享IconButton增加xs后32/32 unit、Desktop类型通过，Close首轮1/1（20.3s，24084/43976）。追加四条origin历史消息后最终1/1（11.5s，6428/19436）：38px消息行、126px队首列表、真实滚轮访问底部暂停帧、13px折叠/展开、Replacement Off保持和origin收到1001全部通过。三代均正常销毁及8888/WinINet/journal恢复。
+- 暂停上下文沿用既有设计normal行高、126px队首滚动区和38px消息分隔；queued及普通列表不套用队首高度，Tree/MIME/Save能力保持。上述暂停期样式没有前置真实E2E，不能把后来取得的标题Red外推到这些修改。
+- enabled/paused/queue-head/queue-queued明暗八场景58/58、0 missing/flagged、最大0.8px；方向组按完整控件外框与文字Range分别比较，队列两态几何0px，不再用裸All匹配全局筛选。补正确状态PNG后像素均值2.71%，仍含既有数据/图标/字体差异，不宣称整页逐像素相同。TEMP `interceptor-ws-heading-20260912-{unit-red,unit-green,e2e-red,e2e-green,e2e-scroll,directions,pixels}*`保留日志、trace、metadata及布局截图。
+- 沿用现有shoot variant补enabled/queue-head/queue-queued明暗6张缺失PNG，408张旧图SHA256不变；最初还生成2张旧行内paused-sent图，发现与当前队首状态不同后删除本轮新增的这2张，paused场景复用queue-head图，不改设计布局或旧基准。TEMP `interceptor-ws-shots-20260912-{before,result}.json`保留最初8张生成清单，最终入库仅6张。
+- [同一item报告](../../commit-changes/202609111558_ui_parity_progress.html#websocket-pause-images)追加真实Renderer + fake Preload的相同浅色1600x900区域前后图，红框定位列表、暂停说明和Replacement标题。原62图逐张保持，共64图在1320/390宽度加载完整、全部展开且无横溢出；TEMP `interceptor-ws-heading-20260912-review/evidence.json`记录来源hash/裁切/旧图保护，一次性脚本已删除。
 - 消息断点入口按已有设计保持30×30px、1px透明边框、默认`--text`；默认hover取Ant Button的`colorFillTertiary`，启用后hover保留黄色。`IconButton`只增加可选hover CSS变量，未提供时默认值不变；不提高选择器特异性覆盖共享样式。
 - 2026-09-11前置parity确认默认色/边框和启用hover差异；真实Close workflow以0px边框取得Red，Main/Core `31368/37908`正常销毁。后续150%缩放的0.666667px是CSS物理像素取整，首次Green尝试因此误报（`13356/6960`正常销毁），不算产品回归；最终断言按devicePixelRatio核对边框，30px尺寸和透明颜色检查保持。
 - 最终真实`breakpoints.websocket-close`1/1（8.3s），启用hover颜色不变且origin收到编辑后的1001；Main/Core `26524/29720`正常销毁，fixture验证8888、WinINet/journal与登记进程恢复。相关unit26/26、Desktop typecheck通过；临时消息断点八态与普通IconButton六态共42/42目标匹配、最大0.6px，普通按钮默认样式不变。

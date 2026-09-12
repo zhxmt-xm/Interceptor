@@ -15,7 +15,7 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
   test.setTimeout(120_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'capture.body.fullscreen' });
   const { page } = desktopApp;
-  const evidence: Array<{ path: string; side: string; bodyBytes: number; copyVerified: boolean; urlCopyVerified: boolean; modePreserved: boolean }> = [];
+  const evidence: Array<{ path: string; side: string; bodyBytes: number; copyVerified: boolean; urlCopyVerified: boolean; methodCopyVerified: boolean; modePreserved: boolean }> = [];
 
   // 准备：从真实录制UI开始，所有正文均由本轮客户端和origin经代理产生。
   // Arrange: begin with real Recording UI and produce every body through this client's proxied origin traffic.
@@ -36,6 +36,19 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
     await inspectorButtons.first().click();
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()))
       .toBe(httpTrafficRunner.url(response.path));
+    await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.headers).click();
+    const generalContentId = await getByAutomationId(
+      page,
+      AUTOMATION_IDS.capture.inspector.section.general,
+    ).getAttribute('aria-controls');
+    expect(generalContentId).not.toBeNull();
+    const methodValue = page.locator(`[id="${generalContentId}"]`).getByText('POST', { exact: true });
+    await expect(methodValue).toHaveCount(1);
+    await expect(methodValue).toHaveCSS('font-size', '11.5px');
+    await expect(methodValue).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await methodValue.hover();
+    await methodValue.locator('..').getByRole('button').click();
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('POST');
     const bodies = response.mediaType === 'application/json'
       ? [{ side: 'request', body: REQUEST_BODY, mediaType: 'application/json' }, { side: 'response', body: response.body, mediaType: response.mediaType }] as const
       : [{ side: 'response', body: response.body, mediaType: response.mediaType }] as const;
@@ -48,6 +61,30 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
         const sectionId = expected.side === 'request'
           ? AUTOMATION_IDS.capture.inspector.section.requestBody : AUTOMATION_IDS.capture.inspector.section.responseBody;
         await expect(getByAutomationId(page, sectionId)).toContainText(String(Buffer.byteLength(expected.body)));
+        await expect(getByAutomationId(page, sectionId)).toHaveCSS('line-height', 'normal');
+        const bodyMetadata = getByAutomationId(page, sectionId).locator(':scope > span').last();
+        await expect(bodyMetadata).toHaveCSS('letter-spacing', 'normal');
+        await expect(bodyMetadata).toHaveCSS('text-transform', 'none');
+        if (expected.side === 'request') {
+          const queryContentId = await getByAutomationId(
+            page,
+            AUTOMATION_IDS.capture.inspector.section.queryParameters,
+          ).getAttribute('aria-controls');
+          expect(queryContentId).not.toBeNull();
+          const queryTypography = await page.locator(`[id="${queryContentId}"] > div`).evaluate((element) => {
+            const style = getComputedStyle(element);
+            return {
+              fontSize: Number.parseFloat(style.fontSize),
+              lineHeight: Number.parseFloat(style.lineHeight),
+              tokenLineHeight: Number.parseFloat(style.getPropertyValue('--interceptor-line-height')),
+            };
+          });
+          expect(queryTypography.tokenLineHeight).toBeGreaterThan(0);
+          expect(queryTypography.lineHeight).toBeCloseTo(
+            queryTypography.fontSize * queryTypography.tokenLineHeight,
+            2,
+          );
+        }
         const rawMode = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyMode.raw);
         await rawMode.click();
         await expect(rawMode).toHaveAttribute('aria-checked', 'true');
@@ -94,7 +131,7 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
         await rawMode.click();
         await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy).click();
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(expected.body);
-        evidence.push({ path: response.path, side: expected.side, bodyBytes: Buffer.byteLength(expected.body), copyVerified: true, urlCopyVerified: true, modePreserved: true });
+        evidence.push({ path: response.path, side: expected.side, bodyBytes: Buffer.byteLength(expected.body), copyVerified: true, urlCopyVerified: true, methodCopyVerified: true, modePreserved: true });
       });
     }
     await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();

@@ -226,6 +226,8 @@ export const deCatalog = {
   'capture.connectionMetadataOnly': 'Es wurde keine lokale CA erzeugt oder als vertrauenswürdig eingestuft. Es werden nur Verbindungsmetadaten gespeichert.',
   'capture.mitmActiveForNewConnections': 'MITM ist für neue Verbindungen aktiv. Verbinden Sie diesen Client erneut, um seinen HTTPS-Datenverkehr zu untersuchen.',
   'capture.httpsSetupDescription': 'Richten Sie ein lokales Stammzertifikat nur ein, wenn Sie Inhalte von HTTPS-Anfragen und -Antworten untersuchen müssen.',
+  'capture.httpsClientApps': 'Client-Apps',
+  'capture.httpsInternet': 'Internet',
   'capture.proxyRestartsSameAddress': 'Der lokale Proxy wird unter derselben Adresse neu gestartet.',
   'capture.httpsRemainsEncrypted': 'Bis die Einrichtung abgeschlossen ist, wird HTTPS weiterhin verschlüsselt und ohne Unterbrechung übertragen.',
   'capture.startDecrypting': 'Entschlüsselung starten',

@@ -230,6 +230,8 @@ export const ukCatalog = {
   'capture.connectionMetadataOnly': 'Локальний центр сертифікації не створено й не додано до довірених. Зберігаються лише метадані з’єднання.',
   'capture.mitmActiveForNewConnections': 'MITM активний для нових з’єднань. Перепідключіть цей клієнт, щоб перевірити його HTTPS-трафік.',
   'capture.httpsSetupDescription': 'Налаштовуйте локальний кореневий сертифікат лише тоді, коли потрібно перевіряти вміст HTTPS-запитів і відповідей.',
+  'capture.httpsClientApps': 'Клієнти',
+  'capture.httpsInternet': 'Інтернет',
   'capture.proxyRestartsSameAddress': 'Локальний проксі-сервер перезапуститься за тією самою адресою.',
   'capture.httpsRemainsEncrypted': 'До завершення налаштування HTTPS залишається зашифрованим і працює без перерв.',
   'capture.startDecrypting': 'Почати розшифрування',

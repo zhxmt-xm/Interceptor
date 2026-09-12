@@ -9,6 +9,42 @@ const EXPAND_RULE_TREE_ACTIONS = [
   { type: 'clickRole', role: 'button', name: 'Expand folder', index: 0 },
 ];
 
+const RULE_SET_APPLIED_TARGETS = [
+  {
+    name: 'Rule set applied',
+    designSelector: '.sv[data-v="rules"] > .g:first-child',
+    appSelector: 'div:has(> [data-automation-id="rules.status.state"])',
+  },
+  {
+    name: 'Applied state dot',
+    designSelector: '.sv[data-v="rules"] > .g:first-child > .gd',
+    appSelector: 'div:has(> [data-automation-id="rules.status.state"]) > span:first-child',
+    styleKeys: ['backgroundColor', 'borderRadius'],
+  },
+];
+
+const HTTPS_SETUP_TITLE_TARGET = {
+  name: 'Decrypt HTTPS (MITM)',
+  designSelector: '.dlghead > b:text-is("Decrypt HTTPS (MITM)")',
+  appSelector: '#https-decryption-title',
+  measureText: true,
+};
+
+const WEBSOCKET_DIRECTION_TARGETS = [
+  {
+    name: 'Message direction group',
+    designSelector: '.wsbar > .seg',
+    appSelector: '[role="radiogroup"]:has([data-automation-id="capture.websocket.direction.all"])',
+    styleKeys: ['gap', 'padding', 'borderRadius'],
+  },
+  {
+    name: 'All messages label',
+    designSelector: '.wsbar > .seg > :text-is("All")',
+    appSelector: '[data-automation-id="capture.websocket.direction.all"]',
+    measureText: true,
+  },
+];
+
 const OPEN_RUNTIME_PROXY_READINESS_ACTIONS = [
   { type: 'clickText', text: 'Proxy & Listener' },
   { type: 'clickRole', role: 'button', name: 'Restore' },
@@ -97,6 +133,12 @@ const COMPOSER_IMPORT_TARGETS = [
   'Import 9 requests',
 ];
 
+const INSPECTOR_METHOD_TARGET = {
+  name: 'Inspector method',
+  parity: 'capture-inspector-method',
+  styleKeys: ['fontSize', 'fontWeight', 'color', 'backgroundColor', 'borderRadius'],
+};
+
 const SETTINGS_PROXY_TARGETS = [
   'Local listener, operating-system routing, ownership and guarded recovery.',
   'Owned',
@@ -162,8 +204,15 @@ const INITIAL_VIEWS = ['light', 'dark'].map((theme) => ({
       'Local traffic',
       'Settings',
       'Theme',
+      INSPECTOR_METHOD_TARGET,
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       { name: 'Inspector client app', parity: 'capture-inspector-client-app' },
+      {
+        name: 'General method value',
+        designSelector: '.kv > .k:text-is("Request Method") + .v',
+        appSelector: 'span:text-is("Request Method") + span',
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight', 'color', 'backgroundColor'],
+      },
       { name: 'Filter panel', parity: 'capture-filter-panel' },
       { name: 'Filter groups', parity: 'capture-filter-groups' },
       { name: 'Filter item all', parity: 'capture-filter-item-all' },
@@ -1837,7 +1886,11 @@ export const views = [
           'Context window',
           'Maximum output',
           'Test connection',
-          'Cancel',
+          {
+            name: 'Cancel',
+            designSelector: '[data-parity="model-provider-dialog"] > footer .btn:has-text("Cancel")',
+            appSelector: '[data-automation-id="agent.provider.dialog"] > footer button:has-text("Cancel")',
+          },
           'Save provider',
         ],
       },
@@ -1889,7 +1942,11 @@ export const views = [
           'API key',
           'Model ID',
           'Test connection',
-          'Cancel',
+          {
+            name: 'Cancel',
+            designSelector: '[data-parity="model-provider-dialog"] > footer .btn:has-text("Cancel")',
+            appSelector: '[data-automation-id="agent.provider.dialog"] > footer button:has-text("Cancel")',
+          },
           'Save changes',
         ],
       },
@@ -1938,7 +1995,11 @@ export const views = [
           },
           'Remove saved API key',
           'Test connection',
-          'Cancel',
+          {
+            name: 'Cancel',
+            designSelector: '[data-parity="model-provider-dialog"] > footer .btn:has-text("Cancel")',
+            appSelector: '[data-automation-id="agent.provider.dialog"] > footer button:has-text("Cancel")',
+          },
           'Save changes',
         ],
       },
@@ -2016,6 +2077,7 @@ export const views = [
     ],
     targets: [
       { name: 'Capture header', parity: 'window-header-title', measureText: true },
+      INSPECTOR_METHOD_TARGET,
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       { name: 'Inspector status', parity: 'capture-inspector-status' },
       'Messages',
@@ -2119,7 +2181,7 @@ export const views = [
         ],
         targets: [
           'Messages',
-          'All',
+          ...WEBSOCKET_DIRECTION_TARGETS,
           'Sent',
           'Received',
           {
@@ -2136,18 +2198,19 @@ export const views = [
           ...designState,
           breakpointState: 'websocket',
           breakpointBody: 'ready',
+          breakpointQueueSelection: 'websocket-head',
           websocketBreakpoint: 'enabled',
           websocketBreakpointDirection: 'both',
           websocketBreakpointFrames: ['message'],
           websocketMessageDirection: 'sent',
           websocketMessagePayload: 'text',
         },
-        designShot: `${theme}/capture/websocket-breakpoint-paused-sent.png`,
+        designShot: `${theme}/capture/websocket-breakpoint-queue-head.png`,
         pausedWebSocketBreakpoint: true,
         rendererActions: [{ type: 'clickText', text: '/socket' }],
         targets: [
           'Messages',
-          'All',
+          ...WEBSOCKET_DIRECTION_TARGETS,
           {
             name: 'Armed WebSocket breakpoint',
             designSelector: 'button[aria-label="Disable message breakpoint"]',
@@ -2183,6 +2246,18 @@ export const views = [
         rendererActions: [{ type: 'clickText', text: '/socket' }],
         targets: [
           {
+            name: 'WebSocket history row',
+            designSelector: '.wsrows > .wsrow:first-child',
+            appSelector: '[data-automation-id^="capture.websocket.frame."]',
+            styleKeys: ['height', 'borderBottomWidth'],
+          },
+          {
+            name: 'WebSocket paused frame list',
+            designSelector: '.wsrows',
+            appSelector: 'div:has(> div > div > div > [data-automation-id="breakpoints.pending.bp-websocket-message"])',
+            styleKeys: ['height', 'borderRadius', 'borderWidth'],
+          },
+          {
             name: 'WebSocket queue head',
             designSelector: '[data-breakpoint-id="bp-ws-head"]',
             appSelector: '[data-automation-id="breakpoints.pending.bp-websocket-message"]',
@@ -2196,6 +2271,18 @@ export const views = [
             name: 'Queue actions trigger',
             designSelector: 'button[aria-label="Queue actions"]',
             appSelector: '[data-automation-id="breakpoints.queue-menu"]',
+          },
+          {
+            name: 'WebSocket pause context',
+            designSelector: '[data-breakpoint-component="context"]:has-text("Sent message paused")',
+            appSelector: 'div:has(> span:text-is("Sent message paused"))',
+            styleKeys: ['display', 'gap', 'minHeight', 'padding', 'alignItems'],
+          },
+          {
+            name: 'WebSocket pause phase',
+            designSelector: '[data-breakpoint-component="context"] > span:first-child',
+            appSelector: 'span:text-is("Sent message paused")',
+            styleKeys: ['fontSize', 'fontWeight', 'lineHeight'],
           },
         ],
       },
@@ -2278,43 +2365,102 @@ export const views = [
       };
     }),
   ),
-  {
-    id: 'capture-request-json',
-    theme: 'light',
+  ...['light', 'dark'].map((theme) => ({
+    id: theme === 'light' ? 'capture-request-json' : 'capture-request-json-dark',
+    theme,
+    mitmActive: false,
     designState: {
       view: 'capture',
-      theme: 'light',
+      theme,
       sidebar: 'expanded',
+      detail: 'open',
       tab: 'request',
     },
-    designShot: 'light/capture/inspector-request.png',
+    designShot: `${theme}/capture/inspector-request-expanded.png`,
     rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickText', text: '/user' },
       { type: 'clickText', text: 'Request' },
     ],
     targets: [
       'Capture',
       'Local traffic',
-      'json · 63 B',
+      {
+        name: 'Request line heading',
+        designSelector: '.collapsibleSectionHeader:has-text("Request line")',
+        appSelector: '[data-automation-id="capture.inspector.section.request-line"]',
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'color'],
+      },
+      {
+        name: 'Query heading',
+        designSelector: '.collapsibleSectionHeader:has-text("Query String Parameters")',
+        appSelector: '[data-automation-id="capture.inspector.section.query-parameters"]',
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'color'],
+      },
+      {
+        name: 'Empty query text',
+        designSelector: '.emptyv:text-is("No query parameters on this request.")',
+        appSelector: 'div:text-is("No query parameters on this request.")',
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight', 'color'],
+      },
+      {
+        name: 'Request body heading',
+        designSelector: '.collapsibleSectionHeader:has-text("Request Payload")',
+        appSelector: '[data-automation-id="capture.inspector.section.request-body"]',
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'color'],
+      },
+      {
+        name: 'Request body metadata',
+        designSelector: '.collapsibleSectionHeader :text-is("json · 63 B")',
+        appSelector: '[data-automation-id="capture.inspector.section.request-body"] > span:last-of-type',
+        styleKeys: ['fontSize', 'fontWeight', 'letterSpacing', 'textTransform', 'color'],
+      },
       { name: 'Request body view', parity: 'capture-body-view' },
     ],
-  },
-  {
-    id: 'capture-timing',
-    theme: 'light',
+  })),
+  ...['light', 'dark'].map((theme) => ({
+    id: theme === 'light' ? 'capture-timing' : 'capture-timing-dark',
+    theme,
+    mitmActive: false,
     designState: {
       view: 'capture',
-      theme: 'light',
-      sidebar: 'expanded',
+      theme,
+      sidebar: 'collapsed',
+      detail: 'open',
       tab: 'timing',
     },
-    designShot: 'light/capture/inspector-timing.png',
+    designShot: `${theme}/capture/inspector-timing.png`,
     rendererActions: [
       { type: 'clickText', text: '/user' },
       { type: 'clickText', text: 'Timing' },
     ],
-    targets: ['Waiting (TTFB)', '118 ms', 'Response bodies', '24 ms'],
-  },
+    targets: [
+      {
+        name: 'Waiting (TTFB)',
+        designSelector: '.tlrow:first-child .tlp',
+        appSelector: 'span:text-is("Waiting (TTFB)")',
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight', 'color'],
+      },
+      {
+        name: '118 ms',
+        designSelector: '.tlrow:first-child .tlt',
+        appSelector: 'span:text-is("118 ms")',
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight', 'color'],
+      },
+      {
+        name: 'Response bodies',
+        designSelector: '.tlrow:last-child .tlp',
+        appSelector: 'span:text-is("Response bodies")',
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight', 'color'],
+      },
+      {
+        name: '24 ms',
+        designSelector: '.tlrow:last-child .tlt',
+        appSelector: 'span:text-is("24 ms")',
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight', 'color'],
+      },
+    ],
+  })),
   {
     id: 'capture-cookies',
     theme: 'light',
@@ -2354,6 +2500,7 @@ export const views = [
       { type: 'clickText', text: 'Message 2' },
     ],
     targets: [
+      INSPECTOR_METHOD_TARGET,
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       { name: 'Inspector status', parity: 'capture-inspector-status' },
       'Messages',
@@ -2371,14 +2518,15 @@ export const views = [
     designState: {
       view: 'capture',
       theme: 'light',
-      sidebar: 'expanded',
+      sidebar: 'collapsed',
+      detail: 'open',
       scene: 'tunnel',
       tab: 'tunnel',
     },
     designShot: 'light/capture/inspector-tunnel.png',
     rendererActions: [{ type: 'clickText', text: 'accounts.google.com' }],
     targets: [
-      { name: 'Inspector method', parity: 'capture-inspector-method' },
+      INSPECTOR_METHOD_TARGET,
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       { name: 'Inspector status', parity: 'capture-inspector-status' },
       'TLS tunnel',
@@ -2395,19 +2543,22 @@ export const views = [
     designState: {
       view: 'capture',
       theme: 'dark',
-      sidebar: 'expanded',
+      sidebar: 'collapsed',
+      detail: 'open',
       scene: 'tunnel',
       tab: 'tunnel',
     },
     designShot: 'dark/capture/inspector-tunnel.png',
     rendererActions: [{ type: 'clickText', text: 'accounts.google.com' }],
     targets: [
+      INSPECTOR_METHOD_TARGET,
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       { name: 'Inspector status', parity: 'capture-inspector-status' },
       'TLS tunnel',
       'HTTPS content is encrypted',
       'Decrypt HTTPS (MITM)',
       'TLS passthrough',
+      'No local CA was generated or trusted. Only connection metadata is stored.',
     ],
   },
   {
@@ -2417,7 +2568,8 @@ export const views = [
     designState: {
       view: 'capture',
       theme: 'light',
-      sidebar: 'expanded',
+      sidebar: 'collapsed',
+      detail: 'open',
       scene: 'tunnel',
       tab: 'tunnel',
       mitm: 'active',
@@ -2431,6 +2583,7 @@ export const views = [
       'HTTPS content is encrypted',
       { name: 'View passthrough pattern', parity: 'tls-tunnel-view-passthrough' },
       'MITM active',
+      'TLS passthrough',
       'MITM is active for new connections. Reconnect this client to inspect its HTTPS traffic.',
     ],
   },
@@ -2441,7 +2594,8 @@ export const views = [
     designState: {
       view: 'capture',
       theme: 'dark',
-      sidebar: 'expanded',
+      sidebar: 'collapsed',
+      detail: 'open',
       scene: 'tunnel',
       tab: 'tunnel',
       mitm: 'active',
@@ -2449,8 +2603,14 @@ export const views = [
     designShot: 'dark/capture/inspector-tunnel-mitm-active.png',
     rendererActions: [{ type: 'clickText', text: 'accounts.google.com' }],
     targets: [
+      { name: 'Inspector host', parity: 'capture-inspector-host' },
+      { name: 'Inspector status', parity: 'capture-inspector-status' },
+      'TLS tunnel',
+      'HTTPS content is encrypted',
       { name: 'View passthrough pattern', parity: 'tls-tunnel-view-passthrough' },
       'MITM active',
+      'TLS passthrough',
+      'MITM is active for new connections. Reconnect this client to inspect its HTTPS traffic.',
     ],
   },
   {
@@ -2460,7 +2620,8 @@ export const views = [
     designState: {
       view: 'capture',
       theme: 'light',
-      sidebar: 'expanded',
+      sidebar: 'collapsed',
+      detail: 'open',
       scene: 'tunnel',
       tab: 'tunnel',
       mitm: 'active',
@@ -2484,6 +2645,7 @@ export const views = [
       overlay: '',
       settings: 'tls-passthrough',
       tlsPassthrough: 'ready',
+      tlsPatterns: ['*.wvd.microsoft.com'],
       tlsPassthroughTargetHost: 'afdfp-rdgateway-r0.wvd.microsoft.com',
       tlsPassthroughTargetPattern: '*.wvd.microsoft.com',
       tlsPassthroughTargetSequence: 1,
@@ -2521,7 +2683,8 @@ export const views = [
       { type: 'clickRole', role: 'button', name: 'Decrypt HTTPS (MITM)' },
     ],
     targets: [
-      'Decrypt HTTPS (MITM)',
+      HTTPS_SETUP_TITLE_TARGET,
+      { name: 'HTTPS connection diagram', designSelector: '.https-setup .chain', appSelector: '[data-automation-id="capture.https-setup.connection-chain"]', styleKeys: [] },
       'Root Certificate Authority',
       'No CA generated yet',
       'Generate',
@@ -2551,7 +2714,8 @@ export const views = [
       { type: 'clickRole', role: 'button', name: 'Decrypt HTTPS (MITM)' },
     ],
     targets: [
-      'Decrypt HTTPS (MITM)',
+      HTTPS_SETUP_TITLE_TARGET,
+      { name: 'HTTPS connection diagram', designSelector: '.https-setup .chain', appSelector: '[data-automation-id="capture.https-setup.connection-chain"]', styleKeys: [] },
       'Root Certificate Authority',
       'Generate',
       'Install to local trust store',
@@ -2579,7 +2743,8 @@ export const views = [
       { type: 'clickRole', role: 'button', name: 'Install…' },
     ],
     targets: [
-      'Decrypt HTTPS (MITM)',
+      HTTPS_SETUP_TITLE_TARGET,
+      { name: 'HTTPS connection diagram', designSelector: '.https-setup .chain', appSelector: '[data-automation-id="capture.https-setup.connection-chain"]', styleKeys: [] },
       'Root Certificate Authority',
       'Generated',
       'Install to local trust store',
@@ -2616,8 +2781,24 @@ export const views = [
       },
     ],
     targets: [
-      'Export HAR',
-      'All traffic',
+      {
+        name: 'Export HAR',
+        designSelector: '.dlghead > .transfer-har-export',
+        appSelector: '#har-transfer-title',
+        measureText: true,
+      },
+      {
+        name: 'HAR warning',
+        designSelector: '.dlg .wnote.transfer-har-only',
+        appSelector: '[role="dialog"] header + div > div:first-child',
+        styleKeys: ['fontSize', 'color', 'backgroundColor', 'borderRadius', 'padding', 'gap'],
+      },
+      {
+        name: 'All traffic',
+        designSelector: '.ritem .rc > b:text-is("All traffic")',
+        appSelector: '[role="dialog"] strong:text-is("All traffic")',
+        measureText: true,
+      },
       'Current filter',
       'Selected request',
       'Mask authorization tokens',
@@ -2637,6 +2818,7 @@ export const views = [
     },
     designShot: 'dark/import-export/export-har.png',
     rendererActions: [
+      { type: 'clickText', text: '/user' },
       {
         type: 'clickRole',
         role: 'button',
@@ -2649,8 +2831,24 @@ export const views = [
       },
     ],
     targets: [
-      'Export HAR',
-      'All traffic',
+      {
+        name: 'Export HAR',
+        designSelector: '.dlghead > .transfer-har-export',
+        appSelector: '#har-transfer-title',
+        measureText: true,
+      },
+      {
+        name: 'HAR warning',
+        designSelector: '.dlg .wnote.transfer-har-only',
+        appSelector: '[role="dialog"] header + div > div:first-child',
+        styleKeys: ['fontSize', 'color', 'backgroundColor', 'borderRadius', 'padding', 'gap'],
+      },
+      {
+        name: 'All traffic',
+        designSelector: '.ritem .rc > b:text-is("All traffic")',
+        appSelector: '[role="dialog"] strong:text-is("All traffic")',
+        measureText: true,
+      },
       'Current filter',
       'Selected request',
       'Mask authorization tokens',
@@ -2658,25 +2856,52 @@ export const views = [
       'Strip request/response bodies',
     ],
   },
-  {
-    id: 'capture-export-menu',
-    theme: 'light',
+  ...['light', 'dark'].flatMap((theme) => ['export', 'import'].map((menu) => ({
+    id: `capture-${menu}-menu${theme === 'dark' ? '-dark' : ''}`,
+    theme,
+    mitmActive: false,
     designState: {
       view: 'capture',
-      theme: 'light',
-      sidebar: 'expanded',
+      theme,
+      sidebar: 'collapsed',
       overlay: '',
-      fileMenu: 'export',
+      fileMenu: menu,
     },
-    designShot: 'light/capture/export-menu.png',
+    designShot: `${theme}/capture/${menu}-menu.png`,
     rendererActions: [
-      { type: 'clickRole', role: 'button', name: 'Export' },
+      { type: 'clickAutomation', automationId: `capture.${menu}-menu` },
     ],
     targets: [
-      'Export HAR',
-      'Save Capture',
+      ...(menu === 'export'
+        ? [
+            { label: 'Export HAR', automationId: 'capture.transfer.har-export' },
+            { label: 'Save Capture', automationId: 'capture.transfer.archive-save' },
+          ]
+        : [
+            { label: 'Import HAR', automationId: 'capture.transfer.har-import' },
+            { label: 'Open Capture', automationId: 'capture.transfer.archive-open' },
+          ]).flatMap(({ label, automationId }) => [
+        {
+          name: `${label} item`,
+          designSelector: `.file-command:has(> span:text-is("${label}"))`,
+          appSelector: `[data-automation-id="${automationId}"]`,
+          styleKeys: ['padding', 'borderRadius', 'backgroundColor'],
+        },
+        {
+          name: label,
+          designSelector: `.file-command > span:text-is("${label}")`,
+          appSelector: `[data-automation-id="${automationId}"] > span`,
+          measureText: true,
+        },
+        {
+          name: `${label} extension`,
+          designSelector: `.file-command:has(> span:text-is("${label}")) > code`,
+          appSelector: `[data-automation-id="${automationId}"] > code`,
+          styleKeys: ['fontSize', 'color', 'backgroundColor', 'borderWidth', 'borderRadius', 'padding'],
+        },
+      ]),
     ],
-  },
+  }))),
   {
     id: 'capture-request-rule-menu',
     theme: 'light',
@@ -2823,18 +3048,21 @@ export const views = [
       'No rule has matched captured traffic yet.',
     ],
   },
-  {
-    id: 'capture-body-preview-limited',
-    theme: 'light',
+  ...['light', 'dark'].map((theme) => ({
+    id: `capture-body-preview-limited${theme === 'dark' ? '-dark' : ''}`,
+    theme,
     largeTextBody: true,
+    mitmActive: false,
     designState: {
       view: 'capture',
-      theme: 'light',
-      sidebar: 'expanded',
+      theme,
+      sidebar: 'collapsed',
+      overlay: '',
+      detail: 'open',
       tab: 'response',
       bodyPreview: 'limited',
     },
-    designShot: 'light/capture/body-limited.png',
+    designShot: `${theme}/capture/body-limited.png`,
     rendererActions: [
       { type: 'clickText', text: '/user' },
       { type: 'clickText', text: 'Response' },
@@ -2842,33 +3070,59 @@ export const views = [
     targets: [
       {
         name: 'Limited body preview',
-        designSelector: '.bpane[data-pane="code"]',
+        designSelector: '.bpane[data-pane="code"] > [data-monaco="fill"]',
         appSelector: '[data-parity="capture-body-preview"]',
+        styleKeys: ['borderWidth', 'borderRadius', 'backgroundColor'],
       },
-      'Showing the first 5 MB of 12 MB. The full body remains captured for export.',
+      {
+        name: 'Limited body code line',
+        designSelector: '.bpane[data-pane="code"] .view-line:first-child',
+        appSelector: '[data-parity="capture-body-preview"] .view-line:first-child',
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight'],
+      },
+      {
+        name: 'Limited body note',
+        designSelector: '.bodynote:visible',
+        appSelector: '[data-parity="capture-body-view"] > div:has(> svg)',
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight', 'padding', 'gap', 'backgroundColor'],
+      },
     ],
-  },
-  {
-    id: 'capture-body-media-save',
-    theme: 'light',
+  })),
+  ...['light', 'dark'].map((theme) => ({
+    id: `capture-body-media-save${theme === 'dark' ? '-dark' : ''}`,
+    theme,
     largeBody: true,
+    mitmActive: false,
     designState: {
       view: 'capture',
-      theme: 'light',
-      sidebar: 'expanded',
+      theme,
+      sidebar: 'collapsed',
+      overlay: '',
+      detail: 'open',
       tab: 'response',
       bodyPreview: 'media',
     },
-    designShot: 'light/capture/body-media.png',
+    designShot: `${theme}/capture/body-media.png`,
     rendererActions: [
       { type: 'clickText', text: '/user' },
       { type: 'clickText', text: 'Response' },
     ],
     targets: [
       { name: 'Media body', parity: 'capture-media-body' },
+      ...[
+        ['Media icon', '> span:first-of-type', '> div > span:first-of-type', ['width', 'height']],
+        ['Media type', '> b', '> div > div > b', ['fontSize', 'fontWeight', 'lineHeight']],
+        ['Media size', '> span:nth-of-type(2)', '> div > div > span:first-of-type', ['fontSize', 'fontWeight', 'lineHeight']],
+        ['Media reason', '> span:nth-of-type(3)', '> div > div > span:last-child', ['fontSize', 'fontWeight', 'lineHeight']],
+      ].map(([name, designTarget, appTarget, styleKeys]) => ({
+        name,
+        designSelector: `[data-parity="capture-media-body"] ${designTarget}`,
+        appSelector: `[data-parity="capture-media-body"] ${appTarget}`,
+        styleKeys,
+      })),
       'Save body',
     ],
-  },
+  })),
   {
     id: 'proxy-not-ready',
     theme: 'light',
@@ -3075,18 +3329,21 @@ export const views = [
       },
     ],
   },
-  {
-    id: 'composer',
-    theme: 'light',
+  ...['light', 'dark'].map((theme) => ({
+    id: theme === 'light' ? 'composer' : 'composer-dark',
+    theme,
     rendererNav: 'Composer',
-    designState: { view: 'composer', theme: 'light', sidebar: 'expanded' },
-    designShot: 'light/composer/framed.png',
+    designState: { view: 'composer', theme, sidebar: 'expanded' },
+    designShot: `${theme}/composer/framed.png`,
+    designActions: [
+      { type: 'clickSelector', selector: '.ccol [data-grp="github-repos"] .citem:has-text("Create repo")' },
+      { type: 'hoverSelector', selector: '.app' },
+    ],
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickRole', role: 'button', name: 'Collapse folder', index: 2 },
       { type: 'clickRole', role: 'button', name: 'Expand folder', index: 0 },
       { type: 'clickText', text: 'Create repo' },
-      { type: 'clickText', text: 'Repositories' },
       { type: 'clickRole', role: 'button', name: 'Send' },
     ],
     targets: [
@@ -3110,6 +3367,21 @@ export const views = [
         designSelector: '.ccol [data-grp="github-repos"] .citem.on',
         appSelector: '[data-automation-id="composer.collection.request.collection-create-repo"]',
       },
+      ...[
+        { method: 'GET', requestId: 'collection-list-repos' },
+        { method: 'POST', requestId: 'collection-create-repo' },
+      ].map(({ method, requestId }) => ({
+        name: `Collection ${method} badge`,
+        designSelector: `.ccol [data-grp="github-repos"] .citem .m:text-is("${method}")`,
+        appSelector: `[data-automation-id="composer.collection.request.${requestId}"] > span:first-child`,
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight', 'color', 'backgroundColor', 'borderRadius'],
+      })),
+      {
+        name: 'Document POST badge',
+        designSelector: '.cdoc .m.post',
+        appSelector: '[role="tab"][aria-selected="true"] > span:first-child',
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight', 'color', 'backgroundColor', 'borderRadius'],
+      },
       {
         name: 'Request URL',
         designSelector: '[data-parity="composer-url"]',
@@ -3132,7 +3404,7 @@ export const views = [
       },
       '201 Created',
     ],
-  },
+  })),
   ...['light', 'dark'].flatMap((theme) => [
     {
       id: `composer-import-confirm-${theme}`,
@@ -3172,6 +3444,69 @@ export const views = [
       }],
     },
   ]),
+  ...['light', 'dark'].map((theme) => ({
+    id: `composer-folder-selected-${theme}`,
+    theme,
+    rendererNav: 'Composer',
+    designState: { view: 'composer', theme, sidebar: 'expanded' },
+    designShot: `${theme}/composer/collection-folder-selected.png`,
+    designActions: [
+      {
+        type: 'clickSelector',
+        selector: '.ccol [data-grp="github-repos"] > .cgrp-h .cgrp-namebtn',
+      },
+      { type: 'hoverSelector', selector: '.app' },
+    ],
+    rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+      { type: 'clickRole', role: 'button', name: 'Collapse folder', index: 2 },
+      { type: 'clickRole', role: 'button', name: 'Expand folder', index: 0 },
+      { type: 'clickText', text: 'Create repo' },
+      { type: 'clickRole', role: 'button', name: 'Send' },
+      {
+        type: 'clickSelector',
+        selector: '[data-automation-id="composer.collection.folder.collection-repositories"] button[aria-pressed]',
+      },
+      { type: 'hoverSelector', selector: 'body' },
+    ],
+    targets: [
+      {
+        name: 'Selected folder row',
+        designSelector: '.ccol [data-grp="github-repos"] > .cgrp-h',
+        appSelector: '[data-automation-id="composer.collection.folder.collection-repositories"]',
+        styleKeys: ['fontWeight', 'color', 'backgroundColor', 'boxShadow'],
+      },
+      {
+        name: 'Selected folder name',
+        designSelector: '.ccol [data-grp="github-repos"] > .cgrp-h .cgrp-n',
+        appSelector: '[data-automation-id="composer.collection.folder.collection-repositories"] button[aria-pressed] > span',
+        measureText: true,
+      },
+      {
+        name: 'Selected folder count',
+        designSelector: '.ccol [data-grp="github-repos"] > .cgrp-h .cgrp-c',
+        appSelector: '[data-automation-id="composer.collection.folder.collection-repositories"] > span',
+      },
+      {
+        name: 'Selected folder chevron',
+        designSelector: '.ccol [data-grp="github-repos"] > .cgrp-h .cgrp-chev',
+        appSelector: '[data-automation-id="composer.collection.folder.collection-repositories"] button[aria-expanded] svg',
+        styleKeys: ['color'],
+      },
+      {
+        name: 'Open request row',
+        designSelector: '.ccol [data-grp="github-repos"] .citem:has-text("Create repo")',
+        appSelector: '[data-automation-id="composer.collection.request.collection-create-repo"]',
+        styleKeys: ['fontSize', 'fontWeight', 'color', 'backgroundColor'],
+      },
+      {
+        name: 'Open request name',
+        designSelector: '.ccol [data-grp="github-repos"] .citem:has-text("Create repo") .citem-n',
+        appSelector: '[data-automation-id="composer.collection.request.collection-create-repo"] > span:last-child',
+        measureText: true,
+      },
+    ],
+  })),
   {
     id: 'composer-response-headers',
     theme: 'light',
@@ -3293,14 +3628,26 @@ export const views = [
       '0 enabled · 4 containers',
       'Windows app containers',
       'SID is the stable identity',
+      {
+        name: 'AppContainer row',
+        designSelector: '.appcontainer-row:has(b:text-is("Microsoft AAD Broker Plugin"))',
+        appSelector: '[data-exempt]:has(b:text-is("Microsoft AAD Broker Plugin"))',
+        styleKeys: ['padding', 'gap', 'borderBottomWidth'],
+      },
       'Microsoft AAD Broker Plugin',
       'Windows SSO · Recommended',
-      'Microsoft.AAD.BrokerPlugin_cw5n1h2txyewy',
+      {
+        name: 'AppContainer package name',
+        designSelector: '.appcontainer-package:text-is("Microsoft.AAD.BrokerPlugin_cw5n1h2txyewy")',
+        appSelector: ':text-is("Microsoft.AAD.BrokerPlugin_cw5n1h2txyewy")',
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight'],
+      },
       'S-1-15-2-1910091885-1573563583-1104941280-2418270861-3411158377-2822700936-2990310272',
       {
         name: 'AppContainer switch',
         designSelector: '[data-app-container-toggle]',
         appSelector: '[role="switch"]',
+        styleKeys: ['backgroundColor', 'borderRadius', 'opacity'],
       },
       'Disable all',
       'Enable all',
@@ -3403,6 +3750,7 @@ export const views = [
       sidebar: 'expanded',
       settings: 'tls-passthrough',
       tlsPassthrough: 'ready',
+      tlsPatterns: ['*.wvd.microsoft.com'],
       tlsCompatibility: '',
     },
     designShot: `${theme}/settings/tls-passthrough.png`,
@@ -3416,8 +3764,18 @@ export const views = [
       'Add',
       'Passthrough host patterns',
       'Matched before HTTPS interception',
-      '*.wvd.microsoft.com',
-      'Windows 365 · Recommended',
+      {
+        name: 'TLS passthrough host',
+        designSelector: '.tls-host-name > code',
+        appSelector: '[data-parity="tls-host-*.wvd.microsoft.com"] code',
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight'],
+      },
+      {
+        name: 'Windows 365 · Recommended',
+        designSelector: '.tls-host-name > .recommended',
+        appSelector: '[data-parity="tls-host-*.wvd.microsoft.com"] code + span',
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight', 'backgroundColor'],
+      },
       'End-to-end TLS tunnel; request paths, headers, and bodies remain encrypted.',
       'Passthrough traffic still crosses Interceptor and follows the configured upstream proxy. Only CONNECT and tunnel metadata are visible.',
     ],
@@ -3441,6 +3799,24 @@ export const views = [
       {
         name: 'rdweb.wvd.microsoft.com',
         parity: 'tls-compatibility-host-rdweb.wvd.microsoft.com',
+      },
+      {
+        name: 'TLS compatibility hostname',
+        designSelector: '.tls-compatibility-copy > code',
+        appSelector: '[data-parity="tls-compatibility-host-rdweb.wvd.microsoft.com"] > div > code',
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight'],
+      },
+      {
+        name: 'TLS compatibility reason',
+        designSelector: '.tls-compatibility-copy > span',
+        appSelector: '[data-parity="tls-compatibility-host-rdweb.wvd.microsoft.com"] > div > span',
+        styleKeys: ['fontSize', 'fontWeight', 'lineHeight'],
+      },
+      {
+        name: 'TLS compatibility pattern',
+        designSelector: '.tls-pattern-choice',
+        appSelector: '[data-parity="tls-compatibility-host-rdweb.wvd.microsoft.com"] label',
+        styleKeys: ['gap', 'alignItems'],
       },
       {
         name: 'windows365.microsoft.com',
@@ -3483,14 +3859,58 @@ export const views = [
         'Contents · read-only',
         'Current application',
         '0.1.0',
-        'Latest GitHub release',
+        {
+          name: 'Latest GitHub release',
+          designSelector: 'b:text-is("Latest GitHub release")',
+          appSelector: 'b:text-is("Latest GitHub release")',
+          measureText: true,
+        },
         'Release source',
         'Check policy',
         'Download policy',
-        ...(updateState === 'checking' ? ['Check', 'Reading the latest stable release metadata'] : []),
-        ...(updateState === 'available' ? ['Update available', 'Download update', '0.1.1 changelog'] : []),
-        ...(updateState === 'downloading' ? ['Download', 'Signed installer from GitHub Releases', '0.1.1 changelog'] : []),
-        ...(updateState === 'downloaded' ? ['Installer downloaded', 'Open installer', '0.1.1 changelog'] : []),
+        ...(updateState === 'checking' ? ['Check', 'Reading the latest stable release metadata'].map((name) => ({
+          name,
+          designSelector: `:text-is("${name}")`,
+          appSelector: `:text-is("${name}")`,
+          measureText: true,
+        })) : []),
+        ...(['available', 'downloaded'].includes(updateState) ? [
+          {
+            name: 'Update notification',
+            designSelector: '.unotice',
+            appSelector: '[role="status"]:has(b:text-is("' + (updateState === 'available' ? 'Update available' : 'Installer downloaded') + '"))',
+            styleKeys: ['padding', 'gap', 'backgroundColor', 'borderRadius'],
+          },
+          {
+            name: updateState === 'available' ? 'Update available' : 'Installer downloaded',
+            designSelector: `.uncap:visible > b`,
+            appSelector: '[role="status"]:has(b:text-is("' + (updateState === 'available' ? 'Update available' : 'Installer downloaded') + '")) b',
+            measureText: true,
+          },
+          {
+            name: 'Update notification action',
+            designSelector: '.unotice > .btn:visible',
+            appSelector: '[role="status"]:has(b:text-is("' + (updateState === 'available' ? 'Update available' : 'Installer downloaded') + '")) > button:first-of-type',
+            styleKeys: ['fontSize', 'fontWeight', 'padding', 'gap', 'borderRadius', 'color', 'backgroundColor'],
+          },
+        ] : []),
+        ...(updateState === 'available' ? ['Download update', '0.1.1 changelog'] : []),
+        ...(updateState === 'downloading' ? [
+          {
+            name: 'Download settings row',
+            designSelector: '.srow.update-progress-row',
+            appSelector: 'div:has(> div > b:text-is("Download"))',
+            styleKeys: ['borderBottomWidth', 'padding'],
+          },
+          ...['Download', 'Signed installer from GitHub Releases'].map((name) => ({
+            name,
+            designSelector: `:text-is("${name}")`,
+            appSelector: `:text-is("${name}")`,
+            measureText: true,
+          })),
+          '0.1.1 changelog',
+        ] : []),
+        ...(updateState === 'downloaded' ? ['Open installer', '0.1.1 changelog'] : []),
         ...(updateState === 'up-to-date' ? ['Up to date', 'Current', 'Update action'] : []),
         ...(updateState === 'failed' ? ['Failed', 'Last update action', 'Retry available'] : []),
         ...(updateState === 'unsupported' ? ['Unavailable', 'Release checks unavailable', 'Development'] : []),
@@ -3639,14 +4059,15 @@ export const views = [
       { type: 'clickRole', role: 'button', name: 'Rules & Map' },
       { type: 'assertTextHidden', text: 'Breakpoint · api.github.com/user' },
     ],
-    targets: ['Rule set applied'],
+    targets: RULE_SET_APPLIED_TARGETS,
   },
   {
     id: 'diagnostics',
     theme: 'light',
     rendererNav: 'Diagnostics',
     designState: { view: 'diagnostics', theme: 'light', sidebar: 'expanded' },
-    designShot: 'light/shell-v2/diagnostics.png',
+    designShot: 'light/diagnostics/framed.png',
+    rendererActions: [{ type: 'clickRole', role: 'button', name: 'Toggle sidebar' }],
     targets: [
       'core · core:echo',
       'main · rules:apply',
@@ -3703,6 +4124,12 @@ export const views = [
     designShot: feature === 'rules'
       ? 'dark/rules/tree-url.png'
       : `dark/${feature}/framed.png`,
+    designActions: feature === 'composer'
+      ? [
+          { type: 'clickSelector', selector: '.ccol [data-grp="github-repos"] .citem:has-text("Create repo")' },
+          { type: 'hoverSelector', selector: '.app' },
+        ]
+      : [],
     rendererActions: feature === 'rules'
       ? EXPAND_RULE_TREE_ACTIONS
       : feature === 'composer'
@@ -3711,7 +4138,6 @@ export const views = [
             { type: 'clickRole', role: 'button', name: 'Collapse folder', index: 2 },
             { type: 'clickRole', role: 'button', name: 'Expand folder', index: 0 },
             { type: 'clickText', text: 'Create repo' },
-            { type: 'clickText', text: 'Repositories' },
             { type: 'clickRole', role: 'button', name: 'Send' },
           ]
         : [
@@ -3732,7 +4158,7 @@ export const views = [
             designSelector: '.rtree [data-rgrp="mock"] > .rgrp-b > .rrule:first-child',
             appSelector: '[data-automation-id="rules.row.rule-stub"]',
           },
-          'Rule set applied',
+          ...RULE_SET_APPLIED_TARGETS,
         ]
       : feature === 'composer'
         ? [

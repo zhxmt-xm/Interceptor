@@ -140,6 +140,8 @@ export const captureEnglishMessages = {
   'capture.connectionMetadataOnly': 'No local CA was generated or trusted. Only connection metadata is stored.',
   'capture.mitmActiveForNewConnections': 'MITM is active for new connections. Reconnect this client to inspect its HTTPS traffic.',
   'capture.httpsSetupDescription': 'Set up a local root certificate only when you need to inspect HTTPS request and response content.',
+  'capture.httpsClientApps': 'Client apps',
+  'capture.httpsInternet': 'Internet',
   'capture.proxyRestartsSameAddress': 'The local proxy restarts on the same address.',
   'capture.httpsRemainsEncrypted': 'Until setup completes, HTTPS continues through encrypted and uninterrupted.',
   'capture.startDecrypting': 'Start decrypting',

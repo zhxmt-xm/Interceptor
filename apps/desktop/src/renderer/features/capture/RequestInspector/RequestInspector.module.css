@@ -32,8 +32,9 @@
     0 0 12px -4px color-mix(in srgb, var(--text) 20%, transparent);
 }
 .closeButton {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 28px;
   height: 28px;
   margin: 0 14px 0 8px;
@@ -55,11 +56,16 @@
 .methodChip {
   font-family: var(--font-mono);
   font-size: 10.5px;
+  line-height: normal;
   font-weight: 600;
   color: var(--blue);
   padding: 3px 8px;
   border-radius: 6px;
   background: color-mix(in srgb, var(--blue) 14%, transparent);
+}
+.postMethodChip {
+  color: var(--yellow);
+  background: color-mix(in srgb, var(--yellow) 14%, transparent);
 }
 .url {
   font-family: var(--font-mono);

@@ -1,8 +1,9 @@
 .button {
   width: 34px;
   height: 34px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
   border-radius: 9px;
   background: transparent;
@@ -30,6 +31,15 @@
 .small svg {
   width: 15px;
   height: 15px;
+}
+.extraSmall {
+  width: 13px;
+  height: 13px;
+  padding: 0;
+}
+.extraSmall svg {
+  width: 13px;
+  height: 13px;
 }
 .spinner {
   animation: spin 0.75s linear infinite;

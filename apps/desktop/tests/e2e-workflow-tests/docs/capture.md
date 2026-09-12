@@ -11,14 +11,16 @@
 ### Steps
 
 1. fresh profile经录制UI开启Capture，真实POST请求通过8888进入本轮origin，分别返回JSON与HTML；不注入Store或正文引用。
-2. 选择Capture行后核对标题中的自产host/path，hover标题并真实点击Copy，剪贴板必须是带scheme和origin端口的完整URL。在Request/Response选择Raw，核对MIME和原始正文，通过正式Fullscreen按钮打开唯一dialog；内联与全屏不出现两份正文视图。
-3. 真实点击弹层Header的Copy，剪贴板必须逐字等于原始正文；Header的Close退出后保持Raw与相同正文。
+2. 选择Capture行后核对标题中的自产host/path，hover标题并真实点击Copy，剪贴板必须是带scheme和origin端口的完整URL。General的Request Method显示11.5px普通文字，无标签背景，hover后Copy得到完整POST。在Request/Response选择Raw，核对MIME和原始正文，通过正式Fullscreen按钮打开唯一dialog；内联与全屏不出现两份正文视图。
+3. 正文分组标题按设计使用normal字体行高；MIME/大小计数不继承标题的uppercase和字距，保留原本大小写与normal字距。Request的空Query提示使用当前ConfigProvider正文行高token，不继承Shell压缩行高。真实点击弹层Header的Copy，剪贴板必须逐字等于原始正文；Header的Close退出后保持Raw与相同正文。
 4. 再次打开并切Hex，用Escape关闭后仍选中Hex；返回Raw并通过内联Copy确认原始字节不变。响应HTML只作为代码显示。
 5. 保存每个正文的身份、Copy/模式断言、trace与截图；Renderer不得有page error，fixture正常退出Main/Core/Worker并恢复8888、WinINet/journal。
 
 ### 验证证据
 
 - 2026-09-09 BodyViewer内容、模式和CodeViewer生命周期既有基线15/15 Green，Desktop typecheck通过；真实workflow1/1（12.0s）。没有业务实现或UI样式修改，不新增设计/parity基准，不把本条作为其他全屏调用点的专属E2E证据。
+- 2026-09-11共享方法标签flex回归：同一构建与Collection联合2/2（31.3s），本workflow Main/Core9492/1800正常退出。随后补General Request Method普通文字与完整POST复制断言，1/1（13.5s），Main/Core22464/11152正常退出；两代均通过8888、WinINet、共享journal及登记进程恢复。原URL/正文Copy、唯一全屏视图、Raw/Hex和关闭状态保持断言未减弱；TEMP `interceptor-method-value-20260911-e2e*`保存最终trace/metadata。
+- 2026-09-11分组文字还原：计数字距、空Query正文token、标题normal三个前置真实Red分别保存；最终与Capture/Composer两处折叠流程3/3（36.2s），本workflow Main/Core17844/13592正常销毁并通过宿主guard。正文unit25/25、Desktop类型、明暗Request16/16通过；详细证据见[请求正文分组](../../../../../architecture/features/capture.md#请求正文分组的计数标签)。
 - JSON请求31字节、JSON响应49字节、HTML响应66字节均验证Raw原文、Header Copy、Close、再次打开、Hex与Escape关闭后的模式保持；三张真实dialog截图均为1060x660逻辑像素，Renderer无page error。
 - Main/Core `15836/41732`均正常销毁，8888、WinINet/journal恢复；TEMP归档`interceptor-body-fullscreen-green-20260909-205316.zip`，SHA256 `BEE96AB10FF1894DAD5C2B1C22C354469D4EDE11CA76A0ED5350476BA998FE32`，含trace、metadata、三份截图与测试日志。
 - 2026-09-10 Inspector URL行高修复后，当前workflow新增标题显示与完整URL Copy断言，1/1 Green、Desktop typecheck通过；Main/Core `9668/5996`正常销毁，host guard恢复通过。原正文三组模式/Copy/弹层断言同跑；TEMP归档`interceptor-inspector-url-green-20260910-133816.zip`，SHA256 `D3E57A744F14A809FC3351740EBE34E3B05CE8056D05EF771DE9320E1D2A15DE`。15个URL宽高已匹配，4个旧页面位置差异独立保留，详见[Inspector行高](../../../../../architecture/features/capture.md#inspector标题行高)。
@@ -99,19 +101,23 @@ Raw模式必须显示捕获的原始内容，不能残留Code模式自动格式�
 
 2026-09-10补充UTF-8最终验收1/1：真实响应使5 MiB边界落在2/3/4字节字符内，分别检查普通文本、未知MIME、代码Raw、工具栏Copy和真实编辑器全选复制；只比较长度/尾部/SHA256，不向trace返回整份大正文。真实Save生成完整正文并校验SHA256，包含预览之外的字节。Main/Core `51180/27120`正常退出且host guard通过。非法字节与Hex保真由相关unit40/40验证；实现前用户禁止E2E，缺真实Red，不能把最终Green当成前置证据。归档及完整边界见[UTF-8预览](../../../../../architecture/features/capture.md#utf-8预览截断)。
 
+2026-09-12受限提示布局代码完成，新增断言待E2E：每个UTF-8预览场景在正文模式确定后，从公共body-view内定位提示条，确认11.5px字号、正文token行高、9px/11px padding与8px gap，图标和提示条垂直居中；保存尺寸JSON与提示截图，再执行原Copy/完整Save断言。用户暂停后未运行此布局的前置/最终E2E，旧UTF-8 Green不作为新增断言通过证据。
+
 <a id="capture-scenarios-body-media"></a>
 ## `capture.scenarios.body-media`
 
-**状态**：passed；五场景Green，PNG真实解码、Hex及音视频原生保存已核验
+**状态**：原五场景passed；2026-09-12媒体占位布局代码完成，新增断言待E2E
 **策略**：真实Capture UI；Windows原生Save Dialog；现有流量库
 
 ### Steps
 
 1. fresh profile启用Recording，分别运行`body-png`、`body-binary`、`body-unknown-binary`、`body-audio`和`body-video`；每次从空Inspector打开自产200行。
 2. Response区块长度分别为68、8、5、48、24字节；PNG须实际解码为1x1并保存预览截图；二进制Hex精确显示固定字节序列。
-3. 音视频保持现有不读取Renderer正文的边界，显示MIME且无audio/video/iframe播放器；点击唯一Save并用真实键鼠操作Save Dialog。
+3. 音视频保持现有不读取Renderer正文的边界，显示MIME且无audio/video/iframe播放器；检查图标到详情10px、详情内7px、说明到Save 13px，图标/MIME/大小/说明/Save水平居中。Save仍28px的sm按钮，MIME为13px自然行高、大小为11.5px正文token行高；点击唯一Save并用真实键鼠操作Save Dialog。
 4. 只读核对同workflow经产品导出的WAV/MP4文件与独立固定字节一致，不预造导入文件或调用内部API。
 5. 保存逐场景证据及trace，Renderer page error为0；fixture正常关闭产品，验证原生窗口、进程、8888、WinINet/journal恢复。
+
+本次只复验unit和浏览器parity，用户暂停后没有运行布局的前置或最终E2E。以上历史业务Green不外推到新增布局断言；恢复授权后运行原`body-media-scenarios.workflow.ts`并保留尺寸JSON、截图、原生保存字节与宿主恢复证据。
 
 <a id="capture-scenarios-encoding"></a>
 ## `capture.scenarios.encoding`
@@ -141,7 +147,7 @@ UTF-8追加步骤：通过同一真实origin发送超过5 MiB的gzip输入，解
 2. 选择自产Capture行，进入Messages并切换Sent/Received/All；Text各方向1条，Binary各方向1条，双向场景Sent 1条/Received 2条。
 3. 文本载荷分别为`hello from client`、`client message`、`origin message`；Binary为`00 01 02 03 ff`，逐行展开并用真实Copy验证完整值。
 	展开后的载荷标题必须显示当前语言的方向和类型，不得泄漏`capture.text`等资源键；通过自产帧的Copy automation ID定位标题，不切换语言或用翻译文案定位。文本发送/接收两态分别保存真实截图。
-4. Control场景完成Ping/Pong/Close协议交互；按现有产品语义不把控制帧伪造为数据消息行，Messages为0条。空态保留116px最小高度、12px字体及grid居中布局，不退回未应用样式的默认黑字。
+4. Control场景完成Ping/Pong/Close协议交互；按现有产品语义不把控制帧伪造为数据消息行，Messages为0条。空态保留116px最小高度、12px字体及flex双轴居中布局，不退回未应用样式的默认黑字。
 5. 每条场景关闭Inspector，不串连接；保存逐场景身份、trace与截图，Renderer无page error，fixture验证连接、Main/Core/Worker、8888和WinINet/journal恢复。
 
 `ws-control`保存`websocket-control-empty-state.png`及`websocket-empty-presentation.json`，核对真实Messages空态和计算样式；该场景只有控制帧，0条数据消息符合当前产品边界。加载、空结果与错误状态另有明暗parity；不改正文或帧断言掩盖样式问题。
@@ -172,17 +178,19 @@ UTF-8追加步骤：通过同一真实origin发送超过5 MiB的gzip输入，解
 <a id="capture-scenarios-tls"></a>
 ## `capture.scenarios.tls`
 
-**状态**：passed；三场景Green，HTTPS/H1客户端实际使用代理隧道，CA完整恢复
+**状态**：2026-09-12三场景和新增连接示意最终Green；暂停期缺前置E2E Red保留
 **策略**：真实TLS/CONNECT；正式Certificates UI；同代解密前后对比
 
 ### Steps
 
 1. fresh profile只开启Recording，运行`tls-passthrough`；真实TLS握手完成但不发HTTP应用字节，Capture仅显示localhost的CONNECT/TLS行。
-2. 打开Tunnel，核对目标和端口；没有Response标签或正文预览，不能伪造加密HTTP内容。
+2. 打开Tunnel，核对目标和端口；没有Response标签或正文预览。通过`capture.inspector.setup-https`打开HTTPS设置，确认连接示意可见、Generate可用、Install/Start decrypting禁用；截图后Cancel，仍无正文和CA副作用，不能伪造加密HTTP内容。
 3. 经真实Certificates UI生成、安装本轮CA，添加localhost源站例外并开启MITM，不调用Manager。
 4. 依次运行`tls-mitm-h1`与`tls-mitm-h2`，分别验证实际ALPN为http/1.1与h2、Capture显示对应GET/200行，Response Raw显示mode与secure字段。
 5. TLS页显示https、localhost、本轮端口和TLS事实；保存三个场景证据，Renderer无page error。
 6. finally经UI停用MITM、移除源站例外、按本轮身份卸载/删除CA；Root集合完全恢复，fixture验证origin及Main/Core/Worker、8888、WinINet/journal恢复。
+
+2026-09-12恢复授权后执行新增步骤2，连接示意可见、按钮前置状态和Cancel全部通过；后续未解密/H1/H2、CA/Root及宿主恢复同跑。与真实正文workflow联合2/2（45.7s），本条Main/Core13768/41652正常销毁；TEMP `interceptor-update-button-centering-20260912-e2e/`保存完整证据。2026-09-11暂停期间缺少实现前E2E Red的历史事实不变，组件渲染和parity仍不是其替代证据。
 
 ### 2026-09-09 场景矩阵证据
 
@@ -207,7 +215,7 @@ UTF-8追加步骤：通过同一真实origin发送超过5 MiB的gzip输入，解
 4. UI Clear之后通过Agent Allow导入同一产品文件，先取消原生Open，再确认导入；已挂载Capture自动恢复HTTP正文与WebSocket消息，不依赖切换页面。
 5. Agent Auto导出仍显示Save，Auto导入仍显示Open；再导入时追加完整数据，已有Capture不被清空。结果和Transcript只含安全任务字段或取消摘要。
 6. 关闭Agent两项权限，旧Chat无法调用；产品UI创建MCP Client，独立开启MCP权限并验证Ask Deny/Allow、原生取消、Auto导出及追加导入。
-7. 原UI Archive Export/Import也完成同组操作，使用同一Main方法；MCP撤权后旧连接不能披露或执行两项Tool。
+7. 原UI Archive Export/Import也完成同组操作，使用同一Main方法。菜单条目使用`display: flex`与`align-items: center`，16px行高、9px/10px padding，扩展名`.iarchive`为9.5px文字及2px/6px padding；总高为38px加扩展名上下边框，DPR=2时40px、DPR=1.5时39.3333px，按真实设备像素校验。Export说明/敏感警示均为12px文字、11px/13px内边距及15px图标，黄/红两种状态不混用。先点击产品Cancel再重新Export；Import保留单个说明警示。分别保存不含背景敏感正文的弹窗截图，完成真实Save/Open及原文件完整性断言；MCP撤权后旧连接不能披露或执行两项Tool。
 8. 正常关闭并保存trace/evidence；同profile重启，权限保持，Model/origin/文件操作零重放。两代Main/Core/Worker全部退出，8888释放，完整WinINet/journal恢复后清理产品文件。
 
 ### 预期与证据
@@ -220,6 +228,7 @@ UTF-8追加步骤：通过同一真实origin发送超过5 MiB的gzip输入，解
 	- 证据及trace为TEMP下`interceptor-archive-tools-complete-green-20260907-195117`，HTTP正文和WebSocket消息在Clear后完整恢复，导入数量依次2、4、6、8、10。
 	- Agent/MCP Ask/Auto、原生取消、独立撤权、原IPC菜单、共享通知及重启零重放通过；`archive-transfer.json`仅含hash、计数和布尔结论。
 - Desktop665/665、Tools326/326、MCP32/32、Archive Core20/20、全workspace类型、parity202/202、package/artifact audit与smoke1/1通过；关联流程与失败记录见[Archive验收](../../../../../architecture/features/transfer.md#archive-tool-acceptance)。
+- 2026-09-12当前UI parity菜单与警示最终真实1/1（46.4s），Main/Core10756/32024、10568/11492双代`gracefulDestroyVerified=true`，HTTP/WebSocket完整恢复、权限、2/4/6/8/10计数与宿主恢复同跑；TEMP `interceptor-e2e-resumed-20260912-archive-dpi`及同名log保留两张弹窗图、trace和metadata。首轮DPR1.5下39.3333px被固定40px误报（40828/35836正常销毁），修正按物理像素断言后通过，不算产品Red；暂停期样式前置E2E缺口仍保留。
 
 <a id="capture-playground-traffic"></a>
 ## `capture.playground-traffic`
@@ -363,12 +372,15 @@ Cancel和打开设置均无隐式系统写入；只有用户点击Enable后才�
 2. 通过`capture.recording.toggle`与`capture.readiness.enable`开始真实Recording；客户端显式经8888发送`GET /e2e/capture/section-collapse`，等待动态row并点击进入Inspector。
 3. 用`capture.inspector.section.general`与`capture.inspector.section.response-headers`定位两个真实标题按钮；确认初始`aria-expanded=true`，各自`aria-controls`指向仍挂载且`hidden=false`的唯一正文。
 4. 折叠General，确认其正文`hidden=true`，Response Headers保持展开；再折叠Response Headers并重新展开General，确认同一`aria-controls`正文恢复且两段状态互不覆盖。
-5. 保存截图、trace、日志与metadata；正常Close并验证Main/Core/Renderer退出、8888释放、系统代理恢复和profile删除。
+5. 切换Timing，通过分组的公共控件与`aria-controls`定位两行内容；标签和时长保留真实文字，核对标签框、数值框与进度条的垂直中心差不超过一个设备像素。记录实际行高与截图，不把某个字体token值相等当成视觉居中通过。
+6. 保存截图、trace、日志与metadata；正常Close并验证Main/Core/Renderer退出、8888释放、系统代理恢复和profile删除。
 
 ### TDD证据
 
 - Red：两个真实按钮均可定位，但Capture标题没有`aria-expanded`与`aria-controls`。
 - Green：独立折叠、ARIA关系与正文`hidden`状态全部通过，workflow `1/1`并保留销毁证据。
+- 2026-09-11Timing行高还原：row-format前后8/8、Desktop类型；真实token断言先得到18.5769px/14.145px的Red（Main/Core42888/42628），最终1/1（17.3s，26812/19300），两代均正常销毁并恢复宿主。原折叠/ARIA断言未改；[Timing证据](../../../../../architecture/features/capture.md#timing正文行高)。
+- 上述token版随后因用户视觉反馈撤回，不再称为对齐改善。当前改为真实标签/时长/进度条中心检查，撤回前后1/1（18.3s/20.1s），Main/Core46032/4400、32356/33148均正常销毁与宿主恢复；保留原折叠和真实时长断言。最新用户暂停E2E后不再运行此workflow，后续改动验证预留。
 
 ### 预期效果
 
@@ -600,7 +612,7 @@ Breakpoint submenu由同一Ant Menu树管理：hover展开不会用第二页替�
 <a id="capture-navigate-tls-passthrough"></a>
 ## `capture.navigate-tls-passthrough`
 
-**状态**：passed
+**状态**：原导航流程passed；2026-09-12列表布局代码完成，新增断言待E2E
 **策略**：privileged UI
 
 ### Steps
@@ -609,7 +621,7 @@ Breakpoint submenu由同一Ant Menu树管理：hover展开不会用第二页替�
 2. 通过产品UI生成并安装测试CA、开启MITM，再在Settings / TLS passthrough添加`127.0.0.1`，返回Capture。
 3. 经8888向测试自产随机端口建立真实CONNECT + TLS ClientHello，完成加密echo，等待动态Capture行并打开TLS tunnel Inspector。
 4. 点击公开`capture.tls-tunnel.view-passthrough-pattern`；确认App切到Settings，激活TLS passthrough section。
-5. 确认产品从当前持久化settings解析出精确覆盖项`127.0.0.1`，对应公开host row滚入可见区域并带`data-highlighted=true`。
+5. 确认产品从当前持久化settings解析出精确覆盖项`127.0.0.1`，对应公开host row滚入可见区域并带`data-highlighted=true`。保存target-layout，确认host/说明14px行高、2px文字组gap，行高不小于66px；不通过修改TLS设置制造推荐标签。
 6. 等待3秒后确认同一row仍存在但`data-highlighted=false`；再次从Capture执行跳转时高亮重新出现，证明timer被重新计时。
 7. 通过Settings UI删除测试pattern、关闭MITM、卸载并删除测试CA，保存trace、最终截图与Main/Renderer日志；正常Close。
 8. 验证Main/Core退出、8888释放、系统代理恢复、profile删除。
@@ -625,6 +637,7 @@ Tunnel入口导航到实际覆盖当前host的最具体持久化pattern；Settin
 
 ### TDD证据
 
+- 2026-09-12列表布局断言仅预留，用户暂停后前置/最终E2E均未执行；下列历史Green不覆盖新断言。推荐标签与兼容性弹窗仅取得浏览器/parity结果，真实弹窗流程另待实施。
 - Red：真实CA/MITM、持久化pattern与TLS CONNECT均完成后，等待公开`capture.tls-tunnel.view-passthrough-pattern`15秒仍不存在；该轮cleanup与`gracefulDestroyVerified=true`完成。
 - Green：当前同一workflow`1/1`通过；目标row位于Renderer viewport内，`data-highlighted`从true在3秒后转false，返回Capture重复导航后再次为true。
 - 销毁：Green Main/Core PID为`31036/13248`，`gracefulDestroyVerified=true`；测试pattern、MITM意图与测试CA均由App UI清除，8888释放且系统代理恢复`127.0.0.1:7890`。
@@ -978,7 +991,7 @@ MCP Browser因旧48项目录断言失败，MCP Desktop与当前产物交付验�
 <a id="capture-tools-har-transfer"></a>
 ## `capture.tools.har-transfer`
 
-**状态**：passed；共享IPC/Agent/MCP流程、前置Red、最终Green及退出恢复已验证
+**状态**：共享IPC/Agent/MCP流程已有历史Green；新增HAR警示样式检查待E2E，用户暂停期间不执行
 **策略**：native-ui；Windows；两代真实Electron；host-safety-guard
 
 ### Steps
@@ -991,10 +1004,11 @@ MCP Browser因旧48项目录断言失败，MCP Desktop与当前产物交付验�
 	等正式任务completed，只读核对HAR 1.2、范围、最终headers与完整正文，Tool只返回安全任务摘要。
 4. Agent Auto Export仍经Save；覆盖filter/selected范围、遮罩Authorization/Cookie与strip bodies，
 	对照同workflow真实流量验证输出，不用空结果冒充筛选成功。
-5. Agent Ask Import先Deny，再Allow后原生Cancel；通过产品Clear清空后，从Open Dialog选择步骤3生成
+5. Agent Ask Import先Deny，再Allow后原生Cancel；通过真实Recording按钮暂停并确认`aria-pressed=false`，避免背景流量混入后续all范围。通过产品Clear清空后，从Open Dialog选择步骤3生成
 	的HAR，等待import completed并验证Capture恢复可表达的记录与正文。导入本身不隐式Clear或覆盖已有数据。
 6. MCP Auto分别执行Export/Import，仍经真实Save/Open，选择同workflow产品生成的HAR，验证追加与安全结果。
 	关闭两项Agent权限不影响MCP，随后关闭MCP权限使旧连接不可发现/执行，两列均保持独立。
+	Capture菜单的原IPC导出入口先核对菜单`display: flex`及`align-items: center`、`.har`扩展名与9.5px字号，再核对限制警示可见、12px文字、11px/13px内边距和非透明背景，随后执行既有导出/导入断言。
 7. 同profile正常关闭并重启，确认授权保持，Model/origin/文件操作无重放；旧代际任务查询为null。
 8. 保存脱敏trace、文件hash与安全统计、两代metadata；产品Close后验证Main/Core/Worker全退、8888释放、
 	WinINet与共享journal恢复，再删除本workflow拥有的输出/profile。首次失败产物保留，不用强制清理冒充Green。
@@ -1013,6 +1027,9 @@ MCP Browser因旧48项目录断言失败，MCP Desktop与当前产物交付验�
 - HAR/Settings parity共130/130 targets，0 missing/flagged；当前package/audit/smoke通过，production audit零漏洞。
 - 完整证据见[HAR验收](../../../../../architecture/features/transfer.md#har-tool-acceptance)。
 	- 损坏HAR、流式内存及提交点竞态不在本workflow造故障验收。
+- 2026-09-12恢复授权后HAR最终1/1（36.9s），警示/菜单、实际文件脱敏、权限/取消与重启通过，Main/Core10744/41872、40052/2720正常销毁和宿主恢复；TEMP `interceptor-e2e-resumed-20260912-har-paused`及同名log保留trace/metadata。Archive另1/1（46.4s），证据见本页`capture.tools.archive-transfer`。前置E2E历史缺口保留，不把最终Green改写为前置结果。
+- 同日FileCommand布局与扩展名还原的断言同样预留，四个明暗菜单parity24/24、八组浏览器打开/取消与中心检查不替代真实文件流程。
+- 同日全UI整改后，HAR/Archive菜单断言已同步为flex；原生Save/Open、权限、文件完整性和宿主恢复断言全部保留。用户再次暂停真实E2E，当前仅静态检查通过，以上真实Green属于整改前版本，不能作为本轮flex回归结果。
 
 <a id="capture-transfer-har-roundtrip"></a>
 ## `capture.transfer.har-roundtrip`

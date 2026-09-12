@@ -284,6 +284,13 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     expect(await finishAgentCall(page, openAiCompatibleLab, 'har-import-cancel')).toEqual({ ok: true, value: { started: false } });
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('har-import-cancel'))).toHaveAttribute('data-summary-kind', 'importCanceled');
     expect((await captureItems(client)).map((entry) => String(entry.id)).sort()).toEqual([...originalIds].sort());
+
+    // 暂停真实录制后再Clear/Import，避免系统背景流量混入后续all范围验证。
+    // Pause recording before Clear/Import so system traffic cannot enter later all-scope assertions.
+    const recording = getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle);
+    await expect(recording).toHaveAttribute('aria-pressed', 'true');
+    await recording.click();
+    await expect(recording).toHaveAttribute('aria-pressed', 'false');
     mcpValue(await client.callTool({ name: 'capture_clear', arguments: {} }));
     expect(await captureItems(client)).toEqual([]);
     await beginAgentCall(page, openAiCompatibleLab, 'har-import-allow', TOOL_NAMES[1], {}, 'allow');
@@ -332,7 +339,17 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     const beforeUiImportIds = (await captureItems(client)).map((entry) => String(entry.id));
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
     await getByAutomationId(page, AUTOMATION_IDS.capture.exportMenu).click();
+    const exportHarCommand = getByAutomationId(page, AUTOMATION_IDS.capture.exportHar);
+    await expect(exportHarCommand).toHaveCSS('display', 'flex');
+    await expect(exportHarCommand).toHaveCSS('align-items', 'center');
+    await expect(exportHarCommand.locator('code')).toHaveText('.har');
+    await expect(exportHarCommand.locator('code')).toHaveCSS('font-size', '9.5px');
     await getByAutomationId(page, AUTOMATION_IDS.capture.exportHar).click();
+    const harWarning = page.getByRole('dialog').locator('header + div > div:first-child');
+    await expect(harWarning).toHaveCSS('display', 'flex');
+    await expect(harWarning).toHaveCSS('font-size', '12px');
+    await expect(harWarning).toHaveCSS('padding', '11px 13px');
+    await expect(harWarning).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.scopeAll).click();
     await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start).click();
     const uiFile = path.join(directory, 'ui.har');

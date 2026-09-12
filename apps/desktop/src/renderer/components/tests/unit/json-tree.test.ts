@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { Children, isValidElement, type ReactNode } from 'react';
+import { describe, expect, it, vi } from 'vitest';
+
+import { JsonTreeRow } from '../../BodyViewer/JsonTreeView/JsonTreeRow';
 
 import {
   defaultExpanded,
@@ -56,5 +59,31 @@ describe('json tree', () => {
     expect(parseJsonTree(')]}\'\n{"ok":true}')).toEqual({ ok: true });
     expect(parseJsonTree('42')).toBeUndefined();
     expect(parseJsonTree('{"truncated":')).toBeUndefined();
+  });
+});
+
+describe('JSON row disclosure layout', () => {
+  it.each(['$', '$.login', '$/close'])('keeps a disclosure slot for %s without moving the text', (path) => {
+    const node = flattenJson(sample, defaultExpanded(sample)).find(node => node.path === path)!;
+    const row = JsonTreeRow({ node, expanded: true, selected: false, onToggle: vi.fn(), onContextMenu: vi.fn() });
+    const slot = Children.toArray(row.props.children)[0];
+    expect(isValidElement(slot) && slot.type).toBe('span');
+    if (!isValidElement<{ children: ReactNode; 'aria-hidden'?: boolean }>(slot)) throw new Error('Missing disclosure slot.');
+    expect(slot.props['aria-hidden']).toBe(path === '$' ? undefined : true);
+    expect(Children.count(slot.props.children)).toBe(path === '$' ? 1 : 0);
+  });
+
+  it('keeps the disclosure action inside its slot', () => {
+    const onToggle = vi.fn();
+    const node = flattenJson(sample, defaultExpanded(sample))[0]!;
+    const row = JsonTreeRow({ node, expanded: true, selected: false, onToggle, onContextMenu: vi.fn() });
+    const slot = Children.toArray(row.props.children)[0];
+    if (!isValidElement<{ children: ReactNode }>(slot)) throw new Error('Missing disclosure slot.');
+    const button = Children.toArray(slot.props.children)[0];
+    expect(isValidElement(button) && button.type).toBe('button');
+    if (!isValidElement<{ onClick(): void; 'aria-expanded': boolean }>(button)) throw new Error('Missing disclosure button.');
+    expect(button.props['aria-expanded']).toBe(true);
+    button.props.onClick();
+    expect(onToggle).toHaveBeenCalledWith('$');
   });
 });

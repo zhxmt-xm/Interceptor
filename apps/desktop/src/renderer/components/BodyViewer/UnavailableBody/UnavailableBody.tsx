@@ -29,10 +29,14 @@ export function UnavailableBody({
   const { t } = useTranslation();
   return (
     <div className={styles.host} data-parity={parityId}>
-      <span className={styles.icon}><Icon aria-hidden="true" /></span>
-      <b className={styles.mime}>{mediaType}</b>
-      <span className={styles.measures}>{measures}</span>
-      <span className={styles.reason}>{reason}</span>
+      <div className={styles.content}>
+        <span className={styles.icon}><Icon aria-hidden="true" /></span>
+        <div className={styles.details}>
+          <b className={styles.mime}>{mediaType}</b>
+          <span className={styles.measures}>{measures}</span>
+          <span className={styles.reason}>{reason}</span>
+        </div>
+      </div>
       <Button className={styles.save} icon={Download} size="sm" loading={saving} onClick={onSave}>
         {t('body.save')}
       </Button>

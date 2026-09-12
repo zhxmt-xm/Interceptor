@@ -1,6 +1,6 @@
-.playgroundRoot { width: 100%; height: 100%; display: grid; grid-template-columns: 220px minmax(1261px,1fr); overflow: auto; background: var(--bg); color: var(--text); }
-.playgroundPage { min-width: 1261px; min-height: 0; display: grid; grid-template-rows: 58px minmax(0,1fr); overflow: hidden; }
-.playgroundBody { min-width: 0; min-height: 0; display: grid; grid-template-columns: 260px minmax(440px,1fr) 1px var(--playground-detail-width); overflow: hidden; }
+.playgroundRoot { width: 100%; height: 100%; display: flex; overflow: auto; background: var(--bg); color: var(--text); }
+.playgroundPage { flex: 1; min-width: 1261px; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.playgroundBody { flex: 1; min-width: 0; min-height: 0; display: grid; grid-template-columns: 260px minmax(440px,1fr) 1px var(--playground-detail-width); overflow: hidden; }
 .playgroundSplitter { position: relative; z-index: 3; width: 1px; min-height: 0; background: var(--border-2); cursor: col-resize; outline: 0; touch-action: none; }
 .playgroundSplitter span { position: absolute; inset-block: 0; left: 50%; width: 9px; transform: translateX(-50%); }
 .playgroundSplitter:hover, .playgroundSplitter:focus-visible { background: var(--accent); }

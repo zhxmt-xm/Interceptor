@@ -10,7 +10,7 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 - `packaged-smoke` 在最终 Forge package 上复跑同一 workflow contract，并追加 production package 安全与资源边界；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、128条Inventory与129份详细workflow规格已建立；管理员MMC原生专项仅保留排除说明，不计入workflow。已实现的spec按owning feature放入`workflows/<feature>/`，Inventory只有满足对应前置测试及Green/销毁证据的条目才能标passed；仅补既有行为覆盖不人为制造Red。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、129条Inventory与130份详细workflow规格已建立；管理员MMC原生专项仅保留排除说明，不计入workflow。已实现的spec按owning feature放入`workflows/<feature>/`，Inventory只有满足对应前置测试及Green/销毁证据的条目才能标passed；仅补既有行为覆盖不人为制造Red。
 
 ## 零 Mock 硬性原则
 
@@ -292,6 +292,7 @@ diagnostics.row.<traceKey>
 | `settings.certificates.trust` | Install/Uninstall本机信任 | os-side-effect | planned |
 | `settings.certificates.https` | MITM switch和host例外 | os-side-effect | planned |
 | `settings.certificates.external-actions` | Reveal/View；不包含用户排除的管理员MMC原生验收 | native-ui | planned |
+| `settings.tls-compatibility` | 真实TLS失败提示、精确host/wildcard选择、滚动、保存与Not now；最终Green，保留样式前置缺口 | privileged UI | planned |
 | `settings.storage.refresh-clear` | Usage、确认和Clear | os-side-effect | planned |
 | `settings.privacy.defaults` | Export隐私默认值与持久化 | os-side-effect | planned |
 | `settings.updates.check` | Local unsupported；packaged GitHub Device Flow、启动刷新与私有Release检查 | native-ui | planned |

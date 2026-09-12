@@ -32,8 +32,9 @@
 
 .head > :first-child,
 .row > :first-child {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .row:hover {
@@ -66,8 +67,9 @@
 }
 
 .remove {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 24px;
   height: 24px;
   justify-self: end;
@@ -95,8 +97,9 @@
 }
 
 .confirm {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 24px;
   height: 24px;
   justify-self: end;

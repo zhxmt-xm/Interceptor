@@ -84,6 +84,36 @@ test('settings.app-containers.ordering keeps enabled rows first through filterin
   expect(initialRows.some((row) => row.exempt)).toBe(true);
   expect(initialRows.some((row) => !row.exempt)).toBe(true);
   expectEnabledFirst(initialRows);
+  const rowLayouts = await rows.evaluateAll((elements) => elements.map((element) => {
+    const identity = element.children[1]!;
+    const nameLine = identity.firstElementChild!;
+    const name = nameLine.querySelector('b')!;
+    const packageName = identity.children[1]!;
+    const recommended = nameLine.querySelector('span');
+    const nameBox = name.getBoundingClientRect();
+    const recommendedBox = recommended?.getBoundingClientRect();
+    return {
+      automationId: element.getAttribute('data-automation-id'),
+      nameLineHeight: getComputedStyle(name).lineHeight,
+      packageLineHeight: getComputedStyle(packageName).lineHeight,
+      recommended: recommended && recommendedBox ? {
+        display: getComputedStyle(recommended).display,
+        alignItems: getComputedStyle(recommended).alignItems,
+        height: recommendedBox.height,
+        centerDelta: recommendedBox.y + recommendedBox.height / 2 - nameBox.y - nameBox.height / 2,
+      } : null,
+      pixelRatio: devicePixelRatio,
+    };
+  }));
+  for (const layout of rowLayouts) {
+    expect(layout.nameLineHeight).toBe('15px');
+    expect(layout.packageLineHeight).toBe('14px');
+    if (layout.recommended) {
+      expect(['flex', 'inline-flex']).toContain(layout.recommended.display);
+      expect(layout.recommended).toMatchObject({ alignItems: 'center', height: 20 });
+      expect(Math.abs(layout.recommended.centerDelta)).toBeLessThanOrEqual(1 / layout.pixelRatio);
+    }
+  }
 
   // 用户操作：用真实 SID 片段缩小结果，过滤结果必须保持完整列表中的相对顺序。
   // User action: narrow by a real SID fragment; filtered rows must preserve full-list relative order.
@@ -113,6 +143,7 @@ test('settings.app-containers.ordering keeps enabled rows first through filterin
     initialRows,
     filteredRows,
     restoredRows,
+    rowLayouts,
   }, null, 2), 'utf8');
   await testInfo.attach('app-container-ordering.json', {
     path: evidencePath,

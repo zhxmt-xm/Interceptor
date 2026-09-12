@@ -1,6 +1,7 @@
 .agentComposerFooter {
   position: relative;
   display: flex;
+  flex: 0 0 auto;
   flex-direction: column;
   gap: 6px;
   padding: 8px 10px 10px;
@@ -51,10 +52,11 @@
 }
 
 .agentComposerSend {
-  display: grid;
+  display: flex;
   align-self: stretch;
   flex: 0 0 30px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
 }
 
 .agentComposerModelButton {
