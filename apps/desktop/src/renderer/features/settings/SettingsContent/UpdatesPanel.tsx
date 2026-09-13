@@ -52,12 +52,12 @@ export function UpdatesPanel(): React.JSX.Element {
           <Row label={t('settings.githubAccount')} hint={t('settings.githubSignInHint')}>
             <StatusBadge tone="yellow">{t('settings.signedOut')}</StatusBadge>
             <Button
+              icon={GithubOutlined}
               variant="primary"
               loading={authBusy}
               onClick={() => void GitHubAuthActions.signIn()}
               automationId={AUTOMATION_IDS.settings.updates.githubSignIn}
             >
-              <GithubOutlined aria-hidden="true" />
               {t('settings.signInWithGitHub')}
             </Button>
           </Row>

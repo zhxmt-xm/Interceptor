@@ -3,7 +3,7 @@ import { ArrowRight, Crosshair, GitBranch, SlidersVertical, X } from 'lucide-rea
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
-import { cx, IconButton, Switch } from '../../../components';
+import { Button, cx, IconButton, Switch } from '../../../components';
 import { useBreakpointsStore } from '../../breakpoints';
 import { setBreakOnMatch } from '../../breakpoints/data/useBreakpoints';
 import { useRulesStore } from '../../rules/data/rulesStore';
@@ -58,10 +58,9 @@ export function BreakpointManager({
             automationId={AUTOMATION_IDS.breakpoints.toggle}
           />
         </div>
-        <button type="button" className={styles.advanced} onClick={onOpenAdvanced}>
-          <SlidersVertical size={15} strokeWidth={1.9} />
+        <Button icon={SlidersVertical} size="sm" onClick={onOpenAdvanced}>
           {t('breakpoints.advancedRules')}
-        </button>
+        </Button>
         <IconButton icon={X} size="sm" label={t('common.close')} onClick={onClose} />
       </header>
 

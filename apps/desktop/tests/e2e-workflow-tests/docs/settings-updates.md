@@ -305,6 +305,7 @@ TLS专项16 views / 96 targets / 0 missing / 0 flagged / 最大0.5px与package/a
 1. 创建profile/evidence，启动trace/Electron，等待App/Core/8888/readiness；点击 `capture.readiness.cancel`，确认System Proxy仍未owned且系统设置未修改。
 2. 点击 `shell.workspace.settings`；检查 Settings rail 九个 section 可用，且只有 `settings.section.certificates` 具有 `aria-current=page`。
 3. 依次点击 Proxy、App Containers、TLS passthrough、Certificates、Appearance、Storage、Privacy、Agent、Updates；每次确认目标项成为唯一 `aria-current=page`，并等待目标面板稳定。Agent section 额外通过键盘聚焦并按 Enter 激活，确认 rail item 使用原生 button 语义。
+	Updates的`settings.updates.github-sign-in`保持未登录可见态；按钮使用flex、align-items:center和7px gap，GitHub图标在Button独立icon槽，文字label不再包含图标。Button源码的inline-flex作为flex子项时计算为flex，按计算值检查。保存按钮截图；不点击登录，不打开外部浏览器，不把该检查作为真实GitHub授权或通知下载验收。
 4. 再次选择 App Containers，点击 `shell.workspace.capture` 离开 Settings，确认 Capture 成为当前 workspace。
 5. 通过普通 `shell.workspace.settings` 返回，确认 App Containers 仍是唯一 `aria-current=page`，没有回到默认 Certificates。
 6. 选择 TLS passthrough，依次切到 Rules、Composer、Diagnostics 并从每个 workspace 返回 Settings；每次确认 TLS passthrough 仍为当前 section。
@@ -337,6 +338,7 @@ TLS专项16 views / 96 targets / 0 missing / 0 flagged / 最大0.5px与package/a
 
 1. 由host-safety-guard保存宿主基线，创建独立空profile/evidence并启动真实Electron，等待Core、8888与冷启动系统代理自动接管；保持当前语言，不操作exemption或UAC。
 2. 进入 Settings → App Containers，等待真实 Windows helper 枚举完成；读取公共 SID 行 automation ID 和 `data-exempt`，不得用显示名、翻译文案或 CSS class 判断顺序。保存每行名称15px、包名14px行高；存在推荐标签时验证20px框、inline-flex center及与名称的中心差不超过1/devicePixelRatio。
+	列表头两段文字由父flex设置align-items:center，并继承该行自然行高，不继承Shell的压缩行高或给说明单独补px；保存列表头截图，再执行原只读排序与搜索流程。
 3. 确认所有 enabled 行连续位于 disabled 行之前；同一状态内保持 helper 的名称顺序。当前宿主必须同时存在 enabled 与 disabled 样本，才可作为 retrospective Red/Green 证据。
 4. 从真实行 SID 中选择一个能缩小结果集的搜索值，通过 `settings.app-containers.search` 输入；确认结果是过滤前列表的有序子序列，且仍满足 enabled-first。
 5. 清空搜索，确认完整 SID 顺序逐项恢复；全程不得点击单项 switch、Enable all 或确认按钮，不触发 UAC、不改 exemption。

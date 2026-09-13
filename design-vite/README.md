@@ -58,13 +58,23 @@ node design-vite/shoot.mjs --feature=capture --variant=inspector-sidebar-expande
 node design-vite/shoot.mjs --feature=capture --variant=inspector-sidebar-expanded --theme=light
 node design-vite/shoot.mjs --feature=capture --variant=inspector-sidebar-collapsed --theme=light
 node design-vite/shoot.mjs --feature=capture --variant=rule-filter-auth --theme=light
+node design-vite/shoot.mjs --feature=agent-models --variant=settings-provider-menu --out-dir="$env:TEMP/interceptor-provider-menu-shots"
+
+node design-vite/shoot.mjs --out-dir="$env:TEMP/interceptor-design-shots"
 
 node design-vite/tools/compare-shots.mjs <baselineDir> [feature]
+node design-vite/tools/compare-shots.mjs design-vite/shots --current-dir="$env:TEMP/interceptor-design-shots" --out-dir="$env:TEMP/interceptor-design-diff"
 ```
 
 `inspector-sidebar-*`生成指定主题、侧栏状态的Headers详情图，`rule-filter-auth`生成选中Auth Rule的详情图。`--variant`与`--theme`按完整名称筛选；指定`--variant`时不清理同目录的其他截图，不省略它来补单张基准。
 
+`settings-provider-menu`通过Add provider打开已有类型菜单，等待真实可见后截取含portal的画面，下一场景重载清理菜单内部状态；不省略弹层来生成“菜单截图”。
+
+`--out-dir`将完整目录结构写入指定位置，不触碰默认`shots/`；使用新的独立目录预览和比较，再同步已确认的设计图。未指定`--variant`时仍会清理输出目录中本次选中的feature子目录，不复用历史证据目录。截图使用headless Edge，初始化及页面重载都先核对Inter/JetBrains Mono的FontFace实际加载；字体失败直接退出，浏览器和preview在失败时也关闭。
+
 `compare-shots.mjs` 是回归工具：改动前先把 `shots/` 另存一份，改完重出再拿它当基线对比，差异图写到 `shots-diff/`。**百分比会骗人**（侧栏图标全丢时只报约 1%），必须看差异图；**多张图差异值完全相同，说明是同一个公共元素，不是多个独立缺陷**。
+
+比较候选图时可用`--current-dir`指定生成目录、`--out-dir`指定独立差异目录，默认目录和比较算法不变。这样可以在覆盖正式`shots/`前检查新增、尺寸变化和像素差异；比较有差异时退出码为1，必须查看具体变化，不能直接算通过。
 
 截图依赖已随仓库存在的 `@playwright/test` + 系统 Edge（`channel: 'msedge'`），无需额外安装浏览器。不在每次小改后重出全量截图；只在用户明确要求或一个设计里程碑结束时生成并评审。
 

@@ -1,6 +1,6 @@
 # Feature: Transfer
 
-> 最后更新：2026-09-12
+> 最后更新：2026-09-13
 > Core 模块：`apps/proxy-core/src/proxy-core/transfer/`、`har/`、`archive/`、`capture/entry.ts`
 > Renderer 入口：Capture 工作栏的 Import / Export 菜单
 
@@ -27,6 +27,12 @@ Transfer 统一承载所有**异步文件任务**：HAR 交换、Native Archive 
 - 暂停期开发结果：四个明暗菜单24/24、0 missing/flagged，最大0.6px；8组正常UI点击均打开正确弹窗，Cancel与菜单外点击可关闭，无Renderer异常。图标、名称和扩展名的垂直中心差均0px，条目40px；Desktop typecheck通过。
 - 原菜单前置parity与最终矩阵、八组中心度量在TEMP `interceptor-file-command-20260911*`。检查曾过早断言菜单已隐藏，等待正常退出动画后复跑通过，没有修改产品动画。[同一item报告](../../commit-changes/202609111558_ui_parity_progress.html#file-command-images)加入浅色前后图，42张旧图保持、共44张，1320/390无溢出或折叠。
 - 2026-09-12上文HAR与Archive真实workflow均已通过菜单Grid、扩展名及实际Export/Import断言；四代正常销毁与宿主恢复。Archive额外锁定16px行高、9px/10px padding和扩展名2px/6px padding，总高为38px加边框；DPR2为40px，DPR1.5因边框物理像素取整为39.3333px，不改产品迎合固定40px。暂停期前置E2E缺口保持。
+
+### 全UI flex整改后的复验
+
+- 当前`FileCommand`使用`flex`和`align-items: center`，图标、弹性名称与扩展名顺序不变；菜单宽度、文字和控件尺寸沿用上述设计。`HarTransferDialog`及共享Button的实际父布局同步flex，不使用单独位移补偿。
+- 2026-09-13在`11ed3041`产品与原生driver上串行复跑HAR/Archive，两条2/2（1.3m）通过，原生Save/Open/Cancel、菜单flex、警示、权限、文件完整性与重启均完成。Archive Main/Core为`34700/10072`、`26440/14812`，HAR为`36696/46504`、`44100/44924`；四代`gracefulDestroyVerified=true`、trace齐全，8888/WinINet/journal由宿主guard核验恢复。
+- 最终证据为TEMP `interceptor-ui-parity-20260913-transfer-final`及同名log。此前同日HAR/Archive的“Dialog未关闭”失败没有复现，根因尚未确定；临时诊断未触发且已移除，不把重跑通过称为driver修复，也不抹除失败或补造历史前置Red。
 
 | 归属 | 内容 |
 | --- | --- |

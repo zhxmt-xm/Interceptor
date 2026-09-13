@@ -1,6 +1,6 @@
 ﻿import { Tooltip } from 'antd';
-import { Loader2, type LucideIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { Loader2 } from 'lucide-react';
+import type { ComponentType, ReactNode } from 'react';
 
 import type { AutomationId } from '../../../shared/automation-ids';
 import { cx } from '../share/cx';
@@ -8,7 +8,7 @@ import styles from './Button.module.css';
 
 export interface ButtonProps {
   children: ReactNode;
-  icon?: LucideIcon;
+  icon?: ComponentType<{ size?: number; strokeWidth?: number; 'aria-hidden'?: boolean }>;
   variant?: 'default' | 'primary' | 'danger';
   size?: 'md' | 'compact' | 'sm';
   iconPosition?: 'start' | 'end';
@@ -62,13 +62,13 @@ export function Button({
       data-automation-id={automationId}
     >
       {loading ? (
-        <Loader2 size={15} strokeWidth={iconStrokeWidth} className={styles.spinner} />
+        <Loader2 aria-hidden size={15} strokeWidth={iconStrokeWidth} className={styles.spinner} />
       ) : Icon && iconPosition === 'start' ? (
-        <Icon size={15} strokeWidth={iconStrokeWidth} />
+        <Icon aria-hidden size={15} strokeWidth={iconStrokeWidth} />
       ) : null}
       <span className={styles.label}>{children}</span>
       {!loading && Icon && iconPosition === 'end' ? (
-        <Icon size={15} strokeWidth={iconStrokeWidth} />
+        <Icon aria-hidden size={15} strokeWidth={iconStrokeWidth} />
       ) : null}
     </button>
   );

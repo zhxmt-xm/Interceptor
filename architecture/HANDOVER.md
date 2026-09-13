@@ -1,8 +1,8 @@
 # Interceptor Handover
 
-> Tracked commit: `0beb5c6d`
+> Tracked commit: `11ed3041`
 > Branch: `main`，直接提交，没有额外 PR 边界
-> 最后更新：2026-09-13
+> 最后更新：2026-09-14
 
 ## Task List
 
@@ -17,21 +17,22 @@
 - [ ] **待验证 · WPAD**：仅 Auto Detect 环境没有可传给 proxy-agent 的 URL，当前按直连处理。
 - [ ] **进行中 · 既有 UI parity（当前 item）**：保持用户原先授权的item边界；下面只是同一item的剩余步骤，不是独立提交单位。[本item报告](../commit-changes/202609111558_ui_parity_progress.html)只展示具体改动与带红框的前后图，全部展开；验证、遗留与完成状态在本条和下方Validation维护，详细证据链接所属feature文档。以下此前的最终E2E结果属于全UI整改前版本，不能代替当前改动的回归。未完成部分不冒充已验收。
     - **待设计对齐 · Inspector Header Copy布局**：本轮按用户统一flex规则修正`Kv`：值文字按内容宽度收缩，规则标记和18px Copy留在同一flex行，长值只在文字内部换行，顺序和完整值复制不变；21行headless DOM检查确认控件无越界、正常4px gap，row-format单测14/14。去掉曾把短值撑满的`flex: 1`，未把Copy移到key列。设计Header行仍缺Copy，与产品的文字可用宽度及后续行高不等，不能删产品能力或通过位移消除差异；当前parity随全量复验。旧A/B预览不是已批准的列迁移方案，详见[Capture筛选证据](features/capture.md#capture筛选parity场景)；旧预览保留在TEMP `interceptor-header-copy-preview-20260911/review.html`，最新结构证据为`interceptor-ui-layout-20260912-kv-dom/rows.json`。
-    - **待设计对齐 · WebSocket消息正文布局**：产品`FramePayload`与设计`WebSocketMessagePayload`仍有能力和布局差异；产品既有Tree/MIME/Save不能为parity删除。明暗各7 matched、0 missing、2 flagged，标题最大25.6px差、Binary行约22.5px偏移。先明确设计，再实施；已修复的消息标题翻译和断点按钮不重复列为待办，证据见[WebSocket标题](features/capture.md#websocket载荷标题)及[消息断点按钮](features/breakpoints.md#43-websocket-帧断点)。
+    - **待设计对齐 · WebSocket消息正文布局**：产品`FramePayload`与设计`WebSocketMessagePayload`仍有能力和布局差异；产品既有Tree/MIME/Save不能为parity删除。此前明暗各7 matched、0 missing、2 flagged，标题最大25.6px差、Binary行约22.5px偏移；当前结果随完整headless复核。最新只读定位确认设计标题属于`CollapsibleSection`，产品标题属于方向/大小/Copy元数据行并接完整`BodyView`，不是只调11px/11.5px字号即可解决的同结构问题。先明确设计，再实施；已修复的消息标题翻译和断点按钮不重复列为待办，证据见[WebSocket标题](features/capture.md#websocket载荷标题)及[消息断点按钮](features/breakpoints.md#43-websocket-帧断点)。
     - **待确认 · Certificates字体度量**：两个约1px差异已定位为相邻文字字宽：设计实际加载静态Inter，Renderer加载Inter Variable；标题文字90.375/89.40625px，按钮178.359375/177.734375px，两边gap9/7px、padding14px一致。没有字体加载失败，不用偏移补偿，也不擅自替换字体或设计基准；字宽方案与页面其余fixture/图标差异仍待确认，见[Certificates证据](features/settings.md#certificates面板parity场景)。
     - **最终 E2E通过 · 待历史前置证据处理 · HTTPS设置连接示意**：恢复授权后组件/i18n13/13、Desktop类型与真实TLS流程通过，连接示意、前置按钮状态及Cancel可用，后续CA/H1/H2/Root和宿主恢复同跑；Main/Core13768/41652正常销毁。暂停期缺前置E2E Red保留，浅色Cancel约1px字体flag仍独立，不作为整组parity全绿；见[证据](features/capture.md#https设置连接示意)。
     - **最终 E2E通过 · 待历史前置证据处理 · 导出警示**：补回`HarTransferDialog.warning`缺失样式，业务不变；unit4/4、Desktop类型、明暗parity16/16及八个警示状态预览通过。HAR真实1/1（36.9s）及Archive1/1（46.4s）覆盖警示、Save/Open、取消、实际文件及重启；两组共四代Main/Core正常销毁和宿主恢复。Archive说明/敏感警告、Cancel与HTTP/WebSocket完整恢复同跑；暂停期前置E2E缺口保留，见[证据](features/transfer.md#导出弹窗警示样式)。
     - **最终 E2E通过 · 待历史前置证据处理 · Capture文件菜单**：FileCommand和236px菜单宽度已按既有设计还原，四个明暗菜单24/24、三列中心差0px，八组打开/取消预览通过。真实HAR与Archive均已验证菜单、扩展名和实际文件往返；Archive按DPR校验自然行高，150%时39.3333px而非DPR2的40px。暂停期前置缺口保持，见[菜单验证](features/transfer.md#import与export菜单条目)。
     - **待通知专属 E2E · Updates通知按钮**：按用户最新要求，以button和label实际`inline-flex`/`align-items: center`为准，32px compact、图标15px及继承排版保持；不再按字形像素边界、自算矩形中心或独立line-height补偿调整。旧字形实验仅保留历史证据，不作为新的待确认设计或验收目标。此前20/20 unit、类型、八场景100 matched/仅旧Cancel flag及真实正文1/1（21.9s，42516/42800）属于对应旧版本；当前共享控件已纳入423/423 Renderer单测与全量headless复验。通知真实下载/安装仍缺packaged新release及GitHub条件，见[证据](features/settings.md#更新通知按钮)。
-    - **待确认 · Updates下载行设计边框**：设计隐藏后续行使可见Download末行多出1px底边框，Renderer末行无边框，后续changelog约1.1px差由此产生。直接测量15 matched/0 missing/2 flagged；不加产品行高、偏移或改基准，详情见[下载行结论](features/settings.md#更新通知按钮)。
     - **待确认 · Compact正文高度**：规则替换Request/Response的正文contentHeight86px、产品外框96px，设计外框86px。10px来自共享CodeViewer的滚动条/边框预留；一次性缩到86px后内部viewport84px，产生2px垂直滚动，额外8px又非短正文必需。保留产品/设计/PNG，不隐藏滚动或直接影响WebSocket/gRPC；[实测结论](features/capture.md#93-renderer-命令)与TEMP `interceptor-compact-body-20260911/evidence.json`记录，不算parity通过。
     - **最终 E2E通过 · 待历史前置证据处理 · 媒体正文占位**：flex分组、MIME/大小行高的unit9/9、类型、明暗12/12与16组宽窄栏检查保持。真实媒体workflow通过，PNG/Hex、WAV/MP4完整保存和新增布局断言同跑，Main/Core3880/18464正常销毁；相邻encoding已与WebSocket/队列同组3/3，19740/5544正常销毁与宿主恢复。暂停期前置缺口保留，见[证据](features/capture.md#媒体正文占位布局)。
     - **最终 E2E通过 · 待历史前置证据处理 · 受限正文提示**：两行提示8.8px差消除，unit9/9、类型、明暗6/6和八组宽窄栏/Hex检查保持。恢复后body-scenarios通过，5MiB UTF-8、提示布局、Raw/Copy及完整Save同跑，Main/Core1952/18392正常销毁；暂停期前置缺口保留，见[证据](features/capture.md#受限正文提示行高)。
     - **最终 E2E通过 · 待字体确认及历史前置证据处理 · AppContainer列表行高**：名称15px、包名14px、推荐标签20px flex框；unit2/2、类型、六场景52 matched/0 missing，四个已定位字体flag保持。真实只读排序/搜索和rowLayouts通过，Main/Core43056/38856正常销毁且不改系统exemption；暂停期前置缺口保留，见[证据](features/settings.md#appcontainer列表行高)。
     - **最终 E2E通过 · 待历史前置证据处理 · TLS列表与兼容性弹窗**：unit18/18、类型、原七场景44/44保持；新增公共ID后弹窗明暗/添加三场景24/24、无flag，像素均值0.62%。Capture导航及列表布局已通过；兼容性新workflow最终1/1（27.6s），六次真实证书拒绝、五host默认选择、wheel/Home/End、全部取消禁用、精确host/wildcard批量保存和Not now通过，Main/Core14788/41168正常销毁及CA/Root/宿主恢复。暂停期行高前置缺口保留，见[证据](features/settings.md#tls列表与兼容性弹窗行高)。
     - **最终 E2E通过 · 待历史前置证据处理 · WebSocket暂停上下文**：phase、126px队首滚动列表及38px消息分隔已修复，暂停期前置缺口保持。Replacement标题以真实38/36px Red和组件xs Red验证后改共享IconButton，32/32 unit及类型通过。最终Close 1/1（11.5s），四条真实历史消息、126px内部滚轮、13px折叠/展开与Off保持通过，origin收到1001；Main/Core6428/19436正常销毁和宿主恢复。八场景58/58、0 missing/flagged，像素均值2.71%不代表整页相同；补6张正确状态PNG，408旧图不变，同一报告64图/62原图保持、1320/390检查通过。Tree/MIME/Save不删除，见[证据](features/breakpoints.md#43-websocket-帧断点)。
-    - **阶段进度提交，待剩余验收**：按2026-09-13用户要求停止追加测试和修复，保存本item当前代码、设计、测试及唯一HTML。已保存20条真实E2E、22代进程正常销毁；Renderer 47文件423/423、三个UI workspace类型通过。01:48快照与当前689份UI源码hash一致。HAR/Archive原生Dialog失败、全量parity字体网络和既有设计差异仍未通过；设计PNG尚未全部同步，历史前置Red缺口不补造，整个item不标完成。
-    - **提交安排**：本item当前变更合为一次后续commit并立即push，不按小修复拆分，不混入其他item、用户文件或原有AGENTS修改，不改写已推送的`0beb5c6d`。共享组件在同一HTML说明一次，不重复列调用页面。
+    - **进行中 · 提交本轮验证修复**：2026-09-14用户明确“可以跑e2e了，一定要提交”。Timing最终真实`capture.inspector.section-collapse`1/1（20.2s）已通过，Main/Core `47500/17304`正常销毁、trace/截图及宿主恢复齐全；row-format14/14、Desktop类型和当前bundle构建通过。Manager、AppContainer和GitHub图标槽已有对应真实Red/Green及unit/类型证据，当前适用清单23条/27代均graceful。692份UI/验证源码与最新398场景headless结果一致，仍为2825目标、2823 matched、2 missing、31 flagged。当前整理一个原UI item commit并立即push，剩余设计约定与历史前置证据缺口如实保留，不宣称整个item完成。不改HTTP wire、凭据或第三方patch。
+    - **提交安排**：后续仍以本item为边界，不按小修复拆分，不混入其他item、用户文件或原有AGENTS修改，不改写已推送的`0beb5c6d`与`11ed3041`。验收通过后按授权commit并立即push；共享组件在同一HTML说明一次，页面独有改动分别列出。
+        - 2026-09-14用户明确要求本轮必须提交；以原UI item为一次commit边界，不按Manager、AppContainer、Timing等小修复拆分，也不等待未批准的新设计而积压已授权修复。Timing真实流程及退出核验已经完成，接下来只做范围核对和commit/push，不追加无关验证；历史缺口和31 flagged/2 missing保留，不改阈值、不冒充全量Green。
+    - **设计确认范围**：已展示Header当前设计与产品现状，提出只在设计中补齐18px Copy、保持值右侧与4px gap的方案；确认工具仅返回用户不在，未视为批准。独立DOM预览已保存到TEMP `interceptor-ui-parity-20260913-copy-proposal`，增加19个已有Copy控件、文本逐项不变、value hover可见；正式设计未增加控件。WebSocket正文能力、Compact高度和字体差异仍按前述待确认项管理，不删产品能力或增加位移。Manager后续已完成局部修复，其原始实验数据保留在`interceptor-ui-parity-20260913-manager-review`，正式Green证据见Validation。
 - [ ] **待验收 · 首个真实 tag release**：仍缺仓库外 Windows 签名证书、Apple Developer ID、公证凭据与真实 macOS runner 证据。
 - [ ] **长期任务**：SSE、长上传 / 下载、gRPC streaming、Pause / Resume、Clear、容量与文件任务继续以 [backlog/TODO.md](backlog/TODO.md) 为准，只有代码和验收均完成后才可勾选。
 
@@ -40,7 +41,7 @@
 - 提交边界以用户已授权的Handover item为准。一个item只对应一个commit和一份HTML报告；实现与验证中的小问题只是子步骤，不自行拆成新item，也不事后拆Handover来迁就已有commit。确需调整item范围时先取得用户明确确认。
 - HTML只展示change：位置、改前改后与UI前后图；对比全部展开，不放折叠控件，红框明确标出修改位置。验证、命令、遗留和任务状态维护在Handover，不在HTML重复。
 - 单个item的commit或push失败时，记录原因与恢复命令，继续其他可执行且已授权的item；提交或网络失败本身不是整轮任务的停止条件。用户已开启且Git已配置的代理可以直接使用，不再用空`http.proxy`覆盖它。
-- 2026-09-13用户明确恢复真实E2E并要求按item提交；此前暂停已解除。真实Electron及原生Open/Save流程串行运行，保留正式UI、系统代理和证书恢复断言，不改成fake或永久skip。普通parity继续显式`headless: true`和子进程`windowsHide: true`，不主动操作其他应用或刷新共享报告页。此前结果原样保留，日志与exit code不一致如实记录，暂停期前置Red缺口不回滚补造。
+- 2026-09-14用户明确恢复真实E2E并要求本轮提交，覆盖2026-09-13暂停指令。真实Electron及本流程需要的原生UI串行执行，保留正式启动、系统代理和退出恢复，不增加隐藏窗口或产品测试后门；普通parity仍显式headless，不主动操作其他应用或刷新用户共享报告。已有失败与暂停期缺口原样保留，无窗口结果不冒充真实E2E通过。
 - 本地App、packaged smoke与真实Electron E2E必须经过已实现的宿主guard；不得以“进程已退出/8888无listener”替代完整WinINet、共享crash journal与测试进程代际恢复验证。
 - Windows当前token未提权不等于账户不属于Administrators；不得给workflow另加管理员启动门禁。安装/卸载CA仍由产品正式请求Windows授权，不修改UAC策略；出现真实授权提示时由Developer在本机处理。
 - 当前所有tracked代码改动都必须归入明确work item，完成实现、验证、commit和push；禁止任何会丢弃工作树内容的`restore`、`checkout`、`reset --hard`或文件重建。为调整提交顺序允许仅取消暂存或使用临时index，但操作前后必须核对工作树文件hash不变。用户未跟踪的`architecture/backlog/deepseek-harness-agent-analysis.md`不是本轮代码改动，继续排除。
@@ -60,6 +61,45 @@
 
 ### UI parity阶段证据
 
+- 2026-09-14恢复E2E并按用户要求提交本轮修复：Timing同一workflow1/1（20.2s），Main/Core `47500/17304`正常销毁、宿主guard通过，`trace.zip`及`timing-alignment.png`存在；只读复核测试进程0、8888监听0、共享journal不存在。row-format14/14、Desktop类型、当前production bundle准备通过，构建仅有既有Vite/Rolldown警告。日志前缀为TEMP `interceptor-ui-parity-20260914-timing-*`，类型为`interceptor-ui-parity-20260914-desktop-types.log`。`interceptor-ui-parity-20260914-e2e-applicability.json`纳入新Timing后23条/27代均graceful，旧22条/26代清单和失败尝试完整保留。692份UI/验证源码hash与下述398场景结果相同，可复用完整headless与其他局部结果；不代表31 flagged/2 missing或历史前置门禁已经解决。
+- 2026-09-13最新完整无窗口结果：TEMP `interceptor-ui-parity-20260913-headless-final.{json,md,log}`于22:06 +08:00完整结束，场景ID及顺序与配置398项逐一一致；2825目标、2823 matched、2 missing、31 flagged，平均像素差2.51%，不标全量Green。`interceptor-ui-parity-20260913-headless-source.json`的692份UI/验证源码hash在结果核验时全部不变。Timing、Manager、AppContainer列表头和Updates下载行均在本轮覆盖且无missing/flagged；真实Electron E2E暂停，没有新增运行。以下当前差异不与旧61 flagged快照混用。
+- 本轮headless结束后的只读清理核验：相关Electron、Playwright浏览器与测试Node进程计数0，8888/5199/5200监听计数0，自动后台terminal已清理，没有待取结果的命令。没有为处理余项修改字体、Copy/BodyView能力或系统设置。Compact复核仍为产品`getContentHeight()+10`与设计直接取内容高度的约定不同；既有86px临时预览产生2px内部滚动的证据保持，不将删预留当作已验证修复。本轮尚未满足整个UI item的设计与真实E2E门禁，未新增commit/push。
+
+| 当前剩余范围 | 目标数量 | 已定位原因及后续约束 |
+| --- | ---: | --- |
+| 普通Headers及Rule筛选 | 9 flagged | 设计缺Copy控件，文字可用宽度不同使后续内容最大纵差72.375px；尚未批准新增设计控件，不删产品复制能力 |
+| WebSocket正文 | 4 flagged | 设计CollapsibleSection与产品FramePayload/BodyView结构及能力不同，最大25.609375px；保留Tree/MIME/Save，待设计约定 |
+| Compact规则正文 | 8 flagged | 共享CodeViewer正文外框多10px，涉及滚动条与边框预留；不隐藏滚动或固定偏移补偿 |
+| Certificates按钮 | 2 flagged | Show in file manager横向差1.015625px，邻接文字自然字宽不同；不擅自换字体或增宽 |
+| AppContainer批量确认 | 8 flagged | Continue文字及按钮同宽差1.0625px，Cancel字宽差0.25px使右对齐总位移1.3125px；gap/padding等相同，不做px补偿 |
+| Response空Text | 2 missing | 产品显式清空，设计显示Using original；独立待确认item，不改变正文语义 |
+
+- 最新无窗口增量：Timing设计明暗两张PNG已按同尺寸同步，前后hash为TEMP `interceptor-ui-parity-20260913-timing-flex-design-synced.json`；后续parity8/8、原始几何差0，像素差2.0543%/2.1201%，不代表整页像素一致。报告补一组Renderer + fake Preload前后图，95张原图hash保持，97图加载、红框与1320/390排版通过。Updates下载末行只修设计`.update-progress-row`的底边框规则，明暗parity30/30、0 missing/flagged、最大0.859375px，证据前缀`interceptor-ui-parity-20260913-update-last-row`；没有新增或复跑Electron E2E。最后一次退出失败的只读复核中共享journal不存在，仍不替代完整退出证据。
+- Updates两张设计PNG已同步，来源及前后hash为TEMP `interceptor-ui-parity-20260913-update-last-row-design-synced.json`。同一HTML追加下载行设计近景后99图，原97图hash保持，1320/390加载与红框检查通过；重复patch冲突已核对为单一图组，未覆盖用户正文。设计typecheck通过。六个剩余Settings/批量弹窗场景40 matched/0 missing/10 flagged；一次性文字Range进一步确认Continue按钮与文字同宽差1.0625px，Cancel同宽差0.25px，字号/字重/gap/padding一致，不通过增宽或改阈值隐藏差异，证据为`interceptor-ui-parity-20260913-app-container-button-metrics`及`interceptor-ui-parity-20260913-headless-remaining`。
+- 当前E2E适用性另存TEMP `interceptor-ui-parity-20260913-e2e-applicability.json`：以新AppContainer结果替换旧ordering，纳入Manager queue-commands，排除旧Timing对新父flex布局的覆盖声明；现有22条/26代Green的metadata与trace逐一确认存在且均graceful，另有`capture.inspector.section-collapse`待最终E2E，不是整item完成。原`e2e-current.json`不覆盖，历史结果仍可追溯。两个一次性报告脚本已删除，TEMP截图和证据保留。
+- 最新暂停前的局部结果：Manager真实queue-commands先Red（计数12px而非normal，Main/Core `31288/26884`）后Green1/1（23.5s，`38380/34056`），均正常销毁；43项unit、Desktop类型、parity8/8（原始最大差0.53125px）通过。AppContainer列表头先Red（12.915px而非normal，`24924/30172`）后Green1/1（15.6s，`35780/18948`），均正常销毁且未改exemption；unit2/2、Desktop/design-vite类型、明暗parity32/32通过。证据分别为TEMP `interceptor-ui-parity-20260913-manager-*`与`interceptor-ui-parity-20260913-appcontainer-head-*`；两处真实前后图已补入同一HTML，不覆盖用户后续改动。
+- Timing父flex前置真实Red为Grid而非flex，Main/Core `24104/1252`正常销毁；代码修改后unit14/14、Desktop/design-vite类型、明暗parity8/8通过。最终尝试TEMP `interceptor-ui-parity-20260913-timing-flex-e2e-green`实际失败：8888 listener未ready、随后tracing.stop因页面已关闭报错；Main/Core `10840/27480`的metadata中graceful/abrupt均false，名称含green不代表通过。用户已暂停E2E，不再复跑；当前相关测试进程为0、8888无listener，WinINet读数为ProxyEnable=0、ProxyServer=127.0.0.1:7890，这些只读状态不替代该次缺失的完整退出证据。
+
+- 2026-09-13此前全量快照：TEMP `interceptor-ui-parity-20260913-final.{json,md,log}`按配置顺序完整覆盖398场景，2825目标/2823 matched/2 missing/61 flagged；与前一轮88 flagged相比修复目标已收敛，但不标全量Green。12个修复场景68目标全部匹配；`interceptor-ui-parity-20260913-current-source.json`的689份UI源码hash与当时磁盘一致。91图HTML最终页面检查通过，相关结果为`interceptor-ui-parity-20260913-report-final.log`；原87图hash保持。当时22条workflow/26代Green及trace清单为`interceptor-ui-parity-20260913-e2e-current.json`，新Settings替换旧导航结果，不重复计数；该快照早于后续Manager、AppContainer、Timing及Updates下载行修复。
+- 全量后的Provider菜单补验：原两场景没有配置PNG；新增既有菜单状态的明暗截图后，`settings-agent-provider-menu`两场景6目标匹配、0 missing/flagged、几何差0px，整页像素浅色1.7122%/深色1.6747%，不代表整页像素一致。TEMP `interceptor-ui-parity-20260913-provider-menu-pixels-green.{json,md,log}`保存结果；没有再跑一整轮398场景，其余全量结果复用。截图需等待弹层实际不透明，场景先正常外点击Header关闭旧菜单；首次透明截图和浅色菜单泄漏导致的深色missing已排除。新2张PNG来自`interceptor-ui-parity-20260913-provider-menu-visible-shots`，已查看并校验复制hash；两场景当前均有有效像素对照。
+
+| 旧61 flagged快照范围（非当前） | 目标数量 | 当时原因与限制 |
+| --- | ---: | --- |
+| 普通Headers及Rule筛选 | 9 flagged | 设计缺部分Copy，长值可用宽度和后续高度不等；普通计数槽修复后最大纵差72.4px，横差0。未批准补设计控件，不删除产品复制能力 |
+| WebSocket正文 | 4 flagged | 标题及Binary行布局与设计能力不同；Tree/MIME/Save必须保留 |
+| Compact规则正文 | 8 flagged | 外框高度仍差10px；不隐藏滚动或用固定偏移掩盖 |
+| Timing | 8 flagged | Collapse字体行高继承不同；继承试验未完全匹配，未写入正式样式 |
+| AppContainer列表与批量确认 | 16 flagged | 列表说明行框及静态Inter/Inter Variable字宽差，约1至1.3px；不用单独px补偿 |
+| Certificates、HTTPS、创建断点标题 | 6 flagged | 邻接文字/按钮自然宽度约1px差，字体选择未确认 |
+| Updates下载行 | 4 flagged | 设计隐藏后续行使可见末行多1px边框，changelog位置随之变化 |
+| BreakpointManager | 6 flagged | 计数/规则文字行高及Advanced rules字宽约1至1.5px差，正式布局保持 |
+| Response空Text | 2 missing | 产品显式清空，设计显示Using original；不擅改正文语义 |
+
+- 当前产品增量GitHub图标槽：unit2 Red及真实icon槽0/1 Red `14968/41684`后，Renderer425/425、Desktop类型、production bundle准备与Settings1/1（19.9s）Green `23004/2728`，均正常销毁；首轮inline-flex计算值假失败 `26656/44592`单独保留，不算产品Red。登录明暗/Download/Open/Agent配置64/64；TEMP `interceptor-ui-parity-20260913-github-*`及`-renderer-final.log`、`-desktop-types-final.log`保存证据。旧Settings导航结果不冒充新图标槽断言通过；未改授权API、图标资产或调用方法。
+- 设计候选同步：592张完整候选加1张既有Rules深色tree-url，比较405张可比原图，46相同、359有差异、0尺寸变化、0丢图；逐共享组件检查代表场景后同步359张变化原图及41张parity引用缺图，其余55张原图hash保持。TEMP `interceptor-ui-parity-20260913-shots-synced.json`列逐文件来源hash，原414图备份保留；未引用的新图不入库。最终398场景结果见本节开头，非全量Green。HTML91图，新增4图之外原87图hash保持；同一报告记录字体/截图目录/目标测量及两个组件改动，不写验证状态。
+- 2026-09-13续验字体与截图工具的前一轮结果：`parity.mjs`要求Inter的400/450/500/600/700与JetBrains Mono的400/500/600实际加载，再重算Monaco字体；单场景Settings20/20。完整398场景按ID逐一核对，2824目标/2822 matched/2 missing/88 flagged，证据TEMP `interceptor-ui-parity-20260913-fonts-full.{json,md,log}`，没有把旧fallback批次混入。`shoot.mjs`新增独立输出与相同字体检查、失败清理，Settings实际生成并查看；`compare-shots.mjs`新增候选/差异目录，40张Settings比较一致。原414图备份为TEMP `interceptor-ui-parity-20260913-shots-baseline`及同名JSON hash清单；后续候选同步与最终结果见上文，不把本轮旧快照冒充当前Green。
+- 全量后局部修正：设计`CollapsibleSection`原以`labelExtra`是否存在决定24px chevron槽，普通计数/MIME误触发，Query/Payload标题32px而产品25px。分开`count`与交互附加内容后Request明暗16/16、Cookies3/3、Composer2/2；规则效果标题/来源/版本栏保持0px，独立BodyViewer10px差仍在。TEMP `interceptor-ui-parity-20260913-request-count-green`、`-section-neighbors`、`-request-sections{,-after,-comparison}`保留JSON和实际设计前后图，design-vite类型通过。TLS协议值目标改测真实code文字而非flex单元格空白，四场景32/32、无missing/flagged，TEMP `interceptor-ui-parity-20260913-tunnel-values-green`；首次错误span selector导致的4个missing不计通过。唯一HTML增加该设计组件一组前后图，共89张，原87图hash不变，红框与1320/390排版已查看。
+- 2026-09-13恢复续验：HAR与Archive在未改动的原生driver上串行2/2（1.3m），覆盖菜单flex、警示、原生Save/Open/Cancel、Agent/MCP权限、文件完整性及重启。Archive Main/Core `34700/10072`、`26440/14812`，HAR `36696/46504`、`44100/44924`，四代`gracefulDestroyVerified=true`，trace齐全并通过宿主guard；TEMP `interceptor-ui-parity-20260913-transfer-final`及同名log。此前“Dialog未关闭”失败原样保留，未复现、未定位根因，不算产品Red；诊断代码已移除，driver与`11ed3041`相同。
 - 2026-09-13阶段提交：TEMP `interceptor-ui-layout-20260913-e2e-verified.json`汇总20条workflow和22代Main/Core，全部`gracefulDestroyVerified`，metadata及trace文件已核对存在。覆盖`capture.inspector.section-collapse`、`composer.collection.tree-interactions`、`settings.app-containers.ordering`、`breakpoints.websocket-close`、`capture.body.fullscreen`、`capture.clear-facets`、`settings.navigation`、`agent.tools.execution-modes`、`agent.settings.model-configuration`、`agent.panel.navigation-persistence`、`capture.scenarios.body-media`、`capture.scenarios.bodies`、`capture.playground-traffic`、`mcp.browser-playground-cors`、`settings.tls-compatibility`、`capture.scenarios.grpc`、`capture.scenarios.tls`、`capture.scenarios.websocket`、`composer.response.section-collapse`、`rules.hierarchy-menus-status`。
 - 明确排除HAR/Archive原生Dialog失败、早期媒体失败尝试及字体fallback parity批次，不计通过。Renderer和类型日志为TEMP `interceptor-ui-layout-20260913-renderer-unit.log`、`interceptor-ui-layout-20260913-types-final.log`；源码hash快照为`interceptor-ui-layout-audit-20260912/final-current.json`。
 - HTML曾回退到64张图，缺少的13组/23张组件截图已按原始来源补回；87张图全内嵌、1320/390宽度及展开状态检查通过。后续用户修改保留，不以生成旧稿覆盖。验证未通过项继续留在当前UI item，本次仅为用户明确要求的阶段进度提交。

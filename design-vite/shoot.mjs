@@ -9,7 +9,9 @@ import { mkdir, rm } from 'node:fs/promises';
 import { startDesignPreview } from './tools/design-preview.mjs';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
-const shotsRoot = path.join(dir, 'shots');
+const shotsRoot = path.resolve(process.argv
+  .find((argument) => argument.startsWith('--out-dir='))
+  ?.slice('--out-dir='.length) ?? path.join(dir, 'shots'));
 
 const FEATURES = ['capture', 'rules', 'composer', 'settings', 'diagnostics', 'playground'];
 const TOKEN = { light: 'light', dark: 'dark' }; // folder name -> data-theme token
@@ -34,6 +36,17 @@ for (const feature of FEATURES) {
   }
 }
 for (const theme of ['light', 'dark']) {
+  if (theme === 'dark') {
+    shots.push({
+      feature: 'rules', theme, variant: 'tree-url',
+      state: { view: 'rules', theme, sidebar: 'expanded', overlay: '', ruleList: 'tree-url' },
+    });
+  }
+  shots.push({
+    feature: 'agent-models', theme, variant: 'settings-provider-menu',
+    interaction: 'provider-menu',
+    state: { view: 'settings', theme, sidebar: 'expanded', overlay: '', settings: 'agent', agentProvider: 'unconfigured' },
+  });
   for (const agentToolApprovalName of ['breakpoints_continue_queue', 'breakpoints_drop_queue', 'breakpoints_continue_rule']) {
     for (const agentToolApproval of ['pending', 'allowed']) {
       shots.push({
@@ -664,14 +677,34 @@ if (!onlyVariant) {
 await mkdir(shotsRoot, { recursive: true });
 
 const designPreview = await startDesignPreview(dir);
-const browser = await chromium.launch({ channel: 'msedge' });
+let browser;
+try {
+browser = await chromium.launch({ channel: 'msedge', headless: true });
 const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: 1680, height: 1000 } });
+
+async function prepareDesignPage() {
+  await page.waitForFunction(() => window.__monacoReady === true, null, { timeout: 120_000 });
+  await page.evaluate(async () => {
+    const fonts = [
+      ...[400, 450, 500, 600, 700].map(weight => `${weight} 12px "Inter"`),
+      ...[400, 500, 600].map(weight => `${weight} 12px "JetBrains Mono"`),
+    ];
+    for (const font of fonts) {
+      const faces = await document.fonts.load(font, 'Interceptor');
+      if (faces.length === 0 || faces.some(face => face.status !== 'loaded')) {
+        throw new Error(`Design font unavailable: ${font}`);
+      }
+    }
+    window.__monacoRelayout?.();
+    const controls = document.querySelector('.dock');
+    if (controls) controls.style.display = 'none';
+  });
+  await page.addStyleTag({ content: STABILIZE });
+  await page.waitForTimeout(250);
+}
+
 await page.goto(designPreview.url, { waitUntil: 'load', timeout: 120_000 });
-await page.waitForFunction(() => window.__monacoReady === true, null, { timeout: 120_000 });
-await page.evaluate(() => document.fonts.ready);
-await page.addStyleTag({ content: STABILIZE });
-await page.evaluate(() => { const c = document.querySelector('.dock'); if (c) c.style.display = 'none'; });
-await page.waitForTimeout(250);
+await prepareDesignPage();
 
 const app = page.locator('.app');
 async function shoot(list) {
@@ -681,16 +714,10 @@ async function shoot(list) {
       s.interaction === 'breakpoint-queue-menu'
       || s.interaction === 'websocket-breakpoint-setup'
       || previousInteraction === 'rule-action-tags'
+      || previousInteraction === 'provider-menu'
     ) {
       await page.reload({ waitUntil: 'load', timeout: 120_000 });
-      await page.waitForFunction(() => window.__monacoReady === true, null, { timeout: 120_000 });
-      await page.evaluate(() => document.fonts.ready);
-      await page.addStyleTag({ content: STABILIZE });
-      await page.evaluate(() => {
-        const controls = document.querySelector<HTMLElement>('.dock');
-        if (controls) controls.style.display = 'none';
-      });
-      await page.waitForTimeout(250);
+      await prepareDesignPage();
     }
     await page.evaluate(() => window.__setState({
       overlay: '',
@@ -774,6 +801,7 @@ async function shoot(list) {
         interaction === 'breakpoint-menu'
           || interaction === 'breakpoint-queue-menu'
           || interaction === 'websocket-breakpoint-setup'
+          || interaction === 'provider-menu'
           || modelMenuOpen,
       );
     }, { interaction: s.interaction, modelMenuOpen: s.state.agentModelMenu === 'open' });
@@ -909,6 +937,19 @@ async function shoot(list) {
       await page.getByRole('button', { name: 'Queue actions' }).click();
       await page.getByRole('menu', { name: 'Queue actions' }).waitFor();
     }
+    if (s.interaction === 'provider-menu') {
+      await page.getByRole('button', { name: 'Add provider', exact: true }).click();
+      await page.getByRole('menu', { name: 'Provider types' }).waitFor();
+      await page.waitForFunction(() => {
+        const menu = document.querySelector('[role="menu"][aria-label="Provider types"]');
+        if (!menu) return false;
+        for (let element = menu; element; element = element.parentElement) {
+          const style = getComputedStyle(element);
+          if (style.opacity !== '1' || style.visibility !== 'visible' || style.display === 'none') return false;
+        }
+        return true;
+      });
+    }
     if (s.interaction === 'rule-action-tags') {
       await page.getByRole('button', { name: 'Show all 4 actions' }).hover();
       await page.getByRole('tooltip').waitFor();
@@ -922,6 +963,7 @@ async function shoot(list) {
       && s.interaction !== 'breakpoint-menu'
       && s.interaction !== 'websocket-breakpoint-setup'
       && s.interaction !== 'breakpoint-queue-menu'
+      && s.interaction !== 'provider-menu'
       && await page.locator('.ant-dropdown:visible').count() > 0
     ) {
       throw new Error(`Unexpected open Dropdown before ${s.theme}/${s.feature}/${s.variant}`);
@@ -939,6 +981,7 @@ async function shoot(list) {
       || s.interaction === 'breakpoint-menu'
       || s.interaction === 'websocket-breakpoint-setup'
       || s.interaction === 'breakpoint-queue-menu'
+      || s.interaction === 'provider-menu'
       || s.state.agentModelMenu === 'open'
     ) {
       const clip = await app.boundingBox();
@@ -961,6 +1004,8 @@ console.log('full-content:');
 await page.addStyleTag({ content: FULL_CSS });
 await shoot(fullShots);
 
-await browser.close();
-await designPreview.close();
 console.log(`\nDone — ${selectedShots.length} shots → ${shotsRoot}`);
+} finally {
+  await browser?.close();
+  await designPreview.close();
+}

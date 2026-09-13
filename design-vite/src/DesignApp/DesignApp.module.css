@@ -1124,6 +1124,7 @@ button.break-section-head { border: 0; background: transparent; cursor: pointer;
 .settings-group-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .settings-group-head > span:last-child { overflow: hidden; font-family: var(--font-mono); font-size: 9.5px; font-weight: 500; letter-spacing: 0; text-transform: none; text-overflow: ellipsis; white-space: nowrap; }
 .appcontainer-list .srow { min-height: 66px; gap: 12px; }
+.appcontainer-list .srow:has(+ .appcontainer-empty) { border-bottom: 0; }
 .appcontainer-icon, .tls-host-icon { width: 30px; height: 30px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--panel-2); color: var(--text-2); }
 .appcontainer-icon svg, .tls-host-icon svg { width: 15px; height: 15px; }
 .appcontainer-icon.recommended { color: var(--accent); background: var(--accent-soft); }
@@ -1201,6 +1202,7 @@ button.break-section-head { border: 0; background: transparent; cursor: pointer;
 .app[data-update="failed"] .update-failed,.app[data-update="failed"] .update-version-unknown,.app[data-update="failed"] .update-failed-row { display: flex; }
 .app[data-update="unsupported"] .update-unsupported,.app[data-update="unsupported"] .update-version-unknown,.app[data-update="unsupported"] .update-unsupported-row { display: flex; }
 .app[data-update="available"] .update-check,.app[data-update="downloading"] .update-action-row,.app[data-update="downloaded"] .update-check,.app[data-update="checking"] .update-action-row,.app[data-update="authentication-required"] .update-action-row,.app[data-update="unsupported"] .update-action-row { display: none; }
+.update-progress-row { border-bottom: 0; }
 .update-release-notes { display: none; }
 .progressctl { min-width: 250px; }
 .progress { width: 190px; height: 6px; overflow: hidden; border-radius: 999px; background: var(--panel-2); }
@@ -1405,6 +1407,10 @@ button.break-section-head { border: 0; background: transparent; cursor: pointer;
 .tlt { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); text-align: right; font-variant-numeric: tabular-nums; }
 .tlbar { height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--accent) 15%, transparent); position: relative; }
 .tlbar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--accent); }
+.mv[data-v="capture"] .tlrow { display: flex; min-width: 0; line-height: normal; }
+.mv[data-v="capture"] .tlp { flex: 0 0 150px; }
+.mv[data-v="capture"] .tlt { flex: 0 0 58px; }
+.mv[data-v="capture"] .tlbar { flex: 1; min-width: 0; }
 
 /* =====================================================================
    OVERLAYS — HTTPS setup · export dialog

@@ -75,6 +75,16 @@ test('settings.navigation keeps the active section across workspace navigation',
     if (sectionId === AUTOMATION_IDS.settings.section.appContainers) {
       await expect(getByAutomationId(page, AUTOMATION_IDS.settings.appContainers.search)).toBeVisible();
     }
+    if (sectionId === AUTOMATION_IDS.settings.section.updates) {
+      const signIn = getByAutomationId(page, AUTOMATION_IDS.settings.updates.githubSignIn);
+      await expect(signIn).toBeVisible();
+      await expect(signIn).toHaveCSS('display', 'flex');
+      await expect(signIn).toHaveCSS('align-items', 'center');
+      await expect(signIn).toHaveCSS('gap', '7px');
+      await signIn.screenshot({ path: testInfo.outputPath('github-sign-in-button.png') });
+      await expect(signIn.locator(':scope > span[role="img"] > svg')).toHaveCount(1);
+      await expect(signIn.locator(':scope > span:last-child > svg, :scope > span:last-child span[role="img"]')).toHaveCount(0);
+    }
     const violations = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>('body *')]
       .filter(element => element.checkVisibility())
       .flatMap(element => {

@@ -43,6 +43,7 @@ HTTP breakpoint 仍使用整面板 `BreakpointInspector`，两条路径只共享
 
 - `IconButton`可按调用点提供`--icon-button-hover-background`与`--icon-button-hover-color`，未提供仍使用`--hover`/`--text`。WebSocket消息断点用它保持armed黄色和Ant默认text按钮反馈，不改变共享默认主题；禁用态仍不响应hover。
 - `Button`由组件控制图标和独立label的`inline-flex`及`align-items: center`，button再用`justify-content: center`居中内容组。md/compact/sm继续分别为34/32/28px，不在通知等调用方覆盖位置；检查实际父布局规则、内容范围和正常gap，不以字形像素边界或自算矩形中心定义对齐，也不添加独立位移、裁字或行高补偿。
+- `Button.icon`接收现有Lucide或Ant Design图标组件，由共享icon槽提供尺寸与7px图文gap；调用方不再把图标混进文字children。图标与loading spinner属于装饰，使用`aria-hidden`，按钮名称来自文字或显式`ariaLabel`；UpdatesPanel保留原GitHub图标和登录动作。
 
 ## 6. 共享树交互
 

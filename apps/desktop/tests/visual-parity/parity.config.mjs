@@ -30,6 +30,13 @@ const HTTPS_SETUP_TITLE_TARGET = {
   measureText: true,
 };
 
+const TLS_PASSTHROUGH_VALUE_TARGET = {
+  name: 'TLS passthrough',
+  designSelector: 'span:text-is("TLS passthrough")',
+  appSelector: 'code:text-is("TLS passthrough")',
+  measureText: true,
+};
+
 const WEBSOCKET_DIRECTION_TARGETS = [
   {
     name: 'Message direction group',
@@ -1494,6 +1501,7 @@ export const views = [
         id: `settings-agent-provider-menu${suffix}`,
         theme,
         rendererNav: 'Settings',
+        designShot: `${theme}/agent-models/settings-provider-menu.png`,
         designState: {
           view: 'settings',
           theme,
@@ -1502,6 +1510,7 @@ export const views = [
           agentProvider: 'unconfigured',
         },
         designActions: [
+          { type: 'clickSelector', selector: '[data-parity="window-header-title"]' },
           { type: 'clickRole', role: 'button', name: 'Add provider' },
         ],
         rendererActions: [
@@ -2532,7 +2541,7 @@ export const views = [
       'TLS tunnel',
       'HTTPS content is encrypted',
       'Decrypt HTTPS (MITM)',
-      'TLS passthrough',
+      TLS_PASSTHROUGH_VALUE_TARGET,
       'No local CA was generated or trusted. Only connection metadata is stored.',
     ],
   },
@@ -2557,7 +2566,7 @@ export const views = [
       'TLS tunnel',
       'HTTPS content is encrypted',
       'Decrypt HTTPS (MITM)',
-      'TLS passthrough',
+      TLS_PASSTHROUGH_VALUE_TARGET,
       'No local CA was generated or trusted. Only connection metadata is stored.',
     ],
   },
@@ -2583,7 +2592,7 @@ export const views = [
       'HTTPS content is encrypted',
       { name: 'View passthrough pattern', parity: 'tls-tunnel-view-passthrough' },
       'MITM active',
-      'TLS passthrough',
+      TLS_PASSTHROUGH_VALUE_TARGET,
       'MITM is active for new connections. Reconnect this client to inspect its HTTPS traffic.',
     ],
   },
@@ -2609,7 +2618,7 @@ export const views = [
       'HTTPS content is encrypted',
       { name: 'View passthrough pattern', parity: 'tls-tunnel-view-passthrough' },
       'MITM active',
-      'TLS passthrough',
+      TLS_PASSTHROUGH_VALUE_TARGET,
       'MITM is active for new connections. Reconnect this client to inspect its HTTPS traffic.',
     ],
   },
@@ -2987,6 +2996,7 @@ export const views = [
     theme: 'light',
     designState: { view: 'capture', theme: 'light', sidebar: 'collapsed' },
     designShot: 'light/capture/framed.png',
+    designActions: [{ type: 'hoverText', text: 'Application' }],
     rendererActions: [
       { type: 'contextMenuText', text: 'POST', index: 0 },
       { type: 'hoverText', text: 'Breakpoint' },
@@ -3971,6 +3981,13 @@ export const views = [
         name: 'Breakpoint toolbar button',
         designSelector: '.breakctl',
         appSelector: '[data-automation-id="capture.breakpoint-manager"]',
+        styleKeys: ['backgroundColor', 'borderColor', 'borderWidth', 'borderRadius', 'color'],
+      },
+      {
+        name: 'Breakpoint toolbar icon',
+        designSelector: '.breakctl svg',
+        appSelector: '[data-automation-id="capture.breakpoint-manager"] svg',
+        styleKeys: ['color', 'strokeWidth'],
       },
     ],
   },

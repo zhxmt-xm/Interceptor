@@ -13,6 +13,7 @@ interface CollapsibleSectionProps {
   readonly badge?: CollapsibleSectionBadge;
   readonly children: ReactNode;
   readonly className?: string;
+  readonly count?: ReactNode;
   readonly grow?: boolean;
   readonly extra?: ReactNode;
   readonly labelExtra?: ReactNode;
@@ -25,6 +26,7 @@ export function CollapsibleSection({
   badge,
   children,
   className,
+  count,
   grow = false,
   extra,
   labelExtra,
@@ -63,6 +65,7 @@ export function CollapsibleSection({
                 <span>{badge.label}</span>
               </span>
             ) : null}
+            {count}
             {labelExtra}
           </span>
         ),

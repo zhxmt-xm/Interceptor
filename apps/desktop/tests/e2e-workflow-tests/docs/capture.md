@@ -372,7 +372,7 @@ Cancel和打开设置均无隐式系统写入；只有用户点击Enable后才�
 2. 通过`capture.recording.toggle`与`capture.readiness.enable`开始真实Recording；客户端显式经8888发送`GET /e2e/capture/section-collapse`，等待动态row并点击进入Inspector。
 3. 用`capture.inspector.section.general`与`capture.inspector.section.response-headers`定位两个真实标题按钮；确认初始`aria-expanded=true`，各自`aria-controls`指向仍挂载且`hidden=false`的唯一正文。
 4. 折叠General，确认其正文`hidden=true`，Response Headers保持展开；再折叠Response Headers并重新展开General，确认同一`aria-controls`正文恢复且两段状态互不覆盖。
-5. 切换Timing，通过分组的公共控件与`aria-controls`定位两行内容；标签和时长保留真实文字，核对标签框、数值框与进度条的垂直中心差不超过一个设备像素。记录实际行高与截图，不把某个字体token值相等当成视觉居中通过。
+5. 切换Timing，通过分组的公共控件与`aria-controls`定位两行内容；标签和时长保留真实文字。父行使用flex、align-items:center、自然行高和12px gap；标签列150px、时长列58px，6px高的比例条flex占剩余宽度。记录实际样式与截图，不用字形或自算矩形中心定义对齐，不改时序数据。
 6. 保存截图、trace、日志与metadata；正常Close并验证Main/Core/Renderer退出、8888释放、系统代理恢复和profile删除。
 
 ### TDD证据
@@ -380,7 +380,9 @@ Cancel和打开设置均无隐式系统写入；只有用户点击Enable后才�
 - Red：两个真实按钮均可定位，但Capture标题没有`aria-expanded`与`aria-controls`。
 - Green：独立折叠、ARIA关系与正文`hidden`状态全部通过，workflow `1/1`并保留销毁证据。
 - 2026-09-11Timing行高还原：row-format前后8/8、Desktop类型；真实token断言先得到18.5769px/14.145px的Red（Main/Core42888/42628），最终1/1（17.3s，26812/19300），两代均正常销毁并恢复宿主。原折叠/ARIA断言未改；[Timing证据](../../../../../architecture/features/capture.md#timing正文行高)。
-- 上述token版随后因用户视觉反馈撤回，不再称为对齐改善。当前改为真实标签/时长/进度条中心检查，撤回前后1/1（18.3s/20.1s），Main/Core46032/4400、32356/33148均正常销毁与宿主恢复；保留原折叠和真实时长断言。最新用户暂停E2E后不再运行此workflow，后续改动验证预留。
+- 上述token版随后因用户视觉反馈撤回，不再称为对齐改善。该历史阶段改为标签/时长/进度条中心检查，撤回前后1/1（18.3s/20.1s），Main/Core46032/4400、32356/33148均正常销毁与宿主恢复；保留原折叠和真实时长断言。此检查已被当前父行flex契约取代，不作为当前布局的最终结果。
+- 2026-09-13父flex前置Red：row-format14/14后，真实Timing行为`display:grid`而非flex，Main/Core `24104/1252`正常销毁。修改后unit14/14、Desktop/design类型及明暗8目标parity通过；当日晚间首次最终尝试在listener ready前退出且trace清理失败（`10840/27480`），随后用户暂停，不能把该次失败记为Green。
+- 2026-09-14恢复后，同一workflow最终1/1（20.2s），Main/Core `47500/17304`的`gracefulDestroyVerified=true`，trace、Timing截图、独立折叠/ARIA及全部flex列宽断言齐全，fixture验证进程、8888、WinINet/journal恢复。当前row-format14/14、Desktop类型通过；TEMP `interceptor-ui-parity-20260914-timing-e2e`及同名log保存结果，原失败证据不覆盖。
 
 ### 预期效果
 

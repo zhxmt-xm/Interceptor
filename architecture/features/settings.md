@@ -498,6 +498,11 @@ AppContainer 列表保持 Main 按名称提供的原始相对顺序，只在 Ren
 
 #### AppContainer列表行高
 
+- 2026-09-13列表头当前实现：列表头两段文字使用父flex/align-items:center和自然行高，修正继承Shell压缩行高造成的SID说明少1.328125px及后续布局差；不改名称15px、包名14px、推荐标签20px或exemption。设计同时修正隐藏empty节点导致末行`:last-child`失效的1px底边框，只匹配`.appcontainer-list .srow:has(+ .appcontainer-empty)`。
+- 只读ordering的排序unit前后2/2，Desktop/design-vite类型通过；真实前置Red为列表头12.915px而非normal（Main/Core `24924/30172`），最终同一workflow1/1（15.6s，`35780/18948`），真实枚举、enabled-first、SID搜索及清空恢复同跑，未改exemption。Red/Green均正常销毁且trace保留；当前列表明暗32/32 parity，无missing/flagged。
+- TEMP前缀`interceptor-ui-parity-20260913-appcontainer-head-*`保留unit、parity、类型、prepare与真实E2E；设计末边框影响的明暗10张既有场景按同尺寸同步，hash清单为`interceptor-ui-parity-20260913-settings-border-synced.json`。报告新增一组真实列表头近景，原93图保持，95图及1320/390检查通过；中文画面变化很小，未把盒高变化伪造为字形居中改善。
+- 2026-09-13无窗口追加核对：历史名称字宽差0.953125px按原始值小于1px门槛，不再因先舍入为1而误标；阈值没有放宽。四个批量弹窗剩余8个flag另行保留，Continue按钮及文字的同宽差为1.0625px，Cancel为0.25px，累积影响右对齐位置；实测fontSize/fontWeight/letterSpacing/padding/gap/borderWidth一致，不改宽度补偿。TEMP `interceptor-ui-parity-20260913-app-container-button-metrics`保存实框和文字Range对照。
+
 - `AppContainerPanel`名称使用既有设计15px行高、包名14px行高；包名原15px使四行列表累计增高，底部说明偏移3.8px。推荐标签恢复20px框，通过inline-flex双轴居中，不用padding或位移定位文字；12.5px名称、11.5px包名、10.5px推荐标签字号及横向gap保持。
 - 排序/搜索unit基线与修改后均2/2，Desktop typecheck通过。2026-09-12明暗列表与四个批量确认弹窗共52 matched、0 missing、4 flagged；列表高度与底部说明已匹配，四个弹窗20/20无flag。不能把剩余字体差异算通过。
 - 四个flag是明暗两组名称字宽及相邻推荐标签位置：静态Inter为171.96875px，Renderer Inter Variable为171.015625px，差0.953125px。两边字号12.5px、字重550、行高15px及字距相同，实际FontFace均loaded；没有字体加载失败，不擅自换字体或加偏移。设计CSS首选Inter Variable但实际下载的是Inter，验证必须按完整字体列表，不只检查第一项。
@@ -629,21 +634,27 @@ sequenceDiagram
 
 ### 更新通知按钮
 
+- 2026-09-13登录入口修复：`UpdatesPanel`曾将`GithubOutlined`放入Button文字children，独立label引入后图文不再走7px icon间距，明暗登录按钮宽度少7.6px。现在同一GitHub图标通过共享icon参数传入，文字label保持纯文字；Button图标类型接受现有Lucide/Ant Design组件，装饰图标和spinner保留`aria-hidden`，授权方法与按钮尺寸不变。
+- 前置调用测试2 Red；真实Settings首轮误将blockified的`flex`期待为`inline-flex`，该次不算产品Red。修正断言后精确Red于直接icon槽0/1，Main/Core `14968/41684`正常销毁。产品修复后Renderer47文件425/425、Desktop typecheck、同一Settings导航1/1（19.9s），Main/Core `23004/2728`正常销毁及trace/宿主恢复通过。登录明暗、通知Download/Open与Agent配置五场景64/64、无missing/flagged；没有点击登录或安装器，不代替GitHub真实授权。
+- TEMP `interceptor-ui-parity-20260913-github-{icon-unit-red,icon-unit-final,slot-e2e-red,slot-e2e-green,slot-parity}*`保存前置、最终与截图。唯一HTML的`github-icon-slot-images`只展示这处独有调用的真实产品前后图，共享Button其他调用不重复；新图加入后总91图，原89图hash保持、1320/390布局与红框检查通过。
 - 既有设计的通知动作按钮为32px高、水平padding 11px；Renderer原先使用Button默认34px和14px，使按钮宽出约6px并挤占标题空间。
 - `Button`增加`size="compact"`，只定义这两项尺寸；`UpdateNotification`显式选择它。默认`md`和`sm`、12.5px字号、550字重、15px图标和7px gap保持，不在通知CSS覆盖共享组件样式。
 - `available`仍调用`UpdateActions.download()`，`downloaded`仍调用`UpdateActions.openDownloaded()`；busy时禁用动作，Dismiss独立可用，其余状态不显示通知。没有新增IPC、下载或安装步骤。
+- 当前对齐约定以用户后续明确的flex规则为准：button和独立label使用`inline-flex`与`align-items: center`，图标固定且不收缩，内容间距来自正常gap。以下字形/矩形中心数据仅为历史诊断，不再作为验收目标；不增加位移、独立行高或字体替换。
 - 2026-09-11非E2E证据：通知两项尺寸选择先Red，同组10/10 Green、Desktop typecheck通过；available/downloaded明暗4场景64/64、0 missing/flagged、最大0.9px。四组通知按钮与外框、图标与按钮中心差均为0px；Settings普通动作仍34px，Dismiss后页面动作保持可见。
 - 同一item报告加入两种通知的同尺寸浅色前后图，48张图片、原44张原样保留；1320/390宽度无横向溢出且对比全部展开。证据位于TEMP下`interceptor-update-notification-20260911-{unit-red.log,unit-green.log,typecheck.log,parity.md,parity.json,review/}`。
 - 2026-09-12用户指出图标与文字未居中后补查：原检查仅包含按钮与图标外框，遗漏直接文本子项；英文Download可见文字约高1px。共享`Button`现在将文字放入独立flex label，并在button层使用双轴center，固定图标不收缩；通知调用方不补CSS，三档32/34/28px尺寸、字号与动作不变。
 - 首轮直接Button测试先2项Red，再与通知行为共17/17 Green，Desktop类型通过。明暗Download/Open的图标盒与文字盒中心差0px，盒子组合左右留白12/12px、上下8.5/8.5px，原宽高保持；这些数值不代表可见字形居中。八个通知/弹窗/正文场景100 matched、0 missing，仅保留HTTPS Cancel约1px既有flag；按钮目标按完整可访问名称测控件，非按钮文字仍测原节点，不把新label span误当按钮尺寸。
-- 当前构建真实正文/HTTPS TLS流程2/2（45.7s），Main/Core20144/2344、13768/41652均正常销毁，CA/Root、8888、WinINet和共享journal恢复通过。这证明共享按钮在这些真实调用处正常，不替代更新通知真实release下载及安装器打开验收。
+- 2026-09-12该版构建真实正文/HTTPS TLS流程2/2（45.7s），Main/Core20144/2344、13768/41652均正常销毁，CA/Root、8888、WinINet和共享journal恢复通过。这证明共享按钮在这些真实调用处正常，不替代更新通知真实release下载及安装器打开验收。
 - 同一[报告近景](../../commit-changes/202609111558_ui_parity_progress.html#button-content-alignment-images)补本次修正前后Download/Open实际截图，旧通知的两张改后图替换为当前组件，其他56张图保持，共62图在1320/390宽度加载/排版检查通过。TEMP `interceptor-update-button-centering-20260912*`保留原始四侧度量、单测、八场景parity和真实E2E证据，临时脚本已删除。
-- 2026-09-12用户再次反馈“不居中”后，在完整Renderer截图的绝对坐标按DPR1/1.5/2检查白色图标/字形，不使用元素裁切后的图片中心代替按钮实际中心。当前normal版本的Download可见整组约右偏0.37–0.62px、下偏0.33–0.5px；Open文字下偏1.5–1.75px。去掉内层flex的临时对比没有改变像素，因此不能继续把问题归于flex层数。
+- 2026-09-12早期字形实验在完整Renderer截图的绝对坐标按DPR1/1.5/2检查白色图标/字形。当时normal版本的Download可见整组约右偏0.37–0.62px、下偏0.33–0.5px；Open文字下偏1.5–1.75px。去掉内层flex的临时对比没有改变像素。用户随后明确要求使用flex布局而非字形测量，这些数值不继续指导产品改动。
 - 设计`.btn`没有独立行高覆盖；已删除此前给label加的`line-height: normal`，恢复从Button继承排版，未增加行高数值、margin、transform、基线对齐、文字裁剪或字体替换。DPR1.5/2下Open文字下偏减至1px/0.75px，但Download整组仍右偏0.45px/0.37px、下偏0.33px/0.5px；仍不算视觉问题完全解决。偏移方向询问只收到用户不在的自动答复，不视为允许更改既有设计约束。
-- 最新20/20 Button/通知unit前后Green、Desktop类型、八场景100 matched/0 missing/仅旧Cancel 1 flag；当前bundle正文全屏/Copy/关闭重开真实1/1（21.9s），Main/Core42516/42800正常销毁及8888/WinINet/journal恢复。TEMP `interceptor-button-visible-center-20260912*`保存初始实测、两种无产品改动预览、最终继承版、单测/类型/parity/E2E及报告来源hash；这条真实流程不代替通知下载/安装。
-- 报告当前64图：本轮近景改前使用反馈时真实normal版本、改后使用当前继承版，通知两张改后图也同步更新；六张相关图以外的58张图片源保持，用户和其他会话的其他内容保留。1320/390加载、红框和全部展开状态已查看，一次性脚本已删除；不再写“图标和文字整体完全居中”。
-- 下载行另有设计差异：设计保留隐藏的后续`.srow`，使当前可见末行仍有1px底边框；Renderer真实末行无边框，changelog因此提前约1.1px。直接测量15 matched、0 missing、2 flagged；不修改产品行高或添加偏移，也不修改设计基准掩盖差异。证据为TEMP下`interceptor-updates-row-20260911.{md,json}`。
-- **待视觉确认 · 待通知专属E2E**：用户2026-09-12已恢复E2E；现有[通知规格](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-update-notification)仍planned，没有对应可执行workflow。真实available/downloaded需要packaged App、GitHub授权与可用的新release；条件满足后实施该规格并保存完整Main/Core/Worker、8888及WinINet/journal恢复证据，不能用fake Preload或其他按钮调用处E2E代替。暂停期没有前置E2E Red、最新可见居中反馈尚未完全解决的事实继续保留。
+- 该阶段20/20 Button/通知unit前后Green、Desktop类型、八场景100 matched/0 missing/仅旧Cancel 1 flag；该版bundle正文全屏/Copy/关闭重开真实1/1（21.9s），Main/Core42516/42800正常销毁及8888/WinINet/journal恢复。TEMP `interceptor-button-visible-center-20260912*`保存初始实测、两种无产品改动预览、最终继承版、单测/类型/parity/E2E及报告来源hash；这条真实流程不代替通知下载/安装。
+- 该阶段报告64图：近景改前使用反馈时真实normal版本、改后使用继承版，通知两张改后图也同步更新；六张相关图以外的58张图片源保持，用户和其他会话的其他内容保留。1320/390加载、红框和全部展开状态已查看，一次性脚本已删除；不再用字形中心声明对齐结论。
+- 下载行历史差异：设计保留隐藏的后续`.srow`，使当前可见末行仍有1px底边框；Renderer真实末行无边框，changelog因此提前约1.1px。2026-09-11直接测量15 matched、0 missing、2 flagged，证据为TEMP下`interceptor-updates-row-20260911.{md,json}`。
+- 2026-09-13仅修设计的`.update-progress-row`，让这条可见末行遵守原有无底边框规则，不改产品行高、字体、间距、更新命令或进度条。现有下载态明暗headless parity 30/30，0 missing/flagged、最大原始几何差0.859375px；日志和JSON为TEMP `interceptor-ui-parity-20260913-update-last-row.*`。这只是设计/Renderer还原验证，不执行真实下载、安装或Electron E2E；[同一报告](../../commit-changes/202609111558_ui_parity_progress.html#updates-last-row-images)只展示实际设计前后图和边框变化。
+- 两主题候选PNG已逐图对比后同步，`update-last-row-design-synced.json`保留前后hash和来源；同一HTML由97增至99图、97原图hash保持，宽1320/390下所有图片内嵌加载、红框和展开状态通过。全图对照中的页面角落栅格变化不归因于末行布局，报告只展示同坐标下载行与Release notes近景；设计typecheck通过。
+- **待通知专属E2E**：现有[通知规格](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-update-notification)仍planned，没有对应可执行workflow。真实available/downloaded需要packaged App、GitHub授权与可用的新release；条件满足后实施该规格并保存完整Main/Core/Worker、8888及WinINet/journal恢复证据，不能用fake Preload或其他按钮调用处E2E代替。暂停期没有前置E2E Red的缺口保留；共享Button当前布局、单测和受影响真实流程的结果见Handover，不再另设字形方向的人工待办。
 
 非E2E复验命令：
 

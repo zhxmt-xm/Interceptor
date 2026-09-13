@@ -1,3 +1,4 @@
+import { GithubOutlined } from '@ant-design/icons';
 import { Children, isValidElement, type ReactElement, type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -6,6 +7,7 @@ import type { ButtonProps } from '../../../../components/Button/Button';
 import type { IconButtonProps } from '../../../../components/IconButton/IconButton';
 import { Button, IconButton } from '../../../../components';
 import { UpdateNotification } from '../../UpdateNotification/UpdateNotification';
+import { UpdatesPanel } from '../../SettingsContent/UpdatesPanel';
 
 const state = vi.hoisted(() => ({
   status: null as UpdateStatus | null,
@@ -16,14 +18,27 @@ const state = vi.hoisted(() => ({
   openDownloaded: vi.fn(),
 }));
 
+const githubState = vi.hoisted(() => ({
+  status: { state: 'signed-out' },
+  busy: false,
+  error: null,
+  signIn: vi.fn(),
+}));
+
+vi.mock('../../data/githubAuthStore', () => ({
+  useGitHubAuthStore: (select: (value: typeof githubState) => unknown) => select(githubState),
+  GitHubAuthActions: { signIn: githubState.signIn },
+}));
+
 vi.mock('../../data/updateStore', () => ({
   useUpdateStore: (select: (value: typeof state) => unknown) => select(state),
   UpdateActions: { download: state.download, openDownloaded: state.openDownloaded },
 }));
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ i18n: { language: 'en' }, t: (key: string) => key }) }));
 vi.mock('../../../../components', () => ({
   Button: () => null,
   IconButton: () => null,
+  StatusBadge: () => null,
 }));
 
 function findControl<Props>(tree: ReactNode, component: unknown): ReactElement<Props> {
@@ -41,6 +56,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   state.busy = false;
   state.dismissed = false;
+  githubState.busy = false;
   state.status = {
     supported: true,
     state: 'available',
@@ -89,5 +105,18 @@ describe('Update notification controls', () => {
   it('hides the notification until a status is available', () => {
     state.status = null;
     expect(UpdateNotification()).toBeNull();
+  });
+});
+
+describe('Updates GitHub sign-in control', () => {
+  it.each([false, true])('uses the shared icon slot while busy=%s', (busy) => {
+    githubState.busy = busy;
+    const action = findControl<ButtonProps>(UpdatesPanel(), Button);
+
+    expect(action.props.icon).toBe(GithubOutlined);
+    expect(action.props.children).toBe('settings.signInWithGitHub');
+    expect(action.props.loading).toBe(busy);
+    action.props.onClick?.();
+    expect(githubState.signIn).toHaveBeenCalledOnce();
   });
 });

@@ -597,6 +597,11 @@ Parity fake 不应定义产品不存在的通用命令或后门。
 
 ## 故障排查
 
+### 设计字体不可用
+
+Harness在设计页初始化时逐字重加载Inter与JetBrains Mono，确认得到已加载的FontFace后再重新计算Monaco字体。
+`document.fonts.ready`即使下载失败也会结束等待，不能单独作为字体成功证据。`Design font unavailable`或字体下载错误属于环境失败；检查Google Fonts访问及既有网络配置后复跑，不以fallback字体、放宽1px阈值或改设计PNG消除差异。
+
 ### `window.interceptor` 方法不存在
 
 确认 `installFakeInterceptor` 实现了最新 `InterceptorDesktopApi`，并且 `addInitScript` 在 `goto` 之前调用。

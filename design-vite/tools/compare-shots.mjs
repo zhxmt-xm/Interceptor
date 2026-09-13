@@ -5,9 +5,9 @@ import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 
 const currentRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '..',
-  'shots',
+  process.argv.find((argument) => argument.startsWith('--current-dir='))
+    ?.slice('--current-dir='.length)
+    ?? path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'shots'),
 );
 const positional = process.argv.slice(2).filter((argument) => !argument.startsWith('--'));
 // 回归用：改动前先把 shots 另存一份，改完重出再拿它当基线对比。
@@ -18,9 +18,9 @@ if (!positional[0]) {
 const baselineRoot = path.resolve(positional[0]);
 // 百分比会骗人（侧栏图标全丢只算 1%），所以默认就把差异图写出来供目测。
 const diffRoot = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '..',
-  'shots-diff',
+  process.argv.find((argument) => argument.startsWith('--out-dir='))
+    ?.slice('--out-dir='.length)
+    ?? path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'shots-diff'),
 );
 const feature = positional[1];
 // scenes 是主题/悬停展示图，由 shoot-scenes.mjs 单独产出，不属于 feature UI 的 1:1 范围。

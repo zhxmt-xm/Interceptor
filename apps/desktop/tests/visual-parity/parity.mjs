@@ -316,6 +316,19 @@ async function openDesignPage() {
   // shoot.mjs uses instead.
   await page.goto(designPreview.url, { waitUntil: 'load', timeout: 120_000 });
   await page.waitForFunction(() => window.__monacoReady === true, null, { timeout: 120_000 });
+  await page.evaluate(async () => {
+    const fonts = [
+      ...[400, 450, 500, 600, 700].map(weight => `${weight} 12px "Inter"`),
+      ...[400, 500, 600].map(weight => `${weight} 12px "JetBrains Mono"`),
+    ];
+    for (const font of fonts) {
+      const faces = await document.fonts.load(font, 'Interceptor');
+      if (faces.length === 0 || faces.some(face => face.status !== 'loaded')) {
+        throw new Error(`Design font unavailable: ${font}`);
+      }
+    }
+    window.__monacoRelayout?.();
+  });
   await page.addStyleTag({
     content: '.app{border:0!important;border-radius:0!important;box-shadow:none!important}body.menu-interaction-shot{padding:0!important;align-items:flex-start!important;justify-content:flex-start!important}',
   });
@@ -625,10 +638,10 @@ for (const view of views) {
       );
       continue;
     }
-    const dx = +(app[name].x - design[name].x - systemX).toFixed(1);
-    const dy = +(app[name].y - design[name].y - systemY).toFixed(1);
-    const dw = +(app[name].w - design[name].w).toFixed(1);
-    const dh = +(app[name].h - design[name].h).toFixed(1);
+    const dx = app[name].x - design[name].x - systemX;
+    const dy = app[name].y - design[name].y - systemY;
+    const dw = app[name].w - design[name].w;
+    const dh = app[name].h - design[name].h;
     const target = view.targets.find((candidate) =>
       (typeof candidate === 'string' ? candidate : candidate.name) === name);
     const styleKeys = typeof target === 'object' && target.styleKeys
@@ -666,7 +679,7 @@ for (const view of views) {
       status: flagged ? 'flagged' : 'ok',
     });
     console.log(
-      `  ${flagged ? '! ' : '  '}${name.padEnd(16)} dx ${dx} dy ${dy} dw ${dw} dh ${dh}${styleDiffs.length ? `  [${styleDiffs.join(', ')}]` : ''}`,
+      `  ${flagged ? '! ' : '  '}${name.padEnd(16)} dx ${dx.toFixed(1)} dy ${dy.toFixed(1)} dw ${dw.toFixed(1)} dh ${dh.toFixed(1)}${styleDiffs.length ? `  [${styleDiffs.join(', ')}]` : ''}`,
     );
   }
   viewSummaries.push({

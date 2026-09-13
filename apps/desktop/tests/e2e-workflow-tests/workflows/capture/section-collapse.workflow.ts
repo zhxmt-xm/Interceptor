@@ -85,8 +85,8 @@ test('capture.inspector.section-collapse keeps sections independent and accessib
     contentType: 'application/json',
   });
 
-  // 核对同排文字单元格与进度条居中，不把字体token值当成对齐结果。
-  // Check centered timing cells and bars without treating a font token value as alignment evidence.
+  // 核对真实flex行、固定文字列与弹性进度条，不以字形或自算矩形中心定义对齐。
+  // Verify the flex row, fixed text columns and flexible bar without glyph or calculated-center assertions.
   await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.timing).click();
   const timingContentId = await getByAutomationId(
     page,
@@ -95,13 +95,18 @@ test('capture.inspector.section-collapse keeps sections independent and accessib
   expect(timingContentId).toBeTruthy();
   const timingRows = page.locator(`[id="${timingContentId}"] > div:first-child > div`);
   await expect(timingRows).toHaveCount(2);
+  await page.locator(`[id="${timingContentId}"] > div:first-child`).screenshot({
+    path: testInfo.outputPath('timing-alignment.png'),
+  });
   const timingTypography = await timingRows.evaluateAll((rows) => rows.map((row) => {
     const rowBounds = row.getBoundingClientRect();
-    const center = rowBounds.y + rowBounds.height / 2;
+    const rowStyle = getComputedStyle(row);
     return {
       rowHeight: rowBounds.height,
-      alignItems: getComputedStyle(row).alignItems,
-      pixelRatio: window.devicePixelRatio,
+      display: rowStyle.display,
+      alignItems: rowStyle.alignItems,
+      lineHeight: rowStyle.lineHeight,
+      gap: rowStyle.gap,
       cells: [...row.children].map((element) => {
         const style = getComputedStyle(element);
         const bounds = element.getBoundingClientRect();
@@ -110,7 +115,9 @@ test('capture.inspector.section-collapse keeps sections independent and accessib
           fontSize: Number.parseFloat(style.fontSize),
           lineHeight: style.lineHeight,
           height: bounds.height,
-          centerDelta: bounds.y + bounds.height / 2 - center,
+          flexBasis: style.flexBasis,
+          flexGrow: style.flexGrow,
+          width: bounds.width,
         };
       }),
     };
@@ -120,18 +127,21 @@ test('capture.inspector.section-collapse keeps sections independent and accessib
     contentType: 'application/json',
   });
   for (const row of timingTypography) {
+    expect(row.display).toBe('flex');
     expect(row.alignItems).toBe('center');
+    expect(row.lineHeight).toBe('normal');
+    expect(row.gap).toBe('12px');
     expect(row.cells).toHaveLength(3);
+    expect(row.cells[0]!.flexBasis).toBe('150px');
+    expect(row.cells[1]!.flexBasis).toBe('58px');
+    expect(row.cells[2]!.flexGrow).toBe('1');
+    expect(row.cells[2]!.height).toBe(6);
     for (const cell of row.cells.slice(0, 2)) {
       expect(cell.text).toBeTruthy();
       expect(cell.fontSize).toBeGreaterThan(0);
     }
     for (const cell of row.cells) {
       expect(cell.height).toBeGreaterThan(0);
-      expect(Math.abs(cell.centerDelta)).toBeLessThanOrEqual(1 / row.pixelRatio);
     }
   }
-  await page.locator(`[id="${timingContentId}"] > div:first-child`).screenshot({
-    path: testInfo.outputPath('timing-alignment.png'),
-  });
 });

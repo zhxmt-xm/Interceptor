@@ -279,7 +279,7 @@ stateDiagram-v2
 
 #### WebSocket消息状态
 
-- WebSocket Messages原先引用不存在的`styles.empty`，导致加载、空结果和错误信息采用默认字号/颜色并贴边；现已补116px最小高度的grid居中状态区、12px字体和`--text-3`，长信息可换行。帧采集、方向筛选、payload及断点行为不变；只有控制帧时0条数据消息是预期结果。
+- WebSocket Messages原先引用不存在的`styles.empty`，导致加载、空结果和错误信息采用默认字号/颜色并贴边；当前为116px最小高度的flex居中状态区、12px字体和`--text-3`，长信息可换行。帧采集、方向筛选、payload及断点行为不变；只有控制帧时0条数据消息是预期结果。
 - 设计补齐loading/empty/error三态的明暗六张PNG；`websocketMessagesState`默认ready且由页面切换和截图流程重置，356张旧图SHA256保持不变。产品只增加局部CSS及状态元素的parity标记，没有测试数据或隐藏API。
 - 前置真实UI与parity Red归档为TEMP下`interceptor-websocket-message-state-red-20260909-203133.zip`，SHA256 `93B60A04F592A71A870F0677078A27818E95A29701CE9BDB8BDB97D814E74DA7`，Main/Core `45156/49560`正常退出；原状态区少100px高度、字号13px且颜色不符。
 - 最终真实WebSocket四场景1/1（19.2s）、现有历史/方向unit3/3、Desktop/design typecheck通过；Main/Core `31728/34944`正常退出，8888及WinINet/journal恢复。明暗三态6/6状态区matched、最大0.6px且无字号/颜色差异；同页Inspector host保留既有1.6px高度差，不作为本项新修复或全页parity全绿。
@@ -311,10 +311,16 @@ stateDiagram-v2
 
 #### Timing正文行高
 
-- 当前已撤回本轮新增的`--interceptor-line-height`，恢复改前Timing布局。文字仍为原字号，Grid的`align-items:center`、列宽、12px列间距、7px上下padding、6px进度条和时序计算均未变。
+- 2026-09-13当前实现：由`RequestInspector.timelineRow`负责一维flex排列，标签150px、时长58px、比例条占剩余宽度，父行自然排版及align-items:center；12px gap、7px内容间距、6px条高和真实时间段计算不变。仅Capture设计Timing行同步，Diagnostics的独立时间线不改。现有section-collapse流程保留独立折叠、ARIA和真实时间段检查，新增父行flex/normal、固定两列与弹性比例条断言，不使用下方历史矩形中心方法。
+- 前置row-format14/14；真实section-collapse在`display:grid`而非flex处Red，Main/Core `24104/1252`正常销毁。修改后同组14/14、Desktop/design-vite类型、明暗parity8/8通过，8个目标的原始几何差均0；TEMP前缀`interceptor-ui-parity-20260913-timing-flex-*`保留原始结果。
+- 当前两主题设计图已同步，`timing-flex-design-synced.json`保存同尺寸图源及前后hash；同步后8/8目标保持几何差0，整页像素差2.0543%/2.1201%单独报告。唯一[工作项报告](../../commit-changes/202609111558_ui_parity_progress.html#timing-flex-layout-images)追加一组同主题同尺寸Renderer + fake Preload组件近景，原95图保持，97图加载、红框和1320/390排版已检查；未将无窗口截图标为真实Electron。
+- 2026-09-13失败尝试在8888 listener ready前退出，未进入Timing断言，随后tracing.stop因页面已关闭失败；`timing-flex-e2e-green`只是目录名，Main/Core `10840/27480`的graceful/abrupt均false，不能算Green。当时用户暂停所有Electron E2E，仅继续headless与Node检查；相关进程0、8888无listener、共享journal不存在、WinINet未指向8888不替代该次缺失的完整退出证据。
+- 2026-09-14用户恢复真实E2E后，同一`capture.inspector.section-collapse`最终1/1（20.2s），Main/Core `47500/17304`正常销毁，fixture宿主恢复通过，trace与Timing截图齐全；另只读核验进程0、8888无listener、共享journal不存在。独立折叠/ARIA、父flex/center/normal、150px/58px文字列、12px gap和6px弹性比例条断言全部通过，未改用户语言、产品命令或测试断言。row-format14/14及Desktop类型通过，证据为TEMP `interceptor-ui-parity-20260914-timing-{unit.log,prepare.log,e2e.log,e2e/}`和`interceptor-ui-parity-20260914-desktop-types.log`；692份UI/验证源码hash与完整398场景headless结果保持一致，不再把旧Green用于替代本次布局。
+
+- 2026-09-11历史阶段：曾撤回新增的`--interceptor-line-height`并恢复当时Grid布局；该token仍未重新引入。文字仍为原字号，列宽、12px列间距、7px上下padding、6px进度条和时序计算均未变。
 - 用户反馈后的复核：加入token曾将行高28.140625px增至32.5625px，但改前/当时外框中心差均小于0.01px，不能将行高匹配称为居中改善；临时两层flex还会把可见文字下移约1px，已弃用。未使用基线、裁剪、位移或额外padding方案，原始证据在TEMP `interceptor-centering-audit-20260911/`。
 - 原token版unit8/8、类型、字体parity明暗8/8和E2E Red/Green（42888/42628、26812/19300）仅为当时结果，不能代表当前Timing与设计无差异；深色既有设计补图仍保留，404张旧图hash未变。历史产物位于TEMP `interceptor-timing-20260911*`，报告不再展示被撤回的行高改动作为改善。
-- 当前真实Inspector检查改为同排标签框、数值框和进度条的中心差，不强制某个token。撤回前后同一检查1/1（18.3s/20.1s），Main/Core46032/4400、32356/33148均正常销毁及宿主恢复，row-format8/8、Desktop类型通过；这些结果全部先于用户最新暂停E2E指令。TEMP `interceptor-timing-alignment-review-20260911-*`保留当前截图和trace，不据外框检查宣称用户视觉认可。
+- 该历史阶段真实Inspector曾检查同排标签框、数值框和进度条的中心差，不强制某个token；此方法已由当前父行flex契约取代。撤回前后同一检查1/1（18.3s/20.1s），Main/Core46032/4400、32356/33148均正常销毁及宿主恢复，row-format8/8、Desktop类型通过；这些结果不能代替当前布局的最终E2E。TEMP `interceptor-timing-alignment-review-20260911-*`保留当时截图和trace，不据外框检查宣称用户视觉认可。
 
 #### 请求正文分组的计数标签
 
@@ -424,7 +430,8 @@ node node_modules/@playwright/test/cli.js test --config=apps/desktop/tests/e2e-w
 - 普通`capture`场景补Renderer侧栏展开操作，消除由状态不一致导致的Inspector横向14px误报；修正不存在的旧PNG路径，使用浅色展开且打开Headers详情的独立新基准。
 - `capture-rule-filter`改用现有Rule facet选项，不再定位已不存在的pill；通过正常UI展开侧栏、收起Application分组。设计adapter按`rule-auth`/`rule-stub`分别选中Auth/Stub，不再把任何非空Rule筛选都选成Stub。明暗Auth/Stub/All六个直接预览状态均正确、页面无异常，design typecheck与脚本语法通过。
 - 当前普通Capture为34 matched、4 missing、20 flagged，pixel diff 2.9224%；Rule筛选为3 matched、0 missing、1 flagged，pixel diff 1.6490%。两场景Inspector与Rule facet尺寸、位置均匹配；原先归在Inspector的-53px误报实际来自`Rule appended`的53px偏移，列布局、旧目标、Header区域仍待修复，不声明全页通过。
-- Header区域的局部诊断确认：`Kv`的`cache-control`与`content-type`各只有一行文字，但透明18px Copy按钮位于下一行，行高变成36px，累计推低后续字段；两行额外36px只解释部分偏移，尚未完整解释53px。设计fixture仅Request URL与Status Code有`kv-copy`，Header各行没有对应设计。日志为TEMP下`interceptor-header-row-layout-20260910-145312.log`；临时探针已删除。此项未修改产品，需先确定Header Copy位置与长值换行，不能删复制功能或用固定偏移抵消。
+- 2026-09-10的Header诊断曾发现透明18px Copy单独换行，证据TEMP `interceptor-header-row-layout-20260910-145312.log`保留。2026-09-12按统一flex规则修正后，`Kv`值文字按内容宽度收缩，规则标记和Copy按4px gap同排，长值只在文字内部换行；未把Copy移到key列或删除复制能力。21行DOM检查和row-format14/14通过，最新Capture明暗84 matched、仅8个Header marker纵向flag，横向差0、最大58.4px。
+- 设计fixture仍只有Request URL和Status Code提供`kv-copy`，Header值比产品多18px按钮及gap的可用宽度，因此长值行高仍不等。该设计缺口不通过位移、压缩行高或删除产品能力掩盖，旧A/B预览不代表已批准列迁移。当前结构证据为TEMP `interceptor-ui-layout-20260912-kv-dom/rows.json`，parity为`interceptor-ui-layout-20260912-capture-final.{json,md}`。
 - 本项新增浅色`inspector-sidebar-expanded`与`rule-filter-auth`两张基准，旧386张PNG逐张hash不变。截图脚本增加`--theme`筛选，只生成当前主题；未改产品、第三方或HTTP wire逻辑，未执行真实E2E或新增设计工具测试。
 - TEMP归档`interceptor-capture-rule-scenes-verified-20260910-144808.zip`，SHA256 `29A4002042B9CB886E98CB9CCA7C5BD75A83B993B221777F35B9A872985F1C70`，保留两场景JSON/Markdown/像素diff、直接预览和类型日志、旧图清单及5份源码/资产hash。
 

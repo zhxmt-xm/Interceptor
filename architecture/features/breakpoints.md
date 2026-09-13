@@ -335,6 +335,10 @@ pending registry不设隐藏上限。每次命中都由`suspend`创建等待项�
 
 ## 7. 逻辑队列阶段证据与剩余差异
 
+- 2026-09-13当前Manager实现：移除计数、标签和规则文字的独立px行高覆盖，由Manager继承自然行高；Advanced rules复用共享`Button size="sm"`的28px高度及7px gap，保留SlidersVertical图标和原回调。只恢复既有设计，不换字体、不加位移、不改队列/规则命令。
+- 既有row-format、breakpoints-store、breakpoint-edits与Button共43项unit前后Green。真实`breakpoints.queue-commands`先因计数12px而非normal Red（Main/Core `31288/26884`），修改后同一流程1/1（23.5s，`38380/34056`），三项批量命令、原正文和origin断言同跑，Red/Green均正常销毁且trace保留。Desktop类型与构建通过，Manager浅色8/8 parity、最大原始几何差0.53125px。
+- TEMP `interceptor-ui-parity-20260913-manager-{unit-baseline,unit-green,types,prepare}.log`、`manager-e2e-{red,green}`与`manager-green.{json,md}`保留结果；同一[报告](../../commit-changes/202609111558_ui_parity_progress.html#manager-natural-layout-images)新增一组真实Electron同尺寸近景，原91张图保持，93图加载、6个红框及1320/390排版已检查。这些真实E2E均在用户再次暂停前执行，不代表当前可以继续启动Electron。
+
 结构、感知、关联、逻辑队列、批量命令、独立草稿、HTTP Original / Replacement body 与
 当前连接临时 WebSocket 断点均已实现。真实未验证项仍为：
 

@@ -80,6 +80,12 @@ test('settings.app-containers.ordering keeps enabled rows first through filterin
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.appContainers).click();
   const rows = page.locator(`[data-automation-id^="${APP_CONTAINER_ROW_PREFIX}"]`);
   await expect(rows.first()).toBeVisible();
+  const listHead = rows.first().locator('xpath=..').locator(':scope > div').first();
+  await listHead.screenshot({ path: testInfo.outputPath('app-container-list-head.png') });
+  await expect(listHead).toHaveCSS('display', 'flex');
+  await expect(listHead).toHaveCSS('align-items', 'center');
+  await expect(listHead).toHaveCSS('line-height', 'normal');
+  await expect(listHead.locator('span').last()).toHaveCSS('line-height', 'normal');
   const initialRows = await readRows(rows);
   expect(initialRows.some((row) => row.exempt)).toBe(true);
   expect(initialRows.some((row) => !row.exempt)).toBe(true);

@@ -38,6 +38,7 @@ description: "Verify and debug that an implemented React UI matches its design m
 - **Renderer 走真实 Preload 契约**:harness 在 `page.goto()` 前用 `addInitScript` 注入完整 fake `window.interceptor`；业务组件照常调用窄 API，不包含 parity fixture、`import.meta.env.DEV` 数据分支或测试 setter。
 - **状态通过真实 UI 建立**:主题在导航前写 localStorage，view/选中行/tab/表单通过 Playwright 点击、选择和输入完成；不要暴露 `window.__setView/__setTheme` 之类业务侧测试后门。
 - **设计稿是可编程 SPA**:`design-vite/` 暴露 `window.__setState({view,theme,sidebar,…})`，harness 通过 `design-preview.mjs` 起它的 preview server。
+- **设计字体必须实际加载**：先逐字重调用`document.fonts.load()`，确认Inter与JetBrains Mono返回非空且全部FontFace为loaded，再重新计算Monaco字体。`document.fonts.ready`在下载失败后也会resolve；失败时停止测量，不以fallback产生布局结论，不替换字体或改基准掩盖问题。
 - **元素靠唯一可见文本配对**(`getByText(exact)`),两边无需共享 class。文本不唯一/无文本时,给两边加相同 `data-parity="key"` 再按属性配对。
 
 ## 加一个新 view(零改 harness)
@@ -63,7 +64,7 @@ description: "Verify and debug that an implemented React UI matches its design m
 1. **line-height 被 Ant 覆盖**:`<AntApp>` 渲染的 `.ant-app` 用 token `lineHeight`(1.5714)**覆盖 body**——改 body 的 line-height 完全无效(现象:改了结果逐字节不变)。→ 在 shell 根 `.app` 上设**显式值**。**不要用 `normal`**:fontsource 的 Inter Variable 的 `normal`≈1.6,与设计稿 CDN "Inter" 的 `normal`≈1.23 不同,依赖字体 metrics 会不准。
 2. **高度链断裂**:`.ant-app` 没有 `height:100%` → `.app{height:100%}` 塌缩成内容高 → app 不填满窗口、`flex:1` 的 spring 失效(底部元素浮空)。→ 给 `<AntApp className>` 设 `height:100%`。
 3. **1px 画布边框**:设计稿 `.app` 是带边框+圆角+阴影的卡片,内容从 `(1,1)` 起;真实 app 填满窗口从 `(0,0)` 起 → 全元素 x/y 偏 1px。harness 自动检测并扣除。
-4. **字体 metrics 微差**:fontsource Inter Variable vs 设计稿 CDN Inter,字宽/位置有 ~2px 级微差,属可接受(非布局 bug)。
+4. **字体 metrics 微差**：fontsource Inter Variable与设计稿CDN Inter可能存在字宽差。确认实际加载后仍按原1px阈值报告，不自动接受、不用位移补偿，也不未经确认更换字体。
 5. **不能写死尺寸**:客户端可缩放。除固定宽的 sidebar,其余用 `minmax(0,1fr)` / 可拖 splitter;app 靠高度链填满窗口。
 
 ## 参考

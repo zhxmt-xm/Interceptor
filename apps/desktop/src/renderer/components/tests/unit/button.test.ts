@@ -22,6 +22,7 @@ describe('Button icon and label layout', () => {
     const children = Children.toArray(element.props.children);
     expect(children).toHaveLength(2);
     expect(isValidElement(children[0]) && children[0].type).toBe(icon);
+    expect(isValidElement<{ 'aria-hidden': boolean }>(children[0]) && children[0].props['aria-hidden']).toBe(true);
     const label = children[1];
     expect(isValidElement(label) && label.type).toBe('span');
     if (!isValidElement<{ children: ReactNode; className: string }>(label)) {
@@ -42,6 +43,7 @@ describe('Button icon and label layout', () => {
     expect(element.props.disabled).toBe(true);
     expect(children).toHaveLength(2);
     expect(isValidElement(children[0]) && children[0].type).toBe(Loader2);
+    expect(isValidElement<{ 'aria-hidden': boolean }>(children[0]) && children[0].props['aria-hidden']).toBe(true);
   });
 
   it.each(['md', 'compact', 'sm'] as const)('preserves native actions and accessible names for size %s', (size) => {

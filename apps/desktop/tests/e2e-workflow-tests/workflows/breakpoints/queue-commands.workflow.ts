@@ -34,6 +34,22 @@ test('breakpoints.queue-commands executes logical queue batch actions', async ({
   await createRequestBreakpointRule(page, 'E2E POST queue commands', 'POST');
   await createRequestBreakpointRule(page, 'E2E PUT queue commands', 'PUT');
 
+  // Layout: inspect the shared manager before queue commands without changing its rules.
+  // 布局：队列操作前检查Manager的自然排版和共享按钮，不改变规则配置。
+  await breakpointBadge.click();
+  const manager = page.getByRole('dialog').filter({ has: getByAutomationId(page, AUTOMATION_IDS.breakpoints.toggle) });
+  await expect(manager).toBeVisible();
+  await manager.screenshot({ path: testInfo.outputPath('breakpoint-manager.png') });
+  await expect(manager.locator('header')).toHaveCSS('display', 'flex');
+  await expect(manager.locator('header')).toHaveCSS('align-items', 'center');
+  await expect(manager.locator('header > div:first-child > span')).toHaveCSS('line-height', 'normal');
+  const advancedRules = manager.locator('header > button').first();
+  await expect(advancedRules).toHaveCSS('gap', '7px');
+  await expect(advancedRules).toHaveCSS('height', '28px');
+  await expect(manager.locator(':scope > div').first()).toHaveCSS('line-height', 'normal');
+  await manager.locator('header > button').last().click();
+  await expect(manager).toBeHidden();
+
   // Continue all from this rule: release both POST requests, ignore the draft, and leave PUT pending.
   // Continue all from this rule：释放两条POST、忽略草稿，并让PUT继续pending。
   const postAPath = '/e2e/queue-rule-post-a';

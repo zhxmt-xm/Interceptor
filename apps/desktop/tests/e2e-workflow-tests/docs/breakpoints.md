@@ -161,7 +161,7 @@ HTTP与WebSocket逻辑队列互不阻塞；同一WebSocket连接的双向帧按C
 
 ### Steps
 
-1. 创建profile/evidence与HTTP origin；通过Rules UI创建POST与PUT两个互斥request Breakpoint Rule。
+1. 创建profile/evidence与HTTP origin；通过Rules UI创建POST与PUT两个互斥request Breakpoint Rule。打开`capture.breakpoint-manager`，确认标题父行flex/align-items:center，计数与分组标签使用自然行高，Advanced rules为28px共享按钮且图文gap为7px；保存Manager截图，再真实点击关闭。该步骤不改变规则或总开关。
 2. 制造两个POST和一个PUT pending，在POST队首填写未提交草稿；执行Continue all from this rule。
 3. 确认两个POST原始正文到达origin、草稿未应用，PUT仍pending并因最新snapshot自动成为队首。
 4. 再加入一条PUT并执行Drop all；确认两条PUT客户端失败且origin零写入，badge归零。
@@ -176,6 +176,7 @@ HTTP与WebSocket逻辑队列互不阻塞；同一WebSocket连接的双向帧按C
 
 - 产品实现前，同一workflow必须因三条公开批量命令入口缺失而Red。
 - 产品实现后，queue/rule作用域、草稿忽略、队列推进、客户端/origin结果和完整销毁必须Green；调用开始快照、stale目标与`resolvedCount`由Queue/CoreApplication单测锁定。
+- 2026-09-13 Manager还原：布局变化前先执行同组队列/摘要/Button行为基线，再以该流程记录自然行高与7px图文gap的真实Red；修改后复跑同组与本流程。保留原三项批量操作和退出恢复断言，不以布局通过替代业务验证。
 
 ### Automation Contract
 
