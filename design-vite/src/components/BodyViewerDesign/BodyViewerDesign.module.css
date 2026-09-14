@@ -6,6 +6,10 @@
   gap: 10px;
 }
 
+.bodyViewerFullscreen {
+  flex: 1;
+}
+
 .bodyViewerToolbar {
   display: flex;
   height: 40px;
@@ -58,4 +62,17 @@
   line-height: 20px;
   text-overflow: clip;
   white-space: nowrap;
+}
+
+.bodyViewerMessageHex {
+  flex: 0 0 48px;
+  overflow: auto;
+  white-space: pre;
+}
+
+.bodyViewerHexProbe {
+  position: absolute;
+  width: 1ch;
+  height: 0;
+  visibility: hidden;
 }

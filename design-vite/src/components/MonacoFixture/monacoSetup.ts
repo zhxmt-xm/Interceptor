@@ -1,4 +1,9 @@
 import * as monaco from 'monaco-editor/editor/editor.api';
+import 'monaco-editor/editor/contrib/codelens/browser/codelensController';
+import 'monaco-editor/editor/contrib/inlayHints/browser/inlayHintsContribution';
+import 'monaco-editor/editor/common/services/treeViewsDndService';
+import 'monaco-editor/editor/contrib/suggest/browser/suggestController';
+import 'monaco-editor/platform/actionWidget/browser/actionWidget';
 import 'monaco-editor/languages/definitions/html/register';
 import 'monaco-editor/languages/definitions/markdown/register';
 import 'monaco-editor/languages/definitions/xml/register';

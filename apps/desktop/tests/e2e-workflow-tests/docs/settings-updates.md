@@ -300,6 +300,10 @@ TLS专项16 views / 96 targets / 0 missing / 0 flagged / 最大0.5px与package/a
 **状态**：passed
 **策略**：shared
 
+2026-09-14增加离线字体契约：进入默认Certificates后保存`settings-fonts.json/png`，确认`Inter`只注册设计的400/450/500/600/700、550字重请求实际加载非空FontFace，CSSOM中的字体URL均来自`interceptor://app/`。不切换应用语言，不要求英文显示文案；原九个section、键盘和往返步骤保持。旧注册的真实Red为Inter字重集合空且loadedFaces=0，Main/Core `28472/47860`正常退出/宿主恢复，证据TEMP `interceptor-inter-weights-20260914-e2e-red`；Resource Timing在自定义协议未列出字体，不能用它代替CSSOM与实际FontFace检查。
+
+首次最终运行已读到五个Inter字重、loadedFaces=1和35个本地Inter URL，但URL检查误包含其他字体的合法内嵌`data:`资源，不能算产品Red或整体Green。已将CSSOM筛选限定为Inter，不修改字体资源、CSP或预期本地协议。Main/Core `17424/12864`正常退出；TEMP `interceptor-inter-weights-20260914-e2e-green`保留失败证据，目录名不代表通过。2026-09-15恢复后同一workflow1/1（20.7s）及所有原导航步骤通过，Main/Core `10628/38856`正常退出、宿主guard/trace齐全；当前证据`interceptor-ui-acceptance-20260915-settings`。
+
 ### Steps
 
 1. 创建profile/evidence，启动trace/Electron，等待App/Core/8888/readiness；点击 `capture.readiness.cancel`，确认System Proxy仍未owned且系统设置未修改。

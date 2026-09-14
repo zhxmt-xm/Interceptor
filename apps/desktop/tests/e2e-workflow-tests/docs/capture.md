@@ -5,8 +5,12 @@
 <a id="capture-body-fullscreen"></a>
 ## `capture.body.fullscreen`
 
+2026-09-14末行Copy：origin在原JSON/HTML响应中返回`x-copy-wrap: private, max-age=60, s-maxage=60, stale-while-revalidate=300`；通过自产Header key定位实际行。离开行Copy透明、hover显示，Copy所属末行18px且flex居中，紧随文字4px；原生跨行选择及按钮Copy均为完整Header值。保存`header-copy-last-line-{json,html}.json/png`再断言，原URL/方法Copy与三份正文全屏步骤保留。前置真实Red为父容器54px而非18px（`6340/27488`），最终同一workflow1/1（22.5s）Green（`44632/7112`），两代正常退出并恢复宿主；TEMP `interceptor-header-copy-20260914-e2e-{red,green}`含trace/metadata，不把旧尺寸Green当本次排列通过。
+
 **状态**：passed；现有行为覆盖，未修改产品实现，未人为制造Red
 **策略**：真实Capture Request/Response；共享BodyViewer/BodyFullscreen；真实剪贴板
+
+2026-09-14新增Copy尺寸验收已完成：General的POST值使用共享IconButton inline档，按钮18x18px、Lucide图标实际14x14px、padding0；离开行opacity0、hover后1且复制完整POST。前置Red图标实际6x14px、padding1px 6px，Main/Core `16900/6088`正常销毁；最终同一workflow1/1（16.9s）、`15600/18660`正常销毁及宿主guard恢复，unit25/25、Desktop类型通过。TEMP `interceptor-ui-copy-inline-20260914-e2e-{red,green}`保存`header-copy-{json,html}.json/png`及trace/metadata；不修改语言、不强制显示所有Copy，本步骤未改变Header换行结构。
 
 ### Steps
 
@@ -138,17 +142,24 @@ UTF-8追加步骤：通过同一真实origin发送超过5 MiB的gzip输入，解
 <a id="capture-scenarios-websocket"></a>
 ## `capture.scenarios.websocket`
 
-**状态**：passed；四场景Green，真实载荷复制、方向隔离、origin关闭码1000及空态样式Red后Green
+**状态**：2026-09-14Compact Tree及Binary消息行均取得各自真实Red；当前同一workflow1/1（54.7s）Green，原四场景与5MiB同跑，Main/Core与宿主恢复通过
 **策略**：真实Capture Messages；现有WebSocket流量库；方向/载荷/连接隔离
+
+Binary行排版目标：在原ws-binary的Sent/Received两方向各保存`websocket-binary-row-{sent,received}.json/png`，核对消息行38px、mono10.5px、自然行高和父行center。该值来自设计消息行，不用固定像素补偿单个Binary标签；现有内容/Copy/方向和Tree/UTF-8步骤不变。
+
+Compact正文尺寸：在真实binary JSON消息默认Pretty档、切Tree之前保存`websocket-compact-code-height.json/png`。五行仍各20px、字号12px、上下padding各13px；外框等于实际文字内容加padding及设备上实际边框，不再额外预留固定8px滚动条。先在旧外框取得Red，修复后同一workflow复验，Tree/Copy/全屏和原协议步骤保持。
+
+当前Binary真实Red为lineHeight12.915px（`21904/26272`），Green为normal且38px/10.5px/五列宽度不变（`42520/15276`）；两代均正常销毁/宿主guard通过。TEMP `interceptor-websocket-row-20260914-e2e-{red,green}`含双向JSON/截图、trace和metadata，当前1/1（54.7s），不改写早期Tree的独立前置证据。
 
 ### Steps
 
-1. fresh profile经UI开启Recording，依次运行已有Text、Binary、Bidirectional和Control默认场景，每个独立WebSocket经8888产生真实101握手并以1000关闭。
-2. 选择自产Capture行，进入Messages并切换Sent/Received/All；Text各方向1条，Binary各方向1条，双向场景Sent 1条/Received 2条。
-3. 文本载荷分别为`hello from client`、`client message`、`origin message`；Binary为`00 01 02 03 ff`，逐行展开并用真实Copy验证完整值。
+1. fresh profile经UI开启Recording，经真实WebSocket binary帧发送`{"buildId":8431,"state":"running","branch":"main"}`并由origin完整echo，校验返回字节与binary标志，以1000关闭；从自产Capture行进入Messages/Sent，展开消息并选择Tree。通过已有通用二进制内容探测进入JSON，不修改Core MIME；text帧有明确文本MIME，不强行要求Tree。实际树面板必须容纳全部五行，不能只剩边框/padding；通过DOM状态切换根节点折叠/展开并核对高度随内容变化，正文Copy必须等于原始JSON。全屏保留原MIME/Save与同消息，关闭后保留Tree；保存改前/改后截图与树面板尺寸JSON。该步骤在旧四场景前执行，避免把相邻历史selector失败当目标Red。
+2. 依次运行已有Text、Binary、Bidirectional和Control默认场景，每个独立WebSocket经8888产生真实101握手并以1000关闭。
+3. 选择自产Capture行，进入Messages并切换Sent/Received/All；Text各方向1条，Binary各方向1条，双向场景Sent 1条/Received 2条。
+4. 文本载荷分别为`hello from client`、`client message`、`origin message`；Binary为`00 01 02 03 ff`，逐行展开并用真实Copy验证完整值。
 	展开后的载荷标题必须显示当前语言的方向和类型，不得泄漏`capture.text`等资源键；通过自产帧的Copy automation ID定位标题，不切换语言或用翻译文案定位。文本发送/接收两态分别保存真实截图。
-4. Control场景完成Ping/Pong/Close协议交互；按现有产品语义不把控制帧伪造为数据消息行，Messages为0条。空态保留116px最小高度、12px字体及flex双轴居中布局，不退回未应用样式的默认黑字。
-5. 每条场景关闭Inspector，不串连接；保存逐场景身份、trace与截图，Renderer无page error，fixture验证连接、Main/Core/Worker、8888和WinINet/journal恢复。
+5. Control场景完成Ping/Pong/Close协议交互；按现有产品语义不把控制帧伪造为数据消息行，Messages为0条。空态保留116px最小高度、12px字体及flex双轴居中布局，不退回未应用样式的默认黑字。
+6. 每条场景关闭Inspector，不串连接；保存逐场景身份、trace与截图，Renderer无page error，fixture验证连接、Main/Core/Worker、8888和WinINet/journal恢复。
 
 `ws-control`保存`websocket-control-empty-state.png`及`websocket-empty-presentation.json`，核对真实Messages空态和计算样式；该场景只有控制帧，0条数据消息符合当前产品边界。加载、空结果与错误状态另有明暗parity；不改正文或帧断言掩盖样式问题。
 
@@ -157,6 +168,8 @@ UTF-8追加步骤：通过同一真实origin发送超过5 MiB的gzip输入，解
 2026-09-10追加真实大文本消息：5 MiB预览边界落在四字节字符内，origin和客户端收到完整消息，行预览、专用Copy、展开正文Copy与编辑器内容仅保留完整字符前缀。当前workflow1/1，Main/Core `24244/14348`正常退出且host guard通过；原四场景同时复跑。实现前真实Red缺口与归档见[UTF-8预览](../../../../../architecture/features/capture.md#utf-8预览截断)。
 
 2026-09-11载荷标题资源键修复取得真实Red（Main/Core `42540/1756`）与最终1/1 Green（56.9s，`35356/9584`），两代正常销毁且host guard恢复。标题通过当前语言UI读取，不切换语言；四场景与5MiB预览原断言保留。unit7/7、含catalog16/16及Desktop类型通过，证据见[WebSocket载荷标题](../../../../../architecture/features/capture.md#websocket载荷标题)，不将本项Red用于弥补UTF-8历史缺口。
+
+2026-09-14Compact JSON Tree前置unit3 Red/9 Green后12/12；真实binary帧Red为内容110px/可见0（`20372/19832`），最终1/1（54.8s）展开可见110px、折叠22px、全屏返回110px，`2252/34812`正常销毁及宿主guard恢复。首轮text帧无Tree导致selector失败（`20096/36492`）不算产品Red；全部trace/metadata及`websocket-tree-{expanded,collapsed,restored}.json/png`、全屏截图保存在TEMP `interceptor-compact-tree-20260914-e2e-{red,red-binary,green}`。真实150%DPR下外框约127.33/39.33px，按内容可见高度验证，不把DPR2的128/40硬编码到Electron。原四场景和5MiB断言同时保留。
 
 <a id="capture-scenarios-grpc"></a>
 ## `capture.scenarios.grpc`

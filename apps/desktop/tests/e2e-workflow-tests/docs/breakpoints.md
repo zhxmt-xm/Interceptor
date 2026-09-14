@@ -132,13 +132,15 @@ HTTP pending按最新snapshot推进；中间abort不删除Capture行。只有用
 **状态**：passed
 **策略**：privileged UI
 
+2026-09-15复验1/1（18.0s）：Original容器与内部正文均97.3333px，原HTTP/WS队列、草稿、Continue和真实数据面通过。Main/Core `47500/33884`正常退出，trace与宿主guard齐全；证据TEMP `interceptor-ui-acceptance-20260915-websocket-queue-green`。首轮新增断言误将CSS默认min-height的auto写成0px，实际额外高度已为0；该测试失败与`26036/46656`正常退出记录保留，不计产品Red。
+
 ### Steps
 
 1. 创建profile/evidence、HTTP origin和WebSocket lab；启动真实Electron，先建立当前连接并从Messages UI启用message断点，再创建HTTP request Breakpoint Rule。
 2. 同时制造一个HTTP pending，以及同一WebSocket连接的出站/入站两个pending；确认全局badge=3，分别属于`http`与`ws:<exchangeId>`。
 3. 确认WebSocket队首可编辑、第二项为Queued且没有编辑器；同一已捕获应用帧由pending row在原sequence位置
 	暂时代替，后到的未挂起反向历史帧仍排在其后；Sent / Received筛选不显示另一方向的pending。
-4. 在HTTP与WebSocket队首分别填写不同Text草稿，往返选择后逐项恢复，证明草稿按`breakpointId`隔离。
+4. 在HTTP与WebSocket队首分别填写不同Text草稿，往返选择后逐项恢复，证明草稿按`breakpointId`隔离。首次打开WebSocket队首时，从公共Execute edited按钮定位当前Inspector，按Section的`aria-controls`读取Original容器；断言`display:flex`、默认`min-height:auto`且高度等于内部BodyViewer，保存`websocket-paused-original-layout.json/png`。不按翻译文案或CSS class定位，不把此前headless结果当作真实E2E。
 5. 对WebSocket执行Continue all；命令开始时两项原样放行，命令期间产生的echo作为未来项保持pending，HTTP与HTTP草稿不变。
 6. 再次Continue all释放未来WebSocket项；随后选择HTTP，确认草稿仍在，并用Continue unmodified原样发送客户端正文。
 7. 保存HTTP/双向WebSocket数据面、Capture/trace证据；正常Close并验证Main/Core、8888和系统代理恢复。

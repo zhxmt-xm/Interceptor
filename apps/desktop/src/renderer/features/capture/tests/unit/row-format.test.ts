@@ -12,6 +12,7 @@ import {
   requestCookiePairs,
   responseCookiePairs,
   responseTimingSegments,
+  splitKvTextLines,
   typeLabel,
 } from '../../utils';
 
@@ -29,8 +30,8 @@ function valueItems(row: KvRow, onOpenRule?: (ruleId: string) => void): ReactNod
   const renderedRow = Children.toArray(element.props.children)[0];
   if (!isValidElement<{ children: ReactNode }>(renderedRow)) throw new Error('Expected one Kv row.');
   const value = Children.toArray(renderedRow.props.children)[1];
-  if (!isValidElement<{ children: ReactNode }>(value)) throw new Error('Expected a Kv value container.');
-  return Children.toArray(value.props.children);
+  if (!isValidElement<{ value: ReactNode; children: ReactNode }>(value)) throw new Error('Expected a Kv value container.');
+  return [value.props.value, ...Children.toArray(value.props.children)];
 }
 
 describe('capture row format', () => {
@@ -125,17 +126,51 @@ describe('payload clipboard text', () => {
 });
 
 describe('Kv value actions', () => {
+  it('keeps complete graphemes and whitespace when grouping measured lines', () => {
+    const lines = ['private, ', '\ud83d\ude42e\u0301 ', 'max-age=60'] as const;
+    const value = lines.join('');
+    expect(splitKvTextLines(value, (offset) => offset < lines[0].length ? 0
+      : offset < lines[0].length + lines[1].length ? 18 : 36)).toEqual(lines);
+    expect(splitKvTextLines('', () => { throw new Error('Empty text must not be measured.'); })).toEqual(['']);
+  });
+
+  it('finds line boundaries without measuring every character of a long value', () => {
+    const value = 'header-value;'.repeat(200);
+    const lineTop = vi.fn((offset: number) => Math.floor(offset / 100) * 18);
+    const lines = splitKvTextLines(value, lineTop);
+    expect(lines.join('')).toBe(value);
+    expect(lines).toHaveLength(26);
+    expect(lines.every((line) => line.length === 100)).toBe(true);
+    expect(lineTop.mock.calls.length).toBeLessThan(400);
+  });
+
+  it.each(['set', 'replace', 'remove'] as const)('passes the complete %s value to the last-line layout', (effect) => {
+    const fullValue = `max-age=0, ${'cache-control-value;'.repeat(30)}`;
+    const element = Kv({ rows: [['cache-control', fullValue, 'a', undefined, effect]] });
+    const row = Children.toArray(element.props.children)[0];
+    if (!isValidElement<{ children: ReactNode }>(row)) throw new Error('Expected one Kv row.');
+    const value = Children.toArray(row.props.children)[1];
+    if (!isValidElement(value)) throw new Error('Expected the value layout.');
+
+    expect(value.props).toMatchObject({
+      value: fullValue,
+      accent: 'a',
+      inactive: effect === 'replace' || effect === 'remove',
+    });
+  });
+
   it.each(['set', 'append', 'replace', 'remove'] as const)('keeps text, %s marker and Copy in order without changing the full value', (effect) => {
     const fullValue = `max-age=0, ${'cache-control-value;'.repeat(30)}`;
     const onOpenRule = vi.fn();
     const items = valueItems(['cache-control', fullValue, undefined, undefined, effect, 'rule-headers'], onOpenRule);
     expect(items).toHaveLength(3);
     const [text, marker, copy] = items;
-    expect(isValidElement<{ children: ReactNode }>(text) && text.props.children).toBe(fullValue);
+    expect(text).toBe(fullValue);
     expect(isValidElement(marker) && marker.type).toBe('button');
     expect(isValidElement(copy) && copy.type).toBe(IconButton);
     if (!isValidElement<{ onClick(): void; 'data-effect': string }>(marker)
-      || !isValidElement<{ onClick(): void }>(copy)) throw new Error('Missing value actions.');
+      || !isValidElement<{ onClick(): void; size: string }>(copy)) throw new Error('Missing value actions.');
+    expect(copy.props.size).toBe('inline');
     expect(marker.props['data-effect']).toBe(effect);
     marker.props.onClick();
     expect(onOpenRule).toHaveBeenCalledWith('rule-headers');
@@ -148,7 +183,8 @@ describe('Kv value actions', () => {
     const items = valueItems(['Status', displayValue, undefined, '200']);
     const copy = items[1];
     expect(isValidElement(copy) && copy.type).toBe(IconButton);
-    if (!isValidElement<{ onClick(): void }>(copy)) throw new Error('Missing Copy action.');
+    if (!isValidElement<{ onClick(): void; size: string }>(copy)) throw new Error('Missing Copy action.');
+    expect(copy.props.size).toBe('inline');
     copy.props.onClick();
     expect(fixture.copy).toHaveBeenCalledWith('200');
   });

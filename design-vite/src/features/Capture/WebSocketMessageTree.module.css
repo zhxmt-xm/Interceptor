@@ -1,0 +1,89 @@
+.webSocketMessageTree {
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 6px;
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  background: var(--panel-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.webSocketMessageTreeFullscreen {
+  flex: 1;
+}
+
+.webSocketMessageTreeRow,
+.webSocketMessageTreeChild {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  height: 22px;
+  padding: 0 8px 0 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.webSocketMessageTreeChild {
+  padding-left: 19px;
+}
+
+.webSocketMessageTreeRow:hover,
+.webSocketMessageTreeChild:hover {
+  background: var(--hover);
+}
+
+.webSocketMessageTreeDisclosure {
+  display: inline-flex;
+  flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+  align-items: center;
+  justify-content: center;
+}
+
+.webSocketMessageTreeToggle {
+  display: flex;
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.webSocketMessageTreeToggle:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.webSocketMessageTreePunctuation,
+.webSocketMessageTreeSummary {
+  color: var(--text-3);
+}
+
+.webSocketMessageTreeSummary {
+  font-size: 11px;
+}
+
+.webSocketMessageTreeKey {
+  color: var(--purple);
+}
+
+.webSocketMessageTreeString {
+  color: var(--green);
+}
+
+.webSocketMessageTreeNumber {
+  color: var(--blue);
+}

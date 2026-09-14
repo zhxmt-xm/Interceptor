@@ -64,7 +64,6 @@
 
 .originalBody {
   display: flex;
-  min-height: 185px;
   flex-direction: column;
   gap: 10px;
 }

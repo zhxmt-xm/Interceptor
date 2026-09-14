@@ -224,7 +224,7 @@ export function BodyViewer({
       return <HexView bytes={bytes} compact={compact} parityId={paneParityId} />;
     }
     if (mode === 'tree') {
-      return <JsonTreeView root={tree} parityId={paneParityId} />;
+      return <JsonTreeView root={tree} compact={compact && !fullscreen} parityId={paneParityId} />;
     }
     if (format.kind === 'markdown' && mode === 'default') {
       return <MarkdownView source={text} parityId={paneParityId} />;

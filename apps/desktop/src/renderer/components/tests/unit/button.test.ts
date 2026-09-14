@@ -61,6 +61,7 @@ describe('IconButton sizes', () => {
     { size: 'md', iconSize: 18 },
     { size: 'sm', iconSize: 15 },
     { size: 'xs', iconSize: 13 },
+    { size: 'inline', iconSize: 14 },
   ] as const)('renders the $size icon without a caller style override', ({ size, iconSize }) => {
     const button = IconButton({ icon: ChevronDown, label: 'Collapse', tooltip: null, size });
     if (!isValidElement<{ children: ReactNode }>(button) || button.type !== 'button') {

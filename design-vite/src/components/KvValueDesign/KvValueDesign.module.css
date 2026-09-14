@@ -1,0 +1,57 @@
+.kvValueDesign {
+  display: block;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 18px;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.kvValueLine {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  gap: 4px;
+  white-space: pre;
+}
+
+.kvValueAccent {
+  color: var(--accent);
+}
+
+.kvValueGood {
+  color: var(--green);
+}
+
+.kvValueInactive {
+  color: var(--text-3);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.kvValueMeasure {
+  position: absolute;
+  display: block;
+  visibility: hidden;
+  white-space: pre-wrap;
+  pointer-events: none;
+}
+
+.kvRuleContent {
+  display: block;
+}
+
+.kvRuleLabel {
+  display: inline-block;
+}
+
+.kvValueCopy {
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+
+.kvValueDesign:hover .kvValueCopy,
+:global(.kv) > :global(.k):hover + .kvValueDesign .kvValueCopy {
+  opacity: 1;
+}

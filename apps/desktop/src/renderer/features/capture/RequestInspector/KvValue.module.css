@@ -1,0 +1,53 @@
+.value {
+  display: block;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 18px;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.line {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  gap: 4px;
+  white-space: pre;
+}
+
+.composite {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.text {
+  display: inline-flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+}
+
+.accent {
+  color: var(--accent);
+}
+
+.good {
+  color: var(--green);
+}
+
+.inactive {
+  color: var(--text-3);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.measure {
+  position: absolute;
+  display: block;
+  visibility: hidden;
+  white-space: pre-wrap;
+  pointer-events: none;
+}

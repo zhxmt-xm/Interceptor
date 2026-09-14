@@ -42,6 +42,7 @@ HTTP breakpoint 仍使用整面板 `BreakpointInspector`，两条路径只共享
 `components/` 是扁平库，每个组件独立子目录（`Component.tsx` + `Component.module.css`）；含 Flyout（portal 锚定弹层）、ThemeSwitcher、LanguageSwitcher（侧栏底部）。`Tabs` 在容器放不下时把尾部项收进 `…` Flyout（隐藏测量层 + `ResizeObserver`），保证面板头高度固定。
 
 - `IconButton`可按调用点提供`--icon-button-hover-background`与`--icon-button-hover-color`，未提供仍使用`--hover`/`--text`。WebSocket消息断点用它保持armed黄色和Ant默认text按钮反馈，不改变共享默认主题；禁用态仍不响应hover。
+- `IconButton`统一padding为0、内部Lucide图标不收缩；`inline`档为18px按钮/14px图标/5px圆角，`Kv`只选择档位并控制行hover显隐，不能由调用方缩小按钮后留下浏览器默认padding。md/sm/xs既有尺寸与事件保持；2026-09-14真实Copy从6x14px恢复14x14px，unit与同一workflow Red/Green及退出证据见[Capture](../features/capture.md#capture筛选parity场景)。
 - `Button`由组件控制图标和独立label的`inline-flex`及`align-items: center`，button再用`justify-content: center`居中内容组。md/compact/sm继续分别为34/32/28px，不在通知等调用方覆盖位置；检查实际父布局规则、内容范围和正常gap，不以字形像素边界或自算矩形中心定义对齐，也不添加独立位移、裁字或行高补偿。
 - `Button.icon`接收现有Lucide或Ant Design图标组件，由共享icon槽提供尺寸与7px图文gap；调用方不再把图标混进文字children。图标与loading spinner属于装饰，使用`aria-hidden`，按钮名称来自文字或显式`ariaLabel`；UpdatesPanel保留原GitHub图标和登录动作。
 
@@ -93,7 +94,8 @@ Capture 请求菜单包在稳定的 RequestList 上，而不是虚拟化 Request
 
 - `components/BodyFullscreen` 是共享的 1060×660 弹层（Ant Design `Modal`，`closable={false}` + 自绘 head，点遮罩关闭），头部是标题 + MIME/尺寸 chip + Copy + Close。
 - 全屏与内联**共用同一份内容**：`BodyViewer` / Composer `BodyPane` 各自算出一份 `content`，按 `fullscreen` 决定放进弹层还是留在原位，不复制第二份 Monaco。
-- 全屏态下工具条隐藏 Copy 与 Fullscreen（头部已提供），只留 Format。
+- 全屏态下工具条隐藏 Copy 与 Fullscreen（头部已提供），保留当前档位、MIME及调用方提供的Save/Format。
+- `BodyViewer`仅让内联Compact的`JsonTreeView`按展开内容定高；普通与全屏Tree继续填充有界容器，保留22px行、原padding/边框、虚拟行与滚动。尺寸策略不改变JSON识别、原文字节或Copy。
 - 只有传了 `fullscreenTitle` 的调用点才有全屏入口：Capture 请求/响应正文、WebSocket 帧、gRPC 消息、Composer 请求/响应正文。
 
 ## 7. Automation 契约
@@ -105,6 +107,8 @@ Storage现有Refresh按钮使用`automationId`传入公共ID；Exchange/Body引�
 **禁止在 Renderer 增加 E2E-only setter、隐藏 IPC 或直接业务调用入口。**
 
 ## 8. 主题与语言
+
+Renderer的Inter现由`styles/fonts.css`注册设计使用的400/450/500/600/700字重，35条声明复用现有`@fontsource-variable/inter`的7份WOFF2；文件与设计来源SHA256相同，不新增依赖、字体副本或网络请求。离散注册使550等中间字重与设计按相同规则匹配；JetBrains Mono、控件字号/字重声明、尺寸及padding/gap不变。真实运行已确认Inter加载和本地资源；完整Settings流程因原断言包含其他字体的`data:`资源失败，已限定Inter，恢复E2E后复验，不能把该次失败计为整条Green。
 
 四套时段主题由 `theme/theme.ts` + `styles/global.css` 驱动。
 

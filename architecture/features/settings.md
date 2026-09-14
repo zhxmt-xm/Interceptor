@@ -90,10 +90,13 @@ Renderer瞬态导航反馈，不写workspace、不进入URL，也不由Main/Core
 
 ### Certificates面板parity场景
 
+- 当前字体修复：设计Google Fonts实际使用的7份Inter WOFF2与现有`@fontsource-variable/inter@5.2.8`文件SHA256全部相同，差异不是字体二进制，而是设计按400/450/500/600/700逐个注册，产品原为100–900连续范围。Renderer现在用现有依赖资源注册同一离散字重，并以Inter为UI字体；无新依赖/外部字体请求，JetBrains Mono、控件字重声明、字号、尺寸和gap/padding不变。源文件比对在TEMP `interceptor-inter-source-20260914/source.json`；真实字体注册前置Red见`interceptor-inter-weights-20260914-e2e-red`。当前398场景合并结果中的Certificates与AppContainer字体目标均无flag，文件为`interceptor-ui-delivery-20260914-evidence/parity-current.json`；不以headless替代真实验收。
+- 2026-09-15恢复后的同一Settings workflow1/1（20.7s）：五个字重、真实loadedFaces=1、35个本地Inter URL及全部九section/键盘/往返通过；Main/Core `10628/38856`正常退出，trace及宿主guard齐全。证据TEMP `interceptor-ui-acceptance-20260915-settings`。当前package/audit与smoke1/1（36.7s）通过，ASAR复核35声明/7资源，前缀`interceptor-acceptance-20260915-*`；无签名证书的17个文件按规则标unsigned。
+- 2026-09-14首次最终运行的URL断言误包含其他字体合法`data:`资源，修正为Inter后当日因暂停未复跑；Main/Core `17424/12864`正常退出，原失败仍保留于TEMP `interceptor-inter-weights-20260914-e2e-green`，不因目录名改写历史结果。
 - 2026-09-11旧`settings`场景补正常Toggle sidebar与Certificates导航，解决expanded/collapsed导致的160px差异；旧`light/shell-v2/settings.png`不存在，改为复用已有明暗`settings/framed.png`，不生成或修改基准。
 - 明暗各10 matched、0 missing、2 flagged；`MITM active`与`Show in file manager`仍各约1px位置差，继续报告。像素对比由n/a恢复为约1.46%/1.45%，证书fixture字段、说明和图标的既有差异不冒充产品已修复。
 - 产品、证书/系统状态、fake数据与设计稿未改；只运行受影响parity和脚本语法检查，不增加工具自身测试或重复证书E2E。TEMP证据前缀`interceptor-settings-certificates-20260911`；[工作项报告](../../commit-changes/202609111558_ui_parity_progress.html#settings-certificates)记录范围与遗留。
-- 2026-09-11定向DOM诊断确认两侧字体均成功加载，但设计实际使用静态Inter、Renderer为Inter Variable。标题文字宽90.375/89.40625px、Show in file manager按钮宽178.359375/177.734375px；标题gap9px、按钮gap7px/padding14px完全相同。相邻文字宽度差解释MITM badge与按钮组约1px偏移，不用margin或固定宽度消除报告；字体选择未经确认不变更，也不将其标为parity通过。原始字体集合和DOM边界保存在TEMP `interceptor-certificates-geometry-20260911.json`，临时诊断脚本已删除。
+- 2026-09-11历史DOM诊断：标题文字宽90.375/89.40625px、Show in file manager按钮宽178.359375/177.734375px；两侧字体都加载成功，gap9/7px和padding14px一致。当时按注册家族称为静态Inter与Inter Variable，2026-09-14已通过文件hash进一步定位为离散/连续字重匹配差异，不能据旧名称推断字体文件不同。原始集合与边界在TEMP `interceptor-certificates-geometry-20260911.json`，不做margin或固定宽度补偿。
 
 ### 2.1 三对密钥
 

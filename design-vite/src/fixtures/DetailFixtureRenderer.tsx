@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { KvValueDesign } from '../components/KvValueDesign/KvValueDesign';
 import styles from './FixtureDetailSection/FixtureDetailSection.module.css';
 import { FixtureDetailSection } from './FixtureDetailSection/FixtureDetailSection';
 import { FixtureRenderer, type FixtureElementRenderer } from './FixtureRenderer';
@@ -20,6 +21,16 @@ function textContent(node: FixtureNode): string {
 }
 
 const renderDetailSection: FixtureElementRenderer = (node, children) => {
+  const value = node.children[0];
+  if (hasClass(node, 'v') && value?.type === 'element'
+    && (hasClass(value, 'kv-value-text') || hasClass(value, 'rulefx-old'))
+    && value.children.every((child) => child.type === 'text')) {
+    const effect = node.children.find((child) => child.type === 'element' && hasClass(child, 'rulefx'));
+    return <KvValueDesign value={textContent(value)} accent={hasClass(node, 'a') ? 'a' : hasClass(node, 'g') ? 'g' : undefined}
+      inactive={hasClass(value, 'rulefx-old')}
+      effect={effect?.type === 'element' ? { className: effect.attributes.class!, label: textContent(effect),
+        link: Object.hasOwn(effect.attributes, 'data-rule-link') } : undefined} />;
+  }
   if (!hasClass(node, 'sec')) {
     return undefined;
   }
@@ -52,13 +63,17 @@ const renderDetailSection: FixtureElementRenderer = (node, children) => {
     </span>
   ) : undefined;
 
+  const content = title === 'TLS tunnel'
+    ? node.children.map((child, index) => <FixtureRenderer key={index} node={child} />)
+    : children;
+
   return (
     <FixtureDetailSection
       grow={hasClass(node, 'grow')}
       labelExtra={labelExtra}
       title={title}
     >
-      {children.filter((_, index) => (
+      {content.filter((_, index) => (
         index !== headerIndex
         && (node.children[index]?.type !== 'text' || node.children[index].value.trim())
       )) as ReactNode[]}

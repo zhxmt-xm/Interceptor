@@ -1,24 +1,27 @@
 .webSocketMessagePayload {
   min-width: 0;
+  padding: 11px 12px 15px;
+  border-bottom: 1px solid var(--border);
+  background: var(--filter);
 }
 
-.webSocketMessagePayloadToolbar {
+.webSocketMessagePayloadHeader {
   display: flex;
-  height: 40px;
-  flex: 0 0 40px;
   align-items: center;
-  gap: 3px;
+  gap: 8px;
+  margin-bottom: 9px;
+  color: var(--text-2);
+  font-size: 11px;
+}
+
+.webSocketMessagePayloadHeader b {
+  font-weight: 600;
+}
+
+.webSocketMessagePayloadCount {
+  margin-left: auto;
   color: var(--text-3);
-  font-size: 10px;
-}
-
-.webSocketMessagePayloadSpacer {
-  flex: 1;
-}
-
-.webSocketMessagePayloadCode {
-  overflow: hidden;
-  border: 1px solid var(--border-2);
-  border-radius: 7px;
-  background: var(--panel-2);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
 }

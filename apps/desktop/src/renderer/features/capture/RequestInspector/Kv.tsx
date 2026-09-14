@@ -1,10 +1,11 @@
-import { Copy, Link2 } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { AutomationIdFactory } from '../../../../shared/automation-ids';
-import { cx, IconButton, useClipboardCopy } from '../../../components';
+import { IconButton, useClipboardCopy } from '../../../components';
 import type { KvRow } from '../interfaces';
 
+import { KvValue } from './KvValue';
 import styles from './Kv.module.css';
 
 export interface KvProps {
@@ -27,10 +28,7 @@ export function Kv({
         return (
           <div className={styles.kvRow} key={index}>
             <span className={styles.key} title={key}>{key}</span>
-            <span
-              className={cx(styles.value, accent === 'a' && styles.accent, accent === 'g' && styles.good)}
-            >
-              <span className={cx(inactive && styles.ruleInactive)}>{value}</span>
+            <KvValue value={value} accent={accent} inactive={inactive}>
               {ruleEffect && ruleId && onOpenRule ? (
                 <button
                   type="button"
@@ -43,11 +41,15 @@ export function Kv({
                   )}
                   onClick={() => onOpenRule(ruleId)}
                 >
-                  {t(`capture.ruleEffect.${ruleEffect}`)}
+                  <span className={styles.ruleEffectContent}>
+                    <span className={styles.ruleEffectLabel}>{t(`capture.ruleEffect.${ruleEffect}`)}</span>
+                  </span>
                 </button>
               ) : ruleEffect ? (
                 <span className={styles.ruleEffect} data-effect={ruleEffect}>
-                  {t(`capture.ruleEffect.${ruleEffect}`)}
+                  <span className={styles.ruleEffectContent}>
+                    <span className={styles.ruleEffectLabel}>{t(`capture.ruleEffect.${ruleEffect}`)}</span>
+                  </span>
                 </span>
               ) : null}
               {copyValue ? (
@@ -55,11 +57,11 @@ export function Kv({
                   className={styles.copyBtn}
                   icon={Copy}
                   label={t('common.copy')}
-                  size="sm"
+                  size="inline"
                   onClick={() => copy(copyValue)}
                 />
               ) : null}
-            </span>
+            </KvValue>
           </div>
         );
       })}

@@ -11,6 +11,10 @@
   font-size: 12px;
 }
 
+.compact {
+  flex: 0 0 auto;
+}
+
 .rows {
   position: relative;
   width: 100%;

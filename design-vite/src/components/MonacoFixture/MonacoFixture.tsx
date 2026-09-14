@@ -4,10 +4,11 @@ import { useDesignState } from '../../state/useDesignState';
 import { applyMonacoFixtureTheme, monaco } from './monacoSetup';
 import { registerMonacoFixture } from './registry';
 
-export type MonacoFixturePreset = 'box' | 'fill' | 'edit';
+export type MonacoFixturePreset = 'box' | 'fill' | 'edit' | 'message';
 
 const PRESETS = {
   box: { fontSize: 12, lineHeight: 20, padding: 13 },
+  message: { fontSize: 12, lineHeight: 20, padding: 13 },
   fill: { fontSize: 12, lineHeight: 21, padding: 16 },
   edit: { fontSize: 12, lineHeight: 21, padding: 16 },
 } as const;
@@ -68,9 +69,11 @@ export function MonacoFixture({ language, preset, source, ...attributes }: Monac
     });
     const unregister = registerMonacoFixture(editorInstance);
     let contentSizeDisposable: monaco.IDisposable | undefined;
-    if (preset === 'box') {
+    if (preset === 'box' || preset === 'message') {
       const resize = () => {
-        host.style.height = `${editorInstance.getContentHeight()}px`;
+        const style = getComputedStyle(host);
+        const borderHeight = Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth);
+        host.style.height = `${editorInstance.getContentHeight() + borderHeight}px`;
         editorInstance.layout();
       };
       contentSizeDisposable = editorInstance.onDidContentSizeChange(resize);

@@ -3,6 +3,7 @@ import { Copy, Route } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { cx } from '../../share/cx';
 import { useClipboardCopy } from '../../share/useClipboardCopy';
 import {
   type JsonNode,
@@ -20,11 +21,12 @@ const MENU_HEIGHT = 108;
 
 interface JsonTreeViewProps {
   root: unknown;
+  compact?: boolean;
   parityId?: string;
 }
 
 /** 虚拟化的 JSON 树：折叠的子树不产生行，右键可复制值、子树或路径。 */
-export function JsonTreeView({ root, parityId }: JsonTreeViewProps): React.JSX.Element {
+export function JsonTreeView({ root, compact = false, parityId }: JsonTreeViewProps): React.JSX.Element {
   const { t } = useTranslation();
   const copy = useClipboardCopy();
   const hostRef = useRef<HTMLDivElement>(null);
@@ -82,7 +84,7 @@ export function JsonTreeView({ root, parityId }: JsonTreeViewProps): React.JSX.E
   };
 
   return (
-    <div ref={hostRef} className={styles.host} data-parity={parityId}>
+    <div ref={hostRef} className={cx(styles.host, compact && styles.compact)} data-parity={parityId}>
       <div className={styles.rows} style={{ height: `${virtualizer.getTotalSize()}px` }}>
         {virtualizer.getVirtualItems().map((item) => {
           const node = rows[item.index]!;

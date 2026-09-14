@@ -67,6 +67,28 @@ test('settings.navigation keeps the active section across workspace navigation',
     'default',
   );
 
+  const fontEvidence = await page.evaluate(async () => {
+    const loaded = await document.fonts.load('550 12.5px "Inter"', 'Continue to Windows approval');
+    const faces = Array.from(document.fonts).filter((face) => face.family.replaceAll('"', '').replaceAll("'", '') === 'Inter');
+    const fontUrls = Array.from(document.styleSheets).flatMap((sheet) => Array.from(sheet.cssRules)
+      .filter((rule): rule is CSSFontFaceRule => rule instanceof CSSFontFaceRule)
+      .filter((rule) => rule.style.getPropertyValue('font-family').replaceAll('"', '').replaceAll("'", '') === 'Inter')
+      .flatMap((rule) => Array.from(rule.style.getPropertyValue('src').matchAll(/url\(["']?([^"')]+)["']?\)/g),
+        (match) => new URL(match[1]!, sheet.href ?? location.href).href)));
+    return { fontFamily: getComputedStyle(document.body).fontFamily,
+      weights: [...new Set(faces.map((face) => face.weight))].sort((left, right) => Number(left) - Number(right)),
+      loadedFaces: loaded.length, allLoaded: loaded.every((face) => face.status === 'loaded'),
+      fontUrls };
+  });
+  await writeFile(testInfo.outputPath('settings-fonts.json'), JSON.stringify(fontEvidence, null, 2), 'utf8');
+  await page.screenshot({ path: testInfo.outputPath('settings-fonts.png') });
+  expect(fontEvidence.weights).toEqual(['400', '450', '500', '600', '700']);
+  expect(fontEvidence.loadedFaces).toBeGreaterThan(0);
+  expect(fontEvidence.allLoaded).toBe(true);
+  expect(fontEvidence.fontFamily.replaceAll('"', '')).toMatch(/^Inter(?:,|$)/);
+  expect(fontEvidence.fontUrls.length).toBeGreaterThan(0);
+  expect(fontEvidence.fontUrls.every((url) => url.startsWith('interceptor://app/'))).toBe(true);
+
   // 用户操作：逐项点击九个正式 section，并要求每一步只有目标项表达 current page。
   // User actions: visit all nine public sections and require exactly the target to expose the current page state.
   for (const sectionId of SETTINGS_SECTION_IDS) {

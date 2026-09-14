@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { once } from 'node:events';
+import { writeFile } from 'node:fs/promises';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
@@ -23,6 +25,117 @@ test('capture.scenarios.websocket captures directional text binary and controlle
   // 准备：通过产品UI录制，现有客户端与origin经真实代理建立各场景WebSocket。
   // Arrange: start Recording through UI; existing clients and origins establish each WebSocket through the real proxy.
   await startRecording(desktopApp);
+  await test.step('websocket-compact-json-tree', async () => {
+    const requestPath = '/e2e/websocket/compact-json-tree';
+    const payload = JSON.stringify({ buildId: 8431, state: 'running', branch: 'main' });
+    const client = await trafficLab.webSocketTrafficRunner.openThroughProxy(desktopApp.capturePort(), requestPath);
+    try {
+      const receivedMessage = once(client, 'message', { signal: AbortSignal.timeout(5_000) });
+      client.sendBinary(Buffer.from(payload));
+      const [receivedBytes, receivedBinary] = await receivedMessage;
+      expect(receivedBinary).toBe(true);
+      expect(receivedBytes).toEqual(Buffer.from(payload));
+      await client.closeGracefully(1000, 'tree-complete');
+
+      // 用户操作：通过自产连接和公开控件打开JSON消息的Tree，不注入正文或Store。
+      // User actions: open Tree through this captured connection and public controls without injecting body or Store state.
+      const row = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow).filter({ hasText: requestPath });
+      await expect(row).toHaveCount(1);
+      const rowId = await row.getAttribute('data-automation-id');
+      if (!rowId?.startsWith(AUTOMATION_ID_PREFIXES.captureRequestRow)) throw new Error('Missing JSON WebSocket identity.');
+      const exchangeId = rowId.slice(AUTOMATION_ID_PREFIXES.captureRequestRow.length);
+      await row.click();
+      await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.messages).click();
+      await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.directionSent).click();
+      const frames = getByAutomationIdPrefix(page, `${AUTOMATION_ID_PREFIXES.websocketFrame}${exchangeId}.`);
+      await expect(frames).toHaveCount(1);
+      await frames.click();
+      const codePane = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane);
+      await expect(codePane).toContainText('branch');
+      const compactLayout = await codePane.evaluate((pane) => {
+        const lines = Array.from(pane.querySelectorAll('.view-lines > .view-line'));
+        if (lines.length === 0) throw new Error('Compact JSON lines are not ready.');
+        const boxes = lines.map((line) => line.getBoundingClientRect());
+        const style = getComputedStyle(pane);
+        const borderHeight = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+        const contentHeight = Math.max(...boxes.map((box) => box.bottom)) - Math.min(...boxes.map((box) => box.top)) + 26;
+        return { hostHeight: pane.getBoundingClientRect().height, borderHeight, contentHeight,
+          lineCount: lines.length, lineHeight: boxes[0]!.height,
+          fontSize: getComputedStyle(lines[0]!).fontSize };
+      });
+      const compactEvidence = testInfo.outputPath('websocket-compact-code-height.json');
+      await writeFile(compactEvidence, JSON.stringify(compactLayout, null, 2), 'utf8');
+      await testInfo.attach('websocket-compact-code-height', { path: compactEvidence, contentType: 'application/json' });
+      await codePane.screenshot({ path: testInfo.outputPath('websocket-compact-code-height.png') });
+      expect(compactLayout).toMatchObject({ lineCount: 5, lineHeight: 20, fontSize: '12px' });
+      expect(compactLayout.hostHeight).toBeCloseTo(compactLayout.contentHeight + compactLayout.borderHeight, 1);
+      const treeMode = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyMode.tree);
+      await treeMode.click();
+      await expect(treeMode).toHaveAttribute('aria-checked', 'true');
+      const bodyView = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyView);
+      const saveTreeLayout = async (state: string) => {
+        const layout = await bodyView.evaluate((viewer) => {
+          const pane = viewer.lastElementChild;
+          const rows = pane?.firstElementChild;
+          if (!(pane instanceof HTMLElement) || !(rows instanceof HTMLElement)) throw new Error('Missing JSON tree pane.');
+          const style = getComputedStyle(pane);
+          return { paneHeight: pane.getBoundingClientRect().height, rowsHeight: rows.getBoundingClientRect().height,
+            visibleRowsHeight: pane.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom),
+            flex: style.flex, overflowY: style.overflowY, text: pane.textContent };
+        });
+        const filename = testInfo.outputPath(`websocket-tree-${state}.json`);
+        await writeFile(filename, JSON.stringify(layout, null, 2), 'utf8');
+        await testInfo.attach(`websocket-tree-${state}`, { path: filename, contentType: 'application/json' });
+        await bodyView.screenshot({ path: testInfo.outputPath(`websocket-tree-${state}.png`) });
+        return layout;
+      };
+
+      // 业务断言与证据：先记录实际可见高度，再核对展开/折叠及原文复制，空白面板不能算通过。
+      // Assertions and evidence: save the real visible height before checking expansion and raw Copy; an empty pane cannot pass.
+      const expanded = await saveTreeLayout('expanded');
+      expect(expanded.rowsHeight).toBe(5 * 22);
+      expect(expanded.visibleRowsHeight).toBeGreaterThanOrEqual(expanded.rowsHeight - 1);
+      expect(expanded.overflowY).toBe('auto');
+      await expect(bodyView).toContainText('buildId');
+      await expect(bodyView).toContainText('branch');
+      const disclosure = bodyView.locator('button[aria-expanded]');
+      await expect(disclosure).toHaveCount(1);
+      await disclosure.click();
+      await expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+      const collapsed = await saveTreeLayout('collapsed');
+      expect(collapsed.rowsHeight).toBe(22);
+      expect(collapsed.visibleRowsHeight).toBeGreaterThanOrEqual(collapsed.rowsHeight - 1);
+      expect(collapsed.paneHeight).toBeLessThan(expanded.paneHeight);
+      await disclosure.click();
+      await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy).click();
+      await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(payload);
+
+      // 全屏与清理：同一Tree仍有MIME/Save与Header Copy，关闭后保留Tree及展开内容。
+      // Fullscreen and cleanup: the same Tree keeps MIME/Save and header Copy, then returns to the expanded inline Tree.
+      await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.fullscreen).click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+      await expect(dialog).toContainText('application/octet-stream');
+      await expect(dialog).toContainText('buildId');
+      await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.save)).toBeVisible();
+      const headerButtons = dialog.locator('header').getByRole('button');
+      await expect(headerButtons).toHaveCount(2);
+      await headerButtons.first().click();
+      await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(payload);
+      await dialog.screenshot({ path: testInfo.outputPath('websocket-tree-fullscreen.png') });
+      await headerButtons.nth(1).click();
+      await expect(dialog).toHaveCount(0);
+      await expect(treeMode).toHaveAttribute('aria-checked', 'true');
+      const restored = await saveTreeLayout('restored');
+      expect(restored.visibleRowsHeight).toBeGreaterThanOrEqual(restored.rowsHeight - 1);
+      await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.directionAll).click();
+      await expect(frames).toHaveCount(2);
+      evidence.push({ scenarioId: 'websocket-compact-json-tree', exchangeId, sent: 1, received: 1 });
+      await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
+    } finally {
+      if (!client.isClosed()) await client.closeGracefully(1000, 'workflow-cleanup');
+    }
+  });
   for (const expected of WEBSOCKET_SCENARIOS) {
     await test.step(expected.id, async () => {
       const scenario = trafficLab.scenarios().find((candidate) => candidate.id === expected.id);
@@ -64,6 +177,21 @@ test('capture.scenarios.websocket captures directional text binary and controlle
         for (const payload of payloads) {
           const frame = frames.filter({ hasText: payload });
           await expect(frame).toHaveCount(1);
+          if (expected.id === 'ws-binary') {
+            const typography = await frame.evaluate((element) => {
+              const style = getComputedStyle(element);
+              return { height: element.getBoundingClientRect().height, fontSize: style.fontSize,
+                lineHeight: style.lineHeight, alignItems: style.alignItems, fontFamily: style.fontFamily,
+                columns: Array.from(element.children, (column) => column.getBoundingClientRect().width) };
+            });
+            const name = directionId === AUTOMATION_IDS.capture.websocket.directionSent ? 'sent' : 'received';
+            const filename = testInfo.outputPath(`websocket-binary-row-${name}.json`);
+            await writeFile(filename, JSON.stringify(typography, null, 2), 'utf8');
+            await testInfo.attach(`websocket-binary-row-${name}`, { path: filename, contentType: 'application/json' });
+            await frame.screenshot({ path: testInfo.outputPath(`websocket-binary-row-${name}.png`) });
+            expect(typography).toMatchObject({ height: 38, fontSize: '10.5px', lineHeight: 'normal', alignItems: 'center' });
+            expect(typography.fontFamily).toContain('JetBrains Mono');
+          }
           const frameId = await frame.getAttribute('data-automation-id');
           const sequence = Number(frameId?.slice(framePrefix.length));
           expect(Number.isSafeInteger(sequence)).toBe(true);
@@ -94,13 +222,14 @@ test('capture.scenarios.websocket captures directional text binary and controlle
           if (!(message instanceof HTMLElement)) throw new Error('The WebSocket message state is not visible.');
           const style = getComputedStyle(message);
           return { hasStateStyles: message.className.trim().length > 0, color: style.color, fontSize: style.fontSize,
-            display: style.display, minHeight: style.minHeight, textAlign: style.textAlign, placeItems: style.placeItems };
+            display: style.display, minHeight: style.minHeight, textAlign: style.textAlign,
+            alignItems: style.alignItems, justifyContent: style.justifyContent };
         });
         await testInfo.attach('websocket-empty-presentation.json', {
           body: Buffer.from(JSON.stringify(presentation)), contentType: 'application/json',
         });
-        expect(presentation).toMatchObject({ hasStateStyles: true, display: 'grid', minHeight: '116px',
-          fontSize: '12px', textAlign: 'center', placeItems: 'center' });
+        expect(presentation).toMatchObject({ hasStateStyles: true, display: 'flex', minHeight: '116px',
+          fontSize: '12px', textAlign: 'center', alignItems: 'center', justifyContent: 'center' });
         expect(presentation.color).not.toBe('rgb(0, 0, 0)');
       }
       evidence.push({ scenarioId: expected.id, exchangeId, sent: expected.sent.length, received: expected.received.length });

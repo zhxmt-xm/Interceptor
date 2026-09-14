@@ -15,3 +15,8 @@
   width: 15px;
   height: 15px;
 }
+
+.iconButtonInlineIcon svg {
+  width: 14px;
+  height: 14px;
+}

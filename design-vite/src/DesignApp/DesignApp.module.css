@@ -262,7 +262,7 @@ button.ib { padding: 0; border: 0; background: transparent; }
 .sh-chev { width: 13px; height: 13px; flex: 0 0 auto; margin-left: auto; color: var(--text-3); transition: transform .15s ease; }
 .kv { display: grid; grid-template-columns: 168px minmax(0,1fr); gap: 9px 16px; font-size: 12px; }
 .kv .k { font-family: var(--font-mono); font-size: 11.5px; line-height: 18px; color: var(--text-2); }
-.kv .v { display: flex; min-width: 0; align-items: center; gap: 0 4px; font-family: var(--font-mono); font-size: 11.5px; line-height: 18px; color: var(--text); word-break: break-all; }
+.kv .v:not(.kvValueDesign) { display: flex; min-width: 0; align-items: center; gap: 0 4px; font-family: var(--font-mono); font-size: 11.5px; line-height: 18px; color: var(--text); word-break: break-all; }
 .kv-value-text { display: inline-flex; flex: 0 1 auto; min-width: 0; max-width: 100%; align-items: center; }
 .kv .v.a { color: var(--accent); } .kv .v.g { color: var(--green); }
 .rulefx { display: inline-flex; flex: 0 0 auto; align-items: center; height: 18px; padding: 0 6px; border: 1px solid color-mix(in srgb, var(--green) 24%, transparent); border-radius: 5px; background: color-mix(in srgb, var(--green) 10%, transparent); color: var(--green); font-family: var(--font-ui); font-size: 9.5px; font-weight: 600; line-height: normal; white-space: nowrap; cursor: pointer; }
@@ -701,7 +701,7 @@ button.break-section-head { border: 0; background: transparent; cursor: pointer;
 .wspreview { color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wssize, .wstime { color: var(--text-3); }
 .wssize, .wstime { text-align: right; font-variant-numeric: tabular-nums; }
-.wspayload { padding: 12px; border-bottom: 1px solid var(--border); background: var(--filter); }
+.wspayload { min-width: 0; }
 .app[data-breakpoint-state="websocket"] .wspayload { padding: 0; }
 .app[data-breakpoint-state="websocket"] .wspayload > :not(.websocketBreakpointInspector):not([data-parity="websocket-breakpoint-queued"]) { display: none; }
 .app[data-breakpoint-queue-selection^="websocket-"] .wsrows > .wsrow:nth-child(n + 4),
@@ -1419,7 +1419,7 @@ button.break-section-head { border: 0; background: transparent; cursor: pointer;
 .app[data-overlay="import-export"] .ov[data-ov="import-export"] { display: flex; }
 .app[data-overlay="https-setup"] .ov[data-ov="https-setup"] { display: flex; }
 .app[data-overlay="proxy-not-ready"] .ov[data-ov="proxy-not-ready"] { display: flex; }
-.app[data-overlay="body-full"] .ov[data-ov="body-full"] { display: flex; }
+.app[data-overlay="body-full"]:not([data-scene="websocket"]) .ov[data-ov="body-full"] { display: flex; }
 .app[data-overlay="app-container-confirm"] .ov[data-ov="app-container-confirm"] { display: flex; }
 .app[data-overlay="tls-compatibility"] .ov[data-ov="tls-compatibility"] { display: flex; }
 .ov[data-ov="import-export"], .ov[data-ov="https-setup"], .ov[data-ov="proxy-not-ready"], .ov[data-ov="body-full"], .ov[data-ov="app-container-confirm"], .ov[data-ov="tls-compatibility"] { background: color-mix(in srgb, var(--sidebar) 62%, rgba(0,0,0,.75)); }

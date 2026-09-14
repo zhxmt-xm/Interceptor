@@ -5,12 +5,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BodyViewer } from '../../BodyViewer/BodyViewer';
 import { BodyToolbar } from '../../BodyViewer/BodyToolbar/BodyToolbar';
 import { HexView } from '../../BodyViewer/HexView/HexView';
+import { JsonTreeView } from '../../BodyViewer/JsonTreeView/JsonTreeView';
 import { UnavailableBody } from '../../BodyViewer/UnavailableBody/UnavailableBody';
 import { toHexDump } from '../../BodyViewer/bodyText';
 import { Button } from '../../Button/Button';
 import { CodeViewer, type CodeViewerProps } from '../../CodeViewer/CodeViewer';
 
-const fixture = vi.hoisted(() => ({ selected: null as { kind: string; mode: string } | null, stateIndex: 0, copy: vi.fn() }));
+const fixture = vi.hoisted(() => ({ selected: null as { kind: string; mode: string } | null, fullscreen: false, stateIndex: 0, copy: vi.fn() }));
 
 vi.mock('react', async (importOriginal) => {
   const original = await importOriginal<typeof import('react')>();
@@ -19,7 +20,10 @@ vi.mock('react', async (importOriginal) => {
     useEffect: () => undefined,
     useMemo: (compute: () => unknown) => compute(),
     useRef: (initial: unknown) => ({ current: initial }),
-    useState: (initial: unknown) => [fixture.stateIndex++ === 0 ? fixture.selected : initial, vi.fn()],
+    useState: (initial: unknown) => {
+      const stateIndex = fixture.stateIndex++;
+      return [stateIndex === 0 ? fixture.selected : stateIndex === 4 ? fixture.fullscreen : initial, vi.fn()];
+    },
   };
   return { ...react, default: react };
 });
@@ -40,6 +44,7 @@ function findBodyComponent<Props>(node: ReactNode, component: unknown): ReactEle
 
 beforeEach(() => {
   fixture.selected = null;
+  fixture.fullscreen = false;
   fixture.stateIndex = 0;
   fixture.copy.mockClear();
 });
@@ -91,6 +96,28 @@ describe('BodyViewer Code and Raw modes', () => {
     const code = findBodyComponent<CodeViewerProps>(body, CodeViewer);
 
     expect(code.props.value).toBe('a');
+  });
+});
+
+describe('Compact JSON tree layout', () => {
+  it.each([
+    { compact: false, fullscreen: false, treeCompact: false },
+    { compact: true, fullscreen: false, treeCompact: true },
+    { compact: true, fullscreen: true, treeCompact: false },
+  ])('uses content sizing only for inline compact messages: %j', ({ compact, fullscreen, treeCompact }) => {
+    const source = '{"buildId":8431,"state":"running","branch":"main"}';
+    fixture.selected = { kind: 'json', mode: 'tree' };
+    fixture.fullscreen = fullscreen;
+    const body = BodyViewer({ bytes: new TextEncoder().encode(source), mediaType: 'application/json',
+      compact, fullscreenTitle: 'Payload' });
+    const tree = findBodyComponent<ComponentProps<typeof JsonTreeView>>(body, JsonTreeView);
+
+    expect(tree.props).toMatchObject({ root: JSON.parse(source), compact: treeCompact });
+    if (!fullscreen) {
+      const toolbar = findBodyComponent<ComponentProps<typeof BodyToolbar>>(body, BodyToolbar);
+      toolbar.props.onCopy!();
+      expect(fixture.copy).toHaveBeenCalledExactlyOnceWith(source);
+    }
   });
 });
 

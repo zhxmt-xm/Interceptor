@@ -1,3 +1,5 @@
+import { writeFile } from 'node:fs/promises';
+
 import {
   AUTOMATION_ID_PREFIXES,
   AUTOMATION_IDS,
@@ -160,6 +162,31 @@ test('breakpoints.queue-isolation keeps HTTP and one WebSocket queue independent
   await selectCaptureRow(webSocketPath);
   await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.messages).click();
   await webSocketHead.click();
+
+  // 布局断言：Original容器按实际正文定高，不保留旧185px下限。
+  // Layout assertion: the Original container follows its body instead of the old 185px minimum.
+  const executeEdited = getByAutomationId(page, AUTOMATION_IDS.breakpoints.executeEdited);
+  const readOriginalLayout = () => executeEdited.evaluate((button) => {
+    const inspector = button.closest('section')!;
+    const sectionHeader = inspector.querySelector('[aria-controls]')!;
+    const content = document.getElementById(sectionHeader.getAttribute('aria-controls')!)!;
+    const original = content.firstElementChild!;
+    const viewer = original.firstElementChild!;
+    const originalStyle = getComputedStyle(original);
+    return { display: originalStyle.display, minHeight: originalStyle.minHeight,
+      originalHeight: original.getBoundingClientRect().height,
+      viewerHeight: viewer.getBoundingClientRect().height };
+  });
+  await expect.poll(async () => {
+    const layout = await readOriginalLayout();
+    return { display: layout.display, minHeight: layout.minHeight,
+      extraHeight: Math.abs(layout.originalHeight - layout.viewerHeight) };
+  }).toEqual({ display: 'flex', minHeight: 'auto', extraHeight: 0 });
+  const originalLayout = await readOriginalLayout();
+  expect(originalLayout.viewerHeight).toBeGreaterThan(0);
+  await writeFile(testInfo.outputPath('websocket-paused-original-layout.json'), JSON.stringify(originalLayout, null, 2), 'utf8');
+  await executeEdited.locator('xpath=ancestor::section[1]').screenshot({ path: testInfo.outputPath('websocket-paused-original-layout.png') });
+
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.replacement.text).click();
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.body).fill('websocket-draft');
 

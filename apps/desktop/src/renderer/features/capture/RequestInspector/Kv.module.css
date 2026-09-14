@@ -13,30 +13,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.kv .value {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 0 4px;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  line-height: 18px;
-  color: var(--text);
-  word-break: break-all;
-}
-.value > span:first-child {
-  display: inline-flex;
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 100%;
-  align-items: center;
-}
-.kv .value.accent {
-  color: var(--accent);
-}
-.kv .value.good {
-  color: var(--green);
-}
 .kvRow {
   display: grid;
   grid-template-columns: 168px minmax(0, 1fr);
@@ -45,11 +21,6 @@
 }
 .kvRow:hover .copyBtn {
   opacity: 1;
-}
-.ruleInactive {
-  color: var(--text-3);
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
 }
 .ruleEffect {
   display: inline-flex;
@@ -66,6 +37,12 @@
   font-weight: 600;
   line-height: normal;
   white-space: nowrap;
+}
+.ruleEffectContent {
+  display: block;
+}
+.ruleEffectLabel {
+  display: inline-block;
 }
 /* 只有能跳到规则的那种才是按钮，纯展示的 span 不该有手型 */
 button.ruleEffect {
@@ -86,17 +63,7 @@ button.ruleEffect {
   background: color-mix(in srgb, var(--red) 10%, transparent);
   color: var(--red);
 }
-.copyBtn.copyBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
+.copyBtn {
   opacity: 0;
   transition: opacity 0.12s ease;
-}
-.copyBtn.copyBtn svg {
-  width: 14px;
-  height: 14px;
 }

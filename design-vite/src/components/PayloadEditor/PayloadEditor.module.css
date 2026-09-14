@@ -78,7 +78,7 @@
 
 .payloadEditorOriginalCode {
   min-height: 76px;
-  padding: 13px 12px 21px;
+  padding: 13px 12px;
   overflow: auto;
   border: 1px solid var(--border-2);
   border-radius: 7px;
