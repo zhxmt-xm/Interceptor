@@ -190,6 +190,10 @@ export interface DesignState {
   readonly playgroundManualStatus: PlaygroundManualStatus;
   readonly bodyType: BodyType;
   readonly settings: string;
+  readonly storageCleared: boolean;
+  readonly storageConfirming: boolean;
+  readonly storageOperation: 'idle' | 'refresh' | 'clear';
+  readonly storageStatus: 'ready' | 'unavailable';
   readonly update: string;
   readonly githubAuth: string;
   readonly appContainers: string;

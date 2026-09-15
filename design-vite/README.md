@@ -61,6 +61,10 @@ node design-vite/shoot.mjs --feature=capture --variant=rule-filter-auth --theme=
 node design-vite/shoot.mjs --feature=agent-models --variant=settings-provider-menu --out-dir="$env:TEMP/interceptor-provider-menu-shots"
 
 node design-vite/shoot.mjs --out-dir="$env:TEMP/interceptor-design-shots"
+node design-vite/shoot.mjs --feature=settings --variant=storage --out-dir="$env:TEMP/interceptor-storage-shots"
+node design-vite/shoot.mjs --feature=settings --variant=storage-confirm --out-dir="$env:TEMP/interceptor-storage-shots"
+node design-vite/shoot.mjs --feature=settings --variant=storage-empty --out-dir="$env:TEMP/interceptor-storage-shots"
+node design-vite/shoot.mjs --feature=settings --variant=storage-unavailable --out-dir="$env:TEMP/interceptor-storage-shots"
 
 node design-vite/tools/compare-shots.mjs <baselineDir> [feature]
 node design-vite/tools/compare-shots.mjs design-vite/shots --current-dir="$env:TEMP/interceptor-design-shots" --out-dir="$env:TEMP/interceptor-design-diff"

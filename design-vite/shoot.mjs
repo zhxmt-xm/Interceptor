@@ -480,6 +480,12 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'https-setup', theme, variant: 'decrypting', state: { view: 'capture', theme: TOKEN[theme], overlay: 'https-setup', scene: 'tunnel', tab: 'tunnel', https: 'ready', mitm: 'active' } });
   shots.push({ feature: 'proxy-not-ready', theme, variant: 'dialog', state: { view: 'capture', theme: TOKEN[theme], overlay: 'proxy-not-ready' } });
   shots.push({ feature: 'settings', theme, variant: 'proxy', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'proxy' } });
+  for (const storageState of ['ready', 'confirm', 'empty', 'unavailable']) {
+    shots.push({ feature: 'settings', theme, variant: storageState === 'ready' ? 'storage' : `storage-${storageState}`,
+      state: { view: 'settings', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', settings: 'storage', mitm: 'inactive',
+        storageStatus: storageState === 'unavailable' ? 'unavailable' : 'ready', storageOperation: 'idle',
+        storageCleared: storageState === 'empty', storageConfirming: storageState === 'confirm' } });
+  }
   shots.push({ feature: 'settings', theme, variant: 'app-containers', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'app-containers', appContainers: 'ready' } });
   shots.push({ feature: 'settings', theme, variant: 'app-containers-refreshing', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'app-containers', appContainers: 'refreshing' } });
   shots.push({ feature: 'settings', theme, variant: 'app-container-confirm', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: 'app-container-confirm', settings: 'app-containers', appContainers: 'ready' } });

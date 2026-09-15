@@ -682,6 +682,18 @@ flowchart LR
 
 报表字段：`sessionCount`、`exchangeCount`、`bodyCount`、`databaseBytes`（Capture 无 SQLite 恒为 0）、`blobBytes`、`totalBytes`。
 
+### Storage简化
+
+- 2026-09-15用户确认，2026-09-16实现与验收完成。Settings / Storage标题右侧使用30px Refresh图标按钮及Tooltip，刷新时旋转图标并阻止重复操作；删除独立Refresh usage行和标题容量badge，不改为自动轮询，不增加预算、配额或保留期限输入。
+- Usage只展示`blobBytes`一次，名称为`Captured body data`，明确包含内存与临时文件中的已保存正文。删除界面中恒为0的Capture database、重复的Response bodies和不准确的Total on disk；保留Session、Exchange、正文数量。`CaptureUsage`字段与Core命令不变，不把正文总量当Core RSS或磁盘占用，不影响Agent/MCP查询。
+- Settings和Capture列表仍共用`clearCapture()`，清理请求记录、正文和选中详情；Settings保留二次确认，Cancel不调用清理。提示明确两个入口相同、已保存文件和录制状态不变。文件任务互斥、当前Session保留和系统代理恢复沿用原Core/Main行为，未新增正文专用清理或任务历史清理命令。
+- `SettingsRow`只新增可选的第二行提示和局部className，普通调用方默认结构不变；Storage清理行可换行以容纳长翻译。15种语言同步正文用量、生命周期和清理说明，移除旧展示键。正式设计默认Storage入口使用已确认页面，补齐正常、确认、清空后和不可用四态的明暗截图。
+- 前置Renderer三项Red分别对应重复用量、Refresh父容器和Clear说明；i18n必需键另有1 Red。真实前置Red发生于旧Refresh父元素为DIV而非HEADER，Main/Core `50796/17116`正常退出。TEMP `interceptor-storage-delivery-20260915-{unit-red,i18n-red,e2e-red}.log`和`-e2e-red/`保留原结果、截图、trace及metadata，不回滚补造证据。
+- 最终Settings与i18n回归13文件84项通过，含Storage四项；Desktop/design-vite类型通过。当前真实`settings.storage.refresh-clear` 1/1（16.4s），Main/Core `17264/39820`正常退出，8888及WinINet/journal由宿主guard恢复；独立检查PID不存在且8888可重新bind。Refresh为30x30、右缘/垂直中心差均0；135 B正文在Cancel后保留，Settings和列表Clear后Exchange/Body/bytes均归零、Session保持1，Recording保持paused，新请求仍可捕获。
+- 首次复验`-e2e-green/`点击仍为busy的Recording按钮而失败，`35864/11428`正常退出；workflow等待公共`aria-busy=false`后，同流程1/1（11.6s，`8040/24660`）通过。随后页头样式修正再以当前代码复跑上面的16.4s最终结果；不把目录名green当通过，也不将测试点击时序问题算产品Red。原始证据均在TEMP `interceptor-storage-delivery-20260915-*`，`current-evidence.json`汇总最终行为与产品前后图。
+- Storage八态parity148/148、0 missing/flagged、最大0.859375px，像素差0.7633%至0.8559%；共享Row的Proxy相邻页13/13、0 missing/flagged。正式新增8张Storage图，其余457张SHA256保持。TEMP `interceptor-storage-delivery-20260915-parity/{pixels,neighbor,responsive,shots-synced,fonts}.json`保存明细；960x720的英文、中文、德语和俄语产品页面确认按钮可达、无横向溢出，Cancel不改数据。字体下载失败时仅在验证浏览器提供现有产品WOFF2与离散字重注册，未修改仓库字体或用户审阅HTML。
+- 本项仅Renderer、文案和验收/设计代码，不涉及runtime dependency、Main/Core职责或打包资源，因此未重复package/audit/smoke；局部结果不代表全workspace回归，也不覆盖仍暂缓的正常GOAWAY、HTTP wire及容量策略。产品前后改动见[Storage提交说明](../../commit-changes/202609160046_ui_settings_storage-simplification.html)。早期设计预览证据`interceptor-storage-simple-20260915/preview.json`与`interceptor-storage-simplified-20260915.json`仍保留，不作为当前产品验收替代。
+
 **已知缺口 [改造中]**：当前没有内存、磁盘与 session 生命周期策略。大量小于阈值的正文全部驻内存，事件队列未 ack 时无上限。需提供用量观测与明确的清理建议，且不得静默丢数据。
 
 ## 6. 语言与主题

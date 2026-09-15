@@ -10,6 +10,7 @@ import type { FixtureElementNode, FixtureNode } from '../../fixtures/FixtureNode
 import { useDesignState } from '../../state/useDesignState';
 import styles from './SettingsFixtureRenderer.module.css';
 import { AgentModelSettings } from './AgentModelSettings';
+import { CaptureStorageProposal } from './CaptureStorageProposal';
 
 interface SettingsFixtureRendererProps {
   readonly node: FixtureNode;
@@ -71,6 +72,11 @@ export function SettingsFixtureRenderer({ node }: SettingsFixtureRendererProps):
       );
     }
     if (hasClass(element, 'scontent')) {
+      if (state.settings === 'storage') {
+        return <div className={fixtureClassNames('scontent')} data-fixture-node="">
+          <CaptureStorageProposal />
+        </div>;
+      }
       return (
         <div className={fixtureClassNames('scontent')} data-fixture-node="">
           {children}

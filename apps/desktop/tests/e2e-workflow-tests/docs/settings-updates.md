@@ -575,25 +575,30 @@ MITM switch、Trusted状态和Core配置同步；insecure host会trim/去重并�
 <a id="settings-storage-refresh-clear"></a>
 ## `settings.storage.refresh-clear`
 
-**状态**：planned
+**状态**：passed；2026-09-16当前Renderer同一workflow 1/1（16.4s），Main/Core与宿主恢复通过
 **策略**：os-side-effect
 
 ### Steps
 
-1. 创建profile/evidence和HTTP/WS origins，启动trace/Electron，等待App/Core/8888/readiness；检查Storage/Capture初始空态。
-2. 点击readiness Enable并完成授权，等待Recording；制造含request/response bodies和WS frames的真实Capture。
-3. 进入Settings Storage，点击 `settings.storage.refresh`。
-4. 记录session/exchange/body/bytes，确认非零且与可见Capture一致。
-5. 点击 `settings.storage.clear`，再点击 `settings.storage.clear-cancel`；确认数值不变。
-6. 再次点击Clear，点击 `settings.storage.clear-confirm`。
-7. 等待usage更新：Exchange/Body/bytes归零，Session保留1；进入Rules/Diagnostics确认未误删。
-8. 进入Proxy点击Restore，确认非owned；保存evidence并Close。
-9. 验证spill、进程、8888销毁和系统代理恢复。
-10. 关闭origins并删除profile。
+1. 创建独立profile、HTTP origin及evidence，启动trace/Electron，等待App/Core/8888并经正式UI开启Recording；保持当前语言，不安装本流程不需要的CA。
+2. 通过真实代理发送自产POST及request/response正文，Capture选择自产行并查看实际Response正文；通过Recording按钮暂停新录制，保持已捕获内容不变。
+3. 经Settings导航进入Storage，核对`settings.storage.refresh`位于Storage标题同一行最右侧，按钮30px，只有一个bodyBytes用量、没有数据库或重复磁盘总量。使用公开automation ID及DOM结构断言，不依赖翻译后的显示文本。
+4. 记录session/exchange/body/bytes，确认非零；点击右上Refresh，完成后统计仍保持，不产生清理或重放。页面说明Clear与Capture列表共用动作；对应语义及15语言由Renderer测试/catalog检查覆盖。
+5. 点击`settings.storage.clear`后点`settings.storage.clear-cancel`，确认数值和原请求行/正文仍保留。
+6. 再次Clear并点击`settings.storage.clear-confirm`，等待Exchange/Body/bytes归零、当前Session保持1；返回Capture确认列表与选中Inspector同时清空、Recording仍为paused。
+7. 恢复Recording，发送第二条独立请求并看到新行，再暂停；点击Capture列表自己的Clear，返回Storage点击右上Refresh确认同样归零。两个入口不互相残留正文或旧行。
+8. 保存前后截图、原始数值、按钮位置及trace；由fixture从正常窗口Close退出，让Main恢复原系统代理，不手动替代退出路径。
+9. 核对Main/Core/Worker全部退出、8888释放、WinINet/journal恢复；关闭origin并删除profile，失败保留证据。
 
 ### 预期效果
 
-Refresh读取真实Core usage；Clear必须二次确认；Cancel零副作用；Confirm仅删除Capture/Body，不影响RuleSet和Diagnostics。
+Refresh只读取真实Core usage；统计口径为已提交正文总量，包含内存与临时文件，不是Core RSS或磁盘占用。Settings Clear二次确认、Cancel零副作用；两个入口共用`clearCapture()`并同步清理Capture行/正文/selection，不改变录制状态或导出文件，也不新增任务历史清理、预算配置或自动淘汰策略。
+
+### 验证记录
+
+- Renderer前置3 Red、i18n必需键1 Red，最终所属Settings/i18n84项及Desktop/design-vite类型通过。真实前置Refresh父元素DIV而非HEADER，Main/Core `50796/17116`正常退出；最终`17264/39820`正常退出、trace和宿主guard恢复完整，30x30刷新按钮与标题同排且右缘/中心差为0。
+- 当前结果中原正文135 B，Cancel保留；Settings Clear和Capture列表Clear都使Exchange/Body/bytes归零、Session保留1，录制保持paused，新请求仍可抓取。首次复验因Recording仍busy而点击无效，`35864/11428`正常退出；等待公共`aria-busy=false`后完整通过，再以最终CSS复跑，不修改产品录制逻辑。
+- 证据TEMP `interceptor-storage-delivery-20260915-e2e-{red,green,final,current}`及同名前缀日志，最终汇总`interceptor-storage-delivery-20260915-current-evidence.json`。八态parity与产品前后图见[Storage功能记录](../../../../../architecture/features/settings.md#storage简化)。本workflow不操纵RuleSet、Diagnostics或导出文件，不额外声称它覆盖这些模块；Clear共享命令与原文件任务互斥保持。
 
 <a id="settings-privacy-defaults"></a>
 ## `settings.privacy.defaults`

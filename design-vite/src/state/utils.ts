@@ -35,6 +35,7 @@ export const BOOT_PHASES: Readonly<Record<Exclude<BootPhase, ''>, Readonly<Recor
 };
 
 export const INITIAL_DESIGN_STATE: DesignState = {
+  storageCleared: false, storageConfirming: false, storageOperation: 'idle', storageStatus: 'ready',
   view: 'capture', theme: 'light', sidebar: 'collapsed', lang: 'en', overlay: '', tab: 'headers', detail: 'open',
   filters: 'open', filterGroup: '', filterActive: '', search: '', tip: '', pop: false, pop2: '',
   composerTab: 'headers', composerResponseTab: 'body', composer: '', collection: 'open', collectionRename: '',
@@ -83,6 +84,10 @@ export function reduceDesignState(state: DesignState, patch: DesignStatePatch): 
   if (patch.view !== undefined) {
     next = {
       ...next,
+      storageCleared: patch.storageCleared ?? false,
+      storageConfirming: patch.storageConfirming ?? false,
+      storageOperation: patch.storageOperation ?? 'idle',
+      storageStatus: patch.storageStatus ?? 'ready',
       pop: patch.pop ?? false,
       pop2: patch.pop2 ?? '',
       tip: patch.tip ?? '',

@@ -458,6 +458,8 @@ for (const view of views) {
     tlsTunnelHost: view.tlsTunnelHost ?? null,
     bodyRuleEffect: view.bodyRuleEffect ?? null,
     fileOperationDelayMs: view.fileOperationDelayMs ?? 0,
+    storageUsage: view.storageUsage ?? null,
+    storageUnavailable: view.storageUnavailable === true,
   });
   await appPage.goto(url, { waitUntil: 'networkidle' });
   await appPage.locator('[data-collapsed]').first().waitFor({ state: 'visible' });

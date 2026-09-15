@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import type { CaptureUsage } from '../../../../shared/desktop-api';
-import { Button, StatusBadge } from '../../../components';
+import { Button, IconButton } from '../../../components';
 import { formatBytes } from '../utils';
 
 import styles from './StoragePanel.module.css';
@@ -43,7 +43,7 @@ export function StoragePanel(): React.JSX.Element {
 
   const clearAll = useCallback((): void => {
     const api = window.interceptor;
-    if (!api) {
+    if (!api || busy || state === 'loading') {
       return;
     }
     setBusy(true);
@@ -58,7 +58,7 @@ export function StoragePanel(): React.JSX.Element {
         setBusy(false);
         setConfirming(false);
       });
-  }, []);
+  }, [busy, state]);
 
   const value = (bytes: number | undefined): string =>
     state === 'ready' && bytes !== undefined ? formatBytes(bytes, i18n.language) : '—';
@@ -67,43 +67,43 @@ export function StoragePanel(): React.JSX.Element {
 
   return (
     <>
-      <h2 className={styles.title}>
-        {t('settings.storage')}
-        {state === 'ready' && usage ? (
-          <StatusBadge className={styles.mitm}>{formatBytes(usage.totalBytes, i18n.language)}</StatusBadge>
-        ) : null}
-      </h2>
+      <header className={styles.heading}>
+        <h2 className={styles.title}>{t('settings.storage')}</h2>
+        <IconButton
+          icon={RefreshCw}
+          label={t('settings.refresh')}
+          size="sm"
+          disabled={busy || state === 'loading'}
+          className={`${styles.refresh} ${state === 'loading' ? styles.refreshing : ''}`}
+          onClick={load}
+          automationId={AUTOMATION_IDS.settings.storage.refresh}
+        />
+      </header>
       <div className={styles.desc}>
         {t('settings.storageDescription')}
       </div>
 
-      {state === 'error' ? (
-        <Group title={t('settings.usage')}>
-          <Row label={t('settings.storageStatus')} hint={t('settings.storageUnavailableHint')}>
-            <StatusBadge tone="yellow">{t('settings.unavailable')}</StatusBadge>
-          </Row>
-        </Group>
-      ) : (
-        <>
-          <Group title={t('settings.usage')}>
-            <Row label={t('settings.totalOnDisk')} hint={t('settings.totalOnDiskHint')}>
-              <span className={styles.mono}>{value(usage?.totalBytes)}</span>
-            </Row>
-            <Row label={t('settings.captureDatabase')}>
-              <span className={styles.mono}>{value(usage?.databaseBytes)}</span>
-            </Row>
-            <Row label={t('settings.responseBodies')}>
-              <span
-                className={styles.mono}
-                data-automation-id={AUTOMATION_IDS.settings.storage.blobBytes}
-                data-bytes={state === 'ready' ? usage?.blobBytes : undefined}
-              >{value(usage?.blobBytes)}</span>
-            </Row>
-          </Group>
+      <Group title={t('settings.usage')}>
+        <Row
+          label={t(state === 'error' ? 'settings.storageStatus' : 'settings.capturedBodyData')}
+          hint={t(state === 'error' ? 'settings.storageUnavailableHint' : 'settings.capturedBodyDataHint')}
+        >
+          <span
+            className={state === 'error' ? styles.warning : styles.mono}
+            data-automation-id={AUTOMATION_IDS.settings.storage.blobBytes}
+            data-bytes={state === 'ready' ? usage?.blobBytes : undefined}
+          >{state === 'error' ? t('settings.unavailable') : value(usage?.blobBytes)}</span>
+        </Row>
+      </Group>
 
+      {state !== 'error' ? (
           <Group title={t('settings.contents')}>
             <Row label={t('settings.sessions')}>
-              <span className={styles.mono}>{count(usage?.sessionCount)}</span>
+              <span
+                className={styles.mono}
+                data-automation-id={AUTOMATION_IDS.settings.storage.sessionCount}
+                data-count={state === 'ready' ? usage?.sessionCount : undefined}
+              >{count(usage?.sessionCount)}</span>
             </Row>
             <Row label={t('settings.exchanges')}>
               <span
@@ -120,29 +120,25 @@ export function StoragePanel(): React.JSX.Element {
               >{count(usage?.bodyCount)}</span>
             </Row>
           </Group>
-        </>
-      )}
+      ) : null}
 
       <Group title={t('settings.maintenance')}>
-        <Row label={t('settings.refreshUsage')} hint={t('settings.refreshUsageHint')}>
-          <Button icon={RefreshCw} onClick={load} automationId={AUTOMATION_IDS.settings.storage.refresh}>
-            {t('settings.refresh')}
-          </Button>
-        </Row>
         <Row
           label={t('settings.clearCapturedData')}
           hint={t('settings.clearCapturedDataHint')}
+          additionalHint={t('settings.clearCaptureEffectsHint')}
+          className={styles.clearRow}
         >
           {confirming ? (
             <>
-              <Button onClick={() => setConfirming(false)}>{t('settings.cancel')}</Button>
-              <Button icon={Trash2} variant="danger" onClick={clearAll}>
+              <Button disabled={busy} onClick={() => setConfirming(false)} automationId={AUTOMATION_IDS.settings.storage.clearCancel}>{t('settings.cancel')}</Button>
+              <Button icon={Trash2} variant="danger" disabled={busy || state === 'loading'} onClick={clearAll} automationId={AUTOMATION_IDS.settings.storage.clearConfirm}>
                 {busy ? t('settings.clearing') : t('settings.confirmClear')}
               </Button>
             </>
           ) : (
-            <Button icon={Trash2} variant="danger" onClick={() => setConfirming(true)}>
-              {t('settings.clear')}
+            <Button icon={Trash2} variant="danger" disabled={busy || state === 'loading'} onClick={() => setConfirming(true)} automationId={AUTOMATION_IDS.settings.storage.clear}>
+              {t('settings.clearCapture')}
             </Button>
           )}
         </Row>

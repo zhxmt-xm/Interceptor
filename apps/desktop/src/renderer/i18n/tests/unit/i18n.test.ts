@@ -7,7 +7,10 @@ import { LANGUAGE_IDS, matchSystemLanguage, resolveLanguageId } from '../../lang
 import { resources } from '../../resources';
 
 const VARIABLE_PATTERN = /\{\{[^{}]+\}\}/g;
-const REQUIRED_MESSAGE_KEYS = ['composer.title', 'composer.auto'] as const;
+const REQUIRED_MESSAGE_KEYS = [
+  'composer.title', 'composer.auto', 'settings.capturedBodyData',
+  'settings.capturedBodyDataHint', 'settings.clearCaptureEffectsHint', 'settings.clearCapture',
+] as const;
 const REPRESENTATIVE_TRANSLATION_KEYS = [
   'common.language',
   'sidebar.capture',

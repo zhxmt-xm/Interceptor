@@ -1091,6 +1091,8 @@ export function installFakeInterceptor({
   tlsTunnelHost = null,
   bodyRuleEffect = null,
   fileOperationDelayMs = 0,
+  storageUsage = null,
+  storageUnavailable = false,
 }) {
   let captureEventsListener = null;
   let captureResetListener = null;
@@ -3095,7 +3097,7 @@ export function installFakeInterceptor({
   const publishGitHubAuthStatus = () => {
     for (const listener of githubAuthListeners) listener({ ...githubAuthStatus });
   };
-  let storage = fixture.storage;
+  let storage = storageUsage ?? fixture.storage;
   let transferJob = null;
   let updateStatus = updateState === 'unsupported'
     ? {
@@ -3576,7 +3578,10 @@ export function installFakeInterceptor({
     },
     onCoreProcessStatusChange: () => () => undefined,
     onBreakpointsChange: () => () => undefined,
-    getCaptureUsage: async () => storage,
+    getCaptureUsage: async () => {
+      if (storageUnavailable) throw new Error('Storage usage is unavailable.');
+      return storage;
+    },
     clearCapture: async () => {
       const captureReset = { clearedBefore: Date.now() };
       storage = {

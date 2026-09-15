@@ -293,7 +293,7 @@ diagnostics.row.<traceKey>
 | `settings.certificates.https` | MITM switch和host例外 | os-side-effect | planned |
 | `settings.certificates.external-actions` | Reveal/View；不包含用户排除的管理员MMC原生验收 | native-ui | planned |
 | `settings.tls-compatibility` | 真实TLS失败提示、精确host/wildcard选择、滚动、保存与Not now；最终Green，保留样式前置缺口 | privileged UI | planned |
-| `settings.storage.refresh-clear` | Usage、确认和Clear | os-side-effect | planned |
+| `settings.storage.refresh-clear` | 单项正文用量、右上Refresh及两处Clear同步、取消和录制状态保持 | os-side-effect | passed |
 | `settings.privacy.defaults` | Export隐私默认值与持久化 | os-side-effect | planned |
 | `settings.updates.check` | Local unsupported；packaged GitHub Device Flow、启动刷新与私有Release检查 | native-ui | planned |
 | `settings.updates.download-open` | 真实下载、校验和打开安装器 | native-ui | planned |

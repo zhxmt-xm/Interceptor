@@ -1,0 +1,41 @@
+.captureStorageProposal {
+	min-width: 0;
+}
+
+.captureStorageHeading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	min-height: 30px;
+}
+
+.captureStorageHeading h2 {
+	margin: 0;
+	letter-spacing: 0;
+}
+
+.captureStorageClearRow {
+	flex-wrap: wrap;
+}
+
+.captureStorageClearRow > div:first-child {
+	flex-basis: 320px;
+}
+
+.captureStorageWarning {
+	color: var(--yellow);
+	font-size: 11.5px;
+}
+
+.captureStorageRefreshing svg {
+	animation: captureStorageRefresh 0.75s linear infinite;
+}
+
+@keyframes captureStorageRefresh {
+	to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.captureStorageRefreshing svg { animation: none; }
+}

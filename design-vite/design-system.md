@@ -176,6 +176,8 @@
 - **WebSocket消息状态**：Messages列表加载、无数据消息、加载失败时保留已有边框和方向工具栏；状态区最小高度`116px`，用flex双轴居中，内容内边距`12px`，文字`12px/1.6`、`--text-3`，长错误文本可换行。普通消息行、消息payload与断点界面不变；仅Ping/Pong/Close的连接可以没有数据消息。
 - **状态栏**:录制红点 · 代理地址(mono)· System Proxy 绿点 · 计数 · 右侧速率(mono)。
 
+- **Settings / Storage（2026-09-15用户确认）**：标题同行最右侧放`30px` Refresh图标按钮和Tooltip，操作期间阻止重复点击；标题不重复显示容量badge，Maintenance不再有Refresh usage行。Usage仅一行`Captured body data`，说明包含内存和临时文件中的正文，不显示Capture database、Response bodies或Total on disk；Contents保留Session/Exchange/正文数量。Clear capture旁明确它与Capture列表清空是同一操作、记录和正文一起删除、导出文件和录制状态保持，原位置提供Cancel/Confirm clear。沿用现有Settings分组与行，清理行允许自然换行，不新增Memory/Disk/Retention配置或自动轮询。读取失败显示Unavailable而非0 B，默认Storage页与正常/确认/清空/不可用八张明暗图一一对应。
+
 ## 交互状态
 
 - 文本选择:界面中的所有文本都允许选择与复制，包括 button/nav/tab/switch/segmented 标签，以及 Inspector URL/header/body、Cookie、Diagnostics 与技术值；不得使用 `user-select:none`。
