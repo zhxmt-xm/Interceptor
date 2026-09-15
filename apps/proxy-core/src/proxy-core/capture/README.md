@@ -30,6 +30,8 @@ Body 的内容寻址决定了 **hash 只有写完才能确定**，因此传输�
 
 提交失败时BodyWriter仍向调用方抛出原错误，但快照必须为已结束、不可读，可读长度归零，observed字节数保持。BodyStore继续负责提交失败的spill清理，不能留下无正文却持续等待增长的writer状态。
 
+单正文导出在sync和关闭临时文件之后、最终rename之前检查取消；取消被确认时清理临时文件并保留原目标。rename成功后返回TransferResult，迟到取消不能将这次成功保存记为cancelled；任务终态由TransferService等待实际结果后发布。
+
 存在Body Rule effect时，公开`requestBody` / `responseBody`始终是Final。Request Original仅在
 `originalState: available`时通过effect引用；`empty`与Response的`unavailable`不携带虚假ref。
 Original参与storage统计、GC引用重建、Archive快照hash枚举和Clear生命周期，与Final同样由BodyStore

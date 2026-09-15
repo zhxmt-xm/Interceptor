@@ -69,10 +69,13 @@
         <tr><td><code>proxy/entry.ts</code> · <code>prepareCaptureReset()</code></td><td>Clear只等待WebSocket等Capture操作，终态HTTP正文可能仍在提交，随后清理会与写入竞争。</td><td>推进generation后先等待Exchange存储队列，再等待原Capture操作，最后交由调用方清理正文；网络响应不等待捕获落盘，Recording暂停语义不变。</td></tr>
         <tr><td><code>grpc/entry.ts</code><br><code>grpc/interfaces/index.ts</code></td><td>没有 bodyHash 时返回空消息；查询依赖完整 body。超过当前正文长度的游标被当成已读尽，无法暴露非法输入。</td><td>按当前快照只跳读 5-byte header，列出已收齐的消息；未完成 envelope 保留续读游标，不提前标损坏。末尾游标可继续等待在途消息，超过末尾则返回已有的不可重试输入错误。独立返回 <code>bodyAvailable</code> / <code>bodyComplete</code>，在途不伪造 hash。</td></tr>
         <tr><td><code>core-application.ts</code><br><code>packages/core-protocol/src/messages.ts</code></td><td>正文读取命令必须提供内容 hash。</td><td>新增 <code>grpc.read-range</code> / <code>grpc.range</code>，按 Exchange、side、offset、length 读取现有 Capture 正文；原 <code>body.read-range</code> 与导出命令保留。</td></tr>
-        <tr><td><code>transfer/entry.ts</code><br><code>CoreApplication.shutdown()</code></td><td>cancelAll只发出取消信号，Core随后释放Capture；公开cancelled状态出现时文件操作可能仍在清理。</td><td>跟踪实际任务Promise，取消所有任务后等待操作和清理结束，包含此前已取消的任务。Core同时停止Proxy，等待两者后才释放Capture并确认stopped；单任务Cancel状态、完成通知及Clear策略不变。</td></tr>
+        <tr><td><code>transfer/entry.ts</code><br><code>CoreApplication.shutdown()</code><br><code>transfer.job.cancel</code></td><td>Cancel先将任务标为cancelled，随后忽略已成功提交的结果；cancelAll只发出信号，Core可能在文件清理结束前释放Capture。</td><td>按jobId跟踪实际任务Promise；Cancel发出请求后只等待目标任务，以操作的成功、取消或真实错误决定终态。成功提交仍为completed并发出通知，真实文件错误不被取消掩盖；清理完成后才确认cancelled。Core同时停止Proxy，等待全部任务后才释放Capture，公开状态集合不变。</td></tr>
+        <tr><td><code>CoreApplication</code> · <code>capture.cleanup</code><br><code>TransferService.hasPendingCaptureTransfers()</code></td><td>只有Renderer遮罩拦住导入导出期间的Clear，MCP/Agent仍可删除任务正在使用的正文；Clear等待期间也能启动新文件任务。</td><td>Core集中执行双向互斥：Body导出、HAR/Archive导入导出未结束时拒绝Clear，Clear执行时拒绝新文件任务及重复Clear。返回可重试conflict，保留原记录和任务，不自动取消；结束或失败后释放，Diagnostics导出和网络转发不受影响。对应真实workflow保留MCP获准后的冲突检查。</td></tr>
+        <tr><td><code>CaptureService.exportBodyToFile()</code><br><code>HarService.exportToFile()</code></td><td>sync或关闭输出句柄期间收到取消后，仍可能执行最终rename并覆盖原目标文件。</td><td>关闭临时文件后、最终rename前再次检查取消。确认取消时删除临时文件并保留原目标；rename成功后返回成功，不因迟到取消删除已保存文件。Archive既有rename前检查继续保留。</td></tr>
       </tbody>
     </table>
-    <p>对应产品测试补充在途内存 / spill 读取、半帧、分页游标、Final 优先级、读取与清理竞态、提交失败后的快照、双侧终态收尾，以及文件任务取消后的清理顺序；原 Proxy 测试写入器联动父类构造参数。</p>
+    <p>对应产品测试补充在途内存 / spill 读取、半帧、分页游标、Final 优先级、读取与清理竞态、提交失败后的快照、双侧终态收尾，以及文件任务取消后的清理顺序。取消提交点用真实临时文件覆盖sync期间取消、rename后的迟到取消及错误脱敏；原 Proxy 测试写入器联动父类构造参数。</p>
+    <p><code>capture/tests/integration/body-writer.test.ts</code>：原先只有立即超限用例，新增四条spill打开受阻时的并发队列、恰好达到上限、超限后不再复制输入、独立writer提交，以及finalize/abort等待清理。沿用测试fixture的8 MiB待写上限，不改变生产128 MiB常量、录制行为或总容量策略。</p>
   </section>
 
   <section>
@@ -113,7 +116,8 @@
       <li><code>http-scenarios.workflow.ts</code>：增加 SSE 正常 / 取消 / reset、6 MiB chunked / Content-Length / 100 Continue 上传、4 MiB 上传取消，以及长下载正常 / Pause / Clear；在流未结束时核对列表增长、origin 接收和身份，不以最终结果代替进行中状态。</li>
       <li><code>grpc-scenarios.workflow.ts</code>：增加单向 / 双向分段消息、半帧、真实 Copy、Pause / Resume 和 Clear；原压缩、损坏、trailers 与 UTF-8 场景仍保留。背景 TLS 提示通过真实 Not now 处理；总预算由180秒改300秒以容纳完整场景和CA清理，单步断言不变，不改变产品策略。</li>
       <li><code>tools-transfer-jobs.workflow.ts</code> 与 <code>fixtures/runtime/local-electron-driver.ts</code>：原流程先取消并等待任务结束才关闭；现在保留该流程，再增加Archive运行中直接退出及重启检查。进度遮罩会挡住自绘Close，因此先核验测试Main的PID、启动代际和前台窗口，再发送真实Windows Alt+F4；不改遮罩、不先取消任务、不注入业务API或原生Dialog结果。</li>
-      <li><code>apps/playground/server/tls/traffic.ts</code>：既有 TLS origin 支持受控请求 / 响应 AsyncIterable；使用 Node HTTP/2 和 pipeline，复用原 gRPC envelope 编码，不新增另一套协议服务。</li>
+      <li><code>apps/playground/server/tls/traffic.ts</code>：既有TLS origin支持受控请求/响应AsyncIterable及共享H2 session；调用方控制单个Node stream，指定响应状态和headers，默认H2/gRPC行为不变。已有Readable直接交给pipeline，让客户端取消关闭原源流，不再二次包装；复用原CONNECT、TLS和gRPC编码，不新增另一套协议服务。</li>
+      <li><code>http2-scenarios.workflow.ts</code>与<code>proxy/tests/integration/h2.test.ts</code>：原真实UI流程只有完整H2正文与trailer；现在同一workflow追加双6 MiB Range的正常完成、Clear、单流取消、SETTINGS变更及客户端正常GOAWAY。先通过真实列表及Headers检查2 MiB进行中状态，再核对逐流hash、原行和后续新录制；SETTINGS等待ACK，GOAWAY等待已有流完整结束，再由新连接发送请求。产品状态只通过UI观察，不调用业务API替代按钮，不新增协议事件UI。</li>
       <li><code>fake-interceptor.mjs</code>：完成态 gRPC fixture 补独立状态与新 range 入口；设计稿与 PNG 不变。Renderer 逻辑测试补在途续读、迟到分页隔离与非零 offset 的分块读取。</li>
       <li>Capture / Grpc module README、Capture 功能约定、真实 workflow 规格及进程 / 存储说明同步新读取和生命周期契约。</li>
     </ul>

@@ -102,6 +102,8 @@ export class CoreApplication implements CoreRpcHost {
   private readonly grpcService: GrpcService | null;
   /** HAR 与原生 archive 共用的异步文件任务管理器。 */
   private readonly transferService = new TransferService();
+  /** Clear执行期间阻止新Capture文件任务进入，不影响实时网络转发。 */
+  private captureCleanupInProgress = false;
   /** 尚未成功发给Main的Capture导入通知。 */
   private captureImportPending = false;
   /** HAR 文件转换与异步任务门面；无抓包数据时不可用。 */
@@ -576,22 +578,32 @@ export class CoreApplication implements CoreRpcHost {
         }));
       case 'capture.cleanup':
         return this.withCapture(async (captureService) => {
-          const requestedScope = toCleanupScope(command.payload);
-          const activeSessionId = requestedScope.kind === 'all'
-            ? (await this.proxyService?.prepareCaptureReset()) ?? null
-            : null;
-          if (requestedScope.kind === 'all') {
-            this.captureEventQueue?.reset();
+          this.assertCaptureNotClearing();
+          if (this.transferService.hasPendingCaptureTransfers()) {
+            throw commandError({ code: 'conflict', retryable: true,
+              message: 'Capture data is in use by a file transfer.' });
           }
-          const cleanupScope: CleanupScope = activeSessionId
-            ? { kind: 'all-except-session', sessionId: activeSessionId }
-            : requestedScope;
-          return {
-            type: 'capture.status',
-            payload: await this.coreDiagnostics.action('capture.cleanup', () =>
-              captureService.cleanup(cleanupScope),
-            ),
-          };
+          this.captureCleanupInProgress = true;
+          try {
+            const requestedScope = toCleanupScope(command.payload);
+            const activeSessionId = requestedScope.kind === 'all'
+              ? (await this.proxyService?.prepareCaptureReset()) ?? null
+              : null;
+            if (requestedScope.kind === 'all') {
+              this.captureEventQueue?.reset();
+            }
+            const cleanupScope: CleanupScope = activeSessionId
+              ? { kind: 'all-except-session', sessionId: activeSessionId }
+              : requestedScope;
+            return {
+              type: 'capture.status',
+              payload: await this.coreDiagnostics.action('capture.cleanup', () =>
+                captureService.cleanup(cleanupScope),
+              ),
+            };
+          } finally {
+            this.captureCleanupInProgress = false;
+          }
         });
       case 'har.export.start':
         return this.withHar((harService) => ({
@@ -638,22 +650,25 @@ export class CoreApplication implements CoreRpcHost {
           },
         }));
       case 'body.export.start':
-        return this.withCapture(async (captureService) => ({
-          type: 'transfer.job',
-          payload: {
-            job: this.transferService.start(
-              command.payload.jobId,
-              'body-export',
-              command.payload.filePath,
-              (abortSignal, onProgress) => captureService.exportBodyToFile(
-                command.payload.bodyId,
+        return this.withCapture(async (captureService) => {
+          this.assertCaptureNotClearing();
+          return {
+            type: 'transfer.job',
+            payload: {
+              job: this.transferService.start(
+                command.payload.jobId,
+                'body-export',
                 command.payload.filePath,
-                abortSignal,
-                onProgress,
+                (abortSignal, onProgress) => captureService.exportBodyToFile(
+                  command.payload.bodyId,
+                  command.payload.filePath,
+                  abortSignal,
+                  onProgress,
+                ),
               ),
-            ),
-          },
-        }));
+            },
+          };
+        });
       case 'transfer.job.get':
         return {
           type: 'transfer.job',
@@ -662,7 +677,7 @@ export class CoreApplication implements CoreRpcHost {
       case 'transfer.job.cancel':
         return {
           type: 'transfer.job',
-          payload: { job: this.transferService.cancel(command.payload.jobId) },
+          payload: { job: await this.transferService.cancel(command.payload.jobId) },
         };
       case 'proxy.start':
         return this.withProxy(async (proxyService) => {
@@ -972,6 +987,13 @@ export class CoreApplication implements CoreRpcHost {
     return operation(this.captureService);
   }
 
+  /** 拒绝与Clear交错的Capture文件操作，错误不携带文件或正文信息。 */
+  private assertCaptureNotClearing(): void {
+    if (this.captureCleanupInProgress) {
+      throw commandError({ code: 'conflict', retryable: true, message: 'Capture cleanup is in progress.' });
+    }
+  }
+
   /**
    * 在工作区配置库可用时执行操作；缺失时抛出 internal 错误。
    * 调用方：rules.get/replace、collection.get/replace handler。
@@ -997,6 +1019,7 @@ export class CoreApplication implements CoreRpcHost {
         retryable: false,
       });
     }
+    this.assertCaptureNotClearing();
     return operation(this.harService);
   }
 
@@ -1009,6 +1032,7 @@ export class CoreApplication implements CoreRpcHost {
         retryable: false,
       });
     }
+    this.assertCaptureNotClearing();
     return operation(this.archiveService);
   }
 

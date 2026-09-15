@@ -201,6 +201,75 @@ describe('BodyWriter', () => {
     expect(bodyWriterFixture.bodyStore.usageBytes).toBe(0);
   });
 
+  it.each(['finalize', 'abort'] as const)('bounds concurrent stalled spill queues until %s finishes', async (ending) => {
+    const slowBodyWriters = Array.from({ length: 4 }, () => bodyWriterFixture.bodyStore.createWriter());
+    const independentBodyWriter = bodyWriterFixture.bodyStore.createWriter();
+    const chunk = Buffer.alloc(2 * 1024 * 1024, 0x71);
+    const chunksAtLimit = limits.pendingLimitBytes / chunk.byteLength;
+    let releaseSpills!: () => void;
+    const spillGate = new Promise<void>((resolve) => { releaseSpills = resolve; });
+    let notifySpillsStarted!: () => void;
+    const spillsStarted = new Promise<void>((resolve) => { notifySpillsStarted = resolve; });
+    let blockedSpills = 0;
+    const originalOpen = fs.open.bind(fs);
+    const openSpill = vi.spyOn(fs, 'open').mockImplementation(async (...parameters) => {
+      if (blockedSpills < slowBodyWriters.length) {
+        blockedSpills += 1;
+        if (blockedSpills === slowBodyWriters.length) notifySpillsStarted();
+        await spillGate;
+      }
+      return originalOpen(...parameters);
+    });
+    const copyBuffer = vi.spyOn(Buffer, 'from');
+
+    try {
+      for (const bodyWriter of slowBodyWriters) bodyWriter.write(chunk);
+      await spillsStarted;
+      for (let chunkIndex = 1; chunkIndex < chunksAtLimit; chunkIndex += 1) {
+        for (const bodyWriter of slowBodyWriters) bodyWriter.write(chunk);
+      }
+      for (const bodyWriter of slowBodyWriters) {
+        expect(bodyWriter.degraded).toBe(false);
+        expect(bodyWriter.observedBytes).toBe(limits.pendingLimitBytes);
+      }
+      const acceptedCopies = slowBodyWriters.length * chunksAtLimit;
+      expect(copyBuffer.mock.calls.filter(([source]) => source === chunk)).toHaveLength(acceptedCopies);
+      for (let chunkIndex = 0; chunkIndex < 16; chunkIndex += 1) {
+        for (const bodyWriter of slowBodyWriters) bodyWriter.write(chunk);
+      }
+      expect(copyBuffer.mock.calls.filter(([source]) => source === chunk)).toHaveLength(acceptedCopies);
+      for (const bodyWriter of slowBodyWriters) {
+        expect(bodyWriter.degraded).toBe(true);
+        expect(bodyWriter.observedBytes).toBe(limits.pendingLimitBytes + 16 * chunk.byteLength);
+      }
+      const finishing = Promise.all(slowBodyWriters.map((bodyWriter) => bodyWriter[ending]()));
+      let finished = false;
+      void finishing.then(() => { finished = true; }, () => undefined);
+      const independentBody = Buffer.alloc(chunk.byteLength, 0x35);
+      independentBodyWriter.write(independentBody);
+      const stored = await independentBodyWriter.finalize();
+      expect(stored?.size).toBe(independentBody.byteLength);
+      expect(stored?.hash).toBe(createHash('sha256').update(independentBody).digest('hex'));
+      expect(finished).toBe(false);
+
+      releaseSpills();
+      expect(await finishing).toEqual(slowBodyWriters.map(() => ending === 'finalize' ? null : undefined));
+      for (const bodyWriter of slowBodyWriters) {
+        await expect(bodyWriter.snapshot()).resolves.toEqual({ encodedSize: 0, available: false, complete: true });
+        await expect(bodyWriter.readRange(0, 16)).resolves.toEqual(Buffer.alloc(0));
+      }
+      expect(await bodyWriterFixture.spillFiles()).toEqual([stored!.hash]);
+      expect(bodyWriterFixture.bodyStore.usageBytes).toBe(independentBody.byteLength);
+      const savedBody = await bodyWriterFixture.bodyStore.readRange(stored!.hash, 0, independentBody.byteLength);
+      expect(savedBody.equals(independentBody)).toBe(true);
+    } finally {
+      releaseSpills();
+      await Promise.all([...slowBodyWriters, independentBodyWriter].map((bodyWriter) => bodyWriter.abort()));
+      copyBuffer.mockRestore();
+      openSpill.mockRestore();
+    }
+  });
+
   it('removes half-written spill files when aborted', async () => {
     await bodyWriterFixture.useMemoryThreshold(16);
     const writer = bodyWriterFixture.bodyStore.createWriter();

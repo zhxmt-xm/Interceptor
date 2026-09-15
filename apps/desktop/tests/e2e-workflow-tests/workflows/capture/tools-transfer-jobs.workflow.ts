@@ -247,6 +247,33 @@ test('capture.tools.transfer-jobs queries and cancels real file jobs without exp
     await captureArchiveSource(desktopApp, loopbackLab, client);
     const archiveJobId = await startArchiveFromUi(desktopApp, path.join(directory, 'cancel-ask.iarchive'));
     expect(publicJob(mcpValue(await client.callTool({ name: TOOL_NAMES[0], arguments: { jobId: archiveJobId } })))).toMatchObject({ state: 'running', kind: 'archive-export' });
+
+    // 清理互斥：真实MCP获准后仍须由Core拒绝运行中导出的Clear，原记录和任务保持。
+    // Clear exclusion: Core rejects an approved MCP Clear during export without deleting records or cancelling the job.
+    const sourceRow = page.locator('[data-automation-id^="capture.request-row."]')
+      .filter({ hasText: '/e2e/transfer-jobs/large-source' });
+    await expect(sourceRow).toHaveCount(1);
+    const sourceRowId = await sourceRow.getAttribute('data-automation-id');
+    await desktopApp.startTrace(testInfo);
+    const clearingDuringExport = client.callTool({ name: 'capture_clear', arguments: {} });
+    await expect(approval).toHaveAttribute('data-tool-name', 'capture_clear');
+    await getByAutomationId(page, AUTOMATION_IDS.mcp.approval.allow).click();
+    const clearResult = await clearingDuringExport;
+    const remainingSourceRows = await sourceRow.count();
+    const remainingArchiveState = publicJob(mcpValue(await client.callTool({
+      name: TOOL_NAMES[0], arguments: { jobId: archiveJobId },
+    }))).state;
+    const clearEvidencePath = testInfo.outputPath('capture-clear-during-transfer.json');
+    await writeFile(clearEvidencePath, JSON.stringify({ clearRejected: clearResult.isError === true,
+      sourceRowId, remainingSourceRows, archiveState: remainingArchiveState }, null, 2), 'utf8');
+    await page.screenshot({ path: testInfo.outputPath('capture-clear-during-transfer.png') });
+    await testInfo.attach('capture-clear-during-transfer.json', { path: clearEvidencePath, contentType: 'application/json' });
+    await desktopApp.stopTrace(testInfo);
+    expect(clearResult.isError).toBe(true);
+    expect(remainingSourceRows).toBe(1);
+    expect(remainingArchiveState).toBe('running');
+    await expect(sourceRow).toHaveAttribute('data-automation-id', sourceRowId!);
+
     const denied = client.callTool({ name: TOOL_NAMES[1], arguments: { jobId: archiveJobId } });
     await expect(approval).toHaveAttribute('data-tool-name', TOOL_NAMES[1]);
     await getByAutomationId(page, AUTOMATION_IDS.mcp.approval.deny).click();

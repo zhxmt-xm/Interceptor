@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, open, readFile, readdir, rm, type FileHandle } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 
 import type { CaptureExchangeDetail } from '@interceptor/core-protocol';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   HarService,
@@ -22,6 +22,7 @@ import type {
 const tempDirectories: string[] = [];
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await Promise.all(
     tempDirectories.splice(0).map((directory) =>
       rm(directory, { recursive: true, force: true }),
@@ -183,6 +184,33 @@ class FakeCaptureService extends CaptureService {
 }
 
 describe('HarService', () => {
+  it('preserves the original HAR when cancellation arrives during sync', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'interceptor-har-commit-'));
+    tempDirectories.push(directory);
+    const filePath = path.join(directory, 'capture.har');
+    const originalFile = await open(filePath, 'w');
+    await originalFile.writeFile('original HAR');
+    await originalFile.close();
+    const prototype = Object.getPrototypeOf(originalFile) as FileHandle;
+    const syncFile = prototype.sync;
+    const abortController = new AbortController();
+    vi.spyOn(prototype, 'sync').mockImplementationOnce(async function (this: FileHandle) {
+      await syncFile.call(this);
+      abortController.abort();
+    });
+    const harService = new HarService(
+      new FakeCaptureService([FakeCaptureService.capturedDetail()]),
+      new TransferService(),
+    );
+
+    await expect(harService.exportToFile(filePath, {
+      scope: { kind: 'all' },
+      redaction: { authorization: true, cookies: true, bodies: false },
+    }, abortController.signal)).rejects.toMatchObject({ name: 'AbortError' });
+    expect(await readFile(filePath, 'utf8')).toBe('original HAR');
+    expect(await readdir(directory)).toEqual(['capture.har']);
+  });
+
   it('exports interoperable HAR 1.2 and imports it as inert capture data', async () => {
     delete (globalThis as { notExecuted?: () => void }).notExecuted;
     const directory = await mkdtemp(path.join(tmpdir(), 'interceptor-har-'));

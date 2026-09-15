@@ -80,7 +80,7 @@
 <a id="capture-scenarios-http2"></a>
 ## `capture.scenarios.http2`
 
-**状态**：passed；独立H2场景与最终矩阵均Green，CA及宿主恢复
+**状态**：2026-09-15同一workflow1/1（27.3s）通过；既有Headers/trailer/正文与双Range正常/Clear/单stream取消/SETTINGS/客户端GOAWAY同跑，CA与宿主恢复通过
 **策略**：真实Electron；正式Certificates UI；仅本轮CA；host-safety-guard
 
 ### Steps
@@ -91,6 +91,14 @@
 4. 真实点击Headers，核对Request `accept: application/json`、Response `content-type: application/json`和trailer；Response Raw正文包含`"protocol": "h2"`与`"path": "/playground/h2-json"`。
 5. 保存trace、截图和协议/行身份；`finally`通过UI停用MITM、删除localhost例外，按本轮CA指纹卸载、删除材料并比较完整Root集合。
 6. fixture正常退出Electron，验证Main/Core/Worker、8888、WinINet/journal恢复；失败保留profile。fixture不新增unit/integration测试。
+
+同一workflow补充三种多stream场景：每种使用一个真实CONNECT/TLS/H2 session，同时请求两个6 MiB Range。共享TLS origin各先发送2 MiB，尚未结束时通过真实Capture列表核对两条独立H2/GET/206记录及2 MB，在Headers核对Range、Content-Range和Content-Length，保存stream ID、公共行身份、字节数及进行中截图。正常完成后客户端逐流hash一致、原行变为6 MB且Time不再占位；Clear必须点击产品按钮，剩余数据继续完整转发、旧行不恢复，同一连接的新请求仍可录制；取消只发送首条stream的NGHTTP2_CANCEL，源站对应响应关闭、Capture保留2 MB及结束耗时，另一条仍完整接收6 MiB。确定性Core终态由已有H2集成覆盖，UI不虚构未展示的协议字段。每种保存`h2-ranges-<action>.json`和前后截图，最后仍由同一workflow通过真实UI恢复CA/Root及宿主，不增加产品测试专用入口。
+
+继续增加两个session场景，保留上述准备、真实UI断言及清理：`settings`在各到2 MiB时通过客户端发送并等待SETTINGS ACK，确认32 KiB窗口、0字节header table和32 KiB最大frame后，两流完整到6 MiB；`goaway`在相同位置正常关闭客户端session，记录此时closed但尚未destroyed，已有两流完整结束后确认连接已销毁，再由新H2连接发`after-goaway`并在真实列表确认新200行。两场景均保留原行身份、最终字节/hash和结束耗时，`h2-ranges-<action>.json`增加session阶段快照；不把协议客户端的控制操作当作产品API，也不要求UI显示尚未实现的GOAWAY事件。
+
+当前证据为TEMP `interceptor-h2-multistream-20260915-e2e-green`，Main/Core `47824/13880`正常退出；三场景stream ID均为1/3，最终字节分别6/6、6/6、2/6 MiB，Clear后旧行0/0，其余保持各1条。首次取消失败源于流量库对Readable二次包装，修复后通过，旧`-e2e`与`33216/9300`退出记录保留；共享gRPC最终1/1（2.8m）和Desktop/Playground类型通过，详见[H2证据](../../../../../architecture/features/capture.md#h2-range与多stream集成)。
+
+SETTINGS/客户端GOAWAY加入后的最终证据为TEMP `interceptor-h2-session-20260915-e2e`，五个Range场景与原H2同跑1/1（27.3s），Main/Core `22300/13000`正常退出及CA/Root/宿主恢复；Core完整H2组11/11、Core/Desktop类型通过。旧三场景结果保留为历史，不替代当前五场景。源站/错误GOAWAY与协议事件展示尚未验收。
 
 <a id="capture-scenarios-bodies"></a>
 ## `capture.scenarios.bodies`
@@ -990,7 +998,7 @@ Capture discovery、Settings双列授权、MCP Browser/Desktop关联真实`4/4`�
 	对同一任务执行Ask Deny、Allow及Auto取消，验证完成任务状态不变；未知身份返回job:null，不重放文件操作。
 3. 开启真实录制，用本地origin通过8888发送较大的非压缩响应，等待Capture记录完整；从产品Capture Export菜单
 	选择Archive并经真实Save启动文件任务。进度组件公开真实jobId/state/processed/total，不能从Store读取或seed。
-4. 当前Archive仍running时，MCP Get返回同一jobId及进度；MCP Cancel先Deny，再Allow取消。关闭进度弹窗后
+4. 当前Archive仍running时，MCP Get返回同一jobId及进度；通过真实Ask批准`capture_clear`，Core必须拒绝，原Capture行身份与导出running状态保持。保存`capture-clear-during-transfer.json/png`及trace，不用任务已经完成后的Clear代替这一断言。随后MCP Cancel先Deny，再Allow取消。关闭进度弹窗后
 	通过UI把MCP切到Auto并启动第二个Archive，再取消第二个运行中任务。两轮确认Core状态cancelled、UI一致，
 	输出文件不存在、临时文件已清理，其他已完成任务不变。
 	测试不能把已完成任务取消当作本步通过，不向产品新增测试专用延迟或暂停入口。
@@ -1005,6 +1013,10 @@ Capture discovery、Settings双列授权、MCP Browser/Desktop关联真实`4/4`�
 Core的进度、运行中取消及终态幂等由unit/integration与同一真实流程交叉验证；取消必须触发真实文件任务的
 AbortSignal并清理I/O，而不是仅将界面改为cancelled。保存各阶段安全job快照、文件hash/存在性、恢复与进程代际，
 不归档敏感文件名、完整原始正文或认证数据。原生窗口焦点、任务完成太快或selector失败不作为产品Red。
+
+取消提交点续作：Cancel返回的是Core确认的实际结果，只有操作中止并完成清理才返回cancelled；如果保存或导入已经提交，应返回completed并保留成功文件/数据及通知。确定性的fsync/rename时序由所属unit/integration覆盖，不为真实E2E注入暂停或故障分支；原运行中取消与重启workflow先确认当前基线，再于修复后同样复跑。
+
+Clear互斥已取得真实前置Red及同一workflow最终Green：运行中Archive未被取消，Clear的MCP调用由成功改为错误，原Capture行由0条恢复为1条；随后原取消和重启步骤继续通过。2026-09-15最终1/1（46.1s），两代Main/Core `13404/16476`、`31212/35940`正常退出与宿主恢复，TEMP `interceptor-capture-transfer-exclusion-20260915-e2e-green`保存JSON、截图和trace；前置代`39964/35616`及旧失败保留于同前缀`-e2e-red`。其他方向的确定性竞争由Core命令单测覆盖，详细范围见[Transfer](../../../../../architecture/features/transfer.md#clear与文件任务)。
 
 当前证据为TEMP `interceptor-streaming-acceptance-20260915-transfer-jobs-native-close`，`transfer-jobs.json`含`shutdownArchiveState: running`、`shutdownOutputRemoved`和`shutdownJobNotReplayed`；Main/Core `3916/22680`及`44120/33196`正常退出。原生粘贴失败和遮罩导致Close等到任务完成的两次验收失败保留在原目录及`-retry`，不算产品Red；具体原因和相关Body/HAR/Archive结果见[Transfer关闭](../../../../../architecture/features/transfer.md#2-四类任务)。
 

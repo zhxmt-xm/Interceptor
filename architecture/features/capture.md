@@ -271,6 +271,13 @@ stateDiagram-v2
 - 复用现有`proxy/tests/integration/h2.test.ts`和真实ProxyService/CaptureService，不启动Electron或修改系统代理。同一H2客户端连接同时请求两个6 MiB Range，响应规则仅追加header；源站尚未结束时，两流均收到2 MiB并在Capture显示独立的206及进行中字节，Range/Content-Range/Content-Length保持，最终逐流SHA256一致。
 - 正常完成后两条正文均保存且末尾range可读；Clear在两流首段后推进正式capture generation并清空记录，剩余正文仍完整转发，旧行不恢复，同连接新请求仍可录制。单流`NGHTTP2_CANCEL`只取消首条，源站对应stream关闭，Capture保留2 MiB及`aborted`，另一条完整保存6 MiB。
 - 2026-09-14同组9/9、Core typecheck通过，未修改转发实现。TEMP `interceptor-h2-ranges-20260914-{baseline,final,types-final}.log`保存结果；首次取消检查误把关闭后的`writableEnded`当作原文完整性、helper曾丢失数字status类型，均为测试缺陷且已修复，不算产品Red。2026-09-15既有H2 Headers/trailer/正文真实workflow1/1（14.2s）、Main/Core `9532/45140`正常退出及CA/宿主恢复；不将普通H2流程当作Range/多stream的真实UI覆盖，压力容量及更广帧矩阵仍未验证。
+- 2026-09-15同一H2 workflow已加入双Range正常/Clear/单流取消并最终1/1（19.9s）：`TlsTrafficRunner`复用同一origin及CONNECT路径，只增加可共享session/受控响应；每种客户端stream ID均为1/3。两条各到2 MiB时真实列表和Headers保持独立，正常/Clear最终各6 MiB，取消首条为2 MiB、另一条6 MiB，hash一致；Clear按钮清空后旧行不复活，同连接新请求仍能录制。证据TEMP `interceptor-h2-multistream-20260915-e2e-green`，保存三份`h2-ranges-*.json`、前后截图与trace；Main/Core `47824/13880`正常退出及CA/Root和宿主guard恢复。
+- 首轮同一workflow已通过正常与Clear，但受控Readable被二次包装，客户端取消后源流未销毁；改为直接交给pipeline后通过，失败代`33216/9300`正常退出，原证据保留在同前缀`-e2e`，不是产品Red。HTTP draft在异步闭包里失去类型收窄，改用已校验的局部常量后Desktop/Playground类型通过（`-types-green.log`）；共享gRPC流程1/1（2.8m，`40592/35964`）与CA/宿主恢复通过（`-grpc-regression`）。没有新增测试工具自身的测试，也未修改产品或第三方；更广H2矩阵和容量策略仍未完成。
+
+H2 session续验沿用同一双Range流程，不新增协议事件采集或UI。两条响应各到2 MiB后，SETTINGS用ACK确认`initialWindowSize: 32768`、`headerTableSize: 0`、`maxFrameSize: 32768`；既有流各收到完整6 MiB并保持原Capture行。客户端正常关闭session发送GOAWAY时，已开始的流继续完整接收；排空后连接结束，另开连接的新请求录制为H2/200。Core集成同时检查客户端及origin各自SETTINGS，真实Electron检查客户端SETTINGS和正常GOAWAY。
+
+- 2026-09-15五种双Range场景集成5/5，包含原H2、编码、H1上游和gRPC的整个文件11/11；Core/Desktop类型通过。真实H2 workflow 1/1（27.3s），同跑原Headers/trailer及五种Range场景，Main/Core `22300/13000`正常退出、CA/Root与宿主guard恢复。SETTINGS ACK为32 KiB/0/32 KiB，GOAWAY发送后closed=true但destroyed=false，完整收尾后destroyed=true；逐流字节、hash、原行和重连新行均符合断言。
+- 证据TEMP前缀`interceptor-h2-session-20260915-`保存`baseline/integration-final/types.log`与`e2e`目录，后者含五份`h2-ranges-<action>.json`、前后截图、trace和metadata；`interceptor-capture-ready-20260915-evidence.json`核对新H2/Body退出及Core/worker与已验收package字节一致。产品和第三方代码未改，记录当前行为Green基线，不制造Red；源站GOAWAY、错误GOAWAY及新增协议事件展示不属于本轮覆盖。
 
 #### gRPC streaming目标与当前差异
 
@@ -1343,6 +1350,13 @@ Promise 链上排队，真正落盘在后台进行。`pendingBytes` 就是「已
 
 磁盘写入失败只跳过该正文，绝不影响转发、RPC 或进程状态。
 
+#### 待写上限验证
+
+- 2026-09-15在既有`capture/tests/integration/body-writer.test.ts`补充四writer并发受阻的`finalize/abort`两种结束方式。沿用fixture的1 MiB内存阈值、8 MiB待写上限，受控挂起`fs.open`，后续仍使用真实临时文件；生产3 MiB/128 MiB常量未修改。
+- 每条队列恰好接受8 MiB时不降级，四条输入分片共复制32 MiB；再各送32 MiB后只累计到40 MiB observed，不再复制输入。另一条2 MiB spill仍能独立提交、核对hash并完整读取，证明一个writer阻塞不串行阻塞所有正文。
+- `finalize/abort`在spill gate释放前均不结束；释放后降级正文不可读、没有已提交正文或半成品文件，仅保留独立成功正文。新增2/2及相邻BodyWriter/BodyStore 20/20、Core typecheck通过，TEMP前缀`interceptor-capture-writer-pressure-20260915-`保存`baseline/regression/regression-final/types/types-final.log`。最终完整正文比较使用`Buffer.equals()`，同组20/20用时497ms，未缩减字节断言。现有产品行为未变，因此记录Green基线，不制造Red。
+- 这是缩小阈值后的队列边界、spill打开受阻与清理时序证据，不是生产128 MiB并发规模、全Core RSS峰值、磁盘耗尽、event ACK阻塞或10万行验收；总内存、磁盘、session容量策略仍待设计。
+
 ### 6.4 正文按线上编码保存，解码元数据随 bodyRef [已实现]
 
 `body-data` 事件给出的是**线上原始字节**：`gzip` / `br` / `deflate` 压缩的响应体在这里就是压缩流。
@@ -1376,11 +1390,13 @@ WebSocket 不走这条路径：bridge 两端都关掉 `permessage-deflate` 并�
 | --- | --- | --- |
 | Start | `proxy.start` | 启动 listener（若未启动），`recording = true` |
 | Stop | `proxy.setRecording{false}` | **只暂停记录**。listener 与系统代理保持运行，流量继续转发 |
-| Clear | `capture.cleanup{all}` | 推进 generation，Exchange 与正文归零；仍在监听时保留当前 Session 壳（见 7.2） |
+| Clear | `capture.cleanup{all}` | 没有在途Capture文件任务时推进generation、Exchange与正文归零，保留活动Session壳；否则返回conflict（见7.2） |
 
 Stop 不停止转发，也不恢复系统代理。系统代理只在应用退出、Core 故障恢复、用户显式 Restore 或紧急修复时恢复。
 
 ### 7.2 Capture generation [已实现]
+
+Core先检查Body导出及HAR/Archive导入导出是否仍持有Capture数据，包含取消后的清理阶段；存在时返回`conflict`、`retryable: true`，不执行下方reset流程。Clear执行期间也禁止新Capture文件任务和重复Clear，结束或失败后释放，Diagnostics导出不受影响。UI遮罩、MCP及Agent入口遵守同一Core检查，详见[文件任务互斥](transfer.md#clear与文件任务)。
 
 ```mermaid
 sequenceDiagram

@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs';
+import { rename, type FileHandle } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -16,8 +17,14 @@ vi.mock('../../../constants', async (importOriginal) => ({
   },
 }));
 
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>();
+  return { ...actual, rename: vi.fn(actual.rename) };
+});
+
 import { CaptureService } from '../../entry';
 import { BodyStore } from '../../internal/body-store';
+import { TransferService } from '../../../transfer/entry';
 
 /** CaptureService Core 代际生命周期夹具。 */
 class CaptureServiceFixture {
@@ -287,6 +294,82 @@ describe('CaptureService temporary lifecycle', () => {
     });
     await captureService.dispose();
   }, 10_000);
+
+  it('preserves the original file when body export is cancelled during sync', async () => {
+    const captureService = new CaptureService();
+    await captureService.initialize();
+    const bodyHash = await captureServiceFixture.seedCapture(captureService);
+    const destination = path.join(captureServiceFixture.directory, 'cancel-before-commit.bin');
+    const originalFile = await fs.open(destination, 'w');
+    await originalFile.writeFile('original file');
+    await originalFile.close();
+    const prototype = Object.getPrototypeOf(originalFile) as FileHandle;
+    const syncFile = prototype.sync;
+    let releaseSync!: () => void;
+    const syncGate = new Promise<void>((resolve) => { releaseSync = resolve; });
+    let notifySyncStarted!: () => void;
+    const syncStarted = new Promise<void>((resolve) => { notifySyncStarted = resolve; });
+    vi.spyOn(prototype, 'sync').mockImplementationOnce(async function (this: FileHandle) {
+      await syncFile.call(this);
+      notifySyncStarted();
+      await syncGate;
+    });
+    const abortController = new AbortController();
+    const exporting = captureService.exportBodyToFile(bodyHash, destination, abortController.signal, () => undefined);
+    void exporting.catch(() => undefined);
+    try {
+      await syncStarted;
+      abortController.abort();
+      releaseSync();
+      await expect(exporting).rejects.toMatchObject({ name: 'AbortError' });
+      expect(await fs.readFile(destination, 'utf8')).toBe('original file');
+      expect((await fs.readdir(captureServiceFixture.directory)).some((name) => name.endsWith('.tmp'))).toBe(false);
+    } finally {
+      releaseSync();
+      await exporting.catch(() => undefined);
+      await captureService.dispose();
+    }
+  });
+
+  it('reports a body export as completed when cancellation races after its rename', async () => {
+    const captureService = new CaptureService();
+    await captureService.initialize();
+    const bodyHash = await captureServiceFixture.seedCapture(captureService);
+    const transferService = new TransferService();
+    const completed = vi.fn();
+    transferService.onCompleted(completed);
+    const destination = path.join(captureServiceFixture.directory, 'cancel-after-commit.bin');
+    await fs.writeFile(destination, 'original file');
+    let releaseRename!: () => void;
+    const renameGate = new Promise<void>((resolve) => { releaseRename = resolve; });
+    let notifyRenamed!: () => void;
+    const renamed = new Promise<void>((resolve) => { notifyRenamed = resolve; });
+    vi.mocked(rename).mockImplementationOnce(async (source, target) => {
+      await fs.rename(source, target);
+      notifyRenamed();
+      await renameGate;
+    });
+    let exporting!: ReturnType<CaptureService['exportBodyToFile']>;
+    transferService.start('body-commit', 'body-export', destination, (abortSignal, progress) => {
+      exporting = captureService.exportBodyToFile(bodyHash, destination, abortSignal, progress);
+      return exporting;
+    });
+    try {
+      await renamed;
+      const cancellation = Promise.resolve(transferService.cancel('body-commit'));
+      releaseRename();
+      await exporting;
+      await expect(cancellation).resolves.toMatchObject({ state: 'completed', processed: 17, total: 17 });
+      expect(await fs.readFile(destination, 'utf8')).toBe('temporary payload');
+      expect(completed).toHaveBeenCalledExactlyOnceWith('body-export');
+      expect((await fs.readdir(captureServiceFixture.directory)).some((name) => name.endsWith('.tmp'))).toBe(false);
+    } finally {
+      releaseRename();
+      await exporting.catch(() => undefined);
+      await transferService.cancelAll();
+      await captureService.dispose();
+    }
+  });
 
   it('leaves no destination or temp file when body export cannot start', async () => {
     const captureService = new CaptureService();

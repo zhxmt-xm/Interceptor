@@ -90,6 +90,7 @@ export class HarService {
       await output.write(']}}');
       await output.sync();
       await output.close();
+      HarUtils.throwIfAborted(abortSignal);
       // 直接 rename 覆盖，不留旧文件已删、新文件未就位的窗口。
       await rename(temporaryPath, filePath);
     } catch (error) {

@@ -381,7 +381,7 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     temporaryDirectory = '';
   });
 
-  it.each(['complete', 'clear', 'cancel'] as const)('streams concurrent H2 ranges through response rules and %s', async (ending) => {
+  it.each(['complete', 'clear', 'cancel', 'settings', 'goaway'] as const)('streams concurrent H2 ranges through response rules and %s', async (ending) => {
     temporaryDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'interceptor-h2-ranges-'));
     initializeRuntime([`--data-dir=${temporaryDirectory}`]);
     const activeCaptureService = new CaptureService();
@@ -489,6 +489,24 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
       expect(cancelledResponse.state.bytes).toBe(prefixSize);
       expect(sourceStream.closed).toBe(true);
     }
+    if (ending === 'settings') {
+      const updatedSettings = { initialWindowSize: 32 * 1024, headerTableSize: 0, maxFrameSize: 32 * 1024 };
+      for (const session of [clientSession, ...sourceSessions]) {
+        await new Promise<void>((resolve, reject) => {
+          session.settings(updatedSettings, (error) => error ? reject(error) : resolve());
+        });
+        expect(session.localSettings).toMatchObject(updatedSettings);
+      }
+      expect(responses.map(({ state }) => state.bytes)).toEqual([prefixSize, prefixSize]);
+      expect(responses.every(({ state }) => !state.ended)).toBe(true);
+    }
+    const sessionClosed = ending === 'goaway' ? once(clientSession, 'close') : null;
+    if (ending === 'goaway') {
+      clientSession.close();
+      expect(clientSession.closed).toBe(true);
+      expect(clientSession.destroyed).toBe(false);
+      expect(responses.every(({ state }) => !state.ended)).toBe(true);
+    }
     const completedResponses = ending === 'cancel' ? responses.slice(1) : responses;
     for (const { range } of completedResponses) sourceStreamsByPath.get(range.path)!.end(range.body.subarray(prefixSize));
     await Promise.all(completedResponses.map(({ completed }) => completed));
@@ -523,6 +541,22 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
         url: `https://localhost:${origin.port}/after-clear`, responseBody: { encodedSize: 11 },
       });
       expect(captureEventQueue.drain(10).map((event) => event.summary.id)).toEqual([current.items[0]!.id]);
+    }
+    if (sessionClosed) {
+      await sessionClosed;
+      expect(clientSession.destroyed).toBe(true);
+      clientSession = await connectH2ViaProxy(address.port, 'localhost', origin.port, ca.cert);
+      const nextStream = clientSession.request({ ':path': '/after-goaway', ':method': 'GET' });
+      const nextCompleted = once(nextStream, 'end');
+      nextStream.resume();
+      nextStream.end();
+      await nextCompleted;
+      await expect.poll(async () => (await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} }))
+        .items.map((exchange) => exchange.state)).toEqual(['completed', 'completed', 'completed']);
+      const nextCapture = await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} });
+      const nextSummary = nextCapture.items.find((exchange) => exchange.path === '/after-goaway');
+      expect(nextSummary).toMatchObject({ protocol: 'h2', statusCode: 200 });
+      expect(pending.items.some((exchange) => exchange.id === nextSummary!.id)).toBe(false);
     }
     expect(sourceErrors).toEqual([]);
   }, 20_000);

@@ -56,7 +56,7 @@ Transfer 统一承载所有**异步文件任务**：HAR 交换、Native Archive 
 
 任务**全部保留**不淘汰，每个任务持有独立的 `AbortController`；公开快照字段**不含绝对路径**。Core 关闭时先 `cancelAll()`。
 
-关闭实现：`TransferService`以`pendingTransfers`跟踪尚未结束的操作，`cancelAll()`发出取消后返回等待实际操作与清理完成的Promise，包含已标记cancelled但仍在释放句柄的任务。`CoreApplication.shutdown()`同时启动传输取消和Proxy停止，等待两者后才释放Capture并发送`stopped`。单任务Cancel的公开状态、提交点和Clear的lease策略不变。
+关闭实现：`TransferService`以`pendingTransfersById`跟踪尚未结束的操作，`cancelAll()`发出取消后返回等待实际操作与清理完成的Promise，包含已收到取消但仍在释放句柄的任务。`CoreApplication.shutdown()`同时启动传输取消和Proxy停止，等待两者后才释放Capture并发送`stopped`。当前单任务Cancel的确认语义见下方提交点；Clear的lease策略未在本步骤改变。
 
 2026-09-14本轮关闭前置Red：Transfer与Core各2例，覆盖运行中取消和已取消未清理任务，旧19例保持Green；实现后同组23/23，包含HAR/Archive/Capture/Proxy/gRPC与命令的共享回归28文件241/241，Core typecheck通过。TEMP `interceptor-transfer-shutdown-20260914-{red,green}.log`与`interceptor-streaming-transfer-20260914-{regression,types}.log`保存结果。真实E2E、退出恢复及package/audit/smoke尚未复跑，旧产物不能作为本次关闭修复的验收。
 
@@ -124,7 +124,22 @@ sequenceDiagram
     Svc-->>Jobs: cancelled
 ```
 
-**提交点语义 [改造中]**：Cancel 与最终 `fsync` + `rename` 之间存在竞态。必须定义提交点——一旦 rename 成功，任务不得再显示为 Cancelled。
+**提交点语义**：Cancel只发出取消请求，`transfer.job.cancel`等待目标任务实际结束后返回原有`TransferJobSnapshot`，不在清理完成前提前返回cancelled。等待期间仍为running，不新增公开状态；操作成功返回表示保存/导入已提交，最终为completed并保留完成通知，即使取消信号已发出。操作抛出该任务取消原因或AbortError并清理后才返回cancelled，真实文件错误仍为failed。Body/HAR在关闭输出句柄后、最终rename前检查取消；Archive原有检查保留。一旦rename成功不得删除正式文件或因迟到取消改记Cancelled。
+
+- 2026-09-15取消提交点：Transfer的迟到取消/确认时机2 Red，Body的sync取消与rename后取消2 Red，HAR sync取消1 Red，以及文件错误不能被取消掩盖1 Red，均在实现前取得。最终所属共享测试13文件102/102、Core类型通过。TEMP `interceptor-transfer-commit-20260915-{unit-red,files-red,har-red,failure-red,regression,core-types}.log`保留证据。
+- 修改前既有Transfer真实workflow1/1（31.4s）；修改后Transfer1/1（42.2s）、Body1/1（30.4s）、HAR1/1（36.5s）、Archive1/1（46.0s）逐条通过，八代Main/Core/Worker正常退出、8888与WinINet/journal恢复。确定性的sync/rename竞争仅在业务测试中控制，未在Electron注入故障，因此不把正常E2E基线称为该竞态的真实Red。目录前缀TEMP `interceptor-transfer-commit-20260915-`，后缀`e2e-baseline/e2e-green/body-e2e/har-e2e/archive-e2e`，`evidence.json`列明全部代际和trace。
+- 当前代码重新package、artifact audit通过（1294文件/392970273字节，17个可签名文件因无证书保持unsigned），packaged smoke1/1（36.3s）通过。命令结果仍为`transfer.job`，只是Cancel等待该任务结果后返回；不改变公开状态集合、路径权限、Clear策略或Updates。证据为同前缀`package.log/audit.log/smoke.log`及`smoke/`；原长期item尚有其他未完成工作，本子步骤不另拆commit。
+
+#### Clear与文件任务
+
+Capture文件任务（Body导出、HAR/Archive导入导出）尚未结束时，`capture.cleanup`由Core返回`conflict`及`retryable: true`，在调用Proxy reset、清空事件队列和删除Capture之前拒绝。拒绝不取消文件任务，不改变录制/转发，也不删除已经保存的文件；任务实际清理结束后才解除限制。Clear先开始时，`captureCleanupInProgress`在整个清理期间阻止新Capture文件任务及重复Clear，`finally`在成功或失败后释放。该限制对UI、Agent和MCP共用的Core命令一致，不依赖Renderer遮罩。Diagnostics导出不读取Capture，不属于这组互斥范围。
+
+用户流程在既有`capture.tools.transfer-jobs`中验证：Archive仍running时通过真实MCP Ask批准`capture_clear`，必须返回错误、原Capture行和任务仍保留，随后继续原取消/退出/重启步骤。不使用API代替UI创建导出，不模拟文件或注入任务状态。
+
+- 2026-09-15前置Core Red：导出运行时Clear错误地成功；真实E2E Red同样出现`clearRejected: false`、原行0条、Archive仍running，Main/Core `39964/35616`正常退出。反向并发再取得五种文件任务与重复Clear共7条Red；最终Core/Transfer同组39/39、共享文件模块116/116及Core/Desktop类型通过。类型校验曾因测试误用当前lib不含的`Promise.withResolvers()`失败，已改为已有Promise gate写法，未改运行时或编译配置。
+- 同一真实Transfer workflow最终1/1（46.1s），结果为`clearRejected: true`、原行1条、Archive仍running；两代Main/Core `13404/16476`、`31212/35940`正常退出及宿主guard恢复。HAR/Archive正常任务完成后的Clear与Import分别1/1（41.4s/50.4s），对应两代为`11552/35168`、`20688/43692`及`11440/19320`、`40488/28236`，正常退出、trace及宿主guard恢复均通过。证据TEMP前缀`interceptor-capture-transfer-exclusion-20260915-`，`unit-red/reverse-red/owner-green/owner-final/regression/types-green`为代码检查，`e2e-red/e2e-green/har-e2e/archive-e2e`为真实流程，`evidence.json`保留前后事实。
+- 当前代码重新package后，`test:package-audit`通过（1294files、392971774bytes）；本机未配置签名，17个可签名文件按开发包接受，不代表正式release签名通过。packaged smoke 1/1（37.7s），包含原安全、Core重启、Capture、截图矩阵及宿主恢复；日志为同前缀`package/audit-green/smoke`。初次误用不存在的`artifact:audit`仅为命令失败，保留`audit.log`，不算产品故障。同一HTML在1320/390下检查通过，两张原图hash保持，证据在同前缀`report/evidence.json`。
+- 补齐当前Clear入口下的Body原生导出最终回归：`capture.tools.body-export` 1/1（35.9s），Main/Core `7908/34372`、`29636/25176`两代正常退出，Agent/MCP、原生文件操作、trace及宿主恢复通过。证据为同前缀`body-e2e-final`及日志；后续仅修改测试与文档，Core及两worker与已验收package字节一致，未重复打包。
 
 ### 3.3 Body 导出（大媒体主路径）
 

@@ -1,6 +1,6 @@
 ## Todo list
 
-> 最后更新：2026-07-26
+> 最后更新：2026-09-15
 > 范围：Capture、Rules、真实请求转发、正文与文件任务、系统代理 / MITM。
 > 标记：`确认 BUG` 已由代码或复现实验证明；`实现限制` 是当前明确能力边界；`兼容风险` 取决于外部网络或客户端；`安全/隐私` 涉及敏感数据与系统范围影响。
 
@@ -38,7 +38,8 @@
 - [x] 使用 `request-initiated` / `response-initiated` 建立 Exchange，使用 `request-body-data` / `response-body-data` 增量写 TemporaryBodyStore。
 - [x] 单正文按**累计字节**跨过内存阈值时立即 spill，不再等 Mockttp 在内存组装完整 body。
 - [x] Paused 时不再因已注册 completed listener 隐式缓存所有正文。
-- [x] 待落盘字节超过 `BODY_WRITER_PENDING_LIMIT_BYTES` 时降级为只计数，保证 Core 内存有界。
+- [x] 待落盘字节超过`BODY_WRITER_PENDING_LIMIT_BYTES`时降级为只计数，约束单writer队列；不构成全Core总内存上限。
+- [x] 缩小fixture阈值后覆盖四writer受阻spill的上限、超限不再复制、独立writer完成及finalize/abort清理；不代表全Core内存峰值或生产并发规模通过。见[队列边界证据](../features/capture.md#待写上限验证)。
 - [ ] 为并发大媒体、并发上传和磁盘慢写建立内存峰值测试，并在 UI 明示降级状态。
 
 ### 3. Response Rule 破坏流式响应语义（已解决）
@@ -117,8 +118,8 @@
 
 - [x] 每个 Exchange 绑定 capture generation；Clear 经 `prepareCaptureReset()` 递增 generation 并 abort 全部在途 body writer，旧 generation 的 request/body/response/trailer 全部拒绝。
 - [x] Clear 后迟到 event 不会重新创建 row、body ref、rule hit 或 WebSocket frame（已有回归测试）。
-- [ ] Clear 与 Body save、HAR export、Archive export/import 同时发生时定义 snapshot / lease / cancel 语义。
-- [ ] 当前 Body save 不阻塞 Clear；Clear 删除 spill 时，正在读取的 export stream 可能失败。
+- [x] Core对Clear与Body导出、HAR/Archive导入导出执行双向互斥；冲突返回可重试`conflict`，不自动取消或依赖Renderer遮罩，Diagnostics导出不受影响。见[Transfer](../features/transfer.md#clear与文件任务)。
+- [x] 文件任务实际结束前（包括取消清理阶段）拒绝Clear，避免删除正在导出的spill；Clear成功或失败后均恢复新任务入口，真实MCP及HAR/Archive往返已验收。
 - [ ] 覆盖 Clear 点击瞬间的 in-flight H1、H2 多 stream、WebSocket 和 gRPC。
 
 ### 12. Capture bytes、framing 与网络事实需进一步明确
@@ -232,9 +233,10 @@
 
 ### 26. Body export 取消、Clear 与状态反馈竞态
 
-- [ ] Cancel 与最终 fsync/rename 建立提交点；提交后不能再把已落盘文件显示为 Cancelled。
+- [x] Body/HAR在fsync/close后、rename前检查取消；已成功提交的操作仍为completed并通知，Cancel等待实际清理后返回终态，不掩盖真实文件错误。见[Transfer](../features/transfer.md)。
 - [ ] BodyView 目前只有 loading，没有 Cancel、进度、成功位置或完成反馈；大媒体保存应复用完整 Transfer UI。
-- [ ] Clear / Core shutdown / body GC 与 export stream 建立 lease 或 snapshot；不能一边删除 spill 一边导出。
+- [x] Clear拒绝在途Capture文件任务，Core shutdown等待全部任务与Proxy收尾后才释放Capture，不一边删除spill一边导出。
+- [ ] 独立body GC与export stream的引用生命周期仍需核对，不把Clear/关闭互斥外推为全部GC场景覆盖。
 - [ ] 导出失败时区分 body 已被 Clear、磁盘错误、权限、取消和 Core restart。
 
 ### 27. TransferJob 与 Capture 存储长期增长
@@ -251,7 +253,8 @@
 - [ ] Native Archive 不支持 ZIP64；超大 Capture 可能无法保存。
 - [ ] Archive import 当前不限制 entry 数、解压总量、压缩比；不可信 archive 存在 zip bomb / 磁盘耗尽风险。
 - [ ] Native Archive 当前不保存完整历史 Rule definitions；需要与 Rule evidence 方案一起补齐。
-- [ ] Archive/HAR 与 Clear/Recording 并发语义必须有 snapshot 测试，不能依赖全屏 UI 作为 Core 正确性边界。
+- [x] Archive/HAR与Clear由Core双向互斥并经过真实MCP验证，不依赖全屏UI遮罩。
+- [ ] Archive/HAR与Recording的并发快照语义仍需核对；Clear互斥不冻结实时录制。
 
 ---
 
@@ -357,6 +360,6 @@
 1. [ ] **Stage A' / Stop-ship correctness 余项**：断点大正文预览上限与 binary text/hex 双模式。
 2. [ ] **Stage C / Rule evidence**：按 Exchange 去重 hit、固定 RuleSet revision、历史 snapshot、冲突保留草稿、联动空态/错误反馈。
 3. [ ] **Stage C' / 进行中状态展示**：Renderer 明示 pending / streaming 与已接收字节，区分 persist failed、decode failed、preview limited。
-4. [ ] **Stage D / Body & files**：文本/二进制分级预览、charset、Range/encoded 语义、原子保存、Cancel/Clear lease、HAR 流式化。
+4. [ ] **Stage D / Body & files**：文本/二进制分级预览、charset、Range/encoded语义、原子保存、正文GC引用生命周期、HAR流式化；Cancel提交点与Clear双向互斥已实现。
 5. [ ] **Stage E / Network compatibility**：upstream proxy/PAC chaining、异常恢复、per-host passthrough、pinning/mTLS/QUIC 诊断。
 6. [ ] **Stage F / Capacity & release gates**：无界增长观测、SSE/大媒体内存峰值、真实 workflow、压力/故障注入、Windows/macOS packaged 发布门禁。

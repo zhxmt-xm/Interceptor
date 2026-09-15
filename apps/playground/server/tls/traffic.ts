@@ -31,9 +31,17 @@ import {
 /** 一次 HTTP/gRPC 场景在 origin 端预期返回的真实响应。 */
 interface TlsRunDefinition {
   readonly kind: 'grpc' | 'http';
+  readonly statusCode?: number;
   readonly responseBody: Buffer | AsyncIterable<Uint8Array>;
   readonly responseHeaders: Readonly<Record<string, string>>;
   readonly responseTrailers: Readonly<Record<string, string>>;
+}
+
+/** 复用同一H2连接的受控流量，客户端stream仍由Node原生API负责。 */
+interface Http2RunOptions {
+  readonly session?: http2.ClientHttp2Session;
+  readonly response?: Omit<TlsRunDefinition, 'kind'>;
+  readonly onStream?: (stream: ClientHttp2Stream) => void;
 }
 
 /** HTTP 请求、响应及承载它们的 TLS 连接事实。 */
@@ -163,6 +171,7 @@ export class TlsTrafficRunner {
   async runHttp2(
     draft: HttpTrafficRequestDraft,
     proxyPort: number,
+    options: Http2RunOptions = {},
   ): Promise<TrafficExecution> {
     const runId = crypto.randomUUID();
     const targetHost = this.targetHost();
@@ -172,6 +181,7 @@ export class TlsTrafficRunner {
       responseBody: Buffer.from(JSON.stringify({ protocol: 'h2', path: draft.path }, null, 2)),
       responseHeaders: { 'content-type': 'application/json' },
       responseTrailers: { 'x-playground-trailer': 'h2-complete' },
+      ...options.response,
     });
     try {
       const requestBody = Buffer.from(draft.body);
@@ -182,6 +192,8 @@ export class TlsTrafficRunner {
         draft.path,
         { ...draft.headers, 'x-playground-run-id': runId },
         requestBody,
+        {},
+        options,
       );
       return {
         attempt,
@@ -197,6 +209,18 @@ export class TlsTrafficRunner {
       this.#runById.delete(runId);
       this.#requestByRunId.delete(runId);
     }
+  }
+
+  /** 建立真实CONNECT/TLS/H2连接，调用方在全部stream结束后关闭session。 */
+  async openHttp2Session(
+    proxyPort: number,
+    targetHost = this.targetHost(),
+    connectHeaders: Readonly<Record<string, string>> = {},
+  ): Promise<http2.ClientHttp2Session> {
+    const { tlsSocket } = await connectTls(
+      proxyPort, targetHost, connectHeaders, ['h2'], this.#outboundSockets,
+    );
+    return http2.connect(`https://${targetHost}`, { createConnection: () => tlsSocket });
   }
 
   /** 在同一 TLS/H2 origin 上运行 gRPC envelope、压缩标记和 trailers 场景。 */
@@ -335,9 +359,10 @@ export class TlsTrafficRunner {
         response.writeHead(404).end();
         return;
       }
-      response.writeHead(200, run.responseHeaders);
+      response.writeHead(run.statusCode ?? 200, run.responseHeaders);
       response.addTrailers(run.responseTrailers);
-      void pipeline(Readable.from(run.responseBody), response).catch(() => response.destroy());
+      const source = run.responseBody instanceof Readable ? run.responseBody : Readable.from(run.responseBody);
+      void pipeline(source, response).catch(() => response.destroy());
     };
     incoming.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
     incoming.on('error', () => undefined);
@@ -409,7 +434,7 @@ export class TlsTrafficRunner {
     return { request: await this.#waitForRequest(headers['x-playground-run-id']), response, tls: tlsFact };
   }
 
-  /** 在 CONNECT 隧道内协商 h2，使用 Node HTTP/2 session 发送请求并在结束时销毁 session。 */
+  /** 通过H2 stream发送请求，只销毁本方法自己建立的session，不关闭调用方共享连接。 */
   async #requestHttp2(
     proxyPort: number,
     targetHost: string,
@@ -418,29 +443,25 @@ export class TlsTrafficRunner {
     headers: Readonly<Record<string, string>>,
     body: Buffer | AsyncIterable<Uint8Array>,
     connectHeaders: Readonly<Record<string, string>> = {},
+    options: Pick<Http2RunOptions, 'session' | 'onStream'> = {},
   ): Promise<TlsHttpExchange> {
-    const { tlsSocket } = await connectTls(
-      proxyPort,
-      targetHost,
-      connectHeaders,
-      ['h2'],
-      this.#outboundSockets,
-    );
-    const tlsFact = readTlsFact(tlsSocket, targetHost, 'h2');
-    const client = http2.connect(`https://${targetHost}`, { createConnection: () => tlsSocket });
+    const client = options.session ?? await this.openHttp2Session(proxyPort, targetHost, connectHeaders);
+    const tlsFact = readTlsFact(client.socket as tls.TLSSocket, targetHost, 'h2');
     try {
-      const response = await requestHttp2Stream(client.request({
+      const stream = client.request({
         ':method': method,
         ':path': path,
         ...headers,
-      }, { endStream: Buffer.isBuffer(body) && body.byteLength === 0 }), body);
+      }, { endStream: Buffer.isBuffer(body) && body.byteLength === 0 });
+      options.onStream?.(stream);
+      const response = await requestHttp2Stream(stream, body);
       return {
         request: await this.#waitForRequest(headers['x-playground-run-id']),
         response,
         tls: tlsFact,
       };
     } finally {
-      client.destroy();
+      if (options.session === undefined) client.destroy();
     }
   }
 

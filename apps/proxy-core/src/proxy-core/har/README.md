@@ -19,6 +19,8 @@
 
 导出先写 `<target>.<uuid>.tmp`，`sync()` 后直接 `rename` 覆盖。**不先 `rm` 再 `rename`**——那会留下旧文件已删、新文件未就位的窗口，一旦 rename 因权限/磁盘/杀软失败，用户原文件就找不回来了。
 
+关闭输出句柄后、调用rename前最后检查AbortSignal，已取消时删除临时文件并保留原目标。rename一旦成功，导出返回成功，迟到取消不能删除已提交文件或把任务改为cancelled。
+
 ## 错误
 
 `InvalidHarError`（`internal/errors.ts`）：结构不合法或版本不支持。

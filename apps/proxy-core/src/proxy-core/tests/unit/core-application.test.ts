@@ -3,7 +3,7 @@ import process from 'node:process';
 import { Readable } from 'node:stream';
 import zlib from 'node:zlib';
 
-import type { CoreToMainMessage } from '@interceptor/core-protocol';
+import type { CoreCommand, CoreToMainMessage } from '@interceptor/core-protocol';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -24,6 +24,7 @@ import type { HarService } from '../../har/entry';
 import type { ProxyService } from '../../proxy/entry';
 import type { CaptureEventQueue } from '../../proxy/internal/capture-event-queue';
 import { BreakpointQueue } from '../../rules/internal/breakpoint-queue';
+import { TransferService } from '../../transfer/entry';
 
 class FakeParentPort implements CoreParentPort {
   readonly sent: CoreLifecycleMessage[] = [];
@@ -138,22 +139,33 @@ describe('CoreApplication', () => {
     await coreApplication.executeCommand({ type: 'body.export.start', payload: {
       jobId: 'shutdown-body', bodyId: 'a'.repeat(64), filePath: 'C:\\Exports\\body.bin',
     } }, new AbortController().signal);
-    if (alreadyCancelled) {
-      await coreApplication.executeCommand({ type: 'transfer.job.cancel', payload: { jobId: 'shutdown-body' } },
-        new AbortController().signal);
-    }
+    let cancellationAcknowledged = false;
+    const cancellation = alreadyCancelled
+      ? coreApplication.executeCommand({ type: 'transfer.job.cancel', payload: { jobId: 'shutdown-body' } },
+        new AbortController().signal).then((result) => {
+        cancellationAcknowledged = true;
+        return result;
+      })
+      : undefined;
     fakeParentPort.receive({ type: 'shutdown' });
     try {
       await settle();
       expect(receivedAbortSignal?.aborted).toBe(true);
+      expect(cancellationAcknowledged).toBe(false);
       expect(disposeCapture).not.toHaveBeenCalled();
       expect(fakeParentPort.sent.some((message) => message.type === 'stopped')).toBe(false);
     } finally {
       releaseCleanup();
+      await cancellation;
       await settleShutdown(fakeParentPort);
       await settle();
     }
     expect(cleanupOrder).toEqual(['transfer-cleaned', 'capture-disposed']);
+    if (cancellation) {
+      await expect(cancellation).resolves.toMatchObject({
+        type: 'transfer.job', payload: { job: { id: 'shutdown-body', state: 'cancelled' } },
+      });
+    }
   });
 
   it('executes echo and records its business action', async () => {
@@ -643,6 +655,118 @@ describe('CoreApplication', () => {
       { kind: 'all-except-session', sessionId: 'active-session' },
     ]);
     expect(eventQueueResets).toBe(1);
+  });
+
+  it('rejects Clear while a body export owns Capture data and permits it after completion', async () => {
+    const captureService = new CaptureService();
+    vi.spyOn(captureService, 'initialize').mockResolvedValue();
+    const cleanup = vi.spyOn(captureService, 'cleanup').mockResolvedValue({
+      sessionCount: 0, exchangeCount: 0, bodyCount: 0, databaseBytes: 0, blobBytes: 0, totalBytes: 0,
+    });
+    let releaseExport!: () => void;
+    const exportGate = new Promise<void>((resolve) => { releaseExport = resolve; });
+    let exportSignal: AbortSignal | undefined;
+    vi.spyOn(captureService, 'exportBodyToFile').mockImplementation(async (_hash, _filePath, abortSignal) => {
+      exportSignal = abortSignal;
+      await exportGate;
+      return { processed: 7, total: 7, warnings: [] };
+    });
+    const coreApplication = new CoreApplication(new FakeParentPort(), { captureService });
+    const abortSignal = new AbortController().signal;
+    await coreApplication.executeCommand({
+      type: 'body.export.start',
+      payload: { jobId: 'active-export', bodyId: 'a'.repeat(64), filePath: 'C:\\Exports\\body.bin' },
+    }, abortSignal);
+
+    try {
+      await expect(coreApplication.executeCommand({
+        type: 'capture.cleanup', payload: { scope: 'all' },
+      }, abortSignal)).rejects.toMatchObject({ detail: { code: 'conflict', retryable: true } });
+      expect(cleanup).not.toHaveBeenCalled();
+      expect(exportSignal?.aborted).toBe(false);
+    } finally {
+      releaseExport();
+      await settle();
+    }
+
+    await expect(coreApplication.executeCommand({
+      type: 'transfer.job.get', payload: { jobId: 'active-export' },
+    }, abortSignal)).resolves.toMatchObject({ payload: { job: { state: 'completed' } } });
+    await expect(coreApplication.executeCommand({
+      type: 'capture.cleanup', payload: { scope: 'all' },
+    }, abortSignal)).resolves.toMatchObject({ type: 'capture.status' });
+    expect(cleanup).toHaveBeenCalledExactlyOnceWith({ kind: 'all' });
+  });
+
+  it.each([
+    { type: 'body.export.start', payload: { jobId: 'blocked-file', bodyId: 'a'.repeat(64), filePath: 'C:\\Exports\\body.bin' } },
+    { type: 'har.export.start', payload: { jobId: 'blocked-file', filePath: 'C:\\Exports\\capture.har',
+      scope: { kind: 'all' }, redaction: { authorization: true, cookies: true, bodies: false } } },
+    { type: 'har.import.start', payload: { jobId: 'blocked-file', filePath: 'C:\\Imports\\capture.har' } },
+    { type: 'archive.export.start', payload: { jobId: 'blocked-file', filePath: 'C:\\Exports\\capture.iarchive' } },
+    { type: 'archive.import.start', payload: { jobId: 'blocked-file', filePath: 'C:\\Imports\\capture.iarchive' } },
+  ] satisfies CoreCommand[])('rejects $type while Clear is in progress', async (command) => {
+    const captureService = new CaptureService();
+    vi.spyOn(captureService, 'initialize').mockResolvedValue();
+    let releaseCleanup!: () => void;
+    const cleanupGate = new Promise<void>((resolve) => { releaseCleanup = resolve; });
+    let notifyCleanupStarted!: () => void;
+    const cleanupStarted = new Promise<void>((resolve) => { notifyCleanupStarted = resolve; });
+    vi.spyOn(captureService, 'cleanup').mockImplementation(async () => {
+      notifyCleanupStarted();
+      await cleanupGate;
+      return { sessionCount: 0, exchangeCount: 0, bodyCount: 0, databaseBytes: 0, blobBytes: 0, totalBytes: 0 };
+    });
+    const startTransfer = vi.spyOn(TransferService.prototype, 'start').mockImplementation((jobId, kind) => ({
+      id: jobId, kind, fileName: 'capture', state: 'running', processed: 0, total: 0,
+      startedAt: new Date().toISOString(), warnings: [],
+    }));
+    const coreApplication = new CoreApplication(new FakeParentPort(), { captureService });
+    const abortSignal = new AbortController().signal;
+    const clearing = coreApplication.executeCommand({ type: 'capture.cleanup', payload: { scope: 'all' } }, abortSignal);
+    await cleanupStarted;
+    try {
+      await expect(coreApplication.executeCommand(command, abortSignal))
+        .rejects.toMatchObject({ detail: { code: 'conflict', retryable: true } });
+      expect(startTransfer).not.toHaveBeenCalled();
+    } finally {
+      releaseCleanup();
+      await clearing;
+    }
+    await expect(coreApplication.executeCommand(command, abortSignal)).resolves.toMatchObject({ type: 'transfer.job' });
+    expect(startTransfer).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([false, true])('releases Clear exclusion after cleanup ends (failed=%s)', async (failed) => {
+    const captureService = new CaptureService();
+    vi.spyOn(captureService, 'initialize').mockResolvedValue();
+    let releaseCleanup!: () => void;
+    const cleanupGate = new Promise<void>((resolve) => { releaseCleanup = resolve; });
+    let notifyCleanupStarted!: () => void;
+    const cleanupStarted = new Promise<void>((resolve) => { notifyCleanupStarted = resolve; });
+    const status = { sessionCount: 0, exchangeCount: 0, bodyCount: 0, databaseBytes: 0, blobBytes: 0, totalBytes: 0 };
+    const cleanup = vi.spyOn(captureService, 'cleanup').mockResolvedValue(status).mockImplementationOnce(async () => {
+      notifyCleanupStarted();
+      await cleanupGate;
+      if (failed) throw new Error('Capture cleanup failed.');
+      return status;
+    });
+    const coreApplication = new CoreApplication(new FakeParentPort(), { captureService });
+    const abortSignal = new AbortController().signal;
+    const command = { type: 'capture.cleanup', payload: { scope: 'all' } } as const;
+    const clearing = coreApplication.executeCommand(command, abortSignal);
+    void clearing.catch(() => undefined);
+    await cleanupStarted;
+    try {
+      await expect(coreApplication.executeCommand(command, abortSignal))
+        .rejects.toMatchObject({ detail: { code: 'conflict', retryable: true } });
+      expect(cleanup).toHaveBeenCalledTimes(1);
+    } finally {
+      releaseCleanup();
+      await clearing.catch(() => undefined);
+    }
+    await expect(coreApplication.executeCommand(command, abortSignal)).resolves.toMatchObject({ type: 'capture.status' });
+    expect(cleanup).toHaveBeenCalledTimes(2);
   });
 
   it('maps a rejected gRPC cursor to a non-retryable input error', async () => {

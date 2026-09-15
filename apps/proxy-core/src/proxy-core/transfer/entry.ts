@@ -18,7 +18,7 @@ export class TransferService {
   /** 保存当前 Core 代际创建的全部任务。 */
   private readonly jobs = new Map<string, MutableTransferJob>();
   /** 尚未结束的任务操作，包含已取消但仍在清理的文件读写。 */
-  private readonly pendingTransfers = new Set<Promise<void>>();
+  private readonly pendingTransfersById = new Map<string, Promise<void>>();
   /** 成功任务的业务通知接收者；不传递文件信息。 */
   private completedListener: ((kind: TransferJobSnapshot['kind']) => void) | null = null;
 
@@ -39,9 +39,9 @@ export class TransferService {
   ): TransferJobSnapshot {
     const job = this.create(jobId, kind, filePath);
     const transferring = this.run(job, operation).finally(() => {
-      this.pendingTransfers.delete(transferring);
+      this.pendingTransfersById.delete(jobId);
     });
-    this.pendingTransfers.add(transferring);
+    this.pendingTransfersById.set(jobId, transferring);
     return TransferService.toSnapshot(job);
   }
 
@@ -51,27 +51,34 @@ export class TransferService {
     return job ? TransferService.toSnapshot(job) : null;
   }
 
-  /** 取消运行中任务并立即更新公开状态；终态任务保持幂等。 */
-  cancel(jobId: string): TransferJobSnapshot | null {
+  /** Capture文件任务仍持有数据时禁止Clear，包含取消后的清理阶段。 */
+  hasPendingCaptureTransfers(): boolean {
+    for (const jobId of this.pendingTransfersById.keys()) {
+      const kind = this.jobs.get(jobId)!.kind;
+      if (kind === 'body-export' || kind === 'har-export' || kind === 'har-import' ||
+        kind === 'archive-export' || kind === 'archive-import') {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** 请求取消并等待任务确认结果；成功提交不被迟到取消覆盖。 */
+  async cancel(jobId: string): Promise<TransferJobSnapshot | null> {
     const job = this.jobs.get(jobId);
     if (!job) {
       return null;
     }
     if (job.state === 'running') {
-      job.state = 'cancelled';
-      job.completedAt = new Date().toISOString();
-      job.message = 'Transfer cancelled.';
       job.abortController.abort(new DOMException('Transfer cancelled.', 'AbortError'));
     }
+    await this.pendingTransfersById.get(jobId);
     return TransferService.toSnapshot(job);
   }
 
   /** 取消运行中任务并等待已接受的操作清理；CoreApplication关闭时先于Capture释放。 */
   async cancelAll(): Promise<void> {
-    for (const jobId of this.jobs.keys()) {
-      this.cancel(jobId);
-    }
-    await Promise.allSettled(this.pendingTransfers);
+    await Promise.allSettled(Array.from(this.jobs.keys(), (jobId) => this.cancel(jobId)));
   }
 
   /** 校验 ID 唯一性并建立初始 running 状态。 */
@@ -110,9 +117,6 @@ export class TransferService {
           job.total = progress.total;
         }
       });
-      if (job.state !== 'running') {
-        return;
-      }
       job.state = 'completed';
       job.processed = result.processed;
       job.total = result.total;
@@ -120,7 +124,10 @@ export class TransferService {
       job.completedAt = new Date().toISOString();
       this.completedListener?.(job.kind);
     } catch (error) {
-      if (job.state === 'cancelled' || job.abortController.signal.aborted) {
+      if (job.abortController.signal.aborted && (
+        error === job.abortController.signal.reason ||
+        (error instanceof Error && error.name === 'AbortError')
+      )) {
         job.state = 'cancelled';
         job.message = 'Transfer cancelled.';
       } else {
