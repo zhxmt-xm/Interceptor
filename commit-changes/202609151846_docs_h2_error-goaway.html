@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>H2 错误 GOAWAY 双向验收覆盖</title>
+  <style>
+    :root { color-scheme: light; color: #24292f; background: #fff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; font-size: 14px; line-height: 1.65; letter-spacing: 0; }
+    main { max-width: 1120px; margin: 0 auto; padding: 32px 24px 48px; }
+    header { padding-bottom: 20px; border-bottom: 2px solid #24292f; }
+    h1 { margin: 0 0 8px; font-size: 26px; line-height: 1.35; }
+    h2 { margin: 0 0 12px; font-size: 20px; }
+    p { margin: 8px 0; }
+    .time { color: #57606a; }
+    section { padding-top: 24px; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { padding: 12px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d7de; overflow-wrap: anywhere; }
+    th { background: #f6f8fa; }
+    code { font-family: Consolas, monospace; font-size: 0.94em; overflow-wrap: anywhere; }
+    @media (max-width: 700px) {
+      main { padding: 20px 16px 32px; }
+      h1 { font-size: 22px; }
+      table, tbody, tr, td { display: block; width: 100%; }
+      thead { display: none; }
+      tr { padding: 12px 0; border-bottom: 1px solid #d0d7de; }
+      td { padding: 5px 0; border: 0; }
+      td::before { content: attr(data-label) "："; font-weight: 600; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>提交：H2 错误 GOAWAY 双向验收覆盖</h1>
+      <p class="time">时间：2026-09-15 18:46（本地时间）</p>
+      <p>补充客户端和源站发送非零 GOAWAY 后的部分正文、终态、请求次数和新连接恢复检查，产品行为不变。</p>
+    </header>
+    <section>
+      <h2>工程与文档</h2>
+      <table>
+        <thead><tr><th>位置</th><th>改前</th><th>改后</th><th>原因与影响</th></tr></thead>
+        <tbody>
+          <tr><td data-label="位置"><code>apps/proxy-core/src/proxy-core/proxy/tests/integration/h2.test.ts</code></td><td data-label="改前">没有非零 GOAWAY 后 POST 中断、部分正文保存和请求不重放的双向用例。</td><td data-label="改后">源站和客户端分别发送 INTERNAL_ERROR，核对已收到的 200、半份正文、非成功终态及独立后续请求。</td><td data-label="原因与影响">区分 HTTP status、Node EOF 和完整正文，避免把主动取消或错误关闭当成成功。</td></tr>
+          <tr><td data-label="位置"><code>apps/playground/server/tls/traffic.ts</code></td><td data-label="改前">受控 H2 请求只暴露客户端 stream。</td><td data-label="改后">允许调用方观察本次真实源站 stream，记录请求次数、session 身份并发送协议帧。</td><td data-label="原因与影响">复用已有源站和真实 Node H2 API，不向产品增加测试入口；默认场景不变。</td></tr>
+          <tr><td data-label="位置"><code>apps/desktop/tests/e2e-workflow-tests/workflows/capture/http2-scenarios.workflow.ts</code></td><td data-label="改前">仅有 H2 基础流程和五种 Range/session 场景。</td><td data-label="改后">同一 workflow 增加双向错误 GOAWAY、实际 Text 正文与恢复行；背景 TLS 提示经公共 Dismiss 控件关闭。</td><td data-label="原因与影响">从真实 Capture UI 观察中断后的数据，不修改 MIME、信任名单或产品展示；原 CA 准备和清理保持。</td></tr>
+          <tr><td data-label="位置"><code>architecture/features/capture.md</code>、<code>architecture/HANDOVER.md</code> 与 E2E README/规格</td><td data-label="改前">错误 GOAWAY 尚无明确双向操作和正文完整性约定。</td><td data-label="改后">明确两个发起方向、部分正文、重连和请求次数要求，同步当前任务范围及导航。</td><td data-label="原因与影响">错误 GOAWAY 与源站正常 GOAWAY 分属独立工作项，不混淆协议方向或把正常方向纳入本次改动。</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

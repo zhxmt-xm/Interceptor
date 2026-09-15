@@ -561,6 +561,103 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     expect(sourceErrors).toEqual([]);
   }, 20_000);
 
+  it.each(['origin', 'client'] as const)('retains interrupted H2 bodies after %s error GOAWAY without replay and recovers', async (direction) => {
+    temporaryDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'interceptor-h2-error-goaway-'));
+    initializeRuntime([`--data-dir=${temporaryDirectory}`]);
+    const activeCaptureService = new CaptureService();
+    captureService = activeCaptureService;
+    await activeCaptureService.initialize();
+    const ca = await generateCACertificate();
+    const originCertificate = await generateCACertificate();
+    const prefix = Buffer.alloc(256 * 1024, 0x61);
+    const requestPath = '/error-goaway';
+    const nextPath = '/after-error-goaway';
+    const requestCountsByPath = new Map<string, number>();
+    const sourceStreamsByPath = new Map<string, http2.ServerHttp2Stream>();
+    const sourceSessions = new Set<http2.ServerHttp2Session>();
+    const sourceErrors: Array<{ code?: string; message: string }> = [];
+    const server = http2.createSecureServer({ cert: originCertificate.cert, key: originCertificate.key });
+    server.on('session', (session) => {
+      sourceSessions.add(session);
+      session.on('error', (error: NodeJS.ErrnoException) => sourceErrors.push({ code: error.code, message: error.message }));
+      session.on('close', () => sourceSessions.delete(session));
+    });
+    server.on('stream', (stream, headers) => {
+      stream.on('error', (error: NodeJS.ErrnoException) => sourceErrors.push({ code: error.code, message: error.message }));
+      const receivedPath = headers[':path']!;
+      sourceStreamsByPath.set(receivedPath, stream);
+      requestCountsByPath.set(receivedPath, (requestCountsByPath.get(receivedPath) ?? 0) + 1);
+      stream.resume();
+      if (receivedPath === requestPath) {
+        stream.respond({ ':status': 200, 'content-type': 'application/octet-stream', 'content-length': prefix.byteLength * 2 });
+        stream.write(prefix);
+      } else {
+        stream.respond({ ':status': 200, 'content-type': 'text/plain' });
+        stream.end('recovered');
+      }
+    });
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    origin = { port: (server.address() as AddressInfo).port, close: async () => {
+      for (const session of sourceSessions) session.destroy();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    } };
+    proxyService = new ProxyService(activeCaptureService, new CaptureEventQueue(), new RuleService(new BreakpointQueue()));
+    await decryptWithCertificate(proxyService, ca, ['localhost', '127.0.0.1']);
+    const address = await proxyService.start();
+    clientSession = await connectH2ViaProxy(address.port, 'localhost', origin.port, ca.cert);
+    const sessionErrors: Error[] = [];
+    clientSession.on('error', (error) => sessionErrors.push(error));
+    const request = clientSession.request({ ':path': requestPath, ':method': 'POST' });
+    const received = { bytes: 0, ended: false, closed: false, status: undefined as number | undefined,
+      errors: [] as Array<{ code?: string; message: string }>, hash: createHash('sha256') };
+    request.on('response', (headers) => { received.status = headers[':status']; });
+    request.on('data', (chunk: Buffer) => { received.bytes += chunk.byteLength; received.hash.update(chunk); });
+    request.on('end', () => { received.ended = true; });
+    request.on('close', () => { received.closed = true; });
+    request.on('error', (error: NodeJS.ErrnoException) => received.errors.push({ code: error.code, message: error.message }));
+    request.end('single-attempt');
+    await expect.poll(() => received.bytes).toBe(prefix.byteLength);
+    await expect.poll(async () => (await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} }))
+      .items.find((exchange) => exchange.path === requestPath)?.state).toBe('response-streaming');
+    const sourceSession = sourceStreamsByPath.get(requestPath)!.session!;
+    (direction === 'origin' ? sourceSession : clientSession).goaway(http2.constants.NGHTTP2_INTERNAL_ERROR);
+    await expect.poll(() => received.closed, { timeout: 5_000 }).toBe(true);
+    expect(received.status).toBe(200);
+    expect(received.bytes).toBe(prefix.byteLength);
+    if (direction === 'origin') {
+      expect(received.ended).toBe(false);
+      expect(received.errors.length).toBeGreaterThan(0);
+    }
+    expect(received.hash.digest('hex')).toBe(createHash('sha256').update(prefix).digest('hex'));
+    await expect.poll(async () => (await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} }))
+      .items.find((exchange) => exchange.path === requestPath)?.state).toMatch(/^(aborted|failed)$/);
+    const interrupted = (await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} }))
+      .items.find((exchange) => exchange.path === requestPath)!;
+    expect(interrupted).toMatchObject({ protocol: 'h2', statusCode: 200, responseBytes: prefix.byteLength });
+    await expect(activeCaptureService.getExchangeDetail(interrupted.id)).resolves.toMatchObject({
+      responseBody: { encodedSize: prefix.byteLength, bodyHash: createHash('sha256').update(prefix).digest('hex') },
+    });
+    expect(requestCountsByPath.get(requestPath)).toBe(1);
+    clientSession.destroy();
+    clientSession = await connectH2ViaProxy(address.port, 'localhost', origin.port, ca.cert);
+    const nextRequest = clientSession.request({ ':path': nextPath, ':method': 'GET' });
+    const nextCompleted = once(nextRequest, 'end');
+    let nextBody = '';
+    nextRequest.setEncoding('utf8');
+    nextRequest.on('data', (chunk: string) => { nextBody += chunk; });
+    nextRequest.end();
+    await nextCompleted;
+    expect(nextBody).toBe('recovered');
+    await expect.poll(async () => (await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} }))
+      .items.find((exchange) => exchange.path === nextPath)?.state).toBe('completed');
+    expect(requestCountsByPath.get(requestPath)).toBe(1);
+    expect(requestCountsByPath.get(nextPath)).toBe(1);
+    const final = await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} });
+    expect(final.items).toHaveLength(2);
+    expect(final.items.find((exchange) => exchange.id === interrupted.id)?.state).toMatch(/^(aborted|failed)$/);
+  }, 15_000);
+
   it('prefers HTTP/2 for dual-protocol browser clients', async () => {
     const ca = await generateCACertificate();
     const originCertificate = await generateCACertificate();

@@ -279,6 +279,15 @@ H2 session续验沿用同一双Range流程，不新增协议事件采集或UI。
 - 2026-09-15五种双Range场景集成5/5，包含原H2、编码、H1上游和gRPC的整个文件11/11；Core/Desktop类型通过。真实H2 workflow 1/1（27.3s），同跑原Headers/trailer及五种Range场景，Main/Core `22300/13000`正常退出、CA/Root与宿主guard恢复。SETTINGS ACK为32 KiB/0/32 KiB，GOAWAY发送后closed=true但destroyed=false，完整收尾后destroyed=true；逐流字节、hash、原行和重连新行均符合断言。
 - 证据TEMP前缀`interceptor-h2-session-20260915-`保存`baseline/integration-final/types.log`与`e2e`目录，后者含五份`h2-ranges-<action>.json`、前后截图、trace和metadata；`interceptor-capture-ready-20260915-evidence.json`核对新H2/Body退出及Core/worker与已验收package字节一致。产品和第三方代码未改，记录当前行为Green基线，不制造Red；源站GOAWAY、错误GOAWAY及新增协议事件展示不属于本轮覆盖。
 
+#### H2错误GOAWAY
+
+- 目标：POST的响应头200及首段256 KiB正文已真实到达后，分别由源站与客户端发送非零`INTERNAL_ERROR` GOAWAY。请求应结束为中断或失败，已收正文和真实响应头保留，不能把声明的完整512 KiB正文标成成功。
+- 源站按path计数验证POST只接收一次；另开H2连接发送独立后续请求成功，原中断Exchange不回退为completed。所属H2集成核对终态与保存正文，既有真实workflow核对部分正文、耗时、行身份和后续新行，最后验证CA、进程和宿主恢复；本项只补当前行为覆盖，不修改产品或第三方，也不制造前置Red。
+- 2026-09-15源站/客户端两个方向集成2/2，原11项加本项共13项通过；另一个源站正常GOAWAY用例用名称过滤明确排除，仍单独失败，不称完整H2组通过。Core/Desktop/Playground类型通过，日志为TEMP `interceptor-h2-error-goaway-20260915-{baseline,directions-final,regression,desktop-types-delivery,playground-types-final,proxy-core-types-final}.log`。集成中的既有`MaxListenersExceededWarning`仍保留，未修改监听器上限。
+- 同一真实H2 workflow最终1/1（24.2s），原Headers/trailer/正文、五个Range场景与双向错误GOAWAY同跑。Main/Core `41928/47264`正常退出，CA/Root、8888与WinINet/journal由正式UI及宿主guard核对恢复；独立只读复核Electron进程0、8888无listener。TEMP `interceptor-h2-error-goaway-20260915-e2e-green`保存两份`h2-error-goaway-<direction>.json`、进行中/部分正文/恢复截图、trace与metadata；同前缀`evidence.json`汇总协议与退出证据。
+- 两个方向均接收262,144 B、声明524,288 B，SHA256均为`dd3dde87623d9a6b354c68c943d189c89c63652d945e7bbdf0986cae91a49521`；POST与恢复请求各到达源站一次，恢复请求使用不同上游session。源站方向客户端以`INTERNAL_ERROR` reset且无end；客户端主动方向以`CANCEL` reset并触发Node end，实际只有半份正文，不能把EOF等同完整成功。Core两种终态均要求`aborted/failed`，UI保留真实200而不伪造错误status。
+- 首轮`-e2e`被背景TLS提示挡住Headers点击，`33424/9532`正常退出；第二轮`-e2e-final`误找octet-stream不存在的Raw控件，`16148/33808`正常退出。前者复用gRPC已有公共Dismiss handler，后者改用真实Text模式的`bodyMode.default`；两次均为验收/环境问题，不算产品Red，不改MIME、信任名单或产品UI。测试设施变更不新增自身测试，不重跑不受影响的package或parity。
+
 #### gRPC streaming目标与当前差异
 
 - 当前Capture按Exchange/side提供正文快照与有限range读取，复用BodyWriter的内存/spill及串行队列，不额外缓存完整stream或伪造在途hash。Final正文优先；等待writer快照期间绑定Final或删除Exchange时重新读取当前状态，显式空Final也不得退回原文。原writer继续保留清理所有权。

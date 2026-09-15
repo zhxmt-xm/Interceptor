@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `b4072d07`
+> Tracked commit: `2e6acb1c`
 > Branch: `main`
 > 最后更新：2026-09-15
 
@@ -18,7 +18,6 @@
 - [ ] **待设计/待实现 · Capture磁盘容量保护**：确定spill总量、剩余空间不足及磁盘写入失败时的处理和用户反馈；不默认删除记录或自动暂停。[范围](backlog/TODO.md#13-capture-无界增长)。
 - [ ] **待设计/待实现 · Session与记录保留策略**：确定Session、Exchange、正文引用和终态TransferJob的保留期限、容量及清理规则，不清除仍被读取或轮询的数据。[范围](backlog/TODO.md)。
 - [ ] **待验证 · H2源站正常GOAWAY**：源站以`NO_ERROR`通知关闭连接时，验证既有stream收尾、新请求换用上游连接及Capture记录；客户端正常GOAWAY不代替此方向。[现有覆盖](features/capture.md#h2-range与多stream集成)。
-- [ ] **待验证 · H2错误GOAWAY**：对端发送非零错误码时，验证未完成stream的实际终态、已收到正文与后续连接恢复，不把中断标成完整成功，不盲目重放请求。[现有覆盖](features/capture.md#h2-range与多stream集成)。
 - [ ] **待设计/待实现 · H2事件诊断**：明确stream ID、RST_STREAM、GOAWAY、SETTINGS及取消原因的采集与展示范围；先确认设计，不在现有UI伪造协议字段。[范围](backlog/TODO.md)。
 
 ## Constraints

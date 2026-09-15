@@ -35,13 +35,15 @@ interface TlsRunDefinition {
   readonly responseBody: Buffer | AsyncIterable<Uint8Array>;
   readonly responseHeaders: Readonly<Record<string, string>>;
   readonly responseTrailers: Readonly<Record<string, string>>;
+  readonly onOriginStream?: (stream: http2.ServerHttp2Stream) => void;
 }
 
 /** 复用同一H2连接的受控流量，客户端stream仍由Node原生API负责。 */
 interface Http2RunOptions {
   readonly session?: http2.ClientHttp2Session;
-  readonly response?: Omit<TlsRunDefinition, 'kind'>;
+  readonly response?: Omit<TlsRunDefinition, 'kind' | 'onOriginStream'>;
   readonly onStream?: (stream: ClientHttp2Stream) => void;
+  readonly onOriginStream?: (stream: http2.ServerHttp2Stream) => void;
 }
 
 /** HTTP 请求、响应及承载它们的 TLS 连接事实。 */
@@ -182,6 +184,7 @@ export class TlsTrafficRunner {
       responseHeaders: { 'content-type': 'application/json' },
       responseTrailers: { 'x-playground-trailer': 'h2-complete' },
       ...options.response,
+      onOriginStream: options.onOriginStream,
     });
     try {
       const requestBody = Buffer.from(draft.body);
@@ -354,6 +357,7 @@ export class TlsTrafficRunner {
     const chunks: Buffer[] = [];
     const runId = readHeader(incoming.headers['x-playground-run-id']);
     const run = runId === undefined ? undefined : this.#runById.get(runId);
+    if (incoming.httpVersionMajor === 2) run?.onOriginStream?.(incoming.stream);
     const respond = (): void => {
       if (run === undefined) {
         response.writeHead(404).end();

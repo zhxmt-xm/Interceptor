@@ -18,11 +18,15 @@ test('capture.scenarios.http2 captures decrypted H2 headers trailers and body', 
   const rootsBefore = await rootCertificateThumbprints();
   let workflowError: unknown;
   const cleanupErrors: unknown[] = [];
+  const tlsCompatibilityDismiss = getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.tlsCompatibility.dismiss);
 
   try {
     // 准备：真实Certificates UI生成、安装本轮CA并开启解密，origin仅为localhost例外。
     // Arrange: generate and install this CA and enable decryption through Certificates UI with only a localhost origin exception.
     await prepareHttpsCapture(desktopApp);
+    await desktopApp.page.addLocatorHandler(tlsCompatibilityDismiss, async () => {
+      await tlsCompatibilityDismiss.click();
+    });
     await startRecording(desktopApp);
     const scenario = trafficLab.scenarios().find((candidate) => candidate.id === 'h2-json');
     if (!scenario || scenario.defaultDraft.kind !== 'http') throw new Error('Missing H2 JSON traffic scenario.');
@@ -230,6 +234,121 @@ test('capture.scenarios.http2 captures decrypted H2 headers trailers and body', 
       });
     }
 
+    // 错误GOAWAY：两端分别关闭实际H2连接，已到达的POST响应保留部分正文且不重放。
+    // Error GOAWAY: close each direction's real H2 session and preserve the partial POST response without replay.
+    for (const direction of ['origin', 'client'] as const) {
+      await test.step(`h2-error-goaway-${direction}`, async () => {
+        const prefixSize = 256 * 1024;
+        const requestPrefix = `/e2e/h2/error-goaway-${direction}`;
+        const requestPath = `${requestPrefix}/interrupted`;
+        const nextPath = `${requestPrefix}/recovered`;
+        const responseBytes = Buffer.alloc(prefixSize, 0x61);
+        const responseStream = new PassThrough();
+        const keyword = getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter);
+        await keyword.fill(requestPrefix);
+        const session = await tlsTrafficRunner.openHttp2Session(desktopApp.capturePort());
+        const sessionErrors: string[] = [];
+        session.on('error', (error) => sessionErrors.push(error.message));
+        const sourceErrors: string[] = [];
+        const sourceStreams: http2.ServerHttp2Stream[] = [];
+        const sourceSessions: http2.Http2Session[] = [];
+        const received = { bytes: 0, ended: false, closed: false, errors: [] as string[],
+          hash: createHash('sha256'), stream: undefined as ClientHttp2Stream | undefined };
+        const completed = tlsTrafficRunner.runHttp2({ ...httpDraft, method: 'POST', path: requestPath,
+          body: 'single-attempt', headers: { 'content-type': 'text/plain' },
+        }, desktopApp.capturePort(), {
+          session,
+          response: { statusCode: 200, responseBody: responseStream,
+            responseHeaders: { 'content-type': 'application/octet-stream', 'content-length': String(prefixSize * 2) },
+            responseTrailers: {} },
+          onStream: (stream) => {
+            received.stream = stream;
+            stream.on('data', (chunk: Buffer) => { received.bytes += chunk.byteLength; received.hash.update(chunk); });
+            stream.on('end', () => { received.ended = true; });
+            stream.on('close', () => { received.closed = true; });
+            stream.on('error', (error) => received.errors.push(error.message));
+          },
+          onOriginStream: (stream) => {
+            sourceStreams.push(stream);
+            sourceSessions.push(stream.session!);
+            stream.on('error', (error) => sourceErrors.push(error.message));
+            stream.session!.on('error', (error) => sourceErrors.push(error.message));
+          },
+        });
+        responseStream.write(responseBytes);
+        const capturedRow = getByAutomationIdPrefix(desktopApp.page, AUTOMATION_ID_PREFIXES.captureRequestRow)
+          .filter({ hasText: requestPath });
+        try {
+          await expect.poll(() => received.bytes).toBe(prefixSize);
+          await expect(capturedRow).toHaveCount(1);
+          for (const value of ['h2', 'POST', '200', '256 KB']) await expect(capturedRow).toContainText(value);
+          expect(sourceStreams).toHaveLength(1);
+          expect(received.ended).toBe(false);
+          expect(responseStream.writableEnded).toBe(false);
+          const rowId = await capturedRow.getAttribute('data-automation-id');
+          await desktopApp.page.screenshot({ path: testInfo.outputPath(`h2-error-goaway-${direction}-inflight.png`) });
+
+          // 数据面与产品断言：保留真实200和已收字节，区分Node EOF与完整正文，不伪造UI协议字段。
+          // Data plane and product assertions: retain the actual 200 and captured bytes; Node EOF is not a complete body or a fabricated UI protocol event.
+          (direction === 'origin' ? sourceSessions[0]! : session).goaway(http2.constants.NGHTTP2_INTERNAL_ERROR);
+          await expect.poll(() => received.closed).toBe(true);
+          await expect.poll(() => responseStream.destroyed).toBe(true);
+          const execution = await completed;
+          expect(received.bytes).toBe(prefixSize);
+          const digest = received.hash.digest('hex');
+          expect(digest).toBe(createHash('sha256').update(responseBytes).digest('hex'));
+          if (direction === 'origin') {
+            expect(execution.state).toBe('failed');
+            expect(received.ended).toBe(false);
+            expect(received.errors.length).toBeGreaterThan(0);
+          }
+          await expect(capturedRow).not.toContainText('\u00b7\u00b7\u00b7');
+          await expect(capturedRow).toHaveAttribute('data-automation-id', rowId!);
+          for (const value of ['200', '256 KB']) await expect(capturedRow).toContainText(value);
+          await capturedRow.click();
+          await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.response).click();
+          await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyMode.default).click();
+          await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyPane)).toContainText('a'.repeat(64));
+          await desktopApp.page.screenshot({ path: testInfo.outputPath(`h2-error-goaway-${direction}-partial-body.png`) });
+          await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.close).click();
+
+          // 恢复：新连接发独立请求，源站次数及原行保持，不能重放先前POST。
+          // Recovery: issue an independent request over a new connection and keep the original row and single POST attempt.
+          session.destroy();
+          const nextSourceSessions: http2.Http2Session[] = [];
+          const next = await tlsTrafficRunner.runHttp2({ ...httpDraft, path: nextPath }, desktopApp.capturePort(), {
+            onOriginStream: (stream) => nextSourceSessions.push(stream.session!),
+          });
+          expect(next).toMatchObject({ state: 'complete', protocol: 'h2', response: { statusCode: 200 } });
+          expect(sourceStreams).toHaveLength(1);
+          expect(nextSourceSessions).toHaveLength(1);
+          expect(sourceSessions.includes(nextSourceSessions[0]!)).toBe(false);
+          const nextRow = getByAutomationIdPrefix(desktopApp.page, AUTOMATION_ID_PREFIXES.captureRequestRow)
+            .filter({ hasText: nextPath });
+          await expect(nextRow).toHaveCount(1);
+          await expect(nextRow).toContainText('200');
+          await expect(nextRow).not.toContainText('\u00b7\u00b7\u00b7');
+          await expect(capturedRow).toHaveAttribute('data-automation-id', rowId!);
+          await expect(capturedRow).toContainText('256 KB');
+          await desktopApp.page.screenshot({ path: testInfo.outputPath(`h2-error-goaway-${direction}-recovered.png`) });
+          const evidencePath = testInfo.outputPath(`h2-error-goaway-${direction}.json`);
+          await writeFile(evidencePath, JSON.stringify({ direction, goawayCode: http2.constants.NGHTTP2_INTERNAL_ERROR,
+            requestPath, rowId, receivedBytes: received.bytes, declaredBytes: prefixSize * 2, digest,
+            clientEnded: received.ended, clientClosed: received.closed, streamResetCode: received.stream?.rstCode,
+            streamErrors: received.errors, sessionErrors, sourceErrors, originRequestCount: sourceStreams.length,
+            originStreamId: sourceStreams[0]?.id, recoveryRequestCount: nextSourceSessions.length,
+            differentOriginSession: !sourceSessions.includes(nextSourceSessions[0]!), recoveryRowId: await nextRow.getAttribute('data-automation-id'),
+          }, null, 2), 'utf8');
+          await testInfo.attach(`h2-error-goaway-${direction}.json`, { path: evidencePath, contentType: 'application/json' });
+        } finally {
+          responseStream.destroy();
+          session.destroy();
+          await completed;
+          await keyword.fill('');
+        }
+      });
+    }
+
     // 证据：只记录协议与公共行身份，不记录私钥或本机证书路径。
     // Evidence: retain protocol and public row identity, never private keys or local certificate paths.
     expect(desktopApp.rendererPageErrors()).toEqual([]);
@@ -243,6 +362,7 @@ test('capture.scenarios.http2 captures decrypted H2 headers trailers and body', 
   } finally {
     // 清理：经真实UI停用解密、卸载删除本轮CA并比较Root集合，fixture验证进程及宿主恢复。
     // Cleanup: disable decryption and uninstall/delete this CA through UI, compare Root stores, and let fixtures verify host restoration.
+    await desktopApp.page.removeLocatorHandler(tlsCompatibilityDismiss).catch((error: unknown) => cleanupErrors.push(error));
     await cleanHttpsCapture(desktopApp).catch((error: unknown) => cleanupErrors.push(error));
     try { expect(await rootCertificateThumbprints()).toEqual(rootsBefore); } catch (error) { cleanupErrors.push(error); }
   }

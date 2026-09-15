@@ -181,7 +181,7 @@ diagnostics.row.<traceKey>
 | `capture.protocols.with-mitm` | Trust/MITM前后对比，HTTPS/WSS/H2/gRPC解密 | privileged UI | planned |
 | `capture.playground-traffic` | Playground UI自产H1与WebSocket流量进入真实Capture | os-side-effect | passed |
 | `capture.scenarios.http` | H1 JSON/上传/流式/early response/中断及413完整响应收尾，不改Mockttp | os-side-effect | passed |
-| `capture.scenarios.http2` | H2 Headers/trailer/正文及CA恢复 | privileged UI | passed |
+| `capture.scenarios.http2` | H2 Headers/trailer/正文、Range及双向错误GOAWAY与CA恢复 | privileged UI | passed |
 | `capture.scenarios.bodies` | 十一种正文的实际模式、Raw保真及安全展示 | os-side-effect | passed |
 | `capture.scenarios.body-media` | PNG/二进制/音视频原生导出 | native-ui | passed |
 | `capture.scenarios.encoding` | 三种正常压缩和损坏gzip/图片 | os-side-effect | passed |

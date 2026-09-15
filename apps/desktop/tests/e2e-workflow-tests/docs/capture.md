@@ -80,7 +80,7 @@
 <a id="capture-scenarios-http2"></a>
 ## `capture.scenarios.http2`
 
-**状态**：2026-09-15同一workflow1/1（27.3s）通过；既有Headers/trailer/正文与双Range正常/Clear/单stream取消/SETTINGS/客户端GOAWAY同跑，CA与宿主恢复通过
+**状态**：2026-09-15同一workflow1/1（24.2s）通过；既有Headers/trailer/正文、五种Range与源站/客户端错误GOAWAY同跑，CA与宿主恢复通过；源站正常GOAWAY另行跟踪
 **策略**：真实Electron；正式Certificates UI；仅本轮CA；host-safety-guard
 
 ### Steps
@@ -96,9 +96,13 @@
 
 继续增加两个session场景，保留上述准备、真实UI断言及清理：`settings`在各到2 MiB时通过客户端发送并等待SETTINGS ACK，确认32 KiB窗口、0字节header table和32 KiB最大frame后，两流完整到6 MiB；`goaway`在相同位置正常关闭客户端session，记录此时closed但尚未destroyed，已有两流完整结束后确认连接已销毁，再由新H2连接发`after-goaway`并在真实列表确认新200行。两场景均保留原行身份、最终字节/hash和结束耗时，`h2-ranges-<action>.json`增加session阶段快照；不把协议客户端的控制操作当作产品API，也不要求UI显示尚未实现的GOAWAY事件。
 
+错误GOAWAY两方向：真实POST的200响应已收到首段256 KiB且声明512 KiB时，分别由源站和客户端发送`INTERNAL_ERROR` GOAWAY。客户端实际中断并只保留首段hash，Capture原行仍保留真实200与部分字节、结束耗时，不显示完整成功；Core集成核对`aborted/failed`终态。源站记录POST仅到达一次，另开下游H2连接发送独立后续请求，真实列表新增200行，旧行及部分正文不改变。沿用原CA准备和恢复，保存错误码、stream/session身份、请求次数、字节/hash、截图和trace；不得注入产品状态或直接调用业务API。背景TLS提示只经公共Dismiss真实关闭，不自动加host；部分正文通过实际Text模式而非JSON Raw查看。
+
 当前证据为TEMP `interceptor-h2-multistream-20260915-e2e-green`，Main/Core `47824/13880`正常退出；三场景stream ID均为1/3，最终字节分别6/6、6/6、2/6 MiB，Clear后旧行0/0，其余保持各1条。首次取消失败源于流量库对Readable二次包装，修复后通过，旧`-e2e`与`33216/9300`退出记录保留；共享gRPC最终1/1（2.8m）和Desktop/Playground类型通过，详见[H2证据](../../../../../architecture/features/capture.md#h2-range与多stream集成)。
 
 SETTINGS/客户端GOAWAY加入后的最终证据为TEMP `interceptor-h2-session-20260915-e2e`，五个Range场景与原H2同跑1/1（27.3s），Main/Core `22300/13000`正常退出及CA/Root/宿主恢复；Core完整H2组11/11、Core/Desktop类型通过。旧三场景结果保留为历史，不替代当前五场景。源站/错误GOAWAY与协议事件展示尚未验收。
+
+错误GOAWAY当前证据为TEMP `interceptor-h2-error-goaway-20260915-e2e-green`和同前缀`evidence.json`：两方向同跑1/1（24.2s），Main/Core `41928/47264`正常退出与CA/宿主恢复；各保留262,144 B而非声明524,288 B，POST和恢复请求各1次，新上游session与原session不同。客户端主动关闭可触发Node end，但reset为`CANCEL`且Capture保持非成功终态；源站方向为`INTERNAL_ERROR`。既有11项及新增2项集成通过，源站正常GOAWAY另行失败未纳入此通过范围。首轮背景TLS遮罩和第二轮Raw选择器失败均保留，详细结果见[错误GOAWAY证据](../../../../../architecture/features/capture.md#h2错误goaway)。
 
 <a id="capture-scenarios-bodies"></a>
 ## `capture.scenarios.bodies`
