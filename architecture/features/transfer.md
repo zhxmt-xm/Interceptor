@@ -56,6 +56,14 @@ Transfer 统一承载所有**异步文件任务**：HAR 交换、Native Archive 
 
 任务**全部保留**不淘汰，每个任务持有独立的 `AbortController`；公开快照字段**不含绝对路径**。Core 关闭时先 `cancelAll()`。
 
+关闭实现：`TransferService`以`pendingTransfers`跟踪尚未结束的操作，`cancelAll()`发出取消后返回等待实际操作与清理完成的Promise，包含已标记cancelled但仍在释放句柄的任务。`CoreApplication.shutdown()`同时启动传输取消和Proxy停止，等待两者后才释放Capture并发送`stopped`。单任务Cancel的公开状态、提交点和Clear的lease策略不变。
+
+2026-09-14本轮关闭前置Red：Transfer与Core各2例，覆盖运行中取消和已取消未清理任务，旧19例保持Green；实现后同组23/23，包含HAR/Archive/Capture/Proxy/gRPC与命令的共享回归28文件241/241，Core typecheck通过。TEMP `interceptor-transfer-shutdown-20260914-{red,green}.log`与`interceptor-streaming-transfer-20260914-{regression,types}.log`保存结果。真实E2E、退出恢复及package/audit/smoke尚未复跑，旧产物不能作为本次关闭修复的验收。
+
+2026-09-15恢复后的当前验收：Transfer Jobs1/1（44.1s）、Body Export1/1（38.6s）、HAR1/1（38.3s）、Archive1/1（47.3s），八代Main/Core/Worker正常退出、8888及WinINet/journal恢复，trace齐全。Transfer在128 MiB Archive仍为running时，经核验Main PID、启动代际及前台窗口后发送真实Alt+F4，不先Cancel；输出/临时文件删除、已完成文件hash保持，重启后该任务及旧任务不重放。两个Transfer代为`3916/22680`、`44120/33196`；逐代及其余结果在TEMP `interceptor-streaming-acceptance-20260915-evidence.json`，目录后缀`-transfer-jobs-native-close`、`-body-export`、`-har`、`-archive`保存详细证据。
+
+失败如实保留：首次Transfer在原生Save粘贴路径为空，随后清理点击已消失按钮失败（`29104/29692`不记正常退出）；宿主guard完成恢复。原样重跑越过Save，但自绘Close被进度遮罩拦住直到任务完成，正式Archive因已完成而保留（`29624/44832`正常退出），不是取消提交失败。改用真实Alt+F4后通过，不改产品遮罩或任务结果。新增运行中关闭步骤没有实现前E2E Red，不能以此轮Green或上述测试失败补造；确定性竞态Red仍来自Transfer/Core unit。当前package/audit/smoke与产品源码hash一致可复用，当前Desktop类型通过，原失败目录与`-retry`保留。
+
 ## 3. 调用流程
 
 ### 3.1 通用任务生命周期

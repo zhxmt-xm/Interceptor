@@ -17,6 +17,7 @@ import type {
   DiagnosticProcess,
   GrpcMessageSide,
   GrpcMessageSummary,
+  GrpcReadRangeCommand,
   HeaderOperation,
   KeyMatchMode,
   PendingBreakpoint,
@@ -344,11 +345,15 @@ export interface GrpcMessagePage {
   encoding?: string;
   bodyHash?: string;
   bodySize: number;
+  bodyAvailable: boolean;
+  bodyComplete: boolean;
   items: GrpcMessageSummary[];
   nextCursor?: string;
   hasMore: boolean;
   malformedOffset?: number;
 }
+
+export type GrpcBodyReadRequest = GrpcReadRangeCommand['payload'];
 
 /** 一段按需读取的正文字节及是否已到结尾。 */
 export interface BodyChunk {
@@ -616,6 +621,7 @@ export const DESKTOP_IPC_CHANNELS = {
   websocketBreakpointEnable: 'websocket:breakpoint-enable',
   websocketBreakpointDisable: 'websocket:breakpoint-disable',
   grpcMessages: 'grpc:messages',
+  grpcReadRange: 'grpc:read-range',
   bodyReadRange: 'body:read-range',
   bodyExportStart: 'body:export-start',
   caStatus: 'ca:status',
@@ -774,6 +780,7 @@ export interface InterceptorDesktopApi {
   ): Promise<WebSocketBreakpointSettings | null>;
   disableWebSocketBreakpoints(): Promise<WebSocketBreakpointSettings | null>;
   queryGrpcMessages(request: GrpcMessageQuery): Promise<GrpcMessagePage>;
+  readGrpcBody(request: GrpcBodyReadRequest): Promise<BodyChunk>;
   readBody(
     bodyId: string,
     offset: number,

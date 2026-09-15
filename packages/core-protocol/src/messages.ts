@@ -103,6 +103,16 @@ export interface GrpcMessagesCommand {
   };
 }
 
+export interface GrpcReadRangeCommand {
+  type: 'grpc.read-range';
+  payload: {
+    exchangeId: string;
+    side: GrpcMessageSide;
+    offset: number;
+    length: number;
+  };
+}
+
 export interface RulesReplaceCommand {
   type: 'rules.replace';
   payload: {
@@ -493,6 +503,7 @@ export type CoreCommand =
   | WebSocketBreakpointEnableCommand
   | WebSocketBreakpointDisableCommand
   | GrpcMessagesCommand
+  | GrpcReadRangeCommand
   | BodyReadRangeCommand
   | RulesReplaceCommand
   | RulesGetCommand
@@ -621,10 +632,21 @@ export interface GrpcMessagesResult {
     encoding?: string;
     bodyHash?: string;
     bodySize: number;
+    bodyAvailable: boolean;
+    bodyComplete: boolean;
     items: GrpcMessageSummary[];
     nextCursor?: string;
     hasMore: boolean;
     malformedOffset?: number;
+  };
+}
+
+export interface GrpcRangeResult {
+  type: 'grpc.range';
+  payload: {
+    offset: number;
+    data: Uint8Array;
+    end: boolean;
   };
 }
 
@@ -993,6 +1015,7 @@ export type CoreResult =
   | WebSocketFramesResult
   | WebSocketBreakpointStateResult
   | GrpcMessagesResult
+  | GrpcRangeResult
   | BodyRangeResult
   | RuleRevisionResult
   | RulesRuleSetResult
@@ -1027,6 +1050,7 @@ export type CoreResultForCommand<T extends CoreCommand> =
           : T extends WebSocketBreakpointDisableCommand
             ? WebSocketBreakpointStateResult
             : T extends GrpcMessagesCommand ? GrpcMessagesResult
+              : T extends GrpcReadRangeCommand ? GrpcRangeResult
               : T extends BodyReadRangeCommand ? BodyRangeResult
             : T extends RulesReplaceCommand ? RuleRevisionResult
             : T extends CollectionGetCommand ? CollectionResult

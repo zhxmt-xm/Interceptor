@@ -49,7 +49,7 @@
 <a id="capture-scenarios-http"></a>
 ## `capture.scenarios.http`
 
-**状态**：passed；五个H1场景及额外413边界真实Green，owner/终态摘要Red后Green，Mockttp与patch不变
+**状态**：2026-09-15当前Core修复后单独1/1（33.9s）Green，包含十个流式场景及长上传取消；Main/Core `32564/47456`正常退出与宿主恢复，Mockttp及patch不变
 **策略**：真实Electron；复用Playground流量库；不启动Playground页面，不新增流量工具的测试
 
 ### Steps
@@ -59,12 +59,18 @@
 3. `h1-json`验证H1/GET/200及固定JSON；`h1-upload`验证完整45字节上传和实际接收计数；`h1-stream`保留三个JSON分块；`h1-early-response`响应先完成仍保留38字节完整上传。
 4. 真实检查Request/Response Headers、Raw正文；`h1-abort`源站断开后请求仍保留，不显示200或等待状态。H2由独立workflow验证。
 5. 额外413边界使用workflow拥有的真实origin/client：先发送一段上传，再返回分段413响应。收到413响应头时继续接收正文；完整响应结束后，Capture保留413状态、完整响应正文和当时已捕获的上传片段，不要求客户端先断开。此项不新增Playground场景或修改第三方。
-6. 保存场景结果、公共行身份、trace与截图；fixtures关闭origin及Electron，核验Main/Core/Worker、8888、完整WinINet和共享journal恢复。
+6. SSE使用独立loopback origin/client，先保留响应不发头：确认Capture已有唯一自产请求行。再发送200与`text/event-stream`和第一条事件，通过Headers页核对MIME、列表Size核对实际字节；保持连接未结束，发送第二条事件并确认同一行Size增长。两次均独立断言origin未结束、client未完成响应，不能先结束流再验进行中状态。
+7. 最后发送第三条事件并正常结束，client收到的完整正文与三条事件逐字节一致；产品Response Text显示全部事件，行身份保持不变。SSE使用既有Text/Hex档位，不要求不存在的Raw控件。保存`sse-inflight.json`、`sse-inflight.png`、场景结果、trace与截图；fixtures关闭origin及Electron，核验Main/Core/Worker、8888、完整WinINet和共享journal恢复。
+8. 客户端取消与origin reset各新建一条SSE连接，重复未结束时的Headers、36/72 B与唯一行断言，然后分别由client或origin真实断开。要求client响应未完整结束、origin关闭，Capture同一行保留72 B且没有进行中占位；不把已收到的200改为伪造错误码。分别保存`sse-client-abort.json`与`sse-origin-reset.json`及各自进行中截图，最后仍由同一workflow完整清理。
+9. 长上传逐项覆盖未知长度chunked、Content-Length和Expect: 100-continue：公共Keyword输入定位自产path，先只发头，origin必须在正文发送前接收请求；Expect场景等待真实100 Continue。逐段发送2 MiB，前两段各等待origin实际接收并核对Capture同一行的2/4 MB，client和origin均未结束上传。最后发送第三段并结束，origin完整6 MiB的SHA-256必须一致，Capture保留同一行并展示200、完整`upload-ok`响应。保存逐段字节、结束状态、framing与SHA-256，清除Keyword后继续其他场景。
+10. 长下载使用真实origin逐段发送三段2 MiB，正常结束、跨Pause/Resume和Clear各使用独立连接。首段后通过产品Recording暂停或Clear，第二段在连接未结束时仍由client接收；普通/暂停场景同一行显示2/4 MB，Clear场景旧行消失且不因后续分块复活。完整6 MiB响应SHA-256一致后，普通/暂停场景保留6 MB及耗时，暂停场景恢复Recording；Clear场景通过已有`h1-json`产生新请求并确认其Capture行出现、旧行仍不存在。分别保存`download-*.json`、进行中截图与完整workflow退出证据，不将本步骤外推为H2/gRPC或文件任务竞态覆盖。
 
 ### 证据要求
 
 - 测试对象是Interceptor抓取与展示，不是Playground场景实现；网络返回值只证明流量已产生，产品期望独立写在workflow中。
 - 只新增现有产品行为的E2E覆盖，不人为制造Red；若发现产品故障，先保存真实失败证据并补所属模块测试，再修改产品。
+- 长上传取消在两个2 MiB分块已由origin接收并由Capture显示后，由client真实断开；origin必须关闭且未完整接收，Capture保留4 MB及同一行且不再显示进行中占位，不要求生成未收到的200或响应正文。
+- SSE证据保存响应头发出前及两次事件到达后的行内容、公共行身份、实际字节数与origin/client结束状态；三种结束方式分别记录，不以正常结束通过替代取消/reset。本步骤不代表Rule命中、H2大Range或gRPC streaming通过。
 - 通过一个场景不提升整组或39项总量；逐场景记录实际Green及退出恢复证据。
 - early response必须在Request区块显示38字节并可读完整`{"request":"continues-after-response"}`；响应为`sent-before-request-completed`。2026-09-09已有owner及真实UI Red，双向结束修复后owner3/3及五场景E2E Green；新413例外单独取得前置Red和最终Green，不能用普通提前200场景的通过替代。
 - 413验收不以中断事件为前提，也不把所有错误状态视为同一规则；完整413响应接收后可读取已捕获上传正文，迟到事件不改写终态。真实请求是否继续发送或关闭仍由客户端和origin决定，Core只调整Capture记录。
@@ -174,17 +180,28 @@ Compact正文尺寸：在真实binary JSON消息默认Pretty档、切Tree之前�
 <a id="capture-scenarios-grpc"></a>
 ## `capture.scenarios.grpc`
 
-**状态**：passed；五场景Green，逐侧消息、压缩/截断载荷及13错误trailer正确
+**状态**：2026-09-15当前Core修复后单独1/1（2.5m）Green，包含bidi、Pause/Resume、Clear、原五场景及UTF-8边界；Main/Core `34820/45124`正常退出、CA/Root及宿主恢复通过
 **策略**：真实gRPC Inspector；正式CA/MITM UI；现有H2流量库
 
 ### Steps
 
 1. fresh profile通过Certificates UI生成/安装本轮CA、添加localhost源站例外并启用MITM；经UI启用Recording。
+	- 新增streaming步骤先运行：复用`TlsTrafficRunner`与受控响应流，经真实8888/TLS/H2发送JSON gRPC。仅到达3-byte header时消息为0；收齐第一条envelope后，响应未结束时消息为1且真实Copy正确；第二条payload未收齐时仍为1，补齐后为2且Copy正确。最后结束流并核对实际grpc-status 0；全过程不调用业务API替代UI。
+	- 进行中失败必须先保存`grpc-streaming.png`与`grpc-streaming.json`，记录客户端是否结束、源站输入流是否结束及实际消息数，再结束流和恢复CA/Root，不能用流结束后出现消息的截图冒充前置状态。
+	- 系统背景流量触发TLS compatibility时，使用公共`settings.tls-compatibility.dismiss`对应的Not now控件真实关闭，不自动添加host或修改MITM策略。清理前移除Playwright locator handler，仍按原正式UI恢复CA与Root；弹窗挡点击的失败不算目标Red。
+	- Pause/Resume与Clear分别创建新H2 stream：第一条消息出现后真实点击Recording暂停或Clear，再发送第二条。暂停时第二条仍可查看和Copy，完整结束后恢复Recording；Clear后旧行与消息保持消失，真实两条消息及trailers仍完整到达client，后续五个原场景仍可产生新Capture记录。保存各自进行中和最终状态JSON，不把Clear当作断开网络。
+	- 双向streaming同时保持Request/Response未结束，各先发送一条完整JSON消息，再发送第二条缺两字节的payload；逐侧核对第一条可Copy、半条不生成消息，补齐后第二条出现且Copy正确。每次Copy时两侧均未结束，最后共同结束并核对实际请求/响应字节与trailers；保存`grpc-bidirectional-streaming.json/png`。
 2. 逐个运行Unary proto、Unary JSON、Trailers error、Compressed及Malformed场景，确认实际H2/200和grpc-status为0/13；不将HTTP 200当gRPC业务成功。
 3. 真实选择Capture H2行并打开gRPC；逐侧切换Request/Response，校验消息数、声明载荷长度和`@ 0x0005`偏移。
 4. 用真实Copy核对proto Hex、JSON文本及gzip原始压缩字节；Malformed仅响应末尾少两个字节，请求保持完整，UI声明长度保留，Copy只返回实际字节。
 5. status 13的Response消息为0，UI显示`grpc-status: 13`和`grpc-message: Playground failure`，不制造响应消息。
 6. 保存逐场景身份、trace与截图，Renderer无page error；finally通过UI停用MITM、移除例外、卸载/删除本轮CA并比较Root集合，fixture验证Main/Core/Worker、8888、WinINet/journal恢复。
+
+2026-09-14在途结果：首条31 B到达时真实Red为1条预期/0条实际，client与origin均未结束；Green在63 B时显示两条且实际Copy分别为`stream-first`/`stream-second` JSON。Main/Core Red `10432/37368`、Green `27992/35704`均正常销毁，CA/Root与宿主guard通过；TEMP `interceptor-grpc-streaming-20260914-e2e-{red-valid,green}`保存JSON、截图、trace和metadata。此前背景TLS弹窗挡点击仅算环境干扰；不将本次结果外推为gRPC bidi、Pause/Resume、Clear或压力矩阵完成。
+
+后续已有完整结果保留于TEMP `interceptor-capture-streaming-20260914-final`及同名日志：HTTP/gRPC2/2（2.6m），gRPC Main/Core `47348/39892`、HTTP `13232/7896`正常销毁。上述结果包含bidi、Pause/Resume、Clear，但不含本次越界游标和Final快照竞态修复后的真实复验；用户暂停期间不运行workflow、不补造前置Red。
+
+2026-09-15最终目录为TEMP `interceptor-streaming-acceptance-20260915-grpc-green`。首轮180秒总预算在正文完成后的CA清理阶段用尽，旧目录`-grpc`及正常退出metadata保留；同一workflow改300秒总预算，单步断言和所有场景不变后通过，不将超时当产品Red。
 
 2026-09-10追加多消息边界：Request与Response各两条JSON消息，分别把三/四字节字符放在大消息5 MiB边界，并用完整小消息验证相邻offset；专用Copy、Raw Copy与编辑器内容逐条比较长度/SHA256，不读入下一条envelope。当前workflow1/1，Main/Core `36504/43572`正常退出，Root集合及host guard恢复通过；原五场景同跑，未覆盖gRPC streaming生命周期。实现前真实Red缺口与归档见[UTF-8预览](../../../../../architecture/features/capture.md#utf-8预览截断)。
 
@@ -961,7 +978,7 @@ Capture discovery、Settings双列授权、MCP Browser/Desktop关联真实`4/4`�
 <a id="capture-tools-transfer-jobs"></a>
 ## `capture.tools.transfer-jobs`
 
-**状态**：passed；目标Red/Green、关联回归、销毁恢复与当前产物交付验证闭环；不包含取消提交点竞态
+**状态**：2026-09-15同一workflow1/1（44.1s），原两次运行中取消和新增运行中窗口退出均通过；两代正常退出、文件清理和宿主恢复齐全，新增关闭步骤的历史前置E2E Red缺口保留，不包含取消提交点竞态
 **策略**：native-ui；Windows；两代真实Electron；host-safety-guard
 
 ### Steps
@@ -979,14 +996,17 @@ Capture discovery、Settings双列授权、MCP Browser/Desktop关联真实`4/4`�
 	测试不能把已完成任务取消当作本步通过，不向产品新增测试专用延迟或暂停入口。
 5. 通过Settings分别撤销两项Agent/MCP权限，旧Chat/连接均不可再调用；MCP独立权限不因Agent撤权被关闭。
 	操作中保持应用语言，使用公共automation ID、状态属性与测试自产标识进行断言。
-6. 正常退出后同profile重启，授权设置保留；旧代际jobId查询为null，无Model/origin/文件任务重放。
-	先验证两代Main/Core/Archive Worker销毁、8888释放及完整WinINet/journal恢复，再删除产品输出与profile。
+6. 关闭Agent面板后，在同一128 MiB真实捕获数据上通过Capture菜单和原生Save再启动一份Archive。保存公开进度、截图并确认任务仍为running；因进度遮罩覆盖自绘窗口按钮，核验测试Main的PID、启动代际和前台窗口后使用真实Windows Alt+F4，不先点Transfer Cancel。退出完成时输出和临时文件必须清理，已完成Diagnostics文件不变，Main/Core/Archive Worker全部退出。
+7. 同profile重启，授权设置保留；已完成任务与退出时运行中的旧代际jobId均查询为null，无Model/origin/文件任务重放。
+	先验证两代Main/Core/Archive Worker销毁、8888释放及完整WinINet/journal恢复，再删除产品输出与profile。保存两代trace/metadata及运行中关闭前的公开进度；竞态确定性由Transfer/Core关闭unit覆盖，不把当前复验补称为历史前置Red。
 
 ### 预期与证据
 
 Core的进度、运行中取消及终态幂等由unit/integration与同一真实流程交叉验证；取消必须触发真实文件任务的
 AbortSignal并清理I/O，而不是仅将界面改为cancelled。保存各阶段安全job快照、文件hash/存在性、恢复与进程代际，
 不归档敏感文件名、完整原始正文或认证数据。原生窗口焦点、任务完成太快或selector失败不作为产品Red。
+
+当前证据为TEMP `interceptor-streaming-acceptance-20260915-transfer-jobs-native-close`，`transfer-jobs.json`含`shutdownArchiveState: running`、`shutdownOutputRemoved`和`shutdownJobNotReplayed`；Main/Core `3916/22680`及`44120/33196`正常退出。原生粘贴失败和遮罩导致Close等到任务完成的两次验收失败保留在原目录及`-retry`，不算产品Red；具体原因和相关Body/HAR/Archive结果见[Transfer关闭](../../../../../architecture/features/transfer.md#2-四类任务)。
 
 2026-09-07已有证据：executor缺失Tool Red、进度属性Red、真实discovery Red与摘要value Red后Green。
 Archive最后Blob期间取消仍落盘的真实故障由两个文件integration Red锁定，修复后服务7/7、关联23/23通过。

@@ -44,6 +44,10 @@ export interface GrpcMessagePage {
   readonly bodyHash?: string;
   /** 完整 body 字节数。 */
   readonly bodySize: number;
+  /** 当前是否可读取该side的正文。 */
+  readonly bodyAvailable: boolean;
+  /** 该side是否已经结束写入。 */
+  readonly bodyComplete: boolean;
   /** 当前页 message 摘要。 */
   readonly items: GrpcMessageSummary[];
   /** 下一页不透明游标。 */

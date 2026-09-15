@@ -43,6 +43,7 @@ export class CoreRpcClient {
     'composer.send': 'composer.response',
     'tls.probe': 'tls.probed',
     'grpc.messages': 'grpc.messages',
+    'grpc.read-range': 'grpc.range',
     'har.export.start': 'transfer.job',
     'har.import.start': 'transfer.job',
     'archive.export.start': 'transfer.job',

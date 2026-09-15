@@ -17,8 +17,10 @@
 | `start(jobId, kind, filePath, operation)` | 校验 ID 唯一后异步启动，立即返回 running 快照 |
 | `get(jobId)` | 不可变公开快照；未知 ID 返回 `null` |
 | `cancel(jobId)` | 触发 AbortSignal 并立即更新状态 |
-| `cancelAll()` | Core 关闭时调用 |
+| `cancelAll()` | Core关闭时发出取消，返回等待已启动操作及清理结束的Promise |
 | `onCompleted(listener)` | 成功任务结束后通知 CoreApplication，只传任务种类 |
+
+`pendingTransfers`只保留尚未结束的操作，操作结束后移除；公开状态为`cancelled`不等于文件句柄已释放。`cancelAll()`也等待此前已取消但仍在清理的任务。Core同时停止Proxy，等待两者后再释放Capture并确认`stopped`；单任务Cancel的公开状态和完成通知规则不变。
 
 - `har-import` 或 `archive-import` 成功后，CoreApplication 向 Main 发布 `captureImported`。
 - Main 转给 Renderer，Capture 常驻订阅重新查询 summaries。

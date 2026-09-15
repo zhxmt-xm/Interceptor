@@ -563,6 +563,52 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     }
   });
 
+  it('waits for a terminal HTTP body commit before resetting capture storage', async () => {
+    const bodyWriter = recordingCaptureService.createBodyWriter();
+    const finalizeBody = bodyWriter.finalize.bind(bodyWriter);
+    let releaseCommit!: () => void;
+    const commitGate = new Promise<void>((resolve) => { releaseCommit = resolve; });
+    let notifyCommitStarted!: () => void;
+    const commitStarted = new Promise<void>((resolve) => { notifyCommitStarted = resolve; });
+    const createBodyWriter = vi.spyOn(recordingCaptureService, 'createBodyWriter').mockReturnValue(bodyWriter);
+    const finalize = vi.spyOn(bodyWriter, 'finalize').mockImplementation(async () => {
+      notifyCommitStarted();
+      await commitGate;
+      return finalizeBody();
+    });
+    const origin = await startOrigin((_request, response) => {
+      response.writeHead(200, { 'content-type': 'text/plain', connection: 'close' });
+      response.end('commit-before-clear');
+    });
+    let resetting: Promise<string | null> | undefined;
+    try {
+      await expect(proxiedGet(address, `http://127.0.0.1:${origin.port}/commit-before-clear`))
+        .resolves.toMatchObject({ status: 200, body: 'commit-before-clear' });
+      await commitStarted;
+      let resetCompleted = false;
+      resetting = proxyService.prepareCaptureReset().then((sessionId) => {
+        resetCompleted = true;
+        return sessionId;
+      });
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(resetCompleted).toBe(false);
+
+      releaseCommit();
+      await expect(resetting).resolves.toBe(recordingCaptureService.sessions[0]?.id);
+      expect(recordingCaptureService.exchanges[0]).toMatchObject({
+        state: 'completed', responseBody: { encodedSize: 19 },
+      });
+      expect(recordingCaptureService.bodies).toEqual([Buffer.from('commit-before-clear')]);
+    } finally {
+      releaseCommit();
+      await resetting;
+      await proxyService.stop();
+      await origin.close();
+      finalize.mockRestore();
+      createBodyWriter.mockRestore();
+    }
+  });
+
   it('drops in-flight state and rejects late events after a capture reset', async () => {
     let releaseResponse!: () => void;
     const responseGate = new Promise<void>((resolve) => {

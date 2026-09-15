@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `fb870b65`
+> Tracked commit: `9547eae1`
 > Branch: `main`，直接提交，没有额外 PR 边界
 > 最后更新：2026-09-15
 
@@ -19,7 +19,8 @@
     - **验收缺口**：Updates下载/安装缺真实release环境；暂停期部分UI修改缺历史前置E2E证据。保留缺口，不补造、不反复跑已通过检查；明细见[Settings](features/settings.md#更新通知按钮)、[Capture](features/capture.md#https设置连接示意)、[Transfer](features/transfer.md#导出弹窗警示样式)、[Breakpoints](features/breakpoints.md#43-websocket-帧断点)。
     - 本轮已验收改动一起commit/push；以上历史缺口不标passed，不混入长期任务、MCP、用户文件或stash。
 - [ ] **待验收 · 首个真实 tag release**：仍缺仓库外 Windows 签名证书、Apple Developer ID、公证凭据与真实 macOS runner 证据。
-- [ ] **长期任务**：SSE、长上传 / 下载、gRPC streaming、Pause / Resume、Clear、容量与文件任务继续以 [backlog/TODO.md](backlog/TODO.md) 为准，只有代码和验收均完成后才可勾选。
+- [ ] **待确认/待验证 · 长期任务**：本轮HTTP/gRPC streaming、正文生命周期和文件任务关闭的当前验收已齐，按用户授权将原item已验收改动一起commit/push，不拆子步骤。
+    - 剩余Clear lease/取消提交点、压力/容量策略和更广H2矩阵仍按[TODO](backlog/TODO.md)保留；本次H2大Range/多stream是Core集成，不冒充真实UI覆盖。[Capture](features/capture.md#grpc-streaming目标与当前差异)与[Transfer](features/transfer.md#2-四类任务)记录验证范围及历史前置缺口。
 
 ## Constraints
 
@@ -47,6 +48,9 @@
 - 当前parity按来源合并覆盖`398`场景、`2823/2825 matched`、`0 flagged / 2 missing`，复用250个未受影响场景、续验148个并复核6个暂停/队列视图，不称单次全量Green。两个missing属于独立空Text标签item；本次同步32张Compact/断点基准，其余425张保持。证据见[Compact](features/capture.md#compact正文高度)。
 - 其他既有验收分别在[Composer](features/composer.md#方法标签样式差异)、[Settings](features/settings.md#更新通知按钮)、[Transfer](features/transfer.md#导出弹窗警示样式)、[Breakpoints](features/breakpoints.md#43-websocket-帧断点)。只复跑后续改动影响的检查；历史前置缺口不能用当前Green补造。
 - UI报告123图，最新验收只补对应测试改动说明，原图保持。当前按原UI item提交已验收改动；历史缺口继续保留，用户修改、长期任务、MCP记录与stash保持原归属。
+
+- 2026-09-15长期item：共享unit/integration `241/241`及Core类型仍适用，当前Desktop类型通过；HTTP、gRPC、H2、Transfer Jobs、Body Export、HAR、Archive逐条`1/1`，十一代Main/Core/Worker正常退出、trace及宿主恢复齐全。Transfer包含128 MiB Archive仍running时真实Alt+F4、输出清理和重启零重放。汇总TEMP `interceptor-streaming-acceptance-20260915-evidence.json`。
+- 长期item复用当前package/audit/smoke：37份产品源码hash与打包时一致，Core及两个Worker与随包字节相同，依据`interceptor-streaming-acceptance-20260915-artifact-applicability.json`。gRPC旧180秒总超时、Transfer首次原生粘贴空值与随后遮罩挡Close导致任务先完成，均保留失败而不算产品Red；修正后同组通过，详细证据见上述feature文档。
 
 ### 常规验证命令
 

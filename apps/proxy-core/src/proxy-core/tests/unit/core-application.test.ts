@@ -16,8 +16,10 @@ import {
   CoreCommandError,
   type RpcMessagePort,
 } from '../../core-rpc-server';
-import type { CaptureService } from '../../capture/entry';
+import { CaptureService } from '../../capture/entry';
 import type { CleanupScope } from '../../capture/interfaces';
+import { GrpcService } from '../../grpc/entry';
+import { InvalidGrpcCursorError } from '../../grpc/internal/errors';
 import type { HarService } from '../../har/entry';
 import type { ProxyService } from '../../proxy/entry';
 import type { CaptureEventQueue } from '../../proxy/internal/capture-event-queue';
@@ -110,6 +112,48 @@ describe('CoreApplication', () => {
     expect(fakeRpcPort.started).toBe(true);
     expect(fakeRpcPort.closed).toBe(true);
     expect(exitProcess).toHaveBeenCalledWith(0);
+  });
+
+  it.each([false, true])('waits for body transfer cleanup before disposing Capture (already cancelled=%s)', async (alreadyCancelled) => {
+    const fakeParentPort = new FakeParentPort();
+    vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+    const captureService = new CaptureService();
+    vi.spyOn(captureService, 'initialize').mockResolvedValue();
+    let releaseCleanup!: () => void;
+    const cleanupGate = new Promise<void>((resolve) => { releaseCleanup = resolve; });
+    const cleanupOrder: string[] = [];
+    let receivedAbortSignal: AbortSignal | undefined;
+    vi.spyOn(captureService, 'exportBodyToFile').mockImplementation(async (_hash, _filePath, abortSignal) => {
+      receivedAbortSignal = abortSignal;
+      await new Promise<void>((resolve) => abortSignal.addEventListener('abort', () => resolve(), { once: true }));
+      await cleanupGate;
+      cleanupOrder.push('transfer-cleaned');
+      throw abortSignal.reason;
+    });
+    const disposeCapture = vi.spyOn(captureService, 'dispose').mockImplementation(async () => {
+      cleanupOrder.push('capture-disposed');
+    });
+    const coreApplication = new CoreApplication(fakeParentPort, { captureService });
+    coreApplication.start();
+    await coreApplication.executeCommand({ type: 'body.export.start', payload: {
+      jobId: 'shutdown-body', bodyId: 'a'.repeat(64), filePath: 'C:\\Exports\\body.bin',
+    } }, new AbortController().signal);
+    if (alreadyCancelled) {
+      await coreApplication.executeCommand({ type: 'transfer.job.cancel', payload: { jobId: 'shutdown-body' } },
+        new AbortController().signal);
+    }
+    fakeParentPort.receive({ type: 'shutdown' });
+    try {
+      await settle();
+      expect(receivedAbortSignal?.aborted).toBe(true);
+      expect(disposeCapture).not.toHaveBeenCalled();
+      expect(fakeParentPort.sent.some((message) => message.type === 'stopped')).toBe(false);
+    } finally {
+      releaseCleanup();
+      await settleShutdown(fakeParentPort);
+      await settle();
+    }
+    expect(cleanupOrder).toEqual(['transfer-cleaned', 'capture-disposed']);
   });
 
   it('executes echo and records its business action', async () => {
@@ -461,6 +505,7 @@ describe('CoreApplication', () => {
         calls.push('body');
         return Promise.resolve(Buffer.from('hello'));
       },
+      getExchangeBodySnapshot: () => Promise.resolve({ encodedSize: 0, available: false, complete: true }),
       exportBodyToFile: (
         _bodyId: string,
         _filePath: string,
@@ -598,6 +643,38 @@ describe('CoreApplication', () => {
       { kind: 'all-except-session', sessionId: 'active-session' },
     ]);
     expect(eventQueueResets).toBe(1);
+  });
+
+  it('maps a rejected gRPC cursor to a non-retryable input error', async () => {
+    const captureService = new CaptureService();
+    vi.spyOn(captureService, 'initialize').mockResolvedValue();
+    const queryMessages = vi.spyOn(GrpcService.prototype, 'query').mockRejectedValue(new InvalidGrpcCursorError());
+    const coreApplication = new CoreApplication(new FakeParentPort(), { captureService });
+    const payload = { exchangeId: 'live-grpc', side: 'response' as const, cursor: 'out-of-bounds', limit: 10 };
+
+    await expect(coreApplication.executeCommand({
+      type: 'grpc.messages', payload,
+    }, new AbortController().signal)).rejects.toMatchObject({
+      detail: { code: 'invalid-message', retryable: false },
+    });
+    expect(queryMessages).toHaveBeenCalledWith(payload);
+  });
+
+  it('reads a bounded gRPC payload range from the requested exchange and side', async () => {
+    const captureService = new CaptureService();
+    vi.spyOn(captureService, 'initialize').mockResolvedValue();
+    const getSnapshot = vi.spyOn(captureService, 'getExchangeBodySnapshot').mockResolvedValue({
+      encodedSize: 12, available: true, complete: false,
+    });
+    const readRange = vi.spyOn(captureService, 'readExchangeBodyRange').mockResolvedValue(Buffer.from('payload'));
+    const coreApplication = new CoreApplication(new FakeParentPort(), { captureService });
+    await expect(coreApplication.executeCommand({
+      type: 'grpc.read-range', payload: { exchangeId: 'live-grpc', side: 'response', offset: 5, length: 7 },
+    }, new AbortController().signal)).resolves.toEqual({
+      type: 'grpc.range', payload: { offset: 5, data: new Uint8Array(Buffer.from('payload')), end: true },
+    });
+    expect(getSnapshot).toHaveBeenCalledWith('live-grpc', 'response');
+    expect(readRange).toHaveBeenCalledWith('live-grpc', 'response', 5, 7);
   });
 
   it('decodes a gzip body on demand when body.read-range requests decode', async () => {

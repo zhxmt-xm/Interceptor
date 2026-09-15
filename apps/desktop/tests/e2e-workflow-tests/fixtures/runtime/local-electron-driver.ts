@@ -412,6 +412,41 @@ export class LocalElectronApplicationDriver {
     await closePromise;
   }
 
+  /** Send real Windows Alt+F4 only to the focused, generation-checked test Main window. */
+  async closeFromNativeShortcut(): Promise<void> {
+    if (process.platform !== 'win32') throw new Error('Native window shortcut requires Windows.');
+    if (this.applicationClosed || this.page.isClosed()) return;
+    await this.page.bringToFront();
+    const encodedOwner = Buffer.from(JSON.stringify(this.windowsMainProcessOwner()), 'utf8').toString('base64');
+    const closed = this.application.waitForEvent('close', { timeout: 15_000 });
+    void closed.catch(() => undefined);
+    this.shutdownKind = 'graceful';
+    await execFileAsync('powershell.exe', ['-NoProfile', '-STA', '-Command', `
+$ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class TestWindowIdentity {
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr windowHandle, out uint processId);
+}
+'@
+$owner = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${encodedOwner}')) | ConvertFrom-Json
+$ownerProcess = Get-Process -Id $owner.processId
+$expectedStart = [DateTimeOffset]::Parse($owner.processStartedAt).UtcDateTime
+if ($ownerProcess.StartTime.ToUniversalTime() -ne $expectedStart) { throw 'Test Main process generation changed.' }
+$windowHandle = [TestWindowIdentity]::GetForegroundWindow()
+[uint32]$foregroundProcessId = 0
+[void][TestWindowIdentity]::GetWindowThreadProcessId($windowHandle, [ref]$foregroundProcessId)
+if ($windowHandle -eq [IntPtr]::Zero -or $foregroundProcessId -ne $owner.processId -or $windowHandle -ne $ownerProcess.MainWindowHandle) {
+  throw 'Test Main window is not the foreground window; no keys were sent.'
+}
+[System.Windows.Forms.SendKeys]::SendWait('%{F4}')
+`], { encoding: 'utf8', windowsHide: true });
+    await closed;
+  }
+
   /** Stop evidence, terminate the owned process tree without product shutdown and prove release. */
   async crashAbruptly(testInfo: TestInfo): Promise<void> {
     if (this.applicationClosed) {

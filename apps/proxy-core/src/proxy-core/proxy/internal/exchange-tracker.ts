@@ -18,6 +18,7 @@ import type {
 } from '../../rules/interfaces';
 import type { CaptureService } from '../../capture/entry';
 import type {
+  BlobWriteResult,
   BodyRefInput,
   BodyRuleEffectInput,
   ExchangeInput,
@@ -45,6 +46,8 @@ import * as ProxyUtils from '../utils';
 export class ExchangeTracker {
   /** Mockttp request id 到进行中的 Exchange。 */
   private readonly entries = new Map<string, TrackedExchange>();
+  /** 已接受但尚未结束的存储写入，不随Exchange进入终态或reset丢弃。 */
+  private readonly pendingExchangeWrites = new Set<Promise<void>>();
   /** Exchange 尚未建立时暂存的规则结果。 */
   private readonly orphanRuleOutcomes = new Map<string, OrphanRuleOutcome>();
   /** 规则钩子先于 request-initiated 询问时预留的 Exchange ID，beginRequest 复用后移除。 */
@@ -254,7 +257,7 @@ export class ExchangeTracker {
       return;
     }
     if (data.content.byteLength > 0) {
-      entry.requestWriter ??= this.captureService.createBodyWriter();
+      entry.requestWriter ??= this.captureService.createBodyWriter(entry.exchangeId, 'request');
       entry.requestWriter.write(data.content);
       entry.requestBytes = entry.requestWriter.observedBytes;
     }
@@ -332,7 +335,7 @@ export class ExchangeTracker {
       return;
     }
     if (data.content.byteLength > 0) {
-      entry.responseWriter ??= this.captureService.createBodyWriter();
+      entry.responseWriter ??= this.captureService.createBodyWriter(entry.exchangeId, 'response');
       entry.responseWriter.write(data.content);
       entry.responseBytes = entry.responseWriter.observedBytes;
       if (entry.responsePhase === 'headers') {
@@ -608,11 +611,9 @@ export class ExchangeTracker {
     this.exchangeReady.clear();
   }
 
-  /** 等待全部在途存储写入结束；调用方：Proxy stop。 */
+  /** 等待当前已接受的存储写入，包含已移出活动列表的终态Exchange；调用方：Proxy stop与Clear。 */
   async settle(): Promise<void> {
-    await Promise.allSettled(
-      [...this.entries.values()].map((entry) => entry.tail),
-    );
+    await Promise.allSettled(this.pendingExchangeWrites);
   }
 
 
@@ -825,11 +826,19 @@ export class ExchangeTracker {
     const responseWriter = entry.responseWriter;
     entry.requestWriter = null;
     entry.responseWriter = null;
+    let requestResult: BlobWriteResult | null = null;
+    let responseResult: BlobWriteResult | null = null;
+    if (requestWriter) {
+      this.schedule(entry, async () => {
+        requestResult = await requestWriter.finalize();
+      });
+    }
+    if (responseWriter) {
+      this.schedule(entry, async () => {
+        responseResult = await responseWriter.finalize();
+      });
+    }
     this.schedule(entry, async () => {
-      const requestResult = requestWriter ? await requestWriter.finalize() : null;
-      const responseResult = responseWriter
-        ? await responseWriter.finalize()
-        : null;
       await this.captureService.updateExchange({
         id: entry.exchangeId,
         state,
@@ -884,7 +893,7 @@ export class ExchangeTracker {
     entry: TrackedExchange,
     operation: () => Promise<void>,
   ): void {
-    entry.tail = entry.tail
+    const writing = entry.tail
       .then(operation)
       .catch((error: unknown) => {
         this.diagnostics?.error('capture.persist-failed', {
@@ -894,7 +903,12 @@ export class ExchangeTracker {
           },
           errorCode: error instanceof Error ? error.name : 'unknown',
         });
+      })
+      .finally(() => {
+        this.pendingExchangeWrites.delete(writing);
       });
+    this.pendingExchangeWrites.add(writing);
+    entry.tail = writing;
   }
 
   /** 写入增量 patch 并推送最新摘要。 */

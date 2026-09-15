@@ -1,4 +1,6 @@
-import { createServer, request, type ClientRequest, type ServerResponse } from 'node:http';
+import { createHash } from 'node:crypto';
+import { writeFile } from 'node:fs/promises';
+import { createServer, request, type ClientRequest, type IncomingMessage, type ServerResponse } from 'node:http';
 
 import { closeServer, listen } from '../../../../../playground/server/shared/traffic-utils';
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
@@ -76,6 +78,338 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
       }
       evidence.push({ scenarioId: expected.id, row: await row.getAttribute('data-automation-id'),
         requestBytes: result.request!.bodyBytes, responseBytes: result.response!.bodyBytes });
+    });
+  }
+
+  // 进行中：SSE由外部origin逐段释放，Capture必须在响应结束前展示同一行及增长字节。
+  // In flight: release SSE events from the external origin and require one Capture row with growing bytes before completion.
+  for (const responseEnding of ['complete', 'client-abort', 'origin-reset'] as const) {
+    const scenarioId = responseEnding === 'complete' ? 'sse-inflight' : `sse-${responseEnding}`;
+    await test.step(scenarioId, async () => {
+      const requestPath = `/e2e/http-${scenarioId}`;
+      const events = [
+        'event: update\ndata: {"sequence":1}\n\n',
+        'event: update\ndata: {"sequence":2}\n\n',
+        'event: update\ndata: {"sequence":3}\n\n',
+      ];
+      const responseChunks: Buffer[] = [];
+      let originResponse: ServerResponse | undefined;
+      let originClosed = false;
+      let clientResponse: IncomingMessage | undefined;
+      let streamRequest: ClientRequest | undefined;
+      let completedResponse: Promise<Buffer> | undefined;
+      const origin = createServer((incoming, response) => {
+        incoming.resume();
+        incoming.on('error', () => undefined);
+        originResponse = response;
+        response.once('close', () => { originClosed = true; });
+      });
+      try {
+        const port = await listen(origin);
+        completedResponse = new Promise<Buffer>((resolve, reject) => {
+          streamRequest = request({
+            hostname: '127.0.0.1', port: desktopApp.capturePort(), method: 'GET',
+            path: `http://127.0.0.1:${port}${requestPath}`,
+          }, (response) => {
+            clientResponse = response;
+            response.on('data', (chunk: Buffer) => responseChunks.push(Buffer.from(chunk)));
+            response.once('end', () => resolve(Buffer.concat(responseChunks)));
+            response.once('error', reject);
+          });
+          streamRequest.once('error', reject);
+          streamRequest.end();
+        });
+        void completedResponse.catch(() => undefined);
+        await expect.poll(() => originResponse !== undefined).toBe(true);
+        const row = getByAutomationIdPrefix(desktopApp.page, AUTOMATION_ID_PREFIXES.captureRequestRow)
+          .filter({ hasText: requestPath });
+        await expect(row).toHaveCount(1);
+        expect(originResponse!.headersSent).toBe(false);
+        const rowId = await row.getAttribute('data-automation-id');
+        const pendingRow = await row.textContent();
+
+        originResponse!.writeHead(200, { 'content-type': 'text/event-stream' });
+        const streamingStates = [];
+        for (const event of events.slice(0, 2)) {
+          originResponse!.write(event);
+          const receivedEvents = events.slice(0, streamingStates.length + 1).join('');
+          const responseBytes = Buffer.byteLength(receivedEvents);
+          await expect.poll(() => Buffer.concat(responseChunks).toString('utf8')).toBe(receivedEvents);
+          await expect(row).toHaveCount(1);
+          for (const value of ['GET', 'h1', '200', `${responseBytes} B`]) await expect(row).toContainText(value);
+          await expect(row).toHaveAttribute('data-automation-id', rowId!);
+          expect(originResponse!.writableEnded).toBe(false);
+          expect(clientResponse!.complete).toBe(false);
+          streamingStates.push({ responseBytes, row: await row.textContent(),
+            originEnded: originResponse!.writableEnded, clientComplete: clientResponse!.complete });
+          if (streamingStates.length === 1) {
+            await row.click();
+            await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.headers).click();
+            const section = getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.section.responseHeaders);
+            if (await section.getAttribute('aria-expanded') === 'false') await section.click();
+            const bodyId = await section.getAttribute('aria-controls');
+            if (!bodyId) throw new Error('Missing SSE response headers section body.');
+            await expect(desktopApp.page.locator(`[id="${bodyId}"]`)).toContainText('text/event-stream');
+          }
+        }
+        await desktopApp.page.screenshot({ path: testInfo.outputPath(`${scenarioId}.png`) });
+        if (responseEnding === 'complete') {
+          originResponse!.end(events[2]);
+          await expect(completedResponse).resolves.toEqual(Buffer.from(events.join('')));
+          await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.response).click();
+          const textMode = getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyMode.default);
+          await textMode.click();
+          await expect(textMode).toHaveAttribute('aria-checked', 'true');
+          const responseBody = getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyPane);
+          for (const line of events.join('').split('\n').filter(Boolean)) await expect(responseBody).toContainText(line);
+        } else {
+          if (responseEnding === 'client-abort') streamRequest!.destroy(new Error('SSE client aborted'));
+          else originResponse!.destroy();
+          await expect(completedResponse).rejects.toThrow();
+          expect(clientResponse!.complete).toBe(false);
+        }
+        await expect.poll(() => originClosed).toBe(true);
+        await expect(row).toHaveAttribute('data-automation-id', rowId!);
+        await expect(row).toContainText(`${Buffer.concat(responseChunks).byteLength} B`);
+        await expect(row).not.toContainText('\u00b7\u00b7\u00b7');
+
+        const evidencePath = testInfo.outputPath(`${scenarioId}.json`);
+        await writeFile(evidencePath, JSON.stringify({ responseEnding, rowId, pendingRow, streamingStates,
+          final: { row: await row.textContent(), responseBytes: Buffer.concat(responseChunks).byteLength,
+            originClosed, originEnded: originResponse!.writableEnded, clientComplete: clientResponse!.complete } }, null, 2), 'utf8');
+        await testInfo.attach(`${scenarioId}.json`, { path: evidencePath, contentType: 'application/json' });
+      } finally {
+        streamRequest?.destroy();
+        originResponse?.end();
+        await completedResponse?.catch(() => undefined);
+        await closeServer(origin);
+      }
+    });
+  }
+
+  // 长上传：分别验证未知长度、明确长度和100 Continue，源站与Capture在上传结束前看到分块。
+  // Long uploads: cover unknown length, declared length, and 100 Continue with origin and Capture progress before completion.
+  for (const uploadMode of ['chunked', 'content-length', 'expect-continue', 'client-abort'] as const) {
+    await test.step(`upload-${uploadMode}`, async () => {
+      const requestPath = `/e2e/http-upload-${uploadMode}`;
+      const keywordFilter = getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter);
+      await keywordFilter.fill(requestPath);
+      const uploadChunks = [0x61, 0x62, 0x63].map((value) => Buffer.alloc(2 * 1024 * 1024, value));
+      const expectedBytes = uploadChunks.reduce((totalBytes, chunk) => totalBytes + chunk.byteLength, 0);
+      const expectedHash = createHash('sha256');
+      for (const chunk of uploadChunks) expectedHash.update(chunk);
+      const originHash = createHash('sha256');
+      let originUpload: IncomingMessage | undefined;
+      let originClosed = false;
+      let originBytes = 0;
+      let originDigest: string | undefined;
+      let continueReceived = false;
+      let uploadRequest: ClientRequest | undefined;
+      let completedResponse: Promise<string> | undefined;
+      const origin = createServer((incoming, response) => {
+        originUpload = incoming;
+        incoming.on('error', () => undefined);
+        incoming.once('close', () => { originClosed = true; });
+        incoming.on('data', (chunk: Buffer) => {
+          originHash.update(chunk);
+          originBytes += chunk.byteLength;
+        });
+        incoming.once('end', () => {
+          originDigest = originHash.digest('hex');
+          response.writeHead(200, { 'content-type': 'text/plain' });
+          response.end('upload-ok');
+        });
+      });
+      try {
+        const port = await listen(origin);
+        completedResponse = new Promise<string>((resolve, reject) => {
+          uploadRequest = request({
+            hostname: '127.0.0.1', port: desktopApp.capturePort(), method: 'POST',
+            path: `http://127.0.0.1:${port}${requestPath}`,
+            headers: { 'content-type': 'text/plain',
+              ...(uploadMode === 'content-length' ? { 'content-length': String(expectedBytes) } : {}),
+              ...(uploadMode === 'expect-continue' ? { expect: '100-continue' } : {}) },
+          }, (response) => {
+            const chunks: Buffer[] = [];
+            response.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+            response.once('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+            response.once('error', reject);
+          });
+          uploadRequest.once('error', reject);
+          uploadRequest.once('continue', () => { continueReceived = true; });
+          uploadRequest.flushHeaders();
+        });
+        void completedResponse.catch(() => undefined);
+        await expect.poll(() => originUpload !== undefined).toBe(true);
+        if (uploadMode === 'expect-continue') await expect.poll(() => continueReceived).toBe(true);
+        expect(originBytes).toBe(0);
+        const row = getByAutomationIdPrefix(desktopApp.page, AUTOMATION_ID_PREFIXES.captureRequestRow)
+          .filter({ hasText: requestPath });
+        await expect(row).toHaveCount(1);
+        const rowId = await row.getAttribute('data-automation-id');
+        const uploadStates = [];
+        for (const [chunkIndex, chunk] of uploadChunks.slice(0, 2).entries()) {
+          uploadRequest!.write(chunk);
+          const sentBytes = (chunkIndex + 1) * chunk.byteLength;
+          await expect.poll(() => originBytes).toBe(sentBytes);
+          await expect(row).toContainText(`${sentBytes / (1024 * 1024)} MB`);
+          expect(uploadRequest!.writableEnded).toBe(false);
+          expect(originUpload!.complete).toBe(false);
+          uploadStates.push({ sentBytes, originBytes, row: await row.textContent(),
+            clientEnded: uploadRequest!.writableEnded, originComplete: originUpload!.complete });
+        }
+        await row.click();
+        await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.headers).click();
+        await desktopApp.page.screenshot({ path: testInfo.outputPath(`upload-${uploadMode}.png`) });
+        if (uploadMode === 'client-abort') {
+          uploadRequest!.destroy(new Error('Upload client aborted'));
+          await expect(completedResponse).rejects.toThrow('Upload client aborted');
+          await expect.poll(() => originClosed).toBe(true);
+          expect(originUpload!.complete).toBe(false);
+          expect(originBytes).toBe(4 * 1024 * 1024);
+          await expect(row).toContainText('4 MB');
+        } else {
+          uploadRequest!.end(uploadChunks[2]);
+          await expect(completedResponse).resolves.toBe('upload-ok');
+          expect(originBytes).toBe(expectedBytes);
+          expect(originDigest).toBe(expectedHash.digest('hex'));
+          expect(originUpload!.complete).toBe(true);
+          await expect(row).toContainText('200');
+          await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.response).click();
+          await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyPane))
+            .toContainText('upload-ok');
+        }
+        expect(originUpload!.headers[uploadMode === 'content-length' ? 'content-length' : 'transfer-encoding'])
+          .toBe(uploadMode === 'content-length' ? String(expectedBytes) : 'chunked');
+        await expect(row).toHaveAttribute('data-automation-id', rowId!);
+        await expect(row).not.toContainText('\u00b7\u00b7\u00b7');
+        const evidencePath = testInfo.outputPath(`upload-${uploadMode}.json`);
+        await writeFile(evidencePath, JSON.stringify({ uploadMode, rowId, continueReceived, uploadStates,
+          final: { originBytes, originDigest, originClosed, originComplete: originUpload!.complete,
+            contentLength: originUpload!.headers['content-length'] ?? null,
+            transferEncoding: originUpload!.headers['transfer-encoding'] ?? null,
+            row: await row.textContent() } }, null, 2), 'utf8');
+        await testInfo.attach(`upload-${uploadMode}.json`, { path: evidencePath, contentType: 'application/json' });
+        await keywordFilter.fill('');
+      } finally {
+        uploadRequest?.destroy();
+        await completedResponse?.catch(() => undefined);
+        await closeServer(origin);
+      }
+    });
+  }
+
+  // 长下载：真实Pause或Clear发生在首段后，传输完整性与Capture代际分别断言。
+  // Long downloads: pause or clear after the first chunk and assert transport integrity separately from the Capture generation.
+  for (const captureAction of ['none', 'pause-resume', 'clear'] as const) {
+    const scenarioId = `download-${captureAction === 'none' ? 'complete' : captureAction}`;
+    await test.step(scenarioId, async () => {
+      const requestPath = `/e2e/http-${scenarioId}`;
+      const keywordFilter = getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter);
+      const recording = getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle);
+      await keywordFilter.fill(requestPath);
+      const responseChunks = [0x64, 0x65, 0x66].map((value) => Buffer.alloc(2 * 1024 * 1024, value));
+      const expectedHash = createHash('sha256');
+      for (const chunk of responseChunks) expectedHash.update(chunk);
+      const clientHash = createHash('sha256');
+      let receivedBytes = 0;
+      let originResponse: ServerResponse | undefined;
+      let clientResponse: IncomingMessage | undefined;
+      let downloadRequest: ClientRequest | undefined;
+      let completedResponse: Promise<string> | undefined;
+      const origin = createServer((incoming, response) => {
+        incoming.resume();
+        originResponse = response;
+      });
+      try {
+        const port = await listen(origin);
+        completedResponse = new Promise<string>((resolve, reject) => {
+          downloadRequest = request({
+            hostname: '127.0.0.1', port: desktopApp.capturePort(), method: 'GET',
+            path: `http://127.0.0.1:${port}${requestPath}`,
+          }, (response) => {
+            clientResponse = response;
+            response.on('data', (chunk: Buffer) => {
+              clientHash.update(chunk);
+              receivedBytes += chunk.byteLength;
+            });
+            response.once('end', () => resolve(clientHash.digest('hex')));
+            response.once('error', reject);
+          });
+          downloadRequest.once('error', reject);
+          downloadRequest.end();
+        });
+        void completedResponse.catch(() => undefined);
+        await expect.poll(() => originResponse !== undefined).toBe(true);
+        const row = getByAutomationIdPrefix(desktopApp.page, AUTOMATION_ID_PREFIXES.captureRequestRow)
+          .filter({ hasText: requestPath });
+        await expect(row).toHaveCount(1);
+        const rowId = await row.getAttribute('data-automation-id');
+        originResponse!.writeHead(200, { 'content-type': 'text/plain' });
+        const downloadStates = [];
+        for (const [chunkIndex, chunk] of responseChunks.slice(0, 2).entries()) {
+          originResponse!.write(chunk);
+          const sentBytes = (chunkIndex + 1) * chunk.byteLength;
+          await expect.poll(() => receivedBytes).toBe(sentBytes);
+          expect(originResponse!.writableEnded).toBe(false);
+          expect(clientResponse!.complete).toBe(false);
+          const rowRemoved = captureAction === 'clear' && chunkIndex > 0;
+          if (rowRemoved) await expect(row).toHaveCount(0);
+          else await expect(row).toContainText(`${sentBytes / (1024 * 1024)} MB`);
+          downloadStates.push({ receivedBytes, row: rowRemoved ? null : await row.textContent(),
+            recording: await recording.getAttribute('aria-pressed'),
+            originEnded: originResponse!.writableEnded, clientComplete: clientResponse!.complete });
+          if (chunkIndex === 0) {
+            await row.click();
+            await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.headers).click();
+            if (captureAction === 'pause-resume') {
+              await recording.click();
+              await expect(recording).toHaveAttribute('aria-pressed', 'false');
+            } else if (captureAction === 'clear') {
+              await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.clear).click();
+              await expect(row).toHaveCount(0);
+            }
+          }
+        }
+        await desktopApp.page.screenshot({ path: testInfo.outputPath(`${scenarioId}.png`) });
+        originResponse!.end(responseChunks[2]);
+        const responseDigest = await completedResponse;
+        expect(responseDigest).toBe(expectedHash.digest('hex'));
+        expect(receivedBytes).toBe(6 * 1024 * 1024);
+        expect(clientResponse!.complete).toBe(true);
+        if (captureAction === 'clear') {
+          await keywordFilter.fill('');
+          const scenario = trafficLab.scenarios().find((candidate) => candidate.id === 'h1-json');
+          if (!scenario || scenario.defaultDraft.kind !== 'http') throw new Error('Missing HTTP JSON scenario.');
+          const result = await trafficLab.run(scenario.id, scenario.defaultDraft, desktopApp.capturePort());
+          expect(result).toMatchObject({ state: 'complete', response: { statusCode: 200 } });
+          const freshRow = getByAutomationIdPrefix(desktopApp.page, AUTOMATION_ID_PREFIXES.captureRequestRow)
+            .filter({ hasText: scenario.defaultDraft.path });
+          await expect(freshRow).toHaveCount(1);
+          await expect(freshRow).toContainText('200');
+          await expect(row).toHaveCount(0);
+        } else {
+          await expect(row).toHaveAttribute('data-automation-id', rowId!);
+          await expect(row).toContainText('6 MB');
+          await expect(row).not.toContainText('\u00b7\u00b7\u00b7');
+          if (captureAction === 'pause-resume') {
+            await recording.click();
+            await expect(recording).toHaveAttribute('aria-pressed', 'true');
+          }
+          await keywordFilter.fill('');
+        }
+        const evidencePath = testInfo.outputPath(`${scenarioId}.json`);
+        await writeFile(evidencePath, JSON.stringify({ captureAction, rowId, downloadStates,
+          final: { receivedBytes, responseDigest, row: captureAction === 'clear' ? null : await row.textContent(),
+            clientComplete: clientResponse!.complete, originEnded: originResponse!.writableEnded,
+            recording: await recording.getAttribute('aria-pressed') } }, null, 2), 'utf8');
+        await testInfo.attach(`${scenarioId}.json`, { path: evidencePath, contentType: 'application/json' });
+      } finally {
+        downloadRequest?.destroy();
+        originResponse?.end();
+        await completedResponse?.catch(() => undefined);
+        await closeServer(origin);
+      }
     });
   }
 

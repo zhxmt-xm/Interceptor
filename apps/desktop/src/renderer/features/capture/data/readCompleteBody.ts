@@ -1,4 +1,8 @@
+import type { GrpcBodyReadRequest } from '../../../../shared/desktop-api';
+
 const BODY_READ_CHUNK_BYTES = 1024 * 1024;
+
+export type BodyReadSource = string | Pick<GrpcBodyReadRequest, 'exchangeId' | 'side'>;
 
 export interface CompleteBodyRead {
   bytes: Uint8Array;
@@ -11,14 +15,14 @@ export interface CompleteBodyRead {
  * content-encoding 解码需要完整压缩输入，因此 decode 请求由 Core 流式产出有限明文前缀。
  */
 export async function readCompleteBody(
-  bodyHash: string,
+  source: BodyReadSource,
   offset: number,
   length: number,
   options?: { decode?: boolean; encoding?: string },
 ): Promise<CompleteBodyRead> {
-  if (options?.decode) {
+  if (options?.decode && typeof source === 'string') {
     const result = await window.interceptor.readBody(
-      bodyHash,
+      source,
       offset,
       length,
       options,
@@ -34,11 +38,11 @@ export async function readCompleteBody(
   let total = 0;
   let end = length === 0;
   while (total < length) {
-    const chunk = await window.interceptor.readBody(
-      bodyHash,
-      offset + total,
-      Math.min(BODY_READ_CHUNK_BYTES, length - total),
-    );
+    const chunkOffset = offset + total;
+    const chunkLength = Math.min(BODY_READ_CHUNK_BYTES, length - total);
+    const chunk = typeof source === 'string'
+      ? await window.interceptor.readBody(source, chunkOffset, chunkLength)
+      : await window.interceptor.readGrpcBody({ ...source, offset: chunkOffset, length: chunkLength });
     if (chunk.data.byteLength === 0) {
       end = true;
       break;

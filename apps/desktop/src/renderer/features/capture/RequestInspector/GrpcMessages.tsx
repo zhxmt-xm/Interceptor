@@ -136,7 +136,7 @@ export function GrpcMessages({
                       encoding={page?.encoding}
                       onSelect={handleSelectMessage}
                     />
-                    {message.index === selectedIndex && page?.bodyHash ? (
+                    {message.index === selectedIndex && page?.bodyAvailable ? (
                       <GrpcMessagePayload
                         message={message}
                         side={side}

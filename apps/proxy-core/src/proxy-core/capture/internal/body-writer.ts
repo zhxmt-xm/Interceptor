@@ -42,12 +42,19 @@ export class BodyWriter {
   private degradedFlag = false;
   /** 是否已结束（finalize 或 abort）。 */
   private closed = false;
+  /** 串行队列是否已完成结束操作。 */
+  private finished = false;
+  /** 正文是否已被主动放弃。 */
+  private abortedFlag = false;
+  /** 已提交的内容寻址结果，读取仍由BodyStore负责。 */
+  private committedBody: BlobWriteResult | null = null;
 
   /** 绑定 spill 目录、内存阈值与提交回调。 */
   constructor(
     private readonly rootDir: string,
     private readonly memoryThresholdBytes: number,
     private readonly commit: BodyCommit,
+    private readonly readCommittedRange: (hash: string, offset: number, length: number) => Promise<Buffer>,
   ) {}
 
   /** 已观察到的完整编码字节数。 */
@@ -58,6 +65,47 @@ export class BodyWriter {
   /** 是否已降级为只计数。 */
   get degraded(): boolean {
     return this.degradedFlag;
+  }
+
+  /** 已提交正文的hash；在途正文没有内容hash。 */
+  get bodyHash(): string | undefined {
+    return this.committedBody?.hash;
+  }
+
+  /** 在已排队写入之后读取当前可读大小与生命周期状态。 */
+  snapshot(): Promise<{ encodedSize: number; available: boolean; complete: boolean }> {
+    return this.tail.then(() => ({
+      encodedSize: this.degradedFlag ? 0 : this.writtenBytes,
+      available: !this.degradedFlag && !this.abortedFlag,
+      complete: this.finished,
+    }));
+  }
+
+  /** 串行读取有限range，不拼接完整在途正文，不与finalize/abort竞争句柄。 */
+  readRange(offset: number, length: number): Promise<Buffer> {
+    const reading = this.tail.then(async () => {
+      if (this.degradedFlag || this.abortedFlag) return Buffer.alloc(0);
+      if (this.committedBody) return this.readCommittedRange(this.committedBody.hash, offset, length);
+      const available = Math.max(0, Math.min(length, this.writtenBytes - offset));
+      if (available === 0) return Buffer.alloc(0);
+      const buffer = Buffer.allocUnsafe(available);
+      if (this.output) {
+        const { bytesRead } = await this.output.read(buffer, 0, available, offset);
+        return buffer.subarray(0, bytesRead);
+      }
+      let chunkOffset = 0;
+      let copiedBytes = 0;
+      for (const chunk of this.memoryChunks) {
+        const start = Math.max(0, offset - chunkOffset);
+        const end = Math.min(chunk.byteLength, offset + available - chunkOffset);
+        if (start < end) copiedBytes += chunk.copy(buffer, copiedBytes, start, end);
+        chunkOffset += chunk.byteLength;
+        if (copiedBytes === available) break;
+      }
+      return buffer.subarray(0, copiedBytes);
+    });
+    this.tail = reading.then(() => undefined, () => undefined);
+    return reading;
   }
 
   /** 追加一段正文；立即返回，落盘在内部队列串行执行。 */
@@ -93,33 +141,50 @@ export class BodyWriter {
       return null;
     }
     this.closed = true;
-    await this.tail;
-    if (this.output) {
-      await this.output.close().catch(() => undefined);
-      this.output = null;
-    }
-    if (this.degradedFlag || this.writtenBytes === 0) {
-      await this.removeSpill();
-      return null;
-    }
-    const digest = this.hash.digest('hex');
-    const memory = this.spillPath
-      ? null
-      : Buffer.concat(this.memoryChunks, this.writtenBytes);
-    this.memoryChunks.length = 0;
-    const spillPath = this.spillPath;
-    this.spillPath = null;
-    return this.commit(digest, this.writtenBytes, memory, spillPath);
+    const finalizing = this.tail.then(async () => {
+      if (this.output) {
+        await this.output.close().catch(() => undefined);
+        this.output = null;
+      }
+      if (this.degradedFlag || this.writtenBytes === 0) {
+        await this.removeSpill();
+        this.finished = true;
+        return null;
+      }
+      const digest = this.hash.digest('hex');
+      const memory = this.spillPath
+        ? null
+        : Buffer.concat(this.memoryChunks, this.writtenBytes);
+      this.memoryChunks.length = 0;
+      const spillPath = this.spillPath;
+      this.spillPath = null;
+      try {
+        this.committedBody = await this.commit(digest, this.writtenBytes, memory, spillPath);
+        return this.committedBody;
+      } catch (error) {
+        this.degradedFlag = true;
+        throw error;
+      } finally {
+        this.finished = true;
+      }
+    });
+    this.tail = finalizing.then(() => undefined, () => undefined);
+    return finalizing;
   }
 
   /** 放弃写入并清理半成品。 */
   async abort(): Promise<void> {
     if (this.closed) {
+      await this.tail;
       return;
     }
     this.closed = true;
-    await this.tail.catch(() => undefined);
-    await this.discardCollected();
+    this.tail = this.tail.then(async () => {
+      this.abortedFlag = true;
+      await this.discardCollected();
+      this.finished = true;
+    });
+    await this.tail;
   }
 
   /** 串行消费单个 chunk：累计 hash，按阈值切换到 spill。 */
@@ -128,7 +193,7 @@ export class BodyWriter {
     this.writtenBytes += buffer.byteLength;
     if (!this.output && this.writtenBytes > this.memoryThresholdBytes) {
       this.spillPath = path.join(this.rootDir, `.${randomUUID()}.tmp`);
-      this.output = await fs.open(this.spillPath, 'wx');
+      this.output = await fs.open(this.spillPath, 'wx+');
       for (const memoryChunk of this.memoryChunks) {
         await this.writeAll(this.output, memoryChunk);
       }

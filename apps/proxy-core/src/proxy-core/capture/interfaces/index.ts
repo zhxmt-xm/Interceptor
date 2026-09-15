@@ -35,6 +35,16 @@ export interface HeaderInput {
 
 export type BodyDecodeStatus = "ok" | "failed" | "skipped";
 
+export type CaptureBodySide = 'request' | 'response';
+
+/** 同一Exchange/side当前可读的正文状态，内容hash只在提交后存在。 */
+export interface CaptureBodySnapshot {
+  readonly bodyHash?: string;
+  readonly encodedSize: number;
+  readonly available: boolean;
+  readonly complete: boolean;
+}
+
 /**
  * 一段正文的内容寻址引用。写入 BodyStore 后由代理数据面提供，
  * appendExchanges 据此把 hash metadata 绑定到内存 Exchange。

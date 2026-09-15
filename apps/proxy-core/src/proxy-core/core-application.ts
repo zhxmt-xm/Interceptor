@@ -400,6 +400,21 @@ export class CoreApplication implements CoreRpcHost {
             throw mapCaptureError(error);
           }
         });
+      case 'grpc.read-range':
+        return this.withCapture(async (captureService) => {
+          try {
+            const { exchangeId, side, offset, length } = command.payload;
+            const snapshot = await captureService.getExchangeBodySnapshot(exchangeId, side);
+            const data = await this.coreDiagnostics.action('capture.grpc-range', () =>
+              captureService.readExchangeBodyRange(exchangeId, side, offset,
+                Math.max(0, Math.min(length, snapshot.encodedSize - offset))),
+            );
+            return { type: 'grpc.range', payload: { offset, data: new Uint8Array(data),
+              end: offset + data.byteLength >= snapshot.encodedSize || data.byteLength < length } };
+          } catch (error) {
+            throw mapCaptureError(error);
+          }
+        });
       case 'body.read-range':
         return this.withCapture(async (captureService) => {
           try {
@@ -1154,8 +1169,10 @@ export class CoreApplication implements CoreRpcHost {
 
   /** 等待传输、代理、临时 Capture 与 Diagnostics 退出后再确认 stopped。 */
   private async shutdown(): Promise<void> {
-    this.transferService.cancelAll();
-    await this.proxyService?.stop().catch(() => undefined);
+    await Promise.allSettled([
+      this.transferService.cancelAll(),
+      this.proxyService?.stop(),
+    ]);
     await Promise.allSettled([
       this.captureService?.dispose(),
       this.diagnosticsService?.close(),

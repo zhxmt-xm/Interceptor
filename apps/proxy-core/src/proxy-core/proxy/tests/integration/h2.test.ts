@@ -1,13 +1,20 @@
+import { promises as fs } from 'node:fs';
+import { once } from 'node:events';
+import http from 'node:http';
 import http2 from 'node:http2';
 import https from 'node:https';
 import net, { type AddressInfo } from 'node:net';
+import os from 'node:os';
+import path from 'node:path';
 import tls from 'node:tls';
 import zlib from 'node:zlib';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { generateCACertificate } from 'mockttp';
 
+import { CaptureService } from '../../../capture/entry';
+import { initializeRuntime } from '../../../constants';
 import { RuleService } from '../../../rules/entry';
 import { BreakpointQueue } from '../../../rules/internal/breakpoint-queue';
 import { ProxyService } from '../../entry';
@@ -190,8 +197,36 @@ function h2PostViaProxy(
   });
 }
 
+async function connectH2ViaProxy(
+  proxyPort: number,
+  originHost: string,
+  originPort: number,
+  caCert: string,
+): Promise<http2.ClientHttp2Session> {
+  return new Promise((resolve, reject) => {
+    const request = http.request({ host: '127.0.0.1', port: proxyPort, method: 'CONNECT',
+      path: `${originHost}:${originPort}` });
+    request.once('connect', (response, socket, head) => {
+      if (response.statusCode !== 200) {
+        socket.destroy();
+        reject(new Error(`CONNECT failed: ${response.statusCode}`));
+        return;
+      }
+      if (head.byteLength > 0) socket.unshift(head);
+      const tlsSocket = tls.connect({ socket, servername: originHost, ALPNProtocols: ['h2'], ca: [caCert] }, () => {
+        const client = http2.connect(`https://${originHost}:${originPort}`, { createConnection: () => tlsSocket });
+        client.once('error', reject);
+        client.once('connect', () => resolve(client));
+      });
+      tlsSocket.once('error', reject);
+    });
+    request.once('error', reject);
+    request.end();
+  });
+}
+
 // 经显式代理 CONNECT 建隧道，在隧道上以 ALPN h2 完成 TLS，再用 HTTP/2 发 GET。
-function h2ViaProxy(
+async function h2ViaProxy(
   proxyPort: number,
   originHost: string,
   originPort: number,
@@ -202,59 +237,26 @@ function h2ViaProxy(
   body: string;
   alpn: string | false;
 }> {
+  const client = await connectH2ViaProxy(proxyPort, originHost, originPort, caCert);
   return new Promise((resolve, reject) => {
-    const socket = net.connect(proxyPort, '127.0.0.1', () => {
-      socket.write(
-        `CONNECT ${originHost}:${originPort} HTTP/1.1\r\n` +
-          `Host: ${originHost}:${originPort}\r\n\r\n`,
-      );
+    client.on('error', reject);
+    const request = client.request({ ':path': '/h2', ':method': 'GET' });
+    let status: number | undefined;
+    let responseHeaders: http2.IncomingHttpHeaders = {};
+    let body = '';
+    request.on('response', (headers) => {
+      status = headers[':status'];
+      responseHeaders = headers;
     });
-    socket.once('data', (chunk: Buffer) => {
-      const statusLine = chunk.toString('utf8').split('\r\n', 1)[0] ?? '';
-      if (!statusLine.includes(' 200 ')) {
-        reject(new Error(`CONNECT failed: ${statusLine}`));
-        return;
-      }
-      const tlsSocket = tls.connect(
-        {
-          socket,
-          servername: originHost,
-          ALPNProtocols: ['h2'],
-          ca: [caCert],
-        },
-        () => {
-          const client = http2.connect(`https://${originHost}:${originPort}`, {
-            createConnection: () => tlsSocket,
-          });
-          client.on('error', reject);
-          const req = client.request({ ':path': '/h2', ':method': 'GET' });
-          let status: number | undefined;
-          let responseHeaders: http2.IncomingHttpHeaders = {};
-          let body = '';
-          req.on('response', (headers) => {
-            status = headers[':status'];
-            responseHeaders = headers;
-          });
-          req.setEncoding('utf8');
-          req.on('data', (data: string) => {
-            body += data;
-          });
-          req.on('end', () => {
-            client.close();
-            resolve({
-              status,
-              headers: responseHeaders,
-              body,
-              alpn: tlsSocket.alpnProtocol ?? false,
-            });
-          });
-          req.on('error', reject);
-          req.end();
-        },
-      );
-      tlsSocket.on('error', reject);
+    request.setEncoding('utf8');
+    request.on('data', (data: string) => { body += data; });
+    request.on('end', () => {
+      const alpn = client.alpnProtocol ?? false;
+      client.close();
+      resolve({ status, headers: responseHeaders, body, alpn });
     });
-    socket.on('error', reject);
+    request.on('error', (error) => { client.destroy(); reject(error); });
+    request.end();
   });
 }
 
@@ -362,13 +364,168 @@ async function waitForExchange(recordingCaptureService: RecordingCaptureService)
 describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
   let proxyService: ProxyService | null = null;
   let origin: { port: number; close: () => Promise<void> } | null = null;
+  let captureService: CaptureService | null = null;
+  let clientSession: http2.ClientHttp2Session | null = null;
+  let temporaryDirectory = '';
 
   afterEach(async () => {
+    clientSession?.destroy();
     await proxyService?.stop();
     await origin?.close();
+    await captureService?.dispose();
+    if (temporaryDirectory) await fs.rm(temporaryDirectory, { recursive: true, force: true });
     proxyService = null;
     origin = null;
+    captureService = null;
+    clientSession = null;
+    temporaryDirectory = '';
   });
+
+  it.each(['complete', 'clear', 'cancel'] as const)('streams concurrent H2 ranges through response rules and %s', async (ending) => {
+    temporaryDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'interceptor-h2-ranges-'));
+    initializeRuntime([`--data-dir=${temporaryDirectory}`]);
+    const activeCaptureService = new CaptureService();
+    captureService = activeCaptureService;
+    await activeCaptureService.initialize();
+    const ca = await generateCACertificate();
+    const originCertificate = await generateCACertificate();
+    const rangeSize = 6 * 1024 * 1024;
+    const prefixSize = 2 * 1024 * 1024;
+    const resource = Buffer.concat([Buffer.alloc(rangeSize, 0x61), Buffer.alloc(rangeSize, 0x62)]);
+    const ranges = [0, rangeSize].map((offset) => ({
+      path: `/range/${offset}`, body: resource.subarray(offset, offset + rangeSize),
+      requestRange: `bytes=${offset}-${offset + rangeSize - 1}`,
+      contentRange: `bytes ${offset}-${offset + rangeSize - 1}/${resource.byteLength}`,
+    }));
+    const sourceStreamsByPath = new Map<string, http2.ServerHttp2Stream>();
+    const sourceHeadersByPath = new Map<string, http2.IncomingHttpHeaders>();
+    const sourceSessions = new Set<http2.ServerHttp2Session>();
+    const sourceErrors: Error[] = [];
+    const server = http2.createSecureServer({ cert: originCertificate.cert, key: originCertificate.key });
+    server.on('session', (session) => {
+      sourceSessions.add(session);
+      session.on('close', () => sourceSessions.delete(session));
+      session.on('error', (error) => sourceErrors.push(error));
+    });
+    server.on('stream', (stream, headers) => {
+      stream.on('error', (error) => sourceErrors.push(error));
+      const range = ranges.find((candidate) => candidate.path === headers[':path']);
+      if (!range) {
+        stream.respond({ ':status': 200, 'content-type': 'text/plain' });
+        stream.end('after-clear');
+        return;
+      }
+      sourceStreamsByPath.set(range.path, stream);
+      sourceHeadersByPath.set(range.path, headers);
+      stream.respond({ ':status': 206, 'content-type': 'application/octet-stream',
+        'accept-ranges': 'bytes', 'content-range': range.contentRange, 'content-length': range.body.byteLength });
+      stream.write(range.body.subarray(0, prefixSize));
+    });
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    origin = {
+      port: (server.address() as AddressInfo).port,
+      close: async () => {
+        for (const session of sourceSessions) session.destroy();
+        await new Promise<void>((resolve) => server.close(() => resolve()));
+      },
+    };
+    const ruleService = new RuleService(new BreakpointQueue());
+    ruleService.setRuleSet({ revision: 1, nodes: [{ kind: 'rule', id: 'range-response', name: 'Range response',
+      enabled: true, priority: 100,
+      matchers: [{ type: 'url', value: `localhost:${origin.port}/range/`, mode: 'contains' }],
+      actions: [{ type: 'header', phase: 'response', op: 'append', name: 'x-streaming-rule', value: 'active' }],
+    }] });
+    const captureEventQueue = new CaptureEventQueue();
+    proxyService = new ProxyService(activeCaptureService, captureEventQueue, ruleService);
+    await decryptWithCertificate(proxyService, ca, ['localhost', '127.0.0.1']);
+    const address = await proxyService.start();
+    clientSession = await connectH2ViaProxy(address.port, 'localhost', origin.port, ca.cert);
+    const responses = ranges.map((range) => {
+      const stream = clientSession!.request({ ':path': range.path, ':method': 'GET', range: range.requestRange });
+      const state = { bytes: 0, ended: false, headers: {} as http2.IncomingHttpHeaders, hash: createHash('sha256') };
+      stream.on('response', (headers) => { state.headers = headers; });
+      stream.on('data', (chunk: Buffer) => { state.bytes += chunk.byteLength; state.hash.update(chunk); });
+      const completed = once(stream, 'end').then(() => { state.ended = true; });
+      void completed.catch(() => undefined);
+      stream.end();
+      return { range, stream, state, completed };
+    });
+    await expect.poll(() => responses.map(({ state }) => state.bytes)).toEqual([prefixSize, prefixSize]);
+    expect(clientSession.alpnProtocol).toBe('h2');
+    expect(new Set(responses.map(({ stream }) => stream.id)).size).toBe(2);
+    for (const { range, state } of responses) {
+      expect(state.headers).toMatchObject({ ':status': 206, 'content-range': range.contentRange,
+        'content-length': String(rangeSize), 'x-streaming-rule': 'active' });
+      expect(sourceHeadersByPath.get(range.path)?.range).toBe(range.requestRange);
+      expect(sourceStreamsByPath.get(range.path)?.writableEnded).toBe(false);
+      expect(state.ended).toBe(false);
+    }
+    await expect.poll(async () => (await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} }))
+      .items.map((exchange) => exchange.responseBytes)).toEqual([prefixSize, prefixSize]);
+    const pending = await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} });
+    for (const summary of pending.items) {
+      expect(summary).toMatchObject({ state: 'response-streaming', protocol: 'h2', statusCode: 206 });
+      await expect(activeCaptureService.getExchangeBodySnapshot(summary.id, 'response')).resolves.toMatchObject({
+        encodedSize: prefixSize, available: true, complete: false,
+      });
+    }
+
+    if (ending === 'clear') {
+      const activeSessionId = await proxyService.prepareCaptureReset();
+      expect(activeSessionId).not.toBeNull();
+      captureEventQueue.reset();
+      await activeCaptureService.cleanup({ kind: 'all-except-session', sessionId: activeSessionId! });
+      await expect(activeCaptureService.status()).resolves.toMatchObject({ exchangeCount: 0, bodyCount: 0, blobBytes: 0 });
+    }
+    if (ending === 'cancel') {
+      const cancelledResponse = responses[0]!;
+      const sourceStream = sourceStreamsByPath.get(cancelledResponse.range.path)!;
+      const sourceClosed = once(sourceStream, 'close');
+      const clientClosed = once(cancelledResponse.stream, 'close');
+      cancelledResponse.stream.close(http2.constants.NGHTTP2_CANCEL);
+      await Promise.all([sourceClosed, clientClosed]);
+      expect(cancelledResponse.stream.rstCode).toBe(http2.constants.NGHTTP2_CANCEL);
+      expect(cancelledResponse.state.bytes).toBe(prefixSize);
+      expect(sourceStream.closed).toBe(true);
+    }
+    const completedResponses = ending === 'cancel' ? responses.slice(1) : responses;
+    for (const { range } of completedResponses) sourceStreamsByPath.get(range.path)!.end(range.body.subarray(prefixSize));
+    await Promise.all(completedResponses.map(({ completed }) => completed));
+    for (const { range, state } of completedResponses) {
+      expect(state.bytes).toBe(rangeSize);
+      expect(state.hash.digest('hex')).toBe(createHash('sha256').update(range.body).digest('hex'));
+    }
+    if (ending !== 'clear') {
+      await expect.poll(async () => (await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} }))
+        .items.map((exchange) => exchange.state).sort()).toEqual(ending === 'cancel' ? ['aborted', 'completed'] : ['completed', 'completed']);
+      for (const summary of pending.items) {
+        const detail = await activeCaptureService.getExchangeDetail(summary.id);
+        const range = ranges.find((candidate) => detail?.url.endsWith(candidate.path))!;
+        const expectedSize = ending === 'cancel' && range.path === ranges[0]!.path ? prefixSize : rangeSize;
+        const expectedBody = range.body.subarray(0, expectedSize);
+        expect(detail?.responseBody).toMatchObject({ encodedSize: expectedSize,
+          bodyHash: createHash('sha256').update(expectedBody).digest('hex') });
+        await expect(activeCaptureService.readExchangeBodyRange(summary.id, 'response', expectedSize - 32, 64))
+          .resolves.toEqual(expectedBody.subarray(expectedSize - 32));
+      }
+    } else {
+      const nextStream = clientSession.request({ ':path': '/after-clear', ':method': 'GET' });
+      const nextCompleted = once(nextStream, 'end');
+      nextStream.resume();
+      nextStream.end();
+      await nextCompleted;
+      await expect.poll(async () => (await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} }))
+        .items.map((exchange) => exchange.state)).toEqual(['completed']);
+      for (const summary of pending.items) await expect(activeCaptureService.getExchangeDetail(summary.id)).resolves.toBeNull();
+      const current = await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} });
+      await expect(activeCaptureService.getExchangeDetail(current.items[0]!.id)).resolves.toMatchObject({
+        url: `https://localhost:${origin.port}/after-clear`, responseBody: { encodedSize: 11 },
+      });
+      expect(captureEventQueue.drain(10).map((event) => event.summary.id)).toEqual([current.items[0]!.id]);
+    }
+    expect(sourceErrors).toEqual([]);
+  }, 20_000);
 
   it('prefers HTTP/2 for dual-protocol browser clients', async () => {
     const ca = await generateCACertificate();

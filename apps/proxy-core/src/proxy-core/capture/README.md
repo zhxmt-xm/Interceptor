@@ -24,7 +24,11 @@
 
 `initialize()` 建临时目录 → 抓包期间读写 → `cleanup(scope)` 按范围删除并 GC 孤立正文 → `dispose()` 清空并删除临时目录。
 
-Body 的内容寻址决定了 **hash 只有写完才能确定**，因此传输过程中 Exchange 只记录 observed bytes，`requestBodyId` / `responseBodyId` 在正文结束后才绑定。
+Body 的内容寻址决定了 **hash 只有写完才能确定**，因此传输过程中 Exchange 只记录 observed bytes，`requestBodyId` / `responseBodyId` 在正文结束后才绑定。`createBodyWriter(exchangeId, side)`按Exchange/side登记在途writer；`getExchangeBodySnapshot()`返回当前可读大小与独立的`available`/`complete`，`readExchangeBodyRange()`只读有限range，不为在途正文伪造hash。
+
+在途读取与写入、finalize、abort共用BodyWriter串行队列。小正文读取内存分片，大正文读取同一spill文件；完成后仍经BodyStore读hash，不保存第二份完整正文。已绑定的Final正文优先，不能把Rule替换前的请求writer误当Final；等待writer快照后重新核对Final和Exchange状态，覆盖并发绑定显式空正文或Clear的情况。Clear/Dispose先等待被删除Exchange的writer读取与放弃操作，再删除spill。
+
+提交失败时BodyWriter仍向调用方抛出原错误，但快照必须为已结束、不可读，可读长度归零，observed字节数保持。BodyStore继续负责提交失败的spill清理，不能留下无正文却持续等待增长的writer状态。
 
 存在Body Rule effect时，公开`requestBody` / `responseBody`始终是Final。Request Original仅在
 `originalState: available`时通过effect引用；`empty`与Response的`unavailable`不携带虚假ref。

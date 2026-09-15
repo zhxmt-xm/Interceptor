@@ -26,73 +26,58 @@ export function useGrpcMessages(
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const cursorRef = useRef<string | undefined>(undefined);
-  const hasMoreRef = useRef(false);
-  const busyRef = useRef(false);
+  const loadMoreRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     let active = true;
+    let busy = false;
+    let cursor: string | undefined;
+    let hasMore = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     setPage(null);
     setMessages([]);
     setLoading(true);
     setLoadingMore(false);
     setError(null);
-    cursorRef.current = undefined;
-    hasMoreRef.current = false;
-    busyRef.current = true;
-    void window.interceptor
-      .queryGrpcMessages({ exchangeId, side, limit: PAGE_SIZE })
-      .then((result) => {
-        if (!active) {
-          return;
-        }
+
+    const load = async (append: boolean): Promise<void> => {
+      if (!active || busy) return;
+      busy = true;
+      if (append && hasMore) setLoadingMore(true);
+      try {
+        const result = await window.interceptor.queryGrpcMessages({ exchangeId, side, cursor, limit: PAGE_SIZE });
+        if (!active) return;
         const { items, ...metadata } = result;
         setPage(metadata);
-        setMessages(items);
-        cursorRef.current = result.nextCursor;
-        hasMoreRef.current = result.hasMore;
-        busyRef.current = false;
-        setLoading(false);
-      })
-      .catch((loadError: unknown) => {
-        if (active) {
-          setError(loadError instanceof Error ? loadError.message : String(loadError));
-          busyRef.current = false;
-          setLoading(false);
+        setMessages((current) => append ? [...current, ...items] : items);
+        cursor = result.nextCursor;
+        hasMore = result.hasMore;
+        if (!result.bodyComplete && !hasMore && result.malformedOffset === undefined) {
+          timer = setTimeout(() => void load(true), 350);
         }
-      });
+      } catch (loadError: unknown) {
+        if (active) setError(loadError instanceof Error ? loadError.message : String(loadError));
+      } finally {
+        if (active) {
+          busy = false;
+          setLoading(false);
+          setLoadingMore(false);
+        }
+      }
+    };
+    loadMoreRef.current = () => {
+      if (hasMore) void load(true);
+    };
+    void load(false);
     return () => {
       active = false;
+      if (timer !== undefined) clearTimeout(timer);
+      loadMoreRef.current = null;
     };
   }, [exchangeId, side]);
 
   const loadMore = (): void => {
-    if (!hasMoreRef.current || busyRef.current) {
-      return;
-    }
-    busyRef.current = true;
-    setLoadingMore(true);
-    void window.interceptor
-      .queryGrpcMessages({
-        exchangeId,
-        side,
-        cursor: cursorRef.current,
-        limit: PAGE_SIZE,
-      })
-      .then((result) => {
-        const { items, ...metadata } = result;
-        setPage(metadata);
-        setMessages((current) => [...current, ...items]);
-        cursorRef.current = result.nextCursor;
-        hasMoreRef.current = result.hasMore;
-        busyRef.current = false;
-        setLoadingMore(false);
-      })
-      .catch((loadError: unknown) => {
-        setError(loadError instanceof Error ? loadError.message : String(loadError));
-        busyRef.current = false;
-        setLoadingMore(false);
-      });
+    loadMoreRef.current?.();
   };
 
   return { page, messages, loading, loadingMore, error, loadMore };

@@ -11,6 +11,7 @@ class FakeCaptureService extends CaptureService {
   constructor(
     private readonly exchangeDetail: CaptureExchangeDetail,
     private readonly readRange: (offset: number, length: number) => Buffer,
+    private readonly liveSnapshot?: { encodedSize: number; complete: boolean },
   ) {
     super();
   }
@@ -24,6 +25,22 @@ class FakeCaptureService extends CaptureService {
     offset: number,
     length: number,
   ): Promise<Buffer> {
+    return Promise.resolve(this.readRange(offset, length));
+  }
+
+  /** 模拟同一Exchange/side的在途或已结束正文快照，不为在途字节编造hash。 */
+  override getExchangeBodySnapshot(_exchangeId: string, side: 'request' | 'response') {
+    const body = side === 'request' ? this.exchangeDetail.requestBody : this.exchangeDetail.responseBody;
+    return Promise.resolve({
+      bodyHash: body?.bodyHash,
+      encodedSize: this.liveSnapshot?.encodedSize ?? body?.encodedSize ?? 0,
+      complete: this.liveSnapshot?.complete ?? true,
+      available: this.liveSnapshot !== undefined || body?.bodyHash !== undefined,
+    });
+  }
+
+  /** 模拟按Exchange/side读取已到达的字节，保留原range观测。 */
+  override readExchangeBodyRange(_exchangeId: string, _side: 'request' | 'response', offset: number, length: number) {
     return Promise.resolve(this.readRange(offset, length));
   }
 }
@@ -76,6 +93,60 @@ function detail(body: Buffer): CaptureExchangeDetail {
 }
 
 describe('queryGrpcMessages', () => {
+  it.each(['request', 'response'] as const)('lists complete messages while the %s body is still streaming', async (side) => {
+    const first = envelope(Buffer.from('first'));
+    const second = envelope(Buffer.from('second'), true);
+    const body = Buffer.concat([first, second]);
+    const completedDetail = detail(body);
+    const streamingDetail: CaptureExchangeDetail = {
+      ...completedDetail,
+      summary: { ...completedDetail.summary, state: 'response-streaming' },
+      requestBody: undefined,
+      responseBody: undefined,
+    };
+    const snapshot = { encodedSize: first.byteLength + 7, complete: false };
+    const reads: Array<{ offset: number; length: number }> = [];
+    const fakeCaptureService = new FakeCaptureService(streamingDetail, (offset, length) => {
+      reads.push({ offset, length });
+      return body.subarray(offset, Math.min(offset + length, snapshot.encodedSize));
+    }, snapshot);
+    const grpcService = new GrpcService(fakeCaptureService);
+
+    const firstPage = await grpcService.query({ exchangeId: 'grpc-1', side, limit: 10 });
+    expect(firstPage).toMatchObject({
+      recognized: true, bodyAvailable: true, bodyComplete: false, bodySize: snapshot.encodedSize,
+      items: [{ index: 0, envelopeOffset: 0, payloadOffset: 5, payloadLength: 5, compressed: false, truncated: false }],
+      hasMore: false,
+    });
+    expect(firstPage.bodyHash).toBeUndefined();
+    expect(firstPage.malformedOffset).toBeUndefined();
+    expect(firstPage.nextCursor).toBe(Buffer.from(`grpc:${side}:${first.byteLength}:1`).toString('base64url'));
+    expect(reads).toEqual([{ offset: 0, length: 5 }, { offset: first.byteLength, length: 5 }]);
+
+    snapshot.encodedSize = body.byteLength;
+    const nextPage = await grpcService.query({ exchangeId: 'grpc-1', side, cursor: firstPage.nextCursor, limit: 10 });
+    expect(nextPage.items).toHaveLength(1);
+    expect(nextPage.items[0]).toMatchObject({ index: 1, envelopeOffset: first.byteLength,
+      payloadOffset: first.byteLength + 5, payloadLength: 6, compressed: true, truncated: false });
+  });
+
+  it('does not report an incomplete live envelope header as malformed', async () => {
+    const body = envelope(Buffer.from('message'));
+    const completedDetail = detail(body);
+    const streamingDetail: CaptureExchangeDetail = {
+      ...completedDetail,
+      summary: { ...completedDetail.summary, state: 'response-streaming' },
+      responseBody: undefined,
+    };
+    const snapshot = { encodedSize: 3, complete: false };
+    const fakeCaptureService = new FakeCaptureService(streamingDetail,
+      (offset, length) => body.subarray(offset, Math.min(offset + length, snapshot.encodedSize)), snapshot);
+    const page = await new GrpcService(fakeCaptureService).query({ exchangeId: 'grpc-1', side: 'response', limit: 10 });
+    expect(page).toMatchObject({ recognized: true, bodyAvailable: true, bodyComplete: false,
+      bodySize: 3, items: [], hasMore: false });
+    expect(page.malformedOffset).toBeUndefined();
+  });
+
   it('paginates by envelope offset without loading payload bytes', async () => {
     const body = Buffer.concat([
       envelope(Buffer.from('first')),
@@ -174,7 +245,41 @@ describe('queryGrpcMessages', () => {
     ).resolves.toMatchObject({ recognized: false, items: [] });
   });
 
-  it('rejects cursors from another side or with invalid offsets', async () => {
+  it.each([false, true])('accepts a cursor at the body end when complete=%s', async (complete) => {
+    const body = envelope(Buffer.from('message'));
+    const cursor = Buffer.from(`grpc:response:${body.byteLength}:1`).toString('base64url');
+    const reads: number[] = [];
+    const fakeCaptureService = new FakeCaptureService(detail(body), (offset, length) => {
+      reads.push(offset);
+      return body.subarray(offset, offset + length);
+    }, { encodedSize: body.byteLength, complete });
+    const page = await new GrpcService(fakeCaptureService).query({
+      exchangeId: 'grpc-1', side: 'response', cursor, limit: 10,
+    });
+
+    expect(page).toMatchObject({ items: [], hasMore: false, bodyComplete: complete });
+    expect(page.nextCursor).toBe(complete ? undefined : cursor);
+    expect(reads).toEqual([]);
+  });
+
+  it.each([false, true])('rejects a cursor beyond the body end when complete=%s', async (complete) => {
+    const body = envelope(Buffer.from('message'));
+    const reads: number[] = [];
+    const fakeCaptureService = new FakeCaptureService(detail(body), (offset, length) => {
+      reads.push(offset);
+      return body.subarray(offset, offset + length);
+    }, { encodedSize: body.byteLength, complete });
+
+    await expect(new GrpcService(fakeCaptureService).query({
+      exchangeId: 'grpc-1',
+      side: 'response',
+      cursor: Buffer.from(`grpc:response:${body.byteLength + 1}:1`).toString('base64url'),
+      limit: 10,
+    })).rejects.toBeInstanceOf(InvalidGrpcCursorError);
+    expect(reads).toEqual([]);
+  });
+
+  it('rejects cursors from another side', async () => {
     const body = envelope(Buffer.from('message'));
     const fakeCaptureService = new FakeCaptureService(detail(body), () =>
       body.subarray(0, 5),

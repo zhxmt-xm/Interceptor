@@ -1594,6 +1594,15 @@ class DesktopApplication {
       },
     );
 
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.grpcReadRange,
+      async (event, request: import('../shared/desktop-api').GrpcBodyReadRequest) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        const result = await this.coreRuntime.request({ type: 'grpc.read-range', payload: request });
+        return result.payload;
+      },
+    );
+
     // HAR 导出：Renderer 只提交 scope/redaction；路径由 Main 系统对话框生成。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.harExportStart,

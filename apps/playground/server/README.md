@@ -22,7 +22,7 @@
 `TlsTrafficRunner` 按传输边界命名，不是 HTTP/2 的别名：
 
 - `runHttp2()`：TLS + ALPN `h2` 上的 HTTP 请求；
-- `runGrpc()`：复用同一 TLS/H2 origin，发送 gRPC envelope 与 trailers；
+- `runGrpc()`：复用同一TLS/H2 origin，发送gRPC envelope与trailers；可分别传入受控的`AsyncIterable<Uint8Array>`响应流、请求流，iterator结束时才结束对应side，用于实际双向streaming验收，不改Browser Draft或产品参数；
 - `runTls()`：按 Draft 选择 CONNECT 后只握手，或继续 HTTPS/H1、HTTPS/H2；
 - `port`、`handshakeCount()`、`applicationByteCount()`：供外部 TLS 探测使用，区分只握手和发送了应用数据。
 

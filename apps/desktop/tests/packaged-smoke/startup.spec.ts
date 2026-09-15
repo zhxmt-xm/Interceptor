@@ -544,6 +544,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'querySessions',
         'queryWebSocketFrames',
         'readBody',
+        'readGrpcBody',
         'readImportFile',
         'regenerateMcpClientCredential',
         'removeAgentProvider',

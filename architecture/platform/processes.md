@@ -96,6 +96,8 @@ Capture、Rules、Composer、Breakpoints、Diagnostics、Settings所有权分组
 `body.export.start`保存完整编码字节；对话框返回后重新确认身份，路径只在Main/Core内流转。UI与Tool共用
 文件名推导和任务启动，Tool只返回安全任务摘要，不读取正文、不增加Preload API或第二套文件写入。
 
+gRPC在途消息载荷经`window.interceptor.readGrpcBody({ exchangeId, side, offset, length })`进入可信Renderer校验后的`grpc:read-range` IPC，再由`CoreRuntime`转`grpc.read-range`。Core只从Capture已有的Exchange/side返回当前可读range；Renderer仍按1 MiB分块、5 MiB预览上限读取，不接触路径或完整stream。该入口不自动注册MCP/Agent Tool，完成态的hash读取与Save接口保持不变。
+
 - HAR的IPC、MCP和Agent调用同一`startHarExport`或`startHarImport`，路径只来自原生Save/Open Dialog。
 - 语言、主题和导出隐私的IPC/Agent/MCP共用`UiPreferencesService.setLanguage/setTheme/setExportPrivacyDefaults`。
   - Main只保存待执行请求及生命周期；Renderer的`UiPreferencesActions`常驻串行领取、应用并写入既有localStorage，再回传窄确认，Main通知其他Renderer。

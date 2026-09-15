@@ -85,6 +85,40 @@ describe('TransferService', () => {
     });
   });
 
+  it.each([false, true])('waits for transfer cleanup during shutdown (already cancelled=%s)', async (alreadyCancelled) => {
+    const transferService = new TransferService();
+    const completed = vi.fn();
+    transferService.onCompleted(completed);
+    let releaseCleanup!: () => void;
+    const cleanupGate = new Promise<void>((resolve) => { releaseCleanup = resolve; });
+    let cleanupFinished = false;
+    let receivedAbortSignal: AbortSignal | undefined;
+    transferService.start('shutdown-export', 'body-export', 'C:\\private\\body.bin', async (abortSignal) => {
+      receivedAbortSignal = abortSignal;
+      await new Promise<void>((resolve) => abortSignal.addEventListener('abort', () => resolve(), { once: true }));
+      await cleanupGate;
+      cleanupFinished = true;
+      throw abortSignal.reason;
+    });
+    if (alreadyCancelled) transferService.cancel('shutdown-export');
+    let drained = false;
+    const draining = Promise.resolve(transferService.cancelAll()).then(() => { drained = true; });
+    try {
+      expect(receivedAbortSignal?.aborted).toBe(true);
+      expect(transferService.get('shutdown-export')?.state).toBe('cancelled');
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(drained).toBe(false);
+      expect(cleanupFinished).toBe(false);
+    } finally {
+      releaseCleanup();
+      await draining;
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+    expect(cleanupFinished).toBe(true);
+    expect(completed).not.toHaveBeenCalled();
+    await transferService.cancelAll();
+  });
+
   it('rejects a duplicate active job ID', () => {
     const transferService = new TransferService();
     transferService.start('dupe', 'har-export', '/tmp/a.har', () => new Promise(() => undefined));

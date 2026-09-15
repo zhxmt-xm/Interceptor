@@ -5,6 +5,8 @@ import http2, {
 } from 'node:http2';
 import { request } from 'node:http';
 import net from 'node:net';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import tls from 'node:tls';
 import { gzipSync } from 'node:zlib';
 
@@ -29,7 +31,7 @@ import {
 /** 一次 HTTP/gRPC 场景在 origin 端预期返回的真实响应。 */
 interface TlsRunDefinition {
   readonly kind: 'grpc' | 'http';
-  readonly responseBody: Buffer;
+  readonly responseBody: Buffer | AsyncIterable<Uint8Array>;
   readonly responseHeaders: Readonly<Record<string, string>>;
   readonly responseTrailers: Readonly<Record<string, string>>;
 }
@@ -201,6 +203,8 @@ export class TlsTrafficRunner {
   async runGrpc(
     draft: GrpcTrafficRequestDraft,
     proxyPort: number,
+    responseChunks?: AsyncIterable<Uint8Array>,
+    requestChunks?: AsyncIterable<Uint8Array>,
   ): Promise<TrafficExecution> {
     const runId = crypto.randomUUID();
     const targetHost = this.targetHost();
@@ -208,7 +212,7 @@ export class TlsTrafficRunner {
     const contentType = draft.headers['content-type'] ?? 'application/grpc+proto';
     this.#runById.set(runId, {
       kind: 'grpc',
-      responseBody: grpcMessages(draft.responseMessages, draft.framing),
+      responseBody: responseChunks ?? grpcMessages(draft.responseMessages, draft.framing),
       responseHeaders: {
         'content-type': contentType,
         ...(draft.responseMessages.some((message) => message.compressed)
@@ -229,7 +233,7 @@ export class TlsTrafficRunner {
           te: 'trailers',
           'x-playground-run-id': runId,
         },
-        grpcMessages(draft.requestMessages, 'valid'),
+        requestChunks ?? grpcMessages(draft.requestMessages, 'valid'),
       );
       return {
         attempt,
@@ -324,9 +328,20 @@ export class TlsTrafficRunner {
   /** 从实际请求记录正文与 headers，并按 runId 返回所属场景的响应和 trailers。 */
   #receiveRequest(incoming: Http2ServerRequest, response: Http2ServerResponse): void {
     const chunks: Buffer[] = [];
+    const runId = readHeader(incoming.headers['x-playground-run-id']);
+    const run = runId === undefined ? undefined : this.#runById.get(runId);
+    const respond = (): void => {
+      if (run === undefined) {
+        response.writeHead(404).end();
+        return;
+      }
+      response.writeHead(200, run.responseHeaders);
+      response.addTrailers(run.responseTrailers);
+      void pipeline(Readable.from(run.responseBody), response).catch(() => response.destroy());
+    };
     incoming.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+    incoming.on('error', () => undefined);
     incoming.on('end', () => {
-      const runId = readHeader(incoming.headers['x-playground-run-id']);
       if (runId !== undefined) {
         this.#requestByRunId.set(runId, requestFact(
           Buffer.concat(chunks),
@@ -336,15 +351,9 @@ export class TlsTrafficRunner {
           `https://${this.targetHost()}${incoming.url ?? '/'}`,
         ));
       }
-      const run = runId === undefined ? undefined : this.#runById.get(runId);
-      if (run === undefined) {
-        response.writeHead(404).end();
-        return;
-      }
-      response.writeHead(200, run.responseHeaders);
-      response.addTrailers(run.responseTrailers);
-      response.end(run.responseBody);
+      if (run === undefined || Buffer.isBuffer(run.responseBody)) respond();
     });
+    if (run !== undefined && !Buffer.isBuffer(run.responseBody)) respond();
   }
 
   /** 在 CONNECT 隧道内完成TLS，再将HTTP/1.1字节写入同一个加密socket。 */
@@ -407,7 +416,7 @@ export class TlsTrafficRunner {
     method: string,
     path: string,
     headers: Readonly<Record<string, string>>,
-    body: Buffer,
+    body: Buffer | AsyncIterable<Uint8Array>,
     connectHeaders: Readonly<Record<string, string>> = {},
   ): Promise<TlsHttpExchange> {
     const { tlsSocket } = await connectTls(
@@ -424,7 +433,7 @@ export class TlsTrafficRunner {
         ':method': method,
         ':path': path,
         ...headers,
-      }, { endStream: body.byteLength === 0 }), body);
+      }, { endStream: Buffer.isBuffer(body) && body.byteLength === 0 }), body);
       return {
         request: await this.#waitForRequest(headers['x-playground-run-id']),
         response,
@@ -492,7 +501,7 @@ function failedExecution(
 }
 
 /** 将场景消息编码为 gRPC envelope，按 Draft 保留压缩或故意截断的 wire 输入。 */
-function grpcMessages(
+export function grpcMessages(
   messages: readonly GrpcMessageDraft[],
   framing: 'truncated' | 'valid',
 ): Buffer {
@@ -644,7 +653,7 @@ function requestFact(
 /** 收集真实 H2 stream 的响应 headers、正文 chunks、timing 和 trailers。 */
 function requestHttp2Stream(
   stream: ClientHttp2Stream,
-  body: Buffer,
+  body: Buffer | AsyncIterable<Uint8Array>,
 ): Promise<TrafficResponseFact> {
   return new Promise((resolve, reject) => {
     const startedAtMs = performance.now();
@@ -672,7 +681,11 @@ function requestHttp2Stream(
       chunkTimingsMs,
       trailers,
     )));
-    if (body.byteLength > 0) stream.end(body);
+    if (Buffer.isBuffer(body)) {
+      if (body.byteLength > 0) stream.end(body);
+    } else {
+      void pipeline(Readable.from(body), stream).catch(reject);
+    }
   });
 }
 

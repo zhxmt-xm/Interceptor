@@ -17,6 +17,8 @@ import type {
 export class TransferService {
   /** 保存当前 Core 代际创建的全部任务。 */
   private readonly jobs = new Map<string, MutableTransferJob>();
+  /** 尚未结束的任务操作，包含已取消但仍在清理的文件读写。 */
+  private readonly pendingTransfers = new Set<Promise<void>>();
   /** 成功任务的业务通知接收者；不传递文件信息。 */
   private completedListener: ((kind: TransferJobSnapshot['kind']) => void) | null = null;
 
@@ -36,7 +38,10 @@ export class TransferService {
     operation: TransferOperation,
   ): TransferJobSnapshot {
     const job = this.create(jobId, kind, filePath);
-    void this.run(job, operation);
+    const transferring = this.run(job, operation).finally(() => {
+      this.pendingTransfers.delete(transferring);
+    });
+    this.pendingTransfers.add(transferring);
     return TransferService.toSnapshot(job);
   }
 
@@ -61,11 +66,12 @@ export class TransferService {
     return TransferService.toSnapshot(job);
   }
 
-  /** 取消所有运行中任务；CoreApplication 关闭时用于终止文件 I/O。 */
-  cancelAll(): void {
+  /** 取消运行中任务并等待已接受的操作清理；CoreApplication关闭时先于Capture释放。 */
+  async cancelAll(): Promise<void> {
     for (const jobId of this.jobs.keys()) {
       this.cancel(jobId);
     }
+    await Promise.allSettled(this.pendingTransfers);
   }
 
   /** 校验 ID 唯一性并建立初始 running 状态。 */

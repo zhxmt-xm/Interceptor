@@ -186,13 +186,13 @@ diagnostics.row.<traceKey>
 | `capture.scenarios.body-media` | PNG/二进制/音视频原生导出 | native-ui | passed |
 | `capture.scenarios.encoding` | 三种正常压缩和损坏gzip/图片 | os-side-effect | passed |
 | `capture.scenarios.websocket` | 四种WebSocket的方向、载荷与控制连接 | os-side-effect | passed |
-| `capture.scenarios.grpc` | 五种gRPC envelope/载荷/trailer | privileged UI | passed |
+| `capture.scenarios.grpc` | gRPC原场景、单向/双向streaming、半消息、Copy与Pause/Clear | privileged UI | passed |
 | `capture.scenarios.tls` | 不解密tunnel与解密H1/H2、完整CA恢复 | privileged UI | passed |
 | `capture.inspector.resize` | Inspector splitter与响应式布局 | shared | planned |
 | `capture.clear` | 清Exchange/Body并保留Session壳 | shared | planned |
 | `capture.transfer.har-roundtrip` | 真实Capture导出HAR、Clear、导回同一文件并验证有损映射/脱敏 | native-ui + os-side-effect | planned |
 | `capture.transfer.archive-roundtrip` | 真实Capture全保真保存、Clear、打开同一archive并验证恢复/拒绝损坏输入 | native-ui + privileged UI | planned |
-| `capture.tools.transfer-jobs` | Agent/MCP文件任务查询、运行中取消、脱敏与双代销毁 | native-ui + os-side-effect | passed |
+| `capture.tools.transfer-jobs` | 文件任务查询/取消、运行中Alt+F4清理、脱敏与双代销毁；新增退出步骤历史Red缺口见规格 | native-ui + os-side-effect | passed |
 | `capture.tools.body-export` | Agent/MCP原生正文保存、编码字节完整性、撤权与双代销毁 | native-ui + os-side-effect | passed |
 | `capture.tools.har-transfer` | Agent/MCP原生HAR导出再导入、范围脱敏、追加与双代销毁 | native-ui + os-side-effect | passed |
 | `capture.tools.archive-transfer` | Agent/MCP/IPC原生Archive往返、HTTP正文/WS消息、追加与双代销毁 | native-ui + os-side-effect | passed |

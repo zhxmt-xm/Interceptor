@@ -3685,10 +3685,18 @@ export function installFakeInterceptor({
         encoding: request.side === 'response' ? 'gzip' : undefined,
         bodyHash: bodyId,
         bodySize: fixture.capture.bodies[bodyId].length,
+        bodyAvailable: true,
+        bodyComplete: true,
         items,
         nextCursor: eligible.length > items.length ? String(nextIndex) : undefined,
         hasMore: eligible.length > items.length,
       };
+    },
+    readGrpcBody: async ({ side, offset, length }) => {
+      const bodyId = side === 'request' ? 'grpc-request-body' : 'grpc-response-body';
+      const source = new Uint8Array(fixture.capture.bodies[bodyId]);
+      const data = source.slice(offset, offset + length);
+      return { offset, data, end: offset + data.length >= source.length };
     },
     readBody: async (bodyId, offset, length) => {
       if (largeBody && bodyId === 'large-response-body') {

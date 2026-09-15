@@ -79,6 +79,7 @@ export class BodyStore {
       this.memoryThresholdBytes,
       (hash, size, memory, spillPath) =>
         this.finalizeWrite(hash, size, memory, spillPath),
+      (hash, offset, length) => this.readRange(hash, offset, length),
     );
   }
 

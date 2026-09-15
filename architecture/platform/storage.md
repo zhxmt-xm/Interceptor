@@ -63,6 +63,10 @@ Live Capture Body 小于 3 MiB 驻内存，超过后 spill 到 Core 临时目录
 
 Renderer Inspector 是独立的展示边界：文本/结构化 Body、WS 与 gRPC 最多读取前 `5 MiB`（`BODY_PREVIEW_MAX_BYTES`），压缩解码输出同样限制为 `5 MiB`；图片有独立的 `IMAGE_PREVIEW_MAX_BYTES`（16 MiB），超过或解码输出被截断时**不读字节**——半张图比不显示更糟；音视频不进入 Renderer，只能经 Main Save Dialog + Core 流式任务保存。
 
+gRPC在途预览通过`CaptureService.getExchangeBodySnapshot/readExchangeBodyRange`按Exchange/side读取当前writer的有限range；hash仍只在写完后确定。读取与写入/finalize/abort串行，内存与spill共用一份正文；Final引用绑定后优先读取已提交Blob。Clear/Dispose等待被移除Exchange的writer队列再清理文件。2026-09-14Capture/Writer18/18、相关Core178/178及真实H2 streaming/Copy和HTTP传输中Clear通过，证据见[Capture功能文档](../features/capture.md)。
+
+`ExchangeTracker`跟踪全部已接受但未完成的存储操作，终态记录离开活动Map后仍可排空；`ProxyService.prepareCaptureReset()`在推进generation后先等待这批操作，再允许Capture清理文件。正文commit失败时writer结束且不可读，两侧commit与Exchange终态分别收尾。当前代码回归和待恢复的真实验收范围见[streaming边界](../features/capture.md#grpc-streaming目标与当前差异)。
+
 ## 6. 构建产物
 
 `proxy-core` 输出 `entry.cjs` + 按需的 `archive/worker/entry.cjs` + 常驻的 `diagnostics/worker/entry.cjs`；Forge 递归复制整个 `dist/proxy-core`。运行时依赖的随包策略见 [release.md](release.md)。

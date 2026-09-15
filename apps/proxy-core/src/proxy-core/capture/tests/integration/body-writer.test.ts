@@ -103,6 +103,68 @@ describe('BodyWriter', () => {
     await writer.finalize();
   });
 
+  it.each([64, 4])('reads a bounded live range with a %s-byte memory threshold', async (threshold) => {
+    await bodyWriterFixture.useMemoryThreshold(threshold);
+    const bodyWriter = bodyWriterFixture.bodyStore.createWriter();
+    bodyWriter.write(Buffer.from('first'));
+    bodyWriter.write(Buffer.from('-second'));
+
+    await expect(bodyWriter.snapshot()).resolves.toEqual({ encodedSize: 12, available: true, complete: false });
+    await expect(bodyWriter.readRange(3, 5)).resolves.toEqual(Buffer.from('st-se'));
+    await expect(bodyWriter.readRange(10, 10)).resolves.toEqual(Buffer.from('nd'));
+    await expect(bodyWriter.readRange(20, 5)).resolves.toEqual(Buffer.alloc(0));
+    expect(bodyWriterFixture.bodyStore.usageBytes).toBe(0);
+
+    bodyWriter.write(Buffer.from('-third'));
+    await expect(bodyWriter.snapshot()).resolves.toEqual({ encodedSize: 18, available: true, complete: false });
+    await expect(bodyWriter.readRange(12, 6)).resolves.toEqual(Buffer.from('-third'));
+    const result = await bodyWriter.finalize();
+    expect(result?.hash).toBe(createHash('sha256').update('first-second-third').digest('hex'));
+  });
+
+  it.each(['finalize', 'abort'] as const)('finishes a queued live read before %s closes the spill', async (ending) => {
+    await bodyWriterFixture.useMemoryThreshold(4);
+    const bodyWriter = bodyWriterFixture.bodyStore.createWriter();
+    bodyWriter.write(Buffer.from('first-second'));
+    const read = bodyWriter.readRange(3, 5);
+    const finished = bodyWriter[ending]();
+    await expect(read).resolves.toEqual(Buffer.from('st-se'));
+    await finished;
+    await expect(bodyWriter.snapshot()).resolves.toEqual({ encodedSize: 12,
+      available: ending === 'finalize', complete: true });
+  });
+
+  it('does not return partial live bytes after the writer degrades', async () => {
+    limits.pendingLimitBytes = 8;
+    const bodyWriter = bodyWriterFixture.bodyStore.createWriter();
+    bodyWriter.write(Buffer.from('four'));
+    bodyWriter.write(Buffer.alloc(16, 1));
+    await expect(bodyWriter.snapshot()).resolves.toEqual({ encodedSize: 0, available: false, complete: false });
+    await expect(bodyWriter.readRange(0, 5)).resolves.toEqual(Buffer.alloc(0));
+    await expect(bodyWriter.finalize()).resolves.toBeNull();
+  });
+
+  it('marks a failed spill commit as complete and unavailable', async () => {
+    await bodyWriterFixture.useMemoryThreshold(4);
+    const bodyWriter = bodyWriterFixture.bodyStore.createWriter();
+    bodyWriter.write(Buffer.from('first-second'));
+    await bodyWriter.snapshot();
+    const commitError = Object.assign(new Error('Spill rename failed.'), { code: 'EACCES' });
+    const renameSpill = vi.spyOn(fs, 'rename').mockRejectedValueOnce(commitError);
+
+    try {
+      await expect(bodyWriter.finalize()).rejects.toBe(commitError);
+      await expect(bodyWriter.snapshot()).resolves.toEqual({ encodedSize: 0, available: false, complete: true });
+      expect(bodyWriter.bodyHash).toBeUndefined();
+      await expect(bodyWriter.readRange(0, 5)).resolves.toEqual(Buffer.alloc(0));
+      expect(bodyWriter.observedBytes).toBe(12);
+      expect(bodyWriterFixture.bodyStore.usageBytes).toBe(0);
+      expect(await bodyWriterFixture.spillFiles()).toEqual([]);
+    } finally {
+      renameSpill.mockRestore();
+    }
+  });
+
   it('returns null for an empty body without creating an entry', async () => {
     const writer = bodyWriterFixture.bodyStore.createWriter();
     const result = await writer.finalize();

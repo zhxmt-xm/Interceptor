@@ -17,7 +17,7 @@ import styles from './GrpcMessagePayload.module.css';
 export interface GrpcMessagePayloadProps {
   message: GrpcMessageSummary;
   side: GrpcMessageSide;
-  bodyHash: string;
+  bodyHash: string | undefined;
   contentType: string | undefined;
   exchangeId: string;
 }
@@ -39,7 +39,7 @@ export function GrpcMessagePayload({
 
   const copyPayload = (): void => {
     void readCompleteBody(
-      bodyHash,
+      bodyHash ?? { exchangeId, side },
       message.payloadOffset,
       Math.min(message.payloadLength, BODY_PREVIEW_MAX_BYTES),
     ).then((chunk) =>
@@ -77,6 +77,7 @@ export function GrpcMessagePayload({
         />
       </div>
       <BodyView
+        grpcBody={{ exchangeId, side }}
         body={{
           bodyHash,
           mediaType: json ? 'application/json' : 'application/octet-stream',

@@ -463,6 +463,7 @@ export class ProxyService {
    */
   async prepareCaptureReset(): Promise<string | null> {
     this.exchangeTracker.reset();
+    await this.exchangeTracker.settle();
     await Promise.allSettled(Array.from(this.captureOperations));
     this.webSocketTails.clear();
     this.pendingTunnels.clear();

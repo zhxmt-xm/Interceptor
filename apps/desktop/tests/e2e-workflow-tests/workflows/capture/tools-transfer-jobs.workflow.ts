@@ -287,11 +287,27 @@ test('capture.tools.transfer-jobs queries and cancels real file jobs without exp
     await client.close();
     client = null;
 
-    // 重启与证据：状态仅保留授权，旧Core任务不复活，Model/流量/文件无重放；归档计数、状态和hash。
-    // Restart and evidence: permissions persist but old Core jobs do not return; Model, traffic and files never replay, and artifacts retain counts, states and hashes only.
+    // 运行中退出：不先取消Archive，真实Alt+F4关闭测试窗口并等待文件清理与Core/Worker退出。
+    // Shutdown while running: send real Alt+F4 to the owned window without cancelling the Archive first, then wait for cleanup and exit.
+    await getByAutomationId(page, AUTOMATION_IDS.agent.panel.close).click();
     const modelRequests = openAiCompatibleLab.evidence().length;
     const originRequests = loopbackLab.evidence().length;
-    await closeGeneration(desktopApp, testInfo);
+    await desktopApp.startTrace(testInfo);
+    const shutdownArchiveJobId = await startArchiveFromUi(desktopApp, path.join(directory, 'shutdown.iarchive'));
+    const shutdownProgress = getByAutomationId(page, 'capture.transfer.progress');
+    await page.screenshot({ path: testInfo.outputPath('transfer-shutdown-running.png') });
+    await desktopApp.stopTrace(testInfo);
+    await expect(shutdownProgress).toHaveAttribute('data-transfer-job-state', 'running');
+    const shutdownState = await shutdownProgress.getAttribute('data-transfer-job-state');
+    await desktopApp.closeFromNativeShortcut();
+    await desktopApp.closeGracefully();
+    await desktopApp.writeEvidence(testInfo);
+    expect(desktopApp.rendererPageErrors()).toEqual([]);
+    expect((await readdir(directory)).sort()).toEqual(['completed.jsonl']);
+    expect(createHash('sha256').update(await readFile(completedFile)).digest('hex')).toBe(fileHash);
+
+    // 重启与证据：授权保留，退出时的运行中任务和旧任务不复活，Model/流量/文件无重放。
+    // Restart and evidence: permissions persist, neither running-at-shutdown nor older jobs return, and Model, traffic and files never replay.
     relaunchedApp = await LocalElectronApplicationDriver.launch(testInfo, { userDataDirectory: desktopApp.userDataDirectory, evidencePrefix: 'relaunch' });
     for (const value of [PROMPT, ANSWER]) relaunchedApp.registerSensitiveTextForEvidenceAudit(value);
     await relaunchedApp.waitUntilReady();
@@ -311,9 +327,11 @@ test('capture.tools.transfer-jobs queries and cancels real file jobs without exp
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.chat.new).click();
     await callAgent(relaunchedApp.page, openAiCompatibleLab, 'transfer-restart-discover', 'discover_tools', { capabilityId: 'capture' });
     expect(await callAgent(relaunchedApp.page, openAiCompatibleLab, 'transfer-old-generation', TOOL_NAMES[0], { jobId: completedJobId })).toEqual({ ok: true, value: { job: null } });
+    expect(await callAgent(relaunchedApp.page, openAiCompatibleLab, 'transfer-shutdown-generation', TOOL_NAMES[0], { jobId: shutdownArchiveJobId })).toEqual({ ok: true, value: { job: null } });
     const evidencePath = testInfo.outputPath('transfer-jobs.json');
     await writeFile(evidencePath, JSON.stringify({
       capturedBytes: BODY_BYTES, completedFileHash: fileHash, activeArchivesCanceled: 2,
+      shutdownArchiveState: shutdownState, shutdownOutputRemoved: true, shutdownJobNotReplayed: true,
       getWithoutApproval: true, terminalCancelIdempotent: true, unknownJobNull: true,
       nativeSaveVerified: true, mcpAskAutoVerified: true, otherJobUnchanged: true, temporaryOutputsRemoved: true,
       independentRevocation: true, restartModelRequests: 0, restartOriginRequests: 0, oldGenerationJobNull: true,

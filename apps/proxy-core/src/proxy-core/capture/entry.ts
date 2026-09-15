@@ -10,7 +10,7 @@ import type {
   TransferProgressListener,
   TransferResult,
 } from '../transfer/interfaces';
-import type { ExchangePatch } from './interfaces';
+import type { CaptureBodySide, CaptureBodySnapshot, ExchangePatch } from './interfaces';
 import type {
   CaptureSessionInput,
   CaptureArchiveSnapshot,
@@ -27,6 +27,7 @@ import type {
   WebSocketFrameQuery,
 } from './interfaces';
 import { BodyStore } from './internal/body-store';
+import type { BodyWriter } from './internal/body-writer';
 import { ExchangeStore } from './internal/exchange-store';
 
 /**
@@ -41,6 +42,10 @@ export class CaptureService {
   private readonly exchangeStore = new ExchangeStore();
   /** 当前 Core 代际的内存+spill 正文。 */
   private readonly bodyStore = new BodyStore();
+  /** 非终态Exchange的正文写入器，Final替换不提前移除原文的清理所有权。 */
+  private readonly bodyWritersByExchangeId = new Map<string, Partial<Record<CaptureBodySide, BodyWriter>>>();
+  /** 已接受的Exchange/side读取，清理前等待其释放正文句柄。 */
+  private readonly pendingBodyReads = new Set<Promise<Buffer>>();
   private ready: Promise<void> | null = null;
   /** 可选结构化诊断汇。 */
   private diagnostics: DiagnosticsRecorder | null = null;
@@ -77,6 +82,9 @@ export class CaptureService {
 
   async updateExchange(patch: ExchangePatch): Promise<void> {
     this.exchangeStore.updateExchange(patch);
+    if (patch.state === 'completed' || patch.state === 'aborted' || patch.state === 'failed') {
+      this.bodyWritersByExchangeId.delete(patch.id);
+    }
   }
 
   /** 写入一段临时正文，返回内容寻址结果供 Capture metadata 引用。 */
@@ -85,8 +93,50 @@ export class CaptureService {
   }
 
   /** 创建 push 式增量正文写入器；调用方：Proxy 消费 body-data 事件。 */
-  createBodyWriter() {
-    return this.bodyStore.createWriter();
+  createBodyWriter(exchangeId: string, side: CaptureBodySide): BodyWriter {
+    const bodyWriter = this.bodyStore.createWriter();
+    const bodyWriters = this.bodyWritersByExchangeId.get(exchangeId) ?? {};
+    bodyWriters[side] = bodyWriter;
+    this.bodyWritersByExchangeId.set(exchangeId, bodyWriters);
+    return bodyWriter;
+  }
+
+  /** 返回Final正文或当前writer的可读快照，不生成在途内容hash。 */
+  async getExchangeBodySnapshot(exchangeId: string, side: CaptureBodySide): Promise<CaptureBodySnapshot> {
+    const detail = this.exchangeStore.getExchangeDetail(exchangeId);
+    if (!detail) return { encodedSize: 0, available: false, complete: true };
+    const body = side === 'request' ? detail.requestBody : detail.responseBody;
+    if (body) return { bodyHash: body.bodyHash, encodedSize: body.encodedSize,
+      available: body.bodyHash !== undefined, complete: true };
+    const bodyWriter = this.bodyWritersByExchangeId.get(exchangeId)?.[side];
+    if (bodyWriter) {
+      const snapshot = await bodyWriter.snapshot();
+      const currentDetail = this.exchangeStore.getExchangeDetail(exchangeId);
+      const finalBody = side === 'request' ? currentDetail?.requestBody : currentDetail?.responseBody;
+      if (!currentDetail || finalBody || this.bodyWritersByExchangeId.get(exchangeId)?.[side] !== bodyWriter) {
+        return this.getExchangeBodySnapshot(exchangeId, side);
+      }
+      return { ...snapshot, bodyHash: bodyWriter.bodyHash };
+    }
+    return { encodedSize: 0, available: false,
+      complete: detail.summary.state === 'completed' || detail.summary.state === 'aborted' || detail.summary.state === 'failed' };
+  }
+
+  /** 按Exchange/side读取有限Final或在途正文，Clear后的引用不读取其他记录。 */
+  async readExchangeBodyRange(exchangeId: string, side: CaptureBodySide, offset: number, length: number): Promise<Buffer> {
+    const detail = this.exchangeStore.getExchangeDetail(exchangeId);
+    if (!detail) return Buffer.alloc(0);
+    const body = side === 'request' ? detail.requestBody : detail.responseBody;
+    const bodyWriter = this.bodyWritersByExchangeId.get(exchangeId)?.[side];
+    const reading = body
+      ? body.bodyHash ? this.bodyStore.readRange(body.bodyHash, offset, length) : Promise.resolve(Buffer.alloc(0))
+      : bodyWriter ? bodyWriter.readRange(offset, length) : Promise.resolve(Buffer.alloc(0));
+    this.pendingBodyReads.add(reading);
+    try {
+      return await reading;
+    } finally {
+      this.pendingBodyReads.delete(reading);
+    }
   }
 
   /** 捕获点击时的 Exchange/Body hash 时间切面。 */
@@ -160,12 +210,27 @@ export class CaptureService {
    */
   async cleanup(scope: CleanupScope): Promise<CaptureStatusReport> {
     const result = this.exchangeStore.cleanup(scope);
+    await Promise.allSettled(this.pendingBodyReads);
+    await this.abortBodyWriters([...this.bodyWritersByExchangeId.keys()]
+      .filter((exchangeId) => this.exchangeStore.getExchangeDetail(exchangeId) === null));
     if (scope.kind === 'all' || scope.kind === 'all-except-session') {
       await this.bodyStore.reset();
     } else {
       await this.bodyStore.collectGarbage(result.referencedBlobHashes);
     }
     return this.status();
+  }
+
+  /** 等待已删除Exchange的读取/写入队列后释放半成品，再允许BodyStore清理spill。 */
+  private async abortBodyWriters(exchangeIds: Iterable<string>): Promise<void> {
+    const pending: Promise<void>[] = [];
+    for (const exchangeId of exchangeIds) {
+      const bodyWriters = this.bodyWritersByExchangeId.get(exchangeId);
+      this.bodyWritersByExchangeId.delete(exchangeId);
+      if (bodyWriters?.request) pending.push(bodyWriters.request.abort());
+      if (bodyWriters?.response) pending.push(bodyWriters.response.abort());
+    }
+    await Promise.all(pending);
   }
 
   /** 回收未被任何保留记录引用的临时 Body，不删除 Capture metadata。 */
@@ -234,6 +299,8 @@ export class CaptureService {
   /** 释放全部临时 Capture/Body。 */
   async dispose(): Promise<void> {
     this.exchangeStore.clear();
+    await Promise.allSettled(this.pendingBodyReads);
+    await this.abortBodyWriters(this.bodyWritersByExchangeId.keys());
     await this.bodyStore.dispose();
   }
 }

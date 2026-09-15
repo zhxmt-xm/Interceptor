@@ -303,6 +303,8 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.websocketBreakpointDisable),
   queryGrpcMessages: (request) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.grpcMessages, request),
+  readGrpcBody: (request) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.grpcReadRange, request),
   readBody: (bodyId, offset, length, options) =>
     ipcRenderer.invoke(
       DESKTOP_IPC_CHANNELS.bodyReadRange,

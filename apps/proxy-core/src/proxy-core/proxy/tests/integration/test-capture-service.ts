@@ -23,6 +23,8 @@ class RecordingBodyWriter extends BodyWriter {
     // 全部行为都被覆盖，父类的 spill 状态不参与，构造参数只为满足签名。
     super('', Number.MAX_SAFE_INTEGER, () => {
       throw new Error('unused');
+    }, () => {
+      throw new Error('unused');
     });
   }
 

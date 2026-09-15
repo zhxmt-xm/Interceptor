@@ -256,6 +256,34 @@ stateDiagram-v2
 - 前次场景矩阵证据`interceptor-capture-39-green-20260909-161253.zip`继续保留，SHA256 `959F4804CCCB10BFFE42A178D6ED072600D0C3DC6351A916C30D5D82882718CB`；该次HTTP额外owner失败不算最终Green，以上述最新结果为准。
 - 操作与证据契约见[Capture场景规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md)。本统计只覆盖39个现有场景，不把它当所有协议边界已验证。
 
+#### HTTP流式进行中验证
+
+- 2026-09-14沿用`capture.scenarios.http`，通过workflow拥有的真实SSE origin/client控制响应时机；响应头发出前Capture已有唯一请求行，收到`text/event-stream`响应头后同一行显示200，两段事件分别到达时Size按实际正文累计字节增长。
+- 两次进行中断言均要求origin尚未结束响应、client尚未收到完整响应；通过真实Headers页核对MIME，不以流结束后的正文代替进行中证据。正常结束后读取完整Text正文，并保留同一Exchange身份。
+- 正常结束首轮Green：HTTP workflow1/1（11.4s），36/72/108 B与同一行身份均符合预期；Main/Core `23796/33716`正常销毁及宿主guard通过，Desktop typecheck通过。TEMP `interceptor-streaming-20260914-e2e-default`保存JSON、截图、trace和metadata；此前Raw及不存在的`bodyMode.text`选择器失败不算产品Red，两代`34340/35384`、`47124/20812`均正常销毁。
+- SSE三种结束方式Green：同一HTTP workflow1/1（27.6s），正常结束、客户端取消与origin reset分别保存JSON；取消/reset均确认client响应不完整、origin关闭、Capture保留72 B及同一行且Time不再停留在进行中占位。状态码200仍是已收到的真实响应头，不能要求改成伪造错误码。Main/Core `43696/44828`正常销毁及宿主guard通过，TEMP `interceptor-streaming-20260914-e2e-exits`保留证据。
+- 6 MiB上传三种场景Green：未知长度chunked、Content-Length和Expect: 100-continue均在client结束上传前让origin接收2/4 MiB，Capture同一行显示2/4 MB；最终6 MiB正文SHA-256一致，产品显示200及真实`upload-ok`响应。公共Keyword输入定位自产行，不依赖虚拟列表恰好把目标行挂载。HTTP1/1（15.0s）、Desktop类型通过，Main/Core `26896/44072`正常销毁及宿主guard通过；TEMP `interceptor-streaming-20260914-e2e-uploads`保留三组上传和三组SSE证据。
+- 三个6 MiB长下载Green：正常结束、跨Pause/Resume、首段后Clear分别验证。正常/暂停场景在连接未结束时显示2/4 MB，最终保留同一行与6 MB；暂停不阻断原流量或捕获。Clear后余下4 MiB仍完整转发，旧行不恢复，新请求可正常录制；client完整正文SHA-256一致。九个新增场景与原HTTP场景同跑1/1（17.4s），Main/Core `33400/12300`正常销毁及宿主guard通过；Desktop类型通过，TEMP `interceptor-streaming-20260914-e2e-downloads`保存逐场景JSON/截图/trace。
+- 本轮不改变产品UI、命令、数据格式或第三方。现有下载/SSE跨Pause/Resume集成基线4/4；该步骤归Handover长期item，不代表Rule命中、无限chunked、H2大Range或gRPC streaming已验收。
+
+#### H2 Range与多stream集成
+
+- 复用现有`proxy/tests/integration/h2.test.ts`和真实ProxyService/CaptureService，不启动Electron或修改系统代理。同一H2客户端连接同时请求两个6 MiB Range，响应规则仅追加header；源站尚未结束时，两流均收到2 MiB并在Capture显示独立的206及进行中字节，Range/Content-Range/Content-Length保持，最终逐流SHA256一致。
+- 正常完成后两条正文均保存且末尾range可读；Clear在两流首段后推进正式capture generation并清空记录，剩余正文仍完整转发，旧行不恢复，同连接新请求仍可录制。单流`NGHTTP2_CANCEL`只取消首条，源站对应stream关闭，Capture保留2 MiB及`aborted`，另一条完整保存6 MiB。
+- 2026-09-14同组9/9、Core typecheck通过，未修改转发实现。TEMP `interceptor-h2-ranges-20260914-{baseline,final,types-final}.log`保存结果；首次取消检查误把关闭后的`writableEnded`当作原文完整性、helper曾丢失数字status类型，均为测试缺陷且已修复，不算产品Red。2026-09-15既有H2 Headers/trailer/正文真实workflow1/1（14.2s）、Main/Core `9532/45140`正常退出及CA/宿主恢复；不将普通H2流程当作Range/多stream的真实UI覆盖，压力容量及更广帧矩阵仍未验证。
+
+#### gRPC streaming目标与当前差异
+
+- 当前Capture按Exchange/side提供正文快照与有限range读取，复用BodyWriter的内存/spill及串行队列，不额外缓存完整stream或伪造在途hash。Final正文优先；等待writer快照期间绑定Final或删除Exchange时重新读取当前状态，显式空Final也不得退回原文。原writer继续保留清理所有权。
+- `grpc.messages`通过`GrpcService.query()`只以5-byte header跳读，独立返回`bodyAvailable`、`bodyComplete`和可读`bodySize`。未结束的半个header/payload等待补齐，结束后才报告真实malformed/truncated；不把HTTP200当gRPC成功或提前制造trailers。Renderer经既有Preload入口每350ms沿游标续读，按`grpc.read-range`预览/Copy已有完整消息，切换方向后忽略旧结果。
+- 游标offset可等于当前`bodySize`，在途保留该游标，结束后停止续读；超过可读长度抛`InvalidGrpcCursorError`，Core映射为不可重试的`invalid-message`。正文提交失败时BodyWriter快照结束且不可读，保留observed计数并抛出原错误；ExchangeTracker将请求提交、响应提交和终态写入分开排入现有队列，逐次记录失败而不跳过成功正文或实际终态。
+- `ExchangeTracker`以待完成写入集合承担排空，不因终态记录移出活动Map或reset而漏等；`settle()`只等待调用时已接受的操作。`ProxyService.stop()`及`prepareCaptureReset()`都先排空Exchange存储，再让后续关闭/Clear清理正文；正常Recording暂停及网络转发保持。
+- 2026-09-14续作取得越界游标2 Red、Final绑定快照2 Red、spill提交状态1 Red、Exchange终态收尾3 Red、终态排空2 Red及HTTP Clear排空1 Red；最终Capture/gRPC/Proxy与Core命令21文件198/198、Core typecheck通过，包含新增H2三种场景。收尾首次修复后仅剩测试误用内部`completedAt`，改为公开summary的`durationMs`后通过，原失败日志保留而不计新的产品Red。TEMP前缀`interceptor-grpc-cursor-20260914-*`、`interceptor-capture-snapshot-20260914-*`、`interceptor-body-commit-state-20260914-*`、`interceptor-exchange-finalization-20260914-*`、`interceptor-exchange-drain-20260914-*`及`interceptor-http-clear-drain-20260914-*`保存Red/Green；当前汇总为`interceptor-streaming-lifecycle-20260914-clear-{regression,types}.log`。本次修复仍缺暂停后的真实E2E与产物复验。
+- 2026-09-14有效前置Red：GrpcService新增3例失败、原3例通过；真实H2在完整31 B首条envelope到达且client/origin均未结束时，Response消息预期1、实际0。TEMP `interceptor-grpc-streaming-20260914-e2e-red-valid`保存JSON、截图、trace和metadata，Main/Core `10432/37368`正常销毁，CA/Root与宿主guard通过。之前`-e2e-red`仅被背景TLS提示挡点击，保留为环境干扰，不计目标Red。
+- 续作前的最终HTTP/gRPC真实workflow2/2（2.6m）保留在TEMP `interceptor-capture-streaming-20260914-final`及同名日志；gRPC Main/Core `47348/39892`、HTTP `13232/7896`均正常销毁。包含server/bidi streaming、半header/payload、消息Copy、Pause/Resume、Clear和长上传取消，原场景与UTF-8边界同跑；不外推为H2 Range、多stream或压力矩阵通过，也不替代本次修复后的验收。
+- 2026-09-15当前代码最终复验：HTTP1/1（33.9s，`32564/47456`）、gRPC1/1（2.5m，`34820/45124`），覆盖上述流式、双向、Pause/Clear、完整Copy、半消息及原场景/UTF-8；两代正常退出、gRPC本轮CA/Root和宿主guard恢复通过。与H2及四条文件任务合计七条逐条通过、十一代正常退出，TEMP `interceptor-streaming-acceptance-20260915-evidence.json`列明各自目录和trace，不称单次合跑。
+- gRPC首轮在正文检查完成后的CA清理阶段触及180秒总时限，`27752/46236`正常退出且保留profile的CA材料已删除；单步断言无超时。仅该workflow改300秒总预算并保留全部检查，旧失败为`interceptor-streaming-acceptance-20260915-grpc`，最终为同前缀`-grpc-green`。当前Desktop类型通过；已验收package/audit/smoke由37份产品文件hash及Core/Worker随包字节一致证明适用，依据同前缀`-artifact-applicability.json`；历史前置缺口不补造。
+
 #### 正文修复
 
 - BodyViewer按模式给CodeViewer独立身份，Code自动格式化不能污染Raw；CodeViewer仅调用`editor.dispose()`，不提前销毁仍绑定的隐式模型。正文/格式化/生命周期owner22/22 Green，真实Body两条workflow16场景通过且Renderer无page error。

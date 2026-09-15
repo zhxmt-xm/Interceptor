@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import type {
   CaptureBodyRef,
+  GrpcBodyReadRequest,
   TransferJobSnapshot,
 } from '../../../../shared/desktop-api';
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
@@ -21,6 +22,7 @@ import styles from './BodyView.module.css';
 
 interface BodyViewProps {
   body: CaptureBodyRef;
+  grpcBody?: Pick<GrpcBodyReadRequest, 'exchangeId' | 'side'>;
   /** 全屏弹窗标题；内联消息体不给，也就没有全屏入口。 */
   fullscreenTitle?: string;
   compact?: boolean;
@@ -39,6 +41,7 @@ interface LoadedBody {
  */
 export function BodyView({
   body,
+  grpcBody,
   fullscreenTitle,
   compact = false,
   offset = 0,
@@ -63,12 +66,12 @@ export function BodyView({
   useEffect(() => {
     setLoaded(null);
     setError(null);
-    if (skipRead || !body.bodyHash || body.encodedSize === 0 || !window.interceptor?.readBody) {
+    if (skipRead || (!body.bodyHash && !grpcBody) || body.encodedSize === 0 || !window.interceptor) {
       return;
     }
     let active = true;
     void readCompleteBody(
-      body.bodyHash,
+      grpcBody ?? body.bodyHash!,
       offset,
       preview.length,
       preview.decode ? { decode: true, encoding: body.contentEncoding } : undefined,
@@ -90,6 +93,8 @@ export function BodyView({
     body.bodyHash,
     body.encodedSize,
     body.contentEncoding,
+    grpcBody?.exchangeId,
+    grpcBody?.side,
     skipRead,
     offset,
     preview.decode,
@@ -162,7 +167,7 @@ export function BodyView({
     return notes;
   };
 
-  if (!body.bodyHash || body.encodedSize === 0) {
+  if ((!body.bodyHash && !grpcBody) || body.encodedSize === 0) {
     return <div className={styles.empty}>{t('capture.noBody')}</div>;
   }
 
@@ -199,7 +204,7 @@ export function BodyView({
       previewTruncated={preview.decode ? loaded.decodeStatus === 'limited' : preview.limited}
       fullscreenTitle={fullscreenTitle}
       notes={bodyNotes()}
-      onSave={saveBody}
+      onSave={body.bodyHash ? saveBody : undefined}
       saving={saveJob?.state === 'running'}
       compact={compact}
       automationId={AUTOMATION_IDS.capture.inspector.bodyView}

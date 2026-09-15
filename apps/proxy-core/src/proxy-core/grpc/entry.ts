@@ -1,4 +1,5 @@
 import type { CaptureService } from '../capture/entry';
+import { InvalidGrpcCursorError } from './internal/errors';
 import type {
   GrpcMessagePage,
   GrpcMessageQuery,
@@ -6,7 +7,7 @@ import type {
 } from './interfaces';
 import * as GrpcUtils from './utils';
 
-/** 从既有 HTTP body Blob 跳读原生 gRPC envelope，不读取 payload 字节。 */
+/** 从当前HTTP正文跳读原生gRPC envelope，不为查询读取payload字节。 */
 export class GrpcService {
   /** 提供 Exchange detail 与 Blob range 的抓包数据。 */
   private readonly captureService: CaptureService;
@@ -20,38 +21,51 @@ export class GrpcService {
   async query(query: GrpcMessageQuery): Promise<GrpcMessagePage> {
     const detail = await this.captureService.getExchangeDetail(query.exchangeId);
     const source = GrpcUtils.selectSource(detail, query.side);
-    if (!source.recognized || !source.body?.bodyHash) {
+    const snapshot = await this.captureService.getExchangeBodySnapshot(query.exchangeId, query.side);
+    if (!source.recognized || !snapshot.available) {
       return {
         recognized: source.recognized,
         side: query.side,
         contentType: source.contentType,
         encoding: source.encoding,
-        bodySize: source.body?.encodedSize ?? 0,
+        bodySize: snapshot.encodedSize,
+        bodyAvailable: snapshot.available,
+        bodyComplete: snapshot.complete,
         items: [],
         hasMore: false,
       };
     }
 
     const cursor = GrpcUtils.decodeCursor(query.cursor, query.side);
-    const bodySize = source.body.encodedSize;
+    const bodySize = snapshot.encodedSize;
+    if (cursor.offset > bodySize) {
+      throw new InvalidGrpcCursorError();
+    }
     let offset = cursor.offset;
     let index = cursor.index;
     const items: GrpcMessageSummary[] = [];
     let malformedOffset: number | undefined;
+    let pendingEnvelope = false;
     while (items.length < query.limit && offset < bodySize) {
-      const headerBytes = await this.captureService.readBodyRange(
-        source.body.bodyHash,
+      const headerBytes = await this.captureService.readExchangeBodyRange(
+        query.exchangeId,
+        query.side,
         offset,
         Math.min(5, bodySize - offset),
       );
       const header = GrpcUtils.parseGrpcEnvelopeHeader(headerBytes);
       if (!header.ok) {
-        malformedOffset = offset;
+        if (!snapshot.complete && header.reason === 'incomplete') pendingEnvelope = true;
+        else malformedOffset = offset;
         break;
       }
       const payloadOffset = offset + 5;
       const available = bodySize - payloadOffset;
       const truncated = header.payloadLength > available;
+      if (truncated && !snapshot.complete) {
+        pendingEnvelope = true;
+        break;
+      }
       items.push({
         index,
         envelopeOffset: offset,
@@ -67,16 +81,18 @@ export class GrpcService {
       }
     }
 
-    const hasMore = malformedOffset === undefined && offset < bodySize;
+    const hasMore = !pendingEnvelope && malformedOffset === undefined && offset < bodySize;
     return {
       recognized: true,
       side: query.side,
       contentType: source.contentType,
       encoding: source.encoding,
-      bodyHash: source.body.bodyHash,
+      bodyHash: snapshot.bodyHash,
       bodySize,
+      bodyAvailable: snapshot.available,
+      bodyComplete: snapshot.complete,
       items,
-      nextCursor: hasMore
+      nextCursor: hasMore || (!snapshot.complete && malformedOffset === undefined)
         ? GrpcUtils.encodeCursor(query.side, offset, index)
         : undefined,
       hasMore,
