@@ -22,7 +22,7 @@
 ### 开工与权限
 
 - 新会话和子代理在规划或修改代码前，必须先阅读 [architecture/HANDOVER.md](architecture/HANDOVER.md)。
-- 只在当前仓库开发和验证，不创建或使用其他 worktree，包括临时 detached worktree。
+- 不创建或使用其他 worktree，包括临时 detached worktree。
 	- 不另建 clone 或复制仓库来绕过上述限制。
 - 保留用户和其他会话的修改，不回滚、覆盖或擅自清理工作区。
 - 改 `patches/` 或 `node_modules` 中的第三方行为前，先说明原因、替代方案和影响，取得用户明确批准。

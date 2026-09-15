@@ -556,6 +556,7 @@ Token不经过Preload，Main只把通用Streamable HTTP配置写入系统剪贴�
 - [x] Browser CORS：`OPTIONS /mcp`返回204 preflight，带Origin的实际请求仍按Bearer认证；Main不检查Origin或Host。
 - [x] token使用`crypto.timingSafeEqual`比较，经safeStorage加密持久化，不进入Renderer、日志、Diagnostics或工作区。
 - [ ] **blocked · VS Code/Copilot互操作**：2026-09-01真实VS Code `1.135.0`（commit `08d4889f9e`）固定`LATEST_PROTOCOL_VERSION="2025-11-25"`，而产品已决定只支持官方SDK v2的`2026-07-28`并保持`legacy: 'reject'`。Host首个HTTP请求返回400并回退legacy SSE后收到405，未进入`tools/list`。不增加legacy兼容；等待VS Code支持当前协议后用同一Host矩阵复验。
+    - 2026-09-13只读核对当前VS Code `1.137.0`的安装包和workbench bundle，基础MCP协议仍为`2025-11-25`。另一`2026-01-26`常量用于`ui/open-link`扩展，不能视为基础协议升级；未改配置或凭据，未重复Host canary，仍为blocked。
 - [ ] VS Code 与 Claude Desktop 同时接入，看到的是**同一份**抓包数据。
 - [x] app重启后endpoint与token保持有效，同一配置无需修改即可继续工作；app未运行或MCP未开启时只表现为连接失败。
 - [x] 官方Client固定当前`2026-07-28`协议连接，旧协议请求被拒绝，普通call返回JSON。
