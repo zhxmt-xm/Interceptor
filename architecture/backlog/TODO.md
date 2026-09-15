@@ -40,7 +40,7 @@
 - [x] Paused 时不再因已注册 completed listener 隐式缓存所有正文。
 - [x] 待落盘字节超过`BODY_WRITER_PENDING_LIMIT_BYTES`时降级为只计数，约束单writer队列；不构成全Core总内存上限。
 - [x] 缩小fixture阈值后覆盖四writer受阻spill的上限、超限不再复制、独立writer完成及finalize/abort清理；不代表全Core内存峰值或生产并发规模通过。见[队列边界证据](../features/capture.md#待写上限验证)。
-- [ ] 为并发大媒体、并发上传和磁盘慢写建立内存峰值测试，并在 UI 明示降级状态。
+- [ ] 在 UI 明示正文捕获降级状态。
 
 ### 3. Response Rule 破坏流式响应语义（已解决）
 
@@ -112,7 +112,7 @@
 - [x] 已定义为“请求开始时固定 capture generation”：`request-initiated` 时判定 `recording` 并固定 generation，后续事件沿用。
 - [x] 录制中开始、暂停后才完成的长请求继续完成记录；暂停期间开始的请求始终不建记录。
 - [x] Stop 仍只暂停记录，不停止转发或系统代理。
-- [ ] 继续补gRPC streaming及压力场景跨Pause/Resume验证；2026-09-09已补upload/download/SSE六个本地时序用例，修复WebSocket恢复后孤立正文，Proxy122/122与真实Pause/Resume、队列隔离2/2 Green。证据及实际范围见[Capture录制验证](../features/capture.md#73-pauseresume验证证据)，不将未跑的gRPC一并标记完成。
+- [ ] 继续补gRPC streaming跨Pause/Resume验证；2026-09-09已补upload/download/SSE六个本地时序用例，修复WebSocket恢复后孤立正文，Proxy122/122与真实Pause/Resume、队列隔离2/2 Green。证据及实际范围见[Capture录制验证](../features/capture.md#73-pauseresume验证证据)，不将未跑的gRPC一并标记完成。
 
 ### 11. Clear 与迟到事件 / 文件任务竞态（部分解决）
 
@@ -319,7 +319,7 @@
 
 - [x] 规则命中时的慢上传：origin 在第二块正文发出前收到 headers（已有自动回归）。
 - [x] 规则命中时的下载：响应头先于源站正文结束到达客户端（已有自动回归）。
-- [ ] request matcher 不命中、request-only、response-only、request+response 各自验证首字节、总时长、内存峰值和 wire bytes。
+- [ ] request matcher 不命中、request-only、response-only、request+response 各自验证首字节、总时长和 wire bytes。
 - [ ] 早期 401/413、100 Continue、chunked upload、客户端 abort、origin reset。
 - [ ] SSE 首字节与持续事件、无限 chunked response、Range video cancel、H2 多 stream、WebSocket、gRPC unary/server-stream/bidi。
 
@@ -328,7 +328,7 @@
 - [x] initiated row 立即出现；bytes 增量更新；completed/abort 状态准确（已有自动回归）。
 - [x] Clear 瞬间迟到事件被丢弃（已有自动回归）。
 - [ ] Pause 前开始/后完成、Pause 中开始/Resume 后完成。
-- [ ] Core restart、Renderer reload、event ACK 阻塞、10万+ rows、大量小 body、并发 spill、磁盘满。
+- [ ] Core restart、Renderer reload。
 
 ### 38. Rules 行为
 
@@ -362,4 +362,4 @@
 3. [ ] **Stage C' / 进行中状态展示**：Renderer 明示 pending / streaming 与已接收字节，区分 persist failed、decode failed、preview limited。
 4. [ ] **Stage D / Body & files**：文本/二进制分级预览、charset、Range/encoded语义、原子保存、正文GC引用生命周期、HAR流式化；Cancel提交点与Clear双向互斥已实现。
 5. [ ] **Stage E / Network compatibility**：upstream proxy/PAC chaining、异常恢复、per-host passthrough、pinning/mTLS/QUIC 诊断。
-6. [ ] **Stage F / Capacity & release gates**：无界增长观测、SSE/大媒体内存峰值、真实 workflow、压力/故障注入、Windows/macOS packaged 发布门禁。
+6. [ ] **Stage F / Capacity & release gates**：无界增长观测、真实 workflow、异常恢复、Windows/macOS packaged 发布门禁。
