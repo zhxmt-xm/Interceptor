@@ -887,6 +887,7 @@ export const esCatalog = {
   'settings.unavailable': 'No disponible',
   'settings.capturedBodyData': 'Datos de cuerpos capturados',
   'settings.capturedBodyDataHint': 'Contenido capturado en memoria y archivos temporales.',
+  'settings.responseBodies': 'Cuerpos de respuesta',
   'settings.contents': 'Contenido',
   'settings.sessions': 'Sesiones',
   'settings.exchanges': 'Intercambios',

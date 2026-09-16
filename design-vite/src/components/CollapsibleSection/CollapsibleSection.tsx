@@ -88,7 +88,7 @@ export function CollapsibleSection({
       }}
       styles={{
         header: {
-          minHeight: 24,
+          minHeight: 36,
           alignItems: 'center',
           gap: 8,
           marginBottom: open ? 12 : 0,

@@ -881,6 +881,7 @@ export const deCatalog = {
   'settings.unavailable': 'Nicht verfügbar',
   'settings.capturedBodyData': 'Erfasste Body-Daten',
   'settings.capturedBodyDataHint': 'Erfasste Inhalte im Arbeitsspeicher und in temporären Dateien.',
+  'settings.responseBodies': 'Antwort-Bodys',
   'settings.contents': 'Inhalt',
   'settings.sessions': 'Sitzungen',
   'settings.exchanges': 'Austauschvorgänge',

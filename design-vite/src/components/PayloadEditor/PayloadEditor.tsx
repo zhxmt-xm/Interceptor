@@ -63,7 +63,7 @@ export function PayloadEditor({
   const [originalOpen, setOriginalOpen] = useState(true);
   const [replacementOpen, setReplacementOpen] = useState(true);
   const [replacementText, setReplacementText] = useState(replacementPayload);
-  const textReady = replacementMode === 'text' && replacementText.trim().length > 0;
+  const textReady = replacementMode === 'text' && replacementText.length > 0;
   const usingFile = replacementMode === 'file' && file?.ready === true;
   const replacementWarning = (replacementMode === 'text' && !textReady)
     || (replacementMode === 'file' && !usingFile);

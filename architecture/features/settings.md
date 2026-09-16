@@ -563,7 +563,7 @@ macOS 尚未接入上游检测：快照按网络服务分开存，多服务（Wi
 
 覆盖范围限制：Windows 只接管 WinINet，自带网络栈、WinHTTP、Java、curl、容器、WSL 可能不走 Capture。`<local>` bypass 会让 localhost 绕过。
 
-HTTP Basic的`Proxy-Authorization`已按§3.4通过本地集成验证；公司SSO、真实认证环境与用户凭据配置流程仍未验证。`proxyUrl`支持`http://user:pass@host:port`形式，但WinINet不保存凭据，产品凭据入口及安全保存方式仍待设计，不能把Core支持userinfo视为该流程已实现。
+上游配置自动沿用系统原有代理或PAC；现有HTTP Basic转发能力及本地验证范围见§3.4。产品没有独立的代理账号密码设置，WinINet快照也不提供凭据。
 
 ### 3.7 Proxy 与 MITM 跨进程恢复契约
 

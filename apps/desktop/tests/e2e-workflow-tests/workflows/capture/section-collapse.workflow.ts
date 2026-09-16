@@ -38,6 +38,14 @@ test('capture.inspector.section-collapse keeps sections independent and accessib
   await expect(general).toHaveAttribute('aria-expanded', 'true');
   await expect(responseHeaders).toHaveAttribute('aria-expanded', 'true');
 
+  // 标题：公共最小高度一致，保留父行flex居中和内容自然增高。
+  // Headings: share a minimum height while preserving flex alignment and natural content growth.
+  await page.screenshot({ path: testInfo.outputPath('section-header-height.png') });
+  for (const header of [general, responseHeaders]) {
+    await expect(header).toHaveCSS('min-height', '36px');
+    await expect(header).toHaveCSS('align-items', 'center');
+  }
+
   const generalBodyId = await general.getAttribute('aria-controls');
   const responseHeadersBodyId = await responseHeaders.getAttribute('aria-controls');
   expect(generalBodyId).toBeTruthy();
@@ -59,6 +67,8 @@ test('capture.inspector.section-collapse keeps sections independent and accessib
   await expect(responseHeaders).toHaveAttribute('aria-expanded', 'false');
   await expect(responseHeadersBody).toHaveJSProperty('hidden', true);
   await expect(general).toHaveAttribute('aria-expanded', 'false');
+  await expect(general).toHaveCSS('min-height', '36px');
+  await expect(responseHeaders).toHaveCSS('min-height', '36px');
 
   await general.click();
   await expect(general).toHaveAttribute('aria-expanded', 'true');

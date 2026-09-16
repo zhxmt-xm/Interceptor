@@ -94,6 +94,12 @@ interface DiagnosticsRecorder {
 
 `CoreDiagnostics` 用 `AsyncLocalStorage` 维护当前 Trace 上下文，命令执行期间的 Action 自动归属该 Trace，形成可展开的时间线。
 
+### H2事件采集范围
+
+- 后续H2协议事件复用常规Diagnostics列表、已有筛选及记录详情，不新增独立H2页面或另一套事件表格。采集到的方向、session、stream和协议字段放入真实记录属性；未采集的字段不展示为0或伪造事件。
+- `ProxyService`当前只有HTTP增量、trailer、abort及TLS/client-error等事件，尚未取得完整的SETTINGS、RST_STREAM和GOAWAY帧字段。测试源站的`onOriginStream`不是生产采集入口；涉及Mockttp/patch的改动继续按用户要求暂缓，不订阅会缓冲完整正文的completed事件作为替代。
+- 需要取得真实事件来源和可靠的请求关联后，再验证普通Diagnostics的查询、详情与导出。NO_ERROR不等于全部stream成功，CANCEL也不能自动归因为用户操作；当前不宣称这项采集已实现。
+
 ## 5. 查询流程
 
 ```mermaid

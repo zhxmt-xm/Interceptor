@@ -887,6 +887,7 @@ export const ptBRCatalog = {
   'settings.unavailable': 'Indisponível',
   'settings.capturedBodyData': 'Dados dos corpos capturados',
   'settings.capturedBodyDataHint': 'Conteúdo capturado na memória e em arquivos temporários.',
+  'settings.responseBodies': 'Corpos de resposta',
   'settings.contents': 'Conteúdo',
   'settings.sessions': 'Sessões',
   'settings.exchanges': 'Trocas',

@@ -896,6 +896,7 @@ export const plCatalog = {
   'settings.unavailable': 'Niedostępne',
   'settings.capturedBodyData': 'Dane przechwyconych treści',
   'settings.capturedBodyDataHint': 'Przechwycona zawartość w pamięci i plikach tymczasowych.',
+  'settings.responseBodies': 'Treści odpowiedzi',
   'settings.contents': 'Zawartość',
   'settings.sessions': 'Sesje',
   'settings.exchanges': 'Wymiany',

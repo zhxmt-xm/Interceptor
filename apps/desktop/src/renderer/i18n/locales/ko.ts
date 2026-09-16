@@ -887,6 +887,7 @@ export const koCatalog = {
   'settings.unavailable': '사용 불가',
   'settings.capturedBodyData': '캡처 본문 데이터',
   'settings.capturedBodyDataHint': '메모리와 임시 파일에 보관된 캡처 내용입니다.',
+  'settings.responseBodies': '응답 본문',
   'settings.contents': '내용',
   'settings.sessions': '세션',
   'settings.exchanges': '교환',

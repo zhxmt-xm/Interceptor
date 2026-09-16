@@ -881,6 +881,7 @@ export const zhTWCatalog = {
   'settings.unavailable': '無法使用',
   'settings.capturedBodyData': '擷取本文資料',
   'settings.capturedBodyDataHint': '儲存在記憶體與暫存檔案中的擷取本文。',
+  'settings.responseBodies': '回應本文',
   'settings.contents': '內容',
   'settings.sessions': '工作階段',
   'settings.exchanges': '交換記錄',

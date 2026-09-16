@@ -881,6 +881,7 @@ export const nlCatalog = {
   'settings.unavailable': 'Niet beschikbaar',
   'settings.capturedBodyData': 'Vastgelegde bodygegevens',
   'settings.capturedBodyDataHint': 'Vastgelegde inhoud in het geheugen en tijdelijke bestanden.',
+  'settings.responseBodies': 'Antwoordbodies',
   'settings.contents': 'Inhoud',
   'settings.sessions': 'Sessies',
   'settings.exchanges': 'Uitwisselingen',

@@ -887,6 +887,7 @@ export const trCatalog = {
   'settings.unavailable': 'Kullanılamıyor',
   'settings.capturedBodyData': 'Yakalanan gövde verileri',
   'settings.capturedBodyDataHint': 'Bellekte ve geçici dosyalarda tutulan yakalanmış içerik.',
+  'settings.responseBodies': 'Yanıt gövdeleri',
   'settings.contents': 'İçerik',
   'settings.sessions': 'Oturumlar',
   'settings.exchanges': 'Alışverişler',

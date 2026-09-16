@@ -117,7 +117,7 @@ Body replacement使用[Rules Body effect](rules.md#73-body-effect-已实现)的�
 
 File模式未选文件时按现有设计显示112px最小高度的居中容器和32px高的Upload按钮，按钮不横向拉满；文字11.5px、`--text-2`。未选文件保留带警告图标的Using original状态，分组折叠图标为13px，不撑高标题。选中文件仍使用既有预览卡，不改Open Dialog、正文或转发行为。该样式差异由真实文件替换流程和Request/Response明暗parity验证。
 
-断点面板局部使用设计同样的normal行高；Header行内部间距6px，行组与Add header之间8px，页脚三个按钮均使用9px横向内边距。上述还原不改变空Text语义：当前`replacesBody()`在原文已知时允许空字符串作为显式替换，设计的Using original标签尚未表达此区别；该语义差异需另行确认，不为消除parity missing改业务或基准。
+断点面板局部使用设计同样的normal行高；Header行内部间距6px，行组与Add header之间8px，页脚三个按钮均使用9px横向内边距。上述还原不改变[空Text替换语义](#空text替换语义)：`replacesBody()`依据断点快照的`bodyAvailable`和输入内容判断，不依据Inspector是否显示了原文。普通HTTP空Text继续`Using original`，不为消除历史parity missing改业务或新增标签。
 
 2026-09-10用户确认并完成验收的Header effect布局：保留现有输入框，name/value两列在所有行保持等宽；`Rule set`/`Rule appended`位于对应value输入框下方2px，右边缘对齐，字号9px、行高12px，无标签边框或底色。普通行30px、行间距6px不变，只有带effect的行增加14px。字段、effect语义、增删和放行命令不变；普通Inspector的Header marker和WebSocket握手设计不随本次改变，证据见[Header effect布局](#74-header-effect下置布局)。
 
@@ -347,6 +347,12 @@ pending registry不设隐藏上限。每次命中都由`suspend`创建等待项�
 - WebSocket 单 frame 仍会整体进入 snapshot；超大帧的预览与内存边界尚未定义。
 - Binary 未编辑保真与 hex **编辑后**的字节还原均已有真实 socket 回归。
 
+### 空Text替换语义
+
+- UI标签与`buildEdit()`都由`replacesBody(draft)`决定。Off始终不替换；Text仅在`draft.bodyAvailable`为true或输入严格非空时替换，空格也是正文，不能trim后当作空输入。
+- `bodyAvailable`来自断点快照，并不随Inspector的Capture正文预览加载而改变。普通HTTP头部断点为false，因此空Text显示`Using original`且编辑参数不带body；不能因为旁边显示了Original body，就推断空Text会清空正文。
+- 快照已有正文时（如WebSocket消息或前序规则已经提供body），Text清空会发送`body: ''`，当前标签为`Using text`。这与HTTP快照无正文时的空输入是两种情况，不新增`Empty body`标签或改变产品转发逻辑。
+
 ### 7.1 逻辑队列、连续调试与批量命令（已实现）
 
 本阶段完整替换了单队列选择、单草稿与 timeout 契约，没有保留旧字段、兼容命令或迁移路径。
@@ -450,9 +456,9 @@ MCP无timeout调用先Red于未发出Core命令，删除工具schema、解析和
 
 ### 7.3 标题与页脚还原
 
-- 标题、Header行组与页脚排版的本项验收通过。2026-09-09曾暂停E2E，随后用户恢复授权；2026-09-10真实Save/Open文件替换Green，设计字体恢复后相关22视图复核通过。空Text标签语义单列待确认，不作为本项排版变更，也不把本次结果写成整仓parity全绿。
+- 标题、Header行组与页脚排版的本项验收通过。2026-09-09曾暂停E2E，随后用户恢复授权；2026-09-10真实Save/Open文件替换Green，设计字体恢复后相关22视图复核通过。当时空Text标签单列待确认；2026-09-16核对后的[现有语义](#空text替换语义)保持产品行为，撤下新增标签提案，不把历史结果改写为整仓parity全绿。
 - 产品只改`BreakpointInspector`排版：面板使用局部normal行高；Header行内部6px gap，行组与Add header之间仍为8px；移除主按钮额外横向内边距，页脚三个按钮统一9px，Drop使用设计已有的CircleSlash。Header字段、文件选择、解决命令与Core数据面均不变。
-- 暂停前22个HTTP断点视图240 matched、0 flagged，最大几何差0.8px，全部22视图有像素比较；2个missing均为response Text的Using original标签，不是Replacement textarea缺失。设计和产品的textarea均为420x94px；产品原文已知时允许空Text替换，设计未区分这一语义，另行确认，不通过修改产品或配对标签掩盖。
+- 暂停前22个HTTP断点视图240 matched、0 flagged，最大几何差0.8px，全部22视图有像素比较；2个missing均为response Text的Using original标签，不是Replacement textarea缺失。设计和产品的textarea均为420x94px。当时将判断条件概括为“原文已知”不准确，实际依据是断点快照中的`bodyAvailable`；Inspector原文显示不改变该字段。历史missing保留，不通过修改产品或配对标签掩盖。
 - 未改设计源码。22张HTTP断点PNG原先不存在，本轮使用既有截图脚本补生成；原有362张PNG逐张SHA256保持不变，清单为TEMP下`interceptor-breakpoint-existing-shots-20260909.json`。parity结果为`interceptor-breakpoint-chrome-{237,242,247,252,257}.json`及同名`.md`，日志为`interceptor-breakpoint-chrome-matrix-20260909.log`。
 - 断点Store/编辑unit19/19和Desktop typecheck已通过，日志`interceptor-breakpoint-chrome-checks-20260909.log`。最终真实`rules.body-effect-evidence`在原生文件窗口文件名控件获取前台焦点时失败，不是布局或数据断言Red；Main/Core `46384/40556`虽为`gracefulDestroyVerified=true`，仍不能算该workflow通过，日志为`interceptor-breakpoint-chrome-e2e-20260909.log`。
 - 用户禁止E2E后，本轮只运行unit19/19及Desktop typecheck，日志`interceptor-breakpoint-no-e2e-checks-20260909-215929.log`；仅读回暂停前的22视图parity与362张原图hash，未运行浏览器或E2E。进度归档`interceptor-breakpoint-chrome-pending-e2e-20260909-220030.zip`，SHA256 `4A619F1D64B0A7A7B56224DDA25501BE7E479FB0EAD35DDBA8DFBE9FC9C7F976`，清单明确标记`code-complete-pending-e2e`并保存4份相关源码hash。

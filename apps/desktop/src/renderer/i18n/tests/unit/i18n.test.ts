@@ -10,6 +10,7 @@ const VARIABLE_PATTERN = /\{\{[^{}]+\}\}/g;
 const REQUIRED_MESSAGE_KEYS = [
   'composer.title', 'composer.auto', 'settings.capturedBodyData',
   'settings.capturedBodyDataHint', 'settings.clearCaptureEffectsHint', 'settings.clearCapture',
+  'settings.responseBodies',
 ] as const;
 const REPRESENTATIVE_TRANSLATION_KEYS = [
   'common.language',

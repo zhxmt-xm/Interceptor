@@ -308,10 +308,7 @@
   color: var(--accent);
 }
 
-/* 只补 Segmented 需要的行高；边框、内边距和字体都走 SectionHeader，
-   否则这一条下划线的落点会和其它区块差半个像素。 */
 .replacementHead {
-  min-height: 30px;
   border-bottom: 0;
 }
 

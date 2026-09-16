@@ -887,6 +887,7 @@ export const itCatalog = {
   'settings.unavailable': 'Non disponibile',
   'settings.capturedBodyData': 'Dati dei corpi catturati',
   'settings.capturedBodyDataHint': 'Contenuto catturato in memoria e nei file temporanei.',
+  'settings.responseBodies': 'Corpi delle risposte',
   'settings.contents': 'Contenuto',
   'settings.sessions': 'Sessioni',
   'settings.exchanges': 'Scambi',

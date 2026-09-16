@@ -69,6 +69,7 @@ export const settingsEnglishMessages = {
   'settings.unavailable': 'Unavailable',
   'settings.capturedBodyData': 'Captured body data',
   'settings.capturedBodyDataHint': 'Captured content in memory and temporary files.',
+  'settings.responseBodies': 'Response bodies',
   'settings.contents': 'Contents',
   'settings.sessions': 'Sessions',
   'settings.exchanges': 'Exchanges',

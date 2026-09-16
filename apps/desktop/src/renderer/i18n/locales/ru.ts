@@ -896,6 +896,7 @@ export const ruCatalog = {
   'settings.unavailable': 'Недоступно',
   'settings.capturedBodyData': 'Данные захваченных тел',
   'settings.capturedBodyDataHint': 'Захваченное содержимое в памяти и временных файлах.',
+  'settings.responseBodies': 'Тела ответов',
   'settings.contents': 'Содержимое',
   'settings.sessions': 'Сеансы',
   'settings.exchanges': 'Обмены',

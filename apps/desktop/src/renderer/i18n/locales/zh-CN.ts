@@ -881,6 +881,7 @@ export const zhCNCatalog = {
   'settings.unavailable': '不可用',
   'settings.capturedBodyData': '捕获正文数据',
   'settings.capturedBodyDataHint': '保存在内存和临时文件中的捕获正文。',
+  'settings.responseBodies': '响应正文',
   'settings.contents': '内容',
   'settings.sessions': '会话',
   'settings.exchanges': '交换',

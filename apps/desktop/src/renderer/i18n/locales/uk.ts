@@ -896,6 +896,7 @@ export const ukCatalog = {
   'settings.unavailable': 'Недоступно',
   'settings.capturedBodyData': 'Дані перехоплених тіл',
   'settings.capturedBodyDataHint': 'Перехоплений вміст у пам’яті та тимчасових файлах.',
+  'settings.responseBodies': 'Тіла відповідей',
   'settings.contents': 'Вміст',
   'settings.sessions': 'Сеанси',
   'settings.exchanges': 'Обміни',

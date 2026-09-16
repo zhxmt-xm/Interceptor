@@ -405,14 +405,14 @@ Cancel和打开设置均无隐式系统写入；只有用户点击Enable后才�
 <a id="capture-inspector-section-collapse"></a>
 ## `capture.inspector.section-collapse`
 
-**状态**：passed
+**状态**：passed；2026-09-16公共标题36px最小高度、独立折叠与Timing流程已验证
 **策略**：privileged UI
 
 ### Steps
 
 1. 创建独立profile、trace与HTTP loopback origin；启动本地production Electron，等待App/Core/8888并收敛fresh-profile readiness。
 2. 通过`capture.recording.toggle`与`capture.readiness.enable`开始真实Recording；客户端显式经8888发送`GET /e2e/capture/section-collapse`，等待动态row并点击进入Inspector。
-3. 用`capture.inspector.section.general`与`capture.inspector.section.response-headers`定位两个真实标题按钮；确认初始`aria-expanded=true`，各自`aria-controls`指向仍挂载且`hidden=false`的唯一正文。
+3. 用`capture.inspector.section.general`与`capture.inspector.section.response-headers`定位两个真实标题按钮；确认初始`aria-expanded=true`，各自`aria-controls`指向仍挂载且`hidden=false`的唯一正文。两个标题都使用36px最小高度和flex居中，折叠后最小高度不变，不设置固定高度来裁切较高内容。
 4. 折叠General，确认其正文`hidden=true`，Response Headers保持展开；再折叠Response Headers并重新展开General，确认同一`aria-controls`正文恢复且两段状态互不覆盖。
 5. 切换Timing，通过分组的公共控件与`aria-controls`定位两行内容；标签和时长保留真实文字。父行使用flex、align-items:center、自然行高和12px gap；标签列150px、时长列58px，6px高的比例条flex占剩余宽度。记录实际样式与截图，不用字形或自算矩形中心定义对齐，不改时序数据。
 6. 保存截图、trace、日志与metadata；正常Close并验证Main/Core/Renderer退出、8888释放、系统代理恢复和profile删除。
@@ -425,6 +425,7 @@ Cancel和打开设置均无隐式系统写入；只有用户点击Enable后才�
 - 上述token版随后因用户视觉反馈撤回，不再称为对齐改善。该历史阶段改为标签/时长/进度条中心检查，撤回前后1/1（18.3s/20.1s），Main/Core46032/4400、32356/33148均正常销毁与宿主恢复；保留原折叠和真实时长断言。此检查已被当前父行flex契约取代，不作为当前布局的最终结果。
 - 2026-09-13父flex前置Red：row-format14/14后，真实Timing行为`display:grid`而非flex，Main/Core `24104/1252`正常销毁。修改后unit14/14、Desktop/design类型及明暗8目标parity通过；当日晚间首次最终尝试在listener ready前退出且trace清理失败（`10840/27480`），随后用户暂停，不能把该次失败记为Green。
 - 2026-09-14恢复后，同一workflow最终1/1（20.2s），Main/Core `47500/17304`的`gracefulDestroyVerified=true`，trace、Timing截图、独立折叠/ARIA及全部flex列宽断言齐全，fixture验证进程、8888、WinINet/journal恢复。当前row-format14/14、Desktop类型通过；TEMP `interceptor-ui-parity-20260914-timing-e2e`及同名log保存结果，原失败证据不覆盖。
+- 2026-09-16公共标题前置Red为`min-height:24px`而非36px（Main/Core `17636/5840`）；修改后同一workflow1/1（13.9s）通过，展开与折叠下限、flex居中及原独立折叠/ARIA/Timing断言均保留，`26240/45428`正常退出并通过宿主恢复检查。TEMP `interceptor-shared-header-height-20260916-e2e-{red,green}`保存截图、trace和metadata；[共享标题与全量parity证据](../../../../../architecture/features/capture.md#公共分组标题最小高度)。
 
 ### 预期效果
 

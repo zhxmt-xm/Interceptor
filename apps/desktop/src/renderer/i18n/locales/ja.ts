@@ -887,6 +887,7 @@ export const jaCatalog = {
   'settings.unavailable': '利用不可',
   'settings.capturedBodyData': 'キャプチャしたボディデータ',
   'settings.capturedBodyDataHint': 'メモリと一時ファイルに保持されているキャプチャ内容。',
+  'settings.responseBodies': 'レスポンスボディ',
   'settings.contents': '内容',
   'settings.sessions': 'セッション',
   'settings.exchanges': '通信',

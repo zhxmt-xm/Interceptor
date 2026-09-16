@@ -361,6 +361,16 @@ H2 session续验沿用同一双Range流程，不新增协议事件采集或UI。
 - 同一[工作项报告](../../commit-changes/202609111558_ui_parity_progress.html#https-connection-chain-images)内嵌明暗前后图，去掉已撤回的Timing图组，保留其他34张原图，共38图；1320/390排版与最终画面检查通过。TEMP `interceptor-https-chain-20260911-review/`保存逐节点度量、中文截图和报告原稿，原始DOM见`interceptor-https-title-20260911-dom/`。
 - 2026-09-12恢复E2E后组件/i18n13/13、Desktop类型通过；`capture.scenarios.tls`与真实正文流程联合2/2（45.7s），本workflow Main/Core13768/41652正常退出，新增连接示意/Generate可用/Install及Start禁用/Cancel检查通过，后续真实CA、H1/H2、Root集合和宿主恢复均通过。TEMP `interceptor-update-button-centering-20260912-e2e/`保留trace、截图和metadata。暂停期缺少实现前E2E Red仍是历史缺口，不把当前Green当成前置证据。
 
+#### 公共分组标题最小高度
+
+- 2026-09-16用户确认公共设计组件使用36px最小高度，并要求同步产品。`SectionHeader`与设计`CollapsibleSection`使用相同默认值，保持flex居中、字号、padding和内容自然增高；不再为Replacement单独保留30px下限。
+- 当前产品公共标题已修改，HTTP与WebSocket的Replacement局部30px下限已移除；设计普通`.sh`与`CollapsibleSection`均为36px。沿用已有`capture.inspector.section-collapse`，只补最小高度和flex居中断言，保留原独立折叠、ARIA和Timing流程；没有新增测试文件、数据面行为或产品测试入口。
+- 前置真实Red为General标题的`min-height: 24px`不满足36px，Main/Core `17636/5840`正常退出。修改后同一workflow1/1（13.9s）通过，Main/Core `26240/45428`正常退出并由宿主guard检查恢复；TEMP `interceptor-shared-header-height-20260916-e2e-{red,green}`及同名日志保留截图、trace和metadata。相关既有Renderer测试9文件80项、Desktop与design-vite类型检查通过。
+- 第一组跨页面parity覆盖八个场景，130目标全匹配、0 missing/flagged；随后顺序执行全部406场景。首次全量有4 missing/3 flagged：两处历史Response空Text目标、两处Timing标签及数值、暗色Tunnel同名文字定位。修复Timing翻译并分别复跑Timing/Tunnel明暗后，汇总为2973目标、2971 matched、0 flagged、最大0.859375px，平均像素差2.49%；两处历史`Using original`目标仍为app missing，不称全套无缺口。
+- 设计截图生成603场景，其中165场景含330个共享标题；全部满足36px下限及flex居中。只同步102张受影响且已有的PNG，其余363张基准SHA256保持不变，不新增无关场景或覆盖原始验收图。
+- 证据统一在TEMP `interceptor-shared-header-height-20260916/`：`full.json`保留首次全量，`full-296.json`与`full-303.json`保存定向复验，`final-parity.json`明确记录合并来源；`shots-synced.json`与`header-measurements-summary.json`保存图片和尺寸清单。唯一[改动说明](../../commit-changes/202609161307_ui_shared_section-headings-review-cleanup.html)展示公共标题及Timing修正的真实前后图，原review撤除证据在`interceptor-review-removal-20260916/{evidence,final}.json`。
+- 同轮全量检查发现Storage提交误删`RequestInspector`仍使用的`settings.responseBodies`，使Timing标签回退并造成8.703125px位置差。原样恢复15语言旧值，不改Timing布局或Storage内容；既有i18n必需键检查1 Red/8 Green后9/9 Green，Desktop类型检查通过，Timing明暗8目标均0px。`timing-i18n-{red,green}.log`与`timing-parity-green.log`保留本轮结果；这不是公共36px样式造成的回归。
+
 #### Timing正文行高
 
 - 2026-09-13当前实现：由`RequestInspector.timelineRow`负责一维flex排列，标签150px、时长58px、比例条占剩余宽度，父行自然排版及align-items:center；12px gap、7px内容间距、6px条高和真实时间段计算不变。仅Capture设计Timing行同步，Diagnostics的独立时间线不改。现有section-collapse流程保留独立折叠、ARIA和真实时间段检查，新增父行flex/normal、固定两列与弹性比例条断言，不使用下方历史矩形中心方法。
