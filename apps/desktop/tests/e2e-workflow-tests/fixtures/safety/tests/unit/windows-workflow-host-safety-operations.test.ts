@@ -514,7 +514,7 @@ describe('WindowsWorkflowHostSafetyOperations', () => {
       capturePortProbe: async () => true,
     });
 
-    await operations.readWinInetSettings();
+    await operations.readSystemProxySettings();
 
     expect(commandRunner.calls[0]?.command).toBe(helperPath);
   });

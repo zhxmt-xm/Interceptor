@@ -10,7 +10,8 @@ import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES, AutomationIdFactory } from '../
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
-import { cancelWindowsFileDialog, submitWindowsFileDialogPath } from '../../fixtures/ui/windows-file-dialog';
+import { cancelFileDialog, submitFileDialogPath } from '../../fixtures/ui/file-dialog';
+import { automaticallyExecuteMcpClientTools } from '../../fixtures/ui/settings-workflow';
 
 const PROMPT = ['Export the saved Rules', 'using the selected destination.'].join(' ');
 const ANSWER = ['The Rules export', 'step has finished.'].join(' ');
@@ -175,7 +176,7 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
 test('rules.tools.export saves persisted Rules through native dialogs without modifying drafts', async ({
   desktopApp, openAiCompatibleLab,
 }, testInfo) => {
-  test.skip(process.platform !== 'win32', '真实文件对话框 workflow 目前只在 Windows 执行。');
+  test.skip(!['win32', 'darwin'].includes(process.platform), 'Native file dialog workflow requires Windows or macOS.');
   test.setTimeout(240_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'rules.tools.export' });
   for (const text of [PROMPT, ANSWER]) desktopApp.registerSensitiveTextForEvidenceAudit(text);
@@ -217,7 +218,7 @@ test('rules.tools.export saves persisted Rules through native dialogs without mo
     expect(await readdir(directory)).toEqual([]);
     await beginExport(desktopApp.page, openAiCompatibleLab, 'export-cancel');
     await approveExport(desktopApp.page, 'export-cancel', 'allow');
-    await cancelWindowsFileDialog(desktopApp.windowsMainProcessOwner());
+    await cancelFileDialog(desktopApp.nativeFileDialogOwner());
     await desktopApp.page.bringToFront();
     await waitForTurn(desktopApp.page);
     expect(resultForCall(openAiCompatibleLab, 'export-cancel')).toEqual({ ok: true, value: { exported: false } });
@@ -227,7 +228,7 @@ test('rules.tools.export saves persisted Rules through native dialogs without mo
     // Saving and assertions: Ask Allow and Auto both export the persisted Core tree through real Save Dialogs, preserving IDs, hierarchy, and enabled states.
     await beginExport(desktopApp.page, openAiCompatibleLab, 'export-allow');
     await approveExport(desktopApp.page, 'export-allow', 'allow');
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), savedPath);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), savedPath);
     await desktopApp.page.bringToFront();
     await waitForTurn(desktopApp.page);
     expect(resultForCall(openAiCompatibleLab, 'export-allow')).toEqual({ ok: true, value: { exported: true } });
@@ -237,7 +238,7 @@ test('rules.tools.export saves persisted Rules through native dialogs without mo
     expect(flatten(saved.nodes).filter((node) => node.kind === 'rule').map((node) => node.enabled)).toEqual([true, false]);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.executionMode.auto).click();
     await beginExport(desktopApp.page, openAiCompatibleLab, 'export-auto');
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), autoPath);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), autoPath);
     await desktopApp.page.bringToFront();
     await waitForTurn(desktopApp.page);
     expect(await readExport(autoPath)).toEqual(saved);
@@ -249,14 +250,14 @@ test('rules.tools.export saves persisted Rules through native dialogs without mo
     await getByAutomationId(desktopApp.page, AutomationIdFactory.ruleRow(expectedIds[0]!)).click();
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName).fill('Unapplied export draft');
     await beginExport(desktopApp.page, openAiCompatibleLab, 'export-draft-isolation');
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), dirtyPath);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), dirtyPath);
     await desktopApp.page.bringToFront();
     await waitForTurn(desktopApp.page);
     expect(await readExport(dirtyPath)).toEqual(saved);
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName)).toHaveValue('Unapplied export draft');
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.revision)).toHaveAttribute('data-revision', '1');
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.toolbar.exportRules).click();
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), uiPath);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), uiPath);
     await desktopApp.page.bringToFront();
     await expect(getByAutomationId(desktopApp.page, 'rules.export.busy')).toHaveCount(0);
     expect((await readExport(uiPath)).nodes[0]?.name).toBe('Unapplied export draft');
@@ -294,13 +295,13 @@ test('rules.tools.export saves persisted Rules through native dialogs without mo
     const allowedCall = client.callTool({ name: 'rules_export', arguments: {} });
     await expect(approval).toHaveAttribute('data-tool-name', 'rules_export');
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.allow).click();
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), mcpPath);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), mcpPath);
     await desktopApp.page.bringToFront();
     expect(readMcpToolValue(await allowedCall)).toEqual({ exported: true });
     expect(await readExport(mcpPath)).toEqual(saved);
-    await getByAutomationId(desktopApp.page, AutomationIdFactory.mcpClientAuto(configuredClient.clientId)).click();
+    await automaticallyExecuteMcpClientTools(desktopApp.page, configuredClient.clientId);
     const canceledCall = client.callTool({ name: 'rules_export', arguments: {} });
-    await cancelWindowsFileDialog(desktopApp.windowsMainProcessOwner());
+    await cancelFileDialog(desktopApp.nativeFileDialogOwner());
     await desktopApp.page.bringToFront();
     expect(readMcpToolValue(await canceledCall)).toEqual({ exported: false });
     await expect(approval).toHaveCount(0);

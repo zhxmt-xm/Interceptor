@@ -17,7 +17,7 @@ const WEBSOCKET_SCENARIOS = [
 test('capture.scenarios.websocket captures directional text binary and controlled connections', async ({
   desktopApp, trafficLab,
 }, testInfo) => {
-  test.setTimeout(120_000);
+  desktopApp.configureWorkflowTimeout(testInfo, 120_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'capture.scenarios.websocket' });
   const { page } = desktopApp;
   const evidence: Array<{ scenarioId: string; exchangeId: string; sent: number; received: number }> = [];

@@ -192,11 +192,28 @@ CA 不可用而发出的 `tls.stopDecryption` 不会擦掉它。
 | 操作 | Windows | macOS |
 | --- | --- | --- |
 | 安装 | `certutil -addstore -f Root`（去掉 `-user`） | `security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain` |
-| 检测 | `certutil -verifystore Root <sha1>` | `security find-certificate` |
+| 检测 | `certutil -verifystore Root <sha1>` | `security find-certificate -a -p`精确匹配SHA-1后，`security verify-cert -p basic -L`查询根CA的系统信任链结果 |
 
 按 SHA-1 thumbprint 精确定位；`execFile` 不经 shell。注入 `ElevatedRunner`（默认 `sudoPromptRunner`）+ `CommandRunner` 便于 mock 单测。
 
+macOS只将匹配的公开证书经stdin交给系统验证，不生成临时证书文件、不传入`-r`强制信任锚点、不读取私钥；未安装或系统评估拒绝均不报告trusted。此处检查根CA的基本系统信任，不以CA本身代替服务器叶证书执行SSL域名/用途验证，真实HTTPS握手仍需相应workflow验收。2026-09-16存在即信任的原用例1 Red/8 Green，补齐匹配和评估契约后3 Red/8 Green，证据`/tmp/interceptor-macos-trust-20260916-unit{,-contract}-red.log`；最终原生/E2E结果待补。
+
 ### 2.4 窄 API
+
+#### macOS trust授权续验（待最终验收）
+
+2026-09-18取消信任后的新增CA清理已实现，代码/开发E2E通过，待最新生产smoke：Main在调用helper导入前只读保存该公开CA是否已存在的事实；inventory失败时不导入或请求信任。admin trust拒绝/取消后，只撤销本次新导入的相同DER/SHA-256证书，不删除安装前已有的CA，不通过root重新申请信任。原信任错误仍返回；清理失败同时保留两项错误，不把半完成状态报告成功。Windows certutil流程保持不变。对应真实`settings.certificates.cancel-trust`以产品Generate/Install、原生Cancel、完整Root集合恢复和正常Close验收，不用测试侧删除证书替代产品回滚。
+
+- 产品unit6 Red后18/18，相关回归207 passed/2 Windows native skipped和Desktop类型通过。真实前置Red在`/tmp/interceptor-macos-trust-cancel-20260918-e2e-red/`，原生取消完成后多出本轮证书；最终相同流程在`/tmp/interceptor-macos-trust-cancel-20260918-e2e-green/`1/1（5.8秒），Root前后哈希完全相同，Main10805/Core10812正常退出，8888/代理/admin trust恢复。
+- 最新package及audit通过；生产App身份改变后需用户核准，最新smoke未运行。取消路径Green不替代成功安装/解密TLS的人工授权验收，不覆盖本轮基线内的历史残留CA或root卸载/失败rollback。
+
+- 2026-09-16真实`capture.scenarios.tls`失败于`ca:install`：系统钥匙串已增加本轮CA，但`SecTrustSettingsSetTrustSettings`返回`The authorization was denied since no user interaction was possible`。新查询正确判断未信任，不能把CA存在当作Install成功；真实H1/H2解密步骤未运行。
+- 证据`/tmp/interceptor-macos-tls-trust-20260916/`保留trace、Main错误及Main/Core `72930/72936`退出metadata。原生TLS清理因未出现Uninstall控件失败；该CA随后由用户按精确指纹删除，续作只读核对原两张系统证书集合一致、无测试进程/journal、8888可bind。旧宿主guard记录的代理快照差异仍作为该轮失败保留，不能由后续无8888指向替代完整快照恢复证据。
+- 本轮修复假设：普通用户进程直接调用`security add-trusted-cert`，由Security框架请求admin trust认证，避免sudo-prompt产生的root shell无法交互；系统信任范围仍为admin/System Keychain，不写授权数据库、不降到user trust、不静默fallback。Windows install/uninstall/verify命令不变。先取对应unit Red，再用同一真实TLS workflow验收，不以命令mock代替原生结果。
+- 普通用户单步尝试的真实结果：`/tmp/interceptor-macos-tls-trust-20260916-native-authorization/`精确失败于`SecCertificateAddToKeychain: Write permissions error`，没有留下新系统CA；Main/Core `84004/84011`正常退出且宿主guard通过。这证明导入钥匙串和写admin trust必须分别使用合适的身份；不是为失败保留fallback。
+- 当前待验证实现：`installMacosCertificate()`先提权`security add-certificates -k System.keychain`，失败立即返回；成功后以登录用户执行不带`-k`的`security add-trusted-cert -d -r trustRoot`，只请求admin trust。Apple SecurityTool公开实现明确`-k`为可选的证书导入步骤；不带`-k`不会再次写钥匙串。任一步失败都不得报告安装成功。
+- 两阶段安装后真实TLS workflow1/1（32.9秒）、Main/Core `89075/89080`正常退出，证据`/tmp/interceptor-macos-tls-trust-20260916-two-phase/`。追加只读验收发现Uninstall删了证书但遗留本轮admin trust，不能据此宣布完整证书恢复；该条记录按公开指纹/签发者/时间精确恢复，恢复前后plist保存在`interceptor-trust-recovery-20260916-Mvwwr5`临时目录，不改授权规则或用户其他信任项。
+- 补充卸载目标：精确读取目标公开CA，先以登录用户执行`remove-trusted-cert -d`清理admin trust，成功后才提权删除钥匙串证书；trust移除失败时保留证书并返回错误。TLS workflow同时保存前后trust快照并比较，不再只靠证书集合判断恢复。
 
 `getCertificateStatus`、`generateCertificate`、`installCertificate`、`uninstallCertificate`、`deleteCertificate`、`revealCertificate`、`viewCertificate`、`openCertificateManager`、`getInsecureHosts`、`setInsecureHosts`、`setHttpsDecryption`。
 
@@ -351,6 +368,51 @@ Windows系统代理崩溃恢复已完成：跨profile App crash/relaunch、Core-
 | macOS | `macos/helper.swift`，Authorization Services + SystemConfiguration，枚举当前 Network Set 全部活动 service，单 session 内 set/commit/apply |
 
 只允许 loopback listener。
+
+#### macOS 同包原生服务
+
+Main首次启动部署同包helper，代理和System Keychain导入/删除已接入常驻服务，Windows不变。真实TLS、同构建多代复用、Core故障和App crash/relaunch已有Green与恢复证据；这不代表全部macOS workflow、独立系统权限或卸载恢复均完成，具体阶段见Handover。
+
+- 配置明确`protocolVersion`、`socketPath`、`clientUserId`、`clientExecutablePath`和精确`cdhash` requirement；配置和endpoint目录必须由服务账户拥有且不能被其他用户写入，root运行还检查整个父目录链。
+- 本地Unix socket通过内核`LOCAL_PEERTOKEN`读取audit token；校验实际peer用户、`SecCodeCheckValidity`、静态代码和固定可执行文件路径，不接收客户端自报身份，不维护私钥或Apple付费身份。
+- App鉴权递归验证内嵌代码、资源与全部架构；真实签名fixture在仅修改内嵌资源、Main CDHash不变时取得Red，递归校验后9/9 Green。此证据不代替正式App运行时身份与安装路径验证。
+- 协议为单连接单条newline JSON，校验协议版本和严格字段集合；`status`返回服务进程ID、是否root、客户端写资格和当前实际能力。未知命令、额外字段、未核准进程都明确拒绝。
+- 证书目标命令`certificate.import / certificate.remove`仅接受`parameters: { certificate, sha256 }`，certificate为公开X.509 DER的base64，sha256为64位大写十六进制。原生侧核对编码、大小、指纹和Interceptor自颁发主题，固定System.keychain；不接受路径、私钥、任意keychain或按模糊名称删除。
+- Main继续拥有CA生成、私钥safeStorage和TLS同步。系统证书导入/删除改走已安装helper；admin trust添加/移除仍用登录用户上下文的Security命令，信任失败不报成功，移除trust失败不删除证书。helper导入不等于受信任，不能替代系统独立授权；改后复跑真实TLS证书集合与admin trust完整恢复。
+- 普通`system-proxy.read`保留内核进程、UID、canonical路径与精确CDHash检查，不需要特权的公开查询不再扫描整包资源；`status`和所有写命令仍严格校验完整App资源、内嵌代码及运行时。该区分用于避免只读查询排队拖延代理退出恢复，不能让篡改App获得写资格。
+- Recording就绪：Core重启时`CaptureStatus.recording=true`只说明Core正在记录，Renderer等支持平台的系统代理实际owned且未ownershipLost才显示Recording。迟到查询不能覆盖Stop、代理失权或Core代际变化；事件测试2 Red后7/7、Capture unit79/79，真实Core故障及App crash/relaunch 2/2 Green，证据`/tmp/interceptor-helper-fault-recovery-20260917-ready/`。先前真实失败明确记录了“Recording开启但owned尚未生效”，不以journal预写当作代理已接管。
+- 代理命令：`system-proxy.read`无参数，返回全部活动network service的原始快照；`system-proxy.replace`仅接收`parameters: { expectedSnapshot, replacementSnapshot }`，两个快照均为`{ services: [{ id, name, settings }] }`，不接收路径、shell或Authorization凭据。协议帧上限为256KiB以容纳双快照，过大数据明确拒绝，不截断或省略服务。
+- 条件写入代码：只在原生进程已具备root权限且客户端是核准的完整App时执行；在同一`SCPreferencesLock`事务内读取current、按完整快照比较expected、commit/apply并回读replacement。普通权限返回`authorization-required`，快照冲突返回`snapshot-conflict`，不新建Authorization窗口、不覆盖外部修改。Main仍唯一持有journal和业务接管/退出恢复编排，服务不保存第二份original。读取及普通权限拒绝已真实验证；root事务、冲突和回读仍待授权验收。
+- 写入前另校验实际SecCode的Hardened Runtime、动态有效状态及未被调试状态，拒绝DYLD环境注入、get-task-allow和关闭执行页保护的entitlements。本机Node具备这些危险权限，其typed写入已验证返回`unauthorized-client`；临时Node核准仅用于读取测试。新ad-hoc App已启用Hardened Runtime并静态验签，实际包内helper19/19通过；完整App启动与受保护安装位置仍需验收，不能用通用解释器或旧产物绕过此门槛。
+- 服务重启检查已取得SIGKILL残留端点Red，修复后保留活跃socket和普通文件、恢复崩溃残留；快速断连曾导致SIGPIPE，服务进程忽略该信号后相同检查Green。19项原生通信/鉴权/生命周期集成、11项原代理/journal及Desktop类型通过，未安装服务或修改系统代理/CA。
+- Native集成在普通用户的私有临时目录运行服务和带ad-hoc签名的测试客户端，直接验证正常/拒绝路径，不注册LaunchDaemon，不操作系统代理、CA或授权规则，也不是替换产品来运行E2E。
+- 正式安装必须固定管理员核准的App构建及完整调用链。读通道测试中的原生客户端身份不能自动成为代理/证书写权限；Main的资源完整性、进程身份、服务安装与业务写操作需要在下一步分别验证后再接入。
+
+#### macOS 首次启动部署 Helper（进行中）
+
+##### 开发与生产双入口（2026-09-18）
+
+- 用户已确认本机开发和业务E2E共用一个常驻helper；开发入口信任获准的本机UID，不绑定项目源码、App构建CDHash、Electron签名或调试状态。首次部署确认后，HMR、rs、Main/Core重编译、新profile及下一条workflow均复用，不重装或重复申请开发授权。
+- 同一个原生服务提供两个本地socket：生产使用`service.sock`及`service.json`，开发使用`development.sock`及`development.json`。开发配置仅记录`protocolVersion / socketPath / clientUserId`，由root保护；生产配置保留精确App路径/CDHash及完整运行时检查。请求不能自报环境来改变当前socket的鉴权。
+- 两入口共用固定代理/公开证书协议与条件写入实现，不接收任意shell或私钥。开发授权明确允许该UID的本地程序使用这些能力，不宣称隔离同用户恶意代码；其他UID、损坏或可写配置仍拒绝。证书admin trust保持独立权限。
+- Main按真实`app.isPackaged`选择入口：未打包的Forge与业务E2E走开发入口，签名产物走生产入口；无测试专用产品参数。helper仅在自身配套组件改变或缺失时更新，开发App重新构建不改变部署身份；安装另一入口不删除既有授权。
+- 开发首次授权将同一份已验签helper复制到当前用户的私有系统临时目录（目录0700、文件0500）后执行固定授权命令，成功/取消/失败均清除；root阶段仍复制到root私有暂存目录并核对预先读取的helper CDHash。避免authd无法读取Desktop源码目录中的原生代码身份，不复制App或仓库、不改系统隐私权限或node_modules。
+- 验收：部署unit、原生开发准入与生产拒绝、Main分派、授权暂存均先取得目标Red；最终相关204 passed/2 Windows native skipped与类型通过。真实开发前置启动日志为`/tmp/interceptor-development-helper-startup-20260918-red/`的`invalid-request`；开发两轮四代复用2/2在`/tmp/interceptor-dual-entry-development-e2e-20260918-staged/`，全部正常退出。实际npm start的HMR、rs、Main/Core inspector和恢复证据在`/private/tmp/interceptor-dual-entry-20260918-TUf3n3/`；rs前通过Settings恢复代理，未将其描述为SIGTERM期间零中断证明。
+- 2026-09-18生产package与audit通过，开发授权已存在时packaged smoke1/1在`/tmp/interceptor-dual-entry-production-smoke-20260918-final/`；实装服务仍拒绝生产socket上的通用Node，开发socket接受获准UID。开发/生产配置互不覆盖，helper字节/inode复用；Main/Core/Worker退出、8888释放、完整代理/证书/admin trust恢复到本轮基线。全量macOS workflow、历史CA残留和root卸载/rollback不由本结果替代，详细阶段见Handover。
+- 2026-09-19阶段提交前已同步`8d153821`并排除暂停的弹窗动画/独立package骨架：227 passed、2 Windows native skipped及Desktop类型通过；Core恢复、helper复用、上游存储/标题/正文相关6条真实E2E全通过。重新package/audit为1487文件、339450724字节，`/tmp/interceptor-stage-sync-20260919-production-smoke/`1/1（2.5分钟）；用户本轮开启的完整代理、公开CA/admin trust精确恢复，helper字节/inode和开发授权未变。详细命令及范围见[Handover Verification](../HANDOVER.md#verification)，不把同步前65条结果提升为同步后全量通过。
+
+- App留在用户原位置，helper随App打包；Main首次启动在代理恢复/接管前调用`MacosHelperDeploymentService.ensureInstalled()`，缺失或本次App配套身份改变才请求一次系统管理员授权。后续启动只读核对并复用；不要求`.pkg`、不移动或更改App所有权，不下载独立helper。
+- 只将原生组件部署到`/Library/PrivilegedHelperTools/com.zhxmt.interceptor.platform-capabilities`，配置和socket位于`/Library/Application Support/Interceptor/PlatformHelper/`。配置由root拥有且不可被其他用户写入，记录实际登录UID、App canonical路径及精确CDHash；launchd服务与配套helper一起更新。
+- 授权后先在root私有暂存目录复制单个helper并核验精确签名，再执行固定`install-helper`。原生实现再次核验App/同包helper，按文件事务替换并注册服务；失败恢复原组件，不执行旧一次性写入路径。
+- `deployment-status`只读返回`missing / outdated / ready / stopped / invalid`；损坏/未知状态不触发覆盖安装，取消不重试。`status`将服务root权限与`clientAuthorizedForWrites`分别表达，运行中App须通过内核身份、完整签名与Hardened Runtime校验，不以root拥有整个App代替鉴权。
+- 原生`uninstall-helper`仅在用户明确批准的root操作中移除固定组件，不删除App、profile或CA；先经App恢复代理并清理本次CA/trust。不能将组件读写unit/integration当作真实首次启动/E2E验收。
+- Main接入、开发/生产启动与`settings.helper-startup`的最新真实证据见上方双入口验收；root卸载/失败rollback和其余完整macOS流程仍待验。整App `.pkg`路线已撤除，历史测试事实保留在Handover，不能作为本流程证据。
+
+#### macOS 首轮原生验收
+
+- 2026-09-15在macOS x64首次运行真实`settings.navigation`，当前Desktop目录中的helper在`AuthorizationCreate`返回`-60008`。同一SHA-256原生探测在Desktop失败、在`/tmp`成功；签名和detached对照不能单独解决。E2E现通过已有运行目录配置准备非Desktop编译产物，未改Windows启动路径或产品授权策略。
+- 非Desktop产物的同一workflow暴露`SystemConfiguration commit failed`；Main/Core `20488/20494`正常退出，宿主guard未报告代理或journal残留。前置失败证据在`/tmp/interceptor-macos-staged-e2e-20260915/`，不把此前下载或目录问题当作产品Red。
+- 修复目标：`AuthorizationRef`覆盖`SCPreferences`的完整写入、commit、apply和回读，不在创建preferences后提前释放。既有macOS Service/journal 11/11基线通过；Swift原生问题由真实workflow验证，不以fake runner测试代替系统授权证据。最终Green及package/audit/smoke仍待取得。
 
 #### Proxy面板parity场景
 

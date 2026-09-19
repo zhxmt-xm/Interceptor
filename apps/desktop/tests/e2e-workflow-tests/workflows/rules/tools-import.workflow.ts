@@ -10,7 +10,8 @@ import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES, AutomationIdFactory } from '../
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
-import { cancelWindowsFileDialog, submitWindowsFileDialogPath } from '../../fixtures/ui/windows-file-dialog';
+import { cancelFileDialog, submitFileDialogPath } from '../../fixtures/ui/file-dialog';
+import { automaticallyExecuteMcpClientTools } from '../../fixtures/ui/settings-workflow';
 
 const PROMPT = ['Import the selected Rules', 'and preserve the existing tree.'].join(' ');
 const ANSWER = ['The Rules import', 'step has finished.'].join(' ');
@@ -89,7 +90,7 @@ async function createOriginalTree(page: Page): Promise<void> {
 
 async function exportTree(desktopApp: LocalElectronApplicationDriver, filePath: string): Promise<RuleNode[]> {
   await getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.toolbar.exportRules).click();
-  await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), filePath);
+  await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), filePath);
   await desktopApp.page.bringToFront();
   await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.exportBusy)).toHaveCount(0);
   return (JSON.parse(await readFile(filePath, 'utf8')) as { nodes: RuleNode[] }).nodes;
@@ -124,7 +125,7 @@ async function beginImport(page: Page, openAiCompatibleLab: OpenAiCompatibleLab,
 }
 
 async function selectImport(desktopApp: LocalElectronApplicationDriver, inputPath: string): Promise<void> {
-  await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), inputPath);
+  await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), inputPath);
   await desktopApp.page.bringToFront();
   await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.import.dialog)).toBeVisible();
   await expect(getByAutomationId(desktopApp.page, 'rules.import.rule-count')).toHaveText('2');
@@ -187,7 +188,7 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
 test('rules.tools.import appends product-exported Rules through the shared confirmation flow', async ({
   desktopApp, openAiCompatibleLab,
 }, testInfo) => {
-  test.skip(process.platform !== 'win32', '真实文件对话框 workflow 目前只在 Windows 执行。');
+  test.skip(!['win32', 'darwin'].includes(process.platform), 'Native file dialog workflow requires Windows or macOS.');
   test.setTimeout(300_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'rules.tools.import' });
   for (const text of [PROMPT, ANSWER]) desktopApp.registerSensitiveTextForEvidenceAudit(text);
@@ -221,7 +222,7 @@ test('rules.tools.import appends product-exported Rules through the shared confi
     await waitForTurn(desktopApp.page);
     expect(toolResult(openAiCompatibleLab, 'import-deny')).toMatchObject({ ok: false, error: { code: 'tool_denied' } });
     await beginImport(desktopApp.page, openAiCompatibleLab, 'import-open-cancel', 'allow');
-    await cancelWindowsFileDialog(desktopApp.windowsMainProcessOwner());
+    await cancelFileDialog(desktopApp.nativeFileDialogOwner());
     await desktopApp.page.bringToFront();
     await waitForTurn(desktopApp.page);
     expect(toolResult(openAiCompatibleLab, 'import-open-cancel')).toEqual({ ok: true, value: { imported: false } });
@@ -287,7 +288,7 @@ test('rules.tools.import appends product-exported Rules through the shared confi
     await selectImport(desktopApp, inputPath);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.import.confirm).click();
     expect(mcpValue(await allowedCall)).toEqual({ imported: true, revision: 4, ruleCount: 2, folderCount: 1, enabledCount: 1, skippedCount: 0 });
-    await getByAutomationId(desktopApp.page, AutomationIdFactory.mcpClientAuto(configuredClient.clientId)).click();
+    await automaticallyExecuteMcpClientTools(desktopApp.page, configuredClient.clientId);
     const canceledCall = client.callTool({ name: 'rules_import', arguments: {} });
     await selectImport(desktopApp, inputPath);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.import.cancel).click();

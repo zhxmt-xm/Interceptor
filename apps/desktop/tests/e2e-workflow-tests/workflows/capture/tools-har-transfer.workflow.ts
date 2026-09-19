@@ -13,7 +13,8 @@ import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
-import { cancelWindowsFileDialog, submitWindowsFileDialogPath } from '../../fixtures/ui/windows-file-dialog';
+import { cancelFileDialog, submitFileDialogPath } from '../../fixtures/ui/file-dialog';
+import { automaticallyExecuteMcpClientTools } from '../../fixtures/ui/settings-workflow';
 
 const TOOL_NAMES = ['capture_export_har', 'capture_import_har'] as const;
 const PROMPT = ['Perform the selected', 'HAR transfer operation.'].join(' ');
@@ -102,7 +103,7 @@ async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Prom
   await expect(row).toHaveCount(1);
   const clientId = await row.getAttribute('data-client-id');
   if (!clientId) throw new Error('MCP Client omitted identity.');
-  await getByAutomationId(page, AutomationIdFactory.mcpClientAuto(clientId)).click();
+  await automaticallyExecuteMcpClientTools(page, clientId);
   await expect(row).toHaveAttribute('data-execution-mode', 'auto');
   await getByAutomationId(page, AutomationIdFactory.mcpClientCopyConfiguration(clientId)).click();
   const copied = JSON.parse(await page.evaluate(() => navigator.clipboard.readText())) as { servers: { interceptor: McpConfiguration } };
@@ -206,7 +207,7 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
 }
 
 test('capture.tools.har-transfer exports and imports real HAR files through Agent and MCP', async ({ desktopApp, httpTrafficRunner, openAiCompatibleLab }, testInfo) => {
-  test.skip(process.platform !== 'win32', 'Native HAR file dialogs are verified on Windows.');
+  test.skip(!['win32', 'darwin'].includes(process.platform), 'Native HAR workflow requires Windows or macOS.');
   test.setTimeout(300_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'capture.tools.har-transfer' });
   const { page } = desktopApp;
@@ -241,14 +242,14 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     await beginAgentCall(page, openAiCompatibleLab, 'har-export-deny', TOOL_NAMES[0], exportArgs, 'deny');
     expect(await finishAgentCall(page, openAiCompatibleLab, 'har-export-deny')).toMatchObject({ ok: false, error: { code: 'tool_denied' } });
     await beginAgentCall(page, openAiCompatibleLab, 'har-export-cancel', TOOL_NAMES[0], exportArgs, 'allow');
-    await cancelWindowsFileDialog(desktopApp.windowsMainProcessOwner());
+    await cancelFileDialog(desktopApp.nativeFileDialogOwner());
     await page.bringToFront();
     expect(await finishAgentCall(page, openAiCompatibleLab, 'har-export-cancel')).toEqual({ ok: true, value: { started: false } });
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('har-export-cancel'))).toHaveAttribute('data-summary-kind', 'exportCanceled');
     expect(await readdir(directory)).toEqual([]);
     const completeFile = path.join(directory, 'complete.har');
     await beginAgentCall(page, openAiCompatibleLab, 'har-export-full', TOOL_NAMES[0], exportArgs, 'allow');
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), completeFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completeFile);
     await page.bringToFront();
     const fullJobId = startedJob((await finishAgentCall(page, openAiCompatibleLab, 'har-export-full')).value, 'har-export');
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('har-export-full'))).toHaveAttribute('data-summary-kind', 'transferJob');
@@ -261,7 +262,7 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
       scope: { kind: 'filter', filter: { search: `${SOURCE_PATH}binary`, method: 'POST' } },
       redaction: { authorization: true, cookies: true, bodies: true },
     });
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), redactedFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), redactedFile);
     await page.bringToFront();
     await waitForCompletedJob(client, startedJob((await finishAgentCall(page, openAiCompatibleLab, 'har-export-filtered')).value, 'har-export'));
     const redactedHar = await readHar(redactedFile);
@@ -279,7 +280,7 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     await beginAgentCall(page, openAiCompatibleLab, 'har-import-deny', TOOL_NAMES[1], {}, 'deny');
     expect(await finishAgentCall(page, openAiCompatibleLab, 'har-import-deny')).toMatchObject({ ok: false, error: { code: 'tool_denied' } });
     await beginAgentCall(page, openAiCompatibleLab, 'har-import-cancel', TOOL_NAMES[1], {}, 'allow');
-    await cancelWindowsFileDialog(desktopApp.windowsMainProcessOwner());
+    await cancelFileDialog(desktopApp.nativeFileDialogOwner());
     await page.bringToFront();
     expect(await finishAgentCall(page, openAiCompatibleLab, 'har-import-cancel')).toEqual({ ok: true, value: { started: false } });
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('har-import-cancel'))).toHaveAttribute('data-summary-kind', 'importCanceled');
@@ -294,7 +295,7 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     mcpValue(await client.callTool({ name: 'capture_clear', arguments: {} }));
     expect(await captureItems(client)).toEqual([]);
     await beginAgentCall(page, openAiCompatibleLab, 'har-import-allow', TOOL_NAMES[1], {}, 'allow');
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), completeFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completeFile);
     await page.bringToFront();
     await waitForCompletedJob(client, startedJob((await finishAgentCall(page, openAiCompatibleLab, 'har-import-allow')).value, 'har-import'));
     await expect.poll(async () => (await captureItems(client!)).length).toBe(2);
@@ -320,14 +321,14 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     const mcpFile = path.join(directory, 'mcp.har');
     const [mcpExport] = await Promise.all([
       client.callTool({ name: TOOL_NAMES[0], arguments: { scope: { kind: 'all' }, redaction: FULL_REDACTION } }),
-      submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), mcpFile),
+      submitFileDialogPath(desktopApp.nativeFileDialogOwner(), mcpFile),
     ]);
     await page.bringToFront();
     await waitForCompletedJob(client, startedJob(mcpValue(mcpExport), 'har-export'));
     verifyFullHar((await readHar(mcpFile)).entries);
     const [mcpImport] = await Promise.all([
       client.callTool({ name: TOOL_NAMES[1], arguments: {} }),
-      submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), mcpFile),
+      submitFileDialogPath(desktopApp.nativeFileDialogOwner(), mcpFile),
     ]);
     await page.bringToFront();
     await waitForCompletedJob(client, startedJob(mcpValue(mcpImport), 'har-import'));
@@ -353,7 +354,7 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.scopeAll).click();
     await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start).click();
     const uiFile = path.join(directory, 'ui.har');
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), uiFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), uiFile);
     await page.bringToFront();
     await expect(getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start)).toBeHidden();
     await expect.poll(async () => {
@@ -364,7 +365,7 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     await getByAutomationId(page, AUTOMATION_IDS.capture.importMenu).click();
     await getByAutomationId(page, AUTOMATION_IDS.capture.importHar).click();
     await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start).click();
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), completeFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completeFile);
     await page.bringToFront();
     await expect.poll(async () => (await captureItems(client!)).length).toBe(6);
     const uiImported = (await captureItems(client)).find((entry) => !beforeUiImportIds.includes(String(entry.id)));

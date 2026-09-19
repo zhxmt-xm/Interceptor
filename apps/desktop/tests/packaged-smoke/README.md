@@ -90,6 +90,10 @@ apps/desktop/out/Interceptor-win32-x64/Interceptor.exe
 
 必须先执行 package。测试不会为了隐藏构建失败而自动打包。
 
+### 4. macOS package
+
+macOS 使用当前架构的 `out/Interceptor-darwin-<arch>/Interceptor.app/Contents/MacOS/Interceptor`，原生helper来自该App的Resources。宿主guard复用local workflow的macOS实现，保护完整多network service快照、本轮profile journal、进程代际和8888；不启动Windows PowerShell。Windows仍使用已有原生查询、WinINet guard及所有原断言。平台分支按命名明确的方法分派，不新增测试设施自身的测试。
+
 ## 推荐运行方式
 
 从仓库根目录构建真实 package：
@@ -160,6 +164,8 @@ sequenceDiagram
 - 1280×800 light/dark 截图；
 - 900×600 最小窗口截图；
 - 主题切换通过真实 UI 操作完成。
+
+macOS截图矩阵通过真实Main PID和启动时间校验后，使用System Events调整该测试窗口的实际大小，并验证Renderer内容尺寸；不在1600×900原生窗口里仅模拟较小viewport。每张图附带inner/outer尺寸及deviceScaleFactor。Windows保留既有矩阵路径。该操作只影响本轮临时测试实例，不改产品默认1600×900尺寸；原生窗口调整需要测试宿主已具有辅助功能权限。
 
 ### Renderer 安全隔离
 

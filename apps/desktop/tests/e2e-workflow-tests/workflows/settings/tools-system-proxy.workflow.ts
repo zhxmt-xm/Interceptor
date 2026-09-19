@@ -1,8 +1,5 @@
-import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import { promisify } from 'node:util';
 import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
@@ -10,7 +7,6 @@ import { getByAutomationId } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
-const execFileAsync = promisify(execFile);
 const TOOL_NAMES = ['settings_enable_system_proxy', 'settings_restore_system_proxy'] as const;
 const PROMPT = ['Verify system proxy', 'control through approved Tools.'].join(' ');
 const ANSWER = ['System proxy', 'step completed.'].join(' ');
@@ -20,20 +16,16 @@ interface ProxyState {
   readonly journal: { original: unknown; owned: unknown } | null;
 }
 
-async function readProxyState(desktopDirectory: string): Promise<ProxyState> {
-  const { stdout } = await execFileAsync(path.join(
-    desktopDirectory, 'dist', 'system-proxy', 'wininet-proxy-helper.exe',
-  ), ['get'], { encoding: 'utf8', windowsHide: true });
+async function readProxyState(desktopApp: LocalElectronApplicationDriver): Promise<ProxyState> {
+  const current = await desktopApp.readSystemProxySettings();
   let journal: ProxyState['journal'];
   try {
-    journal = JSON.parse(await readFile(path.join(
-      process.env.LOCALAPPDATA!, 'Interceptor', 'system-proxy', 'journal.json',
-    ), 'utf8')) as ProxyState['journal'];
+    journal = JSON.parse(await readFile(desktopApp.systemProxyJournalPath(), 'utf8')) as ProxyState['journal'];
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw new Error('Could not read proxy journal evidence.');
     journal = null;
   }
-  return { current: JSON.parse(stdout), journal };
+  return { current, journal };
 }
 
 function digest(value: unknown): string {
@@ -119,17 +111,17 @@ async function completeChange(
   return result;
 }
 
-async function expectRestored(desktopDirectory: string, original: unknown): Promise<void> {
-  const state = await readProxyState(desktopDirectory);
-  expect(digest(state.current)).toBe(digest(original));
+async function expectRestored(desktopApp: LocalElectronApplicationDriver, original: unknown): Promise<void> {
+  const state = await readProxyState(desktopApp);
+  expect(desktopApp.matchesSystemProxyEvidence(state.current, original)).toBe(true);
   expect(state.journal).toBeNull();
 }
 
-async function expectOwned(desktopDirectory: string, original: unknown): Promise<void> {
-  const state = await readProxyState(desktopDirectory);
+async function expectOwned(desktopApp: LocalElectronApplicationDriver, original: unknown): Promise<void> {
+  const state = await readProxyState(desktopApp);
   expect(state.journal !== null).toBe(true);
-  expect(digest(state.journal!.original)).toBe(digest(original));
-  expect(digest(state.current)).toBe(digest(state.journal!.owned));
+  expect(desktopApp.matchesSystemProxyEvidence(state.journal!.original, original)).toBe(true);
+  expect(desktopApp.matchesSystemProxyEvidence(state.current, state.journal!.owned)).toBe(true);
 }
 
 async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testInfo: TestInfo): Promise<void> {
@@ -164,10 +156,10 @@ test('settings.tools.system-proxy preserves ownership across Ask Auto and restar
   try {
     // 准备：验证真实冷启动已接管，保留首次 original 的内存副本并经 UI 配置 Provider。
     // Arrange: verify real cold-start ownership, retain the first original snapshot in memory, and configure the Provider through UI.
-    const initial = await readProxyState(desktopApp.desktopDirectory);
+    const initial = await readProxyState(desktopApp);
     expect(initial.journal !== null).toBe(true);
     const original = initial.journal!.original;
-    await expectOwned(desktopApp.desktopDirectory, original);
+    await expectOwned(desktopApp, original);
     await configureProvider(desktopApp.page, openAiCompatibleLab);
     await desktopApp.stopTrace(testInfo);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.panel.toggle).click();
@@ -193,39 +185,39 @@ test('settings.tools.system-proxy preserves ownership across Ask Auto and restar
     await completeChange(desktopApp.page, openAiCompatibleLab, 'restore-deny', 'settings_restore_system_proxy', {
       verdict: 'deny', owned: true,
     });
-    expect(digest(await readProxyState(desktopApp.desktopDirectory))).toBe(digest(initial));
+    expect(desktopApp.matchesSystemProxyEvidence(await readProxyState(desktopApp), initial)).toBe(true);
     const restored = await completeChange(desktopApp.page, openAiCompatibleLab, 'restore-allow', 'settings_restore_system_proxy', {
       verdict: 'allow', owned: true,
     });
     expect(restored).toMatchObject({ ok: true, value: { restored: true, status: { owned: false } } });
     await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolResult('restore-allow')))
       .toHaveAttribute('data-summary-kind', 'systemProxyRestore');
-    await expectRestored(desktopApp.desktopDirectory, original);
+    await expectRestored(desktopApp, original);
 
     // 用户操作与断言：Enable Deny 不写 OS；Allow 重新接管且 journal original 不被自身代理覆盖。
     // User actions and assertions: Enable Deny does not write the OS; Allow retakes ownership without replacing the journal original with itself.
     await completeChange(desktopApp.page, openAiCompatibleLab, 'enable-deny', 'settings_enable_system_proxy', {
       verdict: 'deny', owned: false,
     });
-    await expectRestored(desktopApp.desktopDirectory, original);
+    await expectRestored(desktopApp, original);
     const enabled = await completeChange(desktopApp.page, openAiCompatibleLab, 'enable-allow', 'settings_enable_system_proxy', {
       verdict: 'allow', owned: false,
     });
     expect(enabled).toMatchObject({ ok: true, value: { owned: true, enabled: true } });
     await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolResult('enable-allow')))
       .toHaveAttribute('data-summary-kind', 'systemProxy');
-    await expectOwned(desktopApp.desktopDirectory, original);
+    await expectOwned(desktopApp, original);
 
     // 用户操作与断言：Auto 只省略审批，重复 Restore 返回 not-owned，然后沿正式路径重新接管。
     // User actions and assertions: Auto skips approval only; repeated Restore reports not-owned before the formal Enable path retakes ownership.
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.executionMode.auto).click();
     await completeChange(desktopApp.page, openAiCompatibleLab, 'restore-auto', 'settings_restore_system_proxy');
-    await expectRestored(desktopApp.desktopDirectory, original);
+    await expectRestored(desktopApp, original);
     const skipped = await completeChange(desktopApp.page, openAiCompatibleLab, 'restore-skipped', 'settings_restore_system_proxy');
     expect(skipped).toMatchObject({ ok: true, value: { restored: false, reason: 'not-owned' } });
-    await expectRestored(desktopApp.desktopDirectory, original);
+    await expectRestored(desktopApp, original);
     await completeChange(desktopApp.page, openAiCompatibleLab, 'enable-auto', 'settings_enable_system_proxy');
-    await expectOwned(desktopApp.desktopDirectory, original);
+    await expectOwned(desktopApp, original);
 
     // 撤权：关闭两项 Agent/MCP 开关，旧 Chat 直接调用被拒绝，OS 和 journal 不变。
     // Revocation: disable both Agent and MCP switches; stale Chat calls are rejected without changing the OS or journal.
@@ -242,7 +234,7 @@ test('settings.tools.system-proxy preserves ownership across Ask Auto and restar
       await mcpSwitch.click();
       await expect(mcpSwitch).toHaveAttribute('aria-checked', 'false');
     }
-    const beforeRevokedCalls = await readProxyState(desktopApp.desktopDirectory);
+    const beforeRevokedCalls = await readProxyState(desktopApp);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.panel.toggle).click();
     for (const name of TOOL_NAMES) {
       openAiCompatibleLab.enqueueToolCall({ callId: `disabled-${name}`, name, arguments: {} });
@@ -254,13 +246,13 @@ test('settings.tools.system-proxy preserves ownership across Ask Auto and restar
       expect(toolResult(openAiCompatibleLab, `disabled-${name}`))
         .toMatchObject({ ok: false, error: { code: 'unknown_tool' } });
     }
-    expect(digest(await readProxyState(desktopApp.desktopDirectory))).toBe(digest(beforeRevokedCalls));
+    expect(desktopApp.matchesSystemProxyEvidence(await readProxyState(desktopApp), beforeRevokedCalls)).toBe(true);
 
     // 重启：第一代正常退出恢复宿主；同 profile 第二代仍自动接管，但 Model 和 Tool 不重放。
     // Restart: generation one restores the host on exit; generation two still takes ownership automatically without replaying Model or Tool calls.
     const modelRequestCount = openAiCompatibleLab.evidence().length;
     await closeGeneration(desktopApp, testInfo);
-    await expectRestored(desktopApp.desktopDirectory, original);
+    await expectRestored(desktopApp, original);
     relaunchedApp = await LocalElectronApplicationDriver.launch(testInfo, {
       userDataDirectory: desktopApp.userDataDirectory, evidencePrefix: 'relaunch',
     });
@@ -268,7 +260,7 @@ test('settings.tools.system-proxy preserves ownership across Ask Auto and restar
     await relaunchedApp.waitUntilReady();
     await relaunchedApp.stopTrace(testInfo);
     expect(openAiCompatibleLab.evidence().length - modelRequestCount).toBe(0);
-    await expectOwned(relaunchedApp.desktopDirectory, original);
+    await expectOwned(relaunchedApp, original);
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.settings.section.agent).click();
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.tools.search).fill('system_proxy');

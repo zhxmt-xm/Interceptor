@@ -12,16 +12,16 @@
 | Diagnostics | [diagnostics.md](diagnostics.md) | 6 |
 | Agent | [agent.md](agent.md) | 13 |
 | MCP | [mcp.md](mcp.md) | 3 |
-| Settings 与 Updates | [settings-updates.md](settings-updates.md) | 23 |
+| Settings 与 Updates | [settings-updates.md](settings-updates.md) | 25 |
 
-总计：130 条 workflow 契约。管理员MMC原生专项另保留排除说明，不计入workflow数量。
+总计：132 条 workflow 契约。管理员MMC原生专项另保留排除说明，不计入workflow数量。
 
 ## 文档约定
 
 每条 workflow 必须是自包含的完整验收流程，不引用一个共享的“启动/关闭步骤”来省略生命周期。每条文档都应明确写出：
 
 1. 创建独立临时 profile 和该 workflow 所需的 loopback fixture；
-2. 使用 Playwright `_electron.launch()` 启动一份新的未打包 production bundle；
+2. 使用平台driver启动一份新的真实Electron和本地production bundle：Windows为`_electron.launch()`，macOS为进程spawn加Renderer CDP；
 3. 启动并保存该 workflow 自己的 trace；
 4. 等待 App root、Core Running、真实 PID 和 8888 listener；
 5. 从 App 初始 UI 开始，按顺序执行该 workflow 的全部点击、输入、菜单、弹窗和原生授权；

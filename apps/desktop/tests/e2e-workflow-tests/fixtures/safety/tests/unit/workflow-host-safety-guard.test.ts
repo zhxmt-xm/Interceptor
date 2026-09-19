@@ -53,9 +53,18 @@ class FakeWorkflowHostSafetyOperations implements WorkflowHostSafetyOperations {
   }
 
   /** Read the complete current WinINet snapshot. */
-  readWinInetSettings(): Promise<WinInetProxySettings> {
+  readSystemProxySettings(): Promise<WinInetProxySettings> {
     this.calls.push('read-wininet');
     return Promise.resolve({ ...this.settings });
+  }
+
+  areSystemProxySettingsEqual(left: WinInetProxySettings, right: WinInetProxySettings): boolean {
+    return left.flags === right.flags
+      && left.proxyEnabled === right.proxyEnabled
+      && left.autoDetect === right.autoDetect
+      && left.proxyServer === right.proxyServer
+      && left.bypassList === right.bypassList
+      && left.pacUrl === right.pacUrl;
   }
 
   /** Report whether the shared crash journal exists. */

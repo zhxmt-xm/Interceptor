@@ -1,5 +1,4 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import path from 'node:path';
 
 import type { TestInfo } from '@playwright/test';
 
@@ -8,15 +7,14 @@ import {
   LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
-import type { WinInetProxySettings } from '../../fixtures/safety/workflow-host-safety-guard';
 
 interface SystemProxyJournalRecord {
   /** Minimal crash journal schema version. */
   readonly version: 1;
   /** Complete WinINet snapshot captured before takeover. */
-  readonly original: WinInetProxySettings;
+  readonly original: unknown;
   /** Complete WinINet snapshot written by Interceptor. */
-  readonly owned: WinInetProxySettings;
+  readonly owned: unknown;
 }
 
 interface LocatedJournal {
@@ -42,17 +40,8 @@ interface CrashRecoveryEvidence {
 }
 
 /** Read the one user-level crash journal. */
-async function readSharedJournal(): Promise<LocatedJournal | null> {
-  const localAppDataDirectory = process.env.LOCALAPPDATA;
-  if (!localAppDataDirectory) {
-    throw new Error('LOCALAPPDATA is required for system proxy recovery evidence.');
-  }
-  const filePath = path.join(
-    localAppDataDirectory,
-    'Interceptor',
-    'system-proxy',
-    'journal.json',
-  );
+async function readJournal(desktopApp: LocalElectronApplicationDriver): Promise<LocatedJournal | null> {
+  const filePath = desktopApp.systemProxyJournalPath();
   try {
     return {
       filePath,
@@ -67,10 +56,10 @@ async function readSharedJournal(): Promise<LocatedJournal | null> {
 }
 
 /** Wait for one App generation to persist its minimal crash journal. */
-async function waitForCrashJournal(): Promise<LocatedJournal> {
+async function waitForCrashJournal(desktopApp: LocalElectronApplicationDriver): Promise<LocatedJournal> {
   let locatedJournal: LocatedJournal | null = null;
   await expect.poll(async () => {
-    locatedJournal = await readSharedJournal();
+    locatedJournal = await readJournal(desktopApp);
     return locatedJournal?.record.version ?? null;
   }, {
     message: 'System proxy crash journal was not persisted.',
@@ -91,18 +80,14 @@ async function closeGeneration(
   await driver.forceCleanup();
 }
 
-test('loads a crashed system proxy journal across isolated profiles', async ({
+test('loads a crashed system proxy journal across application generations', async ({
   desktopApp,
 }, testInfo) => {
-  test.setTimeout(150_000);
+  desktopApp.configureWorkflowTimeout(testInfo, 150_000);
   testInfo.annotations.push({
     type: 'renderer-workflow',
     description: 'settings.system-proxy.crash-recovery',
   });
-  if (process.platform !== 'win32') {
-    throw new Error('settings.system-proxy.crash-recovery requires Windows WinINet.');
-  }
-
   desktopApp.preserveUserDataOnFailure();
   let secondGeneration: LocalElectronApplicationDriver | null = null;
   let secondGenerationClosed = false;
@@ -113,9 +98,8 @@ test('loads a crashed system proxy journal across isolated profiles', async ({
   try {
     // 准备：App A自动接管并持久化唯一的original/owned快照。
     // Arrange: App A takes over and persists the only original/owned snapshots.
-    const firstJournal = await waitForCrashJournal();
-    evidence.firstGenerationOwned = JSON.stringify(firstJournal.record.original)
-      !== JSON.stringify(firstJournal.record.owned);
+    const firstJournal = await waitForCrashJournal(desktopApp);
+    evidence.firstGenerationOwned = !desktopApp.matchesSystemProxyEvidence(firstJournal.record.original, firstJournal.record.owned);
     expect(evidence.firstGenerationOwned).toBe(true);
     expect(Object.keys(firstJournal.record).sort()).toEqual([
       'original',
@@ -129,22 +113,15 @@ test('loads a crashed system proxy journal across isolated profiles', async ({
     await desktopApp.crashAbruptly(testInfo);
     evidence.firstGenerationDestroyed = true;
 
-    // 用户流程：不同profile的B加载同一共享journal，不重写当前8888。
-    // User flow: B uses another profile and loads the same shared journal without rewriting 8888.
-    secondGeneration = await LocalElectronApplicationDriver.launch(testInfo, {
-      evidencePrefix: 'relaunch',
-    });
+    // 用户流程：Windows保持跨profile共享journal；macOS同profile重启，helper不重装。
+    // User flow: Windows retains its cross-profile journal; macOS restarts the same profile without redeploying the helper.
+    secondGeneration = await desktopApp.relaunchAfterCrash(testInfo, 'relaunch');
     await secondGeneration.waitUntilReady();
-    const secondJournal = await waitForCrashJournal();
-
+    const secondJournal = await waitForCrashJournal(secondGeneration);
     // 业务断言：两份快照逐字段保持，profile隔离不影响共享journal。
     // Business assertions: both snapshots remain exact across isolated profiles.
-    evidence.secondGenerationLoadedOriginal = JSON.stringify(
-      secondJournal.record.original,
-    ) === JSON.stringify(firstJournal.record.original);
-    evidence.secondGenerationLoadedOwned = JSON.stringify(
-      secondJournal.record.owned,
-    ) === JSON.stringify(firstJournal.record.owned);
+    evidence.secondGenerationLoadedOriginal = desktopApp.matchesSystemProxyEvidence(secondJournal.record.original, firstJournal.record.original);
+    evidence.secondGenerationLoadedOwned = desktopApp.matchesSystemProxyEvidence(secondJournal.record.owned, firstJournal.record.owned);
     evidence.sharedJournalPathUsed = secondJournal.filePath === firstJournal.filePath;
     expect(evidence.secondGenerationLoadedOriginal).toBe(true);
     expect(evidence.secondGenerationLoadedOwned).toBe(true);

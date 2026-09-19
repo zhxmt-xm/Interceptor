@@ -1,12 +1,16 @@
+import { execFile } from 'node:child_process';
+import { X509Certificate } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { promisify } from 'node:util';
 
 import * as x509 from '@peculiar/x509';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { CertificateService } from '../../certificate-service';
 import { CertificateError } from '../../certificate-error';
+import { TrustStoreService } from '../../../platform-capabilities/internal/trust-store-service';
 import type { SecureStore } from '../../../interfaces';
 
 /** 明文前缀“加密”，用于断言私钥确实经 SecureStore 加密后落盘。 */
@@ -106,5 +110,33 @@ describe('CertificateService', () => {
 
   it('returns null material when no CA is present', async () => {
     expect(await createService().getMaterial()).toBeNull();
+  });
+
+  it.runIf(process.platform === 'darwin')('recognizes a macOS system root through native trust evaluation', async () => {
+    const systemKeychainPath = '/System/Library/Keychains/SystemRootCertificates.keychain';
+    const { stdout } = await promisify(execFile)('security', [
+      'find-certificate', '-c', 'DigiCert Global Root G2', '-p', systemKeychainPath,
+    ], { encoding: 'utf8' });
+    const certificate = new X509Certificate(stdout);
+    const trustStoreService = new TrustStoreService({ systemKeychainPath });
+
+    expect(await trustStoreService.isTrusted(certificate.fingerprint.replaceAll(':', ''))).toBe(true);
+  });
+
+  it.runIf(process.platform === 'darwin')('does not implicitly trust a newly generated macOS CA', async () => {
+    const certificateService = createService();
+    await certificateService.ensure();
+    const thumbprints = await certificateService.getThumbprints();
+    expect(thumbprints).not.toBeNull();
+    expect(await new TrustStoreService().isTrusted(thumbprints!.sha1)).toBe(false);
+
+    const result = await promisify(execFile)('security', [
+      'verify-cert', '-c', certificateService.getCertificatePath(),
+      '-p', 'basic', '-L', '-q', '-k', '/Library/Keychains/System.keychain',
+    ], { encoding: 'utf8' }).then(
+      () => ({ trusted: true }),
+      (error: { code?: unknown }) => ({ trusted: false, exitCode: error.code }),
+    );
+    expect(result).toMatchObject({ trusted: false, exitCode: 1 });
   });
 });

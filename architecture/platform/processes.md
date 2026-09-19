@@ -1,6 +1,6 @@
 # 平台架构：进程与通信
 
-> 最后更新：2026-09-05
+> 最后更新：2026-09-18
 > 范围：只描述已经实现并验证的代码。本文覆盖跨 feature 的进程边界、两条通道、故障分类与关键数据结构；
 > feature 级别的设计见 [../README.md](../README.md) 索引的各 feature 文档。
 
@@ -146,7 +146,7 @@ Traffic Lab使用显式`127.0.0.1:8888`产生可观测H1场景。
 | Renderer / Preload | 发送 Enable、Restore、Status 意图并显示结果 | 直接访问系统代理、journal 或 native helper |
 | Electron Main | 唯一产品编排者；顺序执行代理操作、维护 journal、同步 upstream、决定退出是否继续 | 把完整代理快照发给 Renderer 或日志 |
 | Proxy Core UtilityProcess | 监听8888并按 Main 下发的 upstream 转发 | 修改系统代理、读取 journal、决定恢复目标 |
-| native helper | 执行一次完整平台快照的 get/set | 保存产品状态、识别 App 或决定何时恢复 |
+| native helper | Windows执行一次原生读写；macOS常驻服务分别认证生产App/开发UID，执行同一套固定代理条件替换和公开证书库命令 | 保存第二份业务original/journal、决定接管时机、接收CA私钥或通用shell |
 | E2E runner | 在产品外记录测试进程 PID+启动时间，并在失败后保护宿主 | 把测试进程身份写入产品 journal 或协议 |
 
 Windows 使用 `%LOCALAPPDATA%/Interceptor/system-proxy/journal.json` 的用户级唯一记录，不随 Electron
@@ -158,10 +158,14 @@ Main 内的 `SystemProxyOperationQueue` 只是一条内存 Promise FIFO：启动
 排空已接受命令，再排入最终 Restore。完整参与者、当场比较表、正常启动、崩溃重启、正常退出、启动失败与
 Core 故障时序见 [../features/settings.md](../features/settings.md) §3.2。
 
+macOS Main在代理恢复前调用`PlatformCapabilitiesService.prepareNativeComponents()`，按真实`app.isPackaged`选择生产或开发socket。首次部署/新增授权由本次配套helper在前台请求系统管理员确认，仅部署helper、root保护配置和launchd；App不搬迁、不使用独立`.pkg`。开发与业务E2E共用已核准UID，不核验App构建、源码或调试状态；生产仍核验内核UID/audit token、canonical路径、CDHash、完整资源和运行时，不失败回退或接受请求自报环境。两入口共用固定业务实现，helper自身不变时开发重编译/profile变化不触发重装。证书导入/删除走该服务，admin trust仍在登录用户上下文，CA生成/私钥仍归CertificateService。具体协议与边界见[Main平台模块](../../apps/desktop/src/main/platform-capabilities/README.md)。
+
+CaptureStatus的recording事实不直接等于系统路由就绪；Renderer接收记录事件后确认代理owned且未失权，Stop、代理失权或Core换代使迟到查询失效。Core故障期间不会仅因新listener已记录而提前显示Recording；Main业务队列和原生条件写成功仍是代理接管依据。
+
 每条真实 Electron workflow 和 packaged smoke 均由外层宿主 guard 保存、恢复并复核完整 WinINet、crash
 journal、测试进程树和8888 listener。这个 guard 证明测试没有污染宿主，不代表每个产品分支都已取得真实
 E2E；Windows跨profile崩溃恢复、MITM持久化和`application.lifecycle.core-restart`均已取得真实Electron
-证据，后者覆盖Core-only故障、新代际请求/RPC恢复及第二次故障与正常退出竞争。macOS实机流程仍待E2E。
+证据，后者覆盖Core-only故障、新代际请求/RPC恢复及第二次故障与正常退出竞争。macOS同profile崩溃恢复、Core故障、TLS和helper复用已有独立真实证据，全量workflow与独立权限验收仍见[Handover](../HANDOVER.md)。
 
 ## 2. 两条独立通道
 

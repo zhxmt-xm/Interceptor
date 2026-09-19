@@ -4,7 +4,7 @@ import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/a
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
-import { submitWindowsFileDialogPath } from '../../fixtures/ui/windows-file-dialog';
+import { submitFileDialogPath } from '../../fixtures/ui/file-dialog';
 
 const MEDIA_SCENARIOS = [
   { id: 'body-png', kind: 'image', bytes: 68, mime: 'image/png', hex: '' },
@@ -100,7 +100,7 @@ test('capture.scenarios.body-media previews images and hex and saves media witho
         // 原生保存：真实点击唯一Save并操作系统对话框，只读核对产品生成文件的独立预期字节。
         // Native export: click Save and use the real system dialog, then read the product-generated file against independent expected bytes.
         await save.click();
-        await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), destination);
+        await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), destination);
         await expect.poll(async () => {
           try { return (await readFile(destination)).toString('hex'); }
           catch (error) {

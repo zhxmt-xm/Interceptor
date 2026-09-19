@@ -11,7 +11,8 @@ import { getByAutomationId } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
-import { cancelWindowsFileDialog, submitWindowsFileDialogPath } from '../../fixtures/ui/windows-file-dialog';
+import { cancelFileDialog, submitFileDialogPath } from '../../fixtures/ui/file-dialog';
+import { automaticallyExecuteMcpClientTools } from '../../fixtures/ui/settings-workflow';
 
 const TOOL_NAMES = ['diagnostics_get_trace', 'diagnostics_get_recent', 'diagnostics_export'] as const;
 const PROMPT = ['Inspect or export', 'the requested Diagnostics records.'].join(' ');
@@ -181,7 +182,7 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
 }
 
 test('diagnostics.tools.queries-export reads current traces and exports redacted persisted records', async ({ desktopApp, httpTrafficRunner: loopbackLab, openAiCompatibleLab }, testInfo) => {
-  test.skip(process.platform !== 'win32', '原生Save Dialog当前在Windows验证。');
+  test.skip(!['win32', 'darwin'].includes(process.platform), 'Native Save workflow requires Windows or macOS.');
   test.setTimeout(300_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'diagnostics.tools.queries-export' });
   for (const value of [PROMPT, ANSWER, SECRET]) desktopApp.registerSensitiveTextForEvidenceAudit(value);
@@ -240,14 +241,14 @@ test('diagnostics.tools.queries-export reads current traces and exports redacted
     expect(await finishAgentCall(page, openAiCompatibleLab, 'diagnostics-export-denied')).toMatchObject({ ok: false, error: { code: 'tool_denied' } });
     expect(await readdir(directory)).toEqual([]);
     await beginAgentCall(page, openAiCompatibleLab, 'diagnostics-export-cancel', TOOL_NAMES[2], FILTER, 'allow');
-    await cancelWindowsFileDialog(desktopApp.windowsMainProcessOwner());
+    await cancelFileDialog(desktopApp.nativeFileDialogOwner());
     await page.bringToFront();
     expect(await finishAgentCall(page, openAiCompatibleLab, 'diagnostics-export-cancel')).toEqual({ ok: true, value: { started: false } });
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('diagnostics-export-cancel'))).toHaveAttribute('data-summary-kind', 'exportCanceled');
     expect(await readdir(directory)).toEqual([]);
     const agentFile = path.join(directory, 'agent.jsonl');
     await beginAgentCall(page, openAiCompatibleLab, 'diagnostics-export-allow', TOOL_NAMES[2], FILTER, 'allow');
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), agentFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), agentFile);
     await page.bringToFront();
     const exportJobId = assertStarted((await finishAgentCall(page, openAiCompatibleLab, 'diagnostics-export-allow')).value);
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('diagnostics-export-allow'))).toHaveAttribute('data-summary-kind', 'diagnosticsExport');
@@ -257,7 +258,7 @@ test('diagnostics.tools.queries-export reads current traces and exports redacted
     await getByAutomationId(page, AUTOMATION_IDS.agent.executionMode.auto).click();
     const autoFile = path.join(directory, 'auto.jsonl');
     await beginAgentCall(page, openAiCompatibleLab, 'diagnostics-export-auto', TOOL_NAMES[2], FILTER);
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), autoFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), autoFile);
     await page.bringToFront();
     assertStarted((await finishAgentCall(page, openAiCompatibleLab, 'diagnostics-export-auto')).value);
     exportedFiles.push(await readCompletedExport(autoFile));
@@ -290,21 +291,21 @@ test('diagnostics.tools.queries-export reads current traces and exports redacted
     const canceled = client.callTool({ name: TOOL_NAMES[2], arguments: FILTER });
     await expect(approval).toHaveAttribute('data-tool-name', TOOL_NAMES[2]);
     await getByAutomationId(page, AUTOMATION_IDS.mcp.approval.allow).click();
-    await cancelWindowsFileDialog(desktopApp.windowsMainProcessOwner());
+    await cancelFileDialog(desktopApp.nativeFileDialogOwner());
     await page.bringToFront();
     expect(mcpValue(await canceled)).toEqual({ started: false });
     const mcpFile = path.join(directory, 'mcp.jsonl');
     const allowed = client.callTool({ name: TOOL_NAMES[2], arguments: FILTER });
     await expect(approval).toHaveAttribute('data-tool-name', TOOL_NAMES[2]);
     await getByAutomationId(page, AUTOMATION_IDS.mcp.approval.allow).click();
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), mcpFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), mcpFile);
     await page.bringToFront();
     assertStarted(mcpValue(await allowed));
     exportedFiles.push(await readCompletedExport(mcpFile));
-    await getByAutomationId(page, AutomationIdFactory.mcpClientAuto(configuredClient.clientId)).click();
+    await automaticallyExecuteMcpClientTools(page, configuredClient.clientId);
     const mcpAutoFile = path.join(directory, 'mcp-auto.jsonl');
     const automatic = client.callTool({ name: TOOL_NAMES[2], arguments: FILTER });
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), mcpAutoFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), mcpAutoFile);
     await page.bringToFront();
     assertStarted(mcpValue(await automatic));
     exportedFiles.push(await readCompletedExport(mcpAutoFile));

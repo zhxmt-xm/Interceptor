@@ -1,16 +1,16 @@
 # Desktop Local E2E Workflow Tests
 
-本目录定义并承载 Interceptor **本地未打包 Electron 应用**的完整 Playwright E2E 验收。
+本目录定义并承载 Interceptor 的真实 Playwright 用户流程验收。
 
-Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electron 进程，运行真实 Main、Preload、Renderer、Proxy Core UtilityProcess 与 Worker。测试通过带 `data-automation-id` 的真实 UI 元素完成操作，不使用 Vite-only Renderer、fake Preload、JSDOM 或产品测试后门。
+Windows使用官方`_electron.launch()`启动未打包production bundle；macOS默认spawn未打包Electron并通过Renderer CDP连接，与Forge共用已核准本机UID的开发helper。显式选择签名App时仍走严格生产鉴权，保留产物全部Fuses。两平台运行真实Main、Preload、Renderer、Core与Worker，通过公共`data-automation-id`操作UI，不使用fake Preload、状态注入或产品后门。
 
 本套件与 [`../packaged-smoke/`](../packaged-smoke/) 共同构成应用完整验收：
 
-- 本目录验证未打包应用的完整生命周期、destroy 和全部 feature workflow；
-- `packaged-smoke` 在最终 Forge package 上复跑同一 workflow contract，并追加 production package 安全与资源边界；
+- 本目录验证上述平台目标的用户流程、独立生命周期和destroy；
+- `packaged-smoke`另行验证最终package的安全、资源、启动和退出边界，当前综合smoke不等于已经复用了全部workflow；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、129条Inventory与130份详细workflow规格已建立；管理员MMC原生专项仅保留排除说明，不计入workflow。已实现的spec按owning feature放入`workflows/<feature>/`，Inventory只有满足对应前置测试及Green/销毁证据的条目才能标passed；仅补既有行为覆盖不人为制造Red。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、131条Inventory与132份详细workflow规格已建立；管理员MMC原生专项仅保留排除说明，不计入workflow。已实现的spec按owning feature放入`workflows/<feature>/`，Inventory只有满足对应前置测试及Green/销毁证据的条目才能标passed；仅补既有行为覆盖不人为制造Red。
 
 ## 零 Mock 硬性原则
 
@@ -36,7 +36,7 @@ Playwright 使用官方 `_electron.launch()` 直接启动测试拥有的 Electro
 
 1. 创建独立临时 profile 和 loopback fixture；
 2. 启动该 workflow 的 trace；
-3. `_electron.launch()` 启动一份新的本地 production bundle；
+3. Windows以`_electron.launch()`、macOS以Electron+Renderer CDP启动独立的真实进程；
 4. 等待 App root、Core Running、真实 PID 和 8888 listener；
 5. 从初始 UI 开始执行该 workflow 的连续操作；
 6. 保存 `trace.zip`、`final.png`、Main/Renderer 日志和 `metadata.json`；
@@ -59,6 +59,28 @@ Electron executable from node_modules
 ```
 
 测试不会先人工运行 `electron-forge start` 再附着。应用及其进程由 test-scoped fixture 创建和销毁。
+
+两平台共用业务workflow；原生读取、窗口、权限、超时与退出观察分派到driver/fixture，不为某一平台改共同流量输入。Windows原路径/断言不被macOS分支替换，现有unit或macOS Green不能证明Windows原生E2E通过。具体边界见[平台fixture分派](fixtures/README.md#平台分派)。
+
+### macOS 开发与生产入口
+
+`e2e:prepare-local`依次构建协议/Core/native和未打包production bundle，默认不执行package。Main按真实`app.isPackaged`选择helper入口，业务E2E和日常Forge开发使用同一个常驻服务及开发授权，信任已核准UID的本机代码。首次部署或添加开发授权由系统请求管理员确认；新App构建、profile、下一条workflow不重复申请该项授权。helper自身变化时更新组件，不安装`.pkg`或搬迁App。Windows原准备路径不变。
+
+```sh
+npm run test:e2e:workflow --workspace @interceptor/desktop -- workflows/settings/helper-startup.workflow.ts
+```
+
+同一构建连续验收时直接运行Playwright，不必重复prepare：
+
+```sh
+npm exec --workspace @interceptor/desktop playwright test -- --config tests/e2e-workflow-tests/playwright.config.ts workflows/settings/helper-startup.workflow.ts
+```
+
+`INTERCEPTOR_E2E_MACOS_APP_PATH`仅在测试driver中选择已构建的签名App，此时Main必须通过生产App路径/CDHash、完整资源和运行时验证，不能回退到开发socket。设置该变量后直接运行Playwright，prepare会拒绝混用产物。packaged smoke和产物安全验收仍独立执行，开发授权不替代生产核准。
+
+每条workflow仍独立profile/trace，系统授权由本机用户处理；helper跨workflow保留，Main/Core/Worker和8888仍必须退出恢复。macOS失败清理先确认完整代理已恢复，否则保留App、listener和profile，不再让测试侧重复弹旧代理授权后强杀。证书admin trust仍有独立系统权限；组件卸载不等于业务恢复，整轮结束按已确认的保留/卸载范围处理。
+
+macOS业务窗口由driver按项目配置准备：常规场景保持真实1600x900，只有body-fill滚轮边界场景使用1600x800，Windows项目/窗口逻辑不变。macOS admin trust前后检查统一在宿主guard；TLS/gRPC/H2保持相同业务步骤。macOS HTTPS弹窗动画及定位workflow仍按用户要求暂停，仅保留在本地未提交工作中，不纳入本阶段代码或Green。
 
 ## 目录结构
 
@@ -290,6 +312,8 @@ diagnostics.row.<traceKey>
 | `settings.proxy-mitm.persistence` | 异常退出后恢复系统代理并跨进程恢复MITM/TLS配置 | os-side-effect | passed |
 | `settings.certificates.generate-delete` | CA Generate/Regenerate/Delete | shared | planned |
 | `settings.certificates.trust` | Install/Uninstall本机信任 | os-side-effect | planned |
+| `settings.certificates.cancel-trust` | macOS原生取消后由产品撤回新增CA，保留原证书集 | macOS / os-side-effect | passed：前置Red、同步后Green/恢复及生产smoke见规格 |
+| `settings.helper-startup` | macOS首次部署及开发/生产入口复用，不覆盖另一份授权 | macOS / os-side-effect | passed：见对应规格的分阶段证据 |
 | `settings.certificates.https` | MITM switch和host例外 | os-side-effect | planned |
 | `settings.certificates.external-actions` | Reveal/View；不包含用户排除的管理员MMC原生验收 | native-ui | planned |
 | `settings.tls-compatibility` | 真实TLS失败提示、精确host/wildcard选择、滚动、保存与Not now；最终Green，保留样式前置缺口 | privileged UI | planned |

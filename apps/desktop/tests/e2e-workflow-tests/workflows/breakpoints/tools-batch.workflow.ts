@@ -6,6 +6,7 @@ import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
+import { automaticallyExecuteMcpClientTools } from '../../fixtures/ui/settings-workflow';
 import { createRequestBreakpointRule } from '../../fixtures/ui/breakpoint-workflow';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
@@ -309,7 +310,7 @@ test('breakpoints.tools.batch scopes Agent and MCP batch commands to real pendin
     await getByAutomationId(page, AUTOMATION_IDS.mcp.approval.allow).click();
     expect(mcpValue(await continuedRule)).toEqual({ resolvedCount: 2 });
     await expectForwarded(loopbackLab, [mcpPostFirst, mcpPostSecond]);
-    await getByAutomationId(page, AutomationIdFactory.mcpClientAuto(configuredClient.clientId)).click();
+    await automaticallyExecuteMcpClientTools(page, configuredClient.clientId);
     expect(mcpValue(await client.callTool({ name: TOOL_NAMES[1], arguments: { queueKey: 'http' } }))).toEqual({ resolvedCount: 1 });
     await expectDropped(loopbackLab, mcpPut);
     const mcpQueueFirst = await holdHttpRequest(desktopApp, loopbackLab, 'mcp-queue-first', 'POST');

@@ -21,10 +21,8 @@ import {
   getByAutomationIdPrefix,
 } from '../../fixtures/ui/automation';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
-import {
-  submitWindowsFileDialogPath,
-  type WindowsFileDialogOwner,
-} from '../../fixtures/ui/windows-file-dialog';
+import type { WorkflowProcessIdentity } from '../../fixtures/safety/workflow-host-safety-guard';
+import { submitFileDialogPath } from '../../fixtures/ui/file-dialog';
 
 const IMPORT_IDS = {
   toolbar: 'composer.collection.import',
@@ -93,7 +91,7 @@ async function expandFolder(page: Page, folderId: string): Promise<void> {
 
 async function chooseFile(
   page: Page,
-  mainProcessOwner: WindowsFileDialogOwner,
+  mainProcessOwner: WorkflowProcessIdentity,
   trigger: Locator,
   busyAutomationId: string,
   filePath: string,
@@ -101,7 +99,7 @@ async function chooseFile(
   await page.bringToFront();
   await trigger.click();
   await expect(getByPublicAutomationId(page, busyAutomationId)).toBeVisible();
-  await submitWindowsFileDialogPath(mainProcessOwner, filePath);
+  await submitFileDialogPath(mainProcessOwner, filePath);
   await page.bringToFront();
   await expect(getByPublicAutomationId(page, busyAutomationId)).toHaveCount(0);
 }
@@ -140,7 +138,7 @@ async function countInputsWithValue(page: Page, expectedValue: string): Promise<
 test('composer.collection.import appends product-exported requests with fresh identities', async ({
   desktopApp,
 }, testInfo) => {
-  test.skip(process.platform !== 'win32', '真实文件对话框 workflow 目前只在 Windows 执行。');
+  test.skip(!['win32', 'darwin'].includes(process.platform), 'Native file dialog workflow requires Windows or macOS.');
   testInfo.annotations.push({
     type: 'renderer-workflow',
     description: 'composer.collection.import',
@@ -149,7 +147,7 @@ test('composer.collection.import appends product-exported requests with fresh id
   const transferDirectory = await mkdtemp(path.join(os.tmpdir(), 'interceptor-composer-import-'));
   const exportPath = path.join(transferDirectory, 'collection-roundtrip.json');
   const { page } = desktopApp;
-  const mainProcessOwner = desktopApp.windowsMainProcessOwner();
+  const mainProcessOwner = desktopApp.nativeFileDialogOwner();
 
   try {
     // 先锁定新能力入口；旧提交必须在这里因真实产品缺口取得Red。

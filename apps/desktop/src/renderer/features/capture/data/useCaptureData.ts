@@ -14,6 +14,7 @@ const DEFAULT_CAPTURE_PORT = 8888;
 const BOOTSTRAP_RETRY_MS = 300;
 let captureBootstrapPromise: Promise<void> | null = null;
 let captureCoreGeneration: string | null = null;
+let captureStatusRevision = 0;
 
 /** 构造当前 Core 代际的无过滤分页请求；包含 Stop 前的全部 Recording Session。 */
 function toQueryRequest(
@@ -150,6 +151,8 @@ function applyCoreStatus(status: CoreProcessStatus): void {
     if (captureCoreGeneration === generation && captureBootstrapPromise) {
       return;
     }
+    captureStatusRevision += 1;
+    useCaptureStore.getState().setCapturing(false);
     if (captureCoreGeneration !== null && captureCoreGeneration !== generation) {
       useCaptureStore.getState().clearView(Date.now());
     }
@@ -170,11 +173,27 @@ function applyCoreStatus(status: CoreProcessStatus): void {
   }
 
   if (captureCoreGeneration !== null) {
+    captureStatusRevision += 1;
     captureCoreGeneration = null;
     captureBootstrapPromise = null;
     useCaptureStore.getState().clearView(Date.now());
     useCaptureStore.getState().setCapturing(false);
     useCaptureStore.getState().setProxyReadinessIssue(null);
+  }
+}
+
+async function applyCaptureStatus(status: CaptureStatus): Promise<void> {
+  const revision = ++captureStatusRevision;
+  if (!status.listening || !status.recording) {
+    useCaptureStore.getState().setCapturing(false);
+    return;
+  }
+  try {
+    const proxy = await window.interceptor.getSystemProxyStatus();
+    if (revision !== captureStatusRevision) return;
+    useCaptureStore.getState().setCapturing(!proxy.supported || (proxy.owned && !proxy.ownershipLost));
+  } catch {
+    if (revision === captureStatusRevision) useCaptureStore.getState().setCapturing(false);
   }
 }
 
@@ -324,9 +343,15 @@ function setProxyReadinessIssue(
  */
 export function useCaptureData(): void {
   // Capture commands may originate from this Renderer or from Agent Tools in Main.
-  useEffect(() => window.interceptor.onCaptureStatusChange((status) => {
-    useCaptureStore.getState().setCapturing(status.recording);
-  }), []);
+  useEffect(() => {
+    const unsubscribe = window.interceptor.onCaptureStatusChange((status) => {
+      void applyCaptureStatus(status);
+    });
+    return () => {
+      captureStatusRevision += 1;
+      unsubscribe();
+    };
+  }, []);
 
   // 产品按钮与外部Tool都由Main发布同一个提交后的清理事实。
   useEffect(() => window.interceptor.onCaptureReset(resetCaptureData), []);
@@ -384,6 +409,10 @@ export function useCaptureData(): void {
       return;
     }
     return api.onSystemProxyStatusChange((status) => {
+      if (status.supported && (!status.owned || status.ownershipLost)) {
+        captureStatusRevision += 1;
+        useCaptureStore.getState().setCapturing(false);
+      }
       const current = useCaptureStore.getState().linkStatus;
       useCaptureStore.getState().setLinkStatus({
         ...current,

@@ -31,6 +31,8 @@
 **状态**：passed
 **策略**：os-side-effect
 
+macOS续验使用相同真实请求、两代Core故障和退出恢复断言；读取完整SystemConfiguration快照及本次profile journal。Windows继续读取WinINet及LOCALAPPDATA共享journal，原命令、路径和业务检查不变。macOS尚待本轮实机结果，不沿用下面的Windows passed证据。
+
 ### Steps
 
 1. 创建独立profile/evidence和HTTP origin；启动trace/Electron，等待App root、Core Running、8888和readiness modal。

@@ -1,6 +1,6 @@
 # 平台架构：依赖随包、打包与产物安全
 
-> 最后更新：2026-08-07
+> 最后更新：2026-09-19
 > 范围：Proxy Core 运行时依赖的随包策略、Electron 打包、安全 Fuses、签名与发布 CI。
 
 ## 1. Proxy Core 运行时依赖随包
@@ -28,8 +28,9 @@ Core 是被 `utilityProcess.fork` 的独立进程，它的依赖不能靠 Render
 
 - **稳定身份/版本**：Desktop `0.1.0`，`com.zhxmt.interceptor` 作为 Bundle ID / AppUserModelId；Windows executable 为 `asInvoker`。MSI 固定 UpgradeCode，x64、per-user，不把 auto-update feature 耦合进安装器。
 - **Windows maker**：Forge WiX maker + 固定校验的 portable WiX 3.14.1；`make` 产出 MSI。可选 `WINDOWS_CERTIFICATE_FILE/PASSWORD` 同时签 app 与 MSI。生命周期 smoke 构建两版，验证 install → launch → major-upgrade → launch → uninstall。
-- **macOS maker**：无身份时 ad-hoc；有 `APPLE_SIGN_IDENTITY` 时 Developer ID；身份和三项 notarize 凭据齐全才提交并自动 staple。DMG + ZIP 同时产出，平台 smoke 验证 helper、deep signature、Gatekeeper/stapler（按凭据）。
-- **原生 helper**：Windows 用系统 .NET Framework `csc.exe`，macOS 用 `xcrun swiftc`；Forge 按平台把 `dist/system-proxy` 放到 packaged `resources/system-proxy`。
+- **macOS maker**：无身份时本地ad-hoc，启用Hardened Runtime；`optionsForFile`只为App bundles使用[本地entitlements](../../apps/desktop/assets/macos-local-app-entitlements.plist)，允许JIT和无Team ID内嵌库加载，不开放DYLD环境注入、get-task-allow或关闭执行页保护。原生helper不使用该App专属override。有`APPLE_SIGN_IDENTITY`时保留默认Hardened Runtime、entitlements与身份校验，身份和三项notarize凭据齐全才提交并自动staple。两种构建保留同一套Electron Fuses、Renderer sandbox与CSP，不修改系统Gatekeeper或授权数据库。新版ad-hoc产物的artifact audit、deep/strict/all-architectures验签和包内helper19项集成通过，主程序签名flags为0x10002；同一构建的完整App启动、Core重启、资源隔离及退出恢复已通过packaged smoke。后续构建仍须重新核准生产App身份并复验，不能复用此前关闭Hardened Runtime时的启动结果。本地ad-hoc不等于Developer ID/公证发布验收。DMG + ZIP产出配置与发布门禁不变，详细进度见[Handover](../HANDOVER.md)。
+- **原生 helper**：Windows 用系统 .NET Framework `csc.exe`，macOS 用 `xcrun swiftc`；Forge 按平台把 `dist/system-proxy` 放到 packaged `resources/system-proxy`。macOS helper使用固定identifier、Hardened Runtime及独立空entitlements，不继承Electron的JIT/设备权限；本地原生构建与Forge ad-hoc签名一致，已验证同一组件CDHash与字节相同。原生源码/工具链/参数及产物hash不变时复用构建，缓存不进入App资源。Developer ID签名与时间戳仍保留。
+- **macOS首次启动组件**：helper随现有App资源交付，Main首次启动检查并在需要时请求本机管理员授权，仅部署helper、root保护配置和launchd。App留在原位置，不要求独立`.pkg`；此前偏离路线的`make:macos:installer`、pkgbuild脚本和安装包审计分支已删除，历史产物不再使用。生产按App配套签名身份核准，开发/业务E2E共用独立UID授权而不绑定每次App构建；两个socket在同一服务中运行，生产校验不放宽。helper不独立下载/升级；Windows、DMG/ZIP maker和tag release门禁不变。[部署与恢复说明](../../apps/desktop/src/main/platform-capabilities/README.md#首次启动部署)。
 
 ## 4. 产物安全
 

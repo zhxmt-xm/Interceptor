@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import forgeConfig from '../../../../forge.config';
 
@@ -9,6 +9,11 @@ interface MakerConfig {
 }
 
 describe('Forge release configuration', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
   it('builds a stable per-user Windows MSI without auto-update coupling', () => {
     const maker = findMaker('@electron-forge/maker-wix');
 
@@ -54,6 +59,47 @@ describe('Forge release configuration', () => {
         expect.stringMatching(/[\\/]dist[\\/]app-container$/),
       ]));
     }
+  });
+
+  it.runIf(process.platform === 'darwin')('hardens ad-hoc apps without requiring a Developer ID team or injectable entitlements', async () => {
+    vi.stubEnv('APPLE_SIGN_IDENTITY', undefined);
+    vi.resetModules();
+    const { default: localConfig } = await import('../../../../forge.config');
+    const signing = localConfig.packagerConfig?.osxSign;
+    if (!signing || typeof signing !== 'object') throw new Error('Missing macOS signing configuration.');
+
+    expect(signing.identity).toBe('-');
+    expect(signing.optionsForFile?.('Interceptor.app')).toMatchObject({
+      hardenedRuntime: true,
+      entitlements: expect.stringMatching(/[\\/]assets[\\/]macos-local-app-entitlements\.plist$/),
+    });
+    expect(signing.optionsForFile?.('Interceptor.app/Contents/Frameworks/Interceptor Helper.app')).toMatchObject({
+      hardenedRuntime: true,
+      entitlements: expect.stringMatching(/[\\/]assets[\\/]macos-local-app-entitlements\.plist$/),
+    });
+    expect(signing.optionsForFile?.('macos-proxy-helper')).toEqual({
+      hardenedRuntime: true,
+      entitlements: expect.stringMatching(/[\\/]assets[\\/]macos-native-helper-entitlements\.plist$/),
+      additionalArguments: ['--identifier', 'com.zhxmt.interceptor.platform-capabilities'],
+      timestamp: 'none',
+    });
+    expect(localConfig.packagerConfig?.osxNotarize).toBeUndefined();
+  });
+
+  it.runIf(process.platform === 'darwin')('retains hardened runtime for Developer ID signing', async () => {
+    vi.stubEnv('APPLE_SIGN_IDENTITY', 'Developer ID Application: Release Fixture (TESTTEAMID)');
+    vi.resetModules();
+    const { default: releaseConfig } = await import('../../../../forge.config');
+    const signing = releaseConfig.packagerConfig?.osxSign;
+    if (!signing || typeof signing !== 'object') throw new Error('Missing macOS signing configuration.');
+
+    expect(signing.identityValidation).toBe(true);
+    expect(signing.optionsForFile?.('Interceptor.app')).toEqual({ hardenedRuntime: true });
+    expect(signing.optionsForFile?.('Interceptor.app/Contents/Resources/system-proxy/macos-proxy-helper')).toEqual({
+      hardenedRuntime: true,
+      entitlements: expect.stringMatching(/[\\/]assets[\\/]macos-native-helper-entitlements\.plist$/),
+      additionalArguments: ['--identifier', 'com.zhxmt.interceptor.platform-capabilities'],
+    });
   });
 });
 

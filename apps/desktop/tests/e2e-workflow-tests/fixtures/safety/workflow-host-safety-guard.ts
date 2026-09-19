@@ -15,35 +15,42 @@ export interface WorkflowProcessIdentity {
 }
 
 /** Operating-system actions used by the workflow host safety boundary. */
-export interface WorkflowHostSafetyOperations {
+export interface WorkflowHostSafetyOperations<ProxySettings = WinInetProxySettings> {
   registerUserDataDirectory(userDataDirectory: string): void;
   registerProcessIdentity(processIdentity: WorkflowProcessIdentity): void;
   registerCaptureListenerProcess(): Promise<void>;
-  readWinInetSettings(): Promise<WinInetProxySettings>;
+  readSystemProxySettings(): Promise<ProxySettings>;
+  areSystemProxySettingsEqual(left: ProxySettings, right: ProxySettings): boolean;
+  captureCertificateTrustBaseline?(): Promise<void>;
+  verifyCertificateTrustRestored?(): Promise<void>;
   hasCrashJournal(): Promise<boolean>;
   listLiveProcessIds(rootProcessIds: readonly number[]): Promise<readonly number[]>;
   canBindCapturePort(): Promise<boolean>;
   dismissOwnedDialogs(rootProcessIds: readonly number[]): Promise<void>;
+  assertSafeToTerminateApplications?(baseline: ProxySettings): Promise<void>;
   terminateProcessGeneration(processIdentity: WorkflowProcessIdentity): Promise<void>;
   terminateProcessTrees(rootProcessIds: readonly number[]): Promise<void>;
-  restoreCrashJournal(baseline: WinInetProxySettings): Promise<void>;
+  restoreCrashJournal(baseline: ProxySettings): Promise<void>;
 }
 
-/** Protects host WinINet, process, crash-journal and listener state around one workflow. */
-export class WorkflowHostSafetyGuard {
-  /** Host WinINet snapshot captured before the first Electron process starts. */
-  private baseline: WinInetProxySettings | null = null;
+/** Protects host proxy, process, crash-journal and listener state around one workflow. */
+export class WorkflowHostSafetyGuard<ProxySettings = unknown> {
+  /** Complete host proxy snapshot captured before the first Electron process starts. */
+  private baseline: ProxySettings | null = null;
   /** Every Electron Main PID launched by this workflow, including later generations. */
   private readonly rootProcessIds = new Set<number>();
 
-  constructor(private readonly operations: WorkflowHostSafetyOperations) {}
+  constructor(
+    private readonly operations: WorkflowHostSafetyOperations<ProxySettings>,
+    private readonly systemProxyName = 'WinINet',
+  ) {}
 
   /** Capture the exact host settings before any workflow-owned application starts. */
   async captureBaseline(): Promise<void> {
     if (this.baseline) {
       throw new Error('Workflow host baseline was already captured.');
     }
-    const baseline = await this.operations.readWinInetSettings();
+    const baseline = await this.operations.readSystemProxySettings();
     const errors: Error[] = [];
     if (await this.operations.hasCrashJournal()) {
       errors.push(new Error('System proxy crash journal exists before workflow launch.'));
@@ -54,6 +61,7 @@ export class WorkflowHostSafetyGuard {
     if (errors.length > 0) {
       throw new AggregateError(errors, 'Workflow host is not clean enough to launch Electron.');
     }
+    await this.operations.captureCertificateTrustBaseline?.();
     this.baseline = baseline;
   }
 
@@ -88,9 +96,19 @@ export class WorkflowHostSafetyGuard {
     await this.operations.listLiveProcessIds(this.registeredProcessIds());
   }
 
+  readSystemProxySettings(): Promise<ProxySettings> {
+    return this.operations.readSystemProxySettings();
+  }
+
   /** Terminate every registered process generation for an intentional crash boundary. */
   terminateRegisteredApplications(): Promise<void> {
     return this.operations.terminateProcessTrees(this.registeredProcessIds());
+  }
+
+  async cleanupRegisteredApplications(): Promise<void> {
+    if (!this.baseline) throw new Error('Workflow host baseline was not captured.');
+    await this.operations.assertSafeToTerminateApplications?.(this.baseline);
+    await this.operations.terminateProcessTrees(this.registeredProcessIds());
   }
 
   /** Terminate one registered Core generation without stopping its Main root. */
@@ -116,6 +134,12 @@ export class WorkflowHostSafetyGuard {
     }
 
     const recoveryErrors: Error[] = [];
+    try {
+      await this.operations.assertSafeToTerminateApplications?.(this.baseline);
+    } catch (error) {
+      throw new AggregateError([...initialErrors, WorkflowHostSafetyGuard.toError(error)],
+        'Proxy restoration is unresolved; retaining the application and profile instead of stopping its listener.');
+    }
     await this.captureRecoveryError(
       () => this.operations.dismissOwnedDialogs(this.registeredProcessIds()),
       recoveryErrors,
@@ -167,12 +191,20 @@ export class WorkflowHostSafetyGuard {
     }
 
     try {
-      const current = await this.operations.readWinInetSettings();
-      if (!WorkflowHostSafetyGuard.equalSettings(current, this.baseline!)) {
-        errors.push(new Error('WinINet settings differ from the workflow baseline.'));
+      const current = await this.operations.readSystemProxySettings();
+      if (!this.operations.areSystemProxySettingsEqual(current, this.baseline!)) {
+        errors.push(new Error(`${this.systemProxyName} settings differ from the workflow baseline.`));
       }
     } catch (error) {
       errors.push(WorkflowHostSafetyGuard.toError(error));
+    }
+
+    if (this.operations.verifyCertificateTrustRestored) {
+      try {
+        await this.operations.verifyCertificateTrustRestored();
+      } catch (error) {
+        errors.push(WorkflowHostSafetyGuard.toError(error));
+      }
     }
 
     return errors;
@@ -193,19 +225,6 @@ export class WorkflowHostSafetyGuard {
   /** Return registered roots in stable launch order. */
   private registeredProcessIds(): readonly number[] {
     return [...this.rootProcessIds];
-  }
-
-  /** Compare every WinINet field preserved by the native helper. */
-  private static equalSettings(
-    left: WinInetProxySettings,
-    right: WinInetProxySettings,
-  ): boolean {
-    return left.flags === right.flags
-      && left.proxyEnabled === right.proxyEnabled
-      && left.autoDetect === right.autoDetect
-      && left.proxyServer === right.proxyServer
-      && left.bypassList === right.bypassList
-      && left.pacUrl === right.pacUrl;
   }
 
   /** Normalize unknown cleanup failures without discarding their original message. */

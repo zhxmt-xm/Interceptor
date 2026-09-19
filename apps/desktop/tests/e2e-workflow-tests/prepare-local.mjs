@@ -42,6 +42,9 @@ class LocalE2eBundleBuilder {
 
   /** Rebuild every production-mode bundle without invoking Electron Packager. */
   static async run() {
+    if (process.platform === 'darwin' && process.env.INTERCEPTOR_E2E_MACOS_APP_PATH) {
+      throw new Error('Run Playwright directly when validating an explicitly selected macOS App artifact.');
+    }
     const outputDirectory = path.join(this.desktopDirectory, '.vite');
     await rm(outputDirectory, { recursive: true, force: true });
 

@@ -10,7 +10,8 @@ import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES, AutomationIdFactory } from '../
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
-import { cancelWindowsFileDialog, submitWindowsFileDialogPath } from '../../fixtures/ui/windows-file-dialog';
+import { cancelFileDialog, submitFileDialogPath } from '../../fixtures/ui/file-dialog';
+import { automaticallyExecuteMcpClientTools } from '../../fixtures/ui/settings-workflow';
 
 const EXPORT_TOOL = 'composer_export_collection';
 const IMPORT_TOOL = 'composer_import_collection';
@@ -94,7 +95,7 @@ async function exportFromUi(desktopApp: LocalElectronApplicationDriver, filePath
   await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.composer).click();
   await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.collection)).toHaveAttribute('data-save-state', 'saved');
   await getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.exportCollection).click();
-  await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), filePath);
+  await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), filePath);
   await desktopApp.page.bringToFront();
   await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.exportBusy)).toHaveCount(0);
   return readTree(filePath);
@@ -153,7 +154,7 @@ async function finishCall(page: Page): Promise<void> {
 }
 
 async function selectImport(desktopApp: LocalElectronApplicationDriver, inputPath: string): Promise<void> {
-  await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), inputPath);
+  await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), inputPath);
   await desktopApp.page.bringToFront();
   await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.dialog)).toBeVisible();
   await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.requestCount)).toHaveText('2');
@@ -210,7 +211,7 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
 }
 
 test('composer.tools.transfer exports and imports Collections through native dialogs and confirmation', async ({ desktopApp, openAiCompatibleLab }, testInfo) => {
-  test.skip(process.platform !== 'win32', '原生文件Dialog目前只在Windows验证。');
+  test.skip(!['win32', 'darwin'].includes(process.platform), 'Native file dialog workflow requires Windows or macOS.');
   test.setTimeout(300_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'composer.tools.transfer' });
   for (const text of [PROMPT, ANSWER, SECRET]) desktopApp.registerSensitiveTextForEvidenceAudit(text);
@@ -250,7 +251,7 @@ test('composer.tools.transfer exports and imports Collections through native dia
       await finishCall(desktopApp.page);
       expect(resultForCall(openAiCompatibleLab, `deny-${index}`)).toMatchObject({ ok: false, error: { code: 'tool_denied' } });
       await beginCall(desktopApp.page, openAiCompatibleLab, `native-cancel-${index}`, name, 'allow');
-      await cancelWindowsFileDialog(desktopApp.windowsMainProcessOwner());
+      await cancelFileDialog(desktopApp.nativeFileDialogOwner());
       await desktopApp.page.bringToFront();
       await finishCall(desktopApp.page);
       expect(resultForCall(openAiCompatibleLab, `native-cancel-${index}`)).toEqual({ ok: true, value: index === 0 ? { exported: false } : { imported: false } });
@@ -261,7 +262,7 @@ test('composer.tools.transfer exports and imports Collections through native dia
     // Ask saving and confirmation: export preserves the tree, preview cancellation writes nothing, and confirmation appends with fresh identities immediately.
     const exportedPath = path.join(directory, 'tool-export.json');
     await beginCall(desktopApp.page, openAiCompatibleLab, 'export-allow', EXPORT_TOOL, 'allow');
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), exportedPath);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), exportedPath);
     await desktopApp.page.bringToFront();
     await finishCall(desktopApp.page);
     expect(await readTree(exportedPath)).toEqual(original);
@@ -291,7 +292,7 @@ test('composer.tools.transfer exports and imports Collections through native dia
     } });
     await beginCall(desktopApp.page, openAiCompatibleLab, 'export-auto', EXPORT_TOOL);
     const autoPath = path.join(directory, 'after-auto.json');
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), autoPath);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), autoPath);
     await desktopApp.page.bringToFront();
     await finishCall(desktopApp.page);
     verifyCopies(original, await readTree(autoPath), 3);
@@ -324,7 +325,7 @@ test('composer.tools.transfer exports and imports Collections through native dia
     await selectImport(desktopApp, inputPath);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.confirm).click();
     expect(mcpValue(await imported)).toEqual({ imported: true, revision: initialRevision + 3, requestCount: 2, folderCount: 1, skippedCount: 0 });
-    await getByAutomationId(desktopApp.page, AutomationIdFactory.mcpClientAuto(configuredClient.clientId)).click();
+    await automaticallyExecuteMcpClientTools(desktopApp.page, configuredClient.clientId);
     const canceledImport = client.callTool({ name: IMPORT_TOOL, arguments: {} });
     await selectImport(desktopApp, inputPath);
     await expect(approval).toHaveCount(0);
@@ -332,7 +333,7 @@ test('composer.tools.transfer exports and imports Collections through native dia
     expect(mcpValue(await canceledImport)).toEqual({ imported: false });
     const exported = client.callTool({ name: EXPORT_TOOL, arguments: {} });
     const mcpPath = path.join(directory, 'mcp-export.json');
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), mcpPath);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), mcpPath);
     await desktopApp.page.bringToFront();
     expect(mcpValue(await exported)).toEqual({ exported: true });
     const finalTree = await readTree(mcpPath);

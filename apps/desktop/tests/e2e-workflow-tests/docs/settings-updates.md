@@ -2,6 +2,35 @@
 
 本文件定义 Settings 九个section和Update notification的完整E2E流程。每条workflow独立启动Electron、独占profile/trace；系统代理、CA信任和外部程序操作必须由真实App UI发起。
 
+## `settings.certificates.cancel-trust`（macOS，passed）
+
+1. 创建独立profile、trace及系统Root证书集合基线，启动真实Electron并确认helper/listener就绪；既有CA不作为本测试的输入或清理目标。
+2. 经Settings Certificates真实Generate创建本轮CA，读取其公开指纹并确认基线不存在；点击Install，不修改Preload/Main或原生返回值。
+3. macOS fixture核验Main及其`security`子进程代际、唯一SecurityAgent窗口，以真实Escape取消该证书信任请求，不输入密码或触发新的授权。
+4. 等待产品Install恢复可操作，要求系统Root集合精确恢复到第一步基线，本轮CA不残留，MITM仍关闭；失败保留profile和公开身份以便恢复，不在workflow调用helper删除来伪造成功。
+5. 成功时经产品Delete删除本轮本地材料，保存只含指纹/哈希/布尔结论的evidence；真实Close并由宿主guard验证Main/Core/Worker、8888、完整代理和admin trust恢复。
+
+只验证macOS两阶段信任取消路径，不改变Windows原安装/撤销流程；缺前置Red、最终Green或系统恢复证据不得标passed。
+
+2026-09-18产品unit6 Red后18/18；真实前置`/tmp/interceptor-macos-trust-cancel-20260918-e2e-red/`6.5秒失败于本轮新CA残留，取消和正常Close均真实执行，Red后的单独恢复不算Green。最终`/tmp/interceptor-macos-trust-cancel-20260918-e2e-green/`1/1（5.8秒），公开证书集前后SHA-256一致、本轮CA不存在，Main10805/Core10812的gracefulDestroyVerified=true，代理/admin trust与8888恢复。
+
+2026-09-19同步`8d153821`并排除暂停的弹窗动画后，`/tmp/interceptor-stage-sync-20260919-certificate-cancel/`相同流程1/1通过（6.7秒），产品撤回新增CA、正常退出和完整代理/admin trust恢复。当前package/artifact audit及`/tmp/interceptor-stage-sync-20260919-production-smoke/`1/1（2.5分钟）通过；相关产品回归227 passed、2 Windows native skipped及Desktop类型通过。只登记取消路径passed，成功授信、root卸载/rollback和Windows原生验收不由此替代。
+
+macOS系统代理crash-recovery续验沿现有workflow操作顺序：App A接管并持久化完整快照，测试精确终止A及子进程，同profile启动App B，确认首次original/owned不变，再正常Close恢复。macOS journal归profile，不冒充跨profile恢复；Windows继续使用两个不同profile验证用户级共享journal。两平台均保留真实进程/8888/完整代理恢复证据，helper常驻进程不是App的子进程，不随App crash重新授权。
+
+## `settings.helper-startup`（macOS，双入口复用已验证）
+
+1. 保存launchd、代理、CA信任和组件原状态，创建独立profile；业务E2E由driver启动未打包的真实Electron和本项目production bundle，经Renderer CDP操作，与Forge共用开发授权。显式选择签名产物时仍走生产鉴权，Windows driver保持原路径，不使用产品测试参数或fake API。
+2. 首次启动由Main检查并部署本次构建的helper，用户仅在系统授权窗口亲自批准；App位置/所有权不变，不打开`.pkg`或系统Installer。开发配置为root保护的`development.json`（`protocolVersion / socketPath / clientUserId`）；出现真实App root前组件必须就绪，否则前置检查失败。
+3. 验证Main/Core/listener和组件root所有权，记录helper PID、inode与配置哈希；通过产品Close退出并验证完整代理恢复、进程销毁和8888释放。
+4. 同profile启动第二代App，通过Settings UI进入Proxy；helper PID/inode和配置保持，启动不重复部署；保存独立trace和只含摘要的复用证据。第二代经产品Close退出，再验证Main/Core/Worker全退、8888和完整代理恢复。
+5. 首次部署的常驻组件在相关macOS验收期间保留以验证跨workflow复用，不能把它当作本轮Main子进程终止；整轮结束需按原安装状态确认保留或通过正式`uninstall-helper`恢复。CA流程仍由对应真实TLS workflow清理系统证书与admin trust，不把此只读流程当作CA验收。
+6. 另运行相同workflow的下一轮独立profile并比较helper PID、inode和开发配置哈希，确认开发/App重启与业务E2E复用同一组件；核验生产授权配置未被开发安装覆盖。签名产物的完整资源、运行时拒绝及packaged smoke独立通过，不能用开发宽松入口冒充生产安全验收。
+
+缺Main接入前置Red、最终Green或退出恢复证据不登记passed。签名App构建失败、原生授权不可用或driver连接失败不算产品Red，不通过伪造客户端、Store注入或直接业务API代替UI。
+
+2026-09-18开发入口前置日志：`/tmp/interceptor-development-helper-startup-20260918-red/`真实Main因生产包路径限制返回`invalid-request`，宿主代理未接管、8888释放。开发首次授权另遇authd拒绝Desktop代码路径，保留`/tmp/interceptor-dual-entry-development-e2e-20260918/`的失败，不计为用户取消；授权暂存修复后`/tmp/interceptor-dual-entry-development-e2e-20260918-staged/`两轮四代2/2通过，Main/Core全部gracefulDestroyVerified=true，helper PID7865与配置哈希跨workflow不变。此结果覆盖开发与业务E2E复用，不代替root卸载或生产安全；后者由同轮严格签名/资源原生检查、packaged smoke和实装双socket拒绝证据覆盖，见[Handover](../../../../../architecture/HANDOVER.md)。
+
 <a id="settings-tools-language"></a>
 ## `settings.tools.language`
 
@@ -83,6 +112,8 @@
 Settings 的六项只读能力在 Agent 与 MCP 共享名称、schema、owner 和脱敏结果；查询不请求 Ask/UAC，
 不改变系统或配置。独立授权开关即时生效且跨进程恢复，历史结果不会触发重放。
 
+平台只读证据由fixture分派：Windows保留原AppContainer helper的list命令与SID/exemption断言；macOS必须返回`supported=false`及空containers，不调用Windows原生能力或伪造成功。代理查询通过driver使用当前平台helper。六项Tool调用、UI配置、撤权与重启步骤共用，不以平台差异改变业务输入。
+
 ### 证据
 
 - unit Red 必须精确体现六项 registry/executor/adapter 缺失；E2E Red 必须在真实产品启动且 lab
@@ -102,6 +133,8 @@ Settings 的六项只读能力在 Agent 与 MCP 共享名称、schema、owner �
 
 **状态**：passed；unit / integration 与真实 Electron Red/Green、销毁证据已验证
 **策略**：os-side-effect；Windows；host-safety-guard；两代真实 Electron
+
+macOS续验复用以下相同步骤：系统配置读取使用被测入口配套的SystemConfiguration helper，默认未打包bundle读取Desktop `dist`，显式签名App使用其Resources；journal读取本profile，Windows helper命令和LOCALAPPDATA路径不变。所有比较覆盖完整结构且只输出布尔结果/哈希；macOS仍需独立Green和恢复证据，不能沿用下方Windows记录。
 
 ### Steps
 
@@ -299,6 +332,8 @@ TLS专项16 views / 96 targets / 0 missing / 0 flagged / 最大0.5px与package/a
 
 **状态**：passed
 **策略**：shared
+
+macOS首轮验收仍待Green：保留九个section、键盘和跨workspace往返；App Containers按产品已有unsupported状态检查Search、Enable all、Disable all不出现并截图，不要求Windows专属控件。Windows原断言不变。macOS启动等待boot退出，产品Close后预留120秒供用户处理原生代理恢复授权；不自动批准、不输入密码，实际恢复与进程/8888/journal检查保持。
 
 2026-09-14增加离线字体契约：进入默认Certificates后保存`settings-fonts.json/png`，确认`Inter`只注册设计的400/450/500/600/700、550字重请求实际加载非空FontFace，CSSOM中的字体URL均来自`interceptor://app/`。不切换应用语言，不要求英文显示文案；原九个section、键盘和往返步骤保持。旧注册的真实Red为Inter字重集合空且loadedFaces=0，Main/Core `28472/47860`正常退出/宿主恢复，证据TEMP `interceptor-inter-weights-20260914-e2e-red`；Resource Timing在自定义协议未列出字体，不能用它代替CSSOM与实际FontFace检查。
 
@@ -505,6 +540,12 @@ CA生成/重生成只写当前profile并使用OS secure storage保护私钥；Re
 
 <a id="settings-certificates-trust"></a>
 ## `settings.certificates.trust`
+
+macOS验收同时检查公开CA身份、安装前未受信任、正式Install后系统信任及产品状态一致、Uninstall后不再受信任。根CA检查不能仅凭钥匙串中存在指纹；系统的根信任链评估与实际HTTPS叶证书握手分别验收。使用产品在同一workflow生成的CA，不能在E2E预造证书或直接调用TrustStore API；只有缺失信任设置、非法证书等无法由现有UI稳定产生的边界由所属unit/integration验证。
+
+macOS Install的待验收路径先提权导入系统钥匙串，再由普通用户Main启动不带`-k`的`security add-trusted-cert`，Security框架向用户请求admin trust授权；不是以root运行App或修改系统授权规则。成功证据必须同时有匹配证书的系统信任评估、产品状态、真实HTTPS请求和清理后的原证书集合；导入失败不继续trust，导入成功但trust失败不得继续MITM。原`capture.scenarios.tls`是本轮端到端检查入口；系统密码只由本机用户在原生窗口输入，Windows授权路径不变。
+
+macOS Uninstall先清除该CA的admin trust，再删除系统钥匙串内同一指纹证书；前一步失败不能继续删除公开证书而留下无法按证书移除的孤立trust。真实TLS workflow保存`trust-settings-before`/`trust-settings-after`并要求完全恢复，同时保留原证书集合断言、正常产品Close和进程/8888/代理恢复门禁；Windows仍检查原机器级Root集合。
 
 **状态**：planned
 **策略**：os-side-effect；headed

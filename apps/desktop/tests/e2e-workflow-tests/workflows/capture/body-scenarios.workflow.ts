@@ -5,7 +5,7 @@ import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/a
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
-import { submitWindowsFileDialogPath } from '../../fixtures/ui/windows-file-dialog';
+import { submitFileDialogPath } from '../../fixtures/ui/file-dialog';
 
 const TEXT_SCENARIOS = [
   { id: 'body-json', mode: 'raw', body: '{"ready":true,"items":[1,2,3]}' },
@@ -150,11 +150,11 @@ test('capture.scenarios.bodies displays the captured text document and form bodi
 
       // 原始保存：文件由产品Save产生，包含完整尾字符和预览范围以外的字节。
       // Raw export: the product Save action must retain the complete character and bytes beyond the preview limit.
-      if (boundary.id === 'four-byte' && process.platform === 'win32') {
+      if (boundary.id === 'four-byte' && ['win32', 'darwin'].includes(process.platform)) {
         const destination = testInfo.outputPath('utf8-full-body.txt');
         try {
           await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.save).click();
-          await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), destination);
+          await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), destination);
           await expect.poll(async () => {
             try { return createHash('sha256').update(await readFile(destination)).digest('hex'); }
             catch (error) {

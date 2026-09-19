@@ -22,6 +22,7 @@
 	连接隔离、目标数量和原始内容，不使用Renderer未提交编辑。清空后重复命令返回0，不影响其他队列。
 5. 通过Settings关闭Agent三项权限，旧Chat均unknown_tool且不解队。使用产品UI建立MCP Client，验证独立
 	Ask/Auto审批、三条实际命令及相同作用范围；撤销MCP权限后旧连接不能再发现或调用三项。
+	Auto由Settings fixture执行同一次点击，并等待公开Client `data-execution-mode=auto`及MCP区`aria-busy=false`确认持久化完成，再发下一条外部Tool；不改变两平台步骤、输入、审批规则或超时。
 6. 正常关闭并以同profile重启，权限保持、Model/origin零重放；关闭所有客户端，保存脱敏trace/evidence，
 	验证两代Main/Core/Worker销毁、8888释放及完整WinINet/journal恢复后删除profile。
 

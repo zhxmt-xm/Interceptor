@@ -23,6 +23,7 @@ import { AUTOMATION_IDS } from '../../src/shared/automation-ids';
 import { dismissWindowsFileDialogs } from '../e2e-workflow-tests/fixtures/ui/windows-file-dialog';
 import { WorkflowHostSafetyGuard } from '../e2e-workflow-tests/fixtures/safety/workflow-host-safety-guard';
 import { WindowsWorkflowHostSafetyOperations } from '../e2e-workflow-tests/fixtures/safety/windows-workflow-host-safety-operations';
+import { MacosWorkflowHostSafetyOperations } from '../e2e-workflow-tests/fixtures/safety/macos-workflow-host-safety-operations';
 
 /** Renderer 启动时自动接管的监听端口；产品不支持迁移，smoke 必须复用它。 */
 const DEFAULT_CAPTURE_PORT = 8888;
@@ -57,8 +58,12 @@ class ReleaseScreenshotMatrix {
   ] as const;
 
   /** Capture all release screenshot dimensions through normal UI interactions. */
-  static async capture(page: Page, testInfo: TestInfo): Promise<void> {
-    await page.setViewportSize({ width: 1280, height: 800 });
+  static async capture(
+    page: Page,
+    testInfo: TestInfo,
+    windowOwner: { readonly processId: number; readonly processStartedAt: string },
+  ): Promise<void> {
+    await this.resizeScreenshotWindow(page, windowOwner, { width: 1280, height: 800 });
     for (const theme of ['light', 'dark'] as const) {
       await this.selectTheme(page, theme);
       for (const view of this.views) {
@@ -67,13 +72,13 @@ class ReleaseScreenshotMatrix {
       }
     }
 
-    await page.setViewportSize({ width: 900, height: 600 });
+    await this.resizeScreenshotWindow(page, windowOwner, { width: 900, height: 600 });
     for (const view of this.views) {
       await this.selectView(page, view.label);
       await this.screenshot(page, testInfo, `${view.slug}-dark-900x600.png`);
     }
 
-    await page.setViewportSize({ width: 1280, height: 800 });
+    await this.resizeScreenshotWindow(page, windowOwner, { width: 1280, height: 800 });
     let currentLanguageLabel = 'Language';
     for (const language of this.languages) {
       await this.selectLanguage(page, currentLanguageLabel, language);
@@ -81,6 +86,64 @@ class ReleaseScreenshotMatrix {
     }
     await this.screenshot(page, testInfo, 'capture-lang-uk.png');
     await this.selectLanguage(page, currentLanguageLabel, this.languages[0]);
+  }
+
+  /** Select native macOS window sizing without changing the existing Windows matrix. */
+  private static async resizeScreenshotWindow(
+    page: Page,
+    windowOwner: { readonly processId: number; readonly processStartedAt: string },
+    size: { width: number; height: number },
+  ): Promise<void> {
+    switch (process.platform) {
+      case 'darwin':
+        return this.resizeMacosScreenshotWindow(page, windowOwner, size);
+      default:
+        return page.setViewportSize(size);
+    }
+  }
+
+  /** Resize only this smoke's exact Main window instead of emulating a smaller page inside it. */
+  private static async resizeMacosScreenshotWindow(
+    page: Page,
+    windowOwner: { readonly processId: number; readonly processStartedAt: string },
+    size: { width: number; height: number },
+  ): Promise<void> {
+    await expect.poll(async () => {
+      const current = await MacosWorkflowHostSafetyOperations.readProcessIdentity(windowOwner.processId);
+      if (current.processStartedAt !== windowOwner.processStartedAt) {
+        throw new Error('Screenshot Main process generation changed.');
+      }
+      const { stdout } = await execFileAsync('/usr/bin/osascript', ['-e', `
+tell application "System Events"
+  tell first application process whose unix id is ${windowOwner.processId}
+    return count of windows
+  end tell
+end tell
+`], { encoding: 'utf8' });
+      return Number(stdout.trim());
+    }, { message: 'Native macOS screenshot window was not exposed by System Events' }).toBeGreaterThan(0);
+    const current = await MacosWorkflowHostSafetyOperations.readProcessIdentity(windowOwner.processId);
+    if (current.processStartedAt !== windowOwner.processStartedAt) {
+      throw new Error('Screenshot Main process generation changed.');
+    }
+    const cdpSession = await page.context().newCDPSession(page);
+    try {
+      await cdpSession.send('Emulation.clearDeviceMetricsOverride');
+      await execFileAsync('/usr/bin/osascript', ['-e', `
+tell application "System Events"
+  tell first application process whose unix id is ${windowOwner.processId}
+    set size of window 1 to {${size.width}, ${size.height}}
+  end tell
+end tell
+`], { encoding: 'utf8' });
+      await expect.poll(() => page.evaluate(() => ({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      })), { message: 'Native macOS screenshot window did not reach the requested content size' })
+        .toEqual(size);
+    } finally {
+      await cdpSession.detach();
+    }
   }
 
   /** Select one sidebar workspace and wait for its main surface to remain visible. */
@@ -134,6 +197,16 @@ class ReleaseScreenshotMatrix {
     name: string,
   ): Promise<void> {
     await this.expectNoPageOverflow(page);
+    await testInfo.attach(`${name}-dimensions`, {
+      body: JSON.stringify(await page.evaluate(() => ({
+        innerWidth: window.innerWidth,
+        innerHeight: window.innerHeight,
+        outerWidth: window.outerWidth,
+        outerHeight: window.outerHeight,
+        deviceScaleFactor: window.devicePixelRatio,
+      }))),
+      contentType: 'application/json',
+    });
     await page.mouse.move(400, 400);
     await expect(page.locator('.ant-tooltip')).toBeHidden();
     await page.screenshot({
@@ -375,6 +448,9 @@ test('packaged app starts with an isolated renderer and running core', async ({
       if (!appProcess.pid) {
         throw new Error('Packaged Electron process did not expose a PID.');
       }
+      workflowHostSafetyGuard.registerProcessIdentity(
+        await readPackagedProcessIdentity(appProcess.pid),
+      );
       workflowHostSafetyGuard.registerApplication(appProcess.pid, userDataPath);
       await workflowHostSafetyGuard.captureProcessTrees();
     }
@@ -399,7 +475,12 @@ test('packaged app starts with an isolated renderer and running core', async ({
     const context = browser.contexts()[0];
     expect(context, 'Packaged app did not create a browser context').toBeDefined();
     await expect
-      .poll(() => context?.pages().length ?? 0, { timeout: 10_000 })
+      .poll(() => {
+        if (appProcess.exitCode !== null || appProcess.signalCode !== null) {
+          throw new Error(`Packaged app exited during native preparation.\n${processOutput.read()}`);
+        }
+        return context?.pages().length ?? 0;
+      }, { timeout: process.platform === 'darwin' ? 120_000 : 10_000 })
       .toBeGreaterThan(0);
     page = context?.pages()[0] ?? null;
     expect(page, 'Packaged app did not create a renderer page').toBeDefined();
@@ -655,7 +736,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
       workflowHostSafetyGuard.registerProcessIdentity(
         await readPackagedProcessIdentity(corePid),
       );
-      await workflowHostSafetyGuard.registerCaptureListenerProcess();
+      await registerPackagedCaptureListener(rendererPage, workflowHostSafetyGuard);
     }
     await expect(
       page.getByTitle(`Proxy Core · Running · PID ${corePid}`),
@@ -719,7 +800,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         await readPackagedProcessIdentity(corePid),
       );
       await workflowHostSafetyGuard.captureProcessTrees();
-      await workflowHostSafetyGuard.registerCaptureListenerProcess();
+      await registerPackagedCaptureListener(rendererPage, workflowHostSafetyGuard);
     }
 
     await expect
@@ -774,7 +855,8 @@ test('packaged app starts with an isolated renderer and running core', async ({
     // the screenshot matrix, so it cannot pop up mid-capture and block a click.
     await drainReadinessBeforeCapture(page);
 
-    await ReleaseScreenshotMatrix.capture(page, testInfo);
+    if (!appProcess.pid) throw new Error('Screenshot Main process identity is unavailable.');
+    await ReleaseScreenshotMatrix.capture(page, testInfo, await readPackagedProcessIdentity(appProcess.pid));
 
     const restoredProxy = await page.evaluate(() =>
       window.interceptor.restoreSystemProxy(),
@@ -805,16 +887,27 @@ test('packaged app starts with an isolated renderer and running core', async ({
         window.interceptor.closeApplication()).catch(() => undefined);
       await waitForExit(appProcess).catch(() => undefined);
     }
-    await browser?.close().catch(() => undefined);
+    if (process.platform !== 'darwin') await browser?.close().catch(() => undefined);
     if (appProcess.exitCode === null) {
+      let terminationAllowed = true;
       if (workflowHostSafetyGuard) {
-        await workflowHostSafetyGuard.terminateRegisteredApplications().catch((error) => {
+        const cleanup = process.platform === 'darwin'
+          ? workflowHostSafetyGuard.cleanupRegisteredApplications()
+          : workflowHostSafetyGuard.terminateRegisteredApplications();
+        await cleanup.catch((error) => {
+          terminationAllowed = process.platform !== 'darwin';
           hostSafetyErrors.push(error);
         });
-      } else {
+      } else if (process.platform !== 'darwin') {
         appProcess.kill();
+      } else {
+        terminationAllowed = false;
+        hostSafetyErrors.push(new Error('macOS cleanup has no host baseline; retaining the application and profile.'));
       }
-      await waitForExit(appProcess);
+      if (terminationAllowed) await waitForExit(appProcess);
+    }
+    if (process.platform === 'darwin' && (appProcess.exitCode !== null || appProcess.signalCode !== null)) {
+      await browser?.close().catch(() => undefined);
     }
     await workflowHostSafetyGuard?.verifyRestored().catch((error) => {
       hostSafetyErrors.push(error);
@@ -1020,13 +1113,23 @@ async function waitForExit(process: ChildProcess): Promise<void> {
   });
 }
 
-/** Create the same Windows host guard around the final packaged executable. */
+/** Select the platform host guard around the final packaged executable. */
 async function createPackagedWorkflowHostSafetyGuard(
   executablePath: string,
 ): Promise<WorkflowHostSafetyGuard | null> {
-  if (process.platform !== 'win32') {
-    return null;
+  switch (process.platform) {
+    case 'win32':
+      return createWindowsPackagedWorkflowHostSafetyGuard(executablePath);
+    case 'darwin':
+      return createMacosPackagedWorkflowHostSafetyGuard(executablePath);
+    default:
+      return null;
   }
+}
+
+async function createWindowsPackagedWorkflowHostSafetyGuard(
+  executablePath: string,
+): Promise<WorkflowHostSafetyGuard> {
   const localAppDataDirectory = process.env.LOCALAPPDATA;
   if (!localAppDataDirectory) {
     throw new Error('LOCALAPPDATA is required for packaged smoke host protection.');
@@ -1043,6 +1146,19 @@ async function createPackagedWorkflowHostSafetyGuard(
   }));
 }
 
+async function createMacosPackagedWorkflowHostSafetyGuard(
+  executablePath: string,
+): Promise<WorkflowHostSafetyGuard> {
+  const helperPath = path.resolve(path.dirname(executablePath), '../Resources/system-proxy/macos-proxy-helper');
+  if (!fs.existsSync(helperPath)) {
+    throw new Error(`Packaged macOS proxy helper is missing: ${helperPath}`);
+  }
+  return new WorkflowHostSafetyGuard(
+    new MacosWorkflowHostSafetyOperations(process.cwd(), helperPath),
+    'macOS',
+  );
+}
+
 /** Resolve the packaged helper used for WinINet and process-generation operations. */
 function resolvePackagedWinInetHelperPath(executablePath: string): string {
   return path.join(
@@ -1053,8 +1169,38 @@ function resolvePackagedWinInetHelperPath(executablePath: string): string {
   );
 }
 
-/** Read one packaged process generation through a test-owned PowerShell query. */
+async function registerPackagedCaptureListener(page: Page, guard: WorkflowHostSafetyGuard): Promise<void> {
+  switch (process.platform) {
+    case 'darwin':
+      return registerMacosPackagedCaptureListener(page, guard);
+    default:
+      return guard.registerCaptureListenerProcess();
+  }
+}
+
+async function registerMacosPackagedCaptureListener(page: Page, guard: WorkflowHostSafetyGuard): Promise<void> {
+  await expect.poll(
+    () => page.evaluate(async () => (await window.interceptor.getCaptureStatus()).listening),
+    { message: 'macOS capture listener did not become ready', timeout: 20_000 },
+  ).toBe(true);
+  await guard.registerCaptureListenerProcess();
+}
+
+/** Read one packaged process generation using the corresponding native query. */
 async function readPackagedProcessIdentity(
+  processId: number,
+): Promise<{ readonly processId: number; readonly processStartedAt: string }> {
+  switch (process.platform) {
+    case 'win32':
+      return readWindowsPackagedProcessIdentity(processId);
+    case 'darwin':
+      return MacosWorkflowHostSafetyOperations.readProcessIdentity(processId);
+    default:
+      throw new Error(`Packaged process inspection is not supported on ${process.platform}.`);
+  }
+}
+
+async function readWindowsPackagedProcessIdentity(
   processId: number,
 ): Promise<{ readonly processId: number; readonly processStartedAt: string }> {
   const script = [
@@ -1081,6 +1227,30 @@ async function readPackagedProcessIdentity(
 
 /** Terminate one exact packaged process generation without a reusable PID race. */
 async function terminatePackagedProcess(
+  processIdentity: { readonly processId: number; readonly processStartedAt: string },
+): Promise<void> {
+  switch (process.platform) {
+    case 'win32':
+      return terminateWindowsPackagedProcess(processIdentity);
+    case 'darwin':
+      return terminateMacosPackagedProcess(processIdentity);
+    default:
+      throw new Error(`Packaged process termination is not supported on ${process.platform}.`);
+  }
+}
+
+async function terminateMacosPackagedProcess(
+  processIdentity: { readonly processId: number; readonly processStartedAt: string },
+): Promise<void> {
+  const current = await MacosWorkflowHostSafetyOperations.readProcessIdentity(processIdentity.processId);
+  if (current.processStartedAt !== processIdentity.processStartedAt) {
+    throw new Error('Packaged Core process generation changed before termination.');
+  }
+  process.kill(processIdentity.processId, 'SIGKILL');
+  await expect.poll(() => isProcessAlive(processIdentity.processId), { timeout: 5_000 }).toBe(false);
+}
+
+async function terminateWindowsPackagedProcess(
   processIdentity: { readonly processId: number; readonly processStartedAt: string },
 ): Promise<void> {
   const encodedIdentity = Buffer.from(

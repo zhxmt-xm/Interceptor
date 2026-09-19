@@ -139,6 +139,8 @@ Raw模式必须显示捕获的原始内容，不能残留Code模式自动格式�
 4. 只读核对同workflow经产品导出的WAV/MP4文件与独立固定字节一致，不预造导入文件或调用内部API。
 5. 保存逐场景证据及trace，Renderer page error为0；fixture正常关闭产品，验证原生窗口、进程、8888、WinINet/journal恢复。
 
+原生Save由平台file-dialog fixture分派：Windows复用原UI Automation和键鼠实现；macOS通过System Events按Main PID/启动时间定位真实面板，以键鼠导航路径和提交。两平台使用相同自产媒体、保存步骤和字节断言，不改写原生返回值。
+
 本次只复验unit和浏览器parity，用户暂停后没有运行布局的前置或最终E2E。以上历史业务Green不外推到新增布局断言；恢复授权后运行原`body-media-scenarios.workflow.ts`并保留尺寸JSON、截图、原生保存字节与宿主恢复证据。
 
 <a id="capture-scenarios-encoding"></a>
@@ -724,7 +726,7 @@ Tunnel入口导航到实际覆盖当前host的最具体持久化pattern；Settin
 
 1. 为该test创建独立`userData`目录并启动仓库本地production bundle；开启BrowserContext trace，等待`app.root`、带真实PID的Core状态和`127.0.0.1:8888`可连接。
 2. 若fresh profile显示Proxy readiness，先点Cancel确认没有隐式OS写入；点击`capture.recording.toggle`，在再次出现的readiness中点击`capture.readiness.enable`并完成Windows授权，等待Recording的`aria-pressed=true`。
-3. 启动random-port HTTP origin；测试客户端以absolute-form URL向8888发送`GET /e2e/detail-body-fill`。Origin返回真实JSON response body、`application/json`和固定E2E headers/cookies。
+3. 启动random-port HTTP origin；测试客户端以absolute-form URL向8888发送`POST /e2e/detail-body-fill`和200项JSON entries，保留两平台同一份原始输入。macOS的真实窗口尺寸由driver/config准备，不在workflow添加额外query或改产品CSS制造滚动。Origin返回真实JSON response body、`application/json`和固定E2E headers/cookies。
 4. 等待动态`capture.request-row.<exchangeId>`出现并点击；点击`capture.inspector.tab.response`，等待按需`body.read-range`完成，确认`capture.inspector.body-view`与`capture.inspector.body-pane`都可见。
 5. 同一帧读取`capture.inspector.scroll`、BodyViewer root和CodeViewer pane的`getBoundingClientRect`：pane height必须≥320px；scroll bottom减BodyViewer bottom必须为18px设计padding（容差16–20px）；BodyViewer bottom与pane bottom差绝对值<1px。
 6. 点击`capture.inspector.tab.request`加载测试发送的200行JSON request body。让外层Inspector停在距底部80px且鼠标位于`capture.inspector.body-pane`；先用wheel确认Monaco内部滚动，再把Monaco垂直滑块拖到底并记录外层scrollTop；继续同方向wheel 300后，外层scrollTop必须增加，证明内部边界把滚动交回外层。

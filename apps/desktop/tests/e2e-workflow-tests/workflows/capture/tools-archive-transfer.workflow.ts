@@ -14,7 +14,8 @@ import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
-import { cancelWindowsFileDialog, submitWindowsFileDialogPath } from '../../fixtures/ui/windows-file-dialog';
+import { cancelFileDialog, submitFileDialogPath } from '../../fixtures/ui/file-dialog';
+import { automaticallyExecuteMcpClientTools } from '../../fixtures/ui/settings-workflow';
 
 const TOOL_NAMES = ['capture_export_archive', 'capture_import_archive'] as const;
 const PROMPT = ['Perform the selected', 'Archive transfer operation.'].join(' ');
@@ -105,7 +106,7 @@ async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Prom
   await expect(row).toHaveCount(1);
   const clientId = await row.getAttribute('data-client-id');
   if (!clientId) throw new Error('MCP Client omitted identity.');
-  await getByAutomationId(page, AutomationIdFactory.mcpClientAuto(clientId)).click();
+  await automaticallyExecuteMcpClientTools(page, clientId);
   await expect(row).toHaveAttribute('data-execution-mode', 'auto');
   await getByAutomationId(page, AutomationIdFactory.mcpClientCopyConfiguration(clientId)).click();
   const copied = JSON.parse(await page.evaluate(() => navigator.clipboard.readText())) as { servers: { interceptor: McpConfiguration } };
@@ -214,8 +215,8 @@ async function mcpNativeCall(desktopApp: LocalElectronApplicationDriver, client:
         await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.root)).toHaveAttribute('data-tool-name', name);
         await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.allow).click();
       }
-      if (filePath === null) await cancelWindowsFileDialog(desktopApp.windowsMainProcessOwner());
-      else await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), filePath);
+      if (filePath === null) await cancelFileDialog(desktopApp.nativeFileDialogOwner());
+      else await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), filePath);
     })(),
   ]);
   await desktopApp.page.bringToFront();
@@ -242,7 +243,7 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
 }
 
 test('capture.tools.archive-transfer exports and imports native archives through Agent and MCP', async ({ desktopApp, httpTrafficRunner, webSocketTrafficRunner, openAiCompatibleLab }, testInfo) => {
-  test.skip(process.platform !== 'win32', 'Native Archive file dialogs are verified on Windows.');
+  test.skip(!['win32', 'darwin'].includes(process.platform), 'Native Archive workflow requires Windows or macOS.');
   test.setTimeout(300_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'capture.tools.archive-transfer' });
   const { page } = desktopApp;
@@ -279,7 +280,7 @@ test('capture.tools.archive-transfer exports and imports native archives through
       await beginAgentCall(page, openAiCompatibleLab, `deny-${name}`, name, {}, 'deny');
       expect(await finishAgentCall(page, openAiCompatibleLab, `deny-${name}`)).toMatchObject({ ok: false, error: { code: 'tool_denied' } });
       await beginAgentCall(page, openAiCompatibleLab, `cancel-${name}`, name, {}, 'allow');
-      await cancelWindowsFileDialog(desktopApp.windowsMainProcessOwner());
+      await cancelFileDialog(desktopApp.nativeFileDialogOwner());
       await page.bringToFront();
       expect(await finishAgentCall(page, openAiCompatibleLab, `cancel-${name}`)).toEqual({ ok: true, value: { started: false } });
       await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult(`cancel-${name}`)))
@@ -288,7 +289,7 @@ test('capture.tools.archive-transfer exports and imports native archives through
     expect(await readdir(directory)).toEqual([]);
     const completeFile = path.join(directory, 'complete.iarchive');
     await beginAgentCall(page, openAiCompatibleLab, 'archive-export-allow', TOOL_NAMES[0], {}, 'allow');
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), completeFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completeFile);
     await page.bringToFront();
     const fullJobId = startedJob((await finishAgentCall(page, openAiCompatibleLab, 'archive-export-allow')).value, 'archive-export');
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('archive-export-allow'))).toHaveAttribute('data-summary-kind', 'transferJob');
@@ -297,7 +298,7 @@ test('capture.tools.archive-transfer exports and imports native archives through
     await getByAutomationId(page, AUTOMATION_IDS.agent.executionMode.auto).click();
     const agentAutoFile = path.join(directory, 'agent-auto.iarchive');
     await beginAgentCall(page, openAiCompatibleLab, 'archive-export-auto', TOOL_NAMES[0], {});
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), agentAutoFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), agentAutoFile);
     await page.bringToFront();
     await waitForCompletedJob(client, startedJob((await finishAgentCall(page, openAiCompatibleLab, 'archive-export-auto')).value, 'archive-export'));
     await readArchiveHash(agentAutoFile);
@@ -310,7 +311,7 @@ test('capture.tools.archive-transfer exports and imports native archives through
     await getByAutomationId(page, AUTOMATION_IDS.agent.panel.toggle).click();
     await getByAutomationId(page, AUTOMATION_IDS.agent.executionMode.ask).click();
     await beginAgentCall(page, openAiCompatibleLab, 'archive-import-allow', TOOL_NAMES[1], {}, 'allow');
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), completeFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completeFile);
     await page.bringToFront();
     await waitForCompletedJob(client, startedJob((await finishAgentCall(page, openAiCompatibleLab, 'archive-import-allow')).value, 'archive-import'));
     await expect.poll(async () => (await captureItems(client!)).length).toBe(2);
@@ -321,7 +322,7 @@ test('capture.tools.archive-transfer exports and imports native archives through
     await getByAutomationId(page, AUTOMATION_IDS.agent.panel.toggle).click();
     await getByAutomationId(page, AUTOMATION_IDS.agent.executionMode.auto).click();
     await beginAgentCall(page, openAiCompatibleLab, 'archive-import-auto', TOOL_NAMES[1], {});
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), completeFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completeFile);
     await page.bringToFront();
     await waitForCompletedJob(client, startedJob((await finishAgentCall(page, openAiCompatibleLab, 'archive-import-auto')).value, 'archive-import'));
     await expect.poll(async () => (await captureItems(client!)).length).toBe(4);
@@ -362,7 +363,7 @@ test('capture.tools.archive-transfer exports and imports native archives through
     await readArchiveHash(mcpAskFile);
     await waitForCompletedJob(client, startedJob(await mcpNativeCall(desktopApp, client, TOOL_NAMES[1], completeFile, 'ask'), 'archive-import'));
     await expect.poll(async () => (await captureItems(client!)).length).toBe(6);
-    await getByAutomationId(page, AutomationIdFactory.mcpClientAuto(configured.clientId)).click();
+    await automaticallyExecuteMcpClientTools(page, configured.clientId);
     await expect(getByAutomationId(page, AutomationIdFactory.mcpClientRow(configured.clientId))).toHaveAttribute('data-execution-mode', 'auto');
     const mcpAutoFile = path.join(directory, 'mcp-auto.iarchive');
     await waitForCompletedJob(client, startedJob(await mcpNativeCall(desktopApp, client, TOOL_NAMES[0], mcpAutoFile, 'auto'), 'archive-export'));
@@ -406,7 +407,7 @@ test('capture.tools.archive-transfer exports and imports native archives through
     await saveArchiveCommand.click();
     await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start).click();
     const uiFile = path.join(directory, 'ui.iarchive');
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), uiFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), uiFile);
     await page.bringToFront();
     await expect(getByAutomationId(page, AUTOMATION_IDS.capture.transfer.headerClose)).toBeHidden();
     await readArchiveHash(uiFile);
@@ -423,7 +424,7 @@ test('capture.tools.archive-transfer exports and imports native archives through
     await expect(importWarning).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await archiveDialog.screenshot({ path: testInfo.outputPath('archive-import-warning.png') });
     await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start).click();
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), completeFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completeFile);
     await page.bringToFront();
     await expect.poll(async () => (await captureItems(client!)).length).toBe(10);
     await expect(getByAutomationId(page, AUTOMATION_IDS.capture.transfer.headerClose)).toBeHidden();

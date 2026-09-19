@@ -14,7 +14,7 @@ import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
-import { cancelWindowsFileDialog, submitWindowsFileDialogPath } from '../../fixtures/ui/windows-file-dialog';
+import { cancelFileDialog, submitFileDialogPath } from '../../fixtures/ui/file-dialog';
 
 const TOOL_NAME = 'capture_export_body';
 const PROMPT = ['Export only', 'the selected captured body.'].join(' ');
@@ -238,7 +238,7 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
 }
 
 test('capture.tools.body-export saves captured bytes through native Agent and MCP flows', async ({ desktopApp, httpTrafficRunner, openAiCompatibleLab }, testInfo) => {
-  test.skip(process.platform !== 'win32', 'Native Save Dialog is verified on Windows.');
+  test.skip(!['win32', 'darwin'].includes(process.platform), 'Native Save workflow requires Windows or macOS.');
   test.setTimeout(300_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'capture.tools.body-export' });
   const { page } = desktopApp;
@@ -282,14 +282,14 @@ test('capture.tools.body-export saves captured bytes through native Agent and MC
     expect(await finishAgentCall(page, openAiCompatibleLab, 'body-deny')).toMatchObject({ ok: false, error: { code: 'tool_denied' } });
     expect(await readdir(directory)).toEqual([]);
     await beginAgentCall(page, openAiCompatibleLab, 'body-native-cancel', TOOL_NAME, responseArgs, 'allow');
-    await cancelWindowsFileDialog(desktopApp.windowsMainProcessOwner());
+    await cancelFileDialog(desktopApp.nativeFileDialogOwner());
     await page.bringToFront();
     expect(await finishAgentCall(page, openAiCompatibleLab, 'body-native-cancel')).toEqual({ ok: true, value: { started: false } });
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('body-native-cancel'))).toHaveAttribute('data-summary-kind', 'exportCanceled');
     expect(await readdir(directory)).toEqual([]);
     const agentResponseFile = path.join(directory, 'agent-response.bin');
     await beginAgentCall(page, openAiCompatibleLab, 'body-allow', TOOL_NAME, responseArgs, 'allow');
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), agentResponseFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), agentResponseFile);
     await page.bringToFront();
     const responseJobId = startedJob((await finishAgentCall(page, openAiCompatibleLab, 'body-allow')).value);
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('body-allow'))).toHaveAttribute('data-summary-kind', 'transferJob');
@@ -301,7 +301,7 @@ test('capture.tools.body-export saves captured bytes through native Agent and MC
     await getByAutomationId(page, AUTOMATION_IDS.agent.executionMode.auto).click();
     const agentRequestFile = path.join(directory, 'agent-request.bin');
     await beginAgentCall(page, openAiCompatibleLab, 'body-auto', TOOL_NAME, requestArgs);
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), agentRequestFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), agentRequestFile);
     await page.bringToFront();
     const requestJobId = startedJob((await finishAgentCall(page, openAiCompatibleLab, 'body-auto')).value);
     await verifyExport(client, requestJobId, agentRequestFile, source.request);
@@ -324,14 +324,14 @@ test('capture.tools.body-export saves captured bytes through native Agent and MC
       .toHaveAttribute('data-execution-mode', 'auto');
     const [canceled] = await Promise.all([
       client.callTool({ name: TOOL_NAME, arguments: otherArgs }),
-      cancelWindowsFileDialog(desktopApp.windowsMainProcessOwner()),
+      cancelFileDialog(desktopApp.nativeFileDialogOwner()),
     ]);
     await page.bringToFront();
     expect(mcpValue(canceled)).toEqual({ started: false });
     const mcpFile = path.join(directory, 'mcp-response.bin');
     const [exporting] = await Promise.all([
       client.callTool({ name: TOOL_NAME, arguments: otherArgs }),
-      submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), mcpFile),
+      submitFileDialogPath(desktopApp.nativeFileDialogOwner(), mcpFile),
     ]);
     await page.bringToFront();
     const mcpJobId = startedJob(mcpValue(exporting));
@@ -345,7 +345,7 @@ test('capture.tools.body-export saves captured bytes through native Agent and MC
     await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.response).click();
     const uiFile = path.join(directory, 'ui-response.bin');
     await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.save).click();
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), uiFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), uiFile);
     await page.bringToFront();
     await expect.poll(async () => {
       try { return createHash('sha256').update(await readFile(uiFile)).digest('hex'); } catch { return null; }

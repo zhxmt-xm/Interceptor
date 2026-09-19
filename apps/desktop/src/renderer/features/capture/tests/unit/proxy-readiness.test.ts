@@ -1,13 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useEffect } from 'react';
 
-import type { InterceptorDesktopApi } from '../../../../../shared/desktop-api';
+import type { CaptureStatus, SystemProxyStatus as DesktopSystemProxyStatus, InterceptorDesktopApi } from '../../../../../shared/desktop-api';
 import { useCaptureStore } from '../../data/captureStore';
-import { retryCaptureProxyReadiness, toggleCapture } from '../../data/useCaptureData';
+import { retryCaptureProxyReadiness, toggleCapture, useCaptureData } from '../../data/useCaptureData';
+
+vi.mock('react', async (importOriginal) => ({
+  ...await importOriginal<typeof import('react')>(),
+  useEffect: vi.fn(),
+}));
 
 const originalWindow = globalThis.window;
 
 describe('capture proxy readiness', () => {
   beforeEach(() => {
+    vi.mocked(useEffect).mockClear();
     useCaptureStore.setState({
       rows: [],
       proxyReadinessIssue: null,
@@ -31,6 +38,42 @@ describe('capture proxy readiness', () => {
     expect(enableSystemProxy).toHaveBeenCalledOnce();
     expect(useCaptureStore.getState().capturing).toBe(true);
     expect(useCaptureStore.getState().proxyReadinessIssue).toBeNull();
+  });
+
+  it('keeps Core recording events paused until system routing is confirmed', async () => {
+    useCaptureStore.setState({ capturing: false });
+    let resolveProxy!: (status: DesktopSystemProxyStatus) => void;
+    const pendingProxy = new Promise<DesktopSystemProxyStatus>((resolve) => { resolveProxy = resolve; });
+    const getSystemProxyStatus = vi.fn().mockReturnValue(pendingProxy);
+    const receiveStatus = subscribeCaptureStatus({ getSystemProxyStatus });
+
+    receiveStatus(recordingStatus(true));
+    expect(useCaptureStore.getState().capturing).toBe(false);
+    expect(getSystemProxyStatus).toHaveBeenCalledOnce();
+    resolveProxy(proxyStatus(true));
+    await vi.waitFor(() => expect(useCaptureStore.getState().capturing).toBe(true));
+  });
+
+  it('does not let a delayed proxy check overwrite a newer Stop event', async () => {
+    useCaptureStore.setState({ capturing: false });
+    let resolveProxy!: (status: DesktopSystemProxyStatus) => void;
+    const pendingProxy = new Promise<DesktopSystemProxyStatus>((resolve) => { resolveProxy = resolve; });
+    const receiveStatus = subscribeCaptureStatus({ getSystemProxyStatus: vi.fn().mockReturnValue(pendingProxy) });
+    receiveStatus(recordingStatus(true));
+    receiveStatus(recordingStatus(false));
+    resolveProxy(proxyStatus(true));
+    await pendingProxy;
+    await Promise.resolve();
+    expect(useCaptureStore.getState().capturing).toBe(false);
+  });
+
+  it('does not show Recording when Core is ready but supported system routing is not owned', async () => {
+    useCaptureStore.setState({ capturing: false });
+    const receiveStatus = subscribeCaptureStatus({});
+    receiveStatus(recordingStatus(true));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(useCaptureStore.getState().capturing).toBe(false);
   });
 
   it('retains a bounded issue when enabling system routing fails', async () => {
@@ -135,5 +178,26 @@ function proxyStatus(owned: boolean) {
     bypassList: owned ? '<local>' : null,
     pacUrl: null,
     autoDetect: false,
+    upstreamProxy: null,
+    upstreamReachable: true,
   };
+}
+
+function recordingStatus(recording: boolean): CaptureStatus {
+  return { listening: true, recording, host: '127.0.0.1', port: 8888, sessionId: 'session-1', capturedExchanges: 0 };
+}
+
+function subscribeCaptureStatus(overrides: Partial<InterceptorDesktopApi>): (status: CaptureStatus) => void {
+  let receiveStatus!: (status: CaptureStatus) => void;
+  installApi({
+    onCaptureStatusChange: (callback) => { receiveStatus = callback; return () => undefined; },
+    onCaptureReset: () => () => undefined,
+    onCaptureImported: () => () => undefined,
+    onCoreProcessStatusChange: () => () => undefined,
+    getCoreProcessStatus: vi.fn().mockReturnValue(new Promise(() => undefined)),
+    ...overrides,
+  });
+  useCaptureData();
+  for (const [effect] of vi.mocked(useEffect).mock.calls) effect();
+  return receiveStatus;
 }

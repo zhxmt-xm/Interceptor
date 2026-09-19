@@ -49,14 +49,18 @@ import {
   type UpdateStatus,
   type BreakpointBodyFile,
 } from '../shared/desktop-api';
-import { AppContainerService } from './app-container/app-container-service';
-import type { AppContainerSnapshot } from './app-container/interfaces';
+import type { AppContainerSnapshot } from './platform-capabilities/interfaces';
 import { CertificateService } from './certificates/certificate-service';
-import { TrustStoreService } from './certificates/trust-store-service';
 import {
+  PlatformCapabilitiesService,
+  type AppContainerService,
+  type TrustStoreService,
   readClientAppIcon,
   resolveClientAppHelperPath,
-} from './client-app/client-app-helper';
+  SystemProxyOperationQueue,
+  toUpstreamAuthority,
+  UpstreamProbe,
+} from './platform-capabilities/entry';
 import {
   BREAKPOINT_BODY_FILE_PREVIEW_BYTES,
   IMPORT_FILE_MAX_BYTES,
@@ -69,11 +73,8 @@ import { startDiagnosticsExport } from './diagnostics/start-export';
 import { startBodyExport } from './capture/start-body-export';
 import { startHarExport, startHarImport } from './capture/start-har-transfer';
 import { startArchiveExport, startArchiveImport } from './capture/start-archive-transfer';
-import type {
-  SystemProxyService,
-  SystemProxyStatus,
-  UpdateService,
-} from './interfaces';
+import type { UpdateService } from './interfaces';
+import type { SystemProxyService, SystemProxyStatus } from './platform-capabilities/interfaces';
 import { AgentToolService } from './agent/entry';
 import {
   ApplicationActionGate,
@@ -83,11 +84,6 @@ import {
 } from './lifecycle/application-shutdown';
 import { TrustedRendererUrl } from './security/trusted-renderer-url';
 import { PackagedRendererProtocol } from './security/packaged-renderer-protocol';
-import { MacosSystemProxyService } from './system-proxy/macos/entry';
-import { MacosSystemProxyJournal } from './system-proxy/macos/journal';
-import { SystemProxyOperationQueue } from './system-proxy/operation-queue';
-import { toUpstreamAuthority } from './system-proxy/windows/system-proxy-upstream';
-import { UpstreamProbe } from './system-proxy/upstream-probe';
 import { ToolCapabilitySettingsService } from './tool-capabilities/entry';
 import { McpDesktopService } from './mcp/entry';
 import { exportCollection, exportSavedCollection } from './composer/export-collection';
@@ -96,11 +92,6 @@ import { exportRules, exportSavedRules } from './rules/export-rules';
 import { RulesImportService } from './rules/import-service';
 import { UiPreferencesService } from './settings/ui-preferences-service';
 import type { UiPreferenceAppliedChange } from '../shared/ui-preferences';
-import {
-  resolveWindowsSystemProxyJournalPath,
-  WindowsSystemProxyJournal,
-} from './system-proxy/windows/journal';
-import { WindowsSystemProxyService } from './system-proxy/windows/entry';
 import { GitHubAuthService } from './updates/github-auth-service';
 import { GitHubReleaseUpdateService } from './updates/github-release-update-service';
 import {
@@ -150,9 +141,13 @@ class DesktopApplication {
   private certificateService: CertificateService | null = null;
   /** Secure packaged Renderer protocol, installed only outside development. */
   private packagedRendererProtocol: PackagedRendererProtocol | null = null;
-  private systemProxyService: SystemProxyService | null = null;
-  /** Windows sandbox permission owner; independent from WinINet proxy ownership. */
-  private appContainerService: AppContainerService | null = null;
+  private platformCapabilitiesService: PlatformCapabilitiesService | null = null;
+  private get systemProxyService(): SystemProxyService | null {
+    return this.platformCapabilitiesService?.systemProxyService ?? null;
+  }
+  private get appContainerService(): AppContainerService | null {
+    return this.platformCapabilitiesService?.appContainerService ?? null;
+  }
   /** 接管时检测到的上游代理；降级期间保留，供探活恢复后升级回去。 */
   private detectedUpstreamProxy: UpstreamProxyConfig | null = null;
   /** Core 当前实际使用的上游代理；null 表示直连。 */
@@ -179,7 +174,10 @@ class DesktopApplication {
   private agentRuntimeUnsubscribe: (() => void) | null = null;
   /** Private GitHub release checker; downloads always remain user-controlled. */
   private updateService: UpdateService | null = null;
-  private readonly trustStore = new TrustStoreService();
+  private get trustStore(): TrustStoreService {
+    if (!this.platformCapabilitiesService) throw new Error('Platform capabilities are not initialized.');
+    return this.platformCapabilitiesService.trustStoreService;
+  }
   /** Latest Workspace-backed TLS passthrough document. */
   private tlsPassthroughSettings: TlsPassthroughSettings | null = null;
   /**
@@ -238,11 +236,15 @@ class DesktopApplication {
       dataDir: path.join(app.getPath('userData'), 'certificates'),
       secureStore: safeStorage,
     });
-    this.systemProxyService = this.createSystemProxyService();
-    await this.recoverSystemProxyOnStartup();
-    this.appContainerService = new AppContainerService({
-      helperPath: this.getAppContainerHelperPath(),
+    this.platformCapabilitiesService = new PlatformCapabilitiesService({
+      applicationEnvironment: app.isPackaged ? 'production' : 'development',
+      nativeDirectory: app.isPackaged ? process.resourcesPath : path.join(app.getAppPath(), 'dist'),
+      userDataDirectory: app.getPath('userData'),
+      localAppDataDirectory: process.env.LOCALAPPDATA,
+      applicationPath: process.platform === 'darwin' && app.isPackaged ? path.resolve(process.execPath, '../../..') : undefined,
     });
+    await this.platformCapabilitiesService.prepareNativeComponents();
+    await this.recoverSystemProxyOnStartup();
     this.gitHubAuthService = new GitHubAuthService({
       clientId: GitHubAuthService.clientId,
       dataDirectory: path.join(app.getPath('userData'), 'updates'),
@@ -2154,7 +2156,10 @@ class DesktopApplication {
    * 读取 Core 随事件批交来的新应用图标，取完即推给 Renderer。
    * 图标按应用而非按请求去重，因此不会随每条 Exchange 重复传输。
    */
-  private loadClientAppIcons(clientApps: ClientAppIdentity[]): void {    const helperPath = resolveClientAppHelperPath();
+  private loadClientAppIcons(clientApps: ClientAppIdentity[]): void {
+    const helperPath = resolveClientAppHelperPath(
+      app.isPackaged ? process.resourcesPath : path.join(app.getAppPath(), 'dist'),
+    );
     if (!helperPath) {
       return;
     }
@@ -2810,64 +2815,6 @@ class DesktopApplication {
       : path.resolve(app.getAppPath(), 'assets/interceptor-icon.png');
   }
 
-  /** Create the native system-proxy service for the current desktop platform. */
-  private createSystemProxyService(): SystemProxyService {
-    if (process.platform === 'darwin') {
-      const macosSystemProxyJournal = new MacosSystemProxyJournal(
-        path.join(app.getPath('userData'), 'system-proxy/journal.json'),
-      );
-      return new MacosSystemProxyService({
-        helperPath: this.getMacosProxyHelperPath(),
-        journal: macosSystemProxyJournal,
-      });
-    }
-    const localAppDataDirectory = process.env.LOCALAPPDATA;
-    if (!localAppDataDirectory) {
-      throw new Error('LOCALAPPDATA is required for Windows system proxy recovery.');
-    }
-    const windowsSystemProxyJournal = new WindowsSystemProxyJournal(
-      resolveWindowsSystemProxyJournalPath(localAppDataDirectory),
-    );
-    return new WindowsSystemProxyService({
-      helperPath: this.getWinInetProxyHelperPath(),
-      journal: windowsSystemProxyJournal,
-    });
-  }
-
-  private getWinInetProxyHelperPath(): string {
-    return app.isPackaged
-      ? path.join(
-          process.resourcesPath,
-          'system-proxy/wininet-proxy-helper.exe',
-        )
-      : path.resolve(
-          app.getAppPath(),
-          'dist/system-proxy/wininet-proxy-helper.exe',
-        );
-  }
-
-  /** Resolve the Windows Network Isolation helper in development and packages. */
-  private getAppContainerHelperPath(): string {
-    return app.isPackaged
-      ? path.join(
-          process.resourcesPath,
-          'app-container/app-container-helper.exe',
-        )
-      : path.resolve(
-          app.getAppPath(),
-          'dist/app-container/app-container-helper.exe',
-        );
-  }
-
-  /** Resolve the Swift SystemConfiguration helper in development and packages. */
-  private getMacosProxyHelperPath(): string {
-    return app.isPackaged
-      ? path.join(process.resourcesPath, 'system-proxy/macos-proxy-helper')
-      : path.resolve(
-          app.getAppPath(),
-          'dist/system-proxy/macos-proxy-helper',
-        );
-  }
 }
 
 new DesktopApplication().start();

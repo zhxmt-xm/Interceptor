@@ -7,7 +7,7 @@
   "description": "Interceptor Electron desktop application",
   "main": ".vite/build/main.js",
   "scripts": {
-    "build:native": "node src/main/system-proxy/windows/build-helper.mjs && node src/main/app-container/build-windows-helper.mjs && node src/main/system-proxy/macos/build-helper.mjs && node src/main/client-app/build-client-app-helper.mjs",
+    "build:native": "node src/main/platform-capabilities/windows/system-proxy/build-helper.mjs && node src/main/platform-capabilities/windows/app-container/build-windows-helper.mjs && node src/main/platform-capabilities/macos/system-proxy/build-helper.mjs && node src/main/platform-capabilities/windows/client-app/build-client-app-helper.mjs",
     "e2e:prepare-local": "npm run build --workspace @interceptor/core-protocol && npm run build --workspace @interceptor/proxy-core && npm run build:native && node tests/e2e-workflow-tests/prepare-local.mjs",
     "package": "npm run build:native && electron-forge package",
     "make": "npm run build:native && electron-forge make",

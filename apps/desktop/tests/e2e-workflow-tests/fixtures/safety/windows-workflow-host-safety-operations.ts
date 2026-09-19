@@ -103,7 +103,7 @@ export class WindowsWorkflowHostSafetyOperations implements WorkflowHostSafetyOp
 
   /** Track one isolated profile only for test-process ownership. */
   registerUserDataDirectory(userDataDirectory: string): void {
-    const normalizedDirectory = path.resolve(userDataDirectory);
+    const normalizedDirectory = path.win32.resolve(userDataDirectory);
     this.userDataDirectories.add(normalizedDirectory);
   }
 
@@ -169,7 +169,7 @@ $process = Get-Process -Id ([int]$processIds[0]) -ErrorAction Stop
   }
 
   /** Read the complete current WinINet snapshot through the production helper. */
-  async readWinInetSettings(): Promise<WinInetProxySettings> {
+  async readSystemProxySettings(): Promise<WinInetProxySettings> {
     const result = await this.commandRunner.run(this.helperPath, ['get']);
     let value: unknown;
     try {
@@ -178,6 +178,10 @@ $process = Get-Process -Id ([int]$processIds[0]) -ErrorAction Stop
       throw new Error('WinINet helper returned invalid JSON to the workflow guard.');
     }
     return WindowsWorkflowHostSafetyOperations.parseSettings(value);
+  }
+
+  areSystemProxySettingsEqual(left: WinInetProxySettings, right: WinInetProxySettings): boolean {
+    return WindowsWorkflowHostSafetyOperations.equalSettings(left, right);
   }
 
   /** Report whether the user-level crash journal exists. */
@@ -410,7 +414,7 @@ if (-not $process.WaitForExit(5000)) {
         'No workflow system proxy crash journal is available for recovery.',
       );
     }
-    const current = await this.readWinInetSettings();
+    const current = await this.readSystemProxySettings();
     if (!WindowsWorkflowHostSafetyOperations.equalSettings(record.original, baseline)) {
       throw new Error('Tracked crash journal does not match the workflow baseline.');
     }
@@ -424,7 +428,7 @@ if (-not $process.WaitForExit(5000)) {
     }
 
     await this.writeWinInetSettings(baseline);
-    const restored = await this.readWinInetSettings();
+    const restored = await this.readSystemProxySettings();
     if (!WindowsWorkflowHostSafetyOperations.equalSettings(restored, baseline)) {
       throw new Error('WinINet settings did not match the workflow baseline after recovery.');
     }
@@ -589,7 +593,7 @@ if (-not $process.WaitForExit(5000)) {
     for (const userDataDirectory of this.userDataDirectories) {
       const markers = [
         `--user-data-dir=${userDataDirectory}`,
-        `--data-dir=${path.join(userDataDirectory, 'storage')}`,
+        `--data-dir=${path.win32.join(userDataDirectory, 'storage')}`,
       ];
       if (markers.some((marker) =>
         WindowsWorkflowHostSafetyOperations.hasExactArgument(commandLine, marker))) {

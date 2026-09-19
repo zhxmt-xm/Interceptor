@@ -14,7 +14,7 @@ import {
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
-import { submitWindowsFileDialogPath } from '../../fixtures/ui/windows-file-dialog';
+import { submitFileDialogPath } from '../../fixtures/ui/file-dialog';
 
 const BREAKPOINT_REPLACEMENT_TEXT = 'breakpoints.replacement.text';
 
@@ -214,7 +214,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
   desktopApp,
   httpTrafficRunner: loopbackLab,
 }, testInfo: TestInfo) => {
-  test.skip(process.platform !== 'win32', '真实文件对话框 workflow 目前只在 Windows 执行。');
+  test.skip(!['win32', 'darwin'].includes(process.platform), 'Native file dialog workflow requires Windows or macOS.');
   testInfo.annotations.push({
     type: 'renderer-workflow',
     description: 'rules.body-effect-evidence',
@@ -441,7 +441,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
   await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.response).click();
   await expect.poll(() => bodyPane.textContent()).toContain('breakpoint-file-final');
   const generatedFile = testInfo.outputPath('body-effect-response-file.json');
-  const mainProcessOwner = desktopApp.windowsMainProcessOwner();
+  const mainProcessOwner = desktopApp.nativeFileDialogOwner();
   let responseBreakpointRuleId: string | null = null;
 
   try {
@@ -449,7 +449,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
       page,
       AUTOMATION_IDS.capture.inspector.bodyAction.save,
     ).click();
-    await submitWindowsFileDialogPath(mainProcessOwner, generatedFile);
+    await submitFileDialogPath(mainProcessOwner, generatedFile);
     await page.bringToFront();
     await expect.poll(async () => readFile(generatedFile).catch(() => null))
       .toEqual(responseFileBytes);
@@ -499,7 +499,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
       buttonHeight: 32, buttonFontSize: '11.5px', fillsAreaWidth: false,
     });
     await chooseFile.click();
-    await submitWindowsFileDialogPath(mainProcessOwner, generatedFile);
+    await submitFileDialogPath(mainProcessOwner, generatedFile);
     await page.bringToFront();
     const selectedFile = getByAutomationId(
       page,

@@ -141,6 +141,19 @@ const config: ForgeConfig = {
           osxSign: {
             identity: appleSignIdentity ?? '-',
             identityValidation: appleSignIdentity !== undefined,
+            optionsForFile: (filePath) => ({
+              hardenedRuntime: true,
+              ...(path.basename(filePath) === 'macos-proxy-helper'
+                ? {
+                    entitlements: path.join(desktopDirectory, 'assets/macos-native-helper-entitlements.plist'),
+                    additionalArguments: ['--identifier', 'com.zhxmt.interceptor.platform-capabilities'],
+                    ...(appleSignIdentity === undefined ? { timestamp: 'none' } : {}),
+                  }
+                : {}),
+              ...(appleSignIdentity === undefined && filePath.endsWith('.app')
+                ? { entitlements: path.join(desktopDirectory, 'assets/macos-local-app-entitlements.plist') }
+                : {}),
+            }),
           },
           ...(appleSignIdentity && appleId && appleIdPassword && appleTeamId
             ? {

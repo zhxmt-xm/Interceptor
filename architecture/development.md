@@ -69,6 +69,10 @@ npm run dev
 
 该命令依次构建 Core Protocol、Proxy Core 和当前平台的原生 helper，再启动 Vite 与 Electron。
 
+macOS 开发和业务 E2E 共用一个常驻 helper。首次部署或新增开发授权时，由 macOS 请求管理员确认；之后信任已核准的本机 UID，不绑定项目源码、App 构建、Electron 签名或调试状态。HMR、`rs`、修改业务代码和切换测试 profile 不重复安装或申请这项授权。helper 自身构建改变或组件缺失时才需部署；损坏配置报错，不静默覆盖。
+
+生产包使用独立 socket 和 root 保护的 App 身份配置，保留完整签名、资源和运行时校验，不回退到开发入口。开发授权意味着信任该 UID 的本地程序，但只能调用固定代理和公开证书操作，不提供任意 root 命令。证书 admin trust 仍有独立系统权限。实机验证范围见 [Handover](HANDOVER.md)。
+
 | 修改范围 | 生效方式 |
 | --- | --- |
 | Renderer 组件、样式、主题 | Vite HMR，通常无需重启 |
@@ -206,6 +210,8 @@ Playground 不参与 Desktop 打包。场景说明、凭据边界和人工报告
 
 Main 与 Core 可以一起调试，浏览器和编辑器任选。Renderer 使用独立的页面 DevTools。
 
+macOS 开发入口允许 Main/Core 调试，复用开发与业务 E2E 的同一份 helper 授权；生产签名和运行时检查不因此关闭。以下 `npm run start` 内部仍调用 Forge，不会改成启动打包 App。
+
 #### Main 与 Proxy Core
 
 **一次启动两个进程的调试**
@@ -319,7 +325,7 @@ npm run e2e:prepare-local --workspace @interceptor/desktop
 
 **验收边界**
 
-- 使用测试拥有的 Electron，不附着开发窗口，也不执行 Electron Packager。
+- 使用测试拥有的 App，不附着开发窗口。两平台默认使用未打包 Electron 和本地 production bundle；macOS 通过 Renderer CDP 驱动并复用开发 helper。签名生产包由 packaged smoke 或显式产物路径独立验收。
 - 必须通过真实 UI 操作，原生文件对话框和证书授权不能用 mock 或业务 API 替代。
 - 最终检查 trace、证据、进程销毁、8888 释放与系统副作用恢复。
 

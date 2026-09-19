@@ -1,8 +1,5 @@
-import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import { promisify } from 'node:util';
 import { chromium, type Browser, type Page, type TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
@@ -10,6 +7,7 @@ import { getByAutomationId } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { PlaygroundServer } from '../../fixtures/runtime/playground-server';
+import { readAppContainerSystemState, verifyAppContainerQueryResult, type AppContainerSystemState } from '../../fixtures/safety/app-container-system-state';
 
 const SETTINGS_QUERY_NAMES = [
   'settings_get_core_process_status',
@@ -26,30 +24,13 @@ const DISABLED_ANSWER = ['The six Settings queries', 'are unavailable.'].join(' 
 const SENSITIVE_TEXTS = [PROMPT, ANSWER, DISABLED_PROMPT, DISABLED_ANSWER];
 const INSECURE_HOST = 'readonly-insecure.example.test';
 const PASSTHROUGH_HOST = '*.readonly-passthrough.example.test';
-const execFileAsync = promisify(execFile);
-
-interface AppContainerSystemState {
-  readonly containers: readonly { appContainerSid: string }[];
-  readonly exemptSids: readonly string[];
-}
-
-async function readSystemState(desktopDirectory: string): Promise<{
+async function readSystemState(desktopApp: LocalElectronApplicationDriver): Promise<{
   appContainers: AppContainerSystemState;
   proxy: unknown;
 }> {
-  const read = async (directory: string, file: string, command: string): Promise<unknown> => {
-    try {
-      const { stdout } = await execFileAsync(path.join(desktopDirectory, 'dist', directory, file), [command], {
-        encoding: 'utf8', windowsHide: true,
-      });
-      return JSON.parse(stdout);
-    } catch {
-      throw new Error('Could not read the system state for Settings query verification.');
-    }
-  };
   return {
-    appContainers: await read('app-container', 'app-container-helper.exe', 'list') as AppContainerSystemState,
-    proxy: await read('system-proxy', 'wininet-proxy-helper.exe', 'get'),
+    appContainers: await readAppContainerSystemState(desktopApp.desktopDirectory),
+    proxy: await desktopApp.readSystemProxySettings(),
   };
 }
 
@@ -172,15 +153,7 @@ function verifyToolValues(
   expect(values.get('settings_get_tls_insecure_hosts')).toEqual({ hosts: [INSECURE_HOST] });
   expect(values.get('settings_get_tls_passthrough')).toEqual({ revision: 1, hosts: [PASSTHROUGH_HOST] });
   const access = values.get('settings_list_app_containers')!;
-  expect(access.supported).toBe(true);
-  if (!Array.isArray(access.containers)) throw new Error('AppContainer Tool Result has no containers.');
-  const containers = access.containers.filter(isRecord);
-  const actualSids = containers.map((entry) => String(entry.appContainerSid).toLowerCase()).sort();
-  const expectedSids = [...new Set(appContainers.containers.map((entry) => entry.appContainerSid.toLowerCase()))].sort();
-  expect(JSON.stringify(actualSids) === JSON.stringify(expectedSids)).toBe(true);
-  const exemptions = new Set(appContainers.exemptSids.map((sid) => sid.toLowerCase()));
-  expect(containers.every((entry) => entry.exempt === exemptions.has(String(entry.appContainerSid).toLowerCase())))
-    .toBe(true);
+  verifyAppContainerQueryResult(access, appContainers);
   for (const value of values.values()) {
     const serialized = JSON.stringify(value);
     expect(/[A-Za-z]:[\\/]|"(?:path|privateKey|proxyServer|bypassList|pacUrl|original)"/.test(serialized)).toBe(false);
@@ -252,7 +225,7 @@ test('settings.tools.readonly queries six real Settings owners without approval'
     await configureTlsThroughUi(desktopApp.page);
     await configureProvider(desktopApp.page, openAiCompatibleLab);
     await desktopApp.stopTrace(testInfo);
-    const initialSystemState = await readSystemState(desktopApp.desktopDirectory);
+    const initialSystemState = await readSystemState(desktopApp);
     const requestOffset = openAiCompatibleLab.requestsForAssertions().length;
     openAiCompatibleLab.enqueueToolCall({
       callId: 'settings-discover',
@@ -321,7 +294,7 @@ test('settings.tools.readonly queries six real Settings owners without approval'
 
     // 只读断言：查询前后完整代理和 exemption 集合不变，TLS 与证书 UI 状态不变。
     // Read-only assertions: the complete proxy and exemption sets, TLS settings, and certificate UI remain unchanged.
-    const afterQueries = await readSystemState(desktopApp.desktopDirectory);
+    const afterQueries = await readSystemState(desktopApp);
     expect(JSON.stringify(afterQueries.proxy) === JSON.stringify(initialSystemState.proxy)).toBe(true);
     expect(exemptionHash(afterQueries.appContainers)).toBe(exemptionHash(initialSystemState.appContainers));
     await verifyTlsThroughUi(desktopApp.page);
@@ -418,7 +391,7 @@ test('settings.tools.readonly queries six real Settings owners without approval'
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.settings.section.certificates).click();
     await getByAutomationId(relaunchedApp.page, AutomationIdFactory.insecureHostRemove(INSECURE_HOST)).click();
     await expect(getByAutomationId(relaunchedApp.page, AutomationIdFactory.insecureHost(INSECURE_HOST))).toHaveCount(0);
-    const finalSystemState = await readSystemState(relaunchedApp.desktopDirectory);
+    const finalSystemState = await readSystemState(relaunchedApp);
     expect(exemptionHash(finalSystemState.appContainers)).toBe(exemptionHash(initialSystemState.appContainers));
 
     // 证据：只保存协议字段、计数和 hash；两代 driver 与外层 guard 负责销毁和完整宿主恢复。

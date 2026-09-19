@@ -6,6 +6,7 @@ import {
   type AutomationId,
 } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
+import { verifyAppContainerControls } from '../../fixtures/ui/settings-workflow';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 const SETTINGS_SECTION_IDS = [
@@ -95,7 +96,7 @@ test('settings.navigation keeps the active section across workspace navigation',
     await getByAutomationId(page, sectionId).click();
     await expectCurrentSection(page, sectionId, sectionEvidence, `select:${sectionId}`);
     if (sectionId === AUTOMATION_IDS.settings.section.appContainers) {
-      await expect(getByAutomationId(page, AUTOMATION_IDS.settings.appContainers.search)).toBeVisible();
+      await verifyAppContainerControls(page, testInfo);
     }
     if (sectionId === AUTOMATION_IDS.settings.section.updates) {
       const signIn = getByAutomationId(page, AUTOMATION_IDS.settings.updates.githubSignIn);

@@ -1,6 +1,5 @@
 /** Main-layer stateless DTO mappers and shared process runner. */
 
-import { execFile } from 'node:child_process';
 import path from 'node:path';
 
 import type {
@@ -26,7 +25,6 @@ import type {
   WebSocketBreakpointSettings,
   WebSocketFrameQuery,
 } from '../../shared/desktop-api';
-import type { SystemProxyCommandRunner } from '../interfaces';
 
 /** Read an Error name for structured diagnostics. */
 export function readErrorName(error: unknown): string {
@@ -203,24 +201,3 @@ export function toRendererDiagnosticReport(
 ): RendererDiagnosticReport {
   return value as RendererDiagnosticReport;
 }
-
-/** Execute native helper commands without a shell. */
-export const systemProxyCommandRunner: SystemProxyCommandRunner = {
-  run(command, args) {
-    return new Promise((resolve) => {
-      execFile(
-        command,
-        [...args],
-        { windowsHide: true },
-        (error, stdout, stderr) => {
-          const rawCode = (error as { code?: number | string } | null)?.code;
-          resolve({
-            code: typeof rawCode === 'number' ? rawCode : error ? 1 : 0,
-            stdout: String(stdout ?? ''),
-            stderr: String(stderr ?? ''),
-          });
-        },
-      );
-    });
-  },
-};

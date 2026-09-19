@@ -10,12 +10,45 @@ import { getByAutomationId } from './automation';
 
 const execFileAsync = promisify(execFile);
 const ORIGIN_HOST = 'localhost';
+const certificateWaitOptions = getCertificateWaitOptions();
 
 export async function rootCertificateThumbprints(): Promise<string[]> {
+  switch (process.platform) {
+    case 'darwin':
+      return readMacosRootCertificateThumbprints();
+    case 'win32':
+      return readWindowsRootCertificateThumbprints();
+    default:
+      throw new Error(`Certificate workflows are not supported on ${process.platform}.`);
+  }
+}
+
+async function readMacosRootCertificateThumbprints(): Promise<string[]> {
+  const { stdout } = await execFileAsync('security', [
+    'find-certificate', '-a', '-p', '/Library/Keychains/System.keychain',
+  ], { encoding: 'utf8' });
+  return [...stdout.matchAll(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g)]
+    .map(([pem]) => new X509Certificate(pem).fingerprint.replaceAll(':', ''))
+    .sort();
+}
+
+async function readWindowsRootCertificateThumbprints(): Promise<string[]> {
   const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-Command',
     'ConvertTo-Json -InputObject @(Get-ChildItem Cert:\\LocalMachine\\Root | Select-Object -ExpandProperty Thumbprint | Sort-Object) -Compress',
   ], { encoding: 'utf8', windowsHide: true });
   return JSON.parse(stdout.trim()) as string[];
+}
+
+function getCertificateWaitOptions(): {
+  visibility: { timeout: number };
+  removal?: { timeout: number };
+} {
+  switch (process.platform) {
+    case 'darwin':
+      return { visibility: { timeout: 120_000 }, removal: { timeout: 120_000 } };
+    default:
+      return { visibility: { timeout: 30_000 } };
+  }
 }
 
 async function profileCertificateThumbprint(desktopApp: LocalElectronApplicationDriver): Promise<string | null> {
@@ -37,7 +70,8 @@ export async function prepareHttpsCapture(desktopApp: LocalElectronApplicationDr
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.certificates).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.generate).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install).click();
-  await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall)).toBeVisible({ timeout: 30_000 });
+  await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall))
+    .toBeVisible(certificateWaitOptions.visibility);
   const thumbprint = await profileCertificateThumbprint(desktopApp);
   expect(thumbprint).not.toBeNull();
   await expect.poll(rootCertificateThumbprints).toContain(thumbprint);
@@ -84,9 +118,9 @@ export async function cleanHttpsCapture(desktopApp: LocalElectronApplicationDriv
     if (!thumbprint) return;
     if ((await rootCertificateThumbprints()).includes(thumbprint)) {
       const uninstall = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall);
-      await expect(uninstall).toBeVisible({ timeout: 30_000 });
+      await expect(uninstall).toBeVisible(certificateWaitOptions.visibility);
       await uninstall.click();
-      await expect.poll(rootCertificateThumbprints).not.toContain(thumbprint);
+      await expect.poll(rootCertificateThumbprints, certificateWaitOptions.removal).not.toContain(thumbprint);
     }
     const remove = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete);
     await expect(remove).toBeVisible();

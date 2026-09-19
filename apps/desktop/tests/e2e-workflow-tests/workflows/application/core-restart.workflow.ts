@@ -1,7 +1,5 @@
-import { execFile } from 'node:child_process';
 import { readFile, stat, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import { promisify } from 'node:util';
+import { isDeepStrictEqual } from 'node:util';
 
 import {
   AUTOMATION_ID_PREFIXES,
@@ -15,18 +13,15 @@ import {
   CaptureWorkflowFixture,
   startRecording,
 } from '../../fixtures/ui/capture-workflow';
-import { expect, test } from '../../fixtures/runtime/local-electron-driver';
-import type { WinInetProxySettings } from '../../fixtures/safety/workflow-host-safety-guard';
-
-const execFileAsync = promisify(execFile);
+import { expect, type LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 
 interface SystemProxyJournalRecord {
   /** Minimal crash journal schema version. */
   readonly version: 1;
   /** Complete WinINet snapshot captured before takeover. */
-  readonly original: WinInetProxySettings;
+  readonly original: unknown;
   /** Complete WinINet snapshot written by Interceptor. */
-  readonly owned: WinInetProxySettings;
+  readonly owned: unknown;
 }
 
 interface LocatedJournal {
@@ -65,39 +60,12 @@ interface CoreRestartEvidence {
   finalHostRestored: boolean;
 }
 
-/** Read WinINet through the production helper without exposing values in evidence. */
-async function readWinInetSettings(
-  desktopDirectory: string,
-): Promise<WinInetProxySettings> {
-  const helperPath = path.join(
-    desktopDirectory,
-    'dist',
-    'system-proxy',
-    'wininet-proxy-helper.exe',
-  );
-  const { stdout } = await execFileAsync(helperPath, ['get'], {
-    encoding: 'utf8',
-    windowsHide: true,
-  });
-  return JSON.parse(stdout) as WinInetProxySettings;
-}
-
 /** Read the shared Windows crash journal and its current file generation. */
-async function readSharedJournal(): Promise<LocatedJournal | null> {
-  const localAppDataDirectory = process.env.LOCALAPPDATA;
-  if (!localAppDataDirectory) {
-    throw new Error('LOCALAPPDATA is required for Core restart evidence.');
-  }
-  const journalPath = path.join(
-    localAppDataDirectory,
-    'Interceptor',
-    'system-proxy',
-    'journal.json',
-  );
+async function readJournal(desktopApp: LocalElectronApplicationDriver): Promise<LocatedJournal | null> {
   try {
     const [serialized, metadata] = await Promise.all([
-      readFile(journalPath, 'utf8'),
-      stat(journalPath, { bigint: true }),
+      readFile(desktopApp.systemProxyJournalPath(), 'utf8'),
+      stat(desktopApp.systemProxyJournalPath(), { bigint: true }),
     ]);
     return {
       record: JSON.parse(serialized) as SystemProxyJournalRecord,
@@ -113,11 +81,12 @@ async function readSharedJournal(): Promise<LocatedJournal | null> {
 
 /** Wait for the initial journal or a later atomic replacement. */
 async function waitForJournal(
+  desktopApp: LocalElectronApplicationDriver,
   previousGeneration?: bigint,
 ): Promise<LocatedJournal> {
   let locatedJournal: LocatedJournal | null = null;
   await expect.poll(async () => {
-    locatedJournal = await readSharedJournal();
+    locatedJournal = await readJournal(desktopApp);
     return locatedJournal !== null
       && locatedJournal.record.version === 1
       && locatedJournal.modifiedAtNanoseconds !== previousGeneration;
@@ -134,15 +103,11 @@ test('application.lifecycle.core-restart restores Core and system proxy ordering
   desktopApp,
   httpTrafficRunner: loopbackLab,
 }, testInfo) => {
-  test.setTimeout(150_000);
+  desktopApp.configureWorkflowTimeout(testInfo, 150_000);
   testInfo.annotations.push({
     type: 'renderer-workflow',
     description: 'application.lifecycle.core-restart',
   });
-  if (process.platform !== 'win32') {
-    throw new Error('application.lifecycle.core-restart currently requires Windows.');
-  }
-
   desktopApp.preserveUserDataOnFailure();
   const { page } = desktopApp;
   const evidence: Partial<CoreRestartEvidence> = {};
@@ -155,14 +120,13 @@ test('application.lifecycle.core-restart restores Core and system proxy ordering
   // Arrange: take over the system proxy through the real product flow and record Core A plus the first three-field journal.
   await startRecording(desktopApp);
   await expect(recording).toHaveAttribute('aria-pressed', 'true');
-  const firstJournal = await waitForJournal();
+  const firstJournal = await waitForJournal(desktopApp);
   expect(Object.keys(firstJournal.record).sort()).toEqual([
     'original',
     'owned',
     'version',
   ]);
-  expect(await readWinInetSettings(desktopApp.desktopDirectory))
-    .toEqual(firstJournal.record.owned);
+  expect(isDeepStrictEqual(await desktopApp.readSystemProxySettings(), firstJournal.record.owned)).toBe(true);
   const firstCore = await desktopApp.currentCoreProcessIdentity();
 
   // 用户流：Core A先处理一条真实代理请求，Renderer通过row和Inspector展示结果。
@@ -183,20 +147,11 @@ test('application.lifecycle.core-restart restores Core and system proxy ordering
 
   // 故障：测试环境只终止已登记的Core A代际，Main保持运行并创建Core B。
   // Fault: the test environment terminates only registered Core A while Main stays alive and creates Core B.
-  await desktopApp.terminateCoreProcessGeneration(firstCore);
-  evidence.firstCoreTerminated = !(await desktopApp.listLiveRegisteredProcessIds())
-    .includes(firstCore.processId);
-  expect(evidence.firstCoreTerminated).toBe(true);
-  await expect.poll(
-    () => readSharedJournal(),
-    { message: 'Core recovery did not remove the first crash journal.' },
-  ).toBeNull();
+  await desktopApp.terminateCoreAndVerifyProxyRestoration(
+    firstCore, firstJournal.record.original, firstJournal.modifiedAtNanoseconds,
+  );
+  evidence.firstCoreTerminated = true;
   evidence.firstJournalRemoved = true;
-  await expect.poll(async () => JSON.stringify(
-    await readWinInetSettings(desktopApp.desktopDirectory),
-  ), {
-    message: 'Core recovery did not restore original WinINet before restart.',
-  }).toBe(JSON.stringify(firstJournal.record.original));
   evidence.originalRestoredBeforeRestart = true;
   const secondCore = await desktopApp.waitForRestartedCoreProcess(firstCore.processId);
   evidence.restartedWithNewProcess = secondCore.processId !== firstCore.processId;
@@ -211,16 +166,13 @@ test('application.lifecycle.core-restart restores Core and system proxy ordering
   await expect(firstGenerationRow).toHaveCount(0);
   evidence.firstGenerationCaptureCleared = true;
   await expect(recording).toHaveAttribute('aria-pressed', 'true', { timeout: 20_000 });
-  const secondJournal = await waitForJournal(firstJournal.modifiedAtNanoseconds);
+  const secondJournal = await waitForJournal(desktopApp, firstJournal.modifiedAtNanoseconds);
   evidence.journalRecreatedAfterRestart = true;
-  evidence.originalSnapshotPreserved = JSON.stringify(secondJournal.record.original)
-    === JSON.stringify(firstJournal.record.original);
-  evidence.ownedSnapshotPreserved = JSON.stringify(secondJournal.record.owned)
-    === JSON.stringify(firstJournal.record.owned);
+  evidence.originalSnapshotPreserved = desktopApp.matchesSystemProxyEvidence(secondJournal.record.original, firstJournal.record.original);
+  evidence.ownedSnapshotPreserved = desktopApp.matchesSystemProxyEvidence(secondJournal.record.owned, firstJournal.record.owned);
   expect(evidence.originalSnapshotPreserved).toBe(true);
   expect(evidence.ownedSnapshotPreserved).toBe(true);
-  expect(await readWinInetSettings(desktopApp.desktopDirectory))
-    .toEqual(secondJournal.record.owned);
+  expect(isDeepStrictEqual(await desktopApp.readSystemProxySettings(), secondJournal.record.owned)).toBe(true);
 
   // 恢复：Core B处理第二条请求，并通过公开导航证明Renderer与RPC仍可用。
   // Recovery: Core B serves a second request and public navigation proves Renderer and RPC remain usable.
@@ -255,9 +207,8 @@ test('application.lifecycle.core-restart restores Core and system proxy ordering
     await desktopApp.listLiveRegisteredProcessIds()
   ).length === 0;
   expect(evidence.closeAfterFaultLeftNoProcesses).toBe(true);
-  evidence.finalHostRestored = await readSharedJournal() === null
-    && JSON.stringify(await readWinInetSettings(desktopApp.desktopDirectory))
-      === JSON.stringify(firstJournal.record.original);
+  evidence.finalHostRestored = await readJournal(desktopApp) === null
+    && desktopApp.matchesSystemProxyEvidence(await desktopApp.readSystemProxySettings(), firstJournal.record.original);
   expect(evidence.finalHostRestored).toBe(true);
 
   const evidencePath = testInfo.outputPath('core-restart.json');

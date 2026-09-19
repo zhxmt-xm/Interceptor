@@ -21,7 +21,7 @@ vi.mock('electron', () => ({
   },
 }));
 
-vi.mock('../../../client-app/client-app-helper', () => ({
+vi.mock('../../../platform-capabilities/entry', () => ({
   resolveClientAppHelperPath: () => null,
 }));
 

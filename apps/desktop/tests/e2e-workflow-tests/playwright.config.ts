@@ -14,7 +14,7 @@ export default defineConfig({
   maxFailures: 1,
   retries: 0,
   workers: 1,
-  timeout: 90_000,
+  timeout: process.platform === 'darwin' ? 300_000 : 90_000,
   expect: {
     timeout: 15_000,
   },
@@ -35,4 +35,18 @@ export default defineConfig({
     trace: 'off',
     screenshot: 'off',
   },
+  ...(process.platform === 'darwin' ? {
+    projects: [
+      {
+        name: 'macos',
+        testIgnore: '**/capture/detail-body-fill.workflow.ts',
+        use: { viewport: { width: 1600, height: 900 } },
+      },
+      {
+        name: 'macos-scroll-boundary',
+        testMatch: '**/capture/detail-body-fill.workflow.ts',
+        use: { viewport: { width: 1600, height: 800 } },
+      },
+    ],
+  } : {}),
 });

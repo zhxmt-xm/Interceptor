@@ -13,7 +13,8 @@ import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
-import { submitWindowsFileDialogPath } from '../../fixtures/ui/windows-file-dialog';
+import { submitFileDialogPath } from '../../fixtures/ui/file-dialog';
+import { automaticallyExecuteMcpClientTools } from '../../fixtures/ui/settings-workflow';
 
 const TOOL_NAMES = ['capture_get_transfer_job', 'capture_cancel_transfer_job'] as const;
 const PROMPT = ['Inspect or cancel', 'the selected file transfer job.'].join(' ');
@@ -144,7 +145,7 @@ async function startArchiveFromUi(desktopApp: LocalElectronApplicationDriver, de
   await getByAutomationId(page, AUTOMATION_IDS.capture.exportMenu).click();
   await getByAutomationId(page, AUTOMATION_IDS.capture.saveArchive).click();
   await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start).click();
-  await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), destination);
+  await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), destination);
   await page.bringToFront();
   const progress = getByAutomationId(page, 'capture.transfer.progress');
   await expect(progress).toHaveAttribute('data-transfer-job-state', 'running');
@@ -184,7 +185,7 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
 }
 
 test('capture.tools.transfer-jobs queries and cancels real file jobs without exposing paths', async ({ desktopApp, httpTrafficRunner: loopbackLab, openAiCompatibleLab }, testInfo) => {
-  test.skip(process.platform !== 'win32', '原生文件Dialog目前在Windows验证。');
+  test.skip(!['win32', 'darwin'].includes(process.platform), 'Native file dialog workflow requires Windows or macOS.');
   test.setTimeout(300_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'capture.tools.transfer-jobs' });
   for (const value of [PROMPT, ANSWER]) desktopApp.registerSensitiveTextForEvidenceAudit(value);
@@ -215,7 +216,7 @@ test('capture.tools.transfer-jobs queries and cancels real file jobs without exp
     await expect(approval).toHaveAttribute('data-tool-name', 'diagnostics_export');
     await getByAutomationId(page, AUTOMATION_IDS.mcp.approval.allow).click();
     const completedFile = path.join(directory, 'completed.jsonl');
-    await submitWindowsFileDialogPath(desktopApp.windowsMainProcessOwner(), completedFile);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completedFile);
     await page.bringToFront();
     const exportResult = mcpValue(await exporting);
     if (!isRecord(exportResult) || !isRecord(exportResult.job) || typeof exportResult.job.id !== 'string') throw new Error('Diagnostics export omitted its job identity.');
@@ -289,7 +290,7 @@ test('capture.tools.transfer-jobs queries and cancels real file jobs without exp
     // Auto and isolation: cancel a second real Archive in Auto mode, keeping the completed job/file unchanged and leaving no temporary output or background worker.
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
     await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
-    await getByAutomationId(page, AutomationIdFactory.mcpClientAuto(configuredClient.clientId)).click();
+    await automaticallyExecuteMcpClientTools(page, configuredClient.clientId);
     const automaticJobId = await startArchiveFromUi(desktopApp, path.join(directory, 'cancel-auto.iarchive'));
     expect(publicJob(mcpValue(await client.callTool({ name: TOOL_NAMES[1], arguments: { jobId: automaticJobId } })))).toMatchObject({ id: automaticJobId, state: 'cancelled' });
     await expect(approval).toHaveCount(0);
@@ -314,8 +315,8 @@ test('capture.tools.transfer-jobs queries and cancels real file jobs without exp
     await client.close();
     client = null;
 
-    // 运行中退出：不先取消Archive，真实Alt+F4关闭测试窗口并等待文件清理与Core/Worker退出。
-    // Shutdown while running: send real Alt+F4 to the owned window without cancelling the Archive first, then wait for cleanup and exit.
+    // 运行中退出：不先取消Archive，由平台driver发送真实窗口关闭快捷键并等待文件清理与Core/Worker退出。
+    // Shutdown while running: use the platform driver's native window-close shortcut without cancelling the Archive first, then wait for cleanup and exit.
     await getByAutomationId(page, AUTOMATION_IDS.agent.panel.close).click();
     const modelRequests = openAiCompatibleLab.evidence().length;
     const originRequests = loopbackLab.evidence().length;

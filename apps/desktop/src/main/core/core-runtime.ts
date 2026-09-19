@@ -21,7 +21,7 @@ import type { CaptureExchangeEvent } from '@interceptor/core-protocol';
 import type { ClientAppIdentity } from '@interceptor/core-protocol';
 
 import type { CoreProcessStatus } from '../../shared/desktop-api';
-import { resolveClientAppHelperPath } from '../client-app/client-app-helper';
+import { resolveClientAppHelperPath } from '../platform-capabilities/entry';
 import type {
   CoreProcessHandle,
   CoreProcessLifecycleMessage,
@@ -297,7 +297,9 @@ export class CoreRuntime {
    * 调用方：startCoreProcess；protected 仅允许测试子类替换真实 Electron 启动。
    */
   protected launchCoreProcess(): CoreProcessHandle {
-    const clientAppHelper = resolveClientAppHelperPath();
+    const clientAppHelper = resolveClientAppHelperPath(
+      app.isPackaged ? process.resourcesPath : path.join(app.getAppPath(), 'dist'),
+    );
     const launchedCoreProcess = utilityProcess.fork(
       this.resolveCoreProcessEntry(),
       [
