@@ -4,11 +4,10 @@ import path from 'node:path';
 
 import type { SystemProxyJournalRecord, SystemProxyJournalStore } from '../../interfaces';
 import { SystemProxyJournalError } from '../../internal/errors';
+import { parseMacosEffectiveProxySettings } from '../utils';
 
 /** Crash-safe journal for guarded system-proxy restoration. */
 export class MacosSystemProxyJournal implements SystemProxyJournalStore {
-  /** Journal schema version. */
-  private static readonly JOURNAL_VERSION = 1;
   /** Absolute journal path under Electron userData. */
   private readonly journalPath: string;
 
@@ -41,11 +40,11 @@ export class MacosSystemProxyJournal implements SystemProxyJournalStore {
   }
 
   /** Persist original and intended owned values before the native helper writes. */
-  async save(original: unknown, owned: unknown): Promise<void> {
+  async save(original: unknown, owned: unknown, effectiveProxies: Record<string, unknown>): Promise<void> {
     await this.write({
-      version: MacosSystemProxyJournal.JOURNAL_VERSION,
       original,
       owned,
+      effectiveProxies,
     });
   }
 
@@ -84,17 +83,19 @@ export class MacosSystemProxyJournal implements SystemProxyJournalStore {
     }
     const record = value as Record<string, unknown>;
     if (
-      record.version !== MacosSystemProxyJournal.JOURNAL_VERSION ||
-      Object.keys(record).sort().join(',') !== 'original,owned,version' ||
+      Object.keys(record).sort().join(',') !== 'effectiveProxies,original,owned' ||
       !('original' in record) ||
       !('owned' in record)
     ) {
       throw new SystemProxyJournalError('System proxy journal fields are invalid.');
     }
+    let effectiveProxies: Record<string, unknown>;
+    try { effectiveProxies = parseMacosEffectiveProxySettings(record.effectiveProxies); }
+    catch { throw new SystemProxyJournalError('System proxy journal effective proxy settings are invalid.'); }
     return {
-      version: MacosSystemProxyJournal.JOURNAL_VERSION,
       original: record.original,
       owned: record.owned,
+      effectiveProxies,
     };
   }
 

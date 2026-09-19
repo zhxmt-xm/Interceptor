@@ -10,7 +10,7 @@ Windows使用官方`_electron.launch()`启动未打包production bundle；macOS�
 - `packaged-smoke`另行验证最终package的安全、资源、启动和退出边界，当前综合smoke不等于已经复用了全部workflow；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、131条Inventory与132份详细workflow规格已建立；管理员MMC原生专项仅保留排除说明，不计入workflow。已实现的spec按owning feature放入`workflows/<feature>/`，Inventory只有满足对应前置测试及Green/销毁证据的条目才能标passed；仅补既有行为覆盖不人为制造Red。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、133条Inventory与134份详细workflow规格已建立；管理员MMC原生专项仅保留排除说明，不计入workflow。已实现的spec按owning feature放入`workflows/<feature>/`，Inventory只有满足对应前置测试及Green/销毁证据的条目才能标passed；仅补既有行为覆盖不人为制造Red。
 
 ## 零 Mock 硬性原则
 
@@ -78,7 +78,7 @@ npm exec --workspace @interceptor/desktop playwright test -- --config tests/e2e-
 
 `INTERCEPTOR_E2E_MACOS_APP_PATH`仅在测试driver中选择已构建的签名App，此时Main必须通过生产App路径/CDHash、完整资源和运行时验证，不能回退到开发socket。设置该变量后直接运行Playwright，prepare会拒绝混用产物。packaged smoke和产物安全验收仍独立执行，开发授权不替代生产核准。
 
-每条workflow仍独立profile/trace，系统授权由本机用户处理；helper跨workflow保留，Main/Core/Worker和8888仍必须退出恢复。macOS失败清理先确认完整代理已恢复，否则保留App、listener和profile，不再让测试侧重复弹旧代理授权后强杀。证书admin trust仍有独立系统权限；组件卸载不等于业务恢复，整轮结束按已确认的保留/卸载范围处理。
+每条workflow仍独立profile/trace，系统授权由本机用户处理；常驻helper跨workflow保留，Main/Core/Worker、前台helper子进程和8888仍必须退出恢复。macOS失败清理先确认完整代理已恢复，否则保留App、listener和profile，不再让测试侧重复弹旧代理授权后强杀。证书admin trust由同一已部署helper的前台固定入口执行，仍有独立系统权限；不以Main的security写命令代替。组件卸载不等于业务恢复，整轮结束按已确认的保留/卸载范围处理。新trust成功/取消workflow的实机状态见Inventory，不复用旧Main路径的Green。
 
 macOS业务窗口由driver按项目配置准备：常规场景保持真实1600x900，只有body-fill滚轮边界场景使用1600x800，Windows项目/窗口逻辑不变。macOS admin trust前后检查统一在宿主guard；TLS/gRPC/H2保持相同业务步骤。macOS HTTPS弹窗动画及定位workflow仍按用户要求暂停，仅保留在本地未提交工作中，不纳入本阶段代码或Green。
 
@@ -300,22 +300,24 @@ diagnostics.row.<traceKey>
 | `settings.navigation` | 九个Settings section与跨workspace返回保持 | shared | passed |
 | `settings.tools.readonly` | Agent/MCP六项Settings只读查询、脱敏、撤权、双代零重放与完整宿主恢复 | shared | passed |
 | `settings.tools.system-proxy` | Agent审批/Auto启用与恢复系统代理、首次original保持、撤权和双代零重放 | os-side-effect | passed |
-| `settings.tools.tls` | TLS名单与解密意图/有效状态、即时UI同步、撤权、重启和测试CA清理 | privileged UI | passed |
-| `settings.tools.certificates` | Agent/MCP六项证书生命周期与查看、授权、重启及完整CA清理 | native-ui + privileged UI | passed |
+| `settings.tools.tls` | TLS名单与解密意图/有效状态、即时UI同步、撤权、重启和测试CA清理 | privileged UI | Windows历史passed；macOS平台查询已接入，完整流程待验 |
+| `settings.tools.certificates` | Agent/MCP六项证书生命周期与查看、授权、重启及完整CA清理 | native-ui + privileged UI | Windows历史passed；macOS清点/Finder已分派，View及完整流程待验 |
 | `settings.tools.app-containers` | Agent/MCP单项及批量exemption、挂载同步、撤权与双代恢复 | privileged UI | passed |
 | `settings.tools.language` | 原UI/Agent/MCP语言设置、独立授权、持久化与双代销毁 | shared | passed |
 | `settings.tools.preferences` | 原UI/Agent/MCP主题与Privacy默认值、HAR草稿隔离和双代销毁 | shared | passed |
 | `settings.app-containers.ordering` | Enabled稳定置顶且搜索保持顺序 | shared | passed |
 | `settings.app-containers.bulk-access` | 对称批量启用/停用并精确恢复AppContainer exemption | os-side-effect | passed |
 | `settings.proxy.enable-restore` | 系统代理Enable/Restore ownership | os-side-effect | planned |
+| `settings.proxy.upstream` | macOS接续真实外部系统上游，并通过UI恢复原配置 | macOS / external proxy / os-side-effect | 基础链式转发Red→Green及恢复已验；外部改写、停止/恢复待验 |
 | `settings.system-proxy.crash-recovery` | App A异常退出后由顺序启动的App B加载首次快照并完整恢复 | os-side-effect | passed |
 | `settings.proxy-mitm.persistence` | 异常退出后恢复系统代理并跨进程恢复MITM/TLS配置 | os-side-effect | passed |
 | `settings.certificates.generate-delete` | CA Generate/Regenerate/Delete | shared | planned |
 | `settings.certificates.trust` | Install/Uninstall本机信任 | os-side-effect | planned |
-| `settings.certificates.cancel-trust` | macOS原生取消后由产品撤回新增CA，保留原证书集 | macOS / os-side-effect | passed：前置Red、同步后Green/恢复及生产smoke见规格 |
+| `settings.certificates.helper-trust` | macOS两张不同CA的授信/撤销复用同一helper，Main不另起系统授权 | macOS / os-side-effect | 现行前台路径Green/恢复及生产smoke已验；常驻免重复确认仍blocked，见规格 |
+| `settings.certificates.cancel-trust` | 取消helper前台入口的系统确认，由产品撤回新增CA | macOS / os-side-effect | 现行前台路径Green及恢复已验；旧Main路径证据单独保留，见规格 |
 | `settings.helper-startup` | macOS首次部署及开发/生产入口复用，不覆盖另一份授权 | macOS / os-side-effect | passed：见对应规格的分阶段证据 |
 | `settings.certificates.https` | MITM switch和host例外 | os-side-effect | planned |
-| `settings.certificates.external-actions` | Reveal/View；不包含用户排除的管理员MMC原生验收 | native-ui | planned |
+| `settings.certificates.external-actions` | Reveal/View；不包含用户排除的管理员MMC原生验收 | native-ui | planned：macOS Reveal 1/1；View未通过，不计整体完成 |
 | `settings.tls-compatibility` | 真实TLS失败提示、精确host/wildcard选择、滚动、保存与Not now；最终Green，保留样式前置缺口 | privileged UI | planned |
 | `settings.storage.refresh-clear` | 单项正文用量、右上Refresh及两处Clear同步、取消和录制状态保持 | os-side-effect | passed |
 | `settings.privacy.defaults` | Export隐私默认值与持久化 | os-side-effect | planned |

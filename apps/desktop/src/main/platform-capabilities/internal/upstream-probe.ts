@@ -1,4 +1,6 @@
 import net from 'node:net';
+import type { UpstreamProxyConfig } from '@interceptor/core-protocol';
+import { upstreamProbeUrl } from './upstream';
 
 /** 上游探活的默认端口，按协议推断。 */
 const DEFAULT_PORTS: Record<string, number> = {
@@ -47,8 +49,10 @@ export class UpstreamProbe {
    * 等满一个周期意味着这段时间内所有请求都打在死端口上。
    * 调用方：Main 在接管系统代理并下发上游之后。
    */
-  start(proxyUrl: string): void {
+  start(upstream: UpstreamProxyConfig | null): void {
     this.stop();
+    const proxyUrl = upstreamProbeUrl(upstream);
+    if (!proxyUrl) return;
     this.target = UpstreamProbe.parseTarget(proxyUrl);
     if (!this.target) {
       return;

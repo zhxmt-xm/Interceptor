@@ -476,6 +476,37 @@ end tell
     return this.workflowHostSafetyGuard.readSystemProxySettings();
   }
 
+  isSystemProxyJournalReady(value: unknown): boolean {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+    switch (process.platform) {
+      case 'win32': return this.isWindowsSystemProxyJournalReady(value);
+      case 'darwin': return this.isMacosSystemProxyJournalReady(value);
+      default: throw new Error('Journal evidence requires a supported platform.');
+    }
+  }
+
+  private isWindowsSystemProxyJournalReady(value: object): boolean {
+    return 'version' in value && value.version === 1;
+  }
+
+  private isMacosSystemProxyJournalReady(value: object): boolean {
+    return 'original' in value && 'owned' in value && 'effectiveProxies' in value
+      && typeof value.effectiveProxies === 'object' && value.effectiveProxies !== null
+      && !Array.isArray(value.effectiveProxies);
+  }
+
+  assertSystemProxyJournalFields(value: object): void {
+    switch (process.platform) {
+      case 'win32':
+        expect(Object.keys(value).sort()).toEqual(['original', 'owned', 'version']);
+        return;
+      case 'darwin':
+        expect(Object.keys(value).sort()).toEqual(['effectiveProxies', 'original', 'owned']);
+        return;
+      default: throw new Error('Journal evidence requires a supported platform.');
+    }
+  }
+
   matchesSystemProxyEvidence(actual: unknown, expected: unknown): boolean {
     switch (process.platform) {
       case 'win32': return this.matchesWindowsSystemProxyEvidence(actual, expected);

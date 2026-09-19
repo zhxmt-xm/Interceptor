@@ -9,8 +9,6 @@ import {
 } from '../../fixtures/runtime/local-electron-driver';
 
 interface SystemProxyJournalRecord {
-  /** Minimal crash journal schema version. */
-  readonly version: 1;
   /** Complete WinINet snapshot captured before takeover. */
   readonly original: unknown;
   /** Complete WinINet snapshot written by Interceptor. */
@@ -60,11 +58,11 @@ async function waitForCrashJournal(desktopApp: LocalElectronApplicationDriver): 
   let locatedJournal: LocatedJournal | null = null;
   await expect.poll(async () => {
     locatedJournal = await readJournal(desktopApp);
-    return locatedJournal?.record.version ?? null;
+    return desktopApp.isSystemProxyJournalReady(locatedJournal?.record);
   }, {
     message: 'System proxy crash journal was not persisted.',
     timeout: 20_000,
-  }).toBe(1);
+  }).toBe(true);
   return locatedJournal!;
 }
 
@@ -101,11 +99,7 @@ test('loads a crashed system proxy journal across application generations', asyn
     const firstJournal = await waitForCrashJournal(desktopApp);
     evidence.firstGenerationOwned = !desktopApp.matchesSystemProxyEvidence(firstJournal.record.original, firstJournal.record.owned);
     expect(evidence.firstGenerationOwned).toBe(true);
-    expect(Object.keys(firstJournal.record).sort()).toEqual([
-      'original',
-      'owned',
-      'version',
-    ]);
+    desktopApp.assertSystemProxyJournalFields(firstJournal.record);
 
     // 异常退出：终止A后再顺序启动B，不存在两个App并发。
     // Abrupt exit: terminate A before B starts; two Apps never run concurrently.

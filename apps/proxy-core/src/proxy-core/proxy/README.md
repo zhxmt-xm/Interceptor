@@ -19,6 +19,13 @@ Capture **只订阅 initiated / body-data 类事件，绝不订阅 completed 的
 | `internal/capture-event-queue.ts` | `CaptureEventQueue`：有界合并队列，摘要经背压窗口推给 Renderer |
 | `internal/websocket-bridge.ts` | `WebSocketBridge`：WebSocket 帧转发与断点挂起 |
 
+## 上游平台边界
+
+- Windows保持单转发规则与`{ proxyUrl, noProxy }`配置，原CONNECT/WebSocket处理不变。
+- macOS按HTTP/HTTPS注册相同头部处理逻辑，接收`httpProxyUrl / httpsProxyUrl / exceptions / excludeSimpleHostnames`。
+- macOS WebSocket复用Mockttp的HTTP/SOCKS/PAC agent；选择发生在Core，不改系统代理或读取journal。
+- Main负责接管前配置和生命周期下发；Core只按当前配置转发，旧代际缓存随连接关闭清理。
+
 ## ExchangeTracker 的顺序前提
 
 Mockttp 的 `request-initiated`、`*-body-data`、`*-trailers` 都经 `setImmediate` 异步发出，而规则钩子走独立 Promise 链，**两者顺序不保证**。因此所有入口都是幂等 upsert；规则结果若先于 `request-initiated` 到达，先存进孤儿表，待 Exchange 建立后合并。

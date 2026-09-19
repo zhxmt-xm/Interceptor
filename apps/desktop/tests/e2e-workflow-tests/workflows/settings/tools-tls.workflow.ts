@@ -1,16 +1,14 @@
-import { execFile } from 'node:child_process';
 import { X509Certificate } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
+import { isCertificateTrusted } from '../../fixtures/ui/https-capture';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
-const execFileAsync = promisify(execFile);
 const TOOL_NAMES = [
   'settings_replace_tls_insecure_hosts', 'settings_replace_tls_passthrough',
   'settings_enable_https_decryption', 'settings_disable_https_decryption',
@@ -112,17 +110,6 @@ async function certificateThumbprint(desktopApp: LocalElectronApplicationDriver)
   return certificate.fingerprint.replaceAll(':', '');
 }
 
-async function isTrusted(thumbprint: string): Promise<boolean> {
-  try {
-    const { stdout } = await execFileAsync('certutil.exe', ['-verifystore', 'Root', thumbprint], {
-      encoding: 'utf8', windowsHide: true,
-    });
-    return stdout.toUpperCase().includes(thumbprint.toUpperCase());
-  } catch {
-    return false;
-  }
-}
-
 async function cleanTlsThroughUi(page: Page, thumbprint: string | null): Promise<void> {
   await openCertificates(page);
   const generate = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.generate);
@@ -140,10 +127,10 @@ async function cleanTlsThroughUi(page: Page, thumbprint: string | null): Promise
     await expect(getByAutomationId(page, AutomationIdFactory.insecureHost(INSECURE_HOST))).toHaveCount(0);
   }
   const uninstall = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall);
-  if (thumbprint !== null && await isTrusted(thumbprint)) {
+  if (thumbprint !== null && await isCertificateTrusted(thumbprint)) {
     await expect(uninstall).toBeEnabled();
     await uninstall.click();
-    await expect.poll(() => isTrusted(thumbprint)).toBe(false);
+    await expect.poll(() => isCertificateTrusted(thumbprint)).toBe(false);
     await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete)).toBeVisible();
   }
   const remove = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete);
@@ -153,7 +140,7 @@ async function cleanTlsThroughUi(page: Page, thumbprint: string | null): Promise
     await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install)).toBeDisabled();
     await expect(remove).toHaveCount(0);
   }
-  if (thumbprint !== null) expect(await isTrusted(thumbprint)).toBe(false);
+  if (thumbprint !== null) expect(await isCertificateTrusted(thumbprint)).toBe(false);
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.tlsPassthrough).click();
   for (const host of [...CONTROL_HOSTS, PASSTHROUGH_HOST]) {
     await expect(getByAutomationId(page, AUTOMATION_IDS.settings.tlsPassthrough.hostInput)).toBeVisible();
@@ -268,7 +255,7 @@ test('settings.tools.tls keeps configuration intent trust and mounted panels con
     thumbprint = await certificateThumbprint(desktopApp);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.certificates.install).click();
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.certificates.uninstall)).toBeVisible({ timeout: 30_000 });
-    expect(await isTrusted(thumbprint)).toBe(true);
+    expect(await isCertificateTrusted(thumbprint)).toBe(true);
 
     // 用户操作：启用和停用分别覆盖 Ask Deny/Allow 与 Auto，当前开关及真实 Core 状态保持一致。
     // User actions: cover Ask Deny/Allow and Auto for both directions, keeping the mounted switch and real Core state consistent.
@@ -329,7 +316,7 @@ test('settings.tools.tls keeps configuration intent trust and mounted panels con
     await expect(getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.settings.certificates.mitmToggle)).toHaveAttribute('aria-checked', 'true');
     await expect(getByAutomationId(relaunchedApp.page, AutomationIdFactory.insecureHost(INSECURE_HOST))).toBeVisible();
     expect(await certificateThumbprint(relaunchedApp)).toBe(thumbprint);
-    expect(await isTrusted(thumbprint)).toBe(true);
+    expect(await isCertificateTrusted(thumbprint)).toBe(true);
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.settings.section.tlsPassthrough).click();
     await expect(getByAutomationId(relaunchedApp.page, AutomationIdFactory.tlsPassthroughHost(PASSTHROUGH_HOST))).toBeVisible();
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.settings.section.agent).click();
@@ -361,7 +348,7 @@ test('settings.tools.tls keeps configuration intent trust and mounted panels con
         await testInfo.attach('tls-cleanup.json', {
           body: Buffer.from(JSON.stringify({
             testCaWasGenerated: thumbprint !== null,
-            trustRemoved: thumbprint === null ? null : !await isTrusted(thumbprint),
+            trustRemoved: thumbprint === null ? null : !await isCertificateTrusted(thumbprint),
             testCertificateRemoved: true,
             insecureHostRemoved: true,
             passthroughHostsRemoved: true,

@@ -13,7 +13,10 @@ import { MacosHelperServiceClient } from '../../../helper-client';
 const execFileAsync = promisify(execFile);
 const helperPath = process.env.INTERCEPTOR_NATIVE_SERVICE_HELPER_PATH
   ?? path.resolve(import.meta.dirname, '../../../../../../../dist/system-proxy/macos-proxy-helper');
-const capabilities = ['status', 'system-proxy.read', 'system-proxy.replace', 'certificate.import', 'certificate.remove'];
+const capabilities = [
+  'status', 'system-proxy.read', 'system-proxy.read-effective', 'system-proxy.replace',
+  'certificate.import', 'certificate.remove',
+];
 
 describe.runIf(process.platform === 'darwin')('macOS native service transport', () => {
   let directory: string;
@@ -132,6 +135,48 @@ describe.runIf(process.platform === 'darwin')('macOS native service transport', 
     expect(isDeepStrictEqual(JSON.parse((await execFileAsync(helperPath, ['get'])).stdout), before)).toBe(true);
   });
 
+  it.each(['certificate.trust', 'certificate.untrust'])(
+    'does not expose the interactive %s operation on the background service', async (operation) => {
+      await startService({}, 'development');
+      expect(await requestFromNativeClient({
+        protocolVersion: 1, requestId: 'certificate-trust', operation,
+      })).toMatchObject({ ok: false, error: { code: 'unsupported-operation' } });
+    },
+  );
+
+  it('validates a foreground trust request before asking for system authorization', async () => {
+    const execution = execFileAsync(helperPath, ['certificate.trust'], { encoding: 'utf8' });
+    execution.child.stdin!.end(JSON.stringify(certificateParameters));
+    await expect(execution).rejects.toMatchObject({ code: 1, stderr: 'verification-failed\n' });
+  });
+
+  it('does not request foreground authorization when the exact CA has no admin trust', async () => {
+    const execution = execFileAsync(helperPath, ['certificate.untrust'], { encoding: 'utf8' });
+    execution.child.stdin!.end(JSON.stringify(certificateParameters));
+    expect(JSON.parse((await execution).stdout)).toEqual({ sha256: certificateParameters.sha256, trusted: false });
+  });
+
+  it('routes typed trust calls to the foreground helper without connecting to a service', async () => {
+    const client = new MacosHelperServiceClient(socketPath, helperPath);
+    await expect(client.trustCertificate(certificateParameters)).rejects.toMatchObject({ code: 'verification-failed' });
+    await expect(client.untrustCertificate(certificateParameters)).resolves.toBeUndefined();
+    await expect(lstat(socketPath)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it.each(['certificate.trust', 'certificate.untrust'])(
+    'rejects paths and private material before foreground %s authorization', async (operation) => {
+      for (const parameters of [
+        { path: '/tmp/certificate.pem', sha256: certificateParameters.sha256 },
+        { ...certificateParameters, privateKey: 'not-a-public-certificate' },
+        { ...certificateParameters, sha256: '00'.repeat(32) },
+      ]) {
+        const execution = execFileAsync(helperPath, [operation], { encoding: 'utf8' });
+        execution.child.stdin!.end(JSON.stringify(parameters));
+        await expect(execution).rejects.toMatchObject({ code: 1, stderr: 'invalid-request\n' });
+      }
+    },
+  );
+
   it('keeps the production socket strict while the same process serves the development socket', async () => {
     const developmentSocketPath = path.join(directory, 'development.sock');
     await configureDevelopmentService({ socketPath: developmentSocketPath });
@@ -195,6 +240,20 @@ describe.runIf(process.platform === 'darwin')('macOS native service transport', 
       });
     }
     expect((await lstat(socketPath)).isSocket()).toBe(true);
+  });
+
+  it('reads effective system proxy settings without changing the service snapshots', async () => {
+    await startService();
+    const before = JSON.parse((await execFileAsync(helperPath, ['get'])).stdout);
+    const effective = JSON.parse((await execFileAsync(helperPath, ['get-effective-proxies'])).stdout);
+    const response = await requestFromNativeClient({
+      protocolVersion: 1, requestId: 'effective-proxies', operation: 'system-proxy.read-effective',
+    });
+
+    expect(response).toMatchObject({ ok: true, value: expect.any(Object) });
+    expect(Array.isArray(response.value)).toBe(false);
+    expect(response.value).toEqual(effective);
+    expect(isDeepStrictEqual(JSON.parse((await execFileAsync(helperPath, ['get'])).stdout), before)).toBe(true);
   });
 
   it('removes its endpoint on normal shutdown and recovers a stale endpoint after a crash', async () => {
@@ -493,6 +552,8 @@ describe.runIf(process.platform === 'darwin')('macOS native service transport', 
     const before = JSON.parse((await execFileAsync(helperPath, ['get'])).stdout);
     const snapshot = await macosHelperServiceClient.readSystemProxySnapshot();
     expect(isDeepStrictEqual(snapshot, before)).toBe(true);
+    expect(await macosHelperServiceClient.readEffectiveSystemProxySettings())
+      .toEqual(JSON.parse((await execFileAsync(helperPath, ['get-effective-proxies'])).stdout));
     await expect(macosHelperServiceClient.replaceSystemProxySnapshot(snapshot, snapshot))
       .rejects.toMatchObject({ code: 'unauthorized-client' });
     await expect(macosHelperServiceClient.importCertificate(certificateParameters))
@@ -537,7 +598,7 @@ describe.runIf(process.platform === 'darwin')('macOS native service transport', 
     }
   }, 10_000);
 
-  it('checks the exact certificate fingerprint and presence in typed command replies', async () => {
+  it('checks the exact certificate fingerprint and presence in typed service replies', async () => {
     const replies: unknown[] = [
       { sha256: certificateParameters.sha256, present: true },
       { sha256: '00'.repeat(32), present: true },

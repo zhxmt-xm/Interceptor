@@ -16,8 +16,6 @@ import {
 import { expect, type LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 
 interface SystemProxyJournalRecord {
-  /** Minimal crash journal schema version. */
-  readonly version: 1;
   /** Complete WinINet snapshot captured before takeover. */
   readonly original: unknown;
   /** Complete WinINet snapshot written by Interceptor. */
@@ -88,7 +86,7 @@ async function waitForJournal(
   await expect.poll(async () => {
     locatedJournal = await readJournal(desktopApp);
     return locatedJournal !== null
-      && locatedJournal.record.version === 1
+      && desktopApp.isSystemProxyJournalReady(locatedJournal.record)
       && locatedJournal.modifiedAtNanoseconds !== previousGeneration;
   }, {
     message: previousGeneration === undefined
@@ -121,11 +119,7 @@ test('application.lifecycle.core-restart restores Core and system proxy ordering
   await startRecording(desktopApp);
   await expect(recording).toHaveAttribute('aria-pressed', 'true');
   const firstJournal = await waitForJournal(desktopApp);
-  expect(Object.keys(firstJournal.record).sort()).toEqual([
-    'original',
-    'owned',
-    'version',
-  ]);
+  desktopApp.assertSystemProxyJournalFields(firstJournal.record);
   expect(isDeepStrictEqual(await desktopApp.readSystemProxySettings(), firstJournal.record.owned)).toBe(true);
   const firstCore = await desktopApp.currentCoreProcessIdentity();
 

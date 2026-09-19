@@ -3,6 +3,7 @@ import type { UpstreamProxyConfig } from '@interceptor/core-protocol';
 import type { MacosSystemProxySnapshot, MacosSystemProxyServiceOptions, SystemProxyJournalStore, SystemProxyRestoreResult, SystemProxyService, SystemProxyStatus } from '../../interfaces';
 import { parseMacosSystemProxySnapshot } from '../utils';
 import { MacosHelperServiceClient } from '../helper-client';
+import { toMacosUpstreamProxyConfig } from './upstream';
 
 /** macOS SystemConfiguration proxy ownership across all active network services. */
 export class MacosSystemProxyService implements SystemProxyService {
@@ -10,6 +11,8 @@ export class MacosSystemProxyService implements SystemProxyService {
   private originalSnapshot: MacosSystemProxySnapshot | null = null;
   /** Exact helper readback after enable; restoration requires an exact match. */
   private ownedSnapshot: MacosSystemProxySnapshot | null = null;
+  /** Effective proxy settings captured before takeover, also retained in the crash journal. */
+  private effectiveProxySettings: Record<string, unknown> | null = null;
   /** Sticky indication that another actor changed any managed service. */
   private ownershipLost = false;
   /** Runtime platform used to report unsupported hosts explicitly. */
@@ -67,6 +70,7 @@ export class MacosSystemProxyService implements SystemProxyService {
     if (MacosSystemProxyService.equalSnapshots(current, owned)) {
       this.originalSnapshot = original;
       this.ownedSnapshot = owned;
+      this.effectiveProxySettings = record.effectiveProxies;
       this.ownershipLost = false;
       return {
         restored: false,
@@ -76,6 +80,7 @@ export class MacosSystemProxyService implements SystemProxyService {
     await this.journal?.clear();
     this.originalSnapshot = null;
     this.ownedSnapshot = null;
+    this.effectiveProxySettings = null;
     if (MacosSystemProxyService.equalSnapshots(current, original)) {
       this.ownershipLost = false;
       return {
@@ -111,9 +116,12 @@ export class MacosSystemProxyService implements SystemProxyService {
       throw new SystemProxyError('macOS has no active network services to configure.');
     }
 
+    const effectiveProxies = await this.macosHelperServiceClient.readEffectiveSystemProxySettings();
+    toMacosUpstreamProxyConfig(effectiveProxies, port);
     const target = MacosSystemProxyService.createOwnedSnapshot(current, host, port);
     this.originalSnapshot = current;
-    await this.journal?.save(current, target);
+    this.effectiveProxySettings = effectiveProxies;
+    await this.journal?.save(current, target, effectiveProxies);
     await this.writeSnapshot(current, target);
     const written = await this.readSnapshot();
     if (!MacosSystemProxyService.equalSnapshots(written, target)) {
@@ -127,12 +135,12 @@ export class MacosSystemProxyService implements SystemProxyService {
     return MacosSystemProxyService.toStatus(written, true, false);
   }
 
-  /**
-   * macOS 尚未接入上游代理检测；快照是按网络服务分开存的，多服务
-   * （Wi-Fi / 以太网 / VPN）可能各自配不同代理，需先定义合并语义。
-   */
+  /** Resolve only the saved effective proxy, never the currently owned system proxy. */
   detectedUpstream(): UpstreamProxyConfig | null {
-    return null;
+    if (!this.effectiveProxySettings || !this.ownedSnapshot) return null;
+    const port = this.ownedSnapshot.services[0]?.settings.HTTPPort;
+    if (typeof port !== 'number') throw new SystemProxyError('macOS owned proxy port is missing.');
+    return toMacosUpstreamProxyConfig(this.effectiveProxySettings, port);
   }
 
   /** Restore every service only while all current values remain exactly owned. */
@@ -172,6 +180,7 @@ export class MacosSystemProxyService implements SystemProxyService {
       await this.journal?.clear();
       this.originalSnapshot = null;
       this.ownedSnapshot = null;
+      this.effectiveProxySettings = null;
       this.ownershipLost = false;
       return {
         restored: false,
@@ -181,6 +190,7 @@ export class MacosSystemProxyService implements SystemProxyService {
     }
     this.originalSnapshot = original;
     this.ownedSnapshot = owned;
+    this.effectiveProxySettings = record.effectiveProxies;
     return this.restoreOwned(original, owned, current);
   }
 
@@ -195,6 +205,7 @@ export class MacosSystemProxyService implements SystemProxyService {
       await this.journal?.clear();
       this.originalSnapshot = null;
       this.ownedSnapshot = null;
+      this.effectiveProxySettings = null;
       this.ownershipLost = true;
       return {
         restored: false,
@@ -213,6 +224,7 @@ export class MacosSystemProxyService implements SystemProxyService {
     await this.journal?.clear();
     this.originalSnapshot = null;
     this.ownedSnapshot = null;
+    this.effectiveProxySettings = null;
     this.ownershipLost = false;
     return {
       restored: true,

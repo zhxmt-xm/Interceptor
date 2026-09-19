@@ -305,10 +305,12 @@ final class MacosHelperService {
                 value = [
                     "processId": getpid(), "privileged": geteuid() == 0,
                     "clientAuthorizedForWrites": (try? requireWriteClient(client: client)) != nil,
-                    "capabilities": ["status", "system-proxy.read", "system-proxy.replace", "certificate.import", "certificate.remove"],
+                    "capabilities": ["status", "system-proxy.read", "system-proxy.read-effective", "system-proxy.replace", "certificate.import", "certificate.remove"],
                 ]
             case "system-proxy.read":
                 value = try SystemProxyHelper.readSystemProxySnapshot()
+            case "system-proxy.read-effective":
+                value = try SystemProxyHelper.readEffectiveSystemProxySettings()
             case "system-proxy.replace":
                 guard let replacement = request.proxyReplacement else { throw MacosHelperServiceError.invalidRequest }
                 try requireWriteClient(client: client)

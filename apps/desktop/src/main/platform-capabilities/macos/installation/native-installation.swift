@@ -65,6 +65,20 @@ enum MacosHelperInstallation {
         guard let script = NSAppleScript(source: "do shell script \"\(scriptCommand)\" with administrator privileges") else {
             throw MacosInstallationError.authorizationFailed
         }
+        try withForegroundAuthorization {
+            var error: NSDictionary?
+            _ = script.executeAndReturnError(&error)
+            if error != nil {
+                if error?[NSAppleScript.errorNumber] as? Int == -128 { throw MacosInstallationError.authorizationCancelled }
+                throw MacosInstallationError.authorizationFailed
+            }
+        }
+    }
+
+    static func withForegroundAuthorization<Value>(_ operation: () throws -> Value) throws -> Value {
+        guard getuid() != 0, geteuid() == getuid(), getuid() == (try consoleUserId()) else {
+            throw MacosHelperServiceError.authorizationRequired
+        }
         let application = NSApplication.shared
         guard application.setActivationPolicy(.accessory) else { throw MacosInstallationError.authorizationFocusFailed }
         application.activate(ignoringOtherApps: true)
@@ -74,12 +88,7 @@ enum MacosHelperInstallation {
         }
         guard NSRunningApplication.current.isActive else { throw MacosInstallationError.authorizationFocusFailed }
         defer { application.deactivate() }
-        var error: NSDictionary?
-        _ = script.executeAndReturnError(&error)
-        if error != nil {
-            if error?[NSAppleScript.errorNumber] as? Int == -128 { throw MacosInstallationError.authorizationCancelled }
-            throw MacosInstallationError.authorizationFailed
-        }
+        return try operation()
     }
 
     private static func shellArgument(_ value: String) -> String {

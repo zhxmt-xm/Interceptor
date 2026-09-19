@@ -301,7 +301,7 @@ export class ProxyService {
       },
       // 支持 H2 的客户端协商 HTTP/2，仅支持 H1 的客户端经 ALPN 回退。
       http2: true,
-      passthroughProxyConfig: () => this.upstreamProxySetting(),
+      passthroughProxyConfig: ({ hostname }) => this.upstreamProxySetting('https', hostname),
     });
     this.registerCaptureListeners(server);
     await this.registerForwardingRule(server);
@@ -316,7 +316,7 @@ export class ProxyService {
   }
 
   /**
-   * 注册唯一的转发规则，全部判定都在头部阶段完成。
+  * 按协议注册同一转发逻辑，全部判定都在头部阶段完成。
    * 不用 `.matching(callback)`：Mockttp 的 CallbackMatcher 会先 waitForCompletedRequest
    * 读完整个上传正文；也不用 beforeRequest/beforeResponse，它们分别等待完整请求与响应正文。
    * 只有 beforeRequestHead / beforeResponseHead 能让正文全程保持流式。
@@ -327,22 +327,27 @@ export class ProxyService {
       this.tlsConfig.insecureHosts.length > 0
         ? [...this.tlsConfig.insecureHosts]
         : undefined;
-    await server.forAnyRequest().thenPassThrough({
-      // 上游连接失败（DNS/TCP/TLS）按真实网络故障镜像给客户端，而不是伪造一个
-      // 502 响应：Interceptor 是透明调试代理，客户端必须看到与不挂代理时一致的
-      // 失败形态，Capture 里也才会记成 aborted + 真实 errorCode 而非假响应。
-      // 副作用是 Mockttp 走 AbortError 分支，不再向 stdout 打印上游错误堆栈。
-      simulateConnectionErrors: true,
-      // 回调而非固定值：上游代理切换时无需重注册规则或重启监听器。
-      proxyConfig: () => this.upstreamProxySetting(),
-      ...(ignoreHostHttpsErrors ? { ignoreHostHttpsErrors } : {}),
-      ...(this.ruleService
-        ? {
-            beforeRequestHead: (req) => this.applyRulesToRequest(req),
-            beforeResponseHead: (res, req) => this.applyRulesToResponse(res, req),
-          }
-        : {}),
-    });
+    const rules = process.platform === 'darwin'
+      ? (['http', 'https'] as const).map((protocol) => ({ protocol, rule: server.forAnyRequest().withProtocol(protocol) }))
+      : [{ protocol: 'http' as const, rule: server.forAnyRequest() }];
+    for (const { protocol, rule } of rules) {
+      await rule.thenPassThrough({
+        // 上游连接失败（DNS/TCP/TLS）按真实网络故障镜像给客户端，而不是伪造一个
+        // 502 响应：Interceptor 是透明调试代理，客户端必须看到与不挂代理时一致的
+        // 失败形态，Capture 里也才会记成 aborted + 真实 errorCode 而非假响应。
+        // 副作用是 Mockttp 走 AbortError 分支，不再向 stdout 打印上游错误堆栈。
+        simulateConnectionErrors: true,
+        // 回调而非固定值：上游代理切换时无需重注册规则或重启监听器。
+        proxyConfig: ({ hostname }) => this.upstreamProxySetting(protocol, hostname),
+        ...(ignoreHostHttpsErrors ? { ignoreHostHttpsErrors } : {}),
+        ...(this.ruleService
+          ? {
+              beforeRequestHead: (req) => this.applyRulesToRequest(req),
+              beforeResponseHead: (res, req) => this.applyRulesToResponse(res, req),
+            }
+          : {}),
+      });
+    }
   }
 
   /** WebSocket 桥自建上游连接、不经规则链，因此上游与证书例外都要单独接进去。 */
@@ -351,7 +356,7 @@ export class ProxyService {
       intercept: (message) => this.interceptWebSocketMessage(message),
       ignoreCertificateErrors: (hostname) =>
         this.tlsConfig.insecureHosts.includes(hostname),
-      upstreamProxy: () => this.upstreamProxySetting(),
+      upstreamProxy: () => this.upstreamProxy,
       onError: (error) => {
         this.diagnostics?.error('websocket.bridge-failed', {
           errorCode: error.name,
@@ -439,22 +444,14 @@ export class ProxyService {
     this.diagnostics?.info(
       upstream ? 'proxy.upstream-configured' : 'proxy.upstream-cleared',
       upstream
-        ? { attributes: { scheme: upstream.proxyUrl.split(':')[0] ?? 'unknown' } }
+        ? { attributes: { scheme: 'proxyUrl' in upstream ? upstream.proxyUrl.split(':')[0] ?? 'unknown' : 'per-protocol' } }
         : undefined,
     );
   }
 
   /** 当前上游代理的 Mockttp 形式；undefined 让 Mockttp 直连源站。 */
-  private upstreamProxySetting(): ProxySetting | undefined {
-    if (!this.upstreamProxy) {
-      return undefined;
-    }
-    return {
-      proxyUrl: this.upstreamProxy.proxyUrl,
-      ...(this.upstreamProxy.noProxy
-        ? { noProxy: [...this.upstreamProxy.noProxy] }
-        : {}),
-    };
+  private upstreamProxySetting(protocol: 'http' | 'https', hostname: string): ProxySetting | undefined {
+    return ProxyUtils.selectUpstreamProxy(this.upstreamProxy, protocol, hostname);
   }
 
   /**

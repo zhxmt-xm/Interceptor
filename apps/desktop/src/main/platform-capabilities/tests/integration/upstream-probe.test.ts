@@ -37,7 +37,7 @@ describe('UpstreamProbe', () => {
     const onChange = vi.fn();
     upstreamProbe = new UpstreamProbe(INTERVAL_MS, TIMEOUT_MS, onChange);
 
-    upstreamProbe.start(`http://127.0.0.1:${listener.port}`);
+    upstreamProbe.start({ proxyUrl: `http://127.0.0.1:${listener.port}` });
     await vi.waitFor(() => new Promise((resolve) => setTimeout(resolve, INTERVAL_MS * 3)));
 
     expect(onChange).not.toHaveBeenCalled();
@@ -50,11 +50,34 @@ describe('UpstreamProbe', () => {
     const onChange = vi.fn();
     upstreamProbe = new UpstreamProbe(10_000, TIMEOUT_MS, onChange);
 
-    upstreamProbe.start(`http://127.0.0.1:${port}`);
+    upstreamProbe.start({ proxyUrl: `http://127.0.0.1:${port}` });
 
     await vi.waitFor(() => {
       expect(onChange).toHaveBeenCalledWith(false);
     });
+  });
+
+  it('probes a shared HTTP and HTTPS endpoint from system proxy settings', async () => {
+    const port = await findClosedPort();
+    const onChange = vi.fn();
+    upstreamProbe = new UpstreamProbe(INTERVAL_MS, TIMEOUT_MS, onChange);
+    upstreamProbe.start({
+      httpProxyUrl: `http://127.0.0.1:${port}`, httpsProxyUrl: `http://127.0.0.1:${port}`,
+      exceptions: [], excludeSimpleHostnames: false,
+    });
+    await vi.waitFor(() => expect(onChange).toHaveBeenCalledWith(false));
+  });
+
+  it('does not collapse independent protocol routes into one global availability result', async () => {
+    const port = await findClosedPort();
+    const onChange = vi.fn();
+    upstreamProbe = new UpstreamProbe(INTERVAL_MS, TIMEOUT_MS, onChange);
+    upstreamProbe.start({
+      httpProxyUrl: `http://127.0.0.1:${port}`, httpsProxyUrl: 'http://127.0.0.1:1',
+      exceptions: [], excludeSimpleHostnames: false,
+    });
+    await new Promise((resolve) => setTimeout(resolve, INTERVAL_MS * 3));
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('reports recovery once the upstream comes back', async () => {
@@ -64,7 +87,7 @@ describe('UpstreamProbe', () => {
     const onChange = vi.fn();
     upstreamProbe = new UpstreamProbe(INTERVAL_MS, TIMEOUT_MS, onChange);
 
-    upstreamProbe.start(`http://127.0.0.1:${port}`);
+    upstreamProbe.start({ proxyUrl: `http://127.0.0.1:${port}` });
     await vi.waitFor(() => {
       expect(onChange).toHaveBeenCalledWith(false);
     });
@@ -85,7 +108,7 @@ describe('UpstreamProbe', () => {
     const onChange = vi.fn();
     upstreamProbe = new UpstreamProbe(INTERVAL_MS, TIMEOUT_MS, onChange);
 
-    upstreamProbe.start('pac+http://proxy.example.com/proxy.pac');
+    upstreamProbe.start({ proxyUrl: 'pac+http://proxy.example.com/proxy.pac' });
     await new Promise((resolve) => setTimeout(resolve, INTERVAL_MS * 3));
 
     expect(onChange).not.toHaveBeenCalled();
@@ -96,7 +119,7 @@ describe('UpstreamProbe', () => {
     const onChange = vi.fn();
     upstreamProbe = new UpstreamProbe(INTERVAL_MS, TIMEOUT_MS, onChange);
 
-    upstreamProbe.start(`http://127.0.0.1:${port}`);
+    upstreamProbe.start({ proxyUrl: `http://127.0.0.1:${port}` });
     await vi.waitFor(() => {
       expect(onChange).toHaveBeenCalledWith(false);
     });

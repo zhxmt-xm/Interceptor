@@ -116,21 +116,3 @@ function toNoProxyList(bypassList: string | null): string[] {
 function withNoProxy(proxyUrl: string, noProxy: string[]): UpstreamProxyConfig {
   return noProxy.length > 0 ? { proxyUrl, noProxy } : { proxyUrl };
 }
-
-/**
- * 上游代理的展示形式：只保留 host:port。
- * 上游 URL 可能带 user:pass 认证信息，不能原样交给 Renderer 展示。
- */
-export function toUpstreamAuthority(
-  upstream: UpstreamProxyConfig | null,
-): string | null {
-  if (!upstream) {
-    return null;
-  }
-  try {
-    const url = new URL(upstream.proxyUrl);
-    return url.port.length > 0 ? `${url.hostname}:${url.port}` : url.hostname;
-  } catch {
-    return null;
-  }
-}

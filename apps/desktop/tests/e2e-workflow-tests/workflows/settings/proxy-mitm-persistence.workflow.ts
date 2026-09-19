@@ -1,8 +1,6 @@
-import { execFile } from 'node:child_process';
 import { createHash, X509Certificate } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import type { Page, TestInfo } from '@playwright/test';
 
 import {
@@ -10,32 +8,21 @@ import {
   AutomationIdFactory,
 } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
+import { isCertificateTrusted, waitForCertificateInstallation } from '../../fixtures/ui/https-capture';
 import {
   expect,
   LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
 
-const execFileAsync = promisify(execFile);
 const INSECURE_HOST = 'localhost';
 const PASSTHROUGH_HOST = '127.0.0.2';
 
-interface WinInetProxySettings {
-  readonly flags: number;
-  readonly proxyEnabled: boolean;
-  readonly autoDetect: boolean;
-  readonly proxyServer: string | null;
-  readonly bypassList: string | null;
-  readonly pacUrl: string | null;
-}
-
 interface SystemProxyJournalRecord {
-  /** Minimal crash journal schema version. */
-  readonly version: 1;
   /** Complete WinINet snapshot captured before takeover. */
-  readonly original: WinInetProxySettings;
+  readonly original: unknown;
   /** Complete WinINet snapshot written by Interceptor. */
-  readonly owned: WinInetProxySettings;
+  readonly owned: unknown;
 }
 
 interface PersistenceEvidence {
@@ -57,40 +44,10 @@ interface PersistenceEvidence {
   finalJournalAbsent: boolean;
 }
 
-/** Read WinINet through the production helper without exposing snapshot values. */
-async function readWinInetSettings(
-  desktopDirectory: string,
-): Promise<WinInetProxySettings> {
-  const helperPath = path.join(
-    desktopDirectory,
-    'dist',
-    'system-proxy',
-    'wininet-proxy-helper.exe',
-  );
-  try {
-    const { stdout } = await execFileAsync(helperPath, ['get'], {
-      encoding: 'utf8',
-      windowsHide: true,
-    });
-    return JSON.parse(stdout) as WinInetProxySettings;
-  } catch {
-    throw new Error('WinINet helper could not read the current settings.');
-  }
-}
-
 /** Read one crash journal for in-memory equality checks only. */
-async function readJournal(): Promise<SystemProxyJournalRecord | null> {
-  const localAppDataDirectory = process.env.LOCALAPPDATA;
-  if (!localAppDataDirectory) {
-    throw new Error('LOCALAPPDATA is required for system proxy ownership evidence.');
-  }
+async function readJournal(desktopApp: LocalElectronApplicationDriver): Promise<SystemProxyJournalRecord | null> {
   try {
-    return JSON.parse(await readFile(path.join(
-      localAppDataDirectory,
-      'Interceptor',
-      'system-proxy',
-      'journal.json',
-    ), 'utf8')) as SystemProxyJournalRecord;
+    return JSON.parse(await readFile(desktopApp.systemProxyJournalPath(), 'utf8')) as SystemProxyJournalRecord;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
     throw error;
@@ -101,20 +58,6 @@ async function readJournal(): Promise<SystemProxyJournalRecord | null> {
 async function certificateSha1(certificatePath: string): Promise<string> {
   const certificate = new X509Certificate(await readFile(certificatePath));
   return createHash('sha1').update(certificate.raw).digest('hex').toUpperCase();
-}
-
-/** Check the exact test CA without changing the trust store. */
-async function isCertificateTrusted(sha1Thumbprint: string): Promise<boolean> {
-  try {
-    const { stdout } = await execFileAsync(
-      'certutil.exe',
-      ['-verifystore', 'Root', sha1Thumbprint],
-      { encoding: 'utf8', windowsHide: true },
-    );
-    return stdout.toUpperCase().includes(sha1Thumbprint);
-  } catch {
-    return false;
-  }
 }
 
 /** Save every persistent TLS value through public Settings controls. */
@@ -134,10 +77,7 @@ async function configurePersistenceThroughUi(page: Page): Promise<void> {
   await generate.click();
   await expect(install).toBeEnabled();
   await install.click();
-  await expect(getByAutomationId(
-    page,
-    AUTOMATION_IDS.settings.certificates.uninstall,
-  )).toBeVisible({ timeout: 30_000 });
+  await waitForCertificateInstallation(page);
 
   const mitmToggle = getByAutomationId(
     page,
@@ -290,15 +230,11 @@ async function closeGeneration(
 test('restores proxy ownership and persists MITM settings across processes', async ({
   desktopApp,
 }, testInfo) => {
-  test.setTimeout(180_000);
+  desktopApp.configureWorkflowTimeout(testInfo, 180_000);
   testInfo.annotations.push({
     type: 'renderer-workflow',
     description: 'settings.proxy-mitm.persistence',
   });
-  if (process.platform !== 'win32') {
-    throw new Error('settings.proxy-mitm.persistence requires Windows WinINet.');
-  }
-
   desktopApp.preserveUserDataOnFailure();
   const certificatePath = path.join(
     desktopApp.userDataDirectory,
@@ -306,7 +242,7 @@ test('restores proxy ownership and persists MITM settings across processes', asy
     'root-cert.pem',
   );
   const evidence: Partial<PersistenceEvidence> = {};
-  let originalSettings: WinInetProxySettings | null = null;
+  let originalSettings: unknown = null;
   let certificateSha1Thumbprint: string | null = null;
   let initialCrashCompleted = false;
   let relaunchedApp: LocalElectronApplicationDriver | null = null;
@@ -316,19 +252,14 @@ test('restores proxy ownership and persists MITM settings across processes', asy
   try {
     // 准备：第一代冷启动已接管系统代理；快照只在内存比较。
     // Arrange: the first generation owns the system proxy; snapshots stay in memory only.
-    const firstJournal = await readJournal();
-    expect(firstJournal?.version).toBe(1);
-    expect(Object.keys(firstJournal ?? {}).sort()).toEqual([
-      'original',
-      'owned',
-      'version',
-    ]);
+    const firstJournal = await readJournal(desktopApp);
+    expect(desktopApp.isSystemProxyJournalReady(firstJournal)).toBe(true);
+    desktopApp.assertSystemProxyJournalFields(firstJournal!);
     originalSettings = firstJournal!.original;
-    evidence.initialOwnedSettingsObserved = JSON.stringify(
-      await readWinInetSettings(desktopApp.desktopDirectory),
-    ) === JSON.stringify(firstJournal!.owned);
-    evidence.ownedSnapshotDiffered = JSON.stringify(firstJournal!.original)
-      !== JSON.stringify(firstJournal!.owned);
+    evidence.initialOwnedSettingsObserved = desktopApp.matchesSystemProxyEvidence(
+      await desktopApp.readSystemProxySettings(), firstJournal!.owned,
+    );
+    evidence.ownedSnapshotDiffered = !desktopApp.matchesSystemProxyEvidence(firstJournal!.original, firstJournal!.owned);
     expect(evidence.initialOwnedSettingsObserved).toBe(true);
     expect(evidence.ownedSnapshotDiffered).toBe(true);
 
@@ -343,12 +274,10 @@ test('restores proxy ownership and persists MITM settings across processes', asy
     await desktopApp.captureFinalScreenshot(testInfo);
     await desktopApp.crashAbruptly(testInfo);
     initialCrashCompleted = true;
-    evidence.journalPreservedAfterCrash = JSON.stringify(
-      await readJournal(),
-    ) === JSON.stringify(firstJournal);
-    evidence.ownedSettingsPreservedAfterCrash = JSON.stringify(
-      await readWinInetSettings(desktopApp.desktopDirectory),
-    ) === JSON.stringify(firstJournal!.owned);
+    evidence.journalPreservedAfterCrash = desktopApp.matchesSystemProxyEvidence(await readJournal(desktopApp), firstJournal);
+    evidence.ownedSettingsPreservedAfterCrash = desktopApp.matchesSystemProxyEvidence(
+      await desktopApp.readSystemProxySettings(), firstJournal!.owned,
+    );
     expect(evidence.journalPreservedAfterCrash).toBe(true);
     expect(evidence.ownedSettingsPreservedAfterCrash).toBe(true);
 
@@ -359,14 +288,12 @@ test('restores proxy ownership and persists MITM settings across processes', asy
       evidencePrefix: 'relaunch',
     });
     await relaunchedApp.waitUntilReady();
-    const secondJournal = await readJournal();
-    evidence.relaunchLoadedJournal = JSON.stringify(secondJournal)
-      === JSON.stringify(firstJournal);
-    evidence.relaunchPreservedOriginal = JSON.stringify(secondJournal?.original)
-      === JSON.stringify(firstJournal?.original);
-    evidence.relaunchOwnedSettingsObserved = JSON.stringify(
-      await readWinInetSettings(desktopApp.desktopDirectory),
-    ) === JSON.stringify(secondJournal?.owned);
+    const secondJournal = await readJournal(relaunchedApp);
+    evidence.relaunchLoadedJournal = relaunchedApp.matchesSystemProxyEvidence(secondJournal, firstJournal);
+    evidence.relaunchPreservedOriginal = relaunchedApp.matchesSystemProxyEvidence(secondJournal?.original, firstJournal?.original);
+    evidence.relaunchOwnedSettingsObserved = relaunchedApp.matchesSystemProxyEvidence(
+      await relaunchedApp.readSystemProxySettings(), secondJournal?.owned,
+    );
     expect(evidence.relaunchLoadedJournal).toBe(true);
     expect(evidence.relaunchPreservedOriginal).toBe(true);
     expect(evidence.relaunchOwnedSettingsObserved).toBe(true);
@@ -459,9 +386,8 @@ test('restores proxy ownership and persists MITM settings across processes', asy
     // Teardown assertions: product Close restores the first original and clears the journal.
     await attempt(async () => {
       evidence.finalSystemProxyRestored = originalSettings !== null
-        && JSON.stringify(await readWinInetSettings(desktopApp.desktopDirectory))
-          === JSON.stringify(originalSettings);
-      evidence.finalJournalAbsent = await readJournal() === null;
+        && cleanupApp.matchesSystemProxyEvidence(await cleanupApp.readSystemProxySettings(), originalSettings);
+      evidence.finalJournalAbsent = await readJournal(cleanupApp) === null;
       expect(evidence.finalSystemProxyRestored).toBe(true);
       expect(evidence.finalJournalAbsent).toBe(true);
       const evidencePath = testInfo.outputPath('proxy-mitm-persistence.json');

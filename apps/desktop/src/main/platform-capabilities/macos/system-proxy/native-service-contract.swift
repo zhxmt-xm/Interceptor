@@ -121,7 +121,8 @@ struct MacosHelperServiceRequest {
         guard protocolVersion == 1 else {
             throw MacosHelperServiceError.protocolMismatch
         }
-        let hasParameters = ["system-proxy.replace", "certificate.import", "certificate.remove"].contains(operation)
+        let certificateOperations = ["certificate.import", "certificate.remove"]
+        let hasParameters = operation == "system-proxy.replace" || certificateOperations.contains(operation)
         let expectedKeys: Set<String> = hasParameters
             ? ["protocolVersion", "requestId", "operation", "parameters"]
             : ["protocolVersion", "requestId", "operation"]
@@ -132,7 +133,7 @@ struct MacosHelperServiceRequest {
             operation: operation,
             proxyReplacement: operation == "system-proxy.replace"
                 ? try MacosHelperProxyReplacement.decode(object["parameters"]) : nil,
-            certificate: ["certificate.import", "certificate.remove"].contains(operation)
+            certificate: certificateOperations.contains(operation)
                 ? try MacosHelperCertificate.decode(object["parameters"]) : nil
         )
     }
@@ -182,6 +183,7 @@ enum MacosHelperServiceError: String, Error, CustomStringConvertible {
     case protocolMismatch = "protocol-mismatch"
     case unsupportedOperation = "unsupported-operation"
     case authorizationRequired = "authorization-required"
+    case authorizationCancelled = "authorization-cancelled"
     case snapshotConflict = "snapshot-conflict"
     case operationFailed = "operation-failed"
     case verificationFailed = "verification-failed"

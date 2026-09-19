@@ -403,7 +403,7 @@ class DesktopApplication {
         this.applyUpstreamProxy(detectedUpstream),
       ]);
       if (detectedUpstream) {
-        this.upstreamProbe.start(detectedUpstream.proxyUrl);
+        this.upstreamProbe.start(detectedUpstream);
       }
     });
     this.coreRuntime.start();
@@ -783,7 +783,7 @@ class DesktopApplication {
         const detectedUpstream = systemProxyService.detectedUpstream();
         this.detectedUpstreamProxy = detectedUpstream;
         await this.applyUpstreamProxy(detectedUpstream);
-        if (detectedUpstream) this.upstreamProbe.start(detectedUpstream.proxyUrl);
+        if (detectedUpstream) this.upstreamProbe.start(detectedUpstream);
         return this.withUpstreamProxy(systemProxyStatus);
       }));
   }

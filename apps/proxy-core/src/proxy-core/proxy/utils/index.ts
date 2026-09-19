@@ -1,11 +1,12 @@
 import { promisify } from 'node:util';
+import { BlockList, isIP } from 'node:net';
 import { Readable, type Transform } from 'node:stream';
 import zlib from 'node:zlib';
 
-import type { CompletedRequest } from 'mockttp';
+import type { CompletedRequest, ProxySetting } from 'mockttp';
 import WebSocket, { type RawData } from 'ws';
 
-import type { WebSocketBreakpointSettings } from '@interceptor/core-protocol';
+import type { UpstreamProxyConfig, WebSocketBreakpointSettings } from '@interceptor/core-protocol';
 
 import type {
   HeaderBag,
@@ -24,6 +25,37 @@ import type {
   RuleRequestInput,
   RuleResponseInput,
 } from '../interfaces';
+
+/** Choose the configured protocol route without merging platform-specific bypass semantics. */
+export function selectUpstreamProxy(
+  upstream: UpstreamProxyConfig | null, protocol: 'http' | 'https', hostname: string,
+): ProxySetting | undefined {
+  if (!upstream) return undefined;
+  if ('proxyUrl' in upstream) {
+    return { proxyUrl: upstream.proxyUrl, ...(upstream.noProxy ? { noProxy: [...upstream.noProxy] } : {}) };
+  }
+  const host = hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  if (upstream.excludeSimpleHostnames && isIP(host) === 0 && !host.includes('.')) return undefined;
+  if (upstream.exceptions.some((exception) => matchesProxyException(host, exception))) return undefined;
+  const proxyUrl = protocol === 'https' ? upstream.httpsProxyUrl : upstream.httpProxyUrl;
+  return proxyUrl ? { proxyUrl } : undefined;
+}
+
+/** Match macOS host patterns and literal IP subnets without DNS or filesystem lookups. */
+function matchesProxyException(host: string, exception: string): boolean {
+  const pattern = exception.toLowerCase();
+  const [address, prefix, extra] = pattern.split('/');
+  const family = isIP(address ?? '');
+  if (prefix !== undefined && extra === undefined && family > 0 && isIP(host) > 0) {
+    const bits = Number(prefix);
+    if (!/^\d+$/.test(prefix) || !Number.isInteger(bits) || bits < 0 || bits > (family === 4 ? 32 : 128)) return false;
+    const blockList = new BlockList();
+    blockList.addSubnet(address!, bits, family === 4 ? 'ipv4' : 'ipv6');
+    return blockList.check(host, isIP(host) === 4 ? 'ipv4' : 'ipv6');
+  }
+  const expression = pattern.split('*').map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*');
+  return new RegExp(`^${expression}$`, 'i').test(host);
+}
 
 /** 按 content-encoding 逆序延迟解码正文，失败时返回原始字节。 */
 export async function decodeBody(

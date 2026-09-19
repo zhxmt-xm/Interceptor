@@ -52,6 +52,50 @@ enum MacosSystemCertificateStore {
         return ["sha256": requested.sha256, "present": true]
     }
 
+    static func trustCertificate(_ requested: MacosHelperCertificate) throws -> [String: Any] {
+        let keychain = try openSystemKeychain()
+        guard let certificate = try findCertificate(requested, keychain: keychain) else {
+            throw MacosHelperServiceError.verificationFailed
+        }
+        return try MacosHelperInstallation.withForegroundAuthorization {
+            let result = SecTrustSettingsSetTrustSettings(certificate, .admin, nil)
+            try requireTrustSuccess(result)
+            var settings: CFArray?
+            guard SecTrustSettingsCopyTrustSettings(certificate, .admin, &settings) == errSecSuccess,
+                  let settings, CFArrayGetCount(settings) == 0 else {
+                throw MacosHelperServiceError.verificationFailed
+            }
+            return ["sha256": requested.sha256, "trusted": true]
+        }
+    }
+
+    static func untrustCertificate(_ requested: MacosHelperCertificate) throws -> [String: Any] {
+        var settings: CFArray?
+        let existing = SecTrustSettingsCopyTrustSettings(requested.certificate, .admin, &settings)
+        if existing == errSecItemNotFound || existing == errSecNoTrustSettings {
+            return ["sha256": requested.sha256, "trusted": false]
+        }
+        guard existing == errSecSuccess else { throw MacosHelperServiceError.operationFailed }
+        return try MacosHelperInstallation.withForegroundAuthorization {
+            try requireTrustSuccess(SecTrustSettingsRemoveTrustSettings(requested.certificate, .admin))
+            let verification = SecTrustSettingsCopyTrustSettings(requested.certificate, .admin, &settings)
+            guard verification == errSecItemNotFound || verification == errSecNoTrustSettings else {
+                throw MacosHelperServiceError.verificationFailed
+            }
+            return ["sha256": requested.sha256, "trusted": false]
+        }
+    }
+
+    private static func requireTrustSuccess(_ result: OSStatus) throws {
+        guard result != errAuthorizationCanceled && result != errSecUserCanceled else {
+            throw MacosHelperServiceError.authorizationCancelled
+        }
+        guard result == errSecSuccess else {
+            logger.error("certificate trust operation failed: status=\(result, privacy: .public)")
+            throw MacosHelperServiceError.operationFailed
+        }
+    }
+
     static func removeCertificate(_ requested: MacosHelperCertificate) throws -> [String: Any] {
         guard geteuid() == 0 else { throw MacosHelperServiceError.authorizationRequired }
         let keychain = try openSystemKeychain()

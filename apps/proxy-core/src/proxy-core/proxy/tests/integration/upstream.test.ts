@@ -178,6 +178,21 @@ describe('ProxyService upstream proxy chaining', () => {
     expect(upstream.seen).toEqual([]);
   });
 
+  it('keeps one HTTP forwarding rule for the Windows runtime branch', async () => {
+    await proxyService.stop();
+    const platform = Object.getOwnPropertyDescriptor(process, 'platform')!;
+    try {
+      Object.defineProperty(process, 'platform', { ...platform, value: 'win32' });
+      proxyPort = (await proxyService.start()).port;
+      expect(await proxyService['server']!.getMockedEndpoints()).toHaveLength(2);
+      proxyService.setUpstreamProxy({ proxyUrl: `http://127.0.0.1:${upstream.port}` });
+      expect(await proxiedGet(proxyPort, `http://127.0.0.1:${origin.port}/windows-route`)).toBe('origin-body');
+      expect(upstream.seen).toEqual([`CONNECT 127.0.0.1:${origin.port}`]);
+    } finally {
+      Object.defineProperty(process, 'platform', platform);
+    }
+  });
+
   // Mockttp 经上游时统一用 CONNECT 隧道（即使目标是明文 HTTP），因此上游只看得到 host:port。
   it('forwards through the upstream proxy once configured', async () => {
     proxyService.setUpstreamProxy({ proxyUrl: `http://127.0.0.1:${upstream.port}` });
@@ -185,6 +200,37 @@ describe('ProxyService upstream proxy chaining', () => {
     expect(body).toBe('origin-body');
     expect(upstream.seen).toHaveLength(1);
     expect(upstream.seen[0]).toBe(`CONNECT 127.0.0.1:${origin.port}`);
+  });
+
+  it.runIf(process.platform === 'darwin')('selects the HTTP upstream independently of HTTPS', async () => {
+    proxyService.setUpstreamProxy({
+      httpProxyUrl: `http://127.0.0.1:${upstream.port}`, httpsProxyUrl: 'http://127.0.0.1:1',
+      exceptions: [], excludeSimpleHostnames: false,
+    });
+    expect(await proxiedGet(proxyPort, `http://127.0.0.1:${origin.port}/protocol-route`)).toBe('origin-body');
+    expect(upstream.seen).toEqual([`CONNECT 127.0.0.1:${origin.port}`]);
+  });
+
+  it.runIf(process.platform === 'darwin').each([
+    { host: '127.0.0.1', exceptions: ['127.0.0.0/8'], simple: false },
+    { host: '127.0.0.1', exceptions: ['127.*'], simple: false },
+    { host: 'localhost', exceptions: [], simple: true },
+  ])('applies system proxy exceptions without changing protocol routes $host $exceptions', async ({ host, exceptions, simple }) => {
+    proxyService.setUpstreamProxy({
+      httpProxyUrl: 'http://127.0.0.1:1', httpsProxyUrl: 'http://127.0.0.1:1',
+      exceptions, excludeSimpleHostnames: simple,
+    });
+    expect(await proxiedGet(proxyPort, `http://${host}:${origin.port}/bypassed-system-route`)).toBe('origin-body');
+    expect(upstream.seen).toEqual([]);
+  });
+
+  it.runIf(process.platform === 'darwin')('honors explicit HTTP direct while HTTPS has an upstream', async () => {
+    proxyService.setUpstreamProxy({
+      httpProxyUrl: null, httpsProxyUrl: 'http://127.0.0.1:1',
+      exceptions: [], excludeSimpleHostnames: false,
+    });
+    expect(await proxiedGet(proxyPort, `http://127.0.0.1:${origin.port}/direct-http`)).toBe('origin-body');
+    expect(upstream.seen).toEqual([]);
   });
 
   // 切换上游不重启监听器：proxyConfig 是每次请求求值的回调。
@@ -353,6 +399,34 @@ describe('ProxyService upstream proxy chaining without MITM', () => {
     const raw = await tunnelledHttpsGet(proxyPort, tlsOrigin.port, '/tunnelled');
     expect(raw).toContain('tls-origin-body');
     expect(upstream.seen).toEqual([`CONNECT localhost:${tlsOrigin.port}`]);
+  });
+
+  it.runIf(process.platform === 'darwin').each([false, true])('selects the HTTPS upstream independently of HTTP (MITM=%s)', async (mitmEnabled) => {
+    if (mitmEnabled) {
+      const certificate = await generateCACertificate();
+      await decryptWithCertificate(proxyService, certificate, ['localhost']);
+    }
+    proxyService.setUpstreamProxy({
+      httpProxyUrl: 'http://127.0.0.1:1', httpsProxyUrl: `http://127.0.0.1:${upstream.port}`,
+      exceptions: [], excludeSimpleHostnames: false,
+    });
+    expect(await tunnelledHttpsGet(proxyPort, tlsOrigin.port, '/protocol-route')).toContain('tls-origin-body');
+    expect(upstream.seen).toEqual([`CONNECT localhost:${tlsOrigin.port}`]);
+  });
+
+  it('evaluates the saved PAC for passthrough HTTPS instead of connecting directly', async () => {
+    const pac = await startOrigin((_request, response) => {
+      response.setHeader('content-type', 'application/x-ns-proxy-autoconfig');
+      response.end(`function FindProxyForURL(url, host) { return "PROXY 127.0.0.1:${upstream.port}"; }`);
+    });
+    try {
+      const proxyUrl = `pac+http://127.0.0.1:${pac.port}/proxy.pac`;
+      proxyService.setUpstreamProxy({ httpProxyUrl: proxyUrl, httpsProxyUrl: proxyUrl, exceptions: [], excludeSimpleHostnames: false });
+      expect(await tunnelledHttpsGet(proxyPort, tlsOrigin.port, '/pac-route')).toContain('tls-origin-body');
+      expect(upstream.seen).toEqual([`CONNECT localhost:${tlsOrigin.port}`]);
+    } finally {
+      await pac.close();
+    }
   });
 
   it.each([false, true])('authenticates HTTPS upstream CONNECT without origin credential leakage (MITM=%s)', async (mitmEnabled) => {

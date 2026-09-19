@@ -7,7 +7,7 @@ import { TrustStoreError } from './errors';
  * 本地计算机信任库的安装/卸载/检测（仅 Main）。
  *
  * Windows 用 `certutil`（本地计算机 Root），安装和卸载通过 sudo-prompt 提权。
- * macOS 由已部署的 helper 导入/删除公开证书，登录用户通过 Security 框架授权 admin trust。
+ * macOS 由已部署的 helper 导入/删除公开证书及设置/撤销 admin trust。
  * 只读的 isTrusted 检测用普通 execFile。卸载与检测按 SHA-1 thumbprint 精确定位。
  * 启动只检测，不自动修改信任库。
  */

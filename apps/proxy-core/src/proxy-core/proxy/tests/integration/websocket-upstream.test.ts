@@ -155,6 +155,48 @@ describe('WebSocket upstream proxy chaining', () => {
     expect(upstream.seen).toContain(`CONNECT 127.0.0.1:${origin.port}`);
   });
 
+  it.each(['socks5://127.0.0.1:1', 'pac+http://127.0.0.1:1/proxy.pac'])(
+    'preserves the existing single-upstream WebSocket protocol behavior for %s', async (proxyUrl) => {
+      proxyService.setUpstreamProxy({ proxyUrl });
+      expect(await echoThroughProxy(proxyPort, origin.port)).toBe('echo:ping');
+      expect(upstream.seen).toEqual([]);
+    },
+  );
+
+  it('uses the HTTP system upstream for ws without selecting the HTTPS upstream', async () => {
+    proxyService.setUpstreamProxy({
+      httpProxyUrl: `http://127.0.0.1:${upstream.port}`, httpsProxyUrl: 'http://127.0.0.1:1',
+      exceptions: [], excludeSimpleHostnames: false,
+    });
+    expect(await echoThroughProxy(proxyPort, origin.port)).toBe('echo:ping');
+    expect(upstream.seen).toEqual([`CONNECT 127.0.0.1:${origin.port}`]);
+  });
+
+  it('uses the configured PAC upstream for WebSocket traffic', async () => {
+    const server = http.createServer((_request, response) => {
+      response.setHeader('content-type', 'application/x-ns-proxy-autoconfig');
+      response.end(`function FindProxyForURL(url, host) { return "PROXY 127.0.0.1:${upstream.port}"; }`);
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const proxyUrl = `pac+http://127.0.0.1:${(server.address() as AddressInfo).port}/proxy.pac`;
+    try {
+      proxyService.setUpstreamProxy({ httpProxyUrl: proxyUrl, httpsProxyUrl: proxyUrl, exceptions: [], excludeSimpleHostnames: false });
+      expect(await echoThroughProxy(proxyPort, origin.port)).toBe('echo:ping');
+      expect(upstream.seen).toEqual([`CONNECT 127.0.0.1:${origin.port}`]);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it('does not silently connect directly when a SOCKS system upstream is unavailable', async () => {
+    proxyService.setUpstreamProxy({
+      httpProxyUrl: 'socks5://127.0.0.1:1', httpsProxyUrl: null,
+      exceptions: [], excludeSimpleHostnames: false,
+    });
+    await expect(echoThroughProxy(proxyPort, origin.port)).rejects.toThrow();
+    expect(origin.headers).toEqual([]);
+  });
+
   it('bypasses the upstream for hosts listed in noProxy', async () => {
     proxyService.setUpstreamProxy({
       proxyUrl: `http://127.0.0.1:${upstream.port}`,

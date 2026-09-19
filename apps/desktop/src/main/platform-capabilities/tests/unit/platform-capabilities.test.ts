@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { PlatformCapabilitiesService } from '../../entry';
+import { PlatformCapabilitiesService, toUpstreamAuthority } from '../../entry';
 import { MacosSystemProxyService } from '../../macos/system-proxy/entry';
 import { WindowsSystemProxyService } from '../../windows/system-proxy/entry';
 import { MacosHelperDeploymentService } from '../../macos/installation/helper-deployment';
@@ -8,6 +8,21 @@ import { MacosHelperServiceClient } from '../../macos/helper-client';
 
 describe('PlatformCapabilitiesService', () => {
   afterEach(() => vi.restoreAllMocks());
+
+  it('shows a shared system upstream once and never exposes proxy credentials', () => {
+    expect(toUpstreamAuthority({
+      httpProxyUrl: 'http://user:secret@127.0.0.1:7890', httpsProxyUrl: 'http://user:secret@127.0.0.1:7890',
+      exceptions: [], excludeSimpleHostnames: false,
+    })).toBe('127.0.0.1:7890');
+    expect(toUpstreamAuthority({ proxyUrl: 'http://user:secret@127.0.0.1:7890' })).toBe('127.0.0.1:7890');
+  });
+
+  it('keeps different protocol destinations explicit in the public upstream summary', () => {
+    expect(toUpstreamAuthority({
+      httpProxyUrl: null, httpsProxyUrl: 'http://secure.example:8443',
+      exceptions: [], excludeSimpleHostnames: false,
+    })).toBe('http=direct;https=secure.example:8443');
+  });
 
   it('prepares development from the workspace without an App identity and uses the development socket', async () => {
     const deployment = vi.spyOn(MacosHelperDeploymentService.prototype, 'ensureInstalled').mockResolvedValue();

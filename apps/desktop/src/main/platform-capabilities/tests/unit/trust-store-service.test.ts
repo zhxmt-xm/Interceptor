@@ -43,6 +43,8 @@ describe('TrustStoreService', () => {
   beforeEach(() => {
     vi.mocked(readFile).mockResolvedValue(Buffer.from(certificatePem));
     vi.spyOn(MacosHelperServiceClient.prototype, 'importCertificate').mockResolvedValue();
+    vi.spyOn(MacosHelperServiceClient.prototype, 'trustCertificate').mockResolvedValue();
+    vi.spyOn(MacosHelperServiceClient.prototype, 'untrustCertificate').mockResolvedValue();
     vi.spyOn(MacosHelperServiceClient.prototype, 'removeCertificate').mockResolvedValue();
   });
   afterEach(() => vi.restoreAllMocks());
@@ -76,7 +78,7 @@ describe('TrustStoreService', () => {
     expect(recordingElevatedRunner.calls[0]).toBe('certutil -addstore -f Root "C:/certs/root.pem"');
   });
 
-  it('imports only the public certificate through the helper before requesting trust as the logged-in user', async () => {
+  it('imports and trusts only the public certificate through the helper', async () => {
     const recordingRunner = new RecordingRunner();
     const recordingElevatedRunner = new RecordingElevatedRunner();
     const trustStoreService = new TrustStoreService({
@@ -88,10 +90,24 @@ describe('TrustStoreService', () => {
     await trustStoreService.install('/certs/root.pem');
     expect(recordingRunner.calls).toEqual([
       { command: 'security', args: ['find-certificate', '-a', '-p', '/Library/Keychains/System.keychain'] },
-      { command: 'security', args: ['add-trusted-cert', '-d', '-r', 'trustRoot', '/certs/root.pem'] },
     ]);
     expect(MacosHelperServiceClient.prototype.importCertificate).toHaveBeenCalledWith(certificatePayload);
+    expect(MacosHelperServiceClient.prototype.trustCertificate).toHaveBeenCalledWith(certificatePayload);
+    expect(MacosHelperServiceClient.prototype.importCertificate)
+      .toHaveBeenCalledBefore(vi.mocked(MacosHelperServiceClient.prototype.trustCertificate));
     expect(recordingElevatedRunner.calls).toEqual([]);
+  });
+
+  it('routes macOS trust changes through the helper instead of security commands in Main', async () => {
+    const recordingRunner = new RecordingRunner();
+    const trustStoreService = new TrustStoreService({ platform: 'darwin', runner: recordingRunner });
+
+    await trustStoreService.install('/certs/root.pem');
+    recordingRunner.result = { code: 0, stdout: certificatePem, stderr: '' };
+    await trustStoreService.uninstall(certificateFingerprint);
+
+    expect(recordingRunner.calls.filter(({ args }) =>
+      args[0] === 'add-trusted-cert' || args[0] === 'remove-trusted-cert')).toEqual([]);
   });
 
   it('does not request macOS trust if the certificate import fails', async () => {
@@ -106,37 +122,37 @@ describe('TrustStoreService', () => {
     expect(recordingRunner.calls).toEqual([
       { command: 'security', args: ['find-certificate', '-a', '-p', '/Library/Keychains/System.keychain'] },
     ]);
+    expect(MacosHelperServiceClient.prototype.trustCertificate).not.toHaveBeenCalled();
     expect(recordingElevatedRunner.calls).toHaveLength(0);
   });
 
-  it('reports a macOS trust authorization failure without retrying through a root shell', async () => {
+  it.each(['authorization-required', 'authorization-cancelled', 'operation-failed'] as const)(
+    'reports macOS trust failure %s without retrying through a root shell', async (code) => {
     const recordingRunner = new RecordingRunner();
-    recordingRunner.results.push(
-      { code: 0, stdout: '', stderr: '' },
-      { code: 1, stdout: '', stderr: 'Trust authorization denied' },
-    );
+    const trustError = new MacosHelperServiceError(code);
+    vi.mocked(MacosHelperServiceClient.prototype.trustCertificate).mockRejectedValueOnce(trustError);
     const recordingElevatedRunner = new RecordingElevatedRunner();
     const trustStoreService = new TrustStoreService({
       platform: 'darwin', runner: recordingRunner, elevatedRunner: recordingElevatedRunner,
     });
 
-    await expect(trustStoreService.install('/certs/root.pem'))
-      .rejects.toThrow('Trust authorization denied');
-    expect(recordingRunner.calls).toHaveLength(2);
+    await expect(trustStoreService.install('/certs/root.pem')).rejects.toBe(trustError);
+    expect(recordingRunner.calls).toHaveLength(1);
     expect(MacosHelperServiceClient.prototype.importCertificate).toHaveBeenCalledWith(certificatePayload);
+    expect(MacosHelperServiceClient.prototype.trustCertificate).toHaveBeenCalledTimes(1);
     expect(MacosHelperServiceClient.prototype.removeCertificate).toHaveBeenCalledWith(certificatePayload);
     expect(recordingElevatedRunner.calls).toEqual([]);
-  });
+    },
+  );
 
   it('preserves an already installed macOS CA when trust authorization fails', async () => {
     const recordingRunner = new RecordingRunner();
-    recordingRunner.results.push(
-      { code: 0, stdout: certificatePem, stderr: '' },
-      { code: 1, stdout: '', stderr: 'Trust authorization cancelled' },
-    );
+    recordingRunner.result = { code: 0, stdout: certificatePem, stderr: '' };
+    const trustError = new MacosHelperServiceError('operation-failed');
+    vi.mocked(MacosHelperServiceClient.prototype.trustCertificate).mockRejectedValueOnce(trustError);
     const trustStoreService = new TrustStoreService({ platform: 'darwin', runner: recordingRunner });
 
-    await expect(trustStoreService.install('/certs/root.pem')).rejects.toThrow('Trust authorization cancelled');
+    await expect(trustStoreService.install('/certs/root.pem')).rejects.toBe(trustError);
     expect(MacosHelperServiceClient.prototype.removeCertificate).not.toHaveBeenCalled();
   });
 
@@ -147,22 +163,21 @@ describe('TrustStoreService', () => {
 
     await expect(trustStoreService.install('/certs/root.pem')).rejects.toThrow('Certificate inventory unavailable');
     expect(MacosHelperServiceClient.prototype.importCertificate).not.toHaveBeenCalled();
+    expect(MacosHelperServiceClient.prototype.trustCertificate).not.toHaveBeenCalled();
     expect(MacosHelperServiceClient.prototype.removeCertificate).not.toHaveBeenCalled();
     expect(recordingRunner.calls).toHaveLength(1);
   });
 
   it('retains both the trust failure and the new-certificate cleanup failure', async () => {
     const recordingRunner = new RecordingRunner();
-    recordingRunner.results.push(
-      { code: 0, stdout: '', stderr: '' },
-      { code: 1, stdout: '', stderr: 'Trust authorization cancelled' },
-    );
+    const trustError = new MacosHelperServiceError('operation-failed');
+    vi.mocked(MacosHelperServiceClient.prototype.trustCertificate).mockRejectedValueOnce(trustError);
     const cleanupError = new MacosHelperServiceError('verification-failed');
     vi.mocked(MacosHelperServiceClient.prototype.removeCertificate).mockRejectedValueOnce(cleanupError);
     const trustStoreService = new TrustStoreService({ platform: 'darwin', runner: recordingRunner });
 
     await expect(trustStoreService.install('/certs/root.pem')).rejects.toMatchObject({
-      errors: [expect.objectContaining({ message: expect.stringContaining('Trust authorization cancelled') }), cleanupError],
+      errors: [trustError, cleanupError],
     });
   });
 
@@ -175,10 +190,7 @@ describe('TrustStoreService', () => {
 
   it('removes macOS admin trust before deleting the certificate from the system keychain', async () => {
     const recordingRunner = new RecordingRunner();
-    recordingRunner.results.push(
-      { code: 0, stdout: certificatePem, stderr: '' },
-      { code: 0, stdout: '', stderr: '' },
-    );
+    recordingRunner.result = { code: 0, stdout: certificatePem, stderr: '' };
     const recordingElevatedRunner = new RecordingElevatedRunner();
     const trustStoreService = new TrustStoreService({
       platform: 'darwin',
@@ -189,24 +201,25 @@ describe('TrustStoreService', () => {
     await trustStoreService.uninstall(certificateFingerprint);
     expect(recordingRunner.calls).toEqual([
       { command: 'security', args: ['find-certificate', '-a', '-p', '/kc'] },
-      { command: 'security', args: ['remove-trusted-cert', '-d', '/dev/stdin'], input: certificatePem },
     ]);
+    expect(MacosHelperServiceClient.prototype.untrustCertificate).toHaveBeenCalledWith(certificatePayload);
     expect(MacosHelperServiceClient.prototype.removeCertificate).toHaveBeenCalledWith(certificatePayload);
+    expect(MacosHelperServiceClient.prototype.untrustCertificate)
+      .toHaveBeenCalledBefore(vi.mocked(MacosHelperServiceClient.prototype.removeCertificate));
     expect(recordingElevatedRunner.calls).toEqual([]);
   });
 
   it('keeps the macOS certificate if admin trust removal is denied', async () => {
     const recordingRunner = new RecordingRunner();
-    recordingRunner.results.push(
-      { code: 0, stdout: certificatePem, stderr: '' },
-      { code: 1, stdout: '', stderr: 'Trust removal denied' },
-    );
+    recordingRunner.result = { code: 0, stdout: certificatePem, stderr: '' };
+    const trustError = new MacosHelperServiceError('authorization-required');
+    vi.mocked(MacosHelperServiceClient.prototype.untrustCertificate).mockRejectedValueOnce(trustError);
     const recordingElevatedRunner = new RecordingElevatedRunner();
     const trustStoreService = new TrustStoreService({
       platform: 'darwin', runner: recordingRunner, elevatedRunner: recordingElevatedRunner,
     });
 
-    await expect(trustStoreService.uninstall(certificateFingerprint)).rejects.toThrow('Trust removal denied');
+    await expect(trustStoreService.uninstall(certificateFingerprint)).rejects.toBe(trustError);
     expect(MacosHelperServiceClient.prototype.removeCertificate).not.toHaveBeenCalled();
     expect(recordingElevatedRunner.calls).toEqual([]);
   });
@@ -221,6 +234,7 @@ describe('TrustStoreService', () => {
 
     await trustStoreService.uninstall(SHA1);
     expect(recordingRunner.calls).toHaveLength(1);
+    expect(MacosHelperServiceClient.prototype.untrustCertificate).not.toHaveBeenCalled();
     expect(MacosHelperServiceClient.prototype.removeCertificate).not.toHaveBeenCalled();
     expect(recordingElevatedRunner.calls).toEqual([]);
   });

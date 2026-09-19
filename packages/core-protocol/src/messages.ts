@@ -419,12 +419,21 @@ export interface ProxySetRecordingCommand {
  * 上游代理配置：Interceptor 把流量再转发给它，而不是直连源站。
  * 企业 PAC / VPN / 认证代理环境下必须链式转发，否则接管系统代理期间会完全断网。
  */
-export interface UpstreamProxyConfig {
+export interface SingleUpstreamProxyConfig {
   /** 代理 URL；支持 http://、https://、socks5://、pac+http://（PAC 脚本）。 */
   readonly proxyUrl: string;
   /** 不经上游、直连源站的主机列表（curl 风格 no_proxy）。 */
   readonly noProxy?: readonly string[];
 }
+
+export interface ProtocolUpstreamProxyConfig {
+  readonly httpProxyUrl: string | null;
+  readonly httpsProxyUrl: string | null;
+  readonly exceptions: readonly string[];
+  readonly excludeSimpleHostnames: boolean;
+}
+
+export type UpstreamProxyConfig = SingleUpstreamProxyConfig | ProtocolUpstreamProxyConfig;
 
 /**
  * 由 Main 内部下发的上游代理配置（非 Renderer 发起）。

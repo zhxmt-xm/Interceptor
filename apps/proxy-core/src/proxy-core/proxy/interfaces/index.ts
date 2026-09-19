@@ -4,6 +4,7 @@ import type WebSocket from 'ws';
 import type {
   CaptureExchangeEventKind,
   CaptureExchangeSummary,
+  UpstreamProxyConfig,
   WebSocketBreakpointFrame,
 } from '@interceptor/core-protocol';
 
@@ -68,12 +69,6 @@ export type WebSocketBridgeDecision =
     }
   | { readonly action: 'drop' };
 
-/** Mockttp `ProxySetting` 中 Bridge 用得到的那部分。 */
-export interface UpstreamProxySetting {
-  readonly proxyUrl: string;
-  readonly noProxy?: readonly string[];
-}
-
 export interface WebSocketBridgeOptions {
   readonly intercept: (
     message: WebSocketBridgeMessage,
@@ -84,7 +79,7 @@ export interface WebSocketBridgeOptions {
    * Bridge 不走 `forAnyRequest().thenPassThrough()`，拿不到规则上的 `proxyConfig`，
    * 不单独注入就会让所有 WebSocket 绕过上游直连源站。
    */
-  readonly upstreamProxy?: () => UpstreamProxySetting | undefined;
+  readonly upstreamProxy?: () => UpstreamProxyConfig | null;
   readonly onError?: (error: Error) => void;
   /** 任一对端未发送close frame便异常断开时，释放该连接的数据面等待。 */
   readonly onAbnormalDisconnect?: (streamId: string) => void;

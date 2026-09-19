@@ -12,6 +12,50 @@ const execFileAsync = promisify(execFile);
 const ORIGIN_HOST = 'localhost';
 const certificateWaitOptions = getCertificateWaitOptions();
 
+export async function waitForCertificateInstallation(page: LocalElectronApplicationDriver['page']): Promise<void> {
+  await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall))
+    .toBeVisible(certificateWaitOptions.visibility);
+}
+
+export async function isCertificateTrusted(thumbprint: string): Promise<boolean> {
+  switch (process.platform) {
+    case 'darwin': return isMacosCertificateTrusted(thumbprint);
+    case 'win32': return isWindowsCertificateTrusted(thumbprint);
+    default: throw new Error(`Certificate trust evidence is not supported on ${process.platform}.`);
+  }
+}
+
+async function isWindowsCertificateTrusted(thumbprint: string): Promise<boolean> {
+  try {
+    const { stdout } = await execFileAsync('certutil.exe', ['-verifystore', 'Root', thumbprint], {
+      encoding: 'utf8', windowsHide: true,
+    });
+    return stdout.toUpperCase().includes(thumbprint.toUpperCase());
+  } catch {
+    return false;
+  }
+}
+
+async function isMacosCertificateTrusted(thumbprint: string): Promise<boolean> {
+  try {
+    const { stdout } = await execFileAsync('/usr/bin/security', [
+      'find-certificate', '-a', '-p', '/Library/Keychains/System.keychain',
+    ], { encoding: 'utf8' });
+    const certificate = [...stdout.matchAll(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g)]
+      .map(([pem]) => new X509Certificate(pem))
+      .find((candidate) => candidate.fingerprint.replaceAll(':', '') === thumbprint.toUpperCase());
+    if (!certificate) return false;
+    const verification = execFileAsync('/usr/bin/security', [
+      'verify-cert', '-c', '/dev/stdin', '-p', 'basic', '-L', '-q', '-k', '/Library/Keychains/System.keychain',
+    ], { encoding: 'utf8' });
+    verification.child.stdin?.end(certificate.toString());
+    await verification;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function rootCertificateThumbprints(): Promise<string[]> {
   switch (process.platform) {
     case 'darwin':
@@ -70,8 +114,7 @@ export async function prepareHttpsCapture(desktopApp: LocalElectronApplicationDr
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.certificates).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.generate).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install).click();
-  await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall))
-    .toBeVisible(certificateWaitOptions.visibility);
+  await waitForCertificateInstallation(page);
   const thumbprint = await profileCertificateThumbprint(desktopApp);
   expect(thumbprint).not.toBeNull();
   await expect.poll(rootCertificateThumbprints).toContain(thumbprint);

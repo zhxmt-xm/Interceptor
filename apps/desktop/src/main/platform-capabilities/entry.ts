@@ -17,7 +17,7 @@ export type { TrustStoreService } from './internal/trust-store-service';
 export type { AppContainerService } from './windows/app-container/app-container-service';
 export { SystemProxyOperationQueue } from './internal/operation-queue';
 export { UpstreamProbe } from './internal/upstream-probe';
-export { toUpstreamAuthority } from './windows/system-proxy/system-proxy-upstream';
+export { toUpstreamAuthority } from './internal/upstream';
 
 /** Creates the platform-owned capabilities without starting processes or changing the host. */
 export class PlatformCapabilitiesService {

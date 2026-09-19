@@ -2,15 +2,28 @@
 
 本文件定义 Settings 九个section和Update notification的完整E2E流程。每条workflow独立启动Electron、独占profile/trace；系统代理、CA信任和外部程序操作必须由真实App UI发起。
 
-## `settings.certificates.cancel-trust`（macOS，passed）
+## `settings.certificates.helper-trust`（macOS，前台路径已验）
 
-1. 创建独立profile、trace及系统Root证书集合基线，启动真实Electron并确认helper/listener就绪；既有CA不作为本测试的输入或清理目标。
-2. 经Settings Certificates真实Generate创建本轮CA，读取其公开指纹并确认基线不存在；点击Install，不修改Preload/Main或原生返回值。
-3. macOS fixture核验Main及其`security`子进程代际、唯一SecurityAgent窗口，以真实Escape取消该证书信任请求，不输入密码或触发新的授权。
-4. 等待产品Install恢复可操作，要求系统Root集合精确恢复到第一步基线，本轮CA不残留，MITM仍关闭；失败保留profile和公开身份以便恢复，不在workflow调用helper删除来伪造成功。
-5. 成功时经产品Delete删除本轮本地材料，保存只含指纹/哈希/布尔结论的evidence；真实Close并由宿主guard验证Main/Core/Worker、8888、完整代理和admin trust恢复。
+1. 创建独立profile、trace及系统Root/admin trust基线，启动真实Electron并确认helper/listener就绪，记录helper PID及公开能力；既有CA不作为输入或清理目标。
+2. 经Settings Certificates真实Generate创建本轮CA，读取公开指纹并确认基线不存在；点击Install，要求系统信任由已部署helper的前台入口完成。若macOS要求确认，验证Main子进程为固定helper的`certificate.trust`，用户在系统窗口亲自确认；成功后产品显示可Uninstall，不修改Preload/Main、原生返回值或授权策略。
+3. macOS fixture核对本轮Main的进程代际，不允许Main直接执行`security add-trusted-cert/remove-trusted-cert`。前置Red若出现旧路径，只取消精确属于本轮CA的唯一原生窗口以保护宿主，并明确失败，不能把取消视作安装成功；不得操作无关授权窗口。
+4. 只读确认精确CA存在且真实系统信任验证通过，helper PID保持不变，MITM仍关闭；经产品Uninstall撤销trust并删除系统证书，Root集合精确恢复，经Delete删除本地材料。
+5. 重复Generate/Install/Uninstall/Delete，第二张CA指纹必须不同，同一helper仍复用。保存两轮公开指纹、helper身份、系统验证及基线哈希证据；真实Close后由宿主guard验证Main/Core/Worker、8888、完整代理和admin trust恢复。
 
-只验证macOS两阶段信任取消路径，不改变Windows原安装/撤销流程；缺前置Red、最终Green或系统恢复证据不得标passed。
+本轮目标是macOS权限写入和确认归helper，不承诺绕过系统要求的用户认证，不改变Windows原流程；缺前置Red、最终Green或系统恢复证据不得标passed。API拒绝时的已有CA保护及撤销失败不删除由产品unit/native integration覆盖；不得为制造取消场景添加产品测试后门。
+
+现行前台方案：开发成功/取消各1/1；同一生产产物成功授信/撤销及取消2/2，Main/Core、前台helper、8888、代理与证书恢复已验。证据为`/tmp/interceptor-macos-helper-trust-20260920-production/`及同前缀`-results.json`。常驻helper免重复确认目标仍`blocked`，此Green不代表完整业务组或该目标完成；产物范围见[Handover](../../../../../architecture/HANDOVER.md#verification)。
+
+## `settings.certificates.cancel-trust`（macOS，前台helper路径已验）
+
+1. 创建独立profile、trace和系统Root/admin trust基线，启动真实Electron并确认常驻helper/listener就绪；通过Settings Generate创建本轮CA并记录公开指纹。
+2. 点击Install，macOS fixture只认本轮Main的固定helper子进程及`certificate.trust`参数，核验Main/helper/SecurityAgent的进程代际和唯一授权窗口；不再以Main的`security`子进程冒充helper。
+3. 对该窗口真实发送Escape，不读取或输入密码；等待产品Install恢复可操作，MITM仍关闭，新增CA由产品撤回，系统Root集合精确等于基线。
+4. 经产品Delete删除本轮本地材料，保存前台helper身份、公开指纹、集合哈希和取消结果；正常Close，由宿主guard确认Main/Core/Worker、8888、完整代理和admin trust恢复。
+
+系统没有实际显示可归属的确认窗口时不能伪造取消结果，也不修改授权缓存或系统策略强迫出现窗口。现行前台路径的生产Green及退出恢复见上一节，旧路径证据不替代当前结果。
+
+以下为旧`settings.certificates.cancel-trust`流程的历史证据，不代表新的helper trust流程通过：
 
 2026-09-18产品unit6 Red后18/18；真实前置`/tmp/interceptor-macos-trust-cancel-20260918-e2e-red/`6.5秒失败于本轮新CA残留，取消和正常Close均真实执行，Red后的单独恢复不算Green。最终`/tmp/interceptor-macos-trust-cancel-20260918-e2e-green/`1/1（5.8秒），公开证书集前后SHA-256一致、本轮CA不存在，Main10805/Core10812的gracefulDestroyVerified=true，代理/admin trust与8888恢复。
 
@@ -172,6 +185,8 @@ Green必须包含审批裁决、两项真实执行、重复Restore、撤权零�
 
 **状态**：passed；2026-09-08真实E2E及最终CA清理、双代销毁和宿主恢复全部通过
 **策略**：privileged UI；Windows；host-safety-guard；两代Electron
+
+macOS只读信任查询已分派到平台fixture，Windows原certutil参数/输出判断保持。macOS完整流程仍待用户在场完成授信验收，不能计passed。
 
 ### Steps
 
@@ -432,6 +447,29 @@ Enable all 与 Disable all 各自对应一条 Main 命令和一次 UAC；前者�
 - Enable/Disable Dialog 明暗四个 parity view 均 `5/5 matched / 0 missing / 0 flagged`，最大 `0.9px`；AppContainer 主页面明暗各 `15/15 matched / 0 missing`，两个批量按钮均在 0.6px 内。完整 parity 为 `141 views / 1019 targets / 985 matched / 34 missing / 304 flagged`，既有 missing/flagged 未增加。
 - Windows x64 package、artifact audit（`1,294 files / 391,760,334 bytes`）、production audit 0 漏洞和 packaged smoke `1/1` 通过。
 
+<a id="settings-proxy-upstream"></a>
+## `settings.proxy.upstream`（macOS，基础链式转发已验，外部改写待验）
+
+1. 外部ClashX等HTTP代理保持运行，系统HTTP/HTTPS均指向同一loopback端口；不使用TUN替代。无此环境算前置阻塞，不计产品Red。
+2. 自动fixture在App启动前只读保存生效上游及完整service快照；独立profile/trace及host guard随后启动真实Electron。
+3. 经公共Capture入口核对状态栏仍显示原上游，不把Interceptor的8888当作上游；前置Red应精确失败在此业务断言。
+4. 测试客户端经真实8888向`example.com:443`建立CONNECT/TLS，开启正常证书校验，不生成CA、不调用产品API设置上游。
+5. 保持TLS连接，核对8888所属Core进程的已建立连接指向原上游端口；Capture必须出现真实目标，不能仅凭网页成功判断链式转发。
+6. 通过Settings Restore恢复完整原配置；保存trace、metadata和只含端口/哈希/布尔结果的证据。
+7. 正常Close，host guard验证Main/Core/Worker、8888、完整代理与admin trust恢复；不停止或改写外部ClashX。
+
+基础链式转发已有前置Red及开发Green；既有产物smoke 1/1，产物包含本地暂停项，范围见[Handover](../../../../../architecture/HANDOVER.md#verification)。系统授权、外部网络或selector失败不算产品Red。
+
+外部改写场景使用独立App/profile：
+
+1. 只在ClashX和其root helper已运行、开发helper ready且无系统确认窗口时执行。
+2. 通过ClashX原生菜单重新应用原代理，再停用系统代理；ClashX进程与监听不退出。
+3. 保存外部配置，经产品Close关闭Interceptor，断言退出没有覆盖该配置。
+4. 通过ClashX原生菜单重新启用原代理，对照完整基线；宿主guard再核验进程、8888和证书恢复。
+5. 仅保存哈希与实际布尔结果；原生入口不可用或需授权时记blocked，不放宽恢复断言。
+
+外部改写当前`blocked`：三次运行未可靠切换ClashX原生菜单，未到业务保护断言；最后一轮完整基线恢复、Main/Core正常退出。证据见[Settings上游结果](../../../../../architecture/features/settings.md#macos-effective-upstream)，不在无人值守时继续尝试；基础链式转发的独立Green保留。
+
 <a id="settings-proxy-enable-restore"></a>
 ## `settings.proxy.enable-restore`
 
@@ -485,6 +523,8 @@ Enable只由用户UI发起；Main精确拥有和记录全部代理字段；Resto
 
 <a id="settings-proxy-mitm-persistence"></a>
 ## `settings.proxy-mitm.persistence`
+
+macOS接入已有平台driver：同profile journal、完整结构比较及Security只读信任查询。Windows保留原路径、JSON比较、180秒总预算及业务操作顺序；macOS完整授信流程待用户在场复验。
 
 **状态**：passed
 **策略**：os-side-effect；headed；Windows
@@ -595,6 +635,12 @@ MITM switch、Trusted状态和Core配置同步；insecure host会trim/去重并�
 
 **状态**：planned
 **策略**：native-ui
+
+macOS无授权子范围只验证Reveal：UI Generate，经UI创建MCP Client并在Ask卡批准Reveal；Finder选中的精确路径须为本轮`root-cert.pem`，正常关窗后核对CA、Root/admin trust和MITM不变。Windows原生driver原样委托。
+
+View尝试仅启动Keychain Access，未识别可归属窗口；该失败保留，未发生System/login证书导入。View/Manager及完整Agent/MCP证书生命周期继续待验，Reveal Green不能将本条整体标passed。
+
+Reveal最终1/1（9.0秒）：精确路径、产品MCP审批、原生关窗、Root/admin trust及退出恢复通过，证据`/tmp/interceptor-macos-certificate-external-20260919-reveal-final/`。前两轮失败目录`/tmp/interceptor-macos-certificate-external-20260919{,-path}/`保留；未修改Windows原生driver或授信断言。
 
 ### Steps
 

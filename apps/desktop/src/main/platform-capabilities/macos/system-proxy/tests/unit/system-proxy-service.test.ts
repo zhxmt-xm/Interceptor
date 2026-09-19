@@ -15,11 +15,11 @@ class FakeJournal implements SystemProxyJournalStore {
   }
 
   /** Persist original and intended values before the helper write. */
-  save(original: unknown, owned: unknown): Promise<void> {
+  save(original: unknown, owned: unknown, effectiveProxies: Record<string, unknown>): Promise<void> {
     this.record = {
-      version: 1,
       original,
       owned,
+      effectiveProxies,
     };
     return Promise.resolve();
   }
@@ -34,6 +34,11 @@ class FakeJournal implements SystemProxyJournalStore {
 class FakeMacosHelperRunner extends MacosHelperServiceClient {
   /** Recorded helper invocations used to assert guarded zero-write behavior. */
   readonly calls: string[] = [];
+  /** Effective system proxy configuration before Interceptor takes ownership. */
+  effectiveProxySettings: Record<string, unknown> = {
+    HTTPEnable: 1, HTTPProxy: '127.0.0.1', HTTPPort: 7890,
+    HTTPSEnable: 1, HTTPSProxy: '127.0.0.1', HTTPSPort: 7890,
+  };
   /** Mutable helper-side SystemConfiguration snapshot. */
   snapshot: MacosSystemProxySnapshot = {
     services: [
@@ -66,6 +71,12 @@ class FakeMacosHelperRunner extends MacosHelperServiceClient {
     return structuredClone(this.snapshot);
   }
 
+  /** Read the actual effective proxy, independently of network-service order. */
+  override async readEffectiveSystemProxySettings(): Promise<Record<string, unknown>> {
+    this.calls.push('read-effective-proxies');
+    return structuredClone(this.effectiveProxySettings);
+  }
+
   override async replaceSystemProxySnapshot(expectedSnapshot: MacosSystemProxySnapshot, snapshot: MacosSystemProxySnapshot): Promise<MacosSystemProxySnapshot> {
     this.calls.push('replace');
     expect(expectedSnapshot).toEqual(this.snapshot);
@@ -77,11 +88,136 @@ class FakeMacosHelperRunner extends MacosHelperServiceClient {
 describe('MacosSystemProxyService', () => {
   afterEach(() => vi.restoreAllMocks());
 
+  it('retains the effective system proxy as its upstream after taking ownership', async () => {
+    const macosHelperServiceClient = new FakeMacosHelperRunner();
+    const macosSystemProxyService = createService(macosHelperServiceClient, new FakeJournal());
+
+    await macosSystemProxyService.enable('127.0.0.1', 8888);
+    macosHelperServiceClient.effectiveProxySettings = {
+      HTTPEnable: 1, HTTPProxy: '127.0.0.1', HTTPPort: 8888,
+      HTTPSEnable: 1, HTTPSProxy: '127.0.0.1', HTTPSPort: 8888,
+    };
+
+    expect(macosSystemProxyService.detectedUpstream()).toEqual({
+      httpProxyUrl: 'http://127.0.0.1:7890', httpsProxyUrl: 'http://127.0.0.1:7890',
+      exceptions: [], excludeSimpleHostnames: false,
+    });
+    await macosSystemProxyService.restore();
+    expect(macosSystemProxyService.detectedUpstream()).toBeNull();
+  });
+
+  it.each([
+    {
+      settings: { HTTPEnable: 1, HTTPProxy: 'http.proxy.example', HTTPPort: 8080,
+        HTTPSEnable: 1, HTTPSProxy: 'secure.proxy.example', HTTPSPort: 8443 },
+      expected: { httpProxyUrl: 'http://http.proxy.example:8080', httpsProxyUrl: 'http://secure.proxy.example:8443',
+        exceptions: [], excludeSimpleHostnames: false },
+    },
+    {
+      settings: { SOCKSEnable: 1, SOCKSProxy: '::1', SOCKSPort: 1080,
+        HTTPEnable: 1, HTTPProxy: 'http.proxy.example', HTTPPort: 8080,
+        ExceptionsList: ['*.local', '10.0.0.0/8'], ExcludeSimpleHostnames: 1 },
+      expected: { httpProxyUrl: 'http://http.proxy.example:8080', httpsProxyUrl: 'socks5://[::1]:1080',
+        exceptions: ['*.local', '10.0.0.0/8'], excludeSimpleHostnames: true },
+    },
+    {
+      settings: { ProxyAutoConfigEnable: 1, ProxyAutoConfigURLString: 'https://proxy.example/rules.pac',
+        HTTPEnable: 1, HTTPProxy: 'ignored.example', HTTPPort: 8080 },
+      expected: { httpProxyUrl: 'pac+https://proxy.example/rules.pac', httpsProxyUrl: 'pac+https://proxy.example/rules.pac',
+        exceptions: [], excludeSimpleHostnames: false },
+    },
+    {
+      settings: { HTTPEnable: 1, HTTPProxy: 'proxy.example', HTTPPort: 8080 },
+      expected: { httpProxyUrl: 'http://proxy.example:8080', httpsProxyUrl: null,
+        exceptions: [], excludeSimpleHostnames: false },
+    },
+    { settings: {}, expected: null },
+    { settings: { HTTPEnable: 1, HTTPProxy: 'localhost', HTTPPort: 8888,
+      HTTPSEnable: 1, HTTPSProxy: '::1', HTTPSPort: 8888 }, expected: null },
+  ])('preserves protocol and bypass choices from effective settings $settings', async ({ settings, expected }) => {
+    const macosHelperServiceClient = new FakeMacosHelperRunner();
+    macosHelperServiceClient.effectiveProxySettings = settings;
+    const macosSystemProxyService = createService(macosHelperServiceClient);
+
+    await macosSystemProxyService.enable('127.0.0.1', 8888);
+
+    expect(macosSystemProxyService.detectedUpstream()).toEqual(expected);
+    expect(macosHelperServiceClient.calls.indexOf('read-effective-proxies'))
+      .toBeLessThan(macosHelperServiceClient.calls.indexOf('replace'));
+  });
+
+  it.each([
+    { protocol: 'HTTP', host: '127.1' },
+    { protocol: 'HTTPS', host: '2130706433' },
+    { protocol: 'SOCKS', host: '0x7f000001' },
+    { protocol: 'HTTP', host: 'localhost.' },
+    { protocol: 'HTTPS', host: '[0:0:0:0:0:0:0:1]' },
+    { protocol: 'SOCKS', host: '[::ffff:127.0.0.1]' },
+  ])('never chains back into the listener through $protocol host $host', async ({ protocol, host }) => {
+    const macosHelperServiceClient = new FakeMacosHelperRunner();
+    macosHelperServiceClient.effectiveProxySettings = {
+      [`${protocol}Enable`]: 1, [`${protocol}Proxy`]: host, [`${protocol}Port`]: 8888,
+    };
+    const macosSystemProxyService = createService(macosHelperServiceClient);
+
+    await macosSystemProxyService.enable('127.0.0.1', 8888);
+
+    expect(macosSystemProxyService.detectedUpstream()).toBeNull();
+  });
+
+  it('keeps a different local proxy port after normalizing its host', async () => {
+    const macosHelperServiceClient = new FakeMacosHelperRunner();
+    macosHelperServiceClient.effectiveProxySettings = { SOCKSEnable: 1, SOCKSProxy: '127.1', SOCKSPort: 1080 };
+    const macosSystemProxyService = createService(macosHelperServiceClient);
+
+    await macosSystemProxyService.enable('127.0.0.1', 8888);
+
+    expect(macosSystemProxyService.detectedUpstream()).toEqual({
+      httpProxyUrl: 'socks5://127.0.0.1:1080', httpsProxyUrl: 'socks5://127.0.0.1:1080',
+      exceptions: [], excludeSimpleHostnames: false,
+    });
+  });
+
+  it('restores the original upstream from the crash journal without rereading the owned proxy as upstream', async () => {
+    const macosHelperServiceClient = new FakeMacosHelperRunner();
+    const fakeJournal = new FakeJournal();
+    const firstService = createService(macosHelperServiceClient, fakeJournal);
+    await firstService.enable('127.0.0.1', 8888);
+    const upstream = firstService.detectedUpstream();
+    macosHelperServiceClient.effectiveProxySettings = { HTTPEnable: 1, HTTPProxy: '127.0.0.1', HTTPPort: 8888 };
+    const readCount = macosHelperServiceClient.calls.filter((call) => call === 'read-effective-proxies').length;
+    const restartedService = createService(macosHelperServiceClient, fakeJournal);
+
+    await restartedService.recoverAfterCrash();
+    await restartedService.enable('127.0.0.1', 8888);
+
+    expect(upstream).not.toBeNull();
+    expect(restartedService.detectedUpstream()).toEqual(upstream);
+    expect(macosHelperServiceClient.calls.filter((call) => call === 'read-effective-proxies')).toHaveLength(readCount);
+  });
+
+  it.each([
+    { HTTPEnable: 1, HTTPProxy: 'proxy.example', HTTPPort: 0 },
+    { HTTPEnable: 1, HTTPProxy: 'user:secret@proxy.example', HTTPPort: 8080 },
+    { ProxyAutoConfigEnable: 1, ProxyAutoConfigURLString: 'file:///private/proxy.pac' },
+    { ProxyAutoDiscoveryEnable: 1 },
+  ])('rejects an unusable effective upstream before changing system settings', async (settings) => {
+    const macosHelperServiceClient = new FakeMacosHelperRunner();
+    macosHelperServiceClient.effectiveProxySettings = settings;
+    const fakeJournal = new FakeJournal();
+    await expect(createService(macosHelperServiceClient, fakeJournal).enable('127.0.0.1', 8888))
+      .rejects.toBeInstanceOf(SystemProxyError);
+    expect(macosHelperServiceClient.calls).not.toContain('replace');
+    expect(fakeJournal.record).toBeNull();
+  });
+
   it('uses the persistent service and supplies the complete expected snapshot for every write', async () => {
     const fakeMacosHelperRunner = new FakeMacosHelperRunner();
     const original = structuredClone(fakeMacosHelperRunner.snapshot);
     const read = vi.spyOn(MacosHelperServiceClient.prototype, 'readSystemProxySnapshot')
       .mockImplementation(async () => structuredClone(fakeMacosHelperRunner.snapshot));
+    vi.spyOn(MacosHelperServiceClient.prototype, 'readEffectiveSystemProxySettings')
+      .mockImplementation(async () => structuredClone(fakeMacosHelperRunner.effectiveProxySettings));
     const replace = vi.spyOn(MacosHelperServiceClient.prototype, 'replaceSystemProxySnapshot')
       .mockImplementation(async (_expected, snapshot) => {
         fakeMacosHelperRunner.snapshot = structuredClone(snapshot);
@@ -249,7 +385,7 @@ describe('MacosSystemProxyService', () => {
         ...service,
         settings: { ...service.settings, HTTPEnable: 1, HTTPPort: 8888 },
       })),
-    });
+    }, fakeMacosHelperRunner.effectiveProxySettings);
 
     const result = await createService(
       fakeMacosHelperRunner,

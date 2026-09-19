@@ -10,39 +10,93 @@ import type { WorkflowProcessIdentity } from '../safety/workflow-host-safety-gua
 import { getByAutomationId } from './automation';
 
 const execFileAsync = promisify(execFile);
+const helperPath = '/Library/PrivilegedHelperTools/com.zhxmt.interceptor.platform-capabilities';
 
-export async function installMacosCertificateAndCancelTrust(
+export async function installMacosCertificateThroughHelper(
   page: Page, owner: WorkflowProcessIdentity, certificatePath: string,
 ): Promise<void> {
-  if (process.platform !== 'darwin') throw new Error('Native certificate authorization cancellation requires macOS.');
+  if (process.platform !== 'darwin') throw new Error('Native certificate helper verification requires macOS.');
   const canonicalCertificatePath = await realpath(certificatePath);
   expect(await authorizationWindowProcessIds(), 'Another native authorization window is already open').toEqual([]);
   await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install).click();
-  let securityProcess: WorkflowProcessIdentity | null = null;
-  let agentProcess: WorkflowProcessIdentity | null = null;
+  const pendingAuthorization: { securityProcess?: WorkflowProcessIdentity; agentProcess?: WorkflowProcessIdentity } = {};
   await expect.poll(async () => {
     await verifyOwner(owner);
+    if (await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall).isVisible()) return true;
     const { stdout } = await execFileAsync('/bin/ps', ['-axo', 'pid=,ppid=,comm='], { encoding: 'utf8' });
     const children = stdout.split('\n').flatMap((line) => {
       const match = /^\s*(\d+)\s+(\d+)\s+(?:\/usr\/bin\/)?security\s*$/.exec(line);
       return match && Number(match[2]) === owner.processId ? [Number(match[1])] : [];
     });
-    if (children.length !== 1) return false;
+    if (children.length !== 1) {
+      const agents = await authorizationWindowProcessIds();
+      if (agents.length > 0) {
+        expect(agents).toHaveLength(1);
+        expect(await foregroundTrustRequester(owner), 'Only the native helper may request certificate trust authorization').not.toBeNull();
+      }
+      return false;
+    }
     const argumentsResult = await execFileAsync('/bin/ps', ['-ww', '-p', String(children[0]), '-o', 'args='], { encoding: 'utf8' });
     const certificateArgument = /^(?:\/usr\/bin\/)?security add-trusted-cert -d -r trustRoot (.+)$/.exec(argumentsResult.stdout.trim())?.[1];
     if (!certificateArgument || await realpath(certificateArgument) !== canonicalCertificatePath) return false;
     const agents = await authorizationWindowProcessIds();
     if (agents.length !== 1) return false;
-    securityProcess = await MacosWorkflowHostSafetyOperations.readProcessIdentity(children[0]!);
-    agentProcess = await MacosWorkflowHostSafetyOperations.readProcessIdentity(agents[0]!);
+    pendingAuthorization.securityProcess = await MacosWorkflowHostSafetyOperations.readProcessIdentity(children[0]!);
+    pendingAuthorization.agentProcess = await MacosWorkflowHostSafetyOperations.readProcessIdentity(agents[0]!);
     return true;
-  }, { message: 'The workflow-owned certificate trust request did not expose a unique native authorization window', timeout: 30_000 }).toBe(true);
+  }, { message: 'The native helper did not complete certificate trust', timeout: 120_000 }).toBe(true);
+  if (!pendingAuthorization.securityProcess || !pendingAuthorization.agentProcess) {
+    await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall)).toBeEnabled();
+    expect(await authorizationWindowProcessIds(), 'The helper authorization window did not close').toEqual([]);
+    return;
+  }
+  await cancelAuthorizationWindow(owner, pendingAuthorization.securityProcess, pendingAuthorization.agentProcess);
+  await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install)).toBeEnabled();
+  throw new Error('Main executed security add-trusted-cert instead of delegating certificate trust to the native helper.');
+}
+
+export async function cancelMacosCertificateTrust(page: Page, owner: WorkflowProcessIdentity): Promise<WorkflowProcessIdentity> {
+  if (process.platform !== 'darwin') throw new Error('Native certificate authorization cancellation requires macOS.');
+  expect(await authorizationWindowProcessIds(), 'Another native authorization window is already open').toEqual([]);
+  await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install).click();
+  const pendingAuthorization: { requester?: WorkflowProcessIdentity; agent?: WorkflowProcessIdentity } = {};
+  await expect.poll(async () => {
+    const requester = await foregroundTrustRequester(owner);
+    if (!requester) return false;
+    const agents = await authorizationWindowProcessIds();
+    if (agents.length !== 1) return false;
+    pendingAuthorization.requester = requester;
+    pendingAuthorization.agent = await MacosWorkflowHostSafetyOperations.readProcessIdentity(agents[0]!);
+    return true;
+  }, { message: 'The native helper did not expose a unique trust authorization window', timeout: 30_000 }).toBe(true);
+  if (!pendingAuthorization.requester || !pendingAuthorization.agent) throw new Error('Missing native trust authorization identity.');
+  await cancelAuthorizationWindow(owner, pendingAuthorization.requester, pendingAuthorization.agent);
+  await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install)).toBeEnabled();
+  return pendingAuthorization.requester;
+}
+
+async function foregroundTrustRequester(owner: WorkflowProcessIdentity): Promise<WorkflowProcessIdentity | null> {
   await verifyOwner(owner);
-  await verifyOwner(securityProcess!);
-  await verifyOwner(agentProcess!);
+  const { stdout } = await execFileAsync('/bin/ps', ['-axww', '-o', 'pid=,ppid=,comm='], { encoding: 'utf8' });
+  const children = stdout.split('\n').flatMap((line) => {
+    const match = /^\s*(\d+)\s+(\d+)\s+(.+)$/.exec(line);
+    return match && Number(match[2]) === owner.processId && match[3] === helperPath ? [Number(match[1])] : [];
+  });
+  if (children.length !== 1) return null;
+  const argumentsResult = await execFileAsync('/bin/ps', ['-ww', '-p', String(children[0]), '-o', 'args='], { encoding: 'utf8' });
+  if (argumentsResult.stdout.trim() !== `${helperPath} certificate.trust`) return null;
+  return MacosWorkflowHostSafetyOperations.readProcessIdentity(children[0]!);
+}
+
+async function cancelAuthorizationWindow(
+  owner: WorkflowProcessIdentity, requester: WorkflowProcessIdentity, agent: WorkflowProcessIdentity,
+): Promise<void> {
+  await verifyOwner(owner);
+  await verifyOwner(requester);
+  await verifyOwner(agent);
   await execFileAsync('/usr/bin/osascript', ['-e', `
 tell application "System Events"
-  set targetAgent to first application process whose unix id is ${agentProcess!.processId}
+  set targetAgent to first application process whose unix id is ${agent.processId}
   if (count of windows of targetAgent) is not 1 then error "Authorization window identity changed"
   set frontmost of targetAgent to true
   key code 53

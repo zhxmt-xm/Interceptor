@@ -52,6 +52,15 @@ final class SystemProxyHelper {
         case "serve-development":
             guard arguments.count == 2 else { throw HelperError.usage }
             try MacosHelperService(developmentConfigurationPath: arguments[1]).run()
+        case "certificate.trust":
+            guard arguments.count == 1 else { throw HelperError.usage }
+            try writeJSON(try MacosSystemCertificateStore.trustCertificate(readCertificateRequest()))
+        case "certificate.untrust":
+            guard arguments.count == 1 else { throw HelperError.usage }
+            try writeJSON(try MacosSystemCertificateStore.untrustCertificate(readCertificateRequest()))
+        case "get-effective-proxies":
+            guard arguments.count == 1 else { throw HelperError.usage }
+            try writeJSON(try readEffectiveSystemProxySettings())
         case "get":
             guard arguments.count == 1 else {
                 throw HelperError.usage
@@ -71,6 +80,26 @@ final class SystemProxyHelper {
         default:
             throw HelperError.usage
         }
+    }
+
+    private static func readCertificateRequest() throws -> MacosHelperCertificate {
+        var data = Data()
+        while let chunk = try FileHandle.standardInput.read(upToCount: 262_145 - data.count), !chunk.isEmpty {
+            data.append(chunk)
+            guard data.count <= 262_144 else { throw MacosHelperServiceError.invalidRequest }
+        }
+        guard let object = try? JSONSerialization.jsonObject(with: data) else {
+            throw MacosHelperServiceError.invalidRequest
+        }
+        return try MacosHelperCertificate.decode(object)
+    }
+
+    static func readEffectiveSystemProxySettings() throws -> [String: Any] {
+        guard let settings = SCDynamicStoreCopyProxies(nil) as? [String: Any],
+              JSONSerialization.isValidJSONObject(settings) else {
+            throw HelperError.preferencesUnavailable
+        }
+        return settings
     }
 
     static func readSystemProxySnapshot() throws -> [String: Any] {

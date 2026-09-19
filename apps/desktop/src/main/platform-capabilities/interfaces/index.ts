@@ -41,7 +41,9 @@ export interface MacosHelperServiceStatus {
   readonly capabilities: readonly MacosHelperServiceOperation[];
 }
 
-export type MacosHelperServiceOperation = 'status' | 'system-proxy.read' | 'system-proxy.replace' | 'certificate.import' | 'certificate.remove';
+export type MacosHelperServiceOperation =
+  | 'status' | 'system-proxy.read' | 'system-proxy.read-effective' | 'system-proxy.replace'
+  | 'certificate.import' | 'certificate.remove';
 
 export interface MacosCertificatePayload {
   readonly certificate: string;
@@ -49,8 +51,11 @@ export interface MacosCertificatePayload {
 }
 
 export type MacosHelperServiceRequest =
-  | { readonly operation: 'status' | 'system-proxy.read' }
-  | { readonly operation: 'certificate.import' | 'certificate.remove'; readonly parameters: MacosCertificatePayload }
+  | { readonly operation: 'status' | 'system-proxy.read' | 'system-proxy.read-effective' }
+  | {
+    readonly operation: 'certificate.import' | 'certificate.remove';
+    readonly parameters: MacosCertificatePayload;
+  }
   | {
     readonly operation: 'system-proxy.replace';
     readonly parameters: {
@@ -68,6 +73,7 @@ export type MacosHelperServiceErrorCode =
   | 'protocol-mismatch'
   | 'invalid-request'
   | 'authorization-required'
+  | 'authorization-cancelled'
   | 'snapshot-conflict'
   | 'operation-failed'
   | 'verification-failed';
@@ -157,18 +163,17 @@ export interface SystemProxyService {
 
 /** 崩溃安全的系统代理恢复日志记录。 */
 export interface SystemProxyJournalRecord {
-  /** 最小journal schema版本。 */
-  readonly version: 1;
   /** App接管前的完整平台代理快照。 */
   readonly original: unknown;
   /** App接管时写入的完整平台代理快照。 */
   readonly owned: unknown;
+  readonly effectiveProxies: Record<string, unknown>;
 }
 
 /** 系统代理恢复日志存储抽象。 */
 export interface SystemProxyJournalStore {
   read(): Promise<SystemProxyJournalRecord | null>;
-  save(original: unknown, owned: unknown): Promise<void>;
+  save(original: unknown, owned: unknown, effectiveProxies: Record<string, unknown>): Promise<void>;
   clear(): Promise<void>;
 }
 

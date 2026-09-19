@@ -1,8 +1,6 @@
-import { execFile } from 'node:child_process';
 import { X509Certificate } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type { Page, TestInfo } from '@playwright/test';
 
@@ -10,9 +8,8 @@ import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/auto
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import { getByAutomationId } from '../../fixtures/ui/automation';
-import { closeCertificateWindow, listCertificateWindows, verifyAndCloseCertificateWindow, type CertificateWindow } from '../../fixtures/ui/windows-certificate-windows';
-
-const execFileAsync = promisify(execFile);
+import { rootCertificateThumbprints as rootFingerprints } from '../../fixtures/ui/https-capture';
+import { closeCertificateWindow, listCertificateWindows, verifyAndCloseCertificateWindow, type CertificateWindow } from '../../fixtures/ui/certificate-windows';
 
 const TOOL_NAMES = [
   'settings_generate_certificate', 'settings_install_certificate',
@@ -95,13 +92,6 @@ async function certificateIdentity(desktopApp: LocalElectronApplicationDriver): 
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
     throw error;
   }
-}
-
-async function rootFingerprints(): Promise<string[]> {
-  const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-Command',
-    'ConvertTo-Json -InputObject @(Get-ChildItem Cert:\\LocalMachine\\Root | Select-Object -ExpandProperty Thumbprint | Sort-Object) -Compress',
-  ], { encoding: 'utf8', windowsHide: true });
-  return JSON.parse(stdout.trim()) as string[];
 }
 
 async function setMode(page: Page, mode: 'ask' | 'auto'): Promise<void> {

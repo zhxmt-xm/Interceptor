@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>macOS Helper 双入口与平台适配</title>
+  <title>macOS Helper、上游代理与平台适配</title>
   <style>
     :root { color-scheme: light; color: #24292f; background: #fff; }
     * { box-sizing: border-box; }
@@ -41,9 +41,11 @@
 <body>
   <main>
     <header>
-      <h1>提交：macOS Helper 双入口与平台适配</h1>
+      <h1>提交：macOS Helper、上游代理与平台适配</h1>
       <p class="time">时间：2026-09-19 14:42 CST（本地时间）</p>
+      <p class="time">追加改动：2026-09-20 00:51 CST</p>
       <p>将 macOS 系统代理和公开证书操作接入随 App 交付的常驻 helper，分离开发与生产准入；平台原生差异集中到 Main 和 E2E driver，保留两端共同的业务流程。</p>
+      <p>本次续作加入接管前上游配置、按协议转发与前台证书信任入口；不修改系统授权数据库或 SIP，不改变 Windows 原生操作。</p>
     </header>
     <section>
       <h2>Main</h2>
@@ -54,11 +56,24 @@
           <tr><td data-label="位置"><code>macos/installation/</code> 与 Main 启动</td><td data-label="改前">macOS 代理依赖一次性授权工具，不同进程需要重新申请网络写权限。</td><td data-label="改后">首次启动核准随包 helper，部署 root 保护的组件、配置和 launchd；后续核对身份并复用，失败按事务恢复已有组件。</td><td data-label="原因与影响">App 留在原位置，不另装完整 App <code>.pkg</code>，不下载独立 helper。只有缺失或身份不匹配才请求部署，未知或损坏状态不覆盖。</td></tr>
           <tr><td data-label="位置"><code>macos/system-proxy/native-service*.swift</code>、<code>helper-client.ts</code></td><td data-label="改前">缺少跨启动复用的特权服务和独立开发准入。</td><td data-label="改后">同一服务提供 <code>service.sock</code> 与 <code>development.sock</code>；生产核验准确 App 路径/CDHash、完整资源和运行时，开发信任核准的本机 UID。</td><td data-label="原因与影响">Forge、HMR、rs 和业务 E2E 无需按每次源码构建重新核准。开发授权允许该 UID 的本地程序使用固定能力，不宣称隔离同用户恶意代码；请求不能降级生产鉴权。</td></tr>
           <tr><td data-label="位置"><code>macos/system-proxy/</code> 与 <code>macos/trust-store/</code></td><td data-label="改前">代理写入依赖一次性命令；CA 存在与实际信任混淆，信任取消可能留下新导入证书。</td><td data-label="改后">代理采用完整 expected/replacement 快照条件写入；helper 只接受固定操作、公开 DER 和指纹。Main 验证实际信任，取消时撤回本次新导入 CA，已有 CA 不删除。</td><td data-label="原因与影响">保留 ownership/journal 恢复语义，避免误删已有证书；admin trust 仍由登录用户处理独立系统授权。helper 不接收任意 shell、私钥或证书文件路径。</td></tr>
+          <tr><td data-label="位置"><code>macos/trust-store/native-certificates.swift</code>、<code>helper-client.ts</code></td><td data-label="改前">Main 直接启动 <code>security</code> 执行 trust/untrust。</td><td data-label="改后">由已部署 helper 的固定前台入口执行 Security API、系统确认和回读，Main 保留安装顺序与失败回滚。</td><td data-label="原因与影响">权限操作归原生组件；不把安装 helper 等同于永久批准证书信任，不取消 macOS 要求的独立确认。</td></tr>
+          <tr><td data-label="位置"><code>macos/system-proxy/upstream.ts</code>、<code>entry.ts</code>、<code>journal.ts</code></td><td data-label="改前">只保存各 network service 的恢复快照，Core 未接续 macOS 原上游。</td><td data-label="改后">接管前读取系统生效代理，分别保存 HTTP/HTTPS、PAC、SOCKS 与绕过规则；journal 只写 <code>original/owned/effectiveProxies</code>，重启复用原上游。</td><td data-label="原因与影响">流量可以继续经过 ClashX 等外部代理；地址规范化后排除本机 listener 自环，不合并或覆盖原 network service 配置，不保留版本迁移代码。</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section>
+      <h2>Core</h2>
+      <table>
+        <thead><tr><th>位置</th><th>改前</th><th>改后</th><th>原因与影响</th></tr></thead>
+        <tbody>
+          <tr><td data-label="位置"><code>core-protocol/messages.ts</code>、<code>proxy/entry.ts</code> 与 <code>proxy/utils/</code></td><td data-label="改前">上游只有一个 URL，不能表达 macOS 两种协议不同的目标和原生绕过规则。</td><td data-label="改后">增加按协议的当前配置，macOS 通过 Mockttp 公开规则接口选择目标；Windows 保留原单规则和单上游契约。</td><td data-label="原因与影响">保持流式头部处理和监听器生命周期；不修改 Mockttp patch，不把未配置某个协议误当作另一个协议的上游。</td></tr>
+          <tr><td data-label="位置"><code>proxy/internal/websocket-bridge.ts</code> 与 Main 上游探活</td><td data-label="改前">WebSocket 只处理单一 HTTP/HTTPS CONNECT 上游。</td><td data-label="改后">macOS 按协议配置使用既有 HTTP/SOCKS/PAC agent；单上游路径保持原行为。只有一个明确上游目标时才提供整体探活结果。</td><td data-label="原因与影响">避免 macOS 新能力改变 Windows 路径，也避免一个协议的上游失败导致全部流量降为直连。</td></tr>
         </tbody>
       </table>
     </section>
     <section>
       <h2>UI</h2>
+      <p>以下保留本 item 前一阶段的 Capture 状态时序改动。本次续作没有修改 Renderer 布局、样式或设计基准。</p>
       <table>
         <thead><tr><th>位置</th><th>改前</th><th>改后</th><th>原因与影响</th></tr></thead>
         <tbody>
@@ -85,6 +100,8 @@
           <tr><td data-label="位置"><code>tests/e2e-workflow-tests/fixtures/</code> 与共同 workflow 调用点</td><td data-label="改前">启动、窗口、文件 Dialog、journal 和恢复观察主要按 Windows 运行方式组织。</td><td data-label="改后">macOS 通过真实未打包 Electron/CDP 复用开发 helper，原生 Save/Open/Cancel 使用真实键鼠；平台 driver 负责窗口、路径、超时及恢复观察，workflow 共用原业务输入和断言。</td><td data-label="原因与影响">Windows 保留原 <code>_electron.launch</code> 和原生 Dialog driver。macOS 先确认代理恢复再终止 App；私有文件日志避免 runner 退出产生 EPIPE，crash 后立即保存初代证据。</td></tr>
           <tr><td data-label="位置">Settings fixture、宿主 guard 与 <code>tests/packaged-smoke/startup.spec.ts</code></td><td data-label="改前">Auto 点击完成不代表设置已保存，原生窗口暴露与截图准备存在竞态。</td><td data-label="改后">等待公开的 Auto 持久化状态；按精确 Main 代际等待 macOS 原生窗口，调整实际窗口尺寸；guard 比较完整代理及 admin trust。</td><td data-label="原因与影响">不注入 Store、不改写原生窗口返回值、不增加产品测试入口；Windows 原有窗口矩阵和系统恢复路径保留。</td></tr>
           <tr><td data-label="位置">Main 模块 README、开发/平台说明、功能与 E2E 规格、Handover</td><td data-label="改前">文档按旧目录和一次性授权入口说明运行方式。</td><td data-label="改后">同步首次启动部署、双入口权限、平台分派、真实流程和退出恢复约定。</td><td data-label="原因与影响">明确开发与生产的信任边界，保持代码路径和操作说明一致；独立 package 不提前接入。</td></tr>
+          <tr><td data-label="位置">macOS 证书、ClashX workflow 与平台 fixture</td><td data-label="改前">证书窗口、信任查询和 journal 格式部分直接按 Windows 处理。</td><td data-label="改后">Windows 委托原驱动；macOS 独立处理原生窗口、信任查询和当前 journal。加入 ClashX 上游、helper 信任生命周期及 Finder 精确路径流程。</td><td data-label="原因与影响">复用产品 UI、Main 和 helper，不注入 Store 或授信结果；平台差异不改变 Windows 的业务操作和原生驱动。</td></tr>
+          <tr><td data-label="位置"><code>architecture/HANDOVER.md</code> 与 Settings 文档</td><td data-label="改前">任务正文混入大量按日期排列的排障经过。</td><td data-label="改后">Handover 保留短状态清单、角色、结果表和恢复命令，原验证记录归入所属功能文档。</td><td data-label="原因与影响">减少重复说明；保留原始证据与平台边界，不改写历史失败。</td></tr>
         </tbody>
       </table>
     </section>

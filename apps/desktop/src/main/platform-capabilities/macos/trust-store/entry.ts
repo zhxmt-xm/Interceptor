@@ -45,18 +45,19 @@ export class MacosTrustStoreService {
     const existingCertificate = this.findCertificate(inventory.stdout, certificate.fingerprint.replaceAll(':', ''));
     const alreadyInstalled = existingCertificate?.raw.equals(certificate.raw) ?? false;
     await this.macosHelperServiceClient.importCertificate(payload);
-    const result = await this.runner.run('security', ['add-trusted-cert', '-d', '-r', 'trustRoot', certPath]);
-    if (result.code !== 0 && !alreadyInstalled) {
+    try {
+      await this.macosHelperServiceClient.trustCertificate(payload);
+    } catch (trustError) {
+      if (alreadyInstalled) throw trustError;
       try {
         await this.macosHelperServiceClient.removeCertificate(payload);
       } catch (cleanupError) {
-        throw new AggregateError([
-          new TrustStoreError(`Trust store install failed (exit ${result.code}): ${result.stderr || result.stdout}`),
-          cleanupError,
-        ], 'macOS certificate trust failed and the newly imported certificate could not be removed.');
+        throw new AggregateError([trustError, cleanupError],
+          'macOS certificate trust failed and the newly imported certificate could not be removed.');
       }
+      throw trustError;
     }
-    return result;
+    return { code: 0, stdout: '', stderr: '' };
   }
 
   async uninstall(sha1Thumbprint: string): Promise<CommandResult> {
@@ -64,11 +65,9 @@ export class MacosTrustStoreService {
     if (inventory.code !== 0) return inventory;
     const certificate = this.findCertificate(inventory.stdout, sha1Thumbprint);
     if (!certificate) return { code: 0, stdout: '', stderr: '' };
-    const removedTrust = await this.runner.run('security', [
-      'remove-trusted-cert', '-d', '/dev/stdin',
-    ], certificate.toString());
-    if (removedTrust.code !== 0) return removedTrust;
-    await this.macosHelperServiceClient.removeCertificate(this.certificatePayload(certificate));
+    const payload = this.certificatePayload(certificate);
+    await this.macosHelperServiceClient.untrustCertificate(payload);
+    await this.macosHelperServiceClient.removeCertificate(payload);
     return { code: 0, stdout: '', stderr: '' };
   }
 

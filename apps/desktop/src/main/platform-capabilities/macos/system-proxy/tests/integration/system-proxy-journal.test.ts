@@ -17,14 +17,24 @@ describe('SystemProxyJournal', () => {
     directories.length = 0;
   });
 
-  it('persists only version, original and owned', async () => {
+  it('persists the pre-takeover effective proxy separately from original and owned services', async () => {
     const systemProxyJournal = await createJournal(directories);
-    await systemProxyJournal.save({ flags: 1 }, { flags: 3 });
+    const effectiveProxies = { HTTPEnable: 1, HTTPProxy: '127.0.0.1', HTTPPort: 7890 };
+    await systemProxyJournal.save({ services: [] }, { services: [] }, effectiveProxies);
 
     expect(await systemProxyJournal.read()).toEqual({
-      version: 1,
+      original: { services: [] }, owned: { services: [] }, effectiveProxies,
+    });
+  });
+
+  it('persists only original, owned and effective proxies without a schema version', async () => {
+    const systemProxyJournal = await createJournal(directories);
+    await systemProxyJournal.save({ flags: 1 }, { flags: 3 }, {});
+
+    expect(await systemProxyJournal.read()).toEqual({
       original: { flags: 1 },
       owned: { flags: 3 },
+      effectiveProxies: {},
     });
 
     await systemProxyJournal.clear();
@@ -41,7 +51,7 @@ describe('SystemProxyJournal', () => {
     await expect(systemProxyJournal.read()).rejects.toBeInstanceOf(SystemProxyJournalError);
 
     const completeValue = 'x'.repeat(1024 * 1024 + 1);
-    await systemProxyJournal.save({ completeValue }, { flags: 3 });
+    await systemProxyJournal.save({ completeValue }, { flags: 3 }, {});
     expect(await systemProxyJournal.read()).toMatchObject({
       original: { completeValue },
     });
@@ -52,12 +62,12 @@ describe('SystemProxyJournal', () => {
     directories.push(directory);
     const journalPath = path.join(directory, 'journal.json');
     const journal = new MacosSystemProxyJournal(journalPath);
-    await journal.save({ services: [] }, { services: [] });
+    await journal.save({ services: [] }, { services: [] }, {});
 
     expect(JSON.parse(await readFile(journalPath, 'utf8'))).toEqual({
-      version: 1,
       original: { services: [] },
       owned: { services: [] },
+      effectiveProxies: {},
     });
   });
 });

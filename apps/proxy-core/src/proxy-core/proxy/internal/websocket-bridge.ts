@@ -1,7 +1,8 @@
-import type { IncomingMessage } from 'node:http';
+import type { Agent, IncomingMessage } from 'node:http';
 import type { Socket } from 'node:net';
 
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import type { ProtocolUpstreamProxyConfig, SingleUpstreamProxyConfig } from '@interceptor/core-protocol';
 import {
   matchers,
   webSocketSteps,
@@ -11,6 +12,7 @@ import {
 } from 'mockttp';
 // mockttp 在 exports 里开放了 ./dist/*；用它自己的实现才能保证 noProxy 语义与
 // passthrough 隧道、thenPassThrough 规则三者完全一致。
+import { getAgent } from 'mockttp/dist/rules/http-agents';
 import { matchesNoProxy } from 'mockttp/dist/rules/proxy-config';
 import WebSocket, { WebSocketServer, type RawData } from 'ws';
 
@@ -68,32 +70,34 @@ export class WebSocketBridge {
     this.pairs.clear();
   }
 
-  /**
-   * 目标适用上游代理时给出 ws 的 agent 选项，否则返回空对象表示直连。
-   * 只处理 CONNECT 隧道类上游（http/https）：socks 与 PAC 保持直连，
-   * 与上游探活对 PAC 的处理保持一致。
-   */
-  private upstreamAgentFor(url: URL): { agent?: HttpsProxyAgent<string> } {
-    const upstream = this.options.upstreamProxy?.();
+  /** Preserve the existing single-upstream CONNECT handling used by Windows. */
+  private singleUpstreamAgentFor(url: URL, upstream: SingleUpstreamProxyConfig): { agent?: Agent } {
+    const port = url.port.length > 0 ? Number(url.port) : url.protocol === 'wss:' ? 443 : 80;
+    if (matchesNoProxy(url.hostname, port, upstream.noProxy ? [...upstream.noProxy] : undefined)) return {};
+    let protocol: string;
+    try { protocol = new URL(upstream.proxyUrl).protocol; }
+    catch { return {}; }
+    if (protocol !== 'http:' && protocol !== 'https:') return {};
+    return { agent: new HttpsProxyAgent(upstream.proxyUrl) };
+  }
+
+  /** Resolve macOS protocol routes using the existing CONNECT, SOCKS and PAC agents. */
+  private async protocolUpstreamAgentFor(
+    url: URL, socket: Socket, settings: ProtocolUpstreamProxyConfig,
+  ): Promise<{ agent?: Agent }> {
+    const upstream = ProxyUtils.selectUpstreamProxy(settings, url.protocol === 'wss:' ? 'https' : 'http', url.hostname);
     if (!upstream) {
       return {};
     }
     const port = url.port.length > 0
       ? Number(url.port)
       : url.protocol === 'wss:' ? 443 : 80;
-    if (matchesNoProxy(url.hostname, port, upstream.noProxy ? [...upstream.noProxy] : undefined)) {
-      return {};
-    }
-    let protocol: string;
-    try {
-      protocol = new URL(upstream.proxyUrl).protocol;
-    } catch {
-      return {};
-    }
-    if (protocol !== 'http:' && protocol !== 'https:') {
-      return {};
-    }
-    return { agent: new HttpsProxyAgent(upstream.proxyUrl) };
+    const agent = await getAgent({
+      connection: socket, protocol: url.protocol === 'wss:' ? 'wss:' : 'ws:',
+      hostname: url.hostname, port, tryHttp2: false,
+      proxySettingSource: { proxyUrl: upstream.proxyUrl, ...(upstream.noProxy ? { noProxy: [...upstream.noProxy] } : {}) },
+    });
+    return agent ? { agent } : {};
   }
 
   private async handle(
@@ -105,13 +109,28 @@ export class WebSocketBridge {
     const protocols = ProxyUtils.readProtocols(
       request.headers['sec-websocket-protocol'],
     );
+    let agentOptions: { agent?: Agent } = {};
+    try {
+      const upstream = this.options.upstreamProxy?.();
+      if (upstream) {
+        agentOptions = 'proxyUrl' in upstream
+          ? this.singleUpstreamAgentFor(url, upstream)
+          : await this.protocolUpstreamAgentFor(url, socket, upstream);
+      }
+    } catch (error) {
+      const failure = error instanceof Error ? error : new Error('WebSocket upstream selection failed.');
+      this.options.onUpgradeFailed?.(request.id, failure);
+      this.options.onError?.(failure);
+      socket.destroy();
+      return;
+    }
     const options: WebSocket.ClientOptions = {
       headers: ProxyUtils.forwardedHeaders(request.headers),
       perMessageDeflate: false,
       autoPong: false,
       skipUTF8Validation: true,
       rejectUnauthorized: !this.options.ignoreCertificateErrors(url.hostname),
-      ...this.upstreamAgentFor(url),
+      ...agentOptions,
     };
     const upstream = protocols.length > 0
       ? new WebSocket(url, protocols, options)
