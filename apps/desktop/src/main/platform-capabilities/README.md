@@ -96,6 +96,8 @@ INTERCEPTOR_NATIVE_SERVICE_HELPER_PATH="$PWD/apps/desktop/out/Interceptor-darwin
 | `system-proxy.replace` | expectedSnapshot、replacementSnapshot | 条件写入并回读后的完整快照 |
 | `certificate.import` | 公开DER的base64、SHA-256 | 精确指纹及present=true |
 | `certificate.remove` | 同一公开DER及SHA-256 | 精确指纹及present=false |
+| `certificate.trust` | 同一公开DER及SHA-256 | 自动尝试后规则已恢复的trusted=true，或明确需前台授权 |
+| `certificate.untrust` | 同一公开DER及SHA-256 | 自动尝试后规则已恢复的trusted=false，或明确需前台授权 |
 
 - 同一服务进程按独立受保护配置提供两个Unix socket。生产`service.sock`每个连接核验内核peer audit token、UID、精确CDHash及canonical可执行路径；开发`development.sock`只核验内核UID，不绑定源码、项目目录、Electron签名或调试状态。协议不接受客户端自报环境切换鉴权。
 - 生产`status`写资格与所有写命令另外验证完整App资源、内嵌代码、全部架构和Hardened Runtime，拒绝可调试或可注入进程；普通公开代理读取不重复扫描整包资源。开发允许获准用户的本地代码调用固定能力，不保证隔离同用户恶意程序。App可以由用户拥有，不要求root拥有或移动整个App。
@@ -107,11 +109,17 @@ INTERCEPTOR_NATIVE_SERVICE_HELPER_PATH="$PWD/apps/desktop/out/Interceptor-darwin
 
 ### 前台证书信任入口
 
-Main通过`MacosHelperServiceClient.trustCertificate()`/`untrustCertificate()`启动已部署的同一helper，固定命令为`certificate.trust`/`certificate.untrust`。stdin只接收`{ certificate: <公开DER base64>, sha256: <大写SHA-256> }`，限制256KiB输入、64KiB DER，不接受文件路径、私钥、shell或调用方指定的trust域；stdout返回`{ sha256, trusted }`并由客户端核验。
+Main通过`MacosHelperServiceClient.trustCertificate()`/`untrustCertificate()`先请求常驻helper的同名固定操作。helper只尝试一次临时规则路径；明确返回`authorization-required`后才启动同一已部署helper的前台CLI。两端只接收`{ certificate: <公开DER base64>, sha256: <大写SHA-256> }`，限制256KiB输入、64KiB DER，不接受路径、私钥、shell或调用方指定的trust域；返回`{ sha256, trusted }`并由客户端核验。
+
+[native-authorization.swift](macos/trust-store/native-authorization.swift)只操作`com.apple.trust-settings.admin`：原规则必须为已支持的OR委托结构，只增加`is-root`条件，不改共享规则。写入前将`original/temporary`原样保存为固定root目录的0600恢复记录并同步文件/目录；证书操作后恢复原规则，回读仅忽略系统维护的`created/modified`。写入或操作失败也须完成恢复才能转前台；规则冲突、恢复失败、鉴权/协议错误和通信状态不明不回退。
+
+helper启动时尝试恢复遗留记录，失败不阻止系统代理恢复，但证书授权保持报错；前台CLI也拒绝未完成恢复。卸载helper先停服务再恢复规则，成功后才删除组件。该过程不是系统级原子事务，不能消除临时策略对其他root进程的可见窗口。13.0/14.0源码无后续硬保护不等于实机通过，15.0及之后部分实现直接保护该right；不按版本号放行。
 
 前台helper只在当前登录用户GUI会话中执行，激活自身后调用Security公开API修改`.admin`并回读。它不具备常驻服务的root权限，系统确认由Security框架负责；Main不执行`security add-trusted-cert/remove-trusted-cert`、不请求原生提权、不接触密码。取消以`authorization-cancelled`返回，Main仅撤回本次新增CA；已有CA保留，撤销trust失败时不删系统证书。
 
-不能把安装helper的授权等同于修改admin trust的授权。本机SIP开启时root原生授信实测返回`-60007`；不关闭SIP、修改授权数据库、添加私有entitlement或降到user trust。后台socket不提供trust写命令，也不保留失败回退。前台路径的验证不等于常驻helper免重复确认；开发/生产授信、smoke及业务E2E的当前结果与缺口见[验证记录](../../../../../architecture/HANDOVER.md#verification)。
+证书写入结果不确定与规则恢复失败分别返回`certificate-state-uncertain`、`authorization-restoration-failed`；超时、连接中断、无效回复或回读失败也不启动前台授权。Main保留公开CA及本地材料用于后续确认/恢复，不能把“规则已恢复”当成“证书一定未写入”而删除证书。
+
+不能把安装helper的授权等同于修改admin trust的授权。本机SIP开启时原始root授信返回`-60007`；规则同值回写另返回`-60005`且原规则不变。用户仅授权上述固定规则的临时尝试与还原，不关闭SIP、添加私有entitlement或降到user trust。自动路径不可用仍需系统确认，代码检查不替代对应版本实机结果；最新范围见[验证记录](../../../../../architecture/HANDOVER.md#verification)。
 
 ## 首次启动部署
 

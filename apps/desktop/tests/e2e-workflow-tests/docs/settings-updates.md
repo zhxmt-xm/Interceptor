@@ -4,6 +4,8 @@
 
 ## `settings.certificates.helper-trust`（macOS，前台路径已验）
 
+2026-09-20新增目标（待验）：每次trust/untrust先通过常驻helper尝试临时root授权并恢复规则；成功不启动前台进程，明确返回`authorization-required`才走原生用户确认。恢复失败或状态不明停止，不通过回退掩盖。保存Main实际路径日志，操作前后读取`com.apple.trust-settings.admin`并比较除`created/modified`外的完整规则；产品不得接收测试指定规则或制造失败的参数。下列旧Green不覆盖新增目标。
+
 1. 创建独立profile、trace及系统Root/admin trust基线，启动真实Electron并确认helper/listener就绪，记录helper PID及公开能力；既有CA不作为输入或清理目标。
 2. 经Settings Certificates真实Generate创建本轮CA，读取公开指纹并确认基线不存在；点击Install，要求系统信任由已部署helper的前台入口完成。若macOS要求确认，验证Main子进程为固定helper的`certificate.trust`，用户在系统窗口亲自确认；成功后产品显示可Uninstall，不修改Preload/Main、原生返回值或授权策略。
 3. macOS fixture核对本轮Main的进程代际，不允许Main直接执行`security add-trusted-cert/remove-trusted-cert`。前置Red若出现旧路径，只取消精确属于本轮CA的唯一原生窗口以保护宿主，并明确失败，不能把取消视作安装成功；不得操作无关授权窗口。
@@ -15,6 +17,10 @@
 现行前台方案：开发成功/取消各1/1；同一生产产物成功授信/撤销及取消2/2，Main/Core、前台helper、8888、代理与证书恢复已验。证据为`/tmp/interceptor-macos-helper-trust-20260920-production/`及同前缀`-results.json`。常驻helper免重复确认目标仍`blocked`，此Green不代表完整业务组或该目标完成；产物范围见[Handover](../../../../../architecture/HANDOVER.md#verification)。
 
 ## `settings.certificates.cancel-trust`（macOS，前台helper路径已验）
+
+新增目标的前置/最终验证：在系统拒绝自动修改时，真实取消现有前台helper窗口；产品先清除本轮CA，再断言恰有一次自动失败后的回退日志、原授权规则和Root/admin trust均恢复。系统自动成功而无窗口时不能伪造取消场景或计取消Green。
+
+2026-09-20前置Red：`/tmp/interceptor-macos-automatic-trust-20260920-e2e-red/`在原生取消、CA清理及规则恢复后，精确失败于自动回退日志为0而非1；Main64346/Core64357正常退出。新版组件尚未核准，production smoke在Renderer前等待超时，最终Green待用户在场；不复用下方旧前台路径结果。
 
 1. 创建独立profile、trace和系统Root/admin trust基线，启动真实Electron并确认常驻helper/listener就绪；通过Settings Generate创建本轮CA并记录公开指纹。
 2. 点击Install，macOS fixture只认本轮Main的固定helper子进程及`certificate.trust`参数，核验Main/helper/SecurityAgent的进程代际和唯一授权窗口；不再以Main的`security`子进程冒充helper。

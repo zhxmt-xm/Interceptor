@@ -146,7 +146,7 @@ Traffic Lab使用显式`127.0.0.1:8888`产生可观测H1场景。
 | Renderer / Preload | 发送 Enable、Restore、Status 意图并显示结果 | 直接访问系统代理、journal 或 native helper |
 | Electron Main | 唯一产品编排者；顺序执行代理操作、维护 journal、同步 upstream、决定退出是否继续 | 把完整代理快照发给 Renderer 或日志 |
 | Proxy Core UtilityProcess | 监听8888并按 Main 下发的 upstream 转发 | 修改系统代理、读取 journal、决定恢复目标 |
-| native helper | Windows执行一次原生读写；macOS常驻服务分别认证生产App/开发UID，执行固定代理条件替换和公开证书库命令；同一helper的前台入口执行admin trust及系统确认 | 保存第二份业务original/journal、决定接管时机、接收CA私钥或通用shell |
+| native helper | Windows执行一次原生读写；macOS常驻服务认证生产App/开发UID，执行固定代理/公开证书命令及证书授权尝试；同一helper的前台入口负责回退后的系统确认 | 保存第二份系统代理original/journal、决定接管时机、接收CA私钥或通用shell |
 | E2E runner | 在产品外记录测试进程 PID+启动时间，并在失败后保护宿主 | 把测试进程身份写入产品 journal 或协议 |
 
 Windows 使用 `%LOCALAPPDATA%/Interceptor/system-proxy/journal.json`，现有`version/original/owned`契约不变。
@@ -158,7 +158,7 @@ Main 内的 `SystemProxyOperationQueue` 只是一条内存 Promise FIFO：启动
 排空已接受命令，再排入最终 Restore。完整参与者、当场比较表、正常启动、崩溃重启、正常退出、启动失败与
 Core 故障时序见 [../features/settings.md](../features/settings.md) §3.2。
 
-macOS Main在代理恢复前调用`PlatformCapabilitiesService.prepareNativeComponents()`，按真实`app.isPackaged`选择生产或开发socket。首次部署/新增授权由同包helper请求系统确认，只部署helper、root配置和launchd；App不搬迁。开发按核准UID复用，生产保持App身份/资源/运行时检查，不失败回退。证书导入/删除走常驻服务，trust/untrust由同一helper的前台入口执行Security API与系统确认，CA私钥不交给helper。前台路径不代表常驻helper免系统确认。协议见[平台模块](../../apps/desktop/src/main/platform-capabilities/README.md)，验证结果及范围见[Handover](../HANDOVER.md#verification)。
+macOS Main在代理恢复前调用`PlatformCapabilitiesService.prepareNativeComponents()`，按真实`app.isPackaged`选择生产或开发socket。首次部署/新增授权由同包helper请求系统确认，只部署helper、root配置和launchd；App不搬迁。开发按核准UID复用，生产保持App身份/资源/运行时检查，不失败回退。证书导入/删除走常驻服务；trust/untrust自动尝试只操作固定授权规则，持久恢复记录由helper独占，不复用或覆盖Main的系统代理journal。仅确认规则恢复后的`authorization-required`转同一helper前台入口，鉴权或恢复失败不转交互授权，CA私钥不交给helper。当前新增路径的代码检查及实机缺口见[Handover](../HANDOVER.md#verification)，协议见[平台模块](../../apps/desktop/src/main/platform-capabilities/README.md)。
 
 CaptureStatus的recording事实不直接等于系统路由就绪；Renderer接收记录事件后确认代理owned且未失权，Stop、代理失权或Core换代使迟到查询失效。Core故障期间不会仅因新listener已记录而提前显示Recording；Main业务队列和原生条件写成功仍是代理接管依据。
 

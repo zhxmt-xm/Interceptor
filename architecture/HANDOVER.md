@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `6006bdfe`
+> Tracked commit: `7e9bd3b3`
 > Branch: `main`
 > 最后更新：2026-09-20
 
@@ -9,10 +9,11 @@
 - [ ] **blocked · VS Code Copilot MCP互操作**：Host基础MCP协议与产品要求的`2026-07-28`不匹配；需Host支持后按[MCP矩阵](features/mcp.md)复验。
 - [ ] **待验证 · HTTP Execute edited wire correctness**：H1/H2的`Content-Length`、`content-encoding`、`transfer-encoding`与framing矩阵由原负责session继续。[规格](../apps/desktop/tests/e2e-workflow-tests/docs/breakpoints.md#breakpoints-execute-edited)。
 - [ ] **进行中 · macOS系统代理与E2E验收**：第4步业务E2E已通过3/9；尚未整体完成。
-	- 当前执行：生产smoke及现行授信路径已验；继续剩余6条业务流程，随后历史CA清理、卸载/失败rollback。
+	- 当前执行：准确提交树270 passed/2 Windows native skipped、typecheck、package/audit已通过，准备保存本item中间checkpoint。原生核准窗口仍不可见，代码完成 · 待E2E，不再重复授权。
 	- 授权目标：权限操作统一由helper承担；常驻helper复用证书信任授权尚未解决，前台路径Green不代表目标完成。
-	- 授权范围：用户已允许恢复正常E2E及权限操作，系统确认仍由用户本机完成；Windows现行路径与业务断言保持。
-	- 提交边界：用户已明确允许先保存本item中间进度；余6条业务E2E及阻塞保留。暂停UI、独立package骨架和证书目录迁移不混入。
+	- 授权范围：用户已允许权限验证，但当前无法回应系统确认；不代输凭据、不连续重试，Windows现行路径与业务断言保持。
+	- 新授权边界：只评估/尝试`com.apple.trust-settings.admin`，原规则必须恢复后才能转交互授权；不改SIP、共享认证规则或使用私有entitlement。
+	- 提交边界：沿用用户“可以先提交代码”的中间进度授权及本次逐项提交指令，只保存本item的自动trust尝试、恢复和对应测试/文档；余6条E2E及阻塞保留，暂停UI、package骨架和证书迁移排除并原样保留。
 	- 实现约束：自有数据直接使用当前结构，不加版本分支、兼容层或迁移代码。
 	- 上游进度：基础ClashX链式转发已验；防自环7 Red→同组32/32，typecheck、重打包和audit通过；外部改写等尾项保留。
 	- 已完成：
@@ -20,7 +21,7 @@
 		- helper开发/生产双入口复用已验，阶段提交`6006bdfe`。
 		- 既有E2E基线：同步前65/65；同步后7条定向通过，不代表最新全量通过。
 		- 前台helper成功授信/撤销、取消回滚真实E2E各1/1；开发组件已核准。
-		- 当前生产包smoke 1/1；同产物helper授信/撤销及取消2/2；TLS、H2、gRPC业务3/3。
+		- 前一阶段产物smoke 1/1、helper授信/撤销及取消2/2、TLS/H2/gRPC业务3/3；不覆盖新增临时规则路径。
 		- 准确提交树：Desktop242 passed/2 Windows native skipped、Core上游36/36、协议25/25，两workspace类型通过；同源码Core全组既有107/107。
 	- 待完成：
 		- 第4步余6条：TLS passthrough跳转、TLS兼容性、MITM跨进程持久化。
@@ -33,11 +34,13 @@
 	- 角色：
 		- Main：任务编排、Core配置同步、状态通知与退出协调。
 		- Core：listener、代理转发、TLS/MITM。
-		- 常驻helper：系统代理、公开CA导入/删除。
-		- 前台helper：trust/untrust及系统确认；不等于免授权。
+		- 常驻helper：系统代理、公开CA导入/删除、自动trust尝试及原规则恢复。
+		- 前台helper：自动路径明确不可用且规则恢复后的trust/untrust及系统确认；不等于免授权。
 		- 用户：系统要求的Touch ID/密码确认；E2E不得代输。
 	- 阻塞/暂停：
-		- 证书免重复确认`blocked`：本机trust规则拒绝root免认证，公开API不能接收安装时的授权；不改SIP/授权库，不继续批量弹窗。
+		- 新版组件核准`blocked`：本轮SecurityAgent已创建260×308窗口，但`visible/frontmost=false`；核验Main/helper归属后仅执行显示/前置仍未改变状态，两个观察场景均超时。未读取输入/点击授权，锁屏状态未确认；不以旧Green代替。
+		- TLS passthrough导航续验失败于安装30秒等待；本轮CA随后留在系统，已按失败截图精确指纹经helper撤销/删除，其他证书与代理保持、App已退、8888释放。证据`/tmp/interceptor-macos-navigation-20260920-resumed/recovery.json`，不计Green。
+		- 本机15.8自动改trust规则受系统保护：同值回写`-60005`且规则未变；源码13.0/14.0无后续硬保护，15.0/26.0有，当前兼容目标按实际结果回退，不改SIP或共享认证规则。
 		- Agent body-messages发现清单与当前registry不一致；未改共享断言，仍待处理。
 		- ClashX外部改写driver三次未通过，停在原生菜单切换；宿主已恢复，待人工联调，不再自动重试。
 		- [上游证据与CA清点](features/settings.md#macos-effective-upstream)。
@@ -88,7 +91,8 @@
 - 用户按开源项目维护，明确不加入付费Apple Developer Program；不能将购买Developer ID签名/公证资格作为当前开发和E2E的前提，不推进依赖该资格的新helper方案。免费本地构建或ad-hoc签名不等于Apple公证，也不自动消除系统操作授权。现有tag release签名门禁仍保留，若调整开源分发策略须另行确认，不在本轮改发布配置。
 - 开发实例、真实Electron E2E和packaged smoke共用`8888`及系统代理，不能并行；测试须由对应平台宿主guard管理进程和系统代理恢复。
 - 原生Open/Save、证书授权等流程需要可交互桌面；UAC提示由本机用户处理，不能无人值守代输凭据。
-- 历史约束要求保留stash `wip: Windows App WVD gateway bypass`；2026-09-19同步前实际stash列表为空，未删除用户stash。保护备份`5baff562`、`0920afba`保留；本次排除项收在`938ee726`，只用于提交后原样恢复。
+- 历史约束要求保留stash `wip: Windows App WVD gateway bypass`；2026-09-19同步前实际stash列表为空，未删除用户stash。保护备份`5baff562`、`0920afba`保留；本次`938ee726`中的排除项已原样恢复、19项文件状态核对一致，stash保留且勿重复apply。
+- 自动trust中间提交的19项排除修改临时保存于`f2875e79`，验证清单位于`/tmp/interceptor-macos-auto-trust-checkpoint-20260920-aiEFuE/preserved.json`；提交后原样恢复，不重复apply其他stash。
 
 ## Verification
 
@@ -96,14 +100,20 @@
 | --- | --- | --- |
 | 证书路径迁移 | 本地前后70/70；typecheck通过 | 本次不提交；入口/类型整理后置 |
 | macOS上游 | 原生37/37、接管/journal32/32、Core上游36/36；ClashX基础链式转发Green | 外部改写driver失败；停止/恢复待联调 |
-| 准确提交树 | Desktop242 passed/2 Windows native skipped；Core上游36/36；协议25/25；Desktop/Core类型通过 | Windows原生未复验；未重跑全量E2E |
+| 前一checkpoint `7e9bd3b3` | Desktop242 passed/2 Windows native skipped；Core上游36/36；协议25/25；Desktop/Core类型通过 | Windows原生未复验；不替代本次授权路径验收 |
+| 本次准确提交树 | 排除暂停项后Desktop270 passed/2 Windows native skipped及typecheck通过，含native44/44、隔离恢复15/15、信任库27/27；目标workflow发现2项 | root实际规则修改/还原未验；13/14自动成功及真实故障恢复未验 |
+| 本次提交树产物 | package/audit通过，1487文件、339499911字节；包内helper与已测原生构建一致 | 本产物未再启动smoke/E2E；前一含暂停项产物的核准观察失败，新版组件仍outdated |
 | 既有产物 | 防自环修正后package/audit通过；生产smoke 1/1 | 产物含本地暂停项，不是此次精确提交树重打包；整体item仍待验收 |
 | macOS E2E | 无授权8/8；生产helper授信2/2；TLS/H2/gRPC业务3/9 | 业务组余6条；Agent旧清单及macOS View待验 |
-| 变更报告 | 本机Edge完成1320px/390px预览，图片及红框正常，无折叠或横向溢出 | 默认Playwright浏览器缺失，未安装；未改Renderer或设计基准 |
-| 最后宿主复核 | 证书集恢复；无App/前台helper残留；8888释放 | 不代替新流程验收或历史CA清理 |
+| 变更报告 | 当前内容用本机Edge完成1320px/390px截图检查，图片/红框正常，无折叠或横向溢出 | 默认Playwright浏览器缺失，未安装；未改Renderer或设计基准 |
+| 最后宿主复核 | 本次续验后代理、Root/admin trust、完整授权规则等于新基线；App/前台helper退出、8888释放、无授权恢复记录；本轮未改产品 | 新版两入口仍outdated；不代替新流程验收或历史CA清理 |
 
 - 旧版本Green、Windows skip不算当前验收通过。
 - 提交树复验文件：`/tmp/interceptor-macos-checkpoint-20260920-{desktop,upstream}.json`；报告预览同前缀`report-*.png`。
+- 本次兼容证据：`/tmp/interceptor-macos-automatic-trust-20260920-*`，包括`client/transaction/uncertain-{red,green}.json`、`desktop-final-green.json`、`e2e-red/`、`production-smoke/`、`deployment.json`、`smoke-failed-host.json`、`final-host.json`及`report-{1320,390}.png`。
+- 最新续验：`/tmp/interceptor-macos-automatic-trust-20260920-resume-KTYw7z/`，保存`host-before.json`、`smoke-results.json`、`production-smoke/`（含trace）、`native-preparation-log.json`和`smoke-failed-host.json`；结果为failed/核准blocked，不计Green。
+- 窗口定位：`/tmp/interceptor-macos-authorization-window-20260920-VaMrUU/`，保存两轮smoke、`native-window-observations.json`、`visible-native-window-observations.json`及宿主基线；`revealed=true`仅指已发送显示/前置请求，实际窗口仍报告不可见。
+- 本次准确提交树：`/tmp/interceptor-macos-auto-trust-checkpoint-20260920-aiEFuE/`保存`desktop-green.json`、排除项清单及`report-{1320,390}.png`；报告宽窄屏、图片、红框和展开状态检查通过。
 - [本轮结果](features/settings.md#macos-effective-upstream) · [历史明细](features/settings.md#handover-verification-history)。
 
 ### 恢复命令
@@ -114,11 +124,11 @@
 npm exec --workspace @interceptor/desktop -- playwright test --config tests/e2e-workflow-tests/playwright.config.ts workflows/settings/macos-upstream-proxy.workflow.ts --grep 'preserves the external system upstream' --output=/tmp/interceptor-macos-upstream-rerun
 ```
 
-用户回来后使用当前已审计产物继续smoke和证书验收；代码改变则先重新package/audit：
+用户回来后先核准当前已审计的组件/App，再复跑smoke和同产物证书E2E；只在系统窗口确认，不在聊天输入凭据。代码改变则先重新package/audit：
 
 ```sh
-npm run test:smoke --workspace @interceptor/desktop -- --output=/tmp/interceptor-macos-helper-trust-20260919-foreground-smoke-retry
-INTERCEPTOR_E2E_MACOS_APP_PATH="$PWD/apps/desktop/out/Interceptor-darwin-x64/Interceptor.app" npm exec --workspace @interceptor/desktop -- playwright test --config tests/e2e-workflow-tests/playwright.config.ts workflows/settings/macos-certificate-helper-trust.workflow.ts --output=/tmp/interceptor-macos-helper-trust-20260919-foreground-e2e
+npm run test:smoke --workspace @interceptor/desktop -- --output=/tmp/interceptor-macos-automatic-trust-20260920-production-smoke-retry
+INTERCEPTOR_E2E_MACOS_APP_PATH="$PWD/apps/desktop/out/Interceptor-darwin-x64/Interceptor.app" PLAYWRIGHT_JSON_OUTPUT_FILE=/tmp/interceptor-macos-automatic-trust-20260920-e2e-green-results.json npm exec --workspace @interceptor/desktop -- playwright test --config tests/e2e-workflow-tests/playwright.config.ts workflows/settings/macos-certificate-helper-trust.workflow.ts --reporter=line,json --output=/tmp/interceptor-macos-automatic-trust-20260920-e2e-green
 ```
 
 ## References

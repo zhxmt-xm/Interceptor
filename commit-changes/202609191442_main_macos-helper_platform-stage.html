@@ -44,14 +44,17 @@
       <h1>提交：macOS Helper、上游代理与平台适配</h1>
       <p class="time">时间：2026-09-19 14:42 CST（本地时间）</p>
       <p class="time">追加改动：2026-09-20 00:51 CST</p>
+      <p class="time">追加改动：2026-09-20 09:40 CST</p>
       <p>将 macOS 系统代理和公开证书操作接入随 App 交付的常驻 helper，分离开发与生产准入；平台原生差异集中到 Main 和 E2E driver，保留两端共同的业务流程。</p>
-      <p>本次续作加入接管前上游配置、按协议转发与前台证书信任入口；不修改系统授权数据库或 SIP，不改变 Windows 原生操作。</p>
+      <p>续作加入接管前上游配置、按协议转发与前台证书信任入口。本次进一步按用户授权加入固定 trust 规则的临时尝试和恢复，系统拒绝时转现有用户确认；不改变 SIP、共享认证规则或 Windows 原生操作。</p>
     </header>
     <section>
       <h2>Main</h2>
       <table>
         <thead><tr><th>位置</th><th>改前</th><th>改后</th><th>原因与影响</th></tr></thead>
         <tbody>
+          <tr><td data-label="位置"><code>macos/trust-store/native-authorization.swift</code>、<code>native-certificates.swift</code> 与 <code>helper-client.ts</code></td><td data-label="改前">每次 trust/untrust 都直接进入前台 helper，由用户处理系统确认。</td><td data-label="改后">常驻 helper 先尝试仅给固定 trust 规则增加 root 条件，操作后恢复原规则；明确恢复后才允许单次前台回退。</td><td data-label="原因与影响">允许可用系统省去确认；受保护规则仍走默认授权。固定 root 私有记录支持中断恢复；规则恢复失败或证书结果不确定时停止，保留 CA，不再次授权或盲删证书。不提供任意规则写入。</td></tr>
+          <tr><td data-label="位置"><code>macos/system-proxy/native-service.swift</code> 与 <code>installation/native-installation.swift</code></td><td data-label="改前">helper 不维护证书授权规则的临时状态。</td><td data-label="改后">启动时处理遗留恢复，证书授权失败不妨碍系统代理恢复；卸载停服务后先恢复规则，再删除组件。</td><td data-label="原因与影响">避免只靠正常返回时清理；恢复失败保留记录与组件。该机制不能消除全机临时规则的并发窗口，也不承诺所有 macOS 都允许规则修改。</td></tr>
           <tr><td data-label="位置"><code>src/main/platform-capabilities/</code>、<code>main.ts</code> 与 Core 调用方</td><td data-label="改前">系统代理、trust、AppContainer 和 client-app 原生入口分散在 Main 多个目录。</td><td data-label="改后">统一 <code>PlatformCapabilitiesService</code> 入口、DTO 和错误类型，Windows/macOS 实现分别归平台目录，更新原生路径调用方。</td><td data-label="原因与影响">Main 继续负责业务编排、代理 FIFO 和退出恢复；Core 缓存与事件不搬迁。Windows 原生命令、数据契约和产物名称保留。</td></tr>
           <tr><td data-label="位置"><code>macos/installation/</code> 与 Main 启动</td><td data-label="改前">macOS 代理依赖一次性授权工具，不同进程需要重新申请网络写权限。</td><td data-label="改后">首次启动核准随包 helper，部署 root 保护的组件、配置和 launchd；后续核对身份并复用，失败按事务恢复已有组件。</td><td data-label="原因与影响">App 留在原位置，不另装完整 App <code>.pkg</code>，不下载独立 helper。只有缺失或身份不匹配才请求部署，未知或损坏状态不覆盖。</td></tr>
           <tr><td data-label="位置"><code>macos/system-proxy/native-service*.swift</code>、<code>helper-client.ts</code></td><td data-label="改前">缺少跨启动复用的特权服务和独立开发准入。</td><td data-label="改后">同一服务提供 <code>service.sock</code> 与 <code>development.sock</code>；生产核验准确 App 路径/CDHash、完整资源和运行时，开发信任核准的本机 UID。</td><td data-label="原因与影响">Forge、HMR、rs 和业务 E2E 无需按每次源码构建重新核准。开发授权允许该 UID 的本地程序使用固定能力，不宣称隔离同用户恶意代码；请求不能降级生产鉴权。</td></tr>

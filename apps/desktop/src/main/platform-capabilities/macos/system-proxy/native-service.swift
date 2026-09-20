@@ -75,6 +75,7 @@ final class MacosHelperService {
 
     private static func run(services: [MacosHelperService]) throws {
         signal(SIGPIPE, SIG_IGN)
+        if geteuid() == 0 { MacosSystemCertificateStore.recoverAuthorizationRule() }
         do {
             for service in services { try service.start() }
         } catch {
@@ -305,7 +306,7 @@ final class MacosHelperService {
                 value = [
                     "processId": getpid(), "privileged": geteuid() == 0,
                     "clientAuthorizedForWrites": (try? requireWriteClient(client: client)) != nil,
-                    "capabilities": ["status", "system-proxy.read", "system-proxy.read-effective", "system-proxy.replace", "certificate.import", "certificate.remove"],
+                    "capabilities": ["status", "system-proxy.read", "system-proxy.read-effective", "system-proxy.replace", "certificate.import", "certificate.remove", "certificate.trust", "certificate.untrust"],
                 ]
             case "system-proxy.read":
                 value = try SystemProxyHelper.readSystemProxySnapshot()
@@ -325,6 +326,14 @@ final class MacosHelperService {
                 value = request.operation == "certificate.import"
                     ? try MacosSystemCertificateStore.importCertificate(certificate)
                     : try MacosSystemCertificateStore.removeCertificate(certificate)
+            case "certificate.trust", "certificate.untrust":
+                guard let certificate = request.certificate else { throw MacosHelperServiceError.invalidRequest }
+                try requireWriteClient(client: client)
+                try validateClientResources(client)
+                guard geteuid() == 0 else { throw MacosHelperServiceError.authorizationRequired }
+                value = request.operation == "certificate.trust"
+                    ? try MacosSystemCertificateStore.trustCertificateAutomatically(certificate)
+                    : try MacosSystemCertificateStore.untrustCertificateAutomatically(certificate)
             default:
                 throw MacosHelperServiceError.unsupportedOperation
             }

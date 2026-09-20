@@ -208,7 +208,32 @@ macOS只将匹配的公开证书经stdin交给系统验证，不生成临时证�
 - 当前差距：代理与公开CA存取使用常驻root服务；trust/untrust仍需前台helper及系统独立认证。
 - 本机复核：macOS 15.8、SIP enabled；`com.apple.trust-settings.admin`要求entitlement或`authenticate-admin`，后者`allow-root=false`、`timeout=0`。
 - 公开API限制：`SecTrustSettingsSetTrustSettings`/`RemoveTrustSettings`不接收`AuthorizationRef`；[Apple实现](https://github.com/apple-oss-distributions/Security/blob/main/OSX/libsecurity_keychain/lib/TrustSettings.cpp)在每次写入中新建授权对象。不能直接沿用helper安装授权。
-- 结论：常驻免重复确认目标保留`blocked`；本轮只读核查，无系统授权/配置变更，不采用私有API、私有entitlement或安全策略修改。
+- 前一阶段已验前台helper；用户于2026-09-20明确授权下面的临时规则尝试与受控回退，不扩大到SIP、共享认证规则或私有entitlement。
+
+##### 临时规则尝试与受控回退（代码完成，待实机验证）
+
+- 常驻helper的固定`certificate.trust/untrust`接收现有公开DER/SHA-256，不增加任意规则名、路径或命令参数；Main仍只编排，Windows不变。
+- 每次只尝试一次：保存原规则及临时规则的root私有恢复记录，只给`com.apple.trust-settings.admin`增加root通过条件，执行精确CA操作，然后恢复原规则并回读。
+- 原规则语义恢复后才能报告成功或`authorization-required`；后者让typed client只启动一次现有前台helper请求系统确认。鉴权、参数、通信状态不明、规则恢复失败不得转交互路径。
+- 规则恢复与证书写入结果分别表达：`certificate-state-uncertain`保留可能已写入的CA，不重复授信或盲删公开证书；超时、连接中断、无效回复、恢复或回读失败同样保留材料。明确拒绝或用户取消仍只撤回本次新增CA。
+- helper重启先处理未完成恢复；原规则、当前临时规则不匹配时不覆盖外部修改。证书操作暂停，系统代理恢复能力仍保留；不能只靠`defer/finally`应对崩溃。
+- 回读比较完整规则内容，仅排除`created/modified`两项系统维护时间；不修改`authenticate-admin`、`is-root`等共享规则，不改变用户信任域，不承诺临时写入没有全机并发窗口。
+- Apple发行清单的源码核对：13.0/14.0未出现后续的硬编码保护，不能据此替代对应机器实测；15.0/26.0的`authorization_right_set()`在root判断前拒绝该规则，26.0的`_find_rule()`还直接使用内置规则。兼容按实际尝试结果，不按版本号猜测。
+- 本机15.8原规则同值回写返回`-60005`，完整规则不变；`authd`日志明确禁止更新该right。探测UID为501，不冒称root实测。来源与版本commit在`/tmp/interceptor-trust-rule-compatibility-20260920.json`，原生结果与日志为`/tmp/interceptor-trust-rule-probe-20260920{,-authd}.json`。
+
+前置客户端6 Red→6 Green、隔离原生恢复8 Red→14/14 Green；对应文件为`/tmp/interceptor-macos-automatic-trust-20260920-{client,transaction}-{red,green}.json`。真实前置E2E已在`e2e-red/`保存，精确失败于回退日志缺失；此前原生取消、CA/授权规则恢复完成，Main64346/Core64357正常退出。后续补不确定结果8 Red→8 Green，避免恢复失败或通信中断后删除可能已受信任的CA；证据同前缀`uncertain-{red,green}.json`。最终`desktop-final-green.json`为270 passed/2 Windows native skipped，含native44/44、隔离恢复15/15、信任库27/27，typecheck通过。旧系统自动成功与真实异常恢复需独立证据，不能用当前前台Green代替。
+
+新版package/audit通过：1487文件、339499075字节；恢复/安装入口最后25/25通过。生产smoke在`/tmp/interceptor-macos-automatic-trust-20260920-production-smoke/`等待Renderer120秒超时，未进入证书业务。只读`deployment.json`确认生产/开发均`outdated`、新旧helper字节不同；旧root helper86004保留。`host-before.json`与`smoke-failed-host.json`确认代理、Root/admin trust及完整授权规则保持，App/前台helper无残留、8888释放。用户暂不在场，不再次触发核准；代码完成 · 待E2E，恢复命令见[Handover](../HANDOVER.md#恢复命令)。本轮没有关闭SIP、放宽本机trust规则或改共享认证规则。
+
+不确定结果防护后的最终package/audit：1487文件、339499929字节。最终smoke未运行，前一产物核准失败和恢复证据保留；当前构建包含仍在本地的暂停UI及证书目录迁移，不能当作排除这些修改后的准确提交树验收。本轮尚未commit/push。
+
+2026-09-20用户继续后的最终产物续验：原生构建缓存命中、包内helper及Main与现有构建逐字节一致，artifact audit复验仍为1487文件、339499929字节。独立`/tmp/interceptor-macos-automatic-trust-20260920-resume-KTYw7z/`保存新宿主基线、Playwright JSON/trace及原生准备日志；production smoke仍在Renderer创建前等待120秒超时，尚未进入证书业务。authd日志只确认`system.privilege.admin`授权已发起，未取得系统窗口是否可见的人工反馈；用户当前无法回应，不连续重试。`smoke-failed-host.json`确认完整代理、Root/admin trust及完整授权规则等于新基线，App/前台helper无残留、8888释放、无待恢复规则记录；production/development仍`outdated`，旧root helper86004保留。新版成功/取消E2E未执行；本轮仅更新交接记录，未改产品或commit/push。
+
+源码矩阵来自Apple的`distribution-macOS`发行清单，不是四平台实机结果：[13.0 Security](https://github.com/apple-oss-distributions/Security/blob/e4ea024c9bbd3bfda30ec6df270bfb4c7438d1a9/OSX/authd/server.c)、[14.0 Security](https://github.com/apple-oss-distributions/Security/blob/ef677c3d667a44e1737c1b0245e9ed04d11c51c1/OSX/authd/server.c)、[15.0 protected right](https://github.com/apple-oss-distributions/Security/blob/3dab46a11f45f2ffdbd70e2127cc5a8ce4a1f222/OSX/authd/server.m)、[26.0 builtin rule](https://github.com/apple-oss-distributions/Security/blob/db15acbe6a7f257a859ad9a3bb86097bfe0679d9/OSX/authd/engine.m)。13/14后续小版本仍应看实际返回值，不能按大版本保证可修改。
+
+本次窗口定位保存在`/tmp/interceptor-macos-authorization-window-20260920-VaMrUU/`：只读观察确认Main27546的helper27559发起SecurityAgent27562，窗口260×308且`visible/frontmost=false`。第二轮核验Main37696、固定`request-installation`子进程37708及唯一SecurityAgent37711后，仅发送真实显示/前置和`AXRaise`，没有读取输入或点击授权；窗口仍不可见，两个smoke都在Renderer前等待120秒失败。`revealed=true`表示发送了请求，不代表实际显示成功；公开控制台接口确认UID501在console，未提供锁屏值。原生核准继续blocked，不再重复弹框。用户此前允许先提交中间代码，本次再次要求逐项提交；保留该缺口，按原macOS item准备checkpoint，不拆新item或纳入暂停修改。
+
+中间checkpoint准确范围：22个文件，仅自动trust尝试、恢复、对应测试和文档；19项暂停UI/package骨架/证书目录迁移临时保存在`f2875e79`，不混入。准确提交树原生构建复用、Desktop270 passed/2 Windows native skipped、typecheck及目标workflow发现2项通过；同树package/audit1487文件、339499911字节，包内helper与已测构建相同。证据`/tmp/interceptor-macos-auto-trust-checkpoint-20260920-aiEFuE/`含JSON、排除项哈希和1320px/390px报告截图。新的准确产物未再触发smoke/E2E，不能复用前一含暂停项产物的失败当通过；组件核准、13/14自动成功及真实中断恢复继续待验。此前失败现场的`final-host.json`确认代理、Root/admin trust、授权规则保持，App/前台helper退出、8888释放。
 
 2026-09-19用户要求macOS可能触发系统确认的权限操作统一归native helper，Main只做业务编排。代理条件写入、公开CA导入/删除、组件部署已在helper；本轮将Main直接执行的admin trust安装/撤销迁入同一helper的前台入口，不修改Windows、系统授权策略或用户信任域，不增加shell回退。
 

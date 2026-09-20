@@ -3,7 +3,7 @@ import { X509Certificate } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
 import type { CommandResult, CommandRunner, MacosCertificatePayload, TrustStoreServiceOptions } from '../../interfaces';
-import { TrustStoreError } from '../../internal/errors';
+import { MacosHelperServiceError, TrustStoreError } from '../../internal/errors';
 import { MacosHelperServiceClient } from '../helper-client';
 
 const macosTrustCommandRunner: CommandRunner = {
@@ -48,7 +48,11 @@ export class MacosTrustStoreService {
     try {
       await this.macosHelperServiceClient.trustCertificate(payload);
     } catch (trustError) {
-      if (alreadyInstalled) throw trustError;
+      const uncertain = trustError instanceof MacosHelperServiceError && [
+        'authorization-restoration-failed', 'certificate-state-uncertain', 'timeout',
+        'unavailable', 'invalid-response', 'verification-failed',
+      ].includes(trustError.code);
+      if (alreadyInstalled || uncertain) throw trustError;
       try {
         await this.macosHelperServiceClient.removeCertificate(payload);
       } catch (cleanupError) {

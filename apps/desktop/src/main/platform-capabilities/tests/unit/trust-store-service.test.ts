@@ -156,6 +156,20 @@ describe('TrustStoreService', () => {
     expect(MacosHelperServiceClient.prototype.removeCertificate).not.toHaveBeenCalled();
   });
 
+  it.each([
+    'authorization-restoration-failed', 'certificate-state-uncertain', 'timeout',
+    'unavailable', 'invalid-response', 'verification-failed',
+  ] as const)('preserves the imported macOS CA when trust outcome is uncertain: %s', async (code) => {
+    const trustError = new MacosHelperServiceError(code);
+    vi.mocked(MacosHelperServiceClient.prototype.trustCertificate).mockRejectedValueOnce(trustError);
+    const trustStoreService = new TrustStoreService({ platform: 'darwin', runner: new RecordingRunner() });
+
+    await expect(trustStoreService.install('/certs/root.pem')).rejects.toBe(trustError);
+    expect(MacosHelperServiceClient.prototype.importCertificate).toHaveBeenCalledWith(certificatePayload);
+    expect(MacosHelperServiceClient.prototype.removeCertificate).not.toHaveBeenCalled();
+    expect(MacosHelperServiceClient.prototype.untrustCertificate).not.toHaveBeenCalled();
+  });
+
   it('does not import a macOS CA when the original certificate inventory cannot be read', async () => {
     const recordingRunner = new RecordingRunner();
     recordingRunner.result = { code: 1, stdout: '', stderr: 'Certificate inventory unavailable' };

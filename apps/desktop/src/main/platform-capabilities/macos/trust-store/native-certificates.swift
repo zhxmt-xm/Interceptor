@@ -53,36 +53,88 @@ enum MacosSystemCertificateStore {
     }
 
     static func trustCertificate(_ requested: MacosHelperCertificate) throws -> [String: Any] {
+        try requireRestoredAuthorizationRule()
         let keychain = try openSystemKeychain()
         guard let certificate = try findCertificate(requested, keychain: keychain) else {
             throw MacosHelperServiceError.verificationFailed
         }
         return try MacosHelperInstallation.withForegroundAuthorization {
-            let result = SecTrustSettingsSetTrustSettings(certificate, .admin, nil)
-            try requireTrustSuccess(result)
-            var settings: CFArray?
-            guard SecTrustSettingsCopyTrustSettings(certificate, .admin, &settings) == errSecSuccess,
-                  let settings, CFArrayGetCount(settings) == 0 else {
-                throw MacosHelperServiceError.verificationFailed
-            }
-            return ["sha256": requested.sha256, "trusted": true]
+            try writeTrust(certificate, sha256: requested.sha256)
         }
     }
 
-    static func untrustCertificate(_ requested: MacosHelperCertificate) throws -> [String: Any] {
-        var settings: CFArray?
-        let existing = SecTrustSettingsCopyTrustSettings(requested.certificate, .admin, &settings)
-        if existing == errSecItemNotFound || existing == errSecNoTrustSettings {
-            return ["sha256": requested.sha256, "trusted": false]
+    static func trustCertificateAutomatically(_ requested: MacosHelperCertificate) throws -> [String: Any] {
+        try restoreAuthorizationRule()
+        let keychain = try openSystemKeychain()
+        guard let certificate = try findCertificate(requested, keychain: keychain) else {
+            throw MacosHelperServiceError.verificationFailed
         }
+        return try withAutomaticAuthorization { try writeTrust(certificate, sha256: requested.sha256) }
+    }
+
+    private static func writeTrust(_ certificate: SecCertificate, sha256: String) throws -> [String: Any] {
+        try requireTrustSuccess(SecTrustSettingsSetTrustSettings(certificate, .admin, nil))
+        var settings: CFArray?
+        guard SecTrustSettingsCopyTrustSettings(certificate, .admin, &settings) == errSecSuccess,
+              let settings, CFArrayGetCount(settings) == 0 else {
+                        throw MacosHelperServiceError.certificateStateUncertain
+        }
+        return ["sha256": sha256, "trusted": true]
+    }
+
+    static func untrustCertificate(_ requested: MacosHelperCertificate) throws -> [String: Any] {
+        try requireRestoredAuthorizationRule()
+        if try hasNoTrust(requested.certificate) { return ["sha256": requested.sha256, "trusted": false] }
+        return try MacosHelperInstallation.withForegroundAuthorization { try removeTrust(requested) }
+    }
+
+    static func untrustCertificateAutomatically(_ requested: MacosHelperCertificate) throws -> [String: Any] {
+        try restoreAuthorizationRule()
+        if try hasNoTrust(requested.certificate) { return ["sha256": requested.sha256, "trusted": false] }
+        return try withAutomaticAuthorization { try removeTrust(requested) }
+    }
+
+    private static func hasNoTrust(_ certificate: SecCertificate) throws -> Bool {
+        var settings: CFArray?
+        let existing = SecTrustSettingsCopyTrustSettings(certificate, .admin, &settings)
+        if existing == errSecItemNotFound || existing == errSecNoTrustSettings { return true }
         guard existing == errSecSuccess else { throw MacosHelperServiceError.operationFailed }
-        return try MacosHelperInstallation.withForegroundAuthorization {
-            try requireTrustSuccess(SecTrustSettingsRemoveTrustSettings(requested.certificate, .admin))
-            let verification = SecTrustSettingsCopyTrustSettings(requested.certificate, .admin, &settings)
-            guard verification == errSecItemNotFound || verification == errSecNoTrustSettings else {
-                throw MacosHelperServiceError.verificationFailed
+        return false
+    }
+
+    private static func removeTrust(_ requested: MacosHelperCertificate) throws -> [String: Any] {
+        try requireTrustSuccess(SecTrustSettingsRemoveTrustSettings(requested.certificate, .admin))
+        guard (try? hasNoTrust(requested.certificate)) == true else { throw MacosHelperServiceError.certificateStateUncertain }
+        return ["sha256": requested.sha256, "trusted": false]
+    }
+
+    private static func withAutomaticAuthorization<Value>(_ operation: () throws -> Value) throws -> Value {
+        do {
+            return try MacosTrustAuthorization().perform {
+                do { return try operation() }
+                catch MacosHelperServiceError.authorizationRequired { throw MacosTrustAuthorizationError.unavailable }
+                catch { throw MacosTrustAuthorizationError.operationStateUncertain }
             }
-            return ["sha256": requested.sha256, "trusted": false]
+        }
+        catch MacosTrustAuthorizationError.unavailable { throw MacosHelperServiceError.authorizationRequired }
+        catch MacosTrustAuthorizationError.operationStateUncertain { throw MacosHelperServiceError.certificateStateUncertain }
+        catch { throw MacosHelperServiceError.authorizationRestorationFailed }
+    }
+
+    private static func restoreAuthorizationRule() throws {
+        do { try MacosTrustAuthorization().restore() }
+        catch { throw MacosHelperServiceError.authorizationRestorationFailed }
+    }
+
+    private static func requireRestoredAuthorizationRule() throws {
+        do { try MacosTrustAuthorizationStore.requireNoPendingRecovery() }
+        catch { throw MacosHelperServiceError.authorizationRestorationFailed }
+    }
+
+    static func recoverAuthorizationRule() {
+        do { try restoreAuthorizationRule() }
+        catch {
+            logger.error("certificate authorization rule recovery failed; certificate operations remain blocked")
         }
     }
 
@@ -90,9 +142,12 @@ enum MacosSystemCertificateStore {
         guard result != errAuthorizationCanceled && result != errSecUserCanceled else {
             throw MacosHelperServiceError.authorizationCancelled
         }
+        if result == errAuthorizationDenied || result == errAuthorizationInteractionNotAllowed {
+            throw MacosHelperServiceError.authorizationRequired
+        }
         guard result == errSecSuccess else {
             logger.error("certificate trust operation failed: status=\(result, privacy: .public)")
-            throw MacosHelperServiceError.operationFailed
+            throw MacosHelperServiceError.certificateStateUncertain
         }
     }
 

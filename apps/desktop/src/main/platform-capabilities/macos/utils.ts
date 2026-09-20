@@ -8,7 +8,8 @@ export function parseMacosHelperServiceReply(data: Uint8Array, requestId: string
     && isRecord(reply.error) && hasFields(reply.error, ['code'])) {
     const codes: readonly MacosHelperServiceErrorCode[] = [
       'unauthorized-client', 'unsupported-operation', 'protocol-mismatch', 'invalid-request',
-      'authorization-required', 'authorization-cancelled', 'snapshot-conflict', 'operation-failed', 'verification-failed',
+      'authorization-required', 'authorization-cancelled', 'authorization-restoration-failed',
+      'certificate-state-uncertain', 'snapshot-conflict', 'operation-failed', 'verification-failed',
     ];
     if ((reply.requestId === requestId || (reply.requestId === null && reply.error.code === 'unauthorized-client'))
       && codes.includes(reply.error.code as MacosHelperServiceErrorCode)) {
@@ -25,7 +26,7 @@ export function parseMacosHelperServiceReply(data: Uint8Array, requestId: string
 export function parseMacosHelperServiceStatus(value: unknown): MacosHelperServiceStatus {
   const capabilities: readonly MacosHelperServiceOperation[] = [
     'status', 'system-proxy.read', 'system-proxy.read-effective', 'system-proxy.replace',
-    'certificate.import', 'certificate.remove',
+    'certificate.import', 'certificate.remove', 'certificate.trust', 'certificate.untrust',
   ];
   const reportedCapabilities = isRecord(value) ? value.capabilities : undefined;
   if (!isRecord(value) || !hasFields(value, ['processId', 'privileged', 'clientAuthorizedForWrites', 'capabilities'])

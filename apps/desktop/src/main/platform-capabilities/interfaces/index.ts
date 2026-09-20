@@ -43,7 +43,7 @@ export interface MacosHelperServiceStatus {
 
 export type MacosHelperServiceOperation =
   | 'status' | 'system-proxy.read' | 'system-proxy.read-effective' | 'system-proxy.replace'
-  | 'certificate.import' | 'certificate.remove';
+  | 'certificate.import' | 'certificate.remove' | 'certificate.trust' | 'certificate.untrust';
 
 export interface MacosCertificatePayload {
   readonly certificate: string;
@@ -53,7 +53,7 @@ export interface MacosCertificatePayload {
 export type MacosHelperServiceRequest =
   | { readonly operation: 'status' | 'system-proxy.read' | 'system-proxy.read-effective' }
   | {
-    readonly operation: 'certificate.import' | 'certificate.remove';
+    readonly operation: 'certificate.import' | 'certificate.remove' | 'certificate.trust' | 'certificate.untrust';
     readonly parameters: MacosCertificatePayload;
   }
   | {
@@ -74,6 +74,8 @@ export type MacosHelperServiceErrorCode =
   | 'invalid-request'
   | 'authorization-required'
   | 'authorization-cancelled'
+  | 'authorization-restoration-failed'
+  | 'certificate-state-uncertain'
   | 'snapshot-conflict'
   | 'operation-failed'
   | 'verification-failed';

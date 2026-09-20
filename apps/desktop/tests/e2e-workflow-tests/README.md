@@ -313,8 +313,8 @@ diagnostics.row.<traceKey>
 | `settings.proxy-mitm.persistence` | 异常退出后恢复系统代理并跨进程恢复MITM/TLS配置 | os-side-effect | passed |
 | `settings.certificates.generate-delete` | CA Generate/Regenerate/Delete | shared | planned |
 | `settings.certificates.trust` | Install/Uninstall本机信任 | os-side-effect | planned |
-| `settings.certificates.helper-trust` | macOS两张不同CA的授信/撤销复用同一helper，Main不另起系统授权 | macOS / os-side-effect | 现行前台路径Green/恢复及生产smoke已验；常驻免重复确认仍blocked，见规格 |
-| `settings.certificates.cancel-trust` | 取消helper前台入口的系统确认，由产品撤回新增CA | macOS / os-side-effect | 现行前台路径Green及恢复已验；旧Main路径证据单独保留，见规格 |
+| `settings.certificates.helper-trust` | macOS两张不同CA的授信/撤销复用同一helper，Main不另起系统授权 | macOS / os-side-effect | 旧前台路径已验；新增自动规则尝试/回退代码完成，组件核准及最终E2E blocked，见规格 |
+| `settings.certificates.cancel-trust` | 取消helper前台入口的系统确认，由产品撤回新增CA | macOS / os-side-effect | 新增自动回退前置Red已保存；旧前台Green不替代新路径，组件核准后复验 |
 | `settings.helper-startup` | macOS首次部署及开发/生产入口复用，不覆盖另一份授权 | macOS / os-side-effect | passed：见对应规格的分阶段证据 |
 | `settings.certificates.https` | MITM switch和host例外 | os-side-effect | planned |
 | `settings.certificates.external-actions` | Reveal/View；不包含用户排除的管理员MMC原生验收 | native-ui | planned：macOS Reveal 1/1；View未通过，不计整体完成 |

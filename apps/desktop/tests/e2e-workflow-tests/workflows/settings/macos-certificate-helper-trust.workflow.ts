@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { createHash, X509Certificate } from 'node:crypto';
-import { lstat, readFile, writeFile } from 'node:fs/promises';
+import { lstat, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
@@ -13,6 +13,26 @@ import { cancelMacosCertificateTrust, installMacosCertificateThroughHelper } fro
 const execute = promisify(execFile);
 const helperPath = '/Library/PrivilegedHelperTools/com.zhxmt.interceptor.platform-capabilities';
 
+async function readTrustAuthorizationRule(): Promise<Record<string, unknown>> {
+  const { stdout } = await execute('/usr/bin/security', ['authorizationdb', 'read', 'com.apple.trust-settings.admin']);
+  const conversion = execute('/usr/bin/plutil', ['-convert', 'json', '-o', '-', '--', '-'], { encoding: 'utf8' });
+  conversion.child.stdin!.end(stdout);
+  const rule = JSON.parse((await conversion).stdout) as Record<string, unknown>;
+  delete rule.created;
+  delete rule.modified;
+  return rule;
+}
+
+async function certificateAuthorizationMessages(userDataDirectory: string): Promise<string[]> {
+  const logs = (await readdir(userDataDirectory)).filter((name) => name.startsWith('.workflow-main-') && name.endsWith('.log'));
+  const messages: string[] = [];
+  for (const name of logs) {
+    messages.push(...(await readFile(path.join(userDataDirectory, name), 'utf8')).split('\n')
+      .filter((line) => line.startsWith('[platform-capabilities] certificate.')));
+  }
+  return messages;
+}
+
 test.skip(process.platform !== 'darwin', 'macOS native certificate helper only');
 
 test('settings.certificates.cancel-trust rolls back the new CA when helper authorization is cancelled', async ({ desktopApp }, testInfo) => {
@@ -24,6 +44,7 @@ test('settings.certificates.cancel-trust rolls back the new CA when helper autho
   // 准备：保存系统证书集合，通过真实UI生成本轮CA。
   // Arrange: retain the system certificate set and generate this run's CA through real UI.
   const rootsBefore = await rootCertificateThumbprints();
+  const ruleBefore = await readTrustAuthorizationRule();
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.certificates).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.generate).click();
@@ -51,6 +72,13 @@ test('settings.certificates.cancel-trust rolls back the new CA when helper autho
   // Cleanup: delete local material through the product; the fixture verifies normal Close and host restoration.
   await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete)).toBeHidden();
+  expect(await readTrustAuthorizationRule()).toEqual(ruleBefore);
+  const authorizationMessages = await certificateAuthorizationMessages(desktopApp.userDataDirectory);
+  await writeFile(testInfo.outputPath('certificate-authorization-path.json'), JSON.stringify({
+    authorizationMessages, authorizationRuleRestored: true,
+  }, null, 2), 'utf8');
+  expect(authorizationMessages.filter((message) => message ===
+    '[platform-capabilities] certificate.trust automatic authorization unavailable; using foreground helper')).toHaveLength(1);
   desktopApp.releasePreservedUserData();
 });
 
@@ -63,6 +91,7 @@ test('settings.certificates.helper-trust installs and removes distinct CAs throu
   // 准备：记录系统证书和已就绪helper，只经产品UI生成本轮CA。
   // Arrange: record the system certificate set and ready helper; generate each CA only through product UI.
   const rootsBefore = await rootCertificateThumbprints();
+  const ruleBefore = await readTrustAuthorizationRule();
   const helperBefore = await lstat(helperPath);
   expect(helperBefore.uid).toBe(0);
   const processRows = await execute('/bin/ps', ['-axww', '-o', 'pid=,comm=']);
@@ -88,6 +117,7 @@ test('settings.certificates.helper-trust installs and removes distinct CAs throu
       const evidence = { thumbprint, systemTrustVerified: false, removed: false };
       certificates.push(evidence);
       await installMacosCertificateThroughHelper(page, desktopApp.nativeFileDialogOwner(), certificatePath);
+      expect(await readTrustAuthorizationRule()).toEqual(ruleBefore);
 
       // 业务断言：系统真实信任本轮CA，复用原helper，MITM不被安装动作开启。
       // Business assertions: the system trusts this CA, the original helper is reused, and installation does not enable MITM.
@@ -100,6 +130,7 @@ test('settings.certificates.helper-trust installs and removes distinct CAs throu
       await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall).click();
       await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install)).toBeEnabled();
       expect(await rootCertificateThumbprints()).toEqual(rootsBefore);
+      expect(await readTrustAuthorizationRule()).toEqual(ruleBefore);
       evidence.removed = true;
       await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete).click();
       await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete)).toBeHidden();
@@ -111,15 +142,22 @@ test('settings.certificates.helper-trust installs and removes distinct CAs throu
     // Cleanup and evidence: remove only this run's CA through the product and retain actual outcomes; the fixture verifies exit and full host restoration.
     await cleanHttpsCapture(desktopApp).catch((error: unknown) => cleanupErrors.push(error));
     const rootsAfter = await rootCertificateThumbprints();
+    const authorizationMessages = await certificateAuthorizationMessages(desktopApp.userDataDirectory);
     await writeFile(testInfo.outputPath('certificate-helper-trust.json'), JSON.stringify({
-      helperProcessId: Number(helperProcessId), certificates,
+      helperProcessId: Number(helperProcessId), certificates, authorizationMessages,
       beforeSha256: createHash('sha256').update(JSON.stringify(rootsBefore)).digest('hex'),
       afterSha256: createHash('sha256').update(JSON.stringify(rootsAfter)).digest('hex'),
     }, null, 2), 'utf8');
     try { expect(rootsAfter).toEqual(rootsBefore); } catch (error) { cleanupErrors.push(error); }
+    try { expect(await readTrustAuthorizationRule()).toEqual(ruleBefore); } catch (error) { cleanupErrors.push(error); }
   }
   if (workflowError && cleanupErrors.length > 0) throw new AggregateError([workflowError, ...cleanupErrors], 'Certificate helper workflow and cleanup failed.');
   if (workflowError) throw workflowError;
   if (cleanupErrors.length > 0) throw new AggregateError(cleanupErrors, 'Certificate helper cleanup failed.');
+  const authorizationMessages = await certificateAuthorizationMessages(desktopApp.userDataDirectory);
+  for (const operation of ['certificate.trust', 'certificate.untrust']) {
+    expect(authorizationMessages.filter((message) => message.startsWith(`[platform-capabilities] ${operation} automatic authorization`)))
+      .toHaveLength(2);
+  }
   desktopApp.releasePreservedUserData();
 });

@@ -48,13 +48,28 @@ export class MacosHelperServiceClient {
   }
 
   async trustCertificate(certificate: MacosCertificatePayload): Promise<void> {
-    const result = await this.requestCertificateAuthorization('certificate.trust', certificate);
+    const result = await this.requestAutomaticCertificateAuthorization('certificate.trust', certificate);
     this.verifyCertificateTrustResult(result, certificate.sha256, true);
   }
 
   async untrustCertificate(certificate: MacosCertificatePayload): Promise<void> {
-    const result = await this.requestCertificateAuthorization('certificate.untrust', certificate);
+    const result = await this.requestAutomaticCertificateAuthorization('certificate.untrust', certificate);
     this.verifyCertificateTrustResult(result, certificate.sha256, false);
+  }
+
+  private async requestAutomaticCertificateAuthorization(
+    operation: 'certificate.trust' | 'certificate.untrust', certificate: MacosCertificatePayload,
+  ): Promise<unknown> {
+    try {
+      const result = await this.requestService({ operation, parameters: certificate });
+      this.verifyCertificateTrustResult(result, certificate.sha256, operation === 'certificate.trust');
+      console.info(`[platform-capabilities] ${operation} automatic authorization completed; rule restored`);
+      return result;
+    } catch (error) {
+      if (!(error instanceof MacosHelperServiceError) || error.code !== 'authorization-required') throw error;
+      console.info(`[platform-capabilities] ${operation} automatic authorization unavailable; using foreground helper`);
+      return this.requestCertificateAuthorization(operation, certificate);
+    }
   }
 
   private verifyCertificateTrustResult(value: unknown, sha256: string, trusted: boolean): void {
@@ -73,9 +88,9 @@ export class MacosHelperServiceClient {
       const child = execFile(this.helperPath, [operation], { encoding: 'utf8', maxBuffer: 262_144, windowsHide: true },
         (error, stdout, stderr) => {
           if (error) {
-            const codes = ['invalid-request', 'authorization-required', 'authorization-cancelled', 'operation-failed', 'verification-failed'] as const;
+            const codes = ['invalid-request', 'authorization-required', 'authorization-cancelled', 'authorization-restoration-failed', 'certificate-state-uncertain', 'operation-failed', 'verification-failed'] as const;
             const code = codes.find((candidate) => candidate === stderr.trim());
-            reject(new MacosHelperServiceError(code ?? (error.code === 'ENOENT' ? 'unavailable' : 'operation-failed')));
+            reject(new MacosHelperServiceError(code ?? (error.code === 'ENOENT' ? 'unavailable' : 'certificate-state-uncertain')));
             return;
           }
           try { resolve(JSON.parse(stdout)); }
