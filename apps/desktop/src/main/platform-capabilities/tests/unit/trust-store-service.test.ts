@@ -157,7 +157,7 @@ describe('TrustStoreService', () => {
   });
 
   it.each([
-    'authorization-restoration-failed', 'certificate-state-uncertain', 'timeout',
+    'certificate-state-uncertain', 'timeout',
     'unavailable', 'invalid-response', 'verification-failed',
   ] as const)('preserves the imported macOS CA when trust outcome is uncertain: %s', async (code) => {
     const trustError = new MacosHelperServiceError(code);

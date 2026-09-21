@@ -202,15 +202,43 @@ macOS只将匹配的公开证书经stdin交给系统验证，不生成临时证�
 
 #### macOS trust授权续验（待最终验收）
 
-##### Helper权限入口（前台路径已验，常驻授权复用未解决）
+##### 删除无效自动授信（2026-09-21进行中）
 
-- 用户目标：所有权限操作由helper承担，不能把普通用户前台入口视为常驻特权授权已复用。
-- 当前差距：代理与公开CA存取使用常驻root服务；trust/untrust仍需前台helper及系统独立认证。
+- 用户已要求删除实测不可行的操作；目标为移除常驻服务的`certificate.trust/untrust`、临时`AuthorizationRightSet`、授权规则恢复记录和前台回退分支，不按旧macOS版本保留兼容实现。
+- Main通过typed client直接启动同一helper二进制的普通用户前台进程，固定CLI只接公开DER/SHA-256；系统弹窗由macOS负责。常驻root服务保留公开CA导入/删除和系统代理，不具备静默授信能力。
+- 不删除用户正常的安装/信任/撤销功能，不修改Settings UI。明确取消仍仅撤回本次新导入CA，已有CA及结果不确定的CA保持；Windows原生命令、测试契约不变。
+- 验证：常驻命令拒绝及客户端直接前台调用3 Red→native37/37、信任库26/26；Swift构建和Desktop类型通过。真实取消前置Red在取消和CA清理后精确失败于直接授权日志缺失，Main54482/Core54495正常退出，完整规则（包含created/modified）不变、无恢复记录。证据`/tmp/interceptor-remove-automatic-trust-20260921-{red,green}.json`、`-e2e-red-results.json`及`-e2e-red/`。最新产物和最终E2E尚待验收。
+- 准确提交范围：隔离19项暂停修改后247 passed/2 Windows native skipped、Desktop类型、Swift构建、workflow发现2项及package/audit通过（1487文件、339464410字节）。仅macOS专项把Uninstall后等待从15秒改为120秒，与既有macOS fixture上限一致；Windows超时与业务断言不变，真实撤销仍待验。
+- 部署blocked：新helper SHA-256为`4499f58281efd3ac968f423f1885a1f83a56c9125217a6b0fd49ce1f2344d7f0`，机器仍为旧`0db8ad33...`/PID876，两入口outdated。用户暂不能现场确认，本轮不再次弹授权；新smoke及最终E2E未运行，不算失败或通过。ASAR已不含自动分支，宿主无App、8888释放、无待恢复记录。准确测试及只读状态为`-desktop-green.json`、`-artifact.json`，排除清单为`-preserved.json`（同前缀）。代码完成 · 待E2E。
+
+##### Helper权限入口（保留系统确认）
+
+- 当前职责：代理与公开CA存取使用常驻root服务；trust/untrust直接使用普通用户前台helper及系统独立认证。CA生成和私钥加密仍在Main，不属于root操作。
+- 不再承诺常驻helper能免确认授信；删除已实测不可行的自动路径，不删除正常的用户确认流程。
 - 本机复核：macOS 15.8、SIP enabled；`com.apple.trust-settings.admin`要求entitlement或`authenticate-admin`，后者`allow-root=false`、`timeout=0`。
 - 公开API限制：`SecTrustSettingsSetTrustSettings`/`RemoveTrustSettings`不接收`AuthorizationRef`；[Apple实现](https://github.com/apple-oss-distributions/Security/blob/main/OSX/libsecurity_keychain/lib/TrustSettings.cpp)在每次写入中新建授权对象。不能直接沿用helper安装授权。
-- 前一阶段已验前台helper；用户于2026-09-20明确授权下面的临时规则尝试与受控回退，不扩大到SIP、共享认证规则或私有entitlement。
+- 前一阶段已验前台helper；2026-09-20授权的临时规则实验现已放弃，历史证据保留如下，不再作为未来兼容目标。
 
-##### 临时规则尝试与受控回退（代码完成，待实机验证）
+##### CA与profile生命周期（目标待确认，未实现）
+
+- 用户目标：本机专用开发CA通过真实产品UI生成、安装并授信一次，开发及普通HTTPS验收后续持续复用，不按workflow反复安装/卸载；不是把同一CA及私钥随产品分发。
+- 当前边界：`CertificateService`保存`root-cert.pem`、safeStorage加密的`root-key.enc`及`ca-meta.json`，Main绑定`userData/certificates`。同一开发profile本就复用材料；fresh E2E profile不会自动取得它，现有`prepareHttpsCapture/cleanHttpsCapture`还会安装/卸载。
+- 当前两端一致：Windows和macOS均绑定userData/certificates，不是macOS独有的问题。应区分OS里的信任与本地CA文件，系统已信任不代表fresh profile具备对应CA或私钥。
+- 待确认方向：CA材料按同一OS账户/安装环境独立存放，业务profile仍隔离；Main继续生成和safeStorage加密，不把私钥交给root helper，不向所有产品用户分发同一私钥。存放路径、显式Generate/Delete的影响范围及验收需先确定，本轮不实现迁移或修改UI。
+- 此前“仅复制三份CA文件”的测试方案未取得零seed例外授权，也未实施；不把该临时方案当作产品已具备CA独立存放。
+- 共享CA的安装与清理由开发者通过产品UI显式操作，普通workflow不重新生成、卸载或删除；运行前校验材料指纹、有效期及真实系统信任，结束时保持原有CA/trust基线。材料缺失或未信任时明确要求先完成本机设置，不能静默生成替代CA。
+- 证书生成、安装、撤销、取消和失败恢复专项仍用独立CA，完整恢复宿主；Windows现有输入、步骤、超时和fixture不变。不使用生产用户的CA作为测试清理目标。
+- 若选择按组复用profile，必须另行确认放宽逐workflow profile隔离；不能为了证书复用顺带共享全部业务状态。
+- 后续验收：同一环境两个fresh profile复用相同CA指纹，通过真实HTTPS请求及各自正常退出，过程中不调用Install/Uninstall；同时确认专项仍生成不同CA、共享CA和其他系统信任项不被清理。本方案尚未实施或取得该组Green。
+
+##### 临时规则尝试与受控回退（历史方案，已要求删除）
+
+以下为`a7b02a2c`历史实现和实测记录；本轮已删除其代码与专用测试，不保留恢复或旧系统兼容分支。历史Red/Green及失败不改写为当前结果。
+
+- 当前实机：用户已核准`a7b02a2c`配套helper，两入口ready，production smoke1/1；已安装helper与包内字节匹配。
+- 新版证书组1 passed/1 failed：自动尝试后前台取消回滚通过；成功流程第一张CA已真实授信，但Uninstall后15秒等待Install超时，随后清理遇到页面关闭。最终代理、Root/admin trust和授权规则均恢复，不能记完整Green。
+- 常驻root helper876在取消、成功trust及untrust各尝试一次固定规则写入，均返回`-60005`，客户端记录单次前台回退；重复提示是不同CA操作的系统确认，不是helper重复安装。本机15.8暂不能凭该自动分支省去trust/untrust认证；13/14仍未实机验证。证据`/tmp/interceptor-user-approval-20260920-yFRvez/{approved-host-restored.json,smoke-results.json,certificate-results.json,certificate-rule-attempts.json}`。
+- 按用户要求独立本地直连复验（非E2E）：复用产品生成、系统中已不存在的测试CA公开DER，通过获准development socket依次调用`certificate.import`、`certificate.trust`、`certificate.remove`，没有Main客户端或前台回退。真实UID0/PID876的`AuthorizationRightSet`恰调用一次，authd日志为`not allowed to update right com.apple.trust-settings.admin`，返回`-60005`；固定trust回复`authorization-required`，自动授信未成功。原规则逐字节未变、admin trust未变、测试公开CA已删除、其他Root和完整代理与基线一致、无恢复记录/授权窗口、8888释放且helper复用。证据`/tmp/interceptor-direct-root-trust-20260920-5GiIq0/{host-before.json,result.json,native-rule-denial.json}`；不能把受保护规则拒绝说成成功执行了修改/还原。
 
 - 常驻helper的固定`certificate.trust/untrust`接收现有公开DER/SHA-256，不增加任意规则名、路径或命令参数；Main仍只编排，Windows不变。
 - 每次只尝试一次：保存原规则及临时规则的root私有恢复记录，只给`com.apple.trust-settings.admin`增加root通过条件，执行精确CA操作，然后恢复原规则并回读。
@@ -234,6 +262,8 @@ macOS只将匹配的公开证书经stdin交给系统验证，不生成临时证�
 本次窗口定位保存在`/tmp/interceptor-macos-authorization-window-20260920-VaMrUU/`：只读观察确认Main27546的helper27559发起SecurityAgent27562，窗口260×308且`visible/frontmost=false`。第二轮核验Main37696、固定`request-installation`子进程37708及唯一SecurityAgent37711后，仅发送真实显示/前置和`AXRaise`，没有读取输入或点击授权；窗口仍不可见，两个smoke都在Renderer前等待120秒失败。`revealed=true`表示发送了请求，不代表实际显示成功；公开控制台接口确认UID501在console，未提供锁屏值。原生核准继续blocked，不再重复弹框。用户此前允许先提交中间代码，本次再次要求逐项提交；保留该缺口，按原macOS item准备checkpoint，不拆新item或纳入暂停修改。
 
 中间checkpoint准确范围：22个文件，仅自动trust尝试、恢复、对应测试和文档；19项暂停UI/package骨架/证书目录迁移临时保存在`f2875e79`，不混入。准确提交树原生构建复用、Desktop270 passed/2 Windows native skipped、typecheck及目标workflow发现2项通过；同树package/audit1487文件、339499911字节，包内helper与已测构建相同。证据`/tmp/interceptor-macos-auto-trust-checkpoint-20260920-aiEFuE/`含JSON、排除项哈希和1320px/390px报告截图。新的准确产物未再触发smoke/E2E，不能复用前一含暂停项产物的失败当通过；组件核准、13/14自动成功及真实中断恢复继续待验。此前失败现场的`final-host.json`确认代理、Root/admin trust、授权规则保持，App/前台helper退出、8888释放。
+
+2026-09-20窗口结论更正：上述System Events的`visible/frontmost=false`不是WindowServer实际可见状态。使用正常LaunchServices打开同一准确产物的独立profile，Main75728/helper75786/SecurityAgent75788由PID、启动时间和参数归属确认；CGWindow显示其260×308授权窗口`onscreen=true/alpha=1/layer=1000`，NSRunningApplication为`active=true/hidden=false`，同时System Events仍报false。helper的一秒采样停在NSAppleScript→`AuthorizationCreate`等待认证，未发现死锁或规则写入错误；不能据此断言之前直接spawn的窗口一定可见或LaunchServices修复了产品。用户当前无法认证后，只对本轮唯一系统窗口发送Escape，确认本轮Main单按钮启动错误后正常退出，未读输入或点击批准。证据`/tmp/interceptor-launchservices-20260920-CAaJKz/`含两种窗口状态、调用栈和最终宿主记录；完整代理、Root/admin trust及授权规则保持，8888释放、无恢复记录，两入口仍outdated。这是诊断，不计smoke/E2E Green；本轮无产品改动或新commit，当前checkpoint为`a7b02a2c`。
 
 2026-09-19用户要求macOS可能触发系统确认的权限操作统一归native helper，Main只做业务编排。代理条件写入、公开CA导入/删除、组件部署已在helper；本轮将Main直接执行的admin trust安装/撤销迁入同一helper的前台入口，不修改Windows、系统授权策略或用户信任域，不增加shell回退。
 

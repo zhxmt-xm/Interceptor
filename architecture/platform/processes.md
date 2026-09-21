@@ -146,19 +146,20 @@ Traffic Lab使用显式`127.0.0.1:8888`产生可观测H1场景。
 | Renderer / Preload | 发送 Enable、Restore、Status 意图并显示结果 | 直接访问系统代理、journal 或 native helper |
 | Electron Main | 唯一产品编排者；顺序执行代理操作、维护 journal、同步 upstream、决定退出是否继续 | 把完整代理快照发给 Renderer 或日志 |
 | Proxy Core UtilityProcess | 监听8888并按 Main 下发的 upstream 转发 | 修改系统代理、读取 journal、决定恢复目标 |
-| native helper | Windows执行一次原生读写；macOS常驻服务认证生产App/开发UID，执行固定代理/公开证书命令及证书授权尝试；同一helper的前台入口负责回退后的系统确认 | 保存第二份系统代理original/journal、决定接管时机、接收CA私钥或通用shell |
+| native helper | Windows执行一次原生读写；macOS常驻root服务认证生产App/开发UID，只执行固定代理/公开证书存取；同一二进制的普通用户前台入口执行trust/untrust并请求系统确认 | 保存第二份系统代理original/journal、修改授权规则、决定接管时机、接收CA私钥或通用shell |
 | E2E runner | 在产品外记录测试进程 PID+启动时间，并在失败后保护宿主 | 把测试进程身份写入产品 journal 或协议 |
 
 Windows 使用 `%LOCALAPPDATA%/Interceptor/system-proxy/journal.json`，现有`version/original/owned`契约不变。
 macOS 使用当前`userData/system-proxy/journal.json`，只保存`original/owned/effectiveProxies`，无版本或迁移分支。
 `effectiveProxies`是接管前系统生效代理；原service快照负责恢复。产品只考虑单App，不复制owner或业务journal。
+这里的profile差异仅指恢复记录，不是OS代理配置。macOS不同profile不能读取另一profile的journal，当前不具备Windows已验证的跨profile崩溃恢复。
 
 Main 内的 `SystemProxyOperationQueue` 只是一条内存 Promise FIFO：启动恢复、用户 Enable/Restore、Core
 故障恢复和退出恢复按入队顺序执行。Core 故障只登记一个自动恢复；正常退出先通过 Action Gate 拒绝新 IPC、
 排空已接受命令，再排入最终 Restore。完整参与者、当场比较表、正常启动、崩溃重启、正常退出、启动失败与
 Core 故障时序见 [../features/settings.md](../features/settings.md) §3.2。
 
-macOS Main在代理恢复前调用`PlatformCapabilitiesService.prepareNativeComponents()`，按真实`app.isPackaged`选择生产或开发socket。首次部署/新增授权由同包helper请求系统确认，只部署helper、root配置和launchd；App不搬迁。开发按核准UID复用，生产保持App身份/资源/运行时检查，不失败回退。证书导入/删除走常驻服务；trust/untrust自动尝试只操作固定授权规则，持久恢复记录由helper独占，不复用或覆盖Main的系统代理journal。仅确认规则恢复后的`authorization-required`转同一helper前台入口，鉴权或恢复失败不转交互授权，CA私钥不交给helper。当前新增路径的代码检查及实机缺口见[Handover](../HANDOVER.md#verification)，协议见[平台模块](../../apps/desktop/src/main/platform-capabilities/README.md)。
+macOS Main在代理恢复前调用`PlatformCapabilitiesService.prepareNativeComponents()`，按真实`app.isPackaged`选择生产或开发socket。首次部署/新增授权由同包helper请求系统确认，只部署helper、root配置和launchd；App不搬迁。开发按核准UID复用，生产保持App身份/资源/运行时检查，不失败回退。证书导入/删除走常驻服务；trust/untrust直接启动同一helper的普通用户前台入口，由系统确认，不存在后台trust命令、规则修改或授权规则journal。CA私钥不交给helper。验证范围见[Handover](../HANDOVER.md#verification)，协议见[平台模块](../../apps/desktop/src/main/platform-capabilities/README.md)。
 
 CaptureStatus的recording事实不直接等于系统路由就绪；Renderer接收记录事件后确认代理owned且未失权，Stop、代理失权或Core换代使迟到查询失效。Core故障期间不会仅因新listener已记录而提前显示Recording；Main业务队列和原生条件写成功仍是代理接管依据。
 
@@ -166,6 +167,13 @@ CaptureStatus的recording事实不直接等于系统路由就绪；Renderer接�
 journal、测试进程树和8888 listener。这个 guard 证明测试没有污染宿主，不代表每个产品分支都已取得真实
 E2E；Windows跨profile崩溃恢复、MITM持久化和`application.lifecycle.core-restart`均已取得真实Electron
 证据，后者覆盖Core-only故障、新代际请求/RPC恢复及第二次故障与正常退出竞争。macOS同profile崩溃恢复、Core故障、TLS和helper复用已有独立真实证据，全量workflow与独立权限验收仍见[Handover](../HANDOVER.md)。
+
+### 1.2 平台状态与profile现状
+
+- profile外：OS代理配置、系统公开CA和系统信任；macOS安装的helper/launchd/授权配置；两端随App交付的native资源。Windows恢复journal另在用户级固定目录。
+- 两端profile内：Workspace规则/集合/TLS名单/MITM意图，Agent/MCP配置与凭据，Tool授权、Renderer偏好和诊断数据。Capture属于当前Core代际，不跨profile共享。
+- CA材料目前两端都在`userData/certificates`，由Main生成并加密存取；切profile不自动取得原CA。系统信任在OS不等于CA文件已跨profile复用。
+- macOS恢复journal仍在profile；与Windows路径、已实现能力及必要原生差异的逐项对照见[当前差距](../../apps/desktop/src/main/platform-capabilities/README.md#当前差距与必要差异)。
 
 ## 2. 两条独立通道
 

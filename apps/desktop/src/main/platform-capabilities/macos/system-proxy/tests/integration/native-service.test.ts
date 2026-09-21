@@ -15,7 +15,7 @@ const helperPath = process.env.INTERCEPTOR_NATIVE_SERVICE_HELPER_PATH
   ?? path.resolve(import.meta.dirname, '../../../../../../../dist/system-proxy/macos-proxy-helper');
 const capabilities = [
   'status', 'system-proxy.read', 'system-proxy.read-effective', 'system-proxy.replace',
-  'certificate.import', 'certificate.remove', 'certificate.trust', 'certificate.untrust',
+  'certificate.import', 'certificate.remove',
 ];
 
 describe.runIf(process.platform === 'darwin')('macOS native service transport', () => {
@@ -136,11 +136,11 @@ describe.runIf(process.platform === 'darwin')('macOS native service transport', 
   });
 
   it.each(['certificate.trust', 'certificate.untrust'])(
-    'requires root for the automatic %s operation without showing authorization on the background service', async (operation) => {
+    'does not expose interactive %s on the background service', async (operation) => {
       await startService({}, 'development');
       expect(await requestFromNativeClient({
-        protocolVersion: 1, requestId: 'certificate-trust', operation, parameters: certificateParameters,
-      })).toMatchObject({ ok: false, error: { code: 'authorization-required' } });
+        protocolVersion: 1, requestId: 'certificate-trust', operation,
+      })).toMatchObject({ ok: false, error: { code: 'unsupported-operation' } });
     },
   );
 
@@ -156,57 +156,12 @@ describe.runIf(process.platform === 'darwin')('macOS native service transport', 
     expect(JSON.parse((await execution).stdout)).toEqual({ sha256: certificateParameters.sha256, trusted: false });
   });
 
-  it('does not start foreground trust when the automatic service is unavailable', async () => {
+  it('uses the foreground helper for certificate authorization without a background trust request', async () => {
     const client = new MacosHelperServiceClient(socketPath, helperPath);
-    await expect(client.trustCertificate(certificateParameters)).rejects.toMatchObject({ code: 'unavailable' });
-    await expect(client.untrustCertificate(certificateParameters)).rejects.toMatchObject({ code: 'unavailable' });
+    await expect(client.trustCertificate(certificateParameters)).rejects.toMatchObject({ code: 'verification-failed' });
+    await expect(client.untrustCertificate(certificateParameters)).resolves.toBeUndefined();
     await expect(lstat(socketPath)).rejects.toMatchObject({ code: 'ENOENT' });
   });
-
-  async function withCertificateAuthorizationReply(
-    reply: Record<string, unknown>, verify: (requests: unknown[]) => Promise<void>,
-  ): Promise<void> {
-    const requests: unknown[] = [];
-    const server = net.createServer((connection) => {
-      connection.once('data', (data) => {
-        const request = JSON.parse(data.toString('utf8')) as { requestId: string };
-        requests.push(request);
-        connection.end(JSON.stringify({ protocolVersion: 1, requestId: request.requestId, ...reply }) + '\n');
-      });
-    });
-    await new Promise<void>((resolve) => server.listen(socketPath, resolve));
-    try { await verify(requests); }
-    finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
-  }
-
-  it.each([
-    { operation: 'certificate.trust', method: 'trustCertificate', trusted: true },
-    { operation: 'certificate.untrust', method: 'untrustCertificate', trusted: false },
-  ] as const)('uses automatic certificate authorization for $operation without a foreground process', async ({ operation, method, trusted }) => {
-    await withCertificateAuthorizationReply({ ok: true, value: { sha256: certificateParameters.sha256, trusted } }, async (requests) => {
-      const client = new MacosHelperServiceClient(socketPath, path.join(directory, 'absent-foreground-helper'));
-      await expect(client[method](certificateParameters)).resolves.toBeUndefined();
-      expect(requests).toEqual([expect.objectContaining({ operation, parameters: certificateParameters })]);
-    });
-  });
-
-  it('falls back once only after automatic certificate authorization reports the rule is restored', async () => {
-    await withCertificateAuthorizationReply({ ok: false, error: { code: 'authorization-required' } }, async (requests) => {
-      const client = new MacosHelperServiceClient(socketPath, helperPath);
-      await expect(client.untrustCertificate(certificateParameters)).resolves.toBeUndefined();
-      expect(requests).toEqual([expect.objectContaining({ operation: 'certificate.untrust', parameters: certificateParameters })]);
-    });
-  });
-
-  it.each(['authorization-restoration-failed', 'certificate-state-uncertain', 'unauthorized-client', 'invalid-request'])(
-    'does not fall back after automatic certificate authorization fails with %s', async (code) => {
-      await withCertificateAuthorizationReply({ ok: false, error: { code } }, async (requests) => {
-        const client = new MacosHelperServiceClient(socketPath, helperPath);
-        await expect(client.untrustCertificate(certificateParameters)).rejects.toMatchObject({ code });
-        expect(requests).toHaveLength(1);
-      });
-    },
-  );
 
   it.each(['certificate.trust', 'certificate.untrust'])(
     'rejects paths and private material before foreground %s authorization', async (operation) => {

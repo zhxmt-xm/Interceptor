@@ -49,7 +49,7 @@ export class MacosTrustStoreService {
       await this.macosHelperServiceClient.trustCertificate(payload);
     } catch (trustError) {
       const uncertain = trustError instanceof MacosHelperServiceError && [
-        'authorization-restoration-failed', 'certificate-state-uncertain', 'timeout',
+        'certificate-state-uncertain', 'timeout',
         'unavailable', 'invalid-response', 'verification-failed',
       ].includes(trustError.code);
       if (alreadyInstalled || uncertain) throw trustError;

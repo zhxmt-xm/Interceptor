@@ -18,7 +18,7 @@ Desktop Main 的平台能力模块。先在 Main 内聚合现有代码和测试�
 | Windows | `system-proxy`、`certificate-trust`、`connection-owner`、`application-icon`、`app-container` |
 | macOS | `system-proxy`、`certificate-trust` |
 
-macOS 连接归属、图标及上游代理检测仍按原任务跟踪，不因目录迁移而虚报已实现。
+macOS 连接归属、图标尚未实现。生效上游检测与基础链式转发已接入，外部改写及特殊网络验收仍按原任务跟踪。
 
 ## 结构
 
@@ -64,6 +64,46 @@ platform-capabilities/
 - Core 的应用归属缓存、Capture 事件和关联逻辑继续留在 [Core ClientAppService](../../../../proxy-core/src/proxy-core/client-app/entry.ts)。
 - Renderer 仍通过 Preload 调用 Main，不能导入本模块或直接调用 native helper。
 
+### 谁执行
+
+- Main：编排安装/撤销、代理接管/恢复、Core配置和状态通知；`CertificateService`在Main生成CA、用`safeStorage`加密私钥，私钥只交Core内存签发叶证书，不交helper。
+- macOS常驻root helper：读写系统代理，向System.keychain导入/删除精确公开CA。没有trust/untrust socket命令，不修改授权规则。
+- macOS前台helper：同一个已安装二进制，以登录用户身份执行`certificate.trust/untrust`；Security框架请求系统确认。它不是常驻root服务，也不复用安装helper时的管理员批准。
+- macOS部署入口：同包helper请求系统确认，获准的固定root操作负责安装、更新、卸载组件；不属于日常代理命令或证书信任授权。
+- Windows平台实现：WinINet由一次性native helper读写；证书由提权`certutil`操作Local Machine Root；AppContainer使用已有原生实现。没有macOS式常驻服务，不改变现行命令和授权步骤。
+- Core：监听、转发、MITM及叶证书签发；不改系统代理/系统信任，不管理helper部署或恢复journal。
+
+### profile外状态：当前可复用
+
+- 操作系统代理配置：两端都在OS，不在profile。Windows为当前用户WinINet；macOS为系统network service配置。每次接管仍需读取现状，不能把上一次快照永久当作当前值。
+- 系统CA与信任：Windows Local Machine Root、macOS System.keychain/admin trust都在OS；同一张CA的系统信任不因切profile消失。产品按精确指纹重新查询，不缓存一个跨profile的`trusted=true`。
+- macOS组件与批准：helper、launchd、socket和生产/开发配置在`/Library`固定位置。开发按获准UID复用；生产App身份或helper字节改变仍可能需要更新批准，与profile无关。
+- Windows恢复journal：`%LOCALAPPDATA%/Interceptor/system-proxy/journal.json`为用户级固定路径。它是待恢复的临时状态，不是永久保持代理接管的配置。
+- 两端随App交付的native程序属于安装资源，不复制到各profile。
+
+### profile内状态：两端业务隔离一致
+
+- `storage/workspace.sqlite`：规则、Composer集合、TLS名单与MITM意图；同profile持久，fresh profile独立。
+- `agent/`、`mcp/`、`tool-capabilities/`：业务配置、会话、凭据和Tool授权；凭据仍加密，不能为了复用helper而共享这些目录。
+- Renderer偏好、窗口/session状态、更新状态与诊断数据：跟随当前profile。Capture内存和spill属于当前Core代际，不是跨profile复用的数据。
+
+### 当前差距与必要差异
+
+- macOS恢复journal仍在`userData/system-proxy/journal.json`；不同profile找不到上一profile的恢复记录，与Windows用户级路径不一致。当前仅验证同profile崩溃恢复；这是待修差距，本轮未移动路径。
+- CA材料当前两端都在`userData/certificates`，不是macOS特有差异。`root-cert.pem`、加密`root-key.enc`、`ca-meta.json`还没有独立于profile的存储；本机同一OS账户长期复用CA是待确认目标，不是已实现能力，也不是给所有用户分发同一私钥。
+- macOS缺`connection-owner`、`application-icon`；AppContainer仅适用于Windows，不为macOS提供伪实现。
+- macOS证书View只确认启动Keychain Access，尚未验证目标证书窗口；Finder Reveal通过不能替代View。
+- WinINet与SystemConfiguration、UAC与macOS系统确认、DPAPI与Keychain是必要原生差异。macOS保存完整service快照和接管前生效上游，按HTTP/HTTPS分别下发；Windows保留原单一上游结构及journal版本，不为形式一致改Windows。
+- 仅Auto Detect的上游行为仍不同：Windows现行直连，macOS无显式代理/PAC时拒绝接管，不能宣称WPAD双端一致或已验。
+
+### 聚合与迁移状态
+
+- 已归类：两端系统代理、系统信任库、macOS组件部署与通信、Windows应用信息/图标和AppContainer；目录归类不等于两端全部验收完成。
+- 仅本地暂停：CA实现/错误类/9项integration的目录迁移，private package骨架及lockfile；不纳入本轮提交。
+- 待整理：CA统一入口/类型、`SecureStore`窄契约、Core原生runner/输出解析、Main中的PEM转CER及系统查看器/管理器选择。
+- Main继续拥有操作顺序、`SystemProxyOperationQueue`、上游降级策略和状态广播；`UpstreamProbe`只提供事实，Core保留应用归属缓存与事件。
+- Electron的窗口、Dialog、clipboard、`safeStorage`、`shell`适配和各feature凭据格式不搬进root helper。独立package接入、依赖和发布后置，不反向依赖Desktop。
+
 ## 原生构建与资源
 
 Desktop 的 `build:native` 已指向本目录，构建结果仍写入原来的 Desktop `dist/system-proxy`、`dist/app-container` 和 `dist/client-app`。Forge 资源目录、helper 文件名、Core fork 参数及运行时资源路径均不因迁移改变。
@@ -96,8 +136,6 @@ INTERCEPTOR_NATIVE_SERVICE_HELPER_PATH="$PWD/apps/desktop/out/Interceptor-darwin
 | `system-proxy.replace` | expectedSnapshot、replacementSnapshot | 条件写入并回读后的完整快照 |
 | `certificate.import` | 公开DER的base64、SHA-256 | 精确指纹及present=true |
 | `certificate.remove` | 同一公开DER及SHA-256 | 精确指纹及present=false |
-| `certificate.trust` | 同一公开DER及SHA-256 | 自动尝试后规则已恢复的trusted=true，或明确需前台授权 |
-| `certificate.untrust` | 同一公开DER及SHA-256 | 自动尝试后规则已恢复的trusted=false，或明确需前台授权 |
 
 - 同一服务进程按独立受保护配置提供两个Unix socket。生产`service.sock`每个连接核验内核peer audit token、UID、精确CDHash及canonical可执行路径；开发`development.sock`只核验内核UID，不绑定源码、项目目录、Electron签名或调试状态。协议不接受客户端自报环境切换鉴权。
 - 生产`status`写资格与所有写命令另外验证完整App资源、内嵌代码、全部架构和Hardened Runtime，拒绝可调试或可注入进程；普通公开代理读取不重复扫描整包资源。开发允许获准用户的本地代码调用固定能力，不保证隔离同用户恶意程序。App可以由用户拥有，不要求root拥有或移动整个App。
@@ -109,17 +147,13 @@ INTERCEPTOR_NATIVE_SERVICE_HELPER_PATH="$PWD/apps/desktop/out/Interceptor-darwin
 
 ### 前台证书信任入口
 
-Main通过`MacosHelperServiceClient.trustCertificate()`/`untrustCertificate()`先请求常驻helper的同名固定操作。helper只尝试一次临时规则路径；明确返回`authorization-required`后才启动同一已部署helper的前台CLI。两端只接收`{ certificate: <公开DER base64>, sha256: <大写SHA-256> }`，限制256KiB输入、64KiB DER，不接受路径、私钥、shell或调用方指定的trust域；返回`{ sha256, trusted }`并由客户端核验。
-
-[native-authorization.swift](macos/trust-store/native-authorization.swift)只操作`com.apple.trust-settings.admin`：原规则必须为已支持的OR委托结构，只增加`is-root`条件，不改共享规则。写入前将`original/temporary`原样保存为固定root目录的0600恢复记录并同步文件/目录；证书操作后恢复原规则，回读仅忽略系统维护的`created/modified`。写入或操作失败也须完成恢复才能转前台；规则冲突、恢复失败、鉴权/协议错误和通信状态不明不回退。
-
-helper启动时尝试恢复遗留记录，失败不阻止系统代理恢复，但证书授权保持报错；前台CLI也拒绝未完成恢复。卸载helper先停服务再恢复规则，成功后才删除组件。该过程不是系统级原子事务，不能消除临时策略对其他root进程的可见窗口。13.0/14.0源码无后续硬保护不等于实机通过，15.0及之后部分实现直接保护该right；不按版本号放行。
+Main通过`MacosHelperServiceClient.trustCertificate()`/`untrustCertificate()`直接启动同一已部署helper的固定前台CLI，不先请求常驻服务。只接收`{ certificate: <公开DER base64>, sha256: <大写SHA-256> }`，限制256KiB输入、64KiB DER，不接受路径、私钥、shell或调用方指定的trust域；返回`{ sha256, trusted }`并由客户端核验。
 
 前台helper只在当前登录用户GUI会话中执行，激活自身后调用Security公开API修改`.admin`并回读。它不具备常驻服务的root权限，系统确认由Security框架负责；Main不执行`security add-trusted-cert/remove-trusted-cert`、不请求原生提权、不接触密码。取消以`authorization-cancelled`返回，Main仅撤回本次新增CA；已有CA保留，撤销trust失败时不删系统证书。
 
-证书写入结果不确定与规则恢复失败分别返回`certificate-state-uncertain`、`authorization-restoration-failed`；超时、连接中断、无效回复或回读失败也不启动前台授权。Main保留公开CA及本地材料用于后续确认/恢复，不能把“规则已恢复”当成“证书一定未写入”而删除证书。
+证书写入结果不确定返回`certificate-state-uncertain`；子进程异常、无效回复或回读失败不重试授信。Main保留公开CA及本地材料，不能把不确定结果当成“证书一定未写入”而盲删。
 
-不能把安装helper的授权等同于修改admin trust的授权。本机SIP开启时原始root授信返回`-60007`；规则同值回写另返回`-60005`且原规则不变。用户仅授权上述固定规则的临时尝试与还原，不关闭SIP、添加私有entitlement或降到user trust。自动路径不可用仍需系统确认，代码检查不替代对应版本实机结果；最新范围见[验证记录](../../../../../architecture/HANDOVER.md#verification)。
+不能把安装helper的授权等同于修改admin trust的授权。本机SIP开启时root授信返回`-60007`，真实root修改授权规则另返回`-60005`。已按用户要求删除临时规则写入、恢复记录、启动/卸载恢复以及后台trust/untrust；不为旧macOS保留兼容分支，不关闭SIP、使用私有entitlement或改成user trust。历史实验与本轮验证范围见[验证记录](../../../../../architecture/HANDOVER.md#verification)。
 
 ## 首次启动部署
 

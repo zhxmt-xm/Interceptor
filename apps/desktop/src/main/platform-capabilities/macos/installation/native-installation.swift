@@ -329,7 +329,6 @@ enum MacosHelperInstallation {
         let endpoints = try configuredEndpoints()
         try requireRestoredSystemProxy()
         try stopRegisteredService()
-        try MacosTrustAuthorization().restore()
         for (path, userId) in endpoints { try removeEndpoint(path: path, userId: userId) }
         for path in [helperPath, configurationPath, developmentConfigurationPath, launchDaemonPath, installationDirectory + "/deployment.lock"] {
             try validateExistingFile(path: path)

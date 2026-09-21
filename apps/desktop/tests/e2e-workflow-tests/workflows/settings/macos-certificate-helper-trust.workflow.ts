@@ -17,10 +17,7 @@ async function readTrustAuthorizationRule(): Promise<Record<string, unknown>> {
   const { stdout } = await execute('/usr/bin/security', ['authorizationdb', 'read', 'com.apple.trust-settings.admin']);
   const conversion = execute('/usr/bin/plutil', ['-convert', 'json', '-o', '-', '--', '-'], { encoding: 'utf8' });
   conversion.child.stdin!.end(stdout);
-  const rule = JSON.parse((await conversion).stdout) as Record<string, unknown>;
-  delete rule.created;
-  delete rule.modified;
-  return rule;
+  return JSON.parse((await conversion).stdout) as Record<string, unknown>;
 }
 
 async function certificateAuthorizationMessages(userDataDirectory: string): Promise<string[]> {
@@ -75,10 +72,11 @@ test('settings.certificates.cancel-trust rolls back the new CA when helper autho
   expect(await readTrustAuthorizationRule()).toEqual(ruleBefore);
   const authorizationMessages = await certificateAuthorizationMessages(desktopApp.userDataDirectory);
   await writeFile(testInfo.outputPath('certificate-authorization-path.json'), JSON.stringify({
-    authorizationMessages, authorizationRuleRestored: true,
+    authorizationMessages, authorizationRuleUnchanged: true,
   }, null, 2), 'utf8');
   expect(authorizationMessages.filter((message) => message ===
-    '[platform-capabilities] certificate.trust automatic authorization unavailable; using foreground helper')).toHaveLength(1);
+    '[platform-capabilities] certificate.trust requesting system authorization')).toHaveLength(1);
+  expect(authorizationMessages.some((message) => message.includes('automatic authorization'))).toBe(false);
   desktopApp.releasePreservedUserData();
 });
 
@@ -128,7 +126,7 @@ test('settings.certificates.helper-trust installs and removes distinct CAs throu
       expect((await execute('/bin/ps', ['-ww', '-p', helperProcessId!, '-o', 'comm='])).stdout.trim()).toBe(helperPath);
       await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.mitmToggle)).toHaveAttribute('aria-checked', 'false');
       await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall).click();
-      await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install)).toBeEnabled();
+      await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install)).toBeEnabled({ timeout: 120_000 });
       expect(await rootCertificateThumbprints()).toEqual(rootsBefore);
       expect(await readTrustAuthorizationRule()).toEqual(ruleBefore);
       evidence.removed = true;
@@ -156,8 +154,9 @@ test('settings.certificates.helper-trust installs and removes distinct CAs throu
   if (cleanupErrors.length > 0) throw new AggregateError(cleanupErrors, 'Certificate helper cleanup failed.');
   const authorizationMessages = await certificateAuthorizationMessages(desktopApp.userDataDirectory);
   for (const operation of ['certificate.trust', 'certificate.untrust']) {
-    expect(authorizationMessages.filter((message) => message.startsWith(`[platform-capabilities] ${operation} automatic authorization`)))
+    expect(authorizationMessages.filter((message) => message === `[platform-capabilities] ${operation} requesting system authorization`))
       .toHaveLength(2);
   }
+  expect(authorizationMessages.some((message) => message.includes('automatic authorization'))).toBe(false);
   desktopApp.releasePreservedUserData();
 });

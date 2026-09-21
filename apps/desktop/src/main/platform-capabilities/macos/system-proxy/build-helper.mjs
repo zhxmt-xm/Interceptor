@@ -22,7 +22,6 @@ const sources = [
   path.join(import.meta.dirname, 'native-service.swift'),
   path.join(import.meta.dirname, '../installation/native-installation.swift'),
   path.join(import.meta.dirname, '../trust-store/native-certificates.swift'),
-  path.join(import.meta.dirname, '../trust-store/native-authorization.swift'),
 ];
 const buildArguments = [
   'swiftc', '-O', '-parse-as-library', '-framework', 'Security',
