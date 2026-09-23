@@ -1,7 +1,5 @@
 # Feature: Manual Acceptance Playground
 
-> 最后更新：2026-09-09
-> 状态：**App式双页面与既定自动验证已完成；39个Capture场景/8条真实workflow及额外413边界均Green，HTTP收尾在Core内完成，未修改Mockttp。用户自行查看，不另列人工验收待办或门禁。**
 > 代码所有者：`apps/playground/`
 
 ## 1. 目标
@@ -53,7 +51,7 @@ apps/playground/
   └── integration/              # 历史网络/Browser测试保留
 ```
 
-根命令最终为：
+启动命令：
 
 ```powershell
 npm run playground
@@ -112,7 +110,7 @@ SHA-256摘要，永不重新显示明文。
 
 ### 5.3 CORS
 
-Origin和Host都不代表Client身份，Bearer才是唯一调用方认证。Main删除Origin与Host拒绝分支，并对任意Origin
+Origin和Host都不代表Client身份，Bearer才是唯一调用方认证。Main对任意Origin
 提供标准CORS；listener仍只绑定loopback。
 
 | 请求 | 行为 |
@@ -234,7 +232,7 @@ Authorization固定显示为`Bearer <redacted>`加摘要。其余Playground自�
 
 ## 7. Traffic Lab
 
-### 7.1 当前完整场景目录
+### 7.1 场景目录
 
 | 分组 | 场景 | 覆盖能力 |
 | --- | --- | --- |
@@ -251,10 +249,9 @@ host或Breakpoint设置必须在页面Setup中明确显示；Playground不得静
 场景输入由Developer在Playground填写；Node返回client结果与origin观测。它不直接读取Core或Renderer状态，
 Developer在Interceptor UI和MCP Tool结果中对照事实。
 
-### 7.2 后续场景
+### 7.2 目录边界
 
-当前产品尚未实现的HTTP/3、H2 Extended CONNECT WebSocket、gRPC真正增量stream parser等能力不进入目录。
-后续产品能力落地时，同一work item增加对应场景，不预建未实现入口。
+目录只收录具备真实产品入口和客户端能力的场景。HTTP/3或H2 Extended CONNECT等协议需要独立支持，不能用其他协议的成功结果代替，也不预建不可执行入口。
 
 ### 7.3 与E2E共用协议库
 
@@ -262,7 +259,7 @@ Capture协议流量的唯一实现归`apps/playground/server/`，共享Node流�
 E2E不再维护独立的HTTP、WebSocket或TLS origin lab；`trafficLab` fixture统一拥有协议实例，
 按需提供`httpTrafficRunner`、`webSocketTrafficRunner`、`tlsTrafficRunner`。
 
-原有39项场景继续保留，同时合并原fixture的细粒度控制能力：
+场景运行和细粒度控制共用同一协议服务：
 
 | 协议服务 | 场景之外保留的控制与证据 |
 | --- | --- |
@@ -281,11 +278,11 @@ Node解析HTTP Upgrade并校验真实握手响应；原有持续连接、广播�
 
 E2E可以直接调用Node流量API，不要求每个workflow启动Browser；验证Playground页面或Browser MCP时仍使用真实页面。
 Node API只操作外部流量，不能绕过Interceptor真实UI执行产品业务。fixture按`runtime/ui/safety/agent`分类，
-原有辅助单测仅迁移目录与引用、保留测试逻辑；OpenAI模型模拟仍由Agent fixture所有，不加入Playground。
+OpenAI模型模拟由Agent fixture拥有，不加入Playground。
 
-## 8. 24项Tool人工矩阵
+## 8. Tool人工检查
 
-Playground动态列出当前24项Tool。每项至少手工执行：
+Playground按服务端目录动态列出Tool。人工检查流程为：
 
 | 类型 | 人工步骤 |
 | --- | --- |
@@ -299,9 +296,9 @@ Playground动态列出当前24项Tool。每项至少手工执行：
 每个新增共享Tool必须在同一work item补充Playground中的人工recipe元数据；recipe只描述前置条件和观察点，
 不复制schema、不自动执行产品动作。
 
-## 9. 自动防回归与人工验收边界
+## 9. 验证边界
 
-仓库自动测试只保护基础设施：
+验证应分别核对以下事实：
 
 - CORS preflight、实际响应header、Bearer `401`与`/mcp`路由；
 - 最新官方Browser Client可connect、discover和`tools/list`；
@@ -315,15 +312,10 @@ Playground动态列出当前24项Tool。每项至少手工执行：
 自动测试不得把Tool标记为人工Pass，也不替代Developer逐项点击、查看完整详情和验证产品副作用。
 真实Electron workflow仍负责证明Browser → Main → Core链路和退出销毁；Playground自身不伪装成产品E2E。
 
-Capture E2E收敛是独立自动验证工作，不依赖人工矩阵；按HTTP、Bodies、Encoding、
-WebSocket、gRPC、TLS六组复用正式Playground的同一场景目录和流量库，不强制每条workflow经过Browser。
+Capture验证按HTTP、Bodies、Encoding、WebSocket、gRPC、TLS六组复用Playground的场景目录和流量库，不强制每条workflow经过Browser。
 验证Playground页面时通过公开UI运行；其余可直接使用Node流量API。E2E复用场景ID、默认Draft与流量发生器，
 但独立断言Capture结果；不得把Playground自己的origin/client断言复用成产品预期，也不建立一个39项巨型workflow。
-当前下面的`capture.playground-traffic`只证明其中2/39的代表性纵向链路。
-
-2026-09-09独立Capture场景workflow覆盖39个场景及额外413边界，最终合跑8/8 Green，Proxy module102/102通过；这是产品UI对协议/正文的验证，不是Playground工具测试扩张。HTTP收尾采用用户确认的413例外，无第三方改动；完整证据见[Capture覆盖](capture.md#41-多协议产品e2e覆盖)。
-
-本轮真实TLS验收发现并修复HTTPS/H1场景的客户端配置：`agent:false`使Node忽略既有`createConnection`并直连origin；现在用Node HTTP客户端把HTTP字节写入同一个已完成TLS的代理隧道socket。H2客户端保持不变；通过实际TLS场景验证，不为工具新增测试。
+HTTP和H2的收尾规则由[Capture契约](capture.md)定义；不为Playground新增“测试的测试”。
 
 ### 9.1 `capture.playground-traffic`真实E2E
 
@@ -340,28 +332,3 @@ WebSocket、gRPC、TLS六组复用正式Playground的同一场景目录和流量
 测试定位Interceptor只使用公共`data-automation-id`、协议path和本workflow自产payload；定位Playground使用公开
 `data-section`、`data-scenario-id`、ARIA role与运行状态，不依赖翻译文案。evidence必须包含Electron trace、最终截图、
 Main/Renderer日志、PID/listener销毁metadata，以及Playground子进程输出与端口释放事实。
-
-同一workflow在改造前提交`570c5447`取得retrospective Red：系统Edge加载旧Playground后精确失败于默认页面缺少
-`data-section="capture"`，页面仍显示MCP连接面板，尚无39项Capture目录；构建、fixture与Electron启动均成功。
-当前代码同一workflow `1/1` Green：H1 JSON响应正文与WebSocket双向text frame均在真实Capture UI可见，
-`gracefulDestroyVerified=true`，Main/Core、8888与Playground随机端口全部销毁。
-
-## 10. 实现顺序
-
-1. **[已完成]** 确定本文架构、MCP CORS契约与人工证据模型；
-2. **[已完成]** 在`design-vite`完成连接、Tool目录、调用详情、Traffic Lab和人工状态的明暗设计；
-3. **[已完成]** unit/integration Red：把Origin `403`契约改为preflight + authenticated Browser CORS；
-4. **[已完成]** 真实Electron E2E Red：产品UI创建Client后，真实Browser因Origin分支无法connect；
-5. **[已完成]** Main实现CORS并只保留Bearer认证与path路由，官方SDK继续拥有最新协议边界，同组测试Green；
-6. **[已完成]** 创建`apps/playground`，完成Paste config → Connect → Refresh Tools → query/change Call纵向流程；
-7. **[已完成]** 增加Ask等待、Abort和完整HTTP/JSON/SSE详情；Deny/Allow/Auto继续在Interceptor人工操作；
-8. **[已完成]** 将Capture Lab扩展到当前完整协议、正文、编码、WebSocket、gRPC、TLS与生命周期场景；
-9. **[已完成]** 增加24项人工recipe、手工状态与脱敏证据导出；
-10. **[已完成]** 完成typecheck/build、Browser CORS integration、MCP与Capture Lab真实Electron E2E及销毁检查；
-11. **[已完成]** 同步platform现状、Inventory、Handover和根README命令。
-
-## 11. 与当前实现的差异
-
-- 现有39个Capture场景和额外413边界已取得真实E2E Green及退出恢复证据，不代表所有协议边界已穷尽验证；用户自行查看不替代自动测试结论。
-- 当前VS Code `1.135.0`仍使用`2025-11-25`，产品决定不支持legacy；真实Host canary等待Host升级，
-  不阻塞最新协议Playground建设。

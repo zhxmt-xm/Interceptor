@@ -3,6 +3,7 @@ import { useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { BodyViewerDesign } from '../../components/BodyViewerDesign/BodyViewerDesign';
+import { formatHexDump } from '../../components/BodyViewerDesign/utils';
 import { IconButton } from '../../components/IconButton/IconButton';
 import { useDesignState } from '../../state/useDesignState';
 import styles from './GrpcMessagePayload.module.css';
@@ -17,9 +18,12 @@ const HEX_DUMP = [
 ].join('\n');
 
 export function GrpcMessagePayload(): React.JSX.Element | null {
-  const { updateState } = useDesignState();
+  const { state, updateState } = useDesignState();
   const [host, setHost] = useState<Element | null>(null);
   const [view, setView] = useState('Hex');
+  const source = state.grpcMessageSource ?? HEX_DUMP;
+  const bytes = state.grpcMessageSource === null ? undefined : new TextEncoder().encode(source);
+  const hex = bytes ? formatHexDump(bytes, 16) : HEX_DUMP;
 
   useLayoutEffect(() => {
     setHost(document.querySelector('.grpcpayload'));
@@ -30,16 +34,17 @@ export function GrpcMessagePayload(): React.JSX.Element | null {
     <div className={styles.grpcMessagePayload}>
       <div className={styles.grpcMessagePayloadHead}>
         <b>Response message 2</b>
-        <span>raw protobuf · 1.2 KB</span>
-        <IconButton label="Copy message" icon={<Copy aria-hidden="true" />} />
+        <span>{bytes ? `UTF-8 payload · ${bytes.byteLength} B` : 'raw protobuf · 1.2 KB'}</span>
+        <IconButton label="Copy message" icon={<Copy aria-hidden="true" />} onClick={bytes ? () => void navigator.clipboard.writeText(source) : undefined} />
       </div>
       <BodyViewerDesign
         ariaLabel="Response message view"
         value={view}
         modes={VIEW_OPTIONS}
         meta="application/octet-stream"
-        source={HEX_DUMP}
-        hex={HEX_DUMP}
+        source={source}
+        hex={hex}
+        bytes={bytes}
         language="plaintext"
         onModeChange={setView}
         onFullscreen={() => updateState({ overlay: 'body-full' })}

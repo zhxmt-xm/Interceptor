@@ -1,9 +1,8 @@
 # 平台架构：测试分层
 
-> 最后更新：2026-09-18
-> 范围：三套互不替代的测试层，以及它们的边界与当前实现状态。
+> 范围：测试层级、驱动方式、隔离边界和执行约束。
 
-## 1. 三层职责
+## 1. 验证层级
 
 | 层 | 位置 | 驱动方式 | 职责 |
 | --- | --- | --- | --- |
@@ -13,14 +12,14 @@
 | 设计一致性 | `apps/desktop/tests/visual-parity/` | 测试目录内 fake Preload | Renderer 与 `design-vite/` 的几何/像素一致性 |
 | 人工验收工具 | `apps/playground/` | Browser手动点击 + Node Traffic Lab | 最新MCP全部详情、逐Tool人工结论与可控协议流量；不替代任何自动层 |
 
-**三套测试职责独立，不能互相冒充覆盖。**
+各层职责独立，不能互相替代。
 
 ## 2. Local E2E driver
 
 - **平台启动driver**：Windows继续用`_electron.launch()`启动未打包production bundle，prepare复用Forge Vite配置；macOS默认spawn同一项目的未打包Electron，以Renderer CDP驱动相同workflow。两者都由测试拥有进程，不附着人工Forge实例；协议/Core/native按正式构建顺序准备，业务E2E不要求每次package。
 - **平台差异归属**：业务workflow共用操作、输入和结果。helper读取、journal位置、窗口准备、超时、故障观察/profile选择及独立系统权限检查归driver/fixture的Windows/Macos方法，不把macOS适配扩成Windows业务步骤。Windows保留WinINet六字段宿主比较、JSON证据比较和原恢复顺序；macOS完整结构比较与admin trust检查独立执行。
 - **macOS窗口与日志**：业务E2E由driver按配置准备真实窗口，常规`macos`项目保持1600x900；只有body-fill滚轮边界用独立`macos-scroll-boundary`项目的1600x800，两者互斥匹配。等待System Events就绪并验证DOM尺寸，不改变Windows窗口或产品布局。macOS日志使用profile内0600文件继承给子进程，避免runner结束后保留App遭遇pipe EPIPE；日志附加前仍扫描敏感内容，证据保持有界。正常结束删除profile；恢复未完成保留profile及私有日志。
-- **macOS helper**：开发与业务E2E按`app.isPackaged=false`共用获准UID的开发socket，不核准每次App构建，不因新profile/HMR/rs/重编译业务代码重新安装。原生构建按源码、工具链、签名参数及产物哈希缓存，helper自身变更才更新组件。生产App仍使用独立严格鉴权；`INTERCEPTOR_E2E_MACOS_APP_PATH`只供driver显式选择已有签名App，非产品参数，设置它时直接运行Playwright，不运行prepare。最终package仍须独立audit/smoke，开发Green不替代生产安全证据。
+- **macOS helper**：开发与业务E2E按`app.isPackaged=false`共用获准UID的开发socket，不核准每次App构建，不因新profile/HMR/rs/重编译业务代码重新安装。原生构建按源码、工具链、签名参数及产物哈希缓存，helper自身变更才更新组件。生产App仍使用独立严格鉴权；`INTERCEPTOR_E2E_MACOS_APP_PATH`只供driver显式选择已有签名App，非产品参数，设置它时直接运行Playwright，不运行prepare。
 - **统一安全 Renderer origin**：Main 只要没有 `MAIN_WINDOW_VITE_DEV_SERVER_URL` 就安装 `PackagedRendererProtocol`，因此 local production bundle 与最终 package 都从 `interceptor://app/index.html` 加载；开发 HMR 仍使用精确 Vite origin。该条件不依赖 `app.isPackaged`，但可信导航与 CSP 边界不放宽。
 - **生命周期与证据**：`fixtures/runtime/local-electron-driver.ts` 为每个测试创建独立临时 `userData`，启动 BrowserContext trace，等待真实 Renderer/Core/8888 listener，并在 workflow 后保存 `trace.zip`、`final.png`、Main/Renderer 日志和 PID/端口 metadata；产品 Close 后验证 Main/Core 退出与 8888 可重新 bind。macOS主动crash后立即落该代证据，避免同profile下一代清理日志造成缺失；原生退出用Command+Q，Windows保留Alt+F4。强制关闭只在宿主保护允许时兜底，不能作为正常退出或E2E成功证明。
 - **共享CA验收**：普通workflow及smoke先只读检查已由产品初始化的用户级CA，结束保留材料和系统信任；不把共享CA复制进profile。首次初始化专项允许产品启动生成/授信，破坏性专项要求空共享目录并保存完整Root/admin trust基线。仅测试fixture声明范围，不给产品增加专用路径或开关；Windows首次窗口等待允许新CA UAC完成，业务/系统代理原生契约不变。
@@ -28,19 +27,13 @@
 - **零 Mock / 零 seed输入边界**：测试操作通过公共 automation ID 进入真实 App UI，再走 Preload/Main/Core/Storage/Proxy/Worker；测试侧只拥有loopback origin/client、证据与清理。导入文件必须由同一workflow先经产品Export真实产生，测试只能只读核验并重新选择，不得自行构造业务输入。`fixtures/ui/windows-file-dialog.ts`用Windows UI Automation定位真实Open/Save Dialog，再用真实鼠标键盘选择路径，不改写dialog返回值；`apps/playground/server/scenarios/traffic-lab.ts`提供共享协议服务与随机origin port，但被测Proxy listener保持产品默认`127.0.0.1:8888`。**禁止 `page.evaluate(window.interceptor.*)` 代替业务操作。**
 - **fixture分类与协议归属**：`runtime/` 管进程与profile，`ui/` 管真实控件驱动，`safety/` 管宿主恢复，`agent/` 管模型模拟；已有辅助单测随所属目录保留。`trafficLab`为每条workflow统一拥有Playground的HTTP、WebSocket和按需TLS服务，场景运行与细粒度控制共享origin。E2E可直接使用Node流量API；Browser Playground只在页面或Browser MCP流程需要时启动。详细边界见[fixtures说明](../../apps/desktop/tests/e2e-workflow-tests/fixtures/README.md)。
 
-## 3. 当前实现状态
+## 3. 驱动与证据边界
 
-Inventory与详细验收规格位于`e2e-workflow-tests/README.md`与`docs/`，当前可执行数量通过Playwright `--list`确认。已通过项均保留实现前或retrospective Red、当前Green、trace/evidence
-与完整销毁门禁。其余条目仍按各自Inventory状态管理（`rules.apply-conflict`保留真实双实例前置blocker）。
-只有同一workflow的Red/Green与销毁证据闭环后，才可更新为passed并把同一contract接入packaged driver。
-
-`packaged-smoke/startup.spec.ts`仍是最终package的综合CDP smoke，尚未复用完整Inventory contract。
+用户流程规格由`e2e-workflow-tests/README.md`和`docs/`维护，可执行用例通过Playwright `--list`确认。`packaged-smoke/startup.spec.ts`负责最终产物的综合启动、安全、资源与退出检查，不等同于全部feature workflow。
 
 macOS常驻helper独立于每条workflow的Main/Core，不作为它们的子进程清除；测试结束仍须证明全部App代际、8888和系统代理/证书恢复。整轮组件的保留或卸载按用户授权处理，不能以helper仍运行掩盖App残留，也不能在每条workflow拆除组件破坏跨启动复用验收。Core故障读取完整原代理并观察旧journal代际退出，自动重接管后核验新original/owned不变；两端均使用用户级journal跨profile恢复，Windows原路径/格式保持。
 
-`apps/playground`不是测试Runner。Vitest只覆盖配置解析、Token脱敏、报告完整性和真实socket Traffic Lab；
-`mcp.browser-playground-cors`证明真实Electron与系统Edge的Browser → Main → Core链路。24项Tool的Pass / Fail /
-Blocked仍必须由Developer在Playground逐项点击并观察产品与origin后填写，不能由自动Green代替。
+`apps/playground`不是测试Runner。Browser MCP流程需要真实Electron与浏览器之间的链路；Playground人工报告由使用者实际操作并观察产品与origin后填写，自动结果不能代填。
 
 ## 4. 执行约束
 
@@ -64,9 +57,8 @@ node apps/desktop/tests/visual-parity/parity.mjs
 ```
 
 完整 parity 在 `1600×900`、`deviceScaleFactor=2` 下按每批 5 个 view 启动独立 Edge 子进程；每个 view
-仍使用独立 BrowserContext。10–20 view 批次会在完整 146-view 运行中形成过高内存峰值，表现为后续
-page/context 被浏览器关闭；5-view 批次控制峰值，不改变单个 view 的状态、断言或像素算法。子进程的
-browser、Vite 与 design preview 统一在 `finally` 关闭，失败不得遗留测试 server。
+使用独立BrowserContext，以限制内存峰值，不改变单场景状态、断言或像素算法。browser、Vite与design preview
+统一在`finally`关闭，失败不得遗留测试server。
 
 涉及 Main / Preload / IPC / Fuses / CSP / 打包边界时追加：
 

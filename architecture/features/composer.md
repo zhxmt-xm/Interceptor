@@ -2,10 +2,9 @@
 
 > Composer 发送时的 HTTP header/body KEEP/UPDATE、编码与 framing 契约统一见 [http-message-editing.md](http-message-editing.md)。
 
-> 最后更新：2026-09-06
 > Core 模块：`apps/proxy-core/src/proxy-core/composer/`、`apps/proxy-core/src/proxy-core/tls-probe/`
 > Renderer 模块：`apps/desktop/src/renderer/features/composer/`
-> UI 设计：`design-vite/` 的 composer 视图（17 个场景 × 浅深共 34 张）与 `design-vite/design-system.md` 的「Composer 工作区」一节，**已落地**。
+> UI设计：`design-vite/`的Composer视图与`design-vite/design-system.md`的「Composer工作区」。
 
 ## 1. 职责与边界
 
@@ -39,19 +38,13 @@ Composer 让用户手工构造并发送请求，Connection 提供独立的 TLS �
     - 保存成功后通知其他Renderer；失败或取消不发送成功通知。
     - IPC不把通知回送给发起保存的Renderer，它继续使用IPC返回值确认实际保存的快照。
     - MCP/Agent仍通知所有Renderer；不改现有revision冲突、自动保存和后续编辑保护。
-    - 重构前后复跑Collection同步测试与`composer.tools.collection`真实流程，不为行为不变的重构制造Red。
-
-- 2026-09-07整理验收：前后Collection同步相关15/15；最终同一构建四条真实流程4/4。
-    - Collection保存两代Main/Core为`21292/3120`、`41164/30620`；Collection Transfer为`39056/18028`、`3880/5804`，全部正常销毁并恢复宿主。
-    - Desktop typecheck、相关70项测试、package/artifact audit/packaged smoke通过，完整证据见[Main方法整理验收](tool-capabilities.md#shared-main-actions-acceptance)。
-
 - 集合继续采用现有自动保存模型，不引入Rules式Apply或第二份草稿。外部替换成功后已挂载界面同步Core结果，
     revision冲突沿用Core权威重载；旧节流任务和迟到响应不能把较新替换静默覆盖或标成已保存。
     Collection公开`data-save-state`/`data-revision`反映真实写回状态，不靠固定等待时间验证已保存快照。
     常驻同步hook在现有启动遮罩完成后首次读取集合，避免在Core业务初始化前查询失败后永久停留未加载状态；
     不改变冷启动自动接管或把代理行为改为手动。
 - 快速输入正文并切换请求时，CodeEditor由Monaco按隐式Model所有权完成detach与销毁；包装器不得提前销毁仍被
-    编辑器观察的Model。该路径用unit Red和真实Collection workflow Red锁定，不修改第三方库或屏蔽错误。
+    编辑器观察的Model。
 - 输出保留节点身份、目录层级、顺序、完整请求编辑字段和revision；Auth凭据、敏感Header/Query及URL凭据
     必须在共享Tool边界脱敏。读取/替换往返不能把遮罩文本写成凭据，保留操作只作用于相同request/字段身份；
     不存在的原字段不得靠遮罩凭空创建。错误和审批不泄露凭据或请求正文。
@@ -59,21 +52,6 @@ Composer 让用户手工构造并发送请求，Connection 提供独立的 TLS �
     校验不把尚在编辑的空URL等合法集合状态误当作发送请求。空节点树明确表示替换为空集合。
 - Ask审批展示当前/目标请求与目录计数；Deny无替换，stale revision无写入；Allow/Auto成功后UI、Core和重启
     持久化结果一致。两个命令都沿原AbortSignal，在取消或授权关闭时不执行迟到的写入。
-- owning unit/integration Red → `composer.tools.collection`真实Electron Red → 最小实现 → 同组Green。
-    E2E所有业务输入由同workflow的真实Composer UI创建，Model替换使用真实查询返回的树，不直写storage或fixture。
-
-2026-09-06：executor最小11项缺失Tool/Query字段脱敏Red→Green，编辑态URL另1项Red→Green，边界扩充后20/20。
-集合同步9项、启动就绪2项、CodeEditor销毁1项分别先Red后Green；正文切换与首次载入也由同一真实workflow复现
-产品缺口后验证修复。完整树/旧导入/Store与同步测试30/30，摘要24/24。首次真实Green两代Main/Core
-`36256/36056`、`24452/27452`正常销毁；最终关联七条workflow全部Green，共12代正常销毁、8888释放和
-完整WinINet/journal恢复，其中本workflow为`32292/40736`、`44792/3792`。证据归档于TEMP下
-`interceptor-composer-collection-related-e2e-green`，缺失Tool与编辑器Red分别保留在
-`interceptor-composer-collection-e2e-red`、`interceptor-composer-editor-e2e-red`。
-全workspace typecheck、Desktop538/538、Tools174/174后Collection扩充20/20、MCP32/32、Runtime122/122、
-Protocol25/25、Playground67/67及设计交互74/74通过；Proxy Core329/331仅既有两项framing债务。
-专项明暗六视图40/40、0 missing/flagged、最大0.5px；Windows package、产物审计（1,294 files / 392,872,268 bytes）、
-生产依赖0漏洞与packaged smoke1/1通过。完整parity为256视图、1,776目标，Collection相关40/40全部匹配；
-其余30 missing与304 flagged为既有视觉债务。完整设计输入及Renderer产物已归档，提交六张新图与四张目录更新。
 
 ### 2.0.1 Collection导出/导入Tool
 
@@ -94,32 +72,12 @@ Protocol25/25、Playground67/67及设计交互74/74通过；Proxy Core329/331仅
     原子追加并更新revision。自动保存中的变化必须先完成，不能让导入与旧节流写入互相覆盖。
 - 结果仅含导入成功标记、revision、requestCount、folderCount、skippedCount；不返回Auth、Header、正文或本机路径。
     同一时刻只允许运行一个实际导入预览，取消/退出后旧请求不能干扰下一请求。
-- unit/integration Red → `composer.tools.transfer`真实Electron Red → 实现 → 同组Green。唯一输入文件由同workflow
-    UI Export生成，验证Deny、原生Cancel、预览取消、重复导入、全新身份、凭据保留、独立授权和双代完整销毁。
-
-2026-09-06：两项Tool已接入共享registry，typed Main命令为`composer.collection.export/import`。
+- `CollectionImportService.startImport()`允许不传signal，普通UI直接调用；Agent/MCP传自己的真实AbortSignal，不创建无人持有的占位controller。窗口关闭/退出仍调用`cancelImport()`，与调用方signal是否存在无关。
+typed Main命令为`composer.collection.export/import`。
 Main `CollectionImportService`拥有唯一pending请求；App常驻`CollectionImportDialog`复用原确认组件，
 Renderer `CollectionImportActions`管理读取/预览/保存并按请求ID拒绝迟到结果。原生读取、解析、节点身份重生成
 仍由既有函数负责。确认先等待已发出的自动保存，再以最新revision原子追加；取消发生在等待期间则不再写入，
 正式写入已开始则完成原路径。Main退出、窗口关闭或Renderer退出时释放pending，不留下悬挂的Action Gate。
-
-executor10项缺失Tool Red与真实discovery Red均已观察；随后executor10/10、Main文件/请求生命周期16/16、
-Renderer流程14/14、自动保存协调4/4、摘要28/28通过。最终八条关联真实workflow8/8（3.1分钟），14个代际
-全部正常销毁，8888、完整WinINet/journal与进程树恢复；本workflow两代Main/Core为`40224/19272`、
-`24620/11012`，证据归档于TEMP下`interceptor-composer-transfer-related-e2e-green`。
-自产两请求/一目录先由UI Export生成唯一输入；导出逐字段保真，三次导入后四份树的全部node/字段row ID唯一，
-JSON、Form、Query、Auth、Header/URL凭据与层级顺序保持。Agent/MCP Ask/Auto、两层Cancel、撤权和重启零重放通过；
-测试只归档哈希、revision与协议结论，不把文件内容或路径写入Model/trace。
-
-设计交互76/76，新增12视图72目标与原有导入/导出弹窗六视图20目标共92/92，0 missing/flagged、最大0.5px。
-Windows package、artifact audit（1,294 files / 392,885,889 bytes）、production audit0漏洞、packaged smoke1/1
-（44.4秒）通过；Preload安全快照仅新增`importCollection`、`onCollectionImportRequested`、
-`onCollectionImportCanceled`与`completeCollectionImport`。完整parity已完成268 views / 1,848 targets / 1,814 matched /
-34 missing / 305 flagged，平均2.27%；本次92个目标在全量运行中仍0 missing/flagged、最大0.5px。
-波动来自旧TLS passthrough明暗各2项missing及旧DeepSeek深色Dialog1项flagged，不把旧视觉债务升级为通过。
-468张出图归档于TEMP下`interceptor-composer-transfer-design-generated`，完整Renderer产物与报告位于
-`interceptor-composer-transfer-full-parity`及同名`.md`；提交只保留12张新增传输图和两张Composer discovery数量更新，
-454张非目标图经SHA256核实与本工作项开始前一致。Composer六项Tool自动验收完成，Developer人工矩阵仍独立待办。
 
 ### 2.1 发送请求
 
@@ -181,7 +139,7 @@ sequenceDiagram
 
 用于诊断 MITM 兼容性、证书链问题、ALPN 协商结果。
 
-### 2.3 Agent / MCP Composer Tool [已实现]
+### 2.3 Agent / MCP Composer Tool
 
 共享registry将现有两个正式命令投影为`composer_send_request`与`composer_probe_connection`，两者均为`openWorld` change Tool，
 Agent/MCP只负责Settings过滤与Ask/Auto，不拥有第二套网络实现。
@@ -191,12 +149,7 @@ Agent/MCP只负责Settings过滤与Ask/Auto，不拥有第二套网络实现。
 - `composer_probe_connection`接受host、1..65535端口与可选timeout，只返回TLS握手事实，不发送应用数据。
 - Tool调用的AbortSignal必须穿过Core RPC进入`ComposerService.send`与`TlsProbeService.probe`。取消时主动销毁
     HTTP/1.1 request、HTTP/2 stream/session或TLS socket；仅忽略late RPC response不算取消网络副作用。
-- Renderer现有Composer Send与Capture TLS Probe仍使用同一Core命令；本阶段不改变其UI语义或增加兼容入口。
-
-真实`agent.tools.composer`经本地OpenAI-compatible Provider与测试拥有的HTTP/TLS origin验证Ask Deny/Allow、Auto、
-原始request facts、响应脱敏、Capture零新增、TLS成功/失败、Settings撤权与双代零重放。H1、H2与TLS socket取消由
-owning integration `8/8`锁定，另有TLS预取消零`tls.connect` unit `1/1`；最终E2E Stop后origin观察到response socket
-关闭且只持久化一条失败Tool Result。
+- Renderer的Composer Send与Capture TLS Probe使用同一Core命令，不增加兼容入口。
 
 ## 3. 数据契约
 
@@ -232,11 +185,11 @@ flowchart LR
 
 ## 5. UI 与 Collection
 
-Composer 已按设计稿落地为 **`Collection 分栏 / splitter / 工作区`**，工作区纵向为 `文档标签条 · URL 行 · 请求编辑区 · splitter · 响应区`；请求集合跨启动持久化。
+Composer布局为`Collection分栏 / splitter / 工作区`，工作区纵向排列文档标签条、URL行、请求编辑区、splitter和响应区；请求集合跨启动持久化。
 
-### 5.1 Collection 已实现链路
+### 5.1 Collection 分层
 
-| 层 | 新增内容 |
+| 层 | 职责 |
 | --- | --- |
 | Core | `workspace/entry.ts` 的 `WorkspaceService.loadCollection` / `saveCollection`，与 RuleSet 完全同构：`collection_tree` 单行表 + 整棵树存一个 JSON + 乐观锁 revision |
 | Protocol | 只有 `collection.get` 与 `collection.replace` 两条命令 |
@@ -262,7 +215,7 @@ splitter只改变左栏宽度，不改变树选择或打开文档。
 
 **导出**：工具栏的 `Export collection` 走 `collection:export`，由 Main 弹系统保存对话框并把整棵树写成 JSON。集合数据本来就在 Renderer 手上，这条路径不经过 Core。
 
-**导入 [已完成]**：与 [Rules 导入](rules.md#93-导入与导出-已完成) 同一套语义与同一条流程——纯新增、节点与字段行 `id` 全部重新生成、保持文件内层级并整体追加到根末尾、失败按文件级与节点级分层处理（文件级整体失败，节点级逐项跳过并报告路径与原因）、节点深度不得超过 `MAX_FOLDER_DEPTH`。
+**导入**：与[Rules导入](rules.md)采用相同语义：纯新增，节点与字段行`id`全部重新生成，保持文件内层级并整体追加到根末尾；文件级失败整体拒绝，节点级失败逐项跳过并报告路径与原因；深度不得超过`MAX_FOLDER_DEPTH`。
 
 分层同样是 Main 只做 IO、Renderer 做解析与装配：两个 feature 共用 Main 的 `readImportFile(title)`，各自在 Renderer 解析自己的领域结构，确认后复用**已有的** `collection.replace` 整棵树写回，不新增增量 add 命令。
 
@@ -272,11 +225,9 @@ splitter只改变左栏宽度，不改变树选择或打开文档。
 
 Import / Export 使用与 Rules 相同的不可关闭文件操作遮罩；确认后直接复用 `collection.replace` 原子持久化，成功后同时推进 `nodes`、`savedNodes` 与 revision，不再等待600ms节流，也不会被 `useCollection` 重复保存。
 
-**TDD / E2E证据（2026-08-20）**：最终`composer.collection.import`源码移植到实现前`884dcc4`后，真实Electron精确Red于`composer.collection.import`不存在。当前workflow只经真实Composer UI创建两条带query/header的请求与目录，真实Save Dialog产生唯一导入文件，真实Open Dialog验证取消零变化与确认追加；节点和字段行id均与文件无交集，请求内容、层级、当前文档与目录落点保持，切出再返回由Core恢复同一批新身份。metadata记录Main PID `38140`、Core PID `23300`、`gracefulDestroyVerified: true`与8888释放。
-
 ### 5.2 Recent sends
 
-URL 行的 `Recent sends` 是**重放记录**，与 Collection 是两件独立的事，不互相写入：列出最近发送的 method / URL / 状态码 / 相对时间，点击恢复为请求。是否持久化待定；只存内存即可满足设计稿表达。
+URL行的`Recent sends`是独立于Collection的内存重放记录，两者不互相写入；列表显示method、URL、状态码和相对时间，点击恢复为请求。
 
 ### 5.3 请求 Body 的四档
 
@@ -287,7 +238,7 @@ URL 行的 `Recent sends` 是**重放记录**，与 Collection 是两件独立�
 | Text | 同上，语言为 plaintext，Format 禁用 | 无 |
 | Form | 第三张 KV 表 | Renderer 编码成 `a=1&b=2` 字符串，**协议不变** |
 
-**`multipart/form-data` 传文件不在本轮范围**：`ComposerRequestInput.body` 只接受 `string`，要传二进制必须先扩协议。
+`ComposerRequestInput.body`只接受`string`；`multipart/form-data`文件和其他二进制输入需要独立的协议定义。
 
 ### 5.4 响应 Body 复用 Capture 的查看器内核
 
@@ -298,7 +249,7 @@ Format、JSON Tree 右键复制、Hex 虚拟化与四个阈值常量全部一致
 
 Composer 与 Capture 的差别只在**外壳**：Capture 侧的 `BodyView` 要按需拉字节、跟踪解码与截断状态、驱动
 Save body；Composer 的响应正文随 `composer.send` 一次性返回，外壳只把字节交给内核。因此内核签名是
-`(bytes, mediaType, truncated)`，不认识 hash 与 IPC——Composer 在同期收编就是为了避免内核签名事后返工。
+`(bytes, mediaType, truncated)`，不认识hash或IPC。
 
 **格式化契约**：code/default 模式按正文语言路由。`FORMAT_AUTO_MAX_BYTES`及以下自动格式化，
 更大但不超过`FORMAT_MAX_BYTES`时只响应用户点击Format；HTML/CSS/JavaScript走Monaco language worker，
@@ -319,36 +270,23 @@ XML走`xml-formatter`。任一formatter失败都必须恢复调用前原文、�
 
 ## 6. 验收要点
 
-- [ ] Composer 请求不出现在 Capture 列表。
-- [ ] Composer 请求不受启用的 Rules 影响。
-- [ ] 未设 timeout 的长请求不被强制中断。
-- [ ] TLS 证书链完整且已去重。
-- [ ] `tls.probe` 不产生任何 HTTP 流量。
-- [x] Collection 整行拖拽保留完整子树，且移动/新建均不能超过 3 级目录。
+- Composer 请求不出现在 Capture 列表。
+- Composer 请求不受启用的 Rules 影响。
+- 未设 timeout 的长请求不被强制中断。
+- TLS 证书链完整且已去重。
+- `tls.probe` 不产生任何 HTTP 流量。
+- Collection 整行拖拽保留完整子树，且移动/新建均不能超过 3 级目录。
 
 ### Collection目录选中与缩进
 
-- 2026-09-11前置差异：目录每层26px，请求使用8px加每层26px，导致嵌套目录文字/箭头向左4px、请求文字向右4px。`CollectionTreeNode.module.css`已按设计还原首层嵌套30px、后续每层26px；根目录0px、根请求8px与30px行高保持。
-- 选中目录的名称、计数和箭头从text/text-2/text-3还原为accent；已有轮廓背景和正在编辑但未选中的请求open样式保持，不改变文档与目录落点语义。
-- 明暗目录选中前置12 matched、0 missing、10 flagged，修复后12/12。首两轮计数missing由鼠标停留造成，已让两侧移出目录，属于场景问题；交错目录/请求场景还复现设计选择残留，主场景通过正常点击Create repo建立明确选择后，四场景30/30、0 missing/flagged，最大0.9px。
-- 现有真实tree-interactions补精确30px/26px断言，取得Expected30/Received26的Red后再改CSS；最终1/1（17.8s），Main/Core Red25204/33300、Green13080/42900均正常销毁且宿主guard通过。unit12/12与Desktop类型通过，原三级约束、rename/Core回载与splitter断言保留。
-- 既有截图脚本新增正常目录点击，`node design-vite/shoot.mjs --feature=composer --variant=collection-folder-selected`生成两张缺失PNG，400张旧图SHA256不变。四场景像素结果见TEMP `interceptor-composer-folder-20260911-isolated.md`，所有原始报告、截图、trace/metadata和hash清单位于同前缀；[同一item报告](../../commit-changes/202609111558_ui_parity_progress.html#composer-folder)仅保留change及同状态明暗前后图。
+- 首层嵌套缩进30px，后续每层26px；根目录缩进0px、根请求8px，行高30px。
+- 选中目录的名称、计数和箭头使用accent；目录落点与正在编辑的请求是独立状态。
 
-### 方法标签样式差异
+### 方法标签
 
-- 用户明确的两层居中：GET/POST文字在标签框内双轴居中，标签框再与右侧名称框居中；不是文字基线或字形包围框中心对齐。名称的字体、字号、行高和单行省略保持，不采用基线、`text-box`裁剪、负margin或位移方案。
-- 前置诊断：旧Collection在调用方覆写9px字号、2px上下padding，共享组件继承11.07px行高，标签15.0625px，文字框上1px/下2.0625px。真实Collection在旧构建上得到Expected normal/Received11.07px的Red，Main/Core29008/20324正常退出；中间normal版本的Green只作为阶段证据，不是最终实现。
-- 最终`MethodBadge`采用`inline-flex + align-items:center + justify-content:center`，组件管理md20px、sm17px、xs16px高度及对应字号/水平padding；Collection传xs，只保留40px列宽与不收缩设置，DocumentTabs传sm。两处字号/padding覆写已删除，`CollectionTreeNode.item`仍是30px行、flex center，标签内部行高不承担定位职责；设计同步这些既有尺寸与flex。
-- 明暗主场景加入Collection GET/POST、Document POST三个直接标签目标，两主题24/24、0 missing/flagged。最终明暗定向检查含GET/POST、1000x700窄窗口长标题：40x16px标签、30px行、文字上下各2px，标签框与名称框中心差0px；长标题仍正常ellipsis。1320/390报告截图、原始Renderer和DOM证据位于TEMP `interceptor-method-badge-flex-20260911-review/`。
-- 最终业务测试45/45、Desktop typecheck与本地构建通过；真实Collection和Capture正文流程2/2（31.3s），Main/Core分别19136/14604、9492/1800，均正常销毁并通过8888、WinINet、共享journal和登记进程恢复。Collection在DPR1.5实测文字上下2/2px、左右11.4896/11.5px，两个外框中心差0px；验证双轴flex与尺寸，不再把line-height值当居中判据。
-- 同一[工作项报告](../../commit-changes/202609111558_ui_parity_progress.html#method-badge-images)首组为最终flex产品前后图；三张旧Composer改后图已换为当前产品，23张原图保留，连同普通方法字段对比共32张内嵌图全部加载，1320/390无横向溢出或折叠。原始诊断及被否定的临时候选留在TEMP历史证据中，不落产品或正式设计；本轮临时脚本已删除。
-- 设计字体Inter/JetBrains Mono实际加载成功，Composer主场景和目录选中明暗四张图与既有PNG像素差均为0，不更新基准。Capture临时预览仍处于断点而非普通请求状态，其2.29%/2.24%差值不能归因于标签或作为基准更新依据；该组合不计通过，Capture采用正式parity的普通请求场景结果。设计产物及比较记录位于TEMP `interceptor-method-badge-flex-20260911-design/`，没有写入或覆盖旧PNG。
-- 共享样式全量覆盖最终为391 views、2735 targets、2732 matched、3 missing、115 flagged；Composer主场景/目录状态与TLS九视图69/69，普通Capture明暗各42 matched及4个既有Header Copy flag。首轮340:345因导出等待overlay残留中断，`parity.mjs`补每场景overlay重置后该批和剩余批完成；已完成前340个经配置核对不受重置影响。完整逐ID覆盖与来源在TEMP `interceptor-method-badge-flex-20260911-complete.{md,json}`，不把其他UI欠账升级为通过。
+- GET/POST文字在标签内居中，标签与右侧名称由父flex容器设置`align-items: center`；不使用基线、字形包围框、负margin或位移。
+- `MethodBadge`管理md20px、sm17px、xs16px高度和对应字号/padding。Collection使用xs、保留40px列宽且不收缩；DocumentTabs使用sm。调用方不覆盖内部字号或padding。
 
-### Collection请求行parity
+### Collection请求行
 
-- 2026-09-11主场景打开Create repo后多点了Repositories，导致Renderer选目录而设计选请求。仅移除场景的这次点击，字体/颜色两项flag缩小为字号一项；不改产品的目录落点与打开文档分离语义。
-- `CollectionTreeNode.module.css`的请求名称从12px还原为设计12.5px；30px行高、目录字号、缩进、选中/打开状态和拖拽保持。主场景明暗共用目标，既有framed基准未修改。
-- 前置主场景parity记录字号12.5px/12px；修复后明暗18/18、0 missing/flagged，Collection行几何全部0px，全场景最大0.9px。像素差1.51%/1.52%仍包含其他正文/数据差异，不表示全页逐像素相等。
-- 行为和数据格式不变：现有`composer-store`前后12/12，Desktop typecheck通过；真实`composer.collection.tree-interactions`前后1/1（11.5s/17.2s），保留三级目录、新建落点、行内rename、Core回载与splitter断言。Main/Core 35828/27528、28932/36364均`gracefulDestroyVerified=true`，Main/Core/Worker、8888、WinINet与共享journal恢复由driver核验。
-- TEMP证据前缀`interceptor-composer-targets-20260911`保留场景修正前、仅修选择状态、字号修正后三阶段报告与截图；`interceptor-composer-rows-20260911`保存明暗parity、unit、类型、构建和两次真实流程trace/metadata。临时截图脚本已删除；[同一item报告](../../commit-changes/202609111558_ui_parity_progress.html#composer-rows)仅展示change及同状态红框前后图，原20张内嵌图不变，22张均加载、1320/390宽度无横向溢出或折叠。
+请求名称字号12.5px、行高30px；长名称单行省略，选中目录不改变正在打开的请求。

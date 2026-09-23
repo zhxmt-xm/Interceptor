@@ -1,6 +1,5 @@
 # 平台架构：Renderer Shell
 
-> 最后更新：2026-09-06
 > 范围：跨 feature 的 Renderer 结构——应用外壳、窗口 chrome、冷启动、共享组件库、主题与语言、automation 契约。
 > 单个 feature 工作区的内部设计见对应的 `../features/*.md`；视觉取值以 [../../design-vite/design-system.md](../../design-vite/design-system.md) 为准。
 >
@@ -24,14 +23,14 @@ feature 业务命令不进入 Header；Agent toggle 属于全局 Shell 控件。
 
 ## 4. Feature workspaces
 
-`features/{capture,rules,composer,diagnostics,settings}/` 均为 Main/Statusbar + colocated CSS Module，无 Feature Topbar；`features/agent/` 是跨 Workspace 的全局右栏，不是第六个 Workspace。当前 Agent 已实现未配置态、Provider 配置、Chat selector、New/Rename/Delete、Streaming Transcript、reasoning 展开、Composer、Model selector、Context/Session Usage、Stop/Retry 与重启恢复；Configure 深链到 Settings > Agent，导航不会隐式关闭 Panel。Agent/MCP业务Tool共用registry，Settings提供独立授权开关，Tool Call/Result及Ask审批复用Transcript组件；具体能力契约见[../features/tool-capabilities.md](../features/tool-capabilities.md)。`features/breakpoints/` 只保留数据层，UI 已合并进 Capture。各 feature 的业务命令分别位于自己的列表、协议、暂停队列和日志内容工具栏；内容工具栏统一为 `--content-toolbar-height`（44px）。状态统一进入 Statusbar。所有左右分栏复用 1px `Splitter`，抓手为同一 flex 中轴上的 4×40px 子项。
+`features/{capture,rules,composer,diagnostics,settings}/` 均为 Main/Statusbar + colocated CSS Module，无 Feature Topbar；`features/agent/` 是跨 Workspace 的全局右栏，不是第六个 Workspace。Agent提供未配置态、Provider配置、Chat selector、New/Rename/Delete、Streaming Transcript、reasoning展开、Composer、Model selector、Context/Session Usage、Stop/Retry与重启恢复；Configure深链到Settings > Agent，导航不会隐式关闭Panel。Agent/MCP业务Tool共用registry，Settings提供独立授权开关，Tool Call/Result及Ask审批复用Transcript组件；具体能力契约见[../features/tool-capabilities.md](../features/tool-capabilities.md)。`features/breakpoints/`只保留数据层，UI位于Capture。各 feature 的业务命令分别位于自己的列表、协议、暂停队列和日志内容工具栏；内容工具栏统一为 `--content-toolbar-height`（44px）。状态统一进入 Statusbar。所有左右分栏复用 1px `Splitter`，抓手为同一 flex 中轴上的 4×40px 子项。
 
 Rules导入弹窗位于App作用域，使其他workspace中的Agent/MCP也能发起同一个用户流程，但业务所有权仍在
 `features/rules/`。Main通过窄Preload请求/取消事件传递requestId，`RulesImportActions`统一读取、预览与确认状态，
 `RulesImportDialog`复用共享确认组件；RuleList只发起正式导入入口，不再保存第二份预览。完成响应只含公开计数，
 Main在边界校验后返回Tool；原解析及确认后原子追加仍归Rules，窗口导航不会隐式丢失正在确认的导入。
 
-WebSocket 帧断点保留在连接自己的 Messages tab：setup 只配置当前 `exchangeId` 的方向、帧类别与超时；
+WebSocket帧断点保留在连接自己的Messages tab：setup只配置当前`exchangeId`的方向和帧类别，不设置自动超时释放；
 命中后 Inspector 自动切到 Messages，已转发历史帧继续显示，Core snapshot 作为黄色 paused row 追加在列表末尾。
 row 下方内嵌专用编辑器，Original message 复用完整 `BodyViewer`，Replacement message 默认 Off，只有用户
 显式切到 Text 才发送编辑；binary snapshot 用 hex 展示，ping / pong / close 与 message 共用同一条解决流程。
@@ -42,7 +41,7 @@ HTTP breakpoint 仍使用整面板 `BreakpointInspector`，两条路径只共享
 `components/` 是扁平库，每个组件独立子目录（`Component.tsx` + `Component.module.css`）；含 Flyout（portal 锚定弹层）、ThemeSwitcher、LanguageSwitcher（侧栏底部）。`Tabs` 在容器放不下时把尾部项收进 `…` Flyout（隐藏测量层 + `ResizeObserver`），保证面板头高度固定。
 
 - `IconButton`可按调用点提供`--icon-button-hover-background`与`--icon-button-hover-color`，未提供仍使用`--hover`/`--text`。WebSocket消息断点用它保持armed黄色和Ant默认text按钮反馈，不改变共享默认主题；禁用态仍不响应hover。
-- `IconButton`统一padding为0、内部Lucide图标不收缩；`inline`档为18px按钮/14px图标/5px圆角，`Kv`只选择档位并控制行hover显隐，不能由调用方缩小按钮后留下浏览器默认padding。md/sm/xs既有尺寸与事件保持；2026-09-14真实Copy从6x14px恢复14x14px，unit与同一workflow Red/Green及退出证据见[Capture](../features/capture.md#capture筛选parity场景)。
+- `IconButton`统一padding为0、内部Lucide图标不收缩；`inline`档为18px按钮/14px图标/5px圆角，`Kv`只选择档位并控制行hover显隐，不能由调用方缩小按钮后留下浏览器默认padding。
 - `Button`由组件控制图标和独立label的`inline-flex`及`align-items: center`，button再用`justify-content: center`居中内容组。md/compact/sm继续分别为34/32/28px，不在通知等调用方覆盖位置；检查实际父布局规则、内容范围和正常gap，不以字形像素边界或自算矩形中心定义对齐，也不添加独立位移、裁字或行高补偿。
 - `Button.icon`接收现有Lucide或Ant Design图标组件，由共享icon槽提供尺寸与7px图文gap；调用方不再把图标混进文字children。图标与loading spinner属于装饰，使用`aria-hidden`，按钮名称来自文字或显式`ariaLabel`；UpdatesPanel保留原GitHub图标和登录动作。
 
@@ -108,7 +107,7 @@ Storage现有Refresh按钮使用`automationId`传入公共ID；Exchange/Body引�
 
 ## 8. 主题与语言
 
-Renderer的Inter现由`styles/fonts.css`注册设计使用的400/450/500/600/700字重，35条声明复用现有`@fontsource-variable/inter`的7份WOFF2；文件与设计来源SHA256相同，不新增依赖、字体副本或网络请求。离散注册使550等中间字重与设计按相同规则匹配；JetBrains Mono、控件字号/字重声明、尺寸及padding/gap不变。真实运行已确认Inter加载和本地资源；完整Settings流程因原断言包含其他字体的`data:`资源失败，已限定Inter，恢复E2E后复验，不能把该次失败计为整条Green。
+Renderer在`styles/fonts.css`中复用`@fontsource-variable/inter`的本地WOFF2，按400/450/500/600/700离散字重注册Inter，不请求外部字体。550等中间字重遵守与设计一致的匹配规则；JetBrains Mono和控件尺寸由共享design token规定。
 
 四套时段主题由 `theme/theme.ts` + `styles/global.css` 驱动。
 
@@ -122,11 +121,6 @@ App只更新DOM属性，不在确认之后重复写存储。隐私单字段patch
 
 ## 9. 验收要点
 
-- 2026-09-11旧Shell Settings/Diagnostics深色场景显式展开侧栏，Settings另明确打开Certificates；标题使用已有`measureText`读取DOM Range，不将flex剩余空间当作字宽。复用现有`dark/<feature>/framed.png`，不生成或更新基准。Rules/Composer配置输出不变。
-- 两个场景共10/10 matched、0 missing/flagged、最大0.9px，像素差Diagnostics约1.27%、Settings约1.45%。原Diagnostics为2 missing及标题1253.9px宽差；只修验收场景，不声明业务区域或整套parity通过。产品Shell、全局样式和tokens未改，不新增工具自身测试或重跑无关E2E；TEMP前缀`interceptor-shell-scenes-20260911`，报告见[Shell场景修正](../../commit-changes/202609111558_ui_parity_progress.html#shell-scenes)。
-- 后续旧Shell Composer去掉多余的目录选择并在设计侧显式选中请求；Diagnostics浅色补展开侧栏和既有framed路径，两场景10/10、最大0.9px。Rules状态的13px误差来自设计测完整状态项、产品仅测内层文字；统一测完整状态项并另测7px圆点后，Undo/深色Shell Rules两场景6/6、最大0.1px。产品和设计源码均未修改，不生成基准，不把旧Shell Rules缺失PNG的n/a算像素通过；TEMP `interceptor-parity-{shell-followup,rules-status}-20260911*`。
-- 六视图双主题、900×600 与四语言状态共 42 张截图，无页面级溢出。
-- Agent阶段1共36个专项parity view、248个target，`0 missing / 0 flagged`；首层Panel与Settings空态四图
-	合计`30/30 matched`，整体最大几何差`0.7px`。
+- 各工作区、主题、窗口尺寸和语言下均不得出现页面级内容溢出。
 - 多语言 smoke 在真实 Windows package 中逐项切换 15 种语言，验证持久化、UI 文案与页面无溢出。
 - catalog 契约测试校验完整主 key、插值与 CLDR 多复数。

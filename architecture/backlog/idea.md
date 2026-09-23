@@ -1,87 +1,46 @@
-# TODO List
+# 功能想法与问题
 
-> 状态只允许三种：✅ 已完成；🔄 进行中；⏳ 未开始。详细阶段统一写在 Description 的 Steps 中。
->
-> TDD 固定记录总体状态及 Code / Unit / Integration / E2E / Design/Parity；➖ 表示当前 work item 不适用。Parity、fake Preload 或普通 Renderer 测试不能替代真实 Electron E2E。
->
-> 阶段词汇以 AGENTS.md 的基础集合为准，并可按真实 flow 增加具体、可验证的新阶段。已落地的 Breakpoint 交互重构见 <a href="../features/breakpoints.md">breakpoints feature</a>。
+本表保留目标、问题依据和方案约束。任务状态与验收安排见<a href="../HANDOVER.md">Handover</a>。
 
 <div style="overflow-x: auto;">
-<table style="width: 1800px; min-width: 1800px;">
+<table style="width: 1230px; min-width: 1230px;">
 <colgroup>
-  <col style="width: 150px;">
   <col style="width: 230px;">
   <col style="width: 400px;">
-  <col style="width: 420px;">
   <col style="width: 280px;">
   <col style="width: 320px;">
 </colgroup>
 <thead>
-<tr><th>Status</th><th>Name</th><th>Description</th><th>TDD</th><th>Root cause</th><th>Solution</th></tr>
+<tr><th>Name</th><th>Description</th><th>Problem</th><th>Approach</th></tr>
 </thead>
 <tbody>
 
 <tr>
-  <td><strong>✅ 已完成</strong></td>
   <td>Agent / MCP shared Tool capabilities</td>
   <td><ul>
-    <li>用一份共享registry向内置Agent与外部MCP开放69项产品Tool目录，并由用户控制每项能力与change执行方式；代码及用户约定范围验证69/69，其中68项真实E2E通过，Manager管理员MMC原生专项明确排除，其他实现与验证保留。Updates仅保留产品功能，不提供Tool；下方既有阶段证据中的73项为历史口径。</li>
-    <li><strong>Steps:</strong><ul>
-      <li>架构与69项目标目录设计完成</li>
-      <li>首批24项Tool按feature命名完成</li>
-      <li>Settings授权开关与问询交互设计完成</li>
-      <li>首批共享registry与MCP adapter 24/24完成</li>
-      <li>Tool开关持久化完成</li>
-      <li>首批Agent代码与已验收真实调用24/24完成</li>
-      <li>首批owning executor正向unit 24/24完成</li>
-      <li>Capture 17/17自动验收完成，包含文件任务、Body、HAR与Archive导入/导出</li>
-      <li>Rules 5/5自动验证完成：Export/Import通过真实Agent/MCP，UI与Tool复用导入确认及原子追加</li>
-      <li>Composer 6/6自动验证完成：Collection查询/替换及Export/Import均已通过真实Agent/MCP，原生选择与共享确认、自动保存协调和字段保真已验收</li>
-      <li>Breakpoints 11/11自动验证完成：三条批量Tool复用正式Core命令，Rule/queue隔离、原始数据面、Ask/Auto与空目标已验收</li>
-      <li>Diagnostics 4/4自动验证完成：Current Trace/Recent静默查询和原生JSONL导出通过真实Agent/MCP，异步任务状态与脱敏边界已验收</li>
-      <li>Settings代码及约定范围验证26/26：25项真实E2E通过，Manager保留逻辑与UI/parity；删除MMC专项后六项证书复跑1/1 Green、双代正常销毁、Agent/MCP、Explorer/Viewer及完整CA清理通过，AppContainer此前关联8/8、14代恢复证据保持</li>
-      <li>证书七项owner50/50、摘要/15语言与28-view parity保持；本轮Manager及相关逻辑149项通过，管理员MMC原生workflow及专用辅助按用户要求删除，不再阻塞交付</li>
-      <li>Playground当前recipe 69/69完成；人工查看由用户自行安排，不列待办或交付门禁，不代填结论</li>
-    </ul></li>
+    <li>内置Agent与外部MCP共享产品Tool目录，由用户分别控制入口授权与change执行方式。</li>
+    <li>Updates保留产品入口，不提供Tool；完整名称和业务契约见<a href="../features/tool-capabilities.md">Tool capabilities</a>。</li>
   </ul></td>
-  <td><strong>✅ 已完成</strong><ul>
-    <li>当前总体进度：Code与owner正向覆盖69/69，按约定范围验证69/69；真实E2E为68项，Manager管理员MMC原生专项明确排除。证据见<a href="../features/settings.md#app-container-tool-acceptance">AppContainer验收</a>和<a href="../features/settings.md#certificate-manager-acceptance">Manager范围与六项证书复验</a>，此前Transfer/TLS/偏好证据保留；不另列用户人工验收任务。</li>
-    <li>当前矩阵：Code ✅ 69/69；Unit ✅ 本轮Manager相关逻辑及integration合计149/149，既有Tools431/431、Desktop721/721、MCP32/32结果保留；Integration ✅ 受影响真实helper、宿主及Session路径；E2E ✅ 纳入范围的68项，Manager MMC原生专项➖由用户排除；Design/Parity ✅ 新证书168/168、新AppContainer96/96、能力表/查询66/66，既有面板10项flagged保持。2026-09-09六项证书复跑1/1 Green，Main/Core 14248/2888与39644/4212正常销毁、CA与宿主恢复，Tools/MCP/Desktop typecheck通过；此前全workspace typecheck、Playground Browser5/5、Windows package/artifact audit、production audit 0漏洞与packaged smoke1/1仍适用。</li>
-    <li>以下为此前阶段的历史矩阵与原始结果；TLS阻塞已于2026-09-08解除，管理员MMC原生专项于2026-09-09由用户排除，不代表当前仍有Updates待实现项或MMC阻塞。</li>
-    <li><strong>Code:</strong> 🔄 全量48/73；Diagnostics两项当前Core快照与原生JSONL导出复用正式owner，查询计数和状态优先的安全job摘要、15语言完成。三条Breakpoints批量命令、严格目标与取消、有限审批和本地化数量摘要完成，不新增queue或采用未提交草稿。Collection导出/导入共用typed Main及App全局确认，结果只含公开计数；导入等待自动保存并重建全部node/字段row ID。Collection查询/替换共用Core保存态与Main正式写入，凭据脱敏/同身份保留，修复旧快照确认、首次载入时序和Monaco隐式Model重复销毁；首批registry/授权/Agent/MCP/Playground、Settings只读6项/系统代理2项/TLS4项、Rules原生导出及共享导入流程保持；另25项待实现。</li>
-    <li><strong>Unit:</strong> 🔄 owner正向覆盖48/73；Diagnostics executor28/28、Main6/6、摘要35/35，全workspace类型、Desktop592/592、Tools243/243、MCP32/32、Runtime122/122、Protocol25/25、Playground67/67通过。此前批量executor23/23、原Core queue17/17、摘要28/28，Desktop579/579、Tools215/215保持；上一组transfer executor10/10、Main16/16、Renderer14/14、保存协调4/4、摘要28/28，Tools189/192、Desktop574/576、MCP31/32、Playground66/67旧目录修复后对应51/51、27/27、20/20、1/1通过。此前Desktop538/538、Tools174/174后Collection扩充20/20、MCP32/32、Runtime122/122、Protocol25/25，同步9/9、就绪2/2、编辑器生命周期1/1、摘要24/24，以及Tools162/162、Desktop516/516、Import10/10、Main15/15、Renderer13/13、摘要23/23、Dialog5/5、Export10/10、Main导出6/6、TLS32/32、profile9/9、Desktop492/494修复27/27、MCP31/32修复20/20、Desktop485/485、Proxy Composer1/1、Rules95/95、Mockttp2/2证据保持。</li>
-    <li><strong>Integration:</strong> 🔄 Core TLS名单/revision12/12、Main查询/MCP撤权、系统代理49/49、H1/H2/TLS取消/连接释放8/8、H2 6/6、Browser5/5、Traffic Lab39/39均保持；本轮Core329/331仍仅两项既有chunked framing失败。</li>
-    <li><strong>E2E:</strong> 🔄 完整自动验收44/73；Diagnostics真实discovery/摘要Red→Green，五条流程十代正常销毁，Current查询静默与顺序、四个原子JSONL、Ask/Auto/Deny/Cancel、脱敏、撤权及重启零重放通过；首轮原生焦点失败独立留证，不算产品Red。批量Tool真实discovery及摘要Red→Green，六条关联/11代正常销毁，Rule/queue隔离、原始内容、草稿忽略、Ask/Auto、空目标、两列撤权和重启零重放通过。旧Agent首轮整组撤权集中于单Turn失败且触发敏感可见审计，分轮后同流程Green；原证据保留，未提升产品循环上限。Collection导出/导入真实discovery Red→Agent/MCP Green，原生Cancel/预览确认、三次追加、全部身份新生成、JSON/Form/Query/Auth/Header/URL凭据保真、Ask/Auto、两列撤权和重启零重放通过；八条关联8/8、14代正常销毁、完整WinINet/journal/8888恢复。Collection查询/替换的真实discovery Red→Green、凭据往返、Ask/Auto、stale拒绝、挂载UI同步、双列撤权/重启零重放与七条关联7/7、12代正常销毁保持。Rules Import/Export联合2/2、四代销毁，首轮五条/九代通过与Export焦点失败/guard紧急恢复原始证据均保留；Cancel回归后复跑Green，不将紧急恢复算graceful。此前Export、旧Import/权限/MCP4/4、Rules Agent1/1、系统代理/只读/权限3/3、MCP2/2、Composer/Breakpoints/Diagnostics与首批证据保持；TLS最终CA清理blocked，Capture Playground2/39。最终标准package/audit/smoke通过，不替代TLS E2E。</li>
-    <li><strong>Design/Parity:</strong> 🔄 Diagnostics八视图62/62、0 missing/flagged、最大0.5px，design interaction82/82；完整286 views / 1,964 targets / 1,934 matched / 30 missing / 304 flagged、平均2.30%。状态优先摘要顺序另Red→Green，486图归档、提交六张新图/两张查询更新，478旧基准SHA256不变。此前批量12视图72/72、最大0.5px，design interaction81/81、discovery旧8项另Red→11项Green，完整280 views / 1,920 targets / 1,888 matched / 32 missing / 335 flagged、2.28%，其他Capture/TLS、文件弹窗与Settings几何波动未修复；480图归档、提交14图、466旧基准不变。Collection传输18视图92/92、0 missing/flagged、最大0.5px，design interaction76/76；完整parity268 views / 1,848 targets / 1,814 matched / 34 missing / 305 flagged、平均2.27%，波动为旧TLS passthrough明暗各2项missing和旧DeepSeek深色Dialog1项flagged。468张出图归档，提交12张新图/两张discovery数量更新，454张旧基准按SHA256保持不变。查询/替换阶段六视图40/40、最大0.5px、design interaction74/74，以及完整256 views / 1,776 targets / 1,746 matched / 30 missing / 304 flagged、2.24%、456图归档/10图提交/446旧基准不变保持。Import56/56及行高1.23修复、73/73设计交互保持；上一完整250 views / 1,736 targets / 1,704 matched / 32 missing / 303 flagged、2.24%，450图归档/12图提交/438旧基准不变；Export36/36、TLS96/96、系统代理48/48、只读44/44、Diagnostics18/18和更早244/238视图报告保持，既有视觉债务不升级为通过。</li>
-  </ul></td>
-  <td><ul><li>此前将Traffic Lab 39项integration与真实Electron两项代表性纵向覆盖合并表述，掩盖了Capture仍为2/39。</li><li>首批24/24不等于完整73项完成，Settings里的授权开关不等于26项Settings业务Tool已开放。</li><li>Diagnostics原先未接入Agent且摘要退回原始JSON；当前已复用共享executor和结果组件闭环。</li><li>Tool旧名称没有feature所有权，Settings还把Composer与Diagnostics合并展示；当前已一次性切换五feature协议且不保留alias。</li><li>Composer已补审批前完整参数校验、响应脱敏、H1/H2/TLS真实socket取消、Capture隔离和双代零重放。</li><li>真实VS Code仍因旧协议在Tool发现前失败，产品决定不增加legacy。</li></ul></td>
+  <td><ul><li>不同入口各自维护目录、参数和业务步骤会产生授权及执行差异；Settings开关不能代替业务入口本身。</li></ul></td>
   <td><ul>
-    <li>完整目录、逐项测试与调用状态只在<a href="../features/tool-capabilities.md">Tool capabilities</a>维护；Agent与MCP共用<code>packages/interceptor-tools/</code>。</li>
+    <li>Agent与MCP共用<code>packages/interceptor-tools/</code>中的descriptor、schema、executor和redactor，执行进入同一Main/Core业务方法。</li>
     <li>open-world网络Tool必须先经Ask/Auto，再沿Core RPC AbortSignal关闭真实socket；结果统一经过共享redactor。</li>
-    <li>TLS、AppContainer及六项证书已通过；用户明确不做需要管理员权限的MMC原生验收，Manager Tool、逻辑测试与UI/parity保留。对应原生workflow及专用辅助代码已删除，不再要求至少一次或管理员终端；其余真实E2E、通用授权/重启及退出恢复门禁保持，排除项不冒充passed。</li>
-    <li>历史记录：Diagnostics提交时，Capture任务查询/取消17项unit Red、进度组件4项Red与未执行的workflow仅单独准备，未纳入该提交；后续Capture完整验收见Transfer文档。</li>
-    <li>旧测试CA <code>8F5FD8BF6D49BE746862522F6AC616583ED152BB</code>已由Developer清除；后续CA由workflow经正式UI自动清理，失败时保留profile，不删除其他旧CA。</li>
-    <li><code>npm run playground</code>保留给用户自行查看；新增Tool同步recipe，不能替Developer填写结论。Capture Lab integration 39/39、真实Electron 2/39，剩余自动覆盖按六组收敛39/39，是后续独立工作。</li>
-    <li>VS Code canary等待Host升级；每个后续work item独立commit并立即push。</li>
+    <li>共享业务契约与transport协议分开，不为旧Host增加legacy Tool别名或复制执行逻辑。</li>
   </ul></td>
 </tr>
 
 <tr>
-  <td><strong>⏳ 未开始</strong></td>
   <td>Desktop application attribution</td>
-  <td><ul><li>修复 Douyu 等桌面应用的 request 被错误归类到 Edge。</li><li><strong>Steps:</strong><ul><li>等待用户确认问题截图与可复现操作</li><li>待设计</li><li>代码待完成</li><li>待自动验证</li></ul></li><li><img src="image-6.png" alt="Application attribution" width="240"></li></ul></td>
-  <td><strong>❌ 未开始</strong><ul><li><strong>Code:</strong> ❌ 未开发</li><li><strong>Unit:</strong> ❌ 未开始</li><li><strong>Integration:</strong> ❌ 未开始</li><li><strong>E2E:</strong> ❌ 未开始</li><li><strong>Design/Parity:</strong> ➖ N/A</li></ul></td>
-  <td><ul><li>未知；没有截图对应请求的进程与 socket 证据时不能猜测。</li></ul></td>
-  <td><ul><li>用户确认截图与复现操作后，记录 request socket、PID、可执行路径与 client identity 匹配链，再定位 owner。</li></ul></td>
+  <td><ul><li>Douyu等桌面应用的request被显示为Edge，需要区分真实发起进程与应用归属。</li><li><img src="image-6.png" alt="Application attribution" width="240"></li></ul></td>
+  <td><ul><li>仅凭截图不能确定是共享网络进程、端口快照还是父进程归属导致。</li></ul></td>
+  <td><ul><li>复现时关联request socket、PID、可执行路径与client identity匹配链，不根据显示名猜测owner。</li></ul></td>
 </tr>
 
 <tr>
-  <td><strong>⏳ 未开始</strong></td>
   <td>Duplicate application identities</td>
-  <td><ul><li>消除 Capture filter 中看似相同的重复 Application。</li><li><strong>Steps:</strong><ul><li>待设计</li><li>代码待完成</li><li>待自动验证</li></ul></li><li><img src="image-7.png" alt="Duplicate application" width="240"></li></ul></td>
-  <td><strong>❌ 未开始</strong><ul><li><strong>Code:</strong> ❌ 未开发</li><li><strong>Unit:</strong> ❌ 未开始</li><li><strong>Integration:</strong> ❌ 未开始</li><li><strong>E2E:</strong> ❌ 未开始</li><li><strong>Design/Parity:</strong> ➖ N/A</li></ul></td>
-  <td><ul><li>未知；可能是 identity key 重复、显示名碰撞或 facet snapshot 重复。</li></ul></td>
-  <td><ul><li>用带真实 id/path 的 fixture 复现并定义去重契约，不按显示名盲目合并。</li></ul></td>
+  <td><ul><li>Capture filter中出现看似相同的Application，需要区分重复记录与不同应用的同名显示。</li><li><img src="image-7.png" alt="Duplicate application" width="240"></li></ul></td>
+  <td><ul><li>identity key重复、显示名碰撞和facet snapshot重复是不同原因，截图不能区分。</li></ul></td>
+  <td><ul><li>关联真实id/path与facet输入再定义去重契约，不按显示名盲目合并。</li></ul></td>
 </tr>
 
 </tbody>

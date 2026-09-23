@@ -196,6 +196,7 @@ export interface DesignState {
   readonly storageStatus: 'ready' | 'unavailable';
   readonly update: string;
   readonly githubAuth: string;
+  readonly updatesWithoutSignIn: boolean;
   readonly appContainers: string;
   readonly tlsPassthrough: string;
   readonly tlsPatterns: readonly string[] | null;
@@ -223,6 +224,8 @@ export interface DesignState {
   readonly bodyKind: BodyKind;
   readonly bodyMode: BodyMode;
   readonly bodyState: BodyState;
+  readonly compactBodyLayout: 'content' | 'viewport';
+  readonly grpcMessageSource: string | null;
   readonly bodyRuleEffect: BodyRuleEffectState;
   readonly breakpoints: 'on' | 'off';
   readonly breakpointState: BreakpointState;

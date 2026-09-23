@@ -12,6 +12,7 @@ import type { CaptureExchangeDetail } from '@interceptor/core-protocol';
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { sharedCertificateDirectory, waitForCertificateInstallation } from '../../fixtures/ui/https-capture';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 const execFileAsync = promisify(execFile);
@@ -479,7 +480,7 @@ async function readRoundCaptureEvidence(
   };
 }
 
-async function cleanUpCertificateThroughUi(page: Page): Promise<void> {
+async function clearDecryptionPreferenceThroughUi(page: Page): Promise<void> {
   const dismissCompatibility = getByAutomationId(
     page,
     AUTOMATION_IDS.settings.tlsCompatibility.dismiss,
@@ -489,7 +490,7 @@ async function cleanUpCertificateThroughUi(page: Page): Promise<void> {
   }
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.certificates).click();
-  let status = await page.evaluate(() => window.interceptor.getCertificateStatus());
+  const status = await page.evaluate(() => window.interceptor.getCertificateStatus());
   if (status.mitmEnabled) {
     const mitmToggle = getByAutomationId(
       page,
@@ -500,31 +501,8 @@ async function cleanUpCertificateThroughUi(page: Page): Promise<void> {
       () => page.evaluate(() => window.interceptor.getCertificateStatus()),
     ).toMatchObject({ mitmEnabled: false });
   }
-  status = await page.evaluate(() => window.interceptor.getCertificateStatus());
-  if (status.trusted) {
-    const uninstall = getByAutomationId(
-      page,
-      AUTOMATION_IDS.settings.certificates.uninstall,
-    );
-    await expect(uninstall).toBeEnabled();
-    await uninstall.click();
-    await expect.poll(
-      () => page.evaluate(() => window.interceptor.getCertificateStatus()),
-      { message: 'CA remained trusted after UI Uninstall', timeout: 30_000 },
-    ).toMatchObject({ trusted: false, mitmEnabled: false });
-  }
-  status = await page.evaluate(() => window.interceptor.getCertificateStatus());
-  if (status.present) {
-    const deleteCertificate = getByAutomationId(
-      page,
-      AUTOMATION_IDS.settings.certificates.delete,
-    );
-    await expect(deleteCertificate).toBeEnabled();
-    await deleteCertificate.click();
-    await expect.poll(
-      () => page.evaluate(() => window.interceptor.getCertificateStatus()),
-    ).toMatchObject({ present: false, trusted: false, mitmEnabled: false });
-  }
+  await expect.poll(() => page.evaluate(() => window.interceptor.getCertificateStatus()))
+    .toMatchObject({ present: true, trusted: true, mitmEnabled: false });
 }
 
 test('Bilibili stays signed in across three MITM page loads', async ({
@@ -549,20 +527,11 @@ test('Bilibili stays signed in across three MITM page loads', async ({
       descendantControlTypes: ['Hyperlink'],
     });
 
-    // 真实UI：Generate → Install → MITM开关。
-    // Real UI: Generate → Install → MITM toggle.
+    // 真实UI：复用已初始化的共享CA，仅开启本profile的MITM。
+    // Real UI: reuse the initialized shared CA and enable MITM only for this profile.
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
     await getByAutomationId(page, AUTOMATION_IDS.settings.section.certificates).click();
-    const generate = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.generate);
-    const install = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install);
-    await expect(generate).toBeEnabled();
-    await generate.click();
-    await expect(install).toBeEnabled();
-    await install.click();
-    await expect.poll(
-      () => page.evaluate(() => window.interceptor.getCertificateStatus()),
-      { message: 'CA did not become trusted after UI Install', timeout: 30_000 },
-    ).toMatchObject({ present: true, trusted: true, mitmEnabled: false });
+    await waitForCertificateInstallation(page);
     const uninstall = getByAutomationId(
       page,
       AUTOMATION_IDS.settings.certificates.uninstall,
@@ -592,11 +561,11 @@ test('Bilibili stays signed in across three MITM page loads', async ({
       capture: { recording: true },
     });
 
-    // 数据面：leaf必须由本次UI生成的CA签发。
-    // Data plane: the leaf must be signed by the CA generated through UI.
+    // 数据面：leaf必须由产品启动时检查的共享CA签发。
+    // Data plane: the leaf must be signed by the shared CA verified during product startup.
     const certificateProbe = await probeMitmCertificate(
       desktopApp.capturePort(),
-      path.join(desktopApp.userDataDirectory, 'certificates', 'root-cert.pem'),
+      path.join(sharedCertificateDirectory(), 'root-cert.pem'),
     );
     const certificatePath = testInfo.outputPath('bilibili-mitm-certificate.json');
     await writeFile(certificatePath, JSON.stringify(certificateProbe, null, 2), 'utf8');
@@ -679,7 +648,7 @@ test('Bilibili stays signed in across three MITM page loads', async ({
   } catch (error) {
     testError = error;
   } finally {
-    await cleanUpCertificateThroughUi(page);
+    await clearDecryptionPreferenceThroughUi(page);
   }
   if (testError) throw testError;
 });

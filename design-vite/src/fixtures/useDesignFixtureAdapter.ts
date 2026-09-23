@@ -318,6 +318,12 @@ export function useDesignFixtureAdapter(
       if (inspectorTab) return patch({ tab: inspectorTab, detail: 'open' });
       const settingsNav = closest(event.target, '[data-settings-nav]')?.dataset.settingsNav;
       if (settingsNav) return patch({ settings: settingsNav });
+      const publicUpdateAction = closest(event.target, '[data-public-update-action]')?.dataset.publicUpdateAction;
+      if (publicUpdateAction === 'check' || publicUpdateAction === 'download') {
+        patch({ update: publicUpdateAction === 'check' ? 'checking' : 'downloading' });
+        window.setTimeout(() => patch({ update: publicUpdateAction === 'check' ? 'available' : 'downloaded' }), 500);
+        return;
+      }
       const authAction = closest(event.target, '[data-github-auth-action]')?.dataset.githubAuthAction;
       if (authAction === 'sign-in' || authAction === 'retry') return patch({ githubAuth: 'authorizing', update: 'authentication-required' });
       if (authAction === 'open') return patch({ githubAuth: 'signed-in', update: 'up-to-date' });

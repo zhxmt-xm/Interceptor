@@ -1,0 +1,4 @@
+.resizableBodyPreview {
+  resize: vertical;
+  overflow: hidden;
+}

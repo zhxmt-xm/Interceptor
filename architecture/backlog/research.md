@@ -1,37 +1,29 @@
-# 已知缺口与长期候选
+# 技术研究与长期候选
 
-> 最后更新：2026-08-07
-> 范围：当前**未实现**的能力。分三档——已知缺口（当前架构的确定性欠账）、长期候选（未承诺、需重新设计）、研究备忘（技术策略，不是产品路线）。
->
-> 当前真正在推进的工作看 [../HANDOVER.md](../HANDOVER.md)、[idea.md](idea.md) 与 [TODO.md](TODO.md)；本文只是"还没有做什么"的清单。
+本文记录技术取舍和候选方案，不承诺实施，也不作为产品能力清单。功能契约见[架构索引](../README.md)，风险见[TODO](TODO.md)，执行安排只在[Handover](../HANDOVER.md)维护。
 
-## 1. 已知缺口
+## 1. 能力边界
 
-这些是当前实现明确知道的边界，通常有具体的阻塞原因。
-
-| 缺口 | 阻塞原因 |
+| 领域 | 技术边界 |
 | --- | --- |
-| Local E2E 的 60 条 feature workflow | driver、fixture、automation contract 与验收规格都已就绪，`workflows/` 为空，尚未实现任何一条 |
-| HTTP/2 深度 stream 健壮性（streamId / GOAWAY / RST / settings / 背压） | Mockttp 未暴露，需要原生 http2 数据面 |
-| WebSocket over HTTP/2（RFC 8441 Extended CONNECT） | 当前只支持 RFC 6455 的 HTTP/1.1 Upgrade |
-| gRPC 实时 streaming 增量 framing、message-level 解压、Protobuf descriptor 与 Server Reflection | 当前是完成后的 raw message 展示 |
-| h1 下游 → 纯 h2 上游（源站 `allowHTTP1:false`） | Mockttp 返回 403。真实世界罕见的边缘组合，已移除该失败用例并记为限制——"支持 HTTP/2"不等于支持这个组合 |
-| 真正零内存流式正文落盘 | 当前经内存缓冲后写内容寻址 Blob，body-data 增量写盘留后续 |
-| 每 exchange 的上游 TLS metadata 落库 | Mockttp 未暴露数据面上游 TLS；当前用按需 `tls.probe` 实时探测替代 |
-| CA 导出 | 未实现 |
-| 上游认证代理（`Proxy-Authorization`） | `proxyUrl` 支持 `http://user:pass@host:port`，但 WinINet 不保存凭据，需要用户手工提供，未验证 |
-| macOS 上游代理检测 | 快照按网络服务分开存，多服务（Wi-Fi / 以太网 / VPN）可能各配不同代理，需先定义合并语义 |
-| 生产签名 / 公证 | Windows Authenticode、Apple Developer ID 与 notarization 需要仓库外凭据和原生 runner 留证 |
+| HTTP/2观测 | streamId、GOAWAY、RST、SETTINGS与背压需要真实协议事件；HTTP摘要不能替代帧级事实 |
+| WebSocket | Bridge使用RFC 6455的HTTP/1.1 Upgrade，不支持RFC 8441 Extended CONNECT |
+| gRPC | 在途raw message读取不等于Protobuf descriptor、Server Reflection或message-level解码 |
+| HTTP版本转换 | 下游H1与源站`allowHTTP1:false`的纯H2组合需单独定义；“支持HTTP/2”不代表所有双向转换组合 |
+| 上游TLS元数据 | 按需`tls.probe`建立的是新连接，不能冒充某条历史Exchange实际使用的TLS metadata |
+| 上游代理凭据 | URL可携带HTTP Basic凭据，但WinINet快照不提供用户凭据；系统设置恢复与凭据管理是不同职责 |
+| 发布身份 | Authenticode、Developer ID与notarization依赖外部签名身份，不能用本地ad-hoc签名等同替代 |
 
 ## 2. 长期候选
 
-来自最初的产品方案，至今未实现。**均未承诺，且需要重新设计**——原始表述写于当前架构成型之前，不能直接照搬实施。
+以下是候选方向，不是产品功能或交付承诺。采用前需明确对应流程和安全边界。
 
-- **Replay**：基于捕获会话重放请求。当前 Composer 可手工发送并有 Recent sends，但 Capture → Composer 的复制仍未实现。要做需要先定义：复制哪个请求版本（wire 还是规则改写后）、认证/Cookie 如何处理、是否再次经过 Rules、重放证据怎么记。
-- **Reverse Proxy / Port Forwarding**：独立产品线，当前没有任何对应架构、UI 或排期。
+- **Replay**：基于捕获会话重放请求。它不同于Composer手工发送，需要先定义复制哪个请求版本（wire还是规则改写后）、认证/Cookie如何处理、是否再次经过Rules及重放证据。
+- **Reverse Proxy / Port Forwarding**：独立于显式代理的监听、路由和暴露面，需要单独的产品与安全设计。
 - **带身份验证的局域网远程设备捕获**：技术上合理，但与当前 loopback-only 的安全边界冲突很大，必须重做认证、暴露面和威胁模型。
-- **macOS 透明捕获（Network Extension）/ Windows WFP 透明捕获**：平台与安全研究方向，不能与普通 feature backlog 混排。
-- **RTL（从右到左）布局**：15 种语言已实现，RTL 未实现。
+- **macOS透明捕获（Network Extension）/ Windows WFP透明捕获**：需要平台权限、原生组件部署及系统网络恢复设计，不能只替换显式代理入口。
+- **RTL（从右到左）布局**：需要方向性布局、图标与双向文本规则，不能从翻译数量推断支持。
+- **CA导出**：需明确公开证书与私钥的不同导出边界、格式和授权，不能通过文件路径暴露绕过Main。
 
 ## 3. 研究备忘
 
@@ -41,7 +33,7 @@
 
 - **动机**：吃透 HTTPS 代理的底层——TLS MITM、动态签发站点证书、HTTP/1.1 与 HTTP/2 双向转换、流控与背压。这些是本产品最核心的知识。
 - **范围**：用 `node:http`、`node:http2`、`node:tls`、`node:net` 逐步替换 Mockttp 承担的拦截职责，规则/会话/存储/IPC 边界保持不变。
-- **现在不做的原因**：学习和实现曲线陡峭，当前阶段优先做出可用产品。而且当前实现已经为 Mockttp 维护了 patch 并围绕其事件模型构建了 Capture/Rules，替换等于重做整个核心数据面。
+- **成本**：Capture/Rules围绕Mockttp事件模型及仓库patch构建，替换涉及完整数据面的协议行为，而不只是换一层调用接口。
 - **与性能无关**：Mockttp 本身就是纯 TypeScript、构建在同样的 `node:*` 模块之上，自建不会带来数量级性能提升，两者上限都受 Node 运行时限制。自建的价值是掌控与理解。
 - **真要做的方法**：以 Mockttp 的实际行为作为「正确性参照物」，一次只用原生实现一个子模块（先 HTTP/1.1，再 HTTP/2），与 Mockttp 对照验证。可用 LLM 辅助生成代码，但必须逐行读懂、自己 debug；MITM 的边界情况（Trailer、GOAWAY、畸形帧、ALPN、证书链、编码组合）需要主动补齐，LLM 默认只给 happy path。
 
@@ -54,14 +46,11 @@
 
 ### 3.3 Windows AppContainer、WAM 与 TLS passthrough
 
-> 状态：2026-08-07 完成本机实证、产品实现与自动化数据面验证。Windows owned
-> `ProxyOverride` 已不再注入 `*.wvd.microsoft.com`；真实 Windows App 验收由用户执行。
-
 #### 问题不是一层
 
 Windows App / Dev Box 一次连接跨越多个安全主体，不能用一个域名 bypass 或一个 SID 概括：
 
-| 环节 | 本机实际主体 | 与 Interceptor 的关系 |
+| 环节 | 主体 | 与 Interceptor 的关系 |
 | --- | --- | --- |
 | 资源列表与主界面 | `Windows365.exe` + WebView2 | 普通 WinINet/WebView2 请求可进入 8888 |
 | WAM token 获取 | `Microsoft.AAD.BrokerPlugin` AppContainer | 无 loopback exemption 时可能在 Windows 网络隔离层被拦，连接到不了 8888 |
@@ -80,30 +69,13 @@ Windows App / Dev Box 一次连接跨越多个安全主体，不能用一个域�
 `insecureHosts` 不是第四种 passthrough：它仍执行 MITM，只是忽略 **Interceptor → 源站**
 的证书错误，不能解决客户端拒绝 Interceptor leaf 证书的问题。
 
-#### 已验证事实
+#### 故障分层
 
-固定系统代理为 `127.0.0.1:8888`，并保持 `*.wvd.microsoft.com` system bypass 不变，完成了
-AppContainer exemption 的 A/B/A 对照：
+AAD Broker连接loopback代理受Windows网络隔离约束。exemption只允许网络连接，不验证YubiKey、不创建凭据，也不保证授权码兑换或token请求成功。
 
-| WVD system bypass | AAD Broker exemption | 结果 |
-| --- | --- | --- |
-| 有 | 无 | WAM 报 `0xCAA70004 The server or proxy was not found`；token endpoint 失败，交互授权页报 HTTP 404 |
-| 有 | 有 | AAD claims token 可取得，RDP 事件出现 `bAcquiredSilently:1` / `errorCode:0x0`，随后连接成功 |
-| 有 | 再移除 | 同样复现 `0xCAA70004` 与 HTTP 404 |
+WAM的`0xCAA70004 The server or proxy was not found`需要检查Broker是否能访问代理；认证成功后gateway仍可能拒绝MITM。`tls.client-error: reset`只证明连接重置，不能单独认定pinning。HTTP错误、身份Cookie和远程桌面传输也应各自定位，不能从一次登录失败推断通用Cookie转发故障。
 
-因此，对本机这条 WAM 登录路径，AAD Broker 的 loopback exemption 是必要条件。它不验证
-YubiKey、不创建凭据，也不保证认证成功；它只让 Broker 能连接本机代理，完成授权码兑换、
-refresh token 或 claims token 等网络步骤。
-
-另一个独立对照：保留 AAD Broker exemption，但移除 WVD system bypass 后，claims token 仍以
-`0x0` 成功，Core 随即对 `www.wvd.microsoft.com` / `windows365.microsoft.com` 记录连续
-`tls.client-error: reset`，RDP 以 `0x3000008` 断开。这证明认证成功与 gateway 拒绝 MITM 是两个问题。
-
-`ecs.office.com/` 的 503 不是根因：直连与经 8888 对同一裸根路径均收到同样的 Microsoft
-`503 Service Unavailable` 响应。Bilibili 重新验证后登录态正常，也没有证据支持通用 Cookie
-转发故障。
-
-#### 目标流程
+#### 连接与授权流程
 
 ```mermaid
 sequenceDiagram
@@ -163,13 +135,11 @@ loopback 服务而不只是 8888，因此不默认“豁免全部”。新安装
 每次打开面板与保存前都要重新枚举。用户显式开启的 exemption 不随 Interceptor 退出自动撤销，
 否则每次启动都会再次弹 UAC；关闭开关时再显式移除。
 
-建议新增独立 Main 模块 `app-container/` 与独立 native helper，不把它塞进 WinINet ownership：
-前者管理 Windows 沙箱权限，后者只管理 system proxy snapshot/restore。Renderer 继续只经窄 IPC
-调用，不接触 SID 配置 API 或提权命令行。
+Main通过`PlatformCapabilitiesService`调用AppContainer模块及其native helper，不把沙箱权限并入SystemProxy ownership。Renderer只经窄IPC调用，不接触SID配置API或提权命令行。
 
 #### Mockttp TLS passthrough list
 
-不需要新增 Mockttp patch。Mockttp 4.5.0 已支持：
+Mockttp 4.5.0提供静态pattern配置：
 
 ```ts
 https: {
@@ -186,9 +156,7 @@ https: {
 不能把 Microsoft 登录全域名放进 system proxy bypass，因为共享域名会让 Edge、Office、Teams 等
 所有应用的同域流量也完全绕过 Capture。
 
-Mockttp 在 listener 启动时编译 `tlsPassthrough` pattern，公开 API 不支持动态替换。**当时**的方案是只持久化、
-提示用户重启 Interceptor；现已改为 patch `tlsPassthrough` 接受 getter，名单每连接求值，保存即生效，
-整条重启链路已删除。失败的 TLS 连接无法原地倒带，仍需客户端重试。passthrough tunnel 继续使用仓库现有
+Mockttp公开API在listener启动时编译pattern；仓库patch允许`tlsPassthrough`接受getter，名单每连接求值。保存影响新连接，失败连接仍需客户端重试。passthrough tunnel使用仓库的
 `passthroughProxyConfig` patch：无上游时直连，有上游时仍经上游 CONNECT，不需要针对 Clash 写分支。
 
 Core 已能收到 `tls-client-error` 的 `destination` / SNI host 与
@@ -201,34 +169,20 @@ Core 已能收到 `tls-client-error` 的 `destination` / SNI host 与
 
 #### 持久化与契约
 
-TLS passthrough 是低频全局设置，由 `WorkspaceService` 持久化。（`insecureHosts` 当时只在 Main
-内存，现已一并落到 `tls_insecure_hosts`。）实现包含以下 typed RPC / Desktop API：
+TLS passthrough是低频配置，由`WorkspaceService`按profile持久化；源站例外独立保存到`tls_insecure_hosts`。typed RPC / Desktop API分别表达两类设置：
 
 - Core protocol：`tls-passthrough.get` / `tls-passthrough.replace` 以 revision 乐观锁承载名单读写；
 	`tls.useCertificate` / `tls.startDecryption` / `tls.stopDecryption` 只管 CA 材料与 MITM 开关。
-- Main：启动/Core 重启时读取持久配置并随 CA 一起下发；处理 TLS compatibility event。
+- Main：平台对象中的CertificateService协调CA与Core配置；Main转发TLS compatibility event。
 - Preload：暴露 get/set passthrough hosts 与 AppContainer list/toggle 的窄 API。
-- Renderer：按 `ui-design-mockup` 流程实现 Settings 的 TLS passthrough 与 AppContainer access；
-	App 壳订阅全局 TLS compatibility event 并显示 dialog，两组设置不能混成一个“bypass”开关。
-
-#### 预计文件级改动
-
-| 范围 | 改动 |
-| --- | --- |
-| Main `app-container/` | 新建 `AppContainerService`、Windows native helper、只读枚举与提权 mutation runner、单测 |
-| Main `system-proxy/` | 已删除 `*.wvd.microsoft.com` 的 `ProxyOverride` 特例，只维护原配置与必要 local bypass |
-| Core protocol | AppContainer DTO 的 Desktop 契约；TLS passthrough 配置与兼容性事件契约 |
-| Core `proxy/` | `ProxyTlsConfig` 增加 `passthroughHosts`；`getLocal` 传 `tlsPassthrough`；TLS 错误去重上报 |
-| Core `workspace/` | 持久化 passthrough host patterns |
-| Renderer App / Settings | AppContainer 搜索/开关、passthrough host 列表、全局多 host TLS compatibility dialog、批量保存、即时刷新与待重启提示 |
-| 测试 | helper parser/service、IPC、配置持久化、严格运行/持久化名单比较、真实 TLS passthrough、上游 tunnel、Windows A/B smoke |
+- Renderer：App壳订阅全局TLS compatibility event并显示dialog；TLS passthrough与AppContainer access不能混成一个“bypass”开关。
 
 #### 收益与代价
 
 | 方案 | 收益 | 代价 / 风险 |
 | --- | --- | --- |
 | AppContainer 按应用授权 | 与 Fiddler 同类流程；覆盖任意当前容器；不靠 plugin 名单猜测 | 需要 UAC；用户要理解 loopback 权限；新容器需刷新 |
-| Mockttp passthrough | 流量仍经过 8888，可记录 tunnel；不污染全局 system bypass | 看不到 HTTP path/header/body；改名单需重启 Interceptor 后生效 |
+| Mockttp passthrough | 流量仍经过8888，可记录tunnel；不污染全局system bypass | 看不到HTTP path/header/body；名单只影响新连接 |
 | TLS 失败提示而非自动降级 | 不会因偶发 reset 静默失去解密 | 首次失败不可恢复，用户需重试；reset 只能低置信提示 |
 | 保留 system domain bypass | 实现最小、连接最稳 | 流量完全不可见；共享域名全局生效；名单持续漂移，不作为目标方案 |
 
@@ -253,18 +207,3 @@ exemption manager 不需要“完整 Windows 应用列表”：`NetworkIsolation
 
 Win32 仍需组合 Uninstall、App Paths、开始菜单与 exe version resource；所谓“权威开源完整 app list”
 最终也只是封装这些来源，不会消除 Windows 安装模型的多样性。
-
-#### 实施结果与验收
-
-1. Settings 已实现 AppContainer access 与 TLS passthrough 两组独立界面；TLS host 直接保存，有有效差异时显示重启提示。
-2. AppContainer helper 已使用官方 API 枚举与修改 exemption，并以 read-modify-write + reread verify
-	保留其他工具写入的 SID。
-3. TLS passthrough patterns 已持久化并接入 Mockttp；本地 TLS origin 已验证指定 host 仅产生 tunnel
-	metadata，其他 host 继续 MITM。
-4. TLS compatibility event、按 generation + host 去重、严格待重启判断和失败后重试提示均已接入。
-5. system `*.wvd.microsoft.com` bypass 已删除；direct 与上游 CONNECT passthrough 均有自动化覆盖。
-6. `FindPackagesForUser` 迁移仍是独立候选，不阻塞本功能。
-
-剩余真实 Windows 验收矩阵至少包括：exemption off/on/off 的 WAM A/B/A、MITM off/on、用户确认加入
-WVD passthrough、删除该项后的可诊断失败、普通浏览器仍可解密、无上游 direct、有上游 CONNECT、
-App 退出/崩溃后 system proxy guarded restore，以及 package / artifact audit / packaged smoke。

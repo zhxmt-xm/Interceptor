@@ -1,10 +1,8 @@
 # Feature: MCP Server
 
-> 最后更新：2026-09-04
 > Package：`packages/mcp-server/`（认证 + 官方SDK handler + Tool adapter，与Electron无关）
 > Main：`apps/desktop/src/main/mcp/`（loopback HTTP、加密Client设置、审批与Core bridge）
 > Renderer：`Settings > Agent` 的MCP接入、Tool开关、Client执行模式与App级问询弹层
-> 状态：**loopback Streamable HTTP、Browser CORS、已交付Tool真实纵向流程与Web人工验收Playground已实现；当前矩阵见[唯一能力目录](tool-capabilities.md)，Developer逐项人工验收独立待办；真实VS Code/Copilot Host因旧协议blocked；stdio + Bridge仅保留为已评估但当前不采用的方案。**
 
 ## 1. 职责与边界
 
@@ -23,17 +21,14 @@ MCP Server 把 Interceptor 的产品能力，以 [Model Context Protocol](https:
 **根本定位：MCP Server 是共享 Tool 的外部协议入口，不是第二套 Tool 或业务实现。** Tool 必须复用正式产品
 意图；产品缺少语义单一入口时先补产品入口，不在 MCP adapter 中实现 read-modify-write 或系统操作后门。
 
-内置 Agent 已实现 BYOK Provider、持久化 Session、Streaming Chat与恢复，并已接入Capture十项、Rules三项、
-Breakpoints八项及Session级`ask` / `auto`。
-早期MCP Tool的通用descriptor、schema、参数边界、脱敏与执行函数已迁到`packages/interceptor-tools/`，
-三个多义入口已拆成24项。MCP只保留协议adapter；Desktop纵向接线已完成，内置Agent其余Tool按能力分组接入。
+内置Agent负责Provider、Session和Chat；通用Tool descriptor、schema、脱敏与执行函数由`packages/interceptor-tools/`拥有，MCP只做外部协议适配。
 
 ## 2. 进程位置决策
 
-`architecture/README.md` 的不可越界约束第 3 条规定：**Core 没有对外监听端口，只通过 UtilityProcess 转交的专用 MessagePort 通信。**
+Core的控制通信仅使用UtilityProcess转交的专用MessagePort，不额外暴露控制RPC端口；代理listener属于业务流量入口。
 
 因此 MCP 的Streamable HTTP监听端**必须位于Main**，通过既有`CoreRuntime`下沉到Core。这同时符合
-「操作系统级操作只在Main」的既有约束。首期不增加bridge进程、named pipe或unix socket。
+「操作系统级操作只在Main」的约束。不增加bridge进程、named pipe或unix socket。
 
 ```mermaid
 flowchart LR
@@ -71,9 +66,9 @@ flowchart LR
 
 ## 3. 分层结构
 
-五层自上而下。首期只实现Streamable HTTP；未来若新增stdio，只允许替换最外层，不得分叉认证、Tool或Core执行：
+五层自上而下。采用Streamable HTTP；其他transport只能替换最外层，不得分叉认证、Tool或Core执行：
 
-| 层 | 职责 | 归属 | 首期实现 |
+| 层 | 职责 | 归属 | 机制 |
 | --- | --- | --- | --- |
 | Transport | HTTP请求、JSON/SSE响应与在途交换关闭 | Main | 官方SDK v2的loopback Streamable HTTP |
 | Authentication | 识别调用方，产出`McpClientIdentity` | `packages/mcp-server/` | per-client Bearer token |
@@ -81,8 +76,7 @@ flowchart LR
 | MCP Adapter | MCP `tools/list`过滤、`tools/call`映射与Client执行模式 | `packages/mcp-server/` | transport-neutral |
 | Core Bridge | 映射到`core-protocol` command | Main实现`McpHostBridge` | 复用`CoreRuntime` |
 
-共享Tool通过`invoke`执行Core命令，通过`invokeMain`执行Main状态查询与系统代理正式编排；两条路径均保留原始
-AbortSignal。Main注入对应正式产品意图，不扩展`CoreCommand`表达不属于Core的能力。
+共享Tool通过`invoke`执行Core命令，通过`invokeMain`执行Main意图。Core路径传递原始AbortSignal；平台路径在进入业务前检查取消，开始后由平台模块完整收尾。Main注入正式产品意图，不扩展`CoreCommand`表达不属于Core的能力。
 
 ```ts
 interface McpHostBridge {
@@ -105,7 +99,7 @@ interface McpClientIdentity {
 }
 ```
 
-## 4. Tool 层（Agent 与两种 MCP transport 共用）
+## 4. Tool 层
 
 ### 4.1 开关与执行类型
 
@@ -122,27 +116,20 @@ Tool 是否启用。`auto` 仍复用正式产品流程，原生 Dialog、UAC 和
 MCP列使用独立`disableMcpTool` / `enableMcpTool` intent。当前关闭项在每次`tools/list`和`tools/call`前重读，
 关闭后立即不可发现且不能按名称调用。
 
-### 4.2 完整目录与当前 package
+### 4.2 完整目录
 
-完整 Tool 名称、类型、正式产品入口与逐项状态只在 [tool-capabilities.md](tool-capabilities.md) 维护。
+完整Tool名称、类型和正式产品入口在[tool-capabilities.md](tool-capabilities.md)维护。
 Settings、内置 Agent discovery 与 MCP `tools/list` 最终都从共享 registry 读取，不在本文复制清单。
 
 MCP协议中的Tool名称按业务feature固定为`<feature>_<verb>[_<object>]`；当前六个前缀为`capture`、`rules`、
 `composer`、`breakpoints`、`diagnostics`与`settings`。不注册旧名alias，也不为旧Client提供兼容目录。
 官方Client的`tools/list`必须只返回新名称，调用旧名称必须得到不存在结果且不得触达Core。
 
-MCP与Agent直接消费当前共享registry，覆盖Capture、Rules、Composer、Breakpoints、Diagnostics与Settings。
-实现数量、query/change分类、owner正向unit、真实调用与后续顺序统一见[tool-capabilities.md](tool-capabilities.md)，
-不在本文维护第二份进度清单。Playground的Developer人工验收独立保留，不阻塞后续Tool开发。
-三个原先用布尔值或action参数混合正反意图的入口已经拆开：
+MCP和Agent直接消费共享registry，按Capture、Rules、Composer、Breakpoints、Diagnostics与Settings归属业务。正反操作和不同用户意图使用独立Tool，不以boolean或action魔法值合并。
 
-- `set_recording(recording)` → `capture_start_recording` / `capture_stop_recording`；
-- `configure_breakpoint(enabled)` → `breakpoints_enable_http` / `breakpoints_disable_http`；
-- `resolve_breakpoint(action, edit?)` → `breakpoints_continue` / `breakpoints_forward_edited` / `breakpoints_drop`。
-
-证书、系统代理、AppContainer、导入导出和更新能力不是永久排除项。它们逐项复用 Main 的正式意图；文件 Tool
+证书、系统代理、AppContainer和导入导出复用Main的正式意图；文件Tool
 触发产品原生 Open/Save Dialog，不接收任意路径；UAC 继续由操作系统显示。Agent自身控制、MCP接入控制、
-UI导航和内部编排不属于业务Tool，边界见完整目录第5节。
+UI导航、更新和内部编排不属于业务Tool，边界见完整目录第4节。
 
 ### 4.3 `rules_replace_tree` 的并发约束
 
@@ -183,18 +170,13 @@ sequenceDiagram
 `rules_replace_tree` 复用产品完整 RuleSet 校验和乐观锁，不额外强制把合法规则改成 disabled。MCP Tool 开关决定
 该能力是否可达；`ask` / `auto` 决定执行前是否问询。
 
-### 4.3.1 Breakpoints八项并发约束 [已实现]
+### 4.3.1 Breakpoints并发约束
 
-MCP与Agent消费同一八项定义。`breakpoints_list`不问询；HTTP/WebSocket启停及Continue、Forward edited、Drop在
+MCP与Agent消费同一组定义。`breakpoints_list`不问询；HTTP/WebSocket启停及Continue、Forward edited、Drop在
 Client `ask`时展示动态pending影响，在`auto`时直接执行。HTTP/WebSocket pending必须先经产品UI和真实流量产生，
 官方MCP Client只使用公开动态`breakpointId`/`exchangeId`。ID在abort、resolve或Core重启后失效；审批前已知stale
 直接返回参数错误，描述后才失效的竞态由Core返回`conflict`，两者都不影响其他pending。Client断开、撤销、
 credential轮换或Server关闭沿既有AbortSignal只取消该Client调用，不自动替它Continue或Drop业务流量。
-
-真实`mcp.desktop.streamable-http`通过产品UI自产HTTP/WebSocket pending，并覆盖八项`tools/list`、Ask Deny/Allow、
-Auto、method/URL/body编辑、Drop、HTTP/WebSocket启停与八项即时撤权。第二代App进一步验证旧Client在审批中断开和
-credential轮换都不解除同一pending，新Client必须显式Allow同一ID。修复前`32f2889a`精确Red于stale仍产生审批；
-当前同一workflow Green。
 
 ### 4.4 结果脱敏
 
@@ -211,8 +193,9 @@ flowchart LR
 - 默认对 `Authorization`、`Cookie`、`Set-Cookie`、URL query 中的凭据字段做遮罩，与 HAR 导出的遮罩策略一致。
 - 需要原文时，由产品现有的Session数据外发设置决定，不在MCP adapter里建立第二套授权状态。
 - 正文沿用既有 `BODY_PREVIEW_MAX_BYTES` 上限；音视频正文**零读取**，只返回 metadata。
+- `capture_get_exchange_body`通过`exchangeId + bodyId`回查正文归属和可信MIME/encoding，不接受调用方自报MIME。Exchange headers/trailers与Composer响应统一脱敏，Composer正文裁剪但保留timing和TLS元数据。
 
-### 4.5 `ask` / `auto` [阶段一]
+### 4.5 `ask` / `auto`
 
 ```mermaid
 sequenceDiagram
@@ -280,7 +263,7 @@ transport，Tool最终都必须访问正在运行的Interceptor Desktop所拥有
 
 ### 5.3 决策
 
-**首期只实现Desktop Main直连的loopback Streamable HTTP，不同时实现stdio。** 对Interceptor而言，stdio
+采用Desktop Main直连的loopback Streamable HTTP，不同时提供stdio。对Interceptor而言，stdio
 不能在Desktop关闭时独立提供有效Tool，却额外引入bridge进程、本地IPC、runtime发现、跨平台产物与一组
 生命周期测试。Streamable HTTP让Host直接连接真正拥有产品状态的Main，职责和故障边界更短。
 
@@ -292,7 +275,7 @@ transport，Tool最终都必须访问正在运行的Interceptor Desktop所拥有
 
 ---
 
-## 6. 首期方案：loopback Streamable HTTP
+## 6. Loopback Streamable HTTP
 
 ### 6.1 拓扑
 
@@ -307,12 +290,12 @@ flowchart LR
 ```
 
 `endpoint`是URL，不代表独占一条TCP连接。一个Host会产生多次HTTP交换；HTTP/1.1可以复用连接，HTTP/2
-可以在同一连接上并发多个stream。首期使用官方`@modelcontextprotocol/server` v2的`createMcpHandler`按请求
+可以在同一连接上并发多个stream。使用官方`@modelcontextprotocol/server` v2的`createMcpHandler`按请求
 无状态模型，不自行实现或持久化MCP Session。
 
 ### 6.2 单一endpoint与消息映射
 
-所有MCP HTTP消息使用同一个`/mcp` endpoint。首期固定当前MCP `2026-07-28`协议，以`server/discover`
+所有MCP HTTP消息使用同一个`/mcp` endpoint。固定MCP `2026-07-28`协议，以`server/discover`
 开始，不使用`initialize`或`Mcp-Session-Id`。官方SDK handler显式配置`legacy: 'reject'`；这个选项只负责
 拒绝旧请求，不提供任何旧协议执行路径、迁移或降级。
 
@@ -328,7 +311,7 @@ flowchart LR
 `createMcpHandler`每个请求创建一个轻量SDK Server实例，Tool registry、CoreRuntime与Client配置仍由Main长期
 持有并被factory闭包复用。每个请求都重新验证Bearer token并读取最新Tool开关与Client模式，因此撤销、关闭
 Tool或切换Ask/Auto不依赖旧Session失效。未来只有出现服务端主动订阅、断线重放或跨请求Server request的真实
-需求时才重新设计Session，不为首期预建状态机。
+需求时才重新设计Session，不预建额外状态机。
 
 ### 6.3 endpoint与端口生命周期
 
@@ -366,7 +349,7 @@ Settings只提供一个明确动作：Main把通用Streamable HTTP配置片段�
 管理。Preload与Renderer只接收成功/失败状态，不返回token。撤销Client立即终止其全部在途调用；重新生成
 凭据会使旧token立即失效，并要求显式重写该Client配置。
 
-### 6.5 loopback HTTP安全边界 [改造中]
+### 6.5 loopback HTTP安全边界
 
 Bearer token证明调用方持有该Client的秘密，也是本机Browser与原生Host统一的调用方身份。Origin和Host都不是
 身份，Main不再以它们授权或拒绝请求：
@@ -410,7 +393,7 @@ loopback攻击面和更广的旧Host兼容性，不是更少的生命周期或�
 
 Interceptor 存放的是**解密后的 HTTPS 流量** —— Cookie、`Authorization`、refresh token、支付会话。这意味着 MCP 泄露的不是普通文件，而是**用户在所有网站上的身份**。安全等级需按此设定，而非按普通 MCP server。
 
-| 威胁 | Streamable HTTP | stdio + Bridge | 首期防护 |
+| 威胁 | Streamable HTTP | stdio + Bridge | 防护 |
 | --- | --- | --- | --- |
 | 任意网页访问抓包 | **高危，可触达loopback** | 浏览器不能直接访问stdio或本地IPC | 强制per-client Bearer；无Token统一401；Browser端Token只驻留内存 |
 | DNS rebinding | **高危** | 不适用 | listener只绑定`127.0.0.1`；所有实际请求仍需不可猜测的per-client Bearer，Origin与Host不参与身份判断 |
@@ -464,7 +447,7 @@ flowchart TD
 
 ## 8. 数据契约
 
-### 8.1 Preload窄API扩展 [首期]
+### 8.1 Preload窄API
 
 沿用既有窄意图原则。Renderer可读取非秘密endpoint和Client展示状态，但不读取token、密文或Host配置路径：
 
@@ -497,80 +480,49 @@ flowchart TD
 | `SETTINGS_MAX_BYTES` | 加密Client设置文件上限 |
 | `DEFAULT_APPROVAL_TIMEOUT_MILLISECONDS` | Ask等待用户裁决的最长时间 |
 
-## 9. 当前实现
+## 9. 验收要点
 
-**已落地**：`packages/interceptor-tools/`唯一拥有可执行Tool registry、6个Capability、
-deterministic discovery、参数边界、脱敏与Main/Core执行映射；`packages/mcp-server/`消费同一registry并拥有认证、
-按Client `ask` / `auto`审批、审计、并发/结果上限与官方SDK v2 `2026-07-28` handler；旧协议请求被明确
-拒绝。`capture_clear`旧session scope和
-三个多义Tool已删除，不保留兼容路径；`rules_replace_tree`保留完整树与enabled并按revision compare-and-replace。
-两包都不引用Electron，可脱离app单测。
+**共享Tool与MCP adapter**
 
-Desktop Main直接拥有`127.0.0.1:<port>/mcp` listener、固定端口设置和safeStorage加密Client记录。每个请求
-重新校验Bearer并读取最新Tool开关与Client模式；停用、退出、撤销或手动重新生成凭据会取消对应在途调用。
-Token不经过Preload，Main只把通用Streamable HTTP配置写入系统剪贴板。
-
-正文读取不接受调用方自报MIME：`capture_get_exchange_body`用`exchangeId + bodyId`回查该Exchange的正式Body引用，
-确认归属后使用可信`mediaType`和`contentEncoding`；音视频不读取字节。Exchange headers/trailers与Composer响应
-统一脱敏，Composer正文统一裁剪，同时保留Core返回的timing与TLS元数据。
-
-**已接线**：
-
-| 位置 | 改动 |
-| --- | --- |
-| `apps/desktop/src/main/mcp/` | loopback Streamable HTTP、端口设置、加密Client store、共享Tool执行适配、Client模式与ask窗口聚焦 |
-| `packages/mcp-server/` | 官方SDK v2、严格当前协议、可恢复认证器、动态Tool过滤、Ask/Auto、审计与取消 |
-| Main / Preload / shared API | 8.1节窄意图、脱敏状态与App级审批事件 |
-| Renderer / `design-vite/` | MCP开关、endpoint状态、通用Client接入、手动轮换、Tool开关、执行模式与审批Modal |
-| `packages/interceptor-tools/` | 共享Tool唯一owner；具体数量与状态见完整能力目录 |
-
-共享Tool只复用正式产品入口。需要新增入口时，先以产品用户意图设计并验证，再由Agent/MCP共同复用。
-
-## 10. 验收要点
-
-**共享Tool与MCP adapter（已由单测覆盖）**
-
-- [x] Tool使用稳定domain顺序；共享registry、Capability投影、参数/数值边界、脱敏与调用映射由`@interceptor/tools`测试覆盖。
-- [x] MCP精确列出同一registry的当前授权集合，并保留query/change、destructive、open-world annotations与结构化错误。
-- [x] `rules_replace_tree` 在 revision 冲突时返回冲突错误，不覆盖用户在 UI 中的编辑。
-- [x] `rules_replace_tree`不改写folder或enabled；完整递归Rule schema仍归该Tool独立实现item，未达到Desktop接线门禁。
-- [x] 工具结果中的 `Authorization` / `Cookie` / `Set-Cookie` 与凭据 query 默认已遮罩。
-- [x] 音视频正文不进入工具结果。
-- [x] 撤销某个 client 后，其 token 立即无法再建会话。
-- [x] 工具抛错返回结构化失败而非抛出。
-- [x] schema 未声明的参数被拒绝；分页条数与结果字节均有上限。
-- [x] 只改 header 时不伪造 `body` 字段，避免把真实正文抹成空。
+- Tool使用稳定domain顺序；共享registry、Capability投影、参数/数值边界、脱敏与调用映射由`@interceptor/tools`测试覆盖。
+- MCP精确列出同一registry的当前授权集合，并保留query/change、destructive、open-world annotations与结构化错误。
+- `rules_replace_tree` 在 revision 冲突时返回冲突错误，不覆盖用户在 UI 中的编辑。
+- `rules_replace_tree`不改写folder或enabled，使用同一完整递归Rule schema。
+- 工具结果中的 `Authorization` / `Cookie` / `Set-Cookie` 与凭据 query 默认已遮罩。
+- 音视频正文不进入工具结果。
+- 撤销某个 client 后，其 token 立即无法再建会话。
+- 工具抛错返回结构化失败而非抛出。
+- schema 未声明的参数被拒绝；分页条数与结果字节均有上限。
+- 只改 header 时不伪造 `body` 字段，避免把真实正文抹成空。
 
 **共享Tool与Settings**
 
-- [x] Settings只显示共享registry中已实现的Tool；Agent/MCP开关默认开启、互不影响并跨重启恢复。
-- [x] 关闭的Tool不进入对应Agent discovery或MCP `tools/list`，也不能按名称调用。
-- [x] query直接执行；change在Client `ask`时问询、`auto`时直接复用正式产品意图。
-- [x] 三个多义早期Tool已拆成7个语义单一Tool；完整名称以Tool能力目录为准。
+- Settings只显示共享registry中已实现的Tool；Agent/MCP开关默认开启、互不影响并跨重启恢复。
+- 关闭的Tool不进入对应Agent discovery或MCP `tools/list`，也不能按名称调用。
+- query直接执行；change在Client `ask`时问询、`auto`时直接复用正式产品意图。
+- Tool表达语义单一的用户意图，完整名称以能力目录为准。
 
-**首期Streamable HTTP**
+**Streamable HTTP**
 
-- [x] MCP默认关闭；关闭状态下不存在HTTP listener、SDK handler与在途调用，已配置Client和endpoint设置保留。
-- [x] 首次开启由OS分配空闲端口并持久化；重启复用同一URL；端口冲突进入明确状态而不静默改变Host配置。
-- [x] listener只绑定`127.0.0.1`且不复用`8888`；缺失或错误Bearer token返回`401`。
-- [x] Browser CORS：`OPTIONS /mcp`返回204 preflight，带Origin的实际请求仍按Bearer认证；Main不检查Origin或Host。
-- [x] token使用`crypto.timingSafeEqual`比较，经safeStorage加密持久化，不进入Renderer、日志、Diagnostics或工作区。
-- [ ] **blocked · VS Code/Copilot互操作**：2026-09-01真实VS Code `1.135.0`（commit `08d4889f9e`）固定`LATEST_PROTOCOL_VERSION="2025-11-25"`，而产品已决定只支持官方SDK v2的`2026-07-28`并保持`legacy: 'reject'`。Host首个HTTP请求返回400并回退legacy SSE后收到405，未进入`tools/list`。不增加legacy兼容；等待VS Code支持当前协议后用同一Host矩阵复验。
-    - 2026-09-13只读核对当前VS Code `1.137.0`的安装包和workbench bundle，基础MCP协议仍为`2025-11-25`。另一`2026-01-26`常量用于`ui/open-link`扩展，不能视为基础协议升级；未改配置或凭据，未重复Host canary，仍为blocked。
-- [ ] VS Code 与 Claude Desktop 同时接入，看到的是**同一份**抓包数据。
-- [x] app重启后endpoint与token保持有效，同一配置无需修改即可继续工作；app未运行或MCP未开启时只表现为连接失败。
-- [x] 官方Client固定当前`2026-07-28`协议连接，旧协议请求被拒绝，普通call返回JSON。
-- [ ] 需要中间消息时同一个`POST`返回SSE；当前已接Tool均只需最终结果，尚无真实进度消息flow。
-- [x] ask问询弹层可Allow/Deny；Host断开、超时或Server关闭会移除旧Modal；auto不创建问询。
-- [x] 撤销或重新生成某个Client凭据后，其旧token立即失效且该Client在途调用取消，其他Client不受影响。
-- [x] MCP认证失败、Host异常断开、工具抛错均不影响抓包与转发。
-- [x] ask裁决、auto模式与工具调用写入不含凭据的Diagnostics审计。
-- [x] 关闭的Tool不进入目标Client的`tools/list`且不能按名称调用；同一Client的`ask`/`auto`跨app重启恢复。
-- [x] 真实Electron workflow通过官方MCP Client连接Main，执行query、Allow/Deny与auto change，并验证销毁、8888释放和系统副作用恢复。
+- MCP默认关闭；关闭状态下不存在HTTP listener、SDK handler与在途调用，已配置Client和endpoint设置保留。
+- 首次开启由OS分配空闲端口并持久化；重启复用同一URL；端口冲突进入明确状态而不静默改变Host配置。
+- listener只绑定`127.0.0.1`且不复用`8888`；缺失或错误Bearer token返回`401`。
+- Browser CORS：`OPTIONS /mcp`返回204 preflight，带Origin的实际请求仍按Bearer认证；Main不检查Origin或Host。
+- token使用`crypto.timingSafeEqual`比较，经safeStorage加密持久化，不进入Renderer、日志、Diagnostics或工作区。
+- VS Code 与 Claude Desktop 同时接入，看到的是**同一份**抓包数据。
+- app重启后endpoint与token保持有效，同一配置无需修改即可继续工作；app未运行或MCP未开启时只表现为连接失败。
+- 官方Client固定当前`2026-07-28`协议连接，旧协议请求被拒绝，普通call返回JSON。
+- 需要中间消息时，同一个`POST`返回SSE。
+- ask问询弹层可Allow/Deny；Host断开、超时或Server关闭会移除旧Modal；auto不创建问询。
+- 撤销或重新生成某个Client凭据后，其旧token立即失效且该Client在途调用取消，其他Client不受影响。
+- MCP认证失败、Host异常断开、工具抛错均不影响抓包与转发。
+- ask裁决、auto模式与工具调用写入不含凭据的Diagnostics审计。
+- 关闭的Tool不进入目标Client的`tools/list`且不能按名称调用；同一Client的`ask`/`auto`跨app重启恢复。
+- 真实Electron workflow通过官方MCP Client连接Main，执行query、Allow/Deny与auto change，并验证销毁、8888释放和系统副作用恢复。
 
-**stdio备选（首期明确不实现）**
+**stdio备选的边界**
 
-- [ ] 只有第5.3节的真实兼容性或企业约束出现后才建立work item；不得为“以后也许需要”同时实现。
-- [ ] 若实现，stdio只存在于无业务状态bridge；Desktop Main继续拥有唯一产品状态与MCP adapter。
-- [ ] Bridge到Main的IPC必须有OS访问控制或握手凭据，不得把stdio父子进程边界误当成整条链路的认证。
-- [ ] 新transport必须复用同一认证身份、Tool过滤、`ask`/`auto`、审计与Core bridge，不建立分支行为。
+- 只有第5.3节的真实兼容性或企业约束出现后才建立work item；不得为“以后也许需要”同时实现。
+- 若实现，stdio只存在于无业务状态bridge；Desktop Main继续拥有唯一产品状态与MCP adapter。
+- Bridge到Main的IPC必须有OS访问控制或握手凭据，不得把stdio父子进程边界误当成整条链路的认证。
+- 新transport必须复用同一认证身份、Tool过滤、`ask`/`auto`、审计与Core bridge，不建立分支行为。

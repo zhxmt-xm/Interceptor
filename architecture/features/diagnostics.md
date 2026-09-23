@@ -1,6 +1,5 @@
 # Feature: Diagnostics
 
-> 最后更新：2026-09-07
 > Core 模块：`apps/proxy-core/src/proxy-core/core-diagnostics.ts`、`apps/proxy-core/src/proxy-core/diagnostics/`
 > Renderer 模块：`apps/desktop/src/renderer/features/diagnostics/`
 
@@ -96,9 +95,9 @@ interface DiagnosticsRecorder {
 
 ### H2事件采集范围
 
-- 后续H2协议事件复用常规Diagnostics列表、已有筛选及记录详情，不新增独立H2页面或另一套事件表格。采集到的方向、session、stream和协议字段放入真实记录属性；未采集的字段不展示为0或伪造事件。
-- `ProxyService`当前只有HTTP增量、trailer、abort及TLS/client-error等事件，尚未取得完整的SETTINGS、RST_STREAM和GOAWAY帧字段。测试源站的`onOriginStream`不是生产采集入口；涉及Mockttp/patch的改动继续按用户要求暂缓，不订阅会缓冲完整正文的completed事件作为替代。
-- 需要取得真实事件来源和可靠的请求关联后，再验证普通Diagnostics的查询、详情与导出。NO_ERROR不等于全部stream成功，CANCEL也不能自动归因为用户操作；当前不宣称这项采集已实现。
+- H2协议事件复用常规Diagnostics列表、筛选和详情，不增加独立页面或事件表格。方向、session、stream和协议字段必须来自真实采集；未采集字段不补0或伪造事件。
+- `ProxyService`的HTTP增量、trailer、abort及TLS/client-error不等同于完整SETTINGS、RST_STREAM或GOAWAY帧。测试源站的`onOriginStream`不能作为生产来源，也不能用会缓冲完整正文的completed事件替代。
+- 原始帧必须有可靠的请求关联。NO_ERROR不等于全部stream成功，CANCEL不能自动归因为用户操作。
 
 ## 5. 查询流程
 
@@ -189,12 +188,7 @@ schema，不增加Agent专用IPC、第二份日志存储或Renderer后门。它�
 - Model只能看到已由Core入库前脱敏的结构化记录。命令payload、请求URL、header与正文不得因Tool接入而进入结果；
 - Transcript使用typed摘要显示记录数、是否还有更早记录与丢弃数，不展开完整attributes。
 
-真实`agent.tools.diagnostics` workflow先经Composer UI发送两次带敏感query值的真实请求，等待Diagnostics UI
-确认两组`composer.send`成功记录，再由Agent discovery与`diagnostics_query`按`core + composer.send + success`
-过滤读取四条action/command记录。验收结果最新优先、敏感URL/query不进入Model结果、Ask模式无审批、Settings关闭后返回
-`unknown_tool`、恢复后可重新发现，并在同profile重启时保持Model与Tool零重放。
-
-### 9.1 当前快照与导出Tool（已实现）
+### 9.1 当前快照与导出Tool
 
 三项与`diagnostics_query`共用唯一registry、Agent/MCP独立授权和正式Diagnostics/Transfer owner。
 
@@ -213,20 +207,9 @@ schema，不增加Agent专用IPC、第二份日志存储或Renderer后门。它�
     隐式取消；后续显式任务取消使用独立`capture_cancel_transfer_job`意图。
 - 原生取消返回`started:false`；启动后返回`started:true`与公开job快照，只包含正式身份、状态、进度/计数
     和警告数量，不包含路径、文件名、正文或可变message/warnings内容。任务启动不等于文件导出成功，摘要必须明确区分。
-- 先更新本节及`diagnostics.tools.queries-export`规格，取得executor unit Red和真实Electron discovery Red，
-    再复用正式入口实现。真实输入由同workflow通过Composer/Settings操作产生，查询验证静默与脱敏，导出
-    验证Deny、原生Cancel、Allow/Auto、实际JSONL过滤/脱敏、独立撤权和同profile重启零重放/完整销毁。
+- 导出摘要先显示状态，再显示长jobId，避免关键信息被尾部省略。
 
-2026-09-06至07：executor28项缺失Tool Red→Green，Main导出6/6；摘要unit7项与真实页面value Red后35/35。
-最终带摘要的真实Agent/MCP workflow1/1（36.0秒），两代Main/Core `3244/23680`、`14016/25676`；
-四条关联流程4/4，合计十代正常销毁、8888及WinINet/journal恢复。暂停前原生Cancel焦点失败证据独立保留，
-不计产品Red；四个实际JSONL文件满足过滤且不含测试秘密，Recent/Trace静默、撤权及重启零重放通过。
 详见[真实规格](../../apps/desktop/tests/e2e-workflow-tests/docs/diagnostics.md#diagnostics-tools-queries-export)。
-全workspace类型、Desktop592/592、Tools243/243、MCP32/32、Runtime122/122、Protocol25/25、Playground67/67及
-设计82/82通过；Core329/331保留既有两项framing债务。完整parity286视图1,964目标，本组62/62、0 missing/flagged、
-最大0.5px；全量30 missing/304 flagged仍是待修复视觉债务。标准package/产物审计（1,294 files / 392,896,554 bytes）、
-生产依赖0漏洞、最终smoke1/1（41.8秒）通过，Preload公开面不变。导出摘要先显示状态再显示长jobId，避免关键信息
-被尾部省略。486张设计输入归档，提交只保留六张新导出图和两张查询更新，478张其他基线不变。
 
 ## 10. 性能约束
 
@@ -236,14 +219,9 @@ schema，不增加Agent专用IPC、第二份日志存储或Renderer后门。它�
 
 ## 11. 验收要点
 
-- [ ] Core 断开期间 Main 记录不丢，恢复后完整续传。
-- [ ] Diagnostics 写入失败不影响 Capture。
-- [ ] 敏感 attribute 与 URL query 在库中与导出文件中均已脱敏。
-- [ ] 轮询查询自身不产生新记录。
-- [ ] keyset 分页在大数据量下稳定，无重复无遗漏。
-- [x] Agent只通过共享`diagnostics_query`读取真实记录；过滤、稳定顺序、脱敏、撤权与重启零重放均通过真实Electron验收。
-
-2026-09-05验收：最终`agent.tools.diagnostics`在父提交`401af972`精确Red于Diagnostics schema缺失，Main/Core
-`11540/18252`优雅销毁；当前同一workflow `1/1` Green，两代Main/Core为`11444/35300`、`42312/18808`，
-均`gracefulDestroyVerified=true`且释放8888，宿主guard恢复系统副作用。Model与origin重启请求增量均为0，
-返回四条记录、两个trace、严格递减sequence；完整敏感文本审计通过。明暗parity共18个目标全部0px。
+- Core 断开期间 Main 记录不丢，恢复后完整续传。
+- Diagnostics 写入失败不影响 Capture。
+- 敏感 attribute 与 URL query 在库中与导出文件中均已脱敏。
+- 轮询查询自身不产生新记录。
+- keyset 分页在大数据量下稳定，无重复无遗漏。
+- Agent通过共享query读取真实记录，遵守过滤、顺序、脱敏和权限契约；重启不重放查询。

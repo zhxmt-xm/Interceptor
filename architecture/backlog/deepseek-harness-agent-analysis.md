@@ -1,12 +1,10 @@
 # DeepSeek Harness Agent Runtime 全流程与 Interceptor 对照研究
 
-> 状态：外部架构研究文档，不是产品已实现架构真源。
->
-> 调研日期：2026-08-31
+> 外部架构研究，不作为Interceptor产品能力说明。
 >
 > DeepSeek Harness 基线：`0.1.2-alpha.2`，commit [`0a53fb55bea101816fa226bb964ae2bed71c343b`](https://github.com/deepseek-ai/deepseek-harness/commit/0a53fb55bea101816fa226bb964ae2bed71c343b)
 >
-> Interceptor 基线：2026-08-31 的当前工作树；产品现状仍以 [`architecture/HANDOVER.md`](../HANDOVER.md) 和 [`architecture/features/agent.md`](../features/agent.md) 为准。
+> Interceptor契约见[Agent设计](../features/agent.md)，任务安排见[Handover](../HANDOVER.md)。下文对照用于评估候选机制，不记录本仓实施进度。
 
 ## 1. 调研目标与结论边界
 
@@ -44,14 +42,14 @@ DeepSeek Harness 不是“一个 Agent 类加一个聊天 UI”，而是由 Cord
 
 ### 2.2 对 Interceptor 最有价值的四点
 
-1. **补齐 Renderer 对 durable sequence 的单调消费**：本仓已经坚持“先持久、再发事件”，但所有异步命令回包还没有共享同一个 sequence guard；扩展后台事件前应先锁定。
-2. **把 Context 组装变成显式阶段**：当前 Interceptor 只有历史消息和 Tool capability index；未来的工作区上下文、Traffic 选择、用户附加上下文、压缩摘要不应继续塞进 `AgentRunLoop`。
+1. **Renderer对durable sequence的单调消费**：先持久、再发事件还需要配套的消费约束；事件、reload和异步命令回包都不得覆盖更高sequence的快照。
+2. **Context组装采用显式阶段**：工作区上下文、Traffic选择、用户附件与压缩摘要的候选应有独立组装边界，不直接堆入`AgentRunLoop`。
 3. **把 Tool 执行前后政策收敛为单一流水线**：开关、披露、query/change、审批、取消、Core RPC、结果脱敏和 UI 展示应共享一个不可绕过的顺序契约。
 4. **把“完整事实”与“读取优化”分开**：DeepSeek 的 Session log 与 projection cache 分离思路值得吸收；本仓不必改成事件溯源，但应避免让 Renderer 快照、列表摘要或未来 Memory 索引成为第二真源。
 
 ### 2.3 不应照搬的部分
 
-- 不应为了“插件化”把本仓编译期 24 项产品 Tool 变成任意运行时代码加载。
+- 不应为了“插件化”把本仓编译期产品Tool目录变成任意运行时代码加载。
 - 不应把 Renderer 变成通用 Cordis/Tool Host，或暴露 Node、MessagePort、Core RPC 原语。
 - 不应直接引入 DeepSeek 的 Web UI 包；它不是 React 组件库，而是整棵浏览器插件应用。
 - 不应现在把关系化 `agent.sqlite` 重写成通用追加事件日志；当前产品范围尚不足以抵消迁移和验证成本。
@@ -69,7 +67,7 @@ DeepSeek Harness 不是“一个 Agent 类加一个聊天 UI”，而是由 Cord
 | Memory | 没有单一核心 Memory；由历史、压缩、instructions、skills、引用与可选外部服务组成 | 当前只有完整历史、Provider Usage、Tool discovery 状态 | Context/历史不等于跨会话长期 Memory |
 | Tool | 作用域注册的 schema、canonical output、执行器、策略与展示投影 | 共享 registry 中的 `query/change` Tool，经 Main 调 Core | DeepSeek Tool definition 自带更完整的结果和政策契约 |
 | Projection | 从 Session event log 折叠出的当前值，可持久化缓存 | Renderer Session snapshot/summary 与本地 Zustand 状态 | Projection 只能是派生状态，不能成为第二真源 |
-| Profile | 多个 bundle patch 与用户 patch 组合出的应用 | 本仓无对应产品概念 | 不要把 Provider profile 与 DSH profile 混为一谈 |
+| Profile | 多个bundle patch与用户patch组合出的应用 | `--user-data-dir`隔离的业务配置与凭据，不负责插件装配 | 数据profile、Provider配置与DSH profile是不同概念 |
 
 ## 4. DeepSeek Harness 进程与组合拓扑
 
@@ -1053,7 +1051,7 @@ OpenDesign 一类产品不嵌官方 Web UI，而是：
 
 这是 Interceptor 若复用 DSH runtime 时更接近的模式，但也意味着需要接受第二套 Session、Provider、Tool 和进程生命周期。
 
-## 16. Interceptor 当前 Agent 全流程
+## 16. Interceptor Agent 对照
 
 ### 16.1 组合根与进程边界
 
@@ -1069,12 +1067,13 @@ flowchart LR
   LOOP --> SOURCE["AgentToolService"]
   SOURCE --> SETTINGS["ToolCapabilitySettingsService"]
   SOURCE --> CORE["CoreRuntime RPC"]
+  SOURCE --> ACTIONS["Main业务方法 / PlatformCapabilitiesService"]
   SESSIONS --> DB["encrypted agent.sqlite"]
   SESSIONS --> EVENTS["session-updated / assistant-delta"]
   EVENTS --> UI
 ```
 
-### 16.2 当前 Loop
+### 16.2 Loop
 
 [`packages/agent-runtime/src/agent/entry.ts`](../../packages/agent-runtime/src/agent/entry.ts) 的 `AgentRunLoop`：
 
@@ -1089,9 +1088,9 @@ flowchart LR
 9. Tool Call 按模型顺序串行执行。
 10. 每个 Tool Result 在继续前通过 `onRunEvent` 交给 Session owner 持久化，并加入 messages。
 11. 无 Tool Call则 completed；否则进入下一次模型调用。
-12. 独立 `run()/resume()` API 可按 10 Step checkpoint 返回 suspended；产品 Session flow 当前把 suspended 视为 unsupported error。
+12. 独立`run()/resume()` API可按checkpoint返回`suspended`；持久Chat不将底层暂停映射为UI Continue，Stop仍产生Turn终态。
 
-### 16.3 当前 Session 真源
+### 16.3 Session 真源
 
 本仓不是事件溯源，而是规范化关系模型：
 
@@ -1113,7 +1112,7 @@ flowchart LR
 
 它不是跨 writer 的 compare-and-swap API；Session Service 通过 Main 内单 owner 和“每 Session 一个 active Turn”避免并发写竞争。
 
-### 16.4 当前一次 Send
+### 16.4 一次 Send
 
 1. Renderer 通过窄 `sendAgentMessage(sessionId, content)` intent 到 Main。
 2. `AgentSessionService.sendMessage()` 校验命令门、Provider 稳定、消息长度、无 active Turn。
@@ -1130,19 +1129,19 @@ flowchart LR
   - `response-completed`：flush 后把 Assistant 置为完整、写 ModelCall/Usage 与 Context usage。
 8. Loop completed 后用另一次 commit 把 Turn 标记 completed；取消或错误先 flush，再用一次 commit 标记 cancelled/failed 并补齐未完成 Tool Result。
 
-### 16.5 当前 Tool 披露
+### 16.5 Tool 披露
 
-`AgentToolService` 已实现 capability index + `discover_tools` 的渐进披露：
+`AgentToolService`使用capability index与`discover_tools`渐进披露：
 
 - 初始模型只看到 capability index 和 discovery Tool；
 - 成功 discovery 后才披露匹配的业务 schema；
-- 当前已接入 Traffic query Tool 和首个 change Tool；
+- 业务Tool来自共享registry，不在Agent维护第二份接入白名单；
 - 每次 Model Call 与真正执行前都读取最新 Tool settings；
 - 本响应产生时披露的名称集合限制该响应，模型不能同一响应先 discover 再猜调用；
 - 执行前关闭的 Tool 返回 `unknown_tool`，不触达 Core；
-- `AbortSignal` 原样进入 Core RPC。
+- `AbortSignal`进入Core RPC；平台操作在调用前检查取消，接受后由所属module完成收尾，不用调用方取消推断原生操作结束。
 
-### 16.6 当前审批
+### 16.6 审批
 
 - Session 持久 `toolExecutionMode: ask | auto`。
 - query Tool 直接执行。
@@ -1153,7 +1152,7 @@ flowchart LR
 - mode 只影响后续调用，不自动裁决既有 pending。
 - cancel/shutdown 会取消 pending、补失败结果并等待执行链完全退出。
 
-### 16.7 当前恢复
+### 16.7 恢复
 
 - 启动时逐行解密并校验主键、row type、row id 与 session id 绑定。
 - SQLite 或确定性 schema/关系损坏时隔离整个数据库后创建新库。
@@ -1284,7 +1283,7 @@ take 32ms buffered text/reasoning
 - create 只有 create + refreshed list 全部成功才一起安装；delete 只有 list + fallback snapshot 全部成功才一起安装，避免半个本地状态。
 - `busy` 串行化 Renderer 发起的命令，但不阻塞 Runtime event；`loading` 与 `busy` 是正交状态。
 
-当前还有一个需要在扩展并发前锁定的边界：`rename/setModel/requireToolApproval/automaticallyExecuteTools/allow/deny` 的 IPC 回包会直接 `setCurrentSession()`，没有统一的 session-id/sequence guard。Main 当前先持久再 emit，通常提供正确顺序；但尤其 Allow/Deny 会在返回 snapshot 后立即唤醒 Loop，源码 contract 没有保证旧命令回包绝不会晚于后续 Tool/Model event。现有 unit tests覆盖 select/load/gap 的陈旧回包，不覆盖这六类 mutation。它应被视为待测试的竞态窗口，而不是已经证实的线上故障。
+**命令回包与事件的竞态条件**：若`rename/setModel/requireToolApproval/automaticallyExecuteTools/allow/deny`的IPC回包直接调用`setCurrentSession()`而不检查session-id与sequence，就可能覆盖先到的更高版本event。Main先持久再emit不能独自保证两个异步通道的消费顺序，尤其Allow/Deny会唤醒后续Tool/Model工作。统一安装规则应同时约束命令回包和事件；这个机制分析不等于已确认的线上故障。
 
 ## 17. 两套架构逐项比较
 
@@ -1293,53 +1292,51 @@ take 32ms buffered text/reasoning
 | 产品目标 | 通用可组合 Agent 平台 | 抓包产品内置专家 Agent | 本仓不需要同等动态性 |
 | Runtime owner | Profile + Cordis root Context | Electron Main `AgentRuntime` | 本仓更易控制安全与 shutdown |
 | Loop | 薄 driver + event seams | 小型固定 while loop | DeepSeek 的阶段 seam 值得借鉴 |
-| Session | append-only typed event log | encrypted relational aggregate | 不建议现在重写存储模型 |
+| Session | append-only typed event log | encrypted relational aggregate | 迁移收益必须覆盖存储与恢复成本 |
 | Inbox | durable next-turn/next-step queue | UI 同一 Session 一次只发一个 active Turn | steering/inject 将来可能需要独立设计 |
 | Prompt | registry + ordered sections + variables | toolSource system messages + history | 本仓最明显的可扩展性缺口 |
 | Memory | 多插件组合，无默认长期 Memory | 完整历史，无压缩/长期 Memory | 两边都不应宣称已有长期 Memory |
-| Compaction | event + Surface replacement | 未实现，超窗直接拒绝 | 值得优先吸收原则 |
+| Compaction | event + Surface replacement | 基本调用超窗拒绝，压缩属于候选设计 | 可借鉴原始历史与模型视图分离 |
 | Tool registry | scoped dynamic layers | 共享静态产品 registry | 保留本仓静态 registry |
 | Tool policy | pre/guard/around/post/final/result | 开关 + query/change + authorizer + executor | 值得收敛为显式 pipeline |
-| Tool concurrency | 明确安全才有界并行 | 模型顺序串行 | 现阶段串行更适合变更类产品命令 |
-| Tool result | canonical JSON + model/UI pure projections | `ToolExecutionResult` JSON + Renderer 通用行 | 可吸收 canonical output/presentation 分离 |
+| Tool concurrency | 明确安全才有界并行 | 模型顺序串行 | 变更类产品命令需要明确互斥与副作用顺序 |
+| Tool result | canonical JSON + model/UI pure projections | `ToolExecutionResult` JSON与Renderer typed摘要 | 可吸收canonical output/presentation分离 |
 | Checkpoint | 副作用前 durable prefix | 每个可见 event 先持久再广播，Tool result 后继续 | 本仓已有等价核心不变量 |
 | Crash recovery | synthetic closer 平衡日志 | 修复 running Turn/Call/approval 关系 | 两边目标一致，表达不同 |
-| Projection | typed fold + persisted cache | snapshot/summary + Renderer store | 暂不需要通用 projection framework |
+| Projection | typed fold + persisted cache | snapshot/summary + Renderer store | 读取优化不能成为第二真源 |
 | UI | Host Remote + Client models + Slot plugins | typed Preload intents + Zustand | 保留本仓窄 IPC，不引入通用 Remote |
-| Plugin trust | Profile 可加载第三方 Host 代码 | 产品代码封闭，MCP 尚未接 Desktop | 不应开放任意 Host plugin |
-| Subagent | 多 provider、in/out process | 未实现 | 等有真实产品 flow 再设计 |
+| Plugin trust | Profile可加载第三方Host代码 | 产品registry固定，MCP通过Main业务入口执行 | Tool transport不等于任意Host代码加载 |
+| Subagent | 多provider、in/out process | 产品Agent无子Agent入口 | 候选需有明确用户流程与授权边界 |
 
-## 18. 对 Interceptor 的可落地建议
+## 18. 可借鉴机制与采用条件
 
-### 18.1 优先级 P0：继续完成当前 Tool execution mode
+### 18.1 Tool execution mode
 
-不要因本次调研改变当前 work item。现有 ask/auto、Allow/Deny、执行前二次开关检查、取消与重启补结果，已经符合 DeepSeek Tool pipeline 的关键安全性质。
-
-应补齐并固定：
+ask/auto、Allow/Deny、执行前二次开关检查、取消与重启补结果共同约束授权流程：
 
 - change call 必须先持久 pending 再等待；
 - Allow 不等于绕过执行时 settings/权限检查；
 - Deny 必须产生模型可见、持久且关联 call id 的 Result；
 - query/change 的差异继续由 Tool 定义拥有；
 - shutdown 等待 approval 和 Tool executor quiescent；
-- E2E 继续走真实产品命令和真实副作用恢复。
+- 验证通过真实产品命令产生并恢复副作用，不用模型输出代替执行事实。
 
-### 18.2 优先级 P0：统一 Renderer Snapshot 单调安装
+### 18.2 Renderer Snapshot 单调安装
 
-在增加 Steering、MCP 或并行后台事件前，先把所有 full snapshot 入口收敛到一个纯 reconciliation helper：
+所有full snapshot入口共享同一组安装约束：
 
 - 仅安装目标 Session 的 snapshot；
 - 相同 Session 只接受 `incoming.sequence >= current.sequence`；
 - selection-aware 操作继续校验 generation；
 - summary 与 Transcript 在同一次 Zustand mutation 中更新；
-- 为 mode、Allow/Deny 等命令补“新 event 先到、旧 response 后到”的 unit test；
-- 用现有真实 Tool approval E2E 验证 pending → allowed/denied → result 不倒退。
+- “新event先到、旧response后到”时，mode、Allow/Deny等命令也不能使快照回退；
+- approval的pending → allowed/denied → result保持单调。
 
-这不是引入 DeepSeek 的 Remote model，而是补齐本仓已经选择的 sequence 协议。
+这组约束基于本仓sequence协议，不要求引入DeepSeek Remote model。
 
-### 18.3 优先级 P1：引入轻量 Prompt Assembly，不引入 Cordis
+### 18.3 轻量 Prompt Assembly候选
 
-建议未来把 `toolSource.snapshot(messages)` 拆成明确但静态的请求组装阶段：
+可将`toolSource.snapshot(messages)`中的请求组装拆为明确但静态的阶段：
 
 ```ts
 interface AgentRequestContextSource {
@@ -1348,7 +1345,7 @@ interface AgentRequestContextSource {
 }
 ```
 
-第一批只需要：
+可选输入：
 
 - 固定 Agent persona；
 - Capability index / discovered Tool schema；
@@ -1363,7 +1360,7 @@ interface AgentRequestContextSource {
 - 组装结果或其 digest 必须进入 ModelCall 记录，保证诊断可解释；
 - Renderer 不能注入任意 system prompt。
 
-### 18.4 优先级 P1：设计 Context Compaction
+### 18.4 Context Compaction候选
 
 当前 `AgentRunLoop.#requestMaxOutputTokens()` 用字节近似 token，超窗即抛错。建议借鉴的不是 DeepSeek 整套包，而是四条不变量：
 
@@ -1372,11 +1369,11 @@ interface AgentRequestContextSource {
 3. Summary 请求本身有独立 ModelCall/Usage/Error 记录。
 4. Tool Call/Result、未完成 Turn、审批和当前用户输入不能被切成非法历史。
 
-本仓最简单的实现可以是关系化数据上的 `context-checkpoint` Item/表，而不是重写成事件日志。压缩前必须先写测试锁定“原始 Transcript 可见、模型历史被替换、重启一致、失败不切换”。
+关系化数据上的`context-checkpoint` Item/表可以承载这些约束，不必重写为事件日志。原始Transcript可见、模型历史替换、重启一致和失败不切换是该候选的核心验证对象。
 
-### 18.5 优先级 P2：统一 Tool Execution Pipeline
+### 18.5 固定 Tool Execution Pipeline候选
 
-当前逻辑分散在 `AgentRunLoop`、`AgentToolService`、`ToolCapabilitySettingsService` 和具体 definition。随着 MCP 与更多 change Tool 接入，可建立内部固定阶段：
+`AgentRunLoop`、`AgentToolService`、`ToolCapabilitySettingsService`和共享definition各有职责；固定阶段可表达它们的调用顺序：
 
 ```text
 resolve disclosed definition
@@ -1385,16 +1382,16 @@ resolve disclosed definition
   -> check enabled
   -> authorize if required
   -> re-check enabled and product preconditions
-  -> execute with AbortSignal
+  -> execute through the owning business method
   -> normalize canonical result
   -> redact/project model content
   -> persist call/result
   -> project UI presentation
 ```
 
-不建议提供任意 middleware 注册；阶段可由静态 owner 组合，确保一个控件仍对应一条语义单一命令。
+不提供任意middleware注册，阶段由静态owner组合。Core调用沿真实AbortSignal取消，平台调用遵守所属module的完整收尾边界，不能用统一取消包装抹掉差异。
 
-### 18.6 优先级 P2：把 Tool canonical result 与 UI presentation 分开
+### 18.6 Tool presentation候选
 
 可考虑给共享 Tool definition 增加纯展示投影：
 
@@ -1406,9 +1403,9 @@ resolve disclosed definition
 
 这样新增 Tool 不必在 Agent Transcript 组件里继续堆名称分支，同时不会把 React 或 UI 字符串放进业务 executor。
 
-### 18.7 优先级 P3：需要时再引入 steering/inject
+### 18.7 Steering/inject候选
 
-DeepSeek 的 durable Inbox 很强，但本仓尚无对应用户 flow。只有出现以下需求才值得设计：
+durable Inbox适用于以下用户需求：
 
 - 用户在模型/Tool 运行中追加指令；
 - Traffic selection 作为不唤醒的下一 Step context；
@@ -1428,25 +1425,9 @@ DeepSeek 的 durable Inbox 很强，但本仓尚无对应用户 flow。只有出
 - DSH alpha 版本锁与协议变化；
 - UI 仍需自建，或完整嵌入另一套 Web 产品。
 
-当前本仓 Agent Runtime 已有 Streaming、持久化、Tool disclosure、审批和 Core RPC，替换成本远大于收益。更合理的做法是吸收经过验证的不变量。
+Interceptor的Streaming、持久化、Tool disclosure、审批与Core RPC已有各自owner；直接替换会重复这些生命周期。候选机制可以独立评估，Compaction依赖明确的请求组装边界，Tool presentation也不需要通用插件系统。
 
-### 18.9 建议的改动边界
-
-以下是相对规模与 ownership 边界，不是工期承诺：
-
-| 建议 | 相对规模 | 主要 owning 边界 | 必要验证 |
-| --- | --- | --- | --- |
-| Renderer snapshot 单调安装 | 小 | Renderer `agentSessionStore` + feature contract | Store unit + approval E2E |
-| Prompt Assembly | 中 | Agent Runtime request contract/Loop、Main contribution source、ModelCall diagnostics | Unit + Session integration + Context E2E |
-| Context Compaction | 大 | Agent feature contract、Session schema/store/projection、Runtime orchestration、Transcript 状态 | Unit + SQLite restart integration + 长 Chat E2E |
-| 固定 Tool pipeline | 中 | Agent RunLoop、Main AgentToolService、shared Tool definitions | Pipeline unit + Core integration + ask/auto E2E |
-| Tool presentation projection | 中 | shared Tool presentation contract、Renderer transcript components | Pure projection unit + Renderer unit/parity + Tool E2E |
-| Steering/inject | 大 | Session durable queue、Runtime safe point、Main/Preload intents、Renderer composer | Queue unit + restart integration + 运行中追加 E2E |
-| 直接嵌入 DSH | 超大且不建议 | 新子进程/Profile/ACP 或 SDK adapter、第二套 Session/Credential/Tool/UI 生命周期 | 跨 runtime 全矩阵 |
-
-不应把这些建议合并成一个“大 Agent 重构”。顺序应是：先固定 Renderer 单调性与当前审批 flow，再独立引入 request assembly，随后才让 Compaction 消费这个明确入口；Tool pipeline/presentation 可按真实 Tool 增长独立推进。
-
-## 19. 建议形成的验证矩阵
+## 19. 候选机制的验证边界
 
 | 能力 | Unit | Integration | 真实 Electron E2E |
 | --- | --- | --- | --- |
@@ -1461,7 +1442,7 @@ DeepSeek 的 durable Inbox 很强，但本仓尚无对应用户 flow。只有出
 
 ### 20.1 DeepSeek Harness 自身限制
 
-- alpha 版本，包和 Client service 已出现过破坏性删除/改名。
+- alpha版本的包与Client service不具备稳定兼容承诺，采用方需要锁定版本。
 - 插件依赖共享 Cordis/React runtime identity，peer version 不匹配会在启动或浏览器激活时失败。
 - 任意 Host plugin 与 Runtime 同权限，Profile 是受信代码边界，不是沙箱。
 - Persistence 的 synthetic closer 只关闭崩溃 Turn，不支持真正从中间指令继续。
@@ -1515,26 +1496,3 @@ DeepSeek 的 durable Inbox 很强，但本仓尚无对应用户 flow。只有出
 - [`architecture/features/agent.md`](../features/agent.md)
 - [`architecture/features/tool-capabilities.md`](../features/tool-capabilities.md)
 - [`architecture/platform/processes.md`](../platform/processes.md)
-
-## 22. 逐源码核对清单（已完成）
-
-- [x] DeepSeek `compaction-basic` 的触发、请求、事件、Surface replacement、失败和恢复精确顺序。
-- [x] `compaction-tool-result-pruner` 与基础 compaction 的组合优先级及模型可见效果。
-- [x] `token-meter` 的 replay 计量、Usage anchor 与阈值职责。
-- [x] 默认 `web` Profile 的 Agent preset、Tool、Persistence、Checkpoint、Compaction 实际装配清单。
-- [x] `llm-deepseek` 的 SSE chunk、thinking continuation、Usage、cache 与错误映射。
-- [x] Approval、permission preset、sandbox 三者从 UI 到 Tool body 的完整调用链。
-- [x] Subagent fresh/fork/continuable 的 Session lineage、取消和完成边界。
-- [x] Web Session Controller 的 prompt/queue/cancel/follow transport 与重连竞态。
-- [x] Interceptor `#modelMessages()` 对 retry、partial assistant、缺失 Tool Result 的精确筛选。
-- [x] Interceptor Tool Call/Result、approval、ModelCall 的每次 commit 与事件 sequence 精确顺序。
-- [x] Interceptor Renderer 对 full snapshot、delta、selection generation、gap reload 的完整状态机。
-- [x] 根据上述核对结果更新“可落地建议”的优先级与预估改动边界。
-
-### 22.1 本仓可执行证据
-
-- `npm test --workspace @interceptor/desktop -- src/renderer/features/agent/tests/unit/agent-session-store.test.ts`：1 个文件、13 个测试全部通过。
-- `npm test --workspace @interceptor/agent-runtime -- tests/integration/session-runtime.test.ts -t "emits strictly ordered Streaming snapshots|cancels after a visible delta|keeps an Ask change Tool pending|cancels a pending change Tool approval"`：选中的 4 个集成测试全部通过，另 32 个按过滤器跳过。
-- 文档诊断：无错误。
-
-上述测试证明现有 sequence、gap reload、Retry、Deny 和 approval cancellation 行为；它们没有覆盖第 16.10 节指出的 mutation command response 竞态，因此该项仍按“待新增测试的风险窗口”记录，不按已复现 bug 记录。

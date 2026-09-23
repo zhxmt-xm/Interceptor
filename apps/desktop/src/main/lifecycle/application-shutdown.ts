@@ -62,7 +62,6 @@ export class ApplicationActionGate {
   private activeActions = 0;
   private drainPromise: Promise<void> | null = null;
   private resolveDrain: (() => void) | null = null;
-
   /** Execute one accepted action and include it in the current drain boundary. */
   async run<T>(operation: () => Promise<T>): Promise<T> {
     if (!this.accepting) {

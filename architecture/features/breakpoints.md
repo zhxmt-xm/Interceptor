@@ -1,12 +1,8 @@
 # Feature: Breakpoints
 
-> 最后更新：2026-09-09
 > Core 模块：`apps/proxy-core/src/proxy-core/rules/internal/breakpoint-queue.ts`
 > Renderer 模块：`apps/desktop/src/renderer/features/breakpoints/`（数据层）
 >       `apps/desktop/src/renderer/features/capture/BreakpointManager|BreakpointInspector/`（UI）
->
-> 当前状态：断点已从独立 workspace 合并进 Capture（提交 `941e40a`）。
-> 第 1–6 节描述已实现产品；第 7 节记录本阶段证据与仍未验证的差异。
 
 ## 1. 职责与边界
 
@@ -19,7 +15,7 @@ Breakpoints 在真实转发路径上**挂起**请求或响应，等待用户放�
 
 断点由 `breakpoint` 类型的 Rule Action 触发，因此它是 Rules 的子系统，共享 `RuleService` 的执行上下文。
 
-**正文可见性边界（已实现）**：HTTP 断点在**头部阶段**（`beforeRequestHead` / `beforeResponseHead`）挂起，此时正文尚未到达，所以快照的 `bodyAvailable` 为 `false` 且不带 `body`。UI 因此把正文区域展示为“Replace body / 原文尚未到达”，留空即原样转发。WebSocket 消息断点持有完整 payload，`bodyAvailable` 为 `true`。**当前实现不为断点引入正文缓冲，也不制造第二份无界内存。**
+**正文可见性边界**：HTTP断点在头部阶段（`beforeRequestHead`/`beforeResponseHead`）挂起，不等待原始正文；原文未到时快照`bodyAvailable=false`且不带body，空Text保持原样转发。WebSocket消息快照持有完整payload，`bodyAvailable=true`。快照已有正文与Inspector能够读取Capture预览是不同事实。
 
 ## 2. 参与者
 
@@ -113,15 +109,11 @@ RuleService 先按 priority / action 声明顺序完成全部非-breakpoint acti
 未触碰字段误报为 effect。replace / add / remove 沿用 Rules 的 Header effect 语义，body-only 编辑不生成
 header marker；重复同名值只标实际变化的实例。
 
-Body replacement使用[Rules Body effect](rules.md#73-body-effect-已实现)的同一最终写入者模型：`edit.body`生成`source:'text'`，`edit.bodyFilePath`生成`source:'file'`，effect绑定承载当前breakpoint action的ruleId。Request保留入站Original并另存Final；Response只保存Final并明确Original unavailable。Off或只编辑header时不制造body effect。
+Body replacement使用[Rules Body effect](rules.md#73-body-effect)的同一最终写入者模型：`edit.body`生成`source:'text'`，`edit.bodyFilePath`生成`source:'file'`，effect绑定承载当前breakpoint action的ruleId。Request保留入站Original并另存Final；Response只保存Final并明确Original unavailable。Off或只编辑header时不制造body effect。
 
-File模式未选文件时按现有设计显示112px最小高度的居中容器和32px高的Upload按钮，按钮不横向拉满；文字11.5px、`--text-2`。未选文件保留带警告图标的Using original状态，分组折叠图标为13px，不撑高标题。选中文件仍使用既有预览卡，不改Open Dialog、正文或转发行为。该样式差异由真实文件替换流程和Request/Response明暗parity验证。
+File模式未选文件时显示112px最小高度的居中容器和32px高的Upload按钮，按钮不横向拉满；文字11.5px、`--text-2`。未选文件显示带警告图标的Using original，分组折叠图标为13px，不撑高标题。文件只能经原生Open Dialog选择，选中后显示预览卡。
 
-断点面板局部使用设计同样的normal行高；Header行内部间距6px，行组与Add header之间8px，页脚三个按钮均使用9px横向内边距。上述还原不改变[空Text替换语义](#空text替换语义)：`replacesBody()`依据断点快照的`bodyAvailable`和输入内容判断，不依据Inspector是否显示了原文。普通HTTP空Text继续`Using original`，不为消除历史parity missing改业务或新增标签。
-
-2026-09-10用户确认并完成验收的Header effect布局：保留现有输入框，name/value两列在所有行保持等宽；`Rule set`/`Rule appended`位于对应value输入框下方2px，右边缘对齐，字号9px、行高12px，无标签边框或底色。普通行30px、行间距6px不变，只有带effect的行增加14px。字段、effect语义、增删和放行命令不变；普通Inspector的Header marker和WebSocket握手设计不随本次改变，证据见[Header effect布局](#74-header-effect下置布局)。
-
-2026-08-20 TDD证据：最终`breakpoints.execute-edited`源码在`89d8dda`仅回植后续公开automation ID与driver helper后，暂停快照精确缺失priority更晚的`x-e2e-before-breakpoint`，Execute edited后的Capture也缺少绑定breakpoint ruleId的`set x-edit-stage` marker；当前同一workflow`1/1` Green。Red/Green metadata分别记录Main/Core PID `31404/3812`与`46424/29380`，均`gracefulDestroyVerified=true`且8888释放、系统代理恢复。该证据只闭环final Rule state与header effect；HTTP framing矩阵仍由[HTTP消息编辑](http-message-editing.md)单独验收。
+断点面板使用局部normal行高；Header行内gap为6px，行组与Add header间距8px，页脚三个按钮横向padding均为9px。`replacesBody()`依据快照的`bodyAvailable`和输入内容判断，[空Text语义](#空text替换语义)不受Inspector原文预览影响。Header effect的[布局](#74-header-effect下置布局)与实际HTTP framing分别遵守各自契约。
 
 ### 4.2 响应断点
 
@@ -133,17 +125,10 @@ File模式未选文件时按现有设计显示112px最小高度的居中容器�
 
 ### 4.3 WebSocket 帧断点
 
-- 2026-09-12最新对齐约定：暂停说明、方向和队列按钮由同一层`flex + align-items:center`排布，phase内部图标与文字也使用flex center；设计稿遵守相同规则，不使用baseline或为居中单独补px。该条替代此前以Grid几何中心和行高微调判定对齐的做法，先由现有Close workflow验证旧实现Red，再实施与复验。
-- WebSocket Replacement标题按既有PayloadEditor设计为36px，模式控件28px加标题下padding8px；折叠图标使用13px控件规格，不用30px的sm按钮撑到38px。共享IconButton通过xs规格表达，默认md/sm保持；现有Close workflow先取得标题38/36px真实Red，再改UI，关闭码1000到1001的协议断言保持。
-- 2026-09-12标题修复先取得xs组件Red和真实38/36px Red（Main/Core30236/30268）；共享IconButton增加xs后32/32 unit、Desktop类型通过，Close首轮1/1（20.3s，24084/43976）。追加四条origin历史消息后最终1/1（11.5s，6428/19436）：38px消息行、126px队首列表、真实滚轮访问底部暂停帧、13px折叠/展开、Replacement Off保持和origin收到1001全部通过。三代均正常销毁及8888/WinINet/journal恢复。
-- 暂停上下文沿用既有设计normal行高、126px队首滚动区和38px消息分隔；queued及普通列表不套用队首高度，Tree/MIME/Save能力保持。上述暂停期样式没有前置真实E2E，不能把后来取得的标题Red外推到这些修改。
-- enabled/paused/queue-head/queue-queued明暗八场景58/58、0 missing/flagged、最大0.8px；方向组按完整控件外框与文字Range分别比较，队列两态几何0px，不再用裸All匹配全局筛选。补正确状态PNG后像素均值2.71%，仍含既有数据/图标/字体差异，不宣称整页逐像素相同。TEMP `interceptor-ws-heading-20260912-{unit-red,unit-green,e2e-red,e2e-green,e2e-scroll,directions,pixels}*`保留日志、trace、metadata及布局截图。
-- 沿用现有shoot variant补enabled/queue-head/queue-queued明暗6张缺失PNG，408张旧图SHA256不变；最初还生成2张旧行内paused-sent图，发现与当前队首状态不同后删除本轮新增的这2张，paused场景复用queue-head图，不改设计布局或旧基准。TEMP `interceptor-ws-shots-20260912-{before,result}.json`保留最初8张生成清单，最终入库仅6张。
-- [同一item报告](../../commit-changes/202609111558_ui_parity_progress.html#websocket-pause-images)追加真实Renderer + fake Preload的相同浅色1600x900区域前后图，红框定位列表、暂停说明和Replacement标题。原62图逐张保持，共64图在1320/390宽度加载完整、全部展开且无横溢出；TEMP `interceptor-ws-heading-20260912-review/evidence.json`记录来源hash/裁切/旧图保护，一次性脚本已删除。
+- 暂停说明、方向和队列按钮由同一层flex容器设置`align-items: center`；phase内图标和文字使用相同规则，不使用baseline或像素位移。
+- WebSocket Replacement标题按既有PayloadEditor设计为36px，模式控件28px加标题下padding8px；折叠图标使用13px控件规格，不用30px的sm按钮撑到38px。
+- 暂停上下文使用normal行高、126px队首滚动区和38px消息分隔；queued及普通列表不套用队首高度，Tree/MIME/Save功能保持。
 - 消息断点入口按已有设计保持30×30px、1px透明边框、默认`--text`；默认hover取Ant Button的`colorFillTertiary`，启用后hover保留黄色。`IconButton`只增加可选hover CSS变量，未提供时默认值不变；不提高选择器特异性覆盖共享样式。
-- 2026-09-11前置parity确认默认色/边框和启用hover差异；真实Close workflow以0px边框取得Red，Main/Core `31368/37908`正常销毁。后续150%缩放的0.666667px是CSS物理像素取整，首次Green尝试因此误报（`13356/6960`正常销毁），不算产品回归；最终断言按devicePixelRatio核对边框，30px尺寸和透明颜色检查保持。
-- 最终真实`breakpoints.websocket-close`1/1（8.3s），启用hover颜色不变且origin收到编辑后的1001；Main/Core `26524/29720`正常销毁，fixture验证8888、WinINet/journal与登记进程恢复。相关unit26/26、Desktop typecheck通过；临时消息断点八态与普通IconButton六态共42/42目标匹配、最大0.6px，普通按钮默认样式不变。
-- WebSocket明暗主场景14 matched、0 missing、4个正文标题/Binary行旧flag，按钮目标全匹配；平均像素差2.73%。未改设计或PNG，不算整页通过。TEMP证据前缀`interceptor-websocket-toggle-20260911`，含真实Red/Green、状态矩阵、截图和trace；[工作项报告](../../commit-changes/202609111558_ui_parity_progress.html#websocket-toggle)内嵌真实按钮前后图。
 
 ```mermaid
 sequenceDiagram
@@ -193,7 +178,7 @@ Renderer 不把 WebSocket pause 替换成另一套全屏 Inspector。pending 到
 snapshot 的 text / hex 字节并复用 `BodyViewer`，Replacement 默认 Off，设置摘要来自同一连接的
 `WebSocketBreakpointSettings`，不会把 Core 的帧类别 `ruleName` 冒充成方向。
 
-## 5. 当前感知方式
+## 5. 事件与选择
 
 请求在 Core 侧 `await` 挂起；队列集合变化复用既有 event-batch 发出 `breakpoint.pending` 信号，App 级
 `useBreakpoints` 收到后调用 `breakpoint.list` 刷新。它不传大快照、不建第二条推送通道，也不依赖
@@ -268,9 +253,9 @@ interface BreakpointOutcome {
 | `websocket.breakpoint.enable` | 用完整配置启用 WebSocket 帧断点 |
 | `websocket.breakpoint.disable` | 停用 WebSocket 帧断点 |
 
-### 6.1 Agent / MCP Tool入口 [已实现]
+### 6.1 Agent / MCP Tool入口
 
-共享registry已定义`breakpoints_list`、HTTP启停、WebSocket启停以及单项Continue、Forward edited、Drop八项。
+共享registry定义`breakpoints_list`、HTTP启停、WebSocket启停以及单项Continue、Forward edited、Drop。
 Tool不拥有第二套queue：所有执行仍进入上表正式Core命令，Renderer与Agent/MCP看到同一pending集合。
 
 - `breakpointId`只标识当前Core pending；客户端abort、其他入口resolve或Core重启后即stale。审批前已知stale返回
@@ -282,7 +267,7 @@ Tool不拥有第二套queue：所有执行仍进入上表正式Core命令，Rend
 - HTTP与WebSocket pending都必须由正式UI配置和真实客户端流量产生。Tool测试不得直接构造queue成员。
 - Agent/MCP开关只决定Tool是否可发现/调用，不改变产品HTTP全局开关或当前WebSocket连接配置。
 
-### 6.2 Agent / MCP批量Tool契约（已实现）
+### 6.2 Agent / MCP批量Tool契约
 
 `breakpoints_continue_queue`、`breakpoints_drop_queue`分别接受严格的`queueKey`，
 `breakpoints_continue_rule`只接受`ruleId`，各自复用同名正式Core命令，不合并用户意图。
@@ -301,51 +286,20 @@ Tool不拥有第二套queue：所有执行仍进入上表正式Core命令，Rend
     Renderer通过既有`breakpoint.pending`刷新，不为Agent/MCP新增同步通道。
 - WebSocket继续只保存一份当前活动配置；验证多队列时先在连接A挂起帧，再通过正式UI切到连接B并挂起帧。
     旧pending保持等待，由目标批量命令解除；不为测试新增多配置能力或后门。
-- 先取得最小executor缺失Tool Red和`breakpoints.tools.batch`真实Electron discovery Red，再接入实现并复跑
-    同组Green。真实流程用产品UI建立两条HTTP Rule和两条独立WebSocket连接，核实数量、数据面、Ask/Auto、
-    空目标、独立撤权、重启零重放、完整进程销毁及WinINet/journal恢复。不能由测试直接seed队列。
 
-2026-09-06：executor23项缺失Tool Red、真实discovery Red→Green；摘要另经unit与真实`value` Red后Green。
-六条关联真实流程、11个Main/Core代际均正常销毁并恢复8888/WinINet/journal；批量本身两代
-`42592/42636`、`25756/42356`，原始HTTP/body与WebSocket队列隔离、Deny/Allow/Auto、0数量和两列撤权/
-重启零重放通过，详细证据与中间测试失败归因见[Breakpoints规格](../../apps/desktop/tests/e2e-workflow-tests/docs/breakpoints.md#breakpoints-tools-batch)。
-全workspace类型、Desktop579/579、Tools215/215、MCP32/32、Runtime122/122、Protocol25/25、Playground67/67
-与设计交互81/81通过；Core329/331仅两项既有framing债务。新增12视图72/72、0 missing/flagged、最大0.5px；
-完整parity280视图/1,920目标/1,888匹配/32缺失/335 flagged保留既有界面波动，不算全绿。离线package、
-artifact audit（1,294 files / 392,889,491 bytes）、production audit0漏洞及smoke1/1通过。
-
-真实Electron验收分别由`agent.tools.breakpoints`与复用Streamable HTTP transport的`mcp.tools.breakpoints`承担。
-两者均从Rules UI和真实客户端自产pending；Agent覆盖WebSocket连接隔离、Continue/Edit/Drop/Disable与重启零重放，
-MCP覆盖官方Client Ask/Auto、URL编辑、即时撤权、Client断开和credential轮换不解队。修复前`32f2889a`分别Red于
-Agent discovery为空、MCP stale错误进入审批；当前联合Green并完整释放Main/Core/MCP/8888和系统代理。
-
-历史 request 右键菜单中，Breakpoint submenu 与 Block 同属于 Control group，并使用同一 icon / label
+Capture request右键菜单中，Breakpoint submenu与Block同属于Control group，并使用同一icon/label
 起点；submenu 箭头与 hover 展开仍由 Ant Menu 原生管理。不能把 Breakpoint 作为 group 外的顶层 item，
 否则 Ant 的 group child 与 submenu title 两套 DOM 会产生不同水平缩进。
 
-2026-08-20 TDD证据：专用`capture.breakpoint-menu-hierarchy`最终源码在`89d8dda`仅回植真实Recording与driver helper后，Block/Breakpoint语义label左缘差`7.43621826171875px`取得精确Red；当前同一workflow差值为0并成功hover打开endpoint二级项。Red/Green Main/Core PID分别为`21056/39980`与`21380/20632`，两边`gracefulDestroyVerified=true`且8888释放、系统代理恢复。该证据只验收DOM层级与对齐，不代替独立submenu lifecycle验收。
-
-独立submenu lifecycle契约验证同一Ant Menu树的运行期行为：根菜单与二级菜单必须同时挂载；hover离开二级后只关闭二级；右边界空间不足时二级向左翻转；Escape与outside click销毁整棵菜单。历史边界为`32867ff^`的`menuPage: 'root' | 'breakpoint'`换页实现，hover不能打开Breakpoint页，点击后根菜单会被第二页替换；`32867ff`迁移到Ant `items[].children`后才具备父子菜单共存语义。
-
-2026-08-21 TDD证据：最终`capture.breakpoint-submenu-lifecycle`在`e5ca501`仅回植automation探针后精确Red于hover不产生submenu；当前`1/1` Green。右边界trigger与endpoint横坐标分别为`1030`与`628.126`，二级菜单向左翻转；父子共存、hover close/reopen、Escape与outside click均通过。Red/Green Main/Core PID为`21308/28948`与`46880/33620`，两边`gracefulDestroyVerified=true`且8888、系统代理与profile均恢复。
+根菜单与二级菜单必须同时挂载；hover离开二级只关闭二级，右边界空间不足时二级向左翻转，Escape和outside click销毁整棵菜单。
 
 pending registry不设隐藏上限。每次命中都由`suspend`创建等待项，不会因全局数量自动放行；用户可通过
 单项命令、按逻辑队列批量处理或按Rule批量Continue显式解除。大量断点可能占满站点连接，这是用户启用
 人工断点后的可见结果，产品不能用静默放行改变规则语义。
 
-## 7. 逻辑队列阶段证据与剩余差异
+## 7. 队列与编辑契约
 
-- 2026-09-13当前Manager实现：移除计数、标签和规则文字的独立px行高覆盖，由Manager继承自然行高；Advanced rules复用共享`Button size="sm"`的28px高度及7px gap，保留SlidersVertical图标和原回调。只恢复既有设计，不换字体、不加位移、不改队列/规则命令。
-- 既有row-format、breakpoints-store、breakpoint-edits与Button共43项unit前后Green。真实`breakpoints.queue-commands`先因计数12px而非normal Red（Main/Core `31288/26884`），修改后同一流程1/1（23.5s，`38380/34056`），三项批量命令、原正文和origin断言同跑，Red/Green均正常销毁且trace保留。Desktop类型与构建通过，Manager浅色8/8 parity、最大原始几何差0.53125px。
-- TEMP `interceptor-ui-parity-20260913-manager-{unit-baseline,unit-green,types,prepare}.log`、`manager-e2e-{red,green}`与`manager-green.{json,md}`保留结果；同一[报告](../../commit-changes/202609111558_ui_parity_progress.html#manager-natural-layout-images)新增一组真实Electron同尺寸近景，原91张图保持，93图加载、6个红框及1320/390排版已检查。这些真实E2E均在用户再次暂停前执行，不代表当前可以继续启动Electron。
-
-结构、感知、关联、逻辑队列、批量命令、独立草稿、HTTP Original / Replacement body 与
-当前连接临时 WebSocket 断点均已实现。真实未验证项仍为：
-
-- HTTP `Execute edited` 后的 `Content-Length`、`content-encoding`、transfer-encoding 与 H2 framing
-    尚未建立 wire-level 回归；产品不能仅凭 UI 状态宣称正确。
-- WebSocket 单 frame 仍会整体进入 snapshot；超大帧的预览与内存边界尚未定义。
-- Binary 未编辑保真与 hex **编辑后**的字节还原均已有真实 socket 回归。
+Manager使用自然行高；Advanced rules复用28px高、7px gap的`Button size="sm"`。WebSocket单帧整体进入snapshot，预览上限不能代替快照内存边界；HTTP编辑后的线上字节遵守[消息编辑契约](http-message-editing.md)。
 
 ### 空Text替换语义
 
@@ -353,13 +307,11 @@ pending registry不设隐藏上限。每次命中都由`suspend`创建等待项�
 - `bodyAvailable`来自断点快照，并不随Inspector的Capture正文预览加载而改变。普通HTTP头部断点为false，因此空Text显示`Using original`且编辑参数不带body；不能因为旁边显示了Original body，就推断空Text会清空正文。
 - 快照已有正文时（如WebSocket消息或前序规则已经提供body），Text清空会发送`body: ''`，当前标签为`Using text`。这与HTTP快照无正文时的空输入是两种情况，不新增`Empty body`标签或改变产品转发逻辑。
 
-### 7.1 逻辑队列、连续调试与批量命令（已实现）
-
-本阶段完整替换了单队列选择、单草稿与 timeout 契约，没有保留旧字段、兼容命令或迁移路径。
+### 7.1 逻辑队列、连续调试与批量命令
 
 #### 逻辑队列与展示
 
-- Core 继续以一个 pending registry 保存全部等待项；每个 pending 增加稳定的 `queueKey`。
+- Core以一个pending registry保存全部等待项，每项带稳定的`queueKey`。
 - HTTP request、HTTP response 与 WebSocket upgrade 使用 `queueKey: 'http'`；WebSocket message、ping、pong、
     close 使用 <code>queueKey: `ws:${exchangeId}`</code>。不同 `queueKey` 互不阻塞；同一 WebSocket 连接的
     双向帧保留registry插入顺序。
@@ -394,7 +346,7 @@ pending registry不设隐藏上限。每次命中都由`suspend`创建等待项�
 
 #### 命令契约
 
-保留 `breakpoint.resolve` 处理单项 Continue / Forward edited / Drop；新增三条用户意图单一的命令：
+`breakpoint.resolve`处理单项Continue / Forward edited / Drop；批量操作使用三条独立命令：
 
 | 命令 | 作用域 | 语义 |
 | --- | --- | --- |
@@ -411,89 +363,37 @@ pending registry不设隐藏上限。每次命中都由`suspend`创建等待项�
 - 批量 Continue 一律原样放行，不读取或复制任一 Renderer 草稿；批量 Drop 一律丢弃目标。批量命令不提供
     edited 变体。
 
-#### 已删除 timeout
+#### 释放边界
 
-- 删除 HTTP Rule breakpoint 与 WebSocket breakpoint 的 finite / infinite timeout 产品能力，包括协议字段、
-    Core timer / `onTimeout`、Rules 与 WebSocket UI、导入专判、i18n、MCP参数和既有 timeout 设计场景。
+- HTTP与WebSocket断点没有finite/infinite timeout能力；协议、UI和Tool参数都不接受timeout。
 - pending 只由用户 Continue / Forward edited / Drop、客户端 abort 或 Core / RPC 生命周期
     关闭释放。生命周期关闭返回明确的 `aborted`，不得继续制造 `timed_out` 或 timeout policy。
 - pending registry不设数量上限，不存在`autoContinued`协议状态、queue-full诊断或对应UI。逻辑分组不能绕过
     客户端 abort 或`closeAll()`清理。
 
-#### TDD 与验收证据
+<a id="74-header-effect下置布局"></a>
+### 7.2 Header effect布局
 
-- Unit：Protocol command/result、`BreakpointQueue` 排序/非队首 resolve/批量调用开始快照、Renderer 多草稿、
-    最新 snapshot 推进与精确 WebSocket frame sequence 均先取得目标缺口 Red，再实现 Green。
-- Integration：真实 Proxy 锁定 HTTP `queueKey/ruleId`、WebSocket pending sequence 与 Capture sequence 一致；
-    Capture/Archive frame 回归保持 Green。
-- E2E：`queue-stepping`、`queue-isolation`、`queue-commands` 与 `lifecycle-release` 经过真实
-    Renderer → Preload → Main → Core → Proxy → client/origin，覆盖中间 abort、不抢焦点、独立草稿、HTTP/WS
-    隔离、三条批量命令、调用开始快照和生命周期关闭。
-- Design/Parity：design-vite 先定稿 head / Queued / 批量菜单 / 无 timeout；视觉几何只由 design interaction
-    与 visual parity 验证，不混入业务 E2E。
-
-2026-08-25阶段证据：最终四条workflow源码在修复前`d854588`分别取得有效retrospective Red：
-`queue-stepping`与`queue-commands`已经通过真实Rules UI形成paused请求，但Capture行没有`data-queue-*`；
-`queue-isolation`的HTTP已真实pending但缺`queueKey`；`lifecycle-release`在真实WebSocket setup中仍找到1个
-timeout控件。Red Main/Core PID依次为`34028/1940`、`32556/29092`、`31380/12648`、`14964/31472`，
-四组`gracefulDestroyVerified=true`。当前同一组workflow合并`4/4` Green；Green Main/Core PID依次为
-`24768/21248`、`30096/30308`、`18196/12256`、`36720/2084`，四组同样
-`gracefulDestroyVerified=true`且8888释放。
-
-2026-08-25无上限补充TDD：`BreakpointQueue`先以25条连续命中在第11条返回`null`取得精确Red；删除
-`BREAKPOINT_QUEUE_LIMIT`、nullable suspension和queue-full状态后，同一测试25条全部pending并保持插入顺序。
-MCP无timeout调用先Red于未发出Core命令，删除工具schema、解析和payload字段后Green；MCP全量`46/46`
-与typecheck通过。最终全仓门禁与最新parity数字见`architecture/HANDOVER.md`。
-
-### 7.2 文件替换空态视觉修复
-
-- 原空文件按钮被纵向flex拉满，parity宽度差302.1px，按钮高度34px且字号/颜色不符；产品还缺少File为空时的警告图标，Using original文字横向错位14px。Replacement分组的30px折叠按钮另使标题比设计多2px。
-- 现仅在`BreakpointInspector`补空文件容器与共享Button的局部样式，图标使用Upload；File和Text为空时按既有设计显示10px警告图标，13px折叠控件不再撑高标题。没有调整位移抵消差异，没有改设计稿、原始PNG、文件API或网络转发。
-- 前置真实UI和302px parity Red归档为TEMP下`interceptor-breakpoint-file-presentation-red-20260909-210935.zip`，SHA256 `3440F775BAF9B408DAF9FE6F1C9E1BE6589AFF680C51B0DAC3828EAB42074086`，Main/Core `17452/22284`正常退出。
-- 最终Request/Response x light/dark四个空文件视图共12个区域目标（标题、Using original、Choose file）全部matched，最大0.6px、无字号/颜色差；22个HTTP视图为240 matched、2 missing、94 flagged，剩余集中在暂停标题、Headers及页脚，不把局部修复写成整组全绿。
-- 断点编辑/Store unit19/19、Desktop typecheck通过；真实`rules.body-effect-evidence`1/1（26.2s）验证112px容器、32px按钮、真实Save/Open、File替换的转发与Capture证据，Main/Core `31924/17444`正常退出，8888、WinINet/journal恢复。
-- 最终trace/metadata、完整区域截图和22视图parity归档`interceptor-breakpoint-file-final-green-20260909-211705.zip`，SHA256 `4FCC1E36F4ACED2F34DC6AD6AAEAE599DF55948C7BD658D0DB905FCD10FE5A6B`。未修改原生Dialog驱动或新增测试工具测试。
-
-### 7.3 标题与页脚还原
-
-- 标题、Header行组与页脚排版的本项验收通过。2026-09-09曾暂停E2E，随后用户恢复授权；2026-09-10真实Save/Open文件替换Green，设计字体恢复后相关22视图复核通过。当时空Text标签单列待确认；2026-09-16核对后的[现有语义](#空text替换语义)保持产品行为，撤下新增标签提案，不把历史结果改写为整仓parity全绿。
-- 产品只改`BreakpointInspector`排版：面板使用局部normal行高；Header行内部6px gap，行组与Add header之间仍为8px；移除主按钮额外横向内边距，页脚三个按钮统一9px，Drop使用设计已有的CircleSlash。Header字段、文件选择、解决命令与Core数据面均不变。
-- 暂停前22个HTTP断点视图240 matched、0 flagged，最大几何差0.8px，全部22视图有像素比较；2个missing均为response Text的Using original标签，不是Replacement textarea缺失。设计和产品的textarea均为420x94px。当时将判断条件概括为“原文已知”不准确，实际依据是断点快照中的`bodyAvailable`；Inspector原文显示不改变该字段。历史missing保留，不通过修改产品或配对标签掩盖。
-- 未改设计源码。22张HTTP断点PNG原先不存在，本轮使用既有截图脚本补生成；原有362张PNG逐张SHA256保持不变，清单为TEMP下`interceptor-breakpoint-existing-shots-20260909.json`。parity结果为`interceptor-breakpoint-chrome-{237,242,247,252,257}.json`及同名`.md`，日志为`interceptor-breakpoint-chrome-matrix-20260909.log`。
-- 断点Store/编辑unit19/19和Desktop typecheck已通过，日志`interceptor-breakpoint-chrome-checks-20260909.log`。最终真实`rules.body-effect-evidence`在原生文件窗口文件名控件获取前台焦点时失败，不是布局或数据断言Red；Main/Core `46384/40556`虽为`gracefulDestroyVerified=true`，仍不能算该workflow通过，日志为`interceptor-breakpoint-chrome-e2e-20260909.log`。
-- 用户禁止E2E后，本轮只运行unit19/19及Desktop typecheck，日志`interceptor-breakpoint-no-e2e-checks-20260909-215929.log`；仅读回暂停前的22视图parity与362张原图hash，未运行浏览器或E2E。进度归档`interceptor-breakpoint-chrome-pending-e2e-20260909-220030.zip`，SHA256 `4A619F1D64B0A7A7B56224DDA25501BE7E479FB0EAD35DDBA8DFBE9FC9C7F976`，清单明确标记`code-complete-pending-e2e`并保存4份相关源码hash。
-- 恢复后独占前台执行时，两轮原生文件名框在WScript粘贴后仍为空；辅助改为Win32 `SendInput`真实Ctrl+A/Ctrl+V，核对焦点字段HWND、保持置顶至finally、确认字段真实值后恢复剪贴板。不直接设置字段值、改写Dialog返回值或新增设施测试。
-- 最终同一`rules.body-effect-evidence`1/1（27.2s总运行）、unit19/19及Desktop typecheck通过，Main/Core `24060/48540`正常退出，host guard确认8888、WinINet/journal及登记进程恢复。TEMP归档`interceptor-breakpoint-chrome-native-green-20260910-001235.zip`，SHA256 `130C9FF733352048E1363069450FC0AD862677D30E3D2431C008997E06708A76`，包含trace、两轮辅助失败、Green/类型日志及四份源码hash。
-- 2026-09-10网络恢复后，22个视图逐一确认设计Inter/JetBrains Mono静态FontFace为loaded，再执行parity；240 matched、0 flagged、最大0.8px，2个missing仍仅为Response空Text的Using original标签。已查看明暗代表截图，原有362张PNG逐张hash不变，此前新增22张缺失断点PNG没有重绘；设计源码、配对目标和仓库报告未改。
-- 最终字体验证日志、22视图JSON/Markdown、Renderer/diff截图及产品/新增PNG的hash归档为TEMP下`interceptor-breakpoint-chrome-font-verified-20260910-132342.zip`，SHA256 `929F4F85EF2A3BF0BD56DFDF02F8379AEE05DB34112AEFABF2CAF2CE2082A42A`；四份源码hash与上述真实E2E Green一致，复用unit19/19和Desktop typecheck，不重复运行无变化的原生流程。
-
-### 7.4 Header effect下置布局
-
-- 2026-09-10用户已查看并确认下置、靠右、紧贴输入框的小字方案；正式设计与Renderer使用2px间距、9px字号和12px行高。所有行输入框等宽，无effect行不保留说明空行；不改变规则执行、Header数据或Forward edited/Continue行为。
-- 前置断点编辑/Store单测19/19 Green。真实`rules.body-effect-evidence keeps breakpoint header effects aligned`先在旧产品CSS取得Red：有effect行的name/value分别窄约21/30px，marker仍在右侧且为9.5px/18px；两阶段编辑、增删和规则结果断言正常。有效Red为TEMP下`interceptor-header-effect-e2e-valid-red-20260910-174123`，Main/Core `35408/15892`正常退出且宿主guard恢复。
-- 初次测试误用简化客户端返回值、首次Green尝试严格比较0.00009px浮点偏差、Desktop typecheck缺少draft元数据的记录均保留；修正后重新执行，不将这些测试代码问题当产品Red。最终typecheck（Desktop/design）通过，owner单测19/19 Green。
-- 最终同一文件两条真实E2E为2/2 Green（38.0s），覆盖原有Text/File、原生Save/Open与新增request set/response append的下置布局、input编辑与增删。Main/Core两代`5928/30284`、`27632/35448`均正常退出；fixture完成`verifyRestored()`，登记PID全退、8888释放、WinINet恢复`127.0.0.1:7890`，无journal恢复错误。
-- 26个相关parity视图为296 matched、0 flagged、最大0.8px；2个missing仍是已登记的Response空Text `Using original`，本项不改变其语义。平均pixel diff 2.5793%，保留列表数据等既有差异，不宣称整页或整仓parity全绿。
-- 更新22张受影响HTTP设计PNG，新增4张此前缺失的队首/菜单基准，其余366张PNG逐张hash不变。设计共享Header编辑器的`effectPlacement="below"`只由HTTP调用，WebSocket握手继续inline；直接预览已核对其明暗布局未变。
-- TEMP归档`interceptor-header-effect-verified-20260910-1811.zip`，SHA256 `3C5A8AC9FE5FE8406B2AAE34B7B4B5E9F1FDDF9FA75D03A7783024927516E5DF`，保存有效Red、最终E2E/trace/metadata、26视图报告与截图、改前设计图、失败记录、类型/单测日志及6份相关源码hash。
+- name/value两列在所有行保持等宽。`Rule set`/`Rule appended`位于对应value输入框下方2px并右对齐，字号9px、行高12px，无边框或底色。
+- 普通行30px、行间距6px；只有带effect的行增加14px，无effect不预留说明空行。HTTP使用`effectPlacement="below"`，WebSocket握手保留inline。
 
 ## 8. 验收要点
 
-- [x] 快照如实告知正文是否可见，不把空输入框冒充原文；只改 header 放行不会抹掉真实正文。
-- [x] 独立 Breakpoints 导航删除；在任意 workspace 命中时用户立即可感知。
-- [x] paused exchange 在 Capture 原行编辑，Continue 后选择节奏明确。
-- [x] manager 可查看/启停规则并精确跳到 Rules；历史 request 快捷创建后给出可撤销反馈。
-- [x] Original/Replacement 在 Request/Response 对称，Text/File 空态不会误覆盖原文。
-- [ ] 大正文断点有明确的预览上限与提示，不 OOM。
-- [x] Binary 消息可用 hex 编辑并正确还原。
-- [x] HTTP / WebSocket 没有 timeout 产品能力，等待只由用户、客户端或生命周期释放。
-- [x] 客户端 abort 时立即释放对应断点，不影响其他等待请求。
-- [x] pending registry 无隐藏数量上限，每次命中都保持等待直到显式或生命周期释放。
-- [x] RPC 断开时全部等待被释放，不泄漏挂起请求。
-- [ ] Execute edited 后 content-length 与 encoding 一致。
-- [x] HTTP 与每条 WebSocket 连接按独立 `queueKey` 推进，互不阻塞。
-- [x] 仅队首可编辑；非队首显示 `Queued` 普通 Detail，filter 不改变队列。
-- [x] 单项处理按最新 snapshot 推进，查看普通 request 或其他队列时不抢焦点。
-- [x] 草稿按 `breakpointId` 独立保存，并在 resolve / abort / 消失 / Core 换代后精确清理。
-- [x] `Continue all`、`Drop all` 与 `Continue all from this rule` 分别走独立命令并只处理调用开始快照。
-- [x] HTTP / WebSocket timeout 产品能力及 `timed_out` 结果全部删除，生命周期释放使用 `aborted`。
+- 快照如实告知正文是否可见，不把空输入框冒充原文；只改 header 放行不会抹掉真实正文。
+- 断点显示于Capture；任意workspace命中时用户均可感知。
+- paused exchange 在 Capture 原行编辑，Continue 后选择节奏明确。
+- manager 可查看/启停规则并精确跳到 Rules；历史 request 快捷创建后给出可撤销反馈。
+- Original/Replacement 在 Request/Response 对称，Text/File 空态不会误覆盖原文。
+- 大正文预览与完整WebSocket帧快照的内存边界分别检查，不能将预览截断等同于完整数据有界。
+- Binary 消息可用 hex 编辑并正确还原。
+- HTTP / WebSocket 没有 timeout 产品能力，等待只由用户、客户端或生命周期释放。
+- 客户端 abort 时立即释放对应断点，不影响其他等待请求。
+- pending registry 无隐藏数量上限，每次命中都保持等待直到显式或生命周期释放。
+- RPC 断开时全部等待被释放，不泄漏挂起请求。
+- Execute edited 后 content-length 与 encoding 一致。
+- HTTP 与每条 WebSocket 连接按独立 `queueKey` 推进，互不阻塞。
+- 仅队首可编辑；非队首显示 `Queued` 普通 Detail，filter 不改变队列。
+- 单项处理按最新 snapshot 推进，查看普通 request 或其他队列时不抢焦点。
+- 草稿按 `breakpointId` 独立保存，并在 resolve / abort / 消失 / Core 换代后精确清理。
+- `Continue all`、`Drop all` 与 `Continue all from this rule` 分别走独立命令并只处理调用开始快照。
+- HTTP/WebSocket不产生`timed_out`结果，生命周期释放使用`aborted`。

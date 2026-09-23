@@ -1,7 +1,6 @@
 # 平台架构：进程与通信
 
-> 最后更新：2026-09-18
-> 范围：只描述已经实现并验证的代码。本文覆盖跨 feature 的进程边界、两条通道、故障分类与关键数据结构；
+> 范围：跨feature的进程边界、两条通信通道、故障分类与关键数据结构；
 > feature 级别的设计见 [../README.md](../README.md) 索引的各 feature 文档。
 
 ## 1. 进程拓扑
@@ -91,7 +90,7 @@ Capture、Rules、Composer、Breakpoints、Diagnostics、Settings所有权分组
 证书生成、安装、卸载、删除、定位和查看的IPC/Agent/MCP共用`DesktopApplication`的对应方法。
 生成前检查当前CA未受信任；删除先卸载当前信任。四项状态变更完成Core同步后广播既有`tlsSettingsChanged`，
 已挂载面板重读正式状态；Tool只投影公开身份和信任字段，定位/查看仅返回`requested`，路径只由Main使用。
-六项真实Agent/MCP与自动清理证据见[证书验收](../features/settings.md#certificate-tool-acceptance)；系统证书管理器Tool仍独立待验收。
+证书Tool的参数与副作用边界见[证书契约](../features/settings.md#certificate-tool-acceptance)。
 `capture.body.export`由Main验证当前Exchange/Body归属与Core代际，再经原生Save Dialog和既有
 `body.export.start`保存完整编码字节；对话框返回后重新确认身份，路径只在Main/Core内流转。UI与Tool共用
 文件名推导和任务启动，Tool只返回安全任务摘要，不读取正文、不增加Preload API或第二套文件写入。
@@ -102,11 +101,11 @@ gRPC在途消息载荷经`window.interceptor.readGrpcBody({ exchangeId, side, of
 - 语言、主题和导出隐私的IPC/Agent/MCP共用`UiPreferencesService.setLanguage/setTheme/setExportPrivacyDefaults`。
   - Main只保存待执行请求及生命周期；Renderer的`UiPreferencesActions`常驻串行领取、应用并写入既有localStorage，再回传窄确认，Main通知其他Renderer。
   - 领取前取消使晚到请求无效，领取后完成已开始的提交；窗口关闭/Renderer退出清理所有pending。请求与响应都在Main校验，不暴露执行脚本、任意Store或存储路径接口。
-  - 新增`setUiLanguage`、`setUiTheme`、`setExportPrivacyDefaults`及领取/确认/请求/完成事件7个Preload API，只有前三项设置意图注册为Tool。验收见[偏好Tool](../features/settings.md#ui-preferences-acceptance)。
+  - `setUiLanguage`、`setUiTheme`、`setExportPrivacyDefaults`及领取/确认/请求/完成事件构成窄Preload API，只有前三项设置意图注册为Tool。[偏好契约](../features/settings.md#ui-preferences-acceptance)。
 - AppContainer单项/批量启停的IPC/Agent/MCP共用`DesktopApplication.enableAppContainer/disableAppContainer/enableAllAppContainers/disableAllAppContainers`。
   - Main调用PlatformCapabilitiesService，所属AppContainerService执行提权helper和读回验证，完成后通知Main广播`app-container:changed`；调用方取消只在进入平台前检查。
   - `onAppContainersChanged`只提供变更订阅；Renderer重读正式列表并按请求序号拒绝迟到结果，原生授权、退出后保留exemption的语义不变。
-  - 四项Tool仅返回公开AppContainer字段，不包含helper路径、binaries、workingDirectory或完整原始exemption集合；真实恢复证据见[AppContainer验收](../features/settings.md#app-container-tool-acceptance)。
+  - 四项Tool仅返回公开AppContainer字段，不包含helper路径、binaries、workingDirectory或完整原始exemption集合。[AppContainer契约](../features/settings.md#app-container-tool-acceptance)。
 - `TransferService`在HAR/Archive导入成功后通知`CoreApplication`，后者通过`event-batch.captureImported`发送信号。
   - Main和Preload转发给`onCaptureImported`，Renderer常驻`useCaptureData`重新查询summaries。
   - 发送失败时Core保留待发送信号；失败、取消的文件任务不发成功通知。
@@ -167,9 +166,7 @@ macOS Main在窗口显示后调用`PlatformCapabilitiesService.prepare()`，内�
 CaptureStatus的recording事实不直接等于系统路由就绪；Renderer接收记录事件后确认代理owned且未失权，Stop、代理失权或Core换代使迟到查询失效。Core故障期间不会仅因新listener已记录而提前显示Recording；平台module操作完成和原生条件写成功才是代理接管依据。
 
 每条真实 Electron workflow 和 packaged smoke 均由外层宿主 guard 保存、恢复并复核完整 WinINet、crash
-journal、测试进程树和8888 listener。这个 guard 证明测试没有污染宿主，不代表每个产品分支都已取得真实
-E2E；Windows跨profile崩溃恢复、MITM持久化和`application.lifecycle.core-restart`均已取得真实Electron
-证据，后者覆盖Core-only故障、新代际请求/RPC恢复及第二次故障与正常退出竞争。macOS同profile崩溃恢复、Core故障、TLS和helper复用已有独立真实证据，全量workflow与独立权限验收仍见[Handover](../HANDOVER.md)。
+journal、测试进程树和8888 listener。宿主恢复检查与功能行为验收分别进行，不能互相替代。
 
 ### 1.2 平台数据与profile边界
 
@@ -240,7 +237,7 @@ Main 创建 frameless `BrowserWindow` 时以 `useContentSize: true` 配置 `1600
 | 4 | fork CoreProcess | `CoreRuntime` → Electron | `utilityProcess.fork(entry.cjs)` | `core-runtime.ts` | CoreRuntime 独占当前 `CoreProcessHandle`、状态和关闭流程 | 初始化失败时 kill CoreProcess 并进入重启 |
 | 5 | 创建 RPC 通道 | `CoreRuntime` → Main/CoreProcess | `new MessageChannelMain()`、`coreProcess.postMessage({type:'rpc-port'}, [port2])` | `core-runtime.ts` | `port1` 附加到内部 `CoreRpcClient`，CoreProcess 接收 `port2` | transfer/attach 失败时关闭 port、client 和 CoreProcess |
 | 6 | CoreProcess bootstrap | Electron → `entry.cts` | `process.parentPort` | `entry.cts` | `new CoreApplication(parentPort).start()` | 无 parentPort 时输出错误并非零退出 |
-| 7 | CoreProcess 生命周期启动 | `CoreApplication` → parentPort | `ready` + 首个 `heartbeat` | `core-application.ts` | Main 状态变为 `running`，随后每秒 heartbeat | parentPort 故障最终表现为 heartbeat timeout/exit |
+| 7 | CoreProcess 生命周期启动 | `CoreApplication` → parentPort | `ready` + 首个 `heartbeat` | `core-application.ts` | Main状态变为`running`，随后每秒heartbeat | 真实通道关闭或进程退出触发恢复；运行期heartbeat暂停不触发重启 |
 | 8 | Renderer 获取 CoreProcess 状态 | Renderer → Preload → Main | `getCoreProcessStatus()` | `App.tsx`、`preload.ts`、`main.ts` | 返回只读 `CoreProcessStatus` | IPC 失败时 UI 标记 `unresponsive` |
 | 9 | Renderer 订阅 CoreProcess 状态 | Main → Preload → Renderer | `core:process-status` | `core-runtime.ts`、`main.ts`、`preload.ts`、`App.tsx` | UI 显示 running/restarting/unresponsive/stopping | CoreRuntime.stop 清空状态 listeners；Renderer cleanup 移除 ipcRenderer listener |
 | 10 | 发起业务命令 | Renderer → Main | `echoCore(value)` / `getCoreTrace(traceId)` | `desktop-api.ts`、`preload.ts`、`main.ts` | Main 只校验可信 sender，payload 原样构造 typed command | 非可信 sender 拒绝；payload 问题只影响该 request |
@@ -258,14 +255,14 @@ Main 创建 frameless `BrowserWindow` 时以 `useContentSize: true` 配置 `1600
 | 22 | 检查并手动下载私有更新 | Renderer → Preload → Main → GitHub Releases | get/check/download/openDownloaded + status event | `desktop-api.ts`、`preload.ts`、`main.ts`、`updates/github-release-update-service.ts`、Settings Updates | Bearer 读取固定仓库；app 内 changelog/进度；完整安装包原子落盘后由系统打开 | 非 stable、外域/Asset API/架构/size/hash 错误拒绝；失败清 `.part` 且当前应用不变 |
 | 23 | TLS compatibility 全局处理 | Core → Main → App shell → Core | ACK event batch → `tls:compatibility` → global list dialog → get/replace settings | `proxy/entry.ts`、`core-rpc-server.ts`、`main.ts`、`tlsCompatibilityStore.ts`、`TlsCompatibilityDialog.tsx` | 任意工作区按 host 累积去重事件；每个 host 列出精确值与逐级父域 wildcard，选中项一次 revision replace 后导航 TLS Settings，已挂载面板由 change sequence 立即刷新 | wildcard 已覆盖的 host 不重复写；保存失败保留 dialog；保存旧批次期间到达的新事件不被旧完成路径清除；异步旧 load 不覆盖新名单 |
 | 24 | Agent Provider 与持久化 Chat | Renderer → Preload → Main → `AgentRuntime` → Model API | Provider Test/Save/Remove/default；Session Create/Select/Rename/Delete；Send/Stop/Retry；Streaming event | `desktop-api.ts`、`preload.ts`、`main.ts`、`packages/agent-runtime/`、Renderer `features/agent/` | Provider 与API Key整体加密，Session/Turn/Item/chunk/Usage写入`agent.sqlite`；Renderer按sequence合并Streaming，重启恢复且不重放请求 | Agent错误只结束目标Turn；退出先拒绝新IPC、排空已接受命令并取消Turn；Provider/Store启动失败走Desktop逐项清理，不跳过系统代理恢复 |
-| 25 | Agent Capture Tool | `AgentRuntime` → `AgentToolService` → `CoreRuntime` | Capability Index、`discover_tools`与十个Capture Tool | `packages/agent-runtime/src/agent/entry.ts`、`sessions/entry.ts`、`main/agent/entry.ts` | query直接执行；change按Session的`ask/auto`等待裁决或执行，Tool Result按call ID持久化并返回typed Core数据；recording与reset事实广播Renderer | 未披露/已关闭Tool返回`unknown_tool`；Deny返回`tool_denied`；取消沿原`AbortSignal`进入Core RPC并补失败Result；乱序reset维持单调cutoff |
+| 25 | Agent Capture Tool | `AgentRuntime` → `AgentToolService` → `CoreRuntime` | Capability Index、`discover_tools`与registry中的Capture Tool | `packages/agent-runtime/src/agent/entry.ts`、`sessions/entry.ts`、`main/agent/entry.ts` | query直接执行；change按Session的`ask/auto`等待裁决或执行，Tool Result按call ID持久化；recording与reset事实广播Renderer | 未披露/已关闭Tool返回`unknown_tool`；Deny返回`tool_denied`；Core取消沿AbortSignal传递并补失败Result；reset保持单调cutoff |
 | 26 | 外部MCP Tool | MCP Host → Main loopback HTTP → `McpDesktopService` → `CoreRuntime` | 当前MCP协议、Bearer、CORS、`tools/list`、`tools/call`、Client `ask/auto` | `main/mcp/`、`packages/mcp-server/`、Settings MCP组件、`apps/playground/` | 每次请求重读MCP Tool开关与Client模式；query直达，change按Ask/Auto执行正式命令；Browser与原生Host共用同一入口 | `OPTIONS /mcp`返回204；实际请求缺失/错误Token为401；旧协议由SDK拒绝；停用、撤销、轮换或退出取消归属调用且不影响代理转发 |
 
 ## 5. 关键数据结构
 
 | 数据 | 定义位置 | 用途 |
 | --- | --- | --- |
-| `CoreProcessStatus` | `apps/desktop/src/shared/desktop-api.ts` | Renderer 可见的 CoreProcess 状态；`running` 仅代表 heartbeat 正常 |
+| `CoreProcessStatus` | `apps/desktop/src/shared/desktop-api.ts` | Renderer可见的Core进程生命周期；`running`不保证listener或其他业务健康 |
 | `GitHubAuthStatus` | `apps/desktop/src/shared/desktop-api.ts` | Renderer 可见的无凭据授权状态；token 与绝对过期时间只在 Main 密文中 |
 | `CoreCommand` | `packages/core-protocol/src/messages.ts` | Main → Core 的 typed command union |
 | `CoreResultForCommand<T>` | `packages/core-protocol/src/messages.ts` | 编译期保证 command/result 配对 |

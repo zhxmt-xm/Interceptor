@@ -1,8 +1,7 @@
 # 平台架构：Core 模块结构与存储
 
-> 最后更新：2026-08-05
 > 范围：Proxy Core 进程的组合根、模块组织约定，以及跨 feature 的存储所有权划分。
-> 单个 feature 的数据模型见对应的 `feature-*.md`。
+> 单个feature的数据模型见`../features/`中的对应文档。
 
 > Capture/Body 直接属于当前 Core UtilityProcess；**活动抓包不使用 SQLite，也没有常驻 Storage Worker**。
 > Renderer 只持有全量轻量 summary，不接触 SQL、临时文件或完整正文。
@@ -46,7 +45,7 @@
 
 - **CaptureService**：只管当前 Recording 的易失数据，组合 `ExchangeStore` 与 `BodyStore`。Exchange 用 Map + 惰性 `(startedAt,seq)` 索引；Body 小于 3 MiB 驻内存，较大正文 spill 到 `capture-temp/`。不使用 SQLite，也没有常驻 Worker。
 - **WorkspaceService**：跨 Recording 持久的低频配置，单个同步 `DatabaseSync` 连接。当前五张文档表：`rule_set`（RuleSet）、`collection_tree`（Composer 集合）、`tls_passthrough_hosts`（不解密名单）、`tls_insecure_hosts`（源站证书 per-host 例外）与 `tls_decryption_preference`（用户是否想解密 HTTPS），都是单行 JSON + revision。前三张走乐观锁；后两张只有一个编辑入口，走不比对 revision 的 `overwrite`。高频 diagnostics 有独立 Worker 与独立库，不并入。
-- **Diagnostics Worker**：`DiagnosticsService` 是根门面，组合 `DiagnosticsWorkerHost`；worker 独占 `diagnostics.sqlite`，批量事务写入 + 条数/时长保留 + 聚合丢弃计数 + keyset 分页。**写入失败只计数，绝不阻塞或回滚捕获**，也不递归回灌同一 sink。
+- **Diagnostics Worker**：`DiagnosticsService`是根门面，组合`DiagnosticsWorkerHost`；worker独占`diagnostics.sqlite`，批量事务写入、聚合丢弃计数和keyset分页，不按条数或时长淘汰。写入失败只计数，不阻塞或回滚捕获，也不递归回灌同一sink。
 - **Archive Worker**（`archive/host/entry.ts` + `archive/worker/entry.ts`）：仅 native archive 导入/导出时创建，按 100 条批次把内存 Capture materialize/读取当前固定的 `capture.sqlite`；完整 schema 直接属于 Worker Store，**无版本数组、迁移文件或旧格式分支**；完成、取消或失败即退出。
 
 ## 4. Recording 生命周期
@@ -55,7 +54,7 @@
 
 - **Stop** 只经 `proxy.setRecording{recording:false}` 暂停记录——Mockttp listener 与系统代理保持运行、流量继续转发，暂停期间的新连接不再落库/推送，已在途的 Exchange 自然完成。
 - **Start**（含首次 bootstrap）经 `proxy.start` 恢复 `recording=true`；若未监听则先启动 listener，显式换端口时在同会话迁移监听端口。
-- **Clear** 才推进 cutoff、取消 transfer、清 Capture/Body。
+- **Clear**清理Capture/Body，并遵守[Transfer互斥规则](../features/transfer.md#clear与文件任务)，不能绕过运行中的文件任务。
 
 系统代理只在应用退出与紧急修复时由 Main 恢复。Core 退出自然释放临时数据。`proxy.status` 同时上报 `listening` 与 `recording`，Renderer 的 `capturing` 取 `recording`。
 
@@ -65,9 +64,9 @@ Live Capture Body 小于 3 MiB 驻内存，超过后 spill 到 Core 临时目录
 
 Renderer Inspector 是独立的展示边界：文本/结构化 Body、WS 与 gRPC 最多读取前 `5 MiB`（`BODY_PREVIEW_MAX_BYTES`），压缩解码输出同样限制为 `5 MiB`；图片有独立的 `IMAGE_PREVIEW_MAX_BYTES`（16 MiB），超过或解码输出被截断时**不读字节**——半张图比不显示更糟；音视频不进入 Renderer，只能经 Main Save Dialog + Core 流式任务保存。
 
-gRPC在途预览通过`CaptureService.getExchangeBodySnapshot/readExchangeBodyRange`按Exchange/side读取当前writer的有限range；hash仍只在写完后确定。读取与写入/finalize/abort串行，内存与spill共用一份正文；Final引用绑定后优先读取已提交Blob。Clear/Dispose等待被移除Exchange的writer队列再清理文件。2026-09-14Capture/Writer18/18、相关Core178/178及真实H2 streaming/Copy和HTTP传输中Clear通过，证据见[Capture功能文档](../features/capture.md)。
+gRPC在途预览通过`CaptureService.getExchangeBodySnapshot/readExchangeBodyRange`按Exchange/side读取当前writer的有限range；hash只在写完后确定。读取与写入/finalize/abort串行，内存与spill共用一份正文；Final引用绑定后优先读取已提交Blob。Clear/Dispose等待被移除Exchange的writer队列再清理文件。
 
-`ExchangeTracker`跟踪全部已接受但未完成的存储操作，终态记录离开活动Map后仍可排空；`ProxyService.prepareCaptureReset()`在推进generation后先等待这批操作，再允许Capture清理文件。正文commit失败时writer结束且不可读，两侧commit与Exchange终态分别收尾。当前代码回归和待恢复的真实验收范围见[streaming边界](../features/capture.md#grpc-streaming目标与当前差异)。
+`ExchangeTracker`跟踪全部已接受但未完成的存储操作，终态记录离开活动Map后仍可排空；`ProxyService.prepareCaptureReset()`在推进generation后先等待这批操作，再允许Capture清理文件。正文commit失败时writer结束且不可读，两侧commit与Exchange终态分别收尾。
 
 ## 6. 构建产物
 

@@ -11,6 +11,7 @@ import { useDesignState } from '../../state/useDesignState';
 import styles from './SettingsFixtureRenderer.module.css';
 import { AgentModelSettings } from './AgentModelSettings';
 import { CaptureStorageProposal } from './CaptureStorageProposal';
+import { previewUpdatesWithoutSignIn } from './utils';
 
 interface SettingsFixtureRendererProps {
   readonly node: FixtureNode;
@@ -87,5 +88,5 @@ export function SettingsFixtureRenderer({ node }: SettingsFixtureRendererProps):
     return undefined;
   };
 
-  return <FixtureRenderer node={node} renderElement={renderSettingsElement} />;
+  return <FixtureRenderer node={state.updatesWithoutSignIn ? previewUpdatesWithoutSignIn(node) : node} renderElement={renderSettingsElement} />;
 }

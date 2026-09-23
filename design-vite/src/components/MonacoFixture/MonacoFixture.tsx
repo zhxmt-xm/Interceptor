@@ -3,6 +3,7 @@ import { useEffect, useRef, type HTMLAttributes } from 'react';
 import { useDesignState } from '../../state/useDesignState';
 import { applyMonacoFixtureTheme, monaco } from './monacoSetup';
 import { registerMonacoFixture } from './registry';
+import styles from './MonacoFixture.module.css';
 
 export type MonacoFixturePreset = 'box' | 'fill' | 'edit' | 'message';
 
@@ -69,27 +70,64 @@ export function MonacoFixture({ language, preset, source, ...attributes }: Monac
     });
     const unregister = registerMonacoFixture(editorInstance);
     let contentSizeDisposable: monaco.IDisposable | undefined;
+    let viewportObserver: ResizeObserver | undefined;
     if (preset === 'box' || preset === 'message') {
+      let initialHeightApplied = false;
+      let scrollContainer = host.parentElement;
+      while (scrollContainer && !/auto|scroll/.test(getComputedStyle(scrollContainer).overflowY)) {
+        scrollContainer = scrollContainer.parentElement;
+      }
       const resize = () => {
         const style = getComputedStyle(host);
         const borderHeight = Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth);
-        host.style.height = `${editorInstance.getContentHeight() + borderHeight}px`;
+        const contentHeight = editorInstance.getContentHeight() + borderHeight;
+        const availableHeight = scrollContainer
+          ? scrollContainer.clientHeight - scrollContainer.scrollTop
+            - host.getBoundingClientRect().top + scrollContainer.getBoundingClientRect().top
+          : contentHeight;
+        const minimumHeight = geometry.lineHeight + geometry.padding * 2 + borderHeight;
+        let height = contentHeight;
+        if (state.compactBodyLayout === 'viewport' && scrollContainer) {
+          const maximumHeight = Math.max(minimumHeight, availableHeight);
+          height = Math.min(initialHeightApplied ? host.getBoundingClientRect().height : contentHeight, maximumHeight);
+          host.style.minHeight = `${minimumHeight}px`;
+          host.style.maxHeight = `${maximumHeight}px`;
+        }
+        host.style.height = `${height}px`;
+        initialHeightApplied = true;
         editorInstance.layout();
       };
       contentSizeDisposable = editorInstance.onDidContentSizeChange(resize);
+      if (state.compactBodyLayout === 'viewport' && scrollContainer) {
+        viewportObserver = new ResizeObserver(resize);
+        viewportObserver.observe(scrollContainer);
+      }
       resize();
     }
     return () => {
       unregister();
+      viewportObserver?.disconnect();
       contentSizeDisposable?.dispose();
+      if (state.compactBodyLayout === 'viewport') {
+        host.style.minHeight = '';
+        host.style.maxHeight = '';
+      }
       editorInstance.dispose();
       model.dispose();
     };
-  }, [language, preset, source]);
+  }, [language, preset, source, state.compactBodyLayout]);
 
   useEffect(() => {
     applyMonacoFixtureTheme(state.theme);
   }, [state.theme]);
 
-  return <div {...attributes} ref={hostRef} data-fixture-node="" data-monaco={preset} />;
+  return <div
+    {...attributes}
+    className={state.compactBodyLayout === 'viewport' && (preset === 'box' || preset === 'message')
+      ? [attributes.className, styles.resizableBodyPreview].filter(Boolean).join(' ')
+      : attributes.className}
+    ref={hostRef}
+    data-fixture-node=""
+    data-monaco={preset}
+  />;
 }

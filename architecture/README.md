@@ -1,32 +1,24 @@
 # Interceptor 架构设计索引
 
-> 最后更新：2026-09-07
 > 范围：本目录是源码开发与架构文档的入口，包含开发指南、功能契约、平台架构、交接状态与待办。
 
 产品介绍见 [简体中文](../README.zh-CN.md) / [English](../README.md)。环境初始化、各模块开发、调试、验证和打包发布，从 [开发指南](development.md) 开始。
 
 ## 文档分工
 
-| 文档 | 内容 | 时态 |
-| --- | --- | --- |
-| [development.md](development.md) | 初始化、模块分工、开发调试、验证、打包发布与常见问题 | 稳定操作指南 |
-| [HANDOVER.md](HANDOVER.md) | 当前里程碑、工作树状态、验证记录、精确的下一动作 | 现状 |
-| `platform/` | 跨 feature 的进程、Renderer 外壳、存储、打包与测试架构 | 现状 |
-| `features/` | 单个 feature 的完整架构设计、调用流程、数据契约 | 目标设计（含状态标记） |
-| [backlog/TODO.md](backlog/TODO.md) | 已确认的 BUG、实现限制与验收矩阵 | 待办 |
-| [backlog/idea.md](backlog/idea.md) | 尚未成形的想法池（截图与它平级） | 待办 |
-| [backlog/research.md](backlog/research.md) | 已知缺口、长期候选与技术研究备忘 | 未承诺 |
+| 文档 | 内容 |
+| --- | --- |
+| [development.md](development.md) | 初始化、模块分工、开发调试、验证、打包发布与常见问题 |
+| [HANDOVER.md](HANDOVER.md) | 当前任务、进度、下一步、阻塞与必要验收结论 |
+| `platform/` | 跨feature的进程、Renderer、存储、打包和测试架构 |
+| `features/` | 功能职责、调用流程、数据契约、交互和限制 |
+| [backlog/TODO.md](backlog/TODO.md) | 已确认问题的复现条件、影响和边界 |
+| [backlog/idea.md](backlog/idea.md) | 候选需求与设计想法，截图与文档平级 |
+| [backlog/research.md](backlog/research.md) | 技术调研、方案比较与未承诺的候选 |
 
 **开工阅读**：新会话和子代理必须先读 [HANDOVER.md](HANDOVER.md)，其余文档按任务读取相关章节，条件见 [../AGENTS.md](../AGENTS.md) 的“按需阅读”。
 
-feature 文档描述**架构应该是什么样**，每个章节用状态标记区分：
-
-- **[已实现]**：代码已落地并有测试覆盖。
-- **[改造中]**：目标设计已确定，当前代码尚未完全达成，差异在文末「与当前实现的差异」列出。
-- **[待定]**：需要产品决策后才能实现。
-- **[阶段一] / [阶段二]**：尚未落地的 feature 内部的实现顺序，阶段一先做、阶段二按需追加。
-
-`platform/` 下的文档只描述**已经实现并验证**的代码，不含规划。
+除Handover外，本文档目录不记录任务状态、逐轮测试结果、提交经过或排障流水账。功能和平台文档说明设计与行为；候选方案说明适用条件和取舍，不代表交付承诺。业务状态机、协议状态和错误处理属于技术契约，不是任务进度。
 
 ## 平台索引
 
@@ -49,8 +41,8 @@ feature 文档描述**架构应该是什么样**，每个章节用状态标记�
 | [features/http-message-editing.md](features/http-message-editing.md) | Breakpoint、Rules、Composer 共用的 HTTP header/body 编辑契约 | `rules/`、`proxy/`、`composer/` | `features/breakpoints/`、`features/rules/`、`features/composer/` |
 | [features/transfer.md](features/transfer.md) | HAR、Native Archive、Body 导出的异步文件任务 | `transfer/`、`har/`、`archive/` | Capture 导入导出菜单 |
 | [features/diagnostics.md](features/diagnostics.md) | 三进程结构化日志、查询、导出 | `diagnostics/` | `features/diagnostics/` |
-| [features/settings.md](features/settings.md) | 证书/MITM、系统代理与上游代理、更新、存储状态、语言主题 | `workspace/`、Main `certificates/`、`system-proxy/`、`updates/` | `features/settings/` |
-| [features/tool-capabilities.md](features/tool-capabilities.md) | Agent/MCP 共用的完整 Tool 目录、Settings 开关、`ask`/`auto` 与逐项状态 | 复用既有 command；共享 registry 位于 `packages/interceptor-tools/` | Settings > Agent Tool capabilities |
+| [features/settings.md](features/settings.md) | 证书/MITM、系统代理与上游代理、更新、存储状态、语言主题 | `workspace/`、Main `platform-capabilities/`、`updates/` | `features/settings/` |
+| [features/tool-capabilities.md](features/tool-capabilities.md) | Agent/MCP共用的Tool目录、Settings开关和`ask`/`auto`契约 | 复用既有command；共享registry位于`packages/interceptor-tools/` | Settings > Agent Tool capabilities |
 | [features/mcp.md](features/mcp.md) | 对外 AI Host 接入、调用方认证、transport 与共享 Tool Catalog 消费 | 无新增 Core 业务；transport 已接入 Main `mcp/` | Settings > Agent MCP 配置 + App 级问询弹层 |
 | [features/playground.md](features/playground.md) | Web人工验收工作台、Browser MCP/CORS、Traffic Lab与手工证据 | 复用正式MCP与Proxy入口；开发代码位于`apps/playground/` | 独立Browser UI，不进入产品包 |
 | [features/agent.md](features/agent.md) | 内置持久化 Chat Agent、DeepSeek Model、Session History 与 Tool Loop | 复用既有 command；Runtime 位于 `packages/agent-runtime/` | `features/agent/` + Settings > Agent |
@@ -66,6 +58,7 @@ flowchart LR
 
     subgraph M["Main 进程 · Electron"]
         WIN["DesktopApplication"]
+        PLATFORM["PlatformCapabilitiesService"]
         CERT["CertificateService"]
         SYSPROXY["SystemProxyService"]
         UPDATE["GitHubReleaseUpdateService"]
@@ -85,8 +78,9 @@ flowchart LR
 
     UI --> STORE
     UI -->|window.interceptor| WIN
-    WIN --> CERT
-    WIN --> SYSPROXY
+    WIN --> PLATFORM
+    PLATFORM --> CERT
+    PLATFORM --> SYSPROXY
     WIN --> UPDATE
     WIN --> RUNTIME --> RPCC
     RPCC <-->|MessagePort| RPCS
@@ -102,9 +96,9 @@ flowchart LR
 
 **不可越界的约束：**
 
-1. Renderer 只能调用 `window.interceptor` 上的意图型方法，拿不到 Node、Electron、MessagePort、文件路径、私钥。
+1. Renderer只能调用`window.interceptor`上的意图型方法，不能访问Node、Electron、MessagePort、私钥或任意本地文件。
 2. Main 不搬运请求/响应正文。正文数据路径完整保留在 Core 内。
-3. Core 没有对外监听端口，只通过 UtilityProcess 转交的专用 `MessagePort` 通信。
+3. Core不暴露控制RPC监听端口，控制通信只使用UtilityProcess转交的专用`MessagePort`；代理listener属于业务流量入口。
 4. `parentPort` 只用于 `ready`、`heartbeat`、`rpc-port` 转交、`shutdown`、`stopped`；业务消息一律走专用 port。
 5. 操作系统级操作（信任库、系统代理、文件对话框）只在 Main。Core 不读写系统设置。
 
@@ -160,13 +154,13 @@ sequenceDiagram
 ### 命名与结构
 
 - Core 每个模块以 `entry.ts` 为门面，owning class 直接定义在 entry。
-- 模块内实现文件加模块名前缀（`storage-rule-store.ts`、`proxy-websocket-bridge.ts`）。
+- 实现放`internal/`，模块内文件不重复module前缀；泛称类保留能说明职责的限定。
 - 类型集中 `interfaces/index.ts`，无状态函数集中 `utils/index.ts`。
 - 一个文件一个 class。每个属性和方法都有职责注释。
 
 ### 常量
 
-模块常量位于 `<module>-constants.ts`，全局位于 `proxy-core/constants.ts`。生产构造函数不接收仅测试用的注入参数。
+模块常量位于`internal/constants.ts`，全局位于`proxy-core/constants.ts`。生产构造函数不接收仅测试用的注入参数。
 
 ### 失败分类
 

@@ -9,8 +9,8 @@ import { HttpsConnectionChain } from '../../HttpsDecryptionDialog/HttpsConnectio
 import { HttpsDecryptionDialog } from '../../HttpsDecryptionDialog/HttpsDecryptionDialog';
 
 vi.mock('antd', () => ({
-  Modal: ({ open, children }: { open: boolean; children: ReactNode }) => (
-    open ? createElement('section', { role: 'dialog' }, children) : null
+  Modal: ({ open, children, transitionName }: { open: boolean; children: ReactNode; transitionName?: string }) => (
+    open ? createElement('section', { role: 'dialog', 'data-transition': transitionName ?? 'default' }, children) : null
   ),
 }));
 vi.mock('../../../../components', () => ({
@@ -29,6 +29,10 @@ async function renderDialog(open: boolean): Promise<string> {
 }
 
 describe('HTTPS setup connection diagram', () => {
+  it('opens at its final centered position without click-origin zoom', async () => {
+    expect(await renderDialog(true)).toContain('data-transition=""');
+  });
+
   it('shows the client, Interceptor and Internet route before certificate actions', async () => {
     const html = await renderDialog(true);
     expect(html).toContain('Client apps');

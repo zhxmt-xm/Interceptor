@@ -2,7 +2,6 @@
 
 > HTTP header/body action 的 KEEP/UPDATE、编码与 framing 契约统一见 [http-message-editing.md](http-message-editing.md)，本文件只描述规则编译与执行。
 
-> 最后更新：2026-08-05
 > Core 模块：`apps/proxy-core/src/proxy-core/rules/`
 > 协议模型：`packages/core-protocol/src/rules.ts`、`packages/core-protocol/src/tree.ts`
 > Renderer 模块：`apps/desktop/src/renderer/features/rules/`
@@ -21,7 +20,7 @@ Rules 负责在真实转发路径上**干预**流量，并向 Capture 提供可�
 - `RuleService` 只计算决策，返回 `RequestEvaluation` / `ResponseEvaluation`，**不发起任何网络操作**（唯一的本地 I/O 是 `map-local` 读取磁盘文件）。
 - `ProxyService` 是唯一执行者，把决策转换为 Mockttp 的转发行为，包括 `delay` 的实际 await。
 - Rules 的执行**不受 Recording 开关影响**。暂停记录时规则依然作用于真实流量，只是不产生 Capture 记录。
-- 限速（throttle）已从协议、引擎与 UI 整体移除：规则全在头部阶段执行，真限速必须介入正文流；浏览器 DevTools 已自带该能力。
+- 规则不提供throttle：头部阶段不能控制正文流的传输速率，限速需要独立的流控制能力。
 
 ## 2. 领域模型
 
@@ -35,27 +34,15 @@ UI继续导出当前Renderer草稿，不把导出变成Apply；Tool不读取或�
     - 两个方法均放在Rules导出文件；Main Tool分派只转换`exported`返回值，不另外编排文件步骤。
     - UI当前树与Core已保存树仍是两个明确来源，不用缺失参数或调用来源暗中切换。
 
-- 2026-09-07整理验收：两项树导出现有基线11/11、补充Core读取/失败/取消后19/19；真实Rules Export与Collection Transfer前后同组Green。
-    - 最终Rules Export两代Main/Core为`14452/10048`、`43604/25040`，全部正常退出并恢复宿主；打包等完整证据见[Main方法整理验收](tool-capabilities.md#shared-main-actions-acceptance)。
-
 - Ask前只提供已保存规则/目录数量，Deny不打开Save Dialog、不读写文件；Auto仅省略应用审批。
 - 目标路径只由原生Dialog选择，Tool不接受路径、文件名、节点内容或任意Main/Core命令。
 - 执行结果只返回`exported`，不含规则正文、凭据、Map Local路径、目标路径或文件内容；异常输出脱敏。
 - 原生Dialog取消返回`exported=false`且不产生文件。调用在Dialog完成前被取消时，选择结束后必须在
     写文件前再次检查AbortSignal，不能因迟到的选择写入文件；已开始的文件写入按正式路径完成。
 - UI与Tool复用同一JSON序列化和Save Dialog编排，不复制第二套导出器，不改变已有Rules Import确认后
-    立即追加并持久化的语义。`rules_import`的独立正式入口与验收见下节。
+    立即追加并持久化的语义。`rules_import`的独立入口见下节。
 - MCP使用相同正式命令与原生Dialog。Agent关闭不影响MCP；MCP的Ask Deny/Allow和Auto分别验证不写、
     正常保存与原生取消，关闭MCP授权后当前连接也必须停止披露/执行该Tool。
-- owning unit Red → `rules.tools.export`真实Electron Red → 实现 → 同组unit/E2E Green。真实验证通过
-    Rules UI创建/Apply规则并比较导出文件的结构、enabled、层级和ID；覆盖Deny、原生Cancel、Allow、Auto、
-    撤权、同profile重启零重放、trace脱敏和完整进程/8888/WinINet/journal恢复。
-
-2026-09-06已完成自动验收：Tool executor 10项缺失Tool Red→Green，Main导出6项、原生Dialog 4项、
-摘要21项通过。真实`rules.tools.export`在`0206d12c`代码上Red于discovery缺失，当前Agent/MCP完整
-workflow Green；两代Main/Core `19112/8936`、`37364/40196`均正常销毁、8888释放并恢复完整WinINet/journal。
-审批、取消、保存、草稿隔离、双列撤权与重启零重放证据归档于TEMP下`interceptor-rules-export-agent-mcp-green`。
-新增明暗6视图36/36目标匹配，0 missing/flagged、最大0.5px；不代表既有完整parity债务已收敛。
 
 ### 2.1 Rules Import Tool
 
@@ -75,23 +62,12 @@ workflow Green；两代Main/Core `19112/8936`、`37364/40196`均正常销毁、8
     文件名、Rule正文或Map Local材料。Main桥接和Tool错误均脱敏。
 - 取消必须沿请求生命周期传至控制器：晚到的文件选择不能再展示预览或写入；预览取消后不能被旧确认重放。
     已开始的原子保存完成原路径，不把取消变成回滚；同一时刻只允许一个实际导入流程，避免串用预览。
-- 契约先落地，unit/integration Red → `rules.tools.import`真实Electron Red → 实现 → 同组Green。
-    E2E输入只能由同workflow先经UI Export产生；验证两个Dialog取消、预览计数、Confirm立即持久化、全新ID、
-    重复导入累加、草稿保留、Agent/MCP授权、重启零重放与Main/Core/Worker/8888/系统副作用完整销毁。
+- `RulesImportService.startImport()`允许不传signal，普通UI直接调用，Agent/MCP保留真实AbortSignal；窗口关闭/退出仍通过`cancelImport()`结束pending，不为无取消来源的调用创建占位controller。
 
 实现由Main `RulesImportService`维护单请求生命周期，经`rules:import-requested`/`rules:import-canceled`驱动
 Renderer `RulesImportActions`，UI和Tool都发起同一Main入口。`RulesImportDialog`在App作用域复用原确认组件；
 RuleList不再维护第二套导入状态。完成响应经`rules:import-completed`返回，Main校验严格结构和非负安全整数计数，
 丢弃迟到请求，不向Tool转发原始错误。App退出前取消未决请求，再排空IPC；Renderer销毁同样取消请求。
-
-2026-09-06：原解析与Store基线42/42；executor 10项缺失Tool Red→Green，Main生命周期/响应15/15、Renderer
-流程/桥接13/13、摘要23/23及原生Dialog5/5通过。真实Red在`4ce5acaa`代码上发生于Import discovery缺失；
-最终Import/Export联合2/2 Green，Import两代Main/Core为`12772/38364`、`23956/43500`，均正常销毁、释放8888，
-完整WinINet/journal恢复。证据归档于TEMP下`interceptor-rules-import-export-final-e2e`；输入全部来自同workflow
-UI Export，确认后revision按1→2→3→4推进，规则副本累加、ID全部独立、本地草稿被保留并持久化。
-专项parity共10视图56/56、0 missing/flagged、最大0.5px；全局读取遮罩显式沿用应用1.23行高，不增加尺寸补偿。
-完整parity为250视图、1,736目标，Import相关56/56全部匹配；其余32 missing与303 flagged是既有视觉债务，
-不随本工作项升级为通过。Windows正式包、产物审计、生产依赖审计与smoke均通过。
 
 `RuleSet` 是可序列化纯数据，绝不包含 callback 或运行时句柄。
 
@@ -207,7 +183,7 @@ Mockttp 提供四种介入形态，代价差异极大。
 **当前实现只用路径 C。** 单一 `forAnyRequest().thenPassThrough({ beforeRequestHead, beforeResponseHead })`，
 既不使用 `.matching(callback)`（CallbackMatcher 会 `waitForCompletedRequest`），也不使用
 `beforeRequest` / `beforeResponse`（分别等待完整请求与响应正文），**也不使用路径 B**。
-所有规则在头部阶段执行，正文始终流式。下面 §4.1 / §4.2 是选型背景，不描述当前代码路径。
+所有规则在头部阶段执行，正文始终流式。
 
 路径 C 不是 Mockttp 原生能力，由 `patches/mockttp+4.5.0.patch` 提供。该 patch 当前给 `PassThroughStep` 增加三组能力：
 
@@ -279,9 +255,9 @@ flowchart TD
 编译产物只有一件事：把 `RuleMatcher[]` 变成 `CompiledMatcher`（正则预构建，非法正则退化为恒不匹配）。
 **没有任何规则被下推到 Mockttp**，也没有任何"能否流式"的判定。
 
-### 5.1 为什么当前不存在降级路径
+### 5.1 头部阶段的能力边界
 
-每一类曾被认为"必须缓冲"的能力都在头部阶段解决了：
+各类规则在头部阶段的处理方式：
 
 | 能力 | 为什么不需要缓冲 |
 | --- | --- |
@@ -293,7 +269,7 @@ flowchart TD
 | `breakpoint` | 在头部阶段挂起，快照 `bodyAvailable: false` 如实告知正文未到；**不为它缓冲正文** |
 
 因此代码里**没有** `requiresResponseBuffering` 之类的判定函数，也没有"整个请求进入缓冲路径"的分支。
-唯一的取舍是断点看不到正文，记在 §11 待做。
+断点快照不为展示原文而等待或缓冲完整正文，原文可用性必须单独表达。
 
 ### 5.2 多规则按序执行，不折叠
 
@@ -396,7 +372,7 @@ sequenceDiagram
 
 ## 7. Evidence 采集
 
-### 7.1 当前实际覆盖的层次
+### 7.1 采集层次
 
 ```mermaid
 flowchart LR
@@ -407,9 +383,7 @@ flowchart LR
 
 因为改写完全由 `RuleService` 自己执行，每一步的新旧值都在引擎内可见，**不需要反推**。
 
-**尚未覆盖 [改造中]**：“发往 Origin 的最终请求头”与“Origin 原始响应头”两组真实 wire headers
-未入库。Mockttp 会通过 `rule-event` 发出 `passthrough-request-head` / `passthrough-response-head`，
-但 `ProxyService.registerCaptureListeners` **目前没有订阅 `rule-event`**，所以实际证据只有上图四步。
+Rule effect记录引擎改写，不等同于“发往Origin的最终请求头”或“Origin原始响应头”。这两组wire headers不在上述存储模型中；Mockttp的`passthrough-request-head`/`passthrough-response-head`需要独立采集和请求关联，不能由effect反推。
 
 ### 7.2 Header effect
 
@@ -454,7 +428,7 @@ Renderer marker 语义（`RequestInspector.module.css`）：
 `headersWithRuleEffects` 合并 wire header 与 effect 行：request wire 是规则前原值，response wire 是规则后终值，
 精确重复的行从 wire 集合移除。
 
-### 7.3 Body effect [已实现]
+### 7.3 Body effect
 
 正文是单一最终值，不像header可保留多个并列实例，因此一次request/response只保留**最终写入者**：后执行的普通body action覆盖前者，Breakpoint Text/File replacement再覆盖此前普通Rule effect；Breakpoint未替换正文时保留此前普通Rule effect。
 
@@ -489,13 +463,11 @@ interface RuleHitRecord {
 }
 ```
 
-**计数语义 [已实现]**：命中数按 `Rule × Exchange` 去重，语义是“这条规则拦到了多少个请求”，
+**计数语义**：命中数按`Rule × Exchange`去重，语义是“这条规则拦到了多少个请求”，
 而不是“执行了多少个 action”。`ExchangeStore.appendRuleHits` 用
 `ruleHitsByExchange: Map<exchangeId, Set<ruleId>>` 去重，`countRuleHits` 按 ruleId 聚合。
-回归测试：`rules/tests/integration/hit-count.test.ts`（一条规则 3 个 action × 2 个请求 = count 2）。
 
-**尚未实现 [改造中]**：`RuleHitCount` 只有单一 `count`。分开展示 `executed actions`（实际执行的
-action 次数）与 `blocked`（短路或阻断次数）需要扩展协议与 Store。
+`RuleHitCount.count`不表示action执行次数或短路/阻断次数，不能用同一字段推导这两种指标。
 
 ## 8. 热更新与 revision
 
@@ -513,23 +485,7 @@ Agent/MCP提交成功后Main发布revision事件；clean Renderer重载，
 dirty/saving草稿保留并进入conflict；普通Apply与Import都以实际提交快照更新applied，保存/重载异步返回不得把期间编辑
 误判clean、覆盖或清除更高外部revision冲突。
 
-真实Agent flow必须先由Rules UI创建并Apply规则，再由Agent读取同一树、查询真实Capture hit并修改完整树；
-Ask Deny保持原revision/effect，Allow与Auto各自推进revision并由真实8888请求证明新header effect。双实例UI冲突仍归
-独立Rules workflow；Agent workflow以真实已推进revision的stale调用和owning unit验证冲突，不构造第二份存储状态。
-既有`mcp.desktop.streamable-http`还以官方当前协议Client在Auto模式执行一次`rules_get_tree → rules_replace_tree`，验证MCP提交的
-revision事件同样重载Rules Renderer并改变真实origin header；Agent与MCP不保留两套同步语义。
-
-**TDD / E2E证据（2026-09-03）**：父提交`1234ea9a`的隔离worktree中，官方MCP Client已成功把Rule revision推进到2，
-但Renderer仍显示revision 1，精确取得`rules:changed`缺口Red；失败代Main/Core `37156/46644`优雅销毁并释放8888。
-当前同一`mcp.desktop.streamable-http` `1/1` Green，真实UI自产Rule、MCP Auto完整树替换、Renderer revision/name重载、
-真实origin header变化及第二代持久化/effect均通过；两代Main/Core为`38740/43808`与`26768/39376`，Renderer pageerror为0且
-均完整销毁。
-
-提交前安全复审再取得两项精确Unit Red：Map Local占位可在修改matcher后复用既有路径；显式Reload可用较新的请求序列
-安装低于已观察外部revision的响应。当前Map Local仅随结构未变的Rule恢复、父folder仍可移动；`loadRules`同时以当前与
-最高外部revision为响应下限，过旧响应保留草稿、结束loading并标记conflict。Tools `43/43`与Rules Store `30/30` Green。
-后续审批复审再精确Red于过期`baseRevision`仍生成影响摘要；当前`describeChange`与`execute`共用同一revision守卫，
-stale调用不会进入用户审批。设计与产品结果态统一暴露`data-approval-status`。
+`loadRules`同时以当前和最高外部revision为响应下限；过旧响应保留草稿、结束loading并标记conflict。`describeChange`和`execute`共用revision守卫，stale调用不进入用户审批；审批状态通过`data-approval-status`表达。
 
 ```mermaid
 sequenceDiagram
@@ -553,11 +509,7 @@ sequenceDiagram
     end
 ```
 
-**revision 一致性 [改造中]**：`evaluateRequest` 与 `evaluateResponse` 各自读 `this.compiled`，`toHit`
-每次读 `this.ruleSet.revision`，因此同一请求的两个阶段可能落在不同 revision（热更新窗口内）。
-
-实现路径是在 `beforeRequestHead` 一次性取快照（`compiled` + `revision`）并随 Exchange 传给
-`beforeResponseHead`，而不是依靠 `transformResponse` 在请求阶段预先声明——当前代码根本不使用路径 B。
+**revision边界**：`evaluateRequest`与`evaluateResponse`各自读取`this.compiled`，`toHit`读取`this.ruleSet.revision`，因此热更新窗口内同一请求的两个阶段可能对应不同revision，不能把它们视为同一不可变快照。
 
 ## 9. 持久化与校验
 
@@ -567,9 +519,9 @@ sequenceDiagram
 
 Capture 数据完全不使用 SQLite，两者强隔离。
 
-### 9.2 未填写的规则 [已实现]
+### 9.2 未填写的规则
 
-Core 信任 Main/Renderer 传递的数据，**不做规则语义校验**（历史上的 `rules.validate` 命令固定返回 valid，已连同协议/Main/Preload 链路一并删除）。“刚新建、还没填完”的规则不能影响真实流量，靠三道边界保证：
+Core信任Main/Renderer传递的数据，不重复规则语义校验。未填写完整的规则不能影响真实流量，由以下边界保证：
 
 | 边界 | 位置 | 行为 |
 | --- | --- | --- |
@@ -580,14 +532,13 @@ Core 信任 Main/Renderer 传递的数据，**不做规则语义校验**（历�
 
 未填写项的提示由 Renderer 本地纯函数 `ruleIssues(rule)` 即时派生（不入状态、不往返 Core），驱动 RuleEditor 的问题列表、Statusbar 计数和启用开关的可用性。新建规则与 Capture 右键草稿都默认 `enabled: false`。
 
-**尚未覆盖**：非空但无法编译的 regex（`safeRegExp` 退化为恒不匹配，但 UI 无提示）、不可解析的 JSON body、
-不存在的 Map Local 文件仍会静默失效，见 §11 待做。
+非空但无法编译的regex由`safeRegExp`降为恒不匹配，UI不提供对应诊断；JSON body解析和Map Local文件读取也不是上述未填写校验的一部分。
 
-### 9.3 导入与导出 [已完成]
+### 9.3 导入与导出
 
 **文件格式**：`{ "nodes": RuleNode[] }`，UTF-8 JSON，两空格缩进。没有版本字段——文件内容就是 `RuleNode` 树本身，与 Core 存的结构同构。
 
-**导出**（已实现）：`rules:export` 由 Main 弹 `showSaveDialog` 并写盘。规则数据本来就在 Renderer 手上，这条路径不经过 Core。
+**导出**：`rules:export`由Main弹`showSaveDialog`并写盘。UI导出Renderer草稿，Tool导出Core保存态。
 
 **导入语义：纯新增，不做冲突检测。**
 
@@ -661,7 +612,7 @@ flowchart TD
 | 装配 | Renderer | 只有 Renderer 知道本地树的 `priority` 上界与节点身份 |
 | 持久化 | 既有 `rules.replace` | **不新增 add 命令**。RuleSet 的写入语义就是整棵树替换 + 乐观并发，增量命令会造出第二套写入与并发处理 |
 
-**Main 只新增一条纯 IO 命令**，不含任何业务语义，因此 Rules 与 Composer 共用同一条：
+Main提供不包含规则语义的IO命令，由Rules与Composer共用：
 
 ```text
 readImportFile(title) → { fileName, content } | null
@@ -670,8 +621,6 @@ readImportFile(title) → { fileName, content } | null
 `null` 表示用户在系统对话框取消。命令**不接受路径参数**，路径只能由用户在原生对话框选择，因此不构成被禁止的任意文件路径 API；Main 侧需要文件大小上限，避免选中超大文件阻塞读取。
 
 **忙碌边界**：点击 Import / Export 后立即显示不可关闭遮罩，原生 Open / Save Dialog 存续期间及后续读写/解析期间保持。遮罩没有关闭入口并阻断鼠标、右键、Escape、Tab 与快捷键穿透；文件分析完成后才切换到确认 Dialog。确认写入期间 Dialog 自身禁用关闭、Cancel 与遮罩点击，直到 `rules.replace` 成功或失败。用户在原生文件 Dialog 中取消仍是合法出口，此时不读写数据。
-
-**TDD / E2E证据（2026-08-20）**：最终`rules.import-tree`源码移植到实现前`884dcc4`后，真实Electron精确Red于`rules.toolbar.import`不存在，既有`rules.root-toolbar`同环境Green。当前workflow通过真实Rules UI创建两条规则与目录，经真实Save Dialog导出同一文件，再用三次真实Open Dialog验证取消零变化、首次追加、重复追加、id全量重生成、enabled/层级/顺序保留与revision `1→2→3`；metadata记录Main PID `34724`、Core PID `20512`、`gracefulDestroyVerified: true`与8888释放。12个Rules/Composer import/export明暗parity场景全部`0 missing / 0 flagged`。
 
 ## 10. Renderer 交互
 
@@ -696,21 +645,7 @@ Rule row 最多内联显示按 action 原顺序派生的前两个 chips。存在
 rule selection、open editor、drag 或右侧 hit count；行在三级目录等窄宽度下仍必须为名称/匹配摘要保留
 可收缩空间，chips 与 hit count 不得溢出或互相遮挡。
 
-**TDD / E2E证据（2026-08-25）**：design interaction先Red于省略入口不存在，unit先Red于
-`deriveRuleRowChips`不存在；真实Electron完成三级目录和四action后精确Red于
-`rules.action-overflow.<ruleId>`缺失。当前unit `2/2`、Desktop `315/315`、design interaction `15/15`
-与全workspace typecheck通过；同一真实workflow `1/1` Green，row宽度`416/416`、入口`22×22px`、
-folder保持selected且rule保持open-but-not-selected。Green Main/Core PID为`10760/28336`，
-`gracefulDestroyVerified=true`；相邻hierarchy workflow同轮`1/1` Green。明暗parity共18个target为
-0 missing、0 flagged；完整报告为142 views / 992 targets / 958 matched / 34 missing / 306 flagged。
-
-**高度回归修正（2026-08-26）**：初版只比较设计与产品，漏掉两边共同使用flex默认`align-items:stretch`，
-导致正常约17px的tag被22px Ellipsis按钮拉高。Design几何测试在修复前精确Red为`expected 17 / received 22`；
-最终workflow移植到修复前`1be6920`后，真实Electron精确Red于`tag height 22 < button height 22`不成立，
-Red Main/Core PID为`41388/21460`且`gracefulDestroyVerified=true`。现两端tags容器显式`align-items:center`；
-Green产品两枚tag均高`16.2917px`，按钮`22px`，三者border-box中心均为`215px`，row仍为`416/416`。
-Green Main/Core PID为`3680/24848`且`gracefulDestroyVerified=true`；明暗专项parity各`9/9 matched / 0 missing /
-0 flagged`，最大字体栅格差`0.3px`。正确性由自然高度与中心断言负责，不再用两端parity相同代替视觉契约。
+Action chips与省略按钮由父flex容器设置`align-items: center`，各自保持控件高度，不能用默认stretch拉高tag。
 
 Rule Collection 顶栏提供搜索以及 New rule / New folder / Export 三个图标命令；根级右键菜单保留
 New rule / New folder / Import / Export 作为辅助入口。Import 与 Export 对称出现在工具栏与根菜单。
@@ -728,54 +663,27 @@ invalid/dirty/applied、revision、enabled/total和selected validation；rule ro
 
 | 方向 | 交互 |
 | --- | --- |
-| Capture → Rules | 请求行右键，按 10 种 action 创建当前完整 URL 的 exact matcher 草稿，只打开 Rules 不自动 Apply |
+| Capture → Rules | 请求行右键，按10种action创建scheme + host + path的exact matcher草稿，丢弃query与fragment；只打开Rules，不自动Apply |
 | Rules → Capture | 漏斗按钮清空旧条件，过滤该规则命中的请求 |
 | Capture Inspector → Rules | Header marker 点击跳转仍存在的规则详情 |
 
 `useRulesData` 常驻 App，`ensureRulesLoaded()` 防止并发初始加载覆盖新草稿。
 
-**冲突处理 [已实现]**：Apply 遇 conflict 时 `applyRules` 调用 `saveFailed(message, true)`，**保留本地草稿
-与 conflict 提示，不自动 reload**；用户看到提示后可显式 Reload 放弃草稿、取回最新规则集。
-当前是“二选一”，尚未提供 base/local/remote 三份对比合并。
+**冲突处理**：Apply遇conflict时`applyRules`调用`saveFailed(message, true)`，保留本地草稿
+与conflict提示，不自动reload；用户可显式Reload放弃草稿、取回最新规则集。
+冲突处理不做base/local/remote三方合并。
 
-## 11. 与当前实现的差异
+## 11. 验收要点
 
-已落地：
-
-| 项 | 改造前 | 现在 |
-| --- | --- | --- |
-| 路由方式 | 四档 `.matching(callback)` 预筛选 | 单一 `forAnyRequest`，无 callback matcher |
-| request body | callback matcher 强制等完整 body | 请求头阶段判定 |
-| response 改写 | 一律 `beforeResponse` 全量缓冲 | `beforeResponseHead` 流式 |
-| 响应侧 matcher | 必须缓冲 | 头部阶段直接判定 |
-| `header` `append` | 需原值因而缓冲 | 头部阶段可见原值 |
-| hit 计数 | 按 action 次数累加 | 按 `Rule × Exchange` 去重 |
-| 冲突处理 | 立即 reload 覆盖草稿 | 保留草稿 + conflict 提示，用户显式 Reload |
-| throttle | 协议/引擎/UI 均有 | 已全链路删除（规则在头部阶段无法限速） |
-| `rules.validate` | 固定返回 valid 的假命令 | 已从协议/Main/Preload/Renderer 删除 |
-| 预筛选残留 API | `mightHandle*`、`compileRequestPhaseMatchers`、`isRequestAction` 等 | 已连同对应单测删除 |
-
-待做：
-
-| 项 | 当前 | 目标 |
-| --- | --- | --- |
-| breakpoint body | `Mutable*State` 不带原始 body，快照 `bodyAvailable: false` | 带入 Capture 已接收片段 |
-| revision | request/response 可能跨版本 | 请求阶段固定快照并随 Exchange 传递 |
-| hit 指标粒度 | 只有 matched requests 一个数 | 分开 executed actions / blocked |
-| Evidence 四组 headers | 只有客户端原始请求、最终响应与引擎自有记录 | 订阅 `rule-event` 补齐上游 wire headers |
-| 非空但无效的配置 | 无法编译的 regex、不可解析 JSON body、不存在的 Map Local 文件静默失效 | 至少在 Renderer 给出可见提示 |
-
-## 12. 验收要点
-
-- [ ] 无规则、request-only、response-only、request+response 四条路径均不阻塞上传。
-- [ ] 只改 status/header 的规则命中大响应时全程流式。
-- [ ] SSE 与无限响应在命中 header 规则时仍有首字节。
-- [ ] 未填写条件与空条件集恒不匹配；不完整的规则无法在 UI 启用。
-- [ ] 8 种 matcher × 10 种 action 的合法组合矩阵有测试覆盖。
-- [x] 目录树 DFS 顺序会规范化为连续 priority；移动与 3 级上限有 store 测试。
-- [ ] priority 短路行为、多规则改同一 header 的最终值可审计。
-- [ ] 一条规则多个 action 命中同一请求时，hit 只计 1。
-- [ ] 同一请求的 request 与 response 阶段使用同一 revision。
-- [ ] 双实例并发 Apply 产生 conflict 且本地草稿不丢。
-- [ ] 暂停 Recording 时规则仍作用于真实流量。
-- [ ] Rule 删除后历史 Capture 的 marker 显示只读历史提示。
+- 无规则、request-only、response-only、request+response 四条路径均不阻塞上传。
+- 只改 status/header 的规则命中大响应时全程流式。
+- SSE 与无限响应在命中 header 规则时仍有首字节。
+- 未填写条件与空条件集恒不匹配；不完整的规则无法在 UI 启用。
+- 检查8种matcher与10种action的合法组合，区分请求阶段与响应阶段。
+- 目录树DFS顺序规范化为连续priority，移动不得超过三级目录。
+- priority 短路行为、多规则改同一 header 的最终值可审计。
+- 一条规则多个 action 命中同一请求时，hit 只计 1。
+- 热更新时分别核对request与response阶段实际使用的revision，不假定二者相同。
+- 双实例并发 Apply 产生 conflict 且本地草稿不丢。
+- 暂停 Recording 时规则仍作用于真实流量。
+- Rule删除后的历史marker不应指向无关新Rule；历史snapshot与反馈方案见[风险说明](../backlog/TODO.md#rules与历史证据)。

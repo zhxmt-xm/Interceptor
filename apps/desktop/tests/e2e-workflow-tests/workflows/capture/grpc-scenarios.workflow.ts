@@ -174,6 +174,13 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
             await getByAutomationId(page, AutomationIdFactory.grpcPayloadCopy(exchangeId, 'response', 1)).click();
             await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(payloads[1]);
           }
+          if (clientFinished) {
+            await testInfo.attach(`grpc-streaming-${captureAction}-premature-end.json`, {
+              body: Buffer.from(JSON.stringify({ captureAction, originEnded: responseStream.writableEnded,
+                result: await completedResponse })),
+              contentType: 'application/json',
+            });
+          }
           expect(clientFinished).toBe(false);
           expect(responseStream.writableEnded).toBe(false);
           const inFlight = { observedMessages: await messages.count(), rowCount: await row.count(),
@@ -387,9 +394,43 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
           await raw.click();
           await expect(raw).toHaveAttribute('aria-checked', 'true');
           await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy).click();
-          await expect.poll(clipboardSummary).toEqual(expectedClipboard);
+          try {
+            await expect.poll(clipboardSummary).toEqual(expectedClipboard);
+          } catch (error) {
+            await testInfo.attach('grpc-copy-boundary.json', {
+              body: Buffer.from(JSON.stringify({
+                side, index, expected: expectedClipboard, actual: await clipboardSummary(),
+                bodyViewCount: await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyView).count(),
+                rawSelected: await raw.getAttribute('aria-checked'),
+                bodyPane: await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane).evaluate((element) => ({
+                  textLength: element.textContent?.length ?? 0,
+                  visible: element.getClientRects().length > 0,
+                })),
+              })), contentType: 'application/json',
+            });
+            throw error;
+          }
           await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane).click();
           await page.keyboard.press('ControlOrMeta+A');
+          const keyboardState = await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane).evaluate((element) => {
+            const active = document.activeElement;
+            const bounds = element.getBoundingClientRect();
+            return {
+              focusWithinPane: active !== null && element.contains(active),
+              activeTag: active?.tagName,
+              activeRole: active?.getAttribute('role'),
+              activeContentEditable: active instanceof HTMLElement ? active.isContentEditable : false,
+              selectionLength: document.getSelection()?.toString().length ?? 0,
+              inputSelectionLength: active instanceof HTMLTextAreaElement
+                ? (active.selectionEnd ?? 0) - (active.selectionStart ?? 0) : null,
+              paneWidth: bounds.width, paneHeight: bounds.height,
+            };
+          });
+          await testInfo.attach(`grpc-keyboard-${side}-${index}.json`, {
+            body: Buffer.from(JSON.stringify({ side, index, expected: expectedClipboard, keyboardState })),
+            contentType: 'application/json',
+          });
+          expect(keyboardState.focusWithinPane, 'Keyboard Copy must target the selected message editor').toBe(true);
           await page.keyboard.press('ControlOrMeta+C');
           await expect.poll(clipboardSummary).toEqual(expectedClipboard);
           await message.click();

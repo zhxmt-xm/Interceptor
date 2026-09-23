@@ -1,7 +1,5 @@
 # Feature: HTTP 消息编辑契约
 
-> 状态：**[改造中]**
-> 最后更新：2026-08-14
 > 适用入口：HTTP Breakpoint、Rules header/body action、Composer
 > 实现边界：`apps/proxy-core/src/proxy-core/rules/`、`proxy/`、`composer/`
 
@@ -148,7 +146,7 @@ Transfer-Encoding: chunked
 
 ### Body effect evidence
 
-Body替换与framing正确性正交：`CaptureBodyRuleEffect`记录最终写入者、Text/File来源与Original可用性，Final正文仍必须经过本文件的Content-Encoding/framing规则。Request可展示Original与Final；Response Original不可用，不能通过缓冲整个origin response或伪造空正文补齐。effect Green不代表wire framing矩阵Green，反之亦然。
+Body替换与framing正确性正交：`CaptureBodyRuleEffect`记录最终写入者、Text/File来源与Original可用性，Final正文仍必须遵守本文件的Content-Encoding/framing规则。Request可展示Original与Final；Response Original不可用，不能通过缓冲整个origin response或伪造空正文补齐。effect元数据与实际wire字节分别验证，不能互相替代。
 
 ### Core wire tests
 
@@ -163,10 +161,3 @@ Body替换与framing正确性正交：`CaptureBodyRuleEffect`记录最终写入�
 ### Local E2E
 
 `breakpoints.execute-edited` 必须从真实 App UI 创建规则、触发断点并通过公共 automation ID 编辑，loopback origin 断言实际 headers/body，Capture 断言实际转发结果。E2E 不替代 wire tests，只验证用户意图从 UI 到 Core 的完整传递。
-
-## 8. 与当前实现的差异
-
-- `BreakpointEdit.editedHeaderNames` 已从 Renderer 草稿经协议传到 Rules / Proxy state；规则 header action 也记录同一来源事实。
-- Mockttp headers-stage body override 会自动写 `Content-Length`，尚未按本契约区分继承、缺失与用户显式编辑。真实 H1 回归已经锁定当前结果：request replacement 把继承的 `Transfer-Encoding: chunked` 改成 `Content-Length`；response replacement 生成 `Content-Length` 与 `Transfer-Encoding` 共存，Node 客户端以 `Content-Length can't be present with Transfer-Encoding` 拒绝。
-- H1/H2 request/response 的 `Content-Type` / `Content-Encoding` / `Content-Length` / `Transfer-Encoding` 矩阵尚未完整建立。
-- Local E2E `breakpoints.execute-edited` 已通过 header-only、body-only、header+body 三段真实 origin 断言并验证销毁；其中final Rule state与header effect已取得`89d8dda` retrospective Red和当前Green。Inventory 在 Core wire 矩阵 Green 前仍保持 `planned`。

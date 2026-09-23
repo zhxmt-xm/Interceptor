@@ -81,6 +81,7 @@ export function HttpsDecryptionDialog({
     <Modal
       open={open}
       centered
+      transitionName=""
       width={560}
       closable={false}
       footer={null}
