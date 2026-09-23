@@ -1,4 +1,5 @@
 import { InterceptorToolArgumentError, rejectUnknownKeys, requireIntegerInRange } from '../arguments/entry';
+import { PlatformOperationInProgressError } from './errors';
 import type {
   InterceptorToolContext,
   InterceptorToolDefinition,
@@ -150,8 +151,9 @@ async function readTlsSettings<Result>(context: InterceptorToolContext, read: ()
     const result = await read();
     context.abortSignal.throwIfAborted();
     return result;
-  } catch {
+  } catch (error) {
     context.abortSignal.throwIfAborted();
+    if (error instanceof PlatformOperationInProgressError) throw error;
     throw new Error('Unable to read TLS settings.');
   }
 }
@@ -162,8 +164,9 @@ async function executeTlsChange(context: InterceptorToolContext, operation: () =
     const result = await operation();
     context.abortSignal.throwIfAborted();
     return result;
-  } catch {
+  } catch (error) {
     context.abortSignal.throwIfAborted();
+    if (error instanceof PlatformOperationInProgressError) throw error;
     throw new Error('Unable to change TLS settings.');
   }
 }

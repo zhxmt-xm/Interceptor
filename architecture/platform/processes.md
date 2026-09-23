@@ -104,7 +104,7 @@ gRPC在途消息载荷经`window.interceptor.readGrpcBody({ exchangeId, side, of
   - 领取前取消使晚到请求无效，领取后完成已开始的提交；窗口关闭/Renderer退出清理所有pending。请求与响应都在Main校验，不暴露执行脚本、任意Store或存储路径接口。
   - 新增`setUiLanguage`、`setUiTheme`、`setExportPrivacyDefaults`及领取/确认/请求/完成事件7个Preload API，只有前三项设置意图注册为Tool。验收见[偏好Tool](../features/settings.md#ui-preferences-acceptance)。
 - AppContainer单项/批量启停的IPC/Agent/MCP共用`DesktopApplication.enableAppContainer/disableAppContainer/enableAllAppContainers/disableAllAppContainers`。
-  - Main在写入前检查取消，调用现有`AppContainerService`及真实提权helper；开始的写入完成读回验证后广播`app-container:changed`。
+  - Main调用PlatformCapabilitiesService，所属AppContainerService执行提权helper和读回验证，完成后通知Main广播`app-container:changed`；调用方取消只在进入平台前检查。
   - `onAppContainersChanged`只提供变更订阅；Renderer重读正式列表并按请求序号拒绝迟到结果，原生授权、退出后保留exemption的语义不变。
   - 四项Tool仅返回公开AppContainer字段，不包含helper路径、binaries、workingDirectory或完整原始exemption集合；真实恢复证据见[AppContainer验收](../features/settings.md#app-container-tool-acceptance)。
 - `TransferService`在HAR/Archive导入成功后通知`CoreApplication`，后者通过`event-batch.captureImported`发送信号。
@@ -113,11 +113,13 @@ gRPC在途消息载荷经`window.interceptor.readGrpcBody({ exchangeId, side, of
   - 导入弹窗不再负责刷新，通知不含文件内容或路径。
 - Clear前的旧查询仍由`syncRevision`拒绝，迟到实时事件仍由`clearedBefore`拒绝；当前Core查询允许返回历史时间的导入记录。
 
-系统代理Enable/Restore由UI与Tool共用Main语义入口和SystemProxyOperationQueue，OS写入前检查取消，
-已开始的原子操作完成upstream同步后才退出。冷启动自动接管及退出恢复路径不变。
+系统代理Enable/Restore由UI与Tool经Main直接调用同一PlatformCapabilitiesService方法，SystemProxyService拥有操作状态、
+native写入、upstream同步与必要恢复。平台API不接收AbortSignal；调用前可取消，已开始的操作完整收尾，冲突立即拒绝而不排队。
+冷启动自动接管及退出恢复路径不变。
 每次Model Call与每项Tool执行前都重取
 快照；产生当前响应时披露的集合继续约束该响应，执行时已关闭的Tool返回`unknown_tool`，不触达Core。
-业务Tool的`AbortSignal`原样进入Core RPC取消链路。Session持久化`ask/auto`与审批状态；Main把Agent或产品UI
+直接调用Core的业务Tool仍将`AbortSignal`传入Core RPC取消链路；平台操作不传signal，Main不在owner成功返回后追加取消检查。
+Collection/Rules普通UI导入不造占位controller，Agent/MCP才传真实signal。Session持久化`ask/auto`与审批状态；Main把Agent或产品UI
 产生的CaptureStatus统一广播给Renderer，避免Agent修改Core后Capture控件保留旧状态。
 产品按钮、Agent或MCP完成`capture.cleanup(all)`后，Main还会广播同一个带`clearedBefore`时间边界的
 `capture:reset`事件。Renderer常驻Capture管线据此同步清空rows、selection、facet派生状态与Rules hits，并以
@@ -144,36 +146,37 @@ Traffic Lab使用显式`127.0.0.1:8888`产生可观测H1场景。
 | 进程或边界 | 允许的职责 | 禁止的职责 |
 | --- | --- | --- |
 | Renderer / Preload | 发送 Enable、Restore、Status 意图并显示结果 | 直接访问系统代理、journal 或 native helper |
-| Electron Main | 唯一产品编排者；顺序执行代理操作、维护 journal、同步 upstream、决定退出是否继续 | 把完整代理快照发给 Renderer 或日志 |
+| `DesktopApplication`（Electron Main） | 持有一个readonly平台对象并直接调用方法，管理App/Core生命周期、转发通知与展示error | 持有子service或重复实现平台操作、互斥、upstream与恢复步骤 |
+| `PlatformCapabilitiesService`及所属module（Main进程） | private组装各module；SystemProxyService管理操作状态、journal、upstream与必要恢复，CertificateService管理材料/信任/Core同步 | 集中维护所有组busy副本、排队或重放被拒绝的用户请求、向Renderer或日志泄露原始快照 |
 | Proxy Core UtilityProcess | 监听8888并按 Main 下发的 upstream 转发 | 修改系统代理、读取 journal、决定恢复目标 |
 | native helper | Windows执行一次原生读写；macOS常驻root服务认证生产App/开发UID，只执行固定代理/公开证书存取；同一二进制的普通用户前台入口执行trust/untrust并请求系统确认 | 保存第二份系统代理original/journal、修改授权规则、决定接管时机、接收CA私钥或通用shell |
 | E2E runner | 在产品外记录测试进程 PID+启动时间，并在失败后保护宿主 | 把测试进程身份写入产品 journal 或协议 |
 
 Windows 使用 `%LOCALAPPDATA%/Interceptor/system-proxy/journal.json`，现有`version/original/owned`契约不变。
-macOS 使用当前`userData/system-proxy/journal.json`，只保存`original/owned/effectiveProxies`，无版本或迁移分支。
+macOS 使用`~/Library/Application Support/Interceptor Platform/system-proxy/journal.json`，只保存`original/owned/effectiveProxies`，无版本或迁移分支。
 `effectiveProxies`是接管前系统生效代理；原service快照负责恢复。产品只考虑单App，不复制owner或业务journal。
-这里的profile差异仅指恢复记录，不是OS代理配置。macOS不同profile不能读取另一profile的journal，当前不具备Windows已验证的跨profile崩溃恢复。
+两端恢复记录都与profile分离；macOS目录也避开默认Interceptor profile。
 
-Main 内的 `SystemProxyOperationQueue` 只是一条内存 Promise FIFO：启动恢复、用户 Enable/Restore、Core
-故障恢复和退出恢复按入队顺序执行。Core 故障只登记一个自动恢复；正常退出先通过 Action Gate 拒绝新 IPC、
-排空已接受命令，再排入最终 Restore。完整参与者、当场比较表、正常启动、崩溃重启、正常退出、启动失败与
+用户Enable/Restore冲突立即返回当前operation，不留请求；Core故障由SystemProxyService
+合并必要恢复，等待已开始的操作明确结算。正常退出先询问平台是否仍忙，忙时拒绝本次Quit且不自动重放；允许退出后
+通过Action Gate拒绝新IPC、排空已接受命令，再调用平台stop恢复代理。完整参与者、当场比较表、正常启动、崩溃重启、正常退出、启动失败与
 Core 故障时序见 [../features/settings.md](../features/settings.md) §3.2。
 
-macOS Main在代理恢复前调用`PlatformCapabilitiesService.prepareNativeComponents()`，按真实`app.isPackaged`选择生产或开发socket。首次部署/新增授权由同包helper请求系统确认，只部署helper、root配置和launchd；App不搬迁。开发按核准UID复用，生产保持App身份/资源/运行时检查，不失败回退。证书导入/删除走常驻服务；trust/untrust直接启动同一helper的普通用户前台入口，由系统确认，不存在后台trust命令、规则修改或授权规则journal。CA私钥不交给helper。验证范围见[Handover](../HANDOVER.md#verification)，协议见[平台模块](../../apps/desktop/src/main/platform-capabilities/README.md)。
+macOS Main在窗口显示后调用`PlatformCapabilitiesService.prepare()`，内部顺序执行helper准备、代理恢复和共享CA准备；按真实`app.isPackaged`选择生产或开发socket。首次部署/新增授权由同包helper请求系统确认，只部署helper、root配置和launchd；App不搬迁。开发按核准UID复用，生产保持App身份/资源/运行时检查，不失败回退。证书导入/删除走常驻服务；trust/untrust直接启动同一helper的普通用户前台入口，由系统确认，不存在后台trust命令、规则修改或授权规则journal。CA私钥不交给helper。验证范围见[Handover](../HANDOVER.md#verification)，协议见[平台模块](../../apps/desktop/src/main/platform-capabilities/README.md)。
 
-CaptureStatus的recording事实不直接等于系统路由就绪；Renderer接收记录事件后确认代理owned且未失权，Stop、代理失权或Core换代使迟到查询失效。Core故障期间不会仅因新listener已记录而提前显示Recording；Main业务队列和原生条件写成功仍是代理接管依据。
+CaptureStatus的recording事实不直接等于系统路由就绪；Renderer接收记录事件后确认代理owned且未失权，Stop、代理失权或Core换代使迟到查询失效。Core故障期间不会仅因新listener已记录而提前显示Recording；平台module操作完成和原生条件写成功才是代理接管依据。
 
 每条真实 Electron workflow 和 packaged smoke 均由外层宿主 guard 保存、恢复并复核完整 WinINet、crash
 journal、测试进程树和8888 listener。这个 guard 证明测试没有污染宿主，不代表每个产品分支都已取得真实
 E2E；Windows跨profile崩溃恢复、MITM持久化和`application.lifecycle.core-restart`均已取得真实Electron
 证据，后者覆盖Core-only故障、新代际请求/RPC恢复及第二次故障与正常退出竞争。macOS同profile崩溃恢复、Core故障、TLS和helper复用已有独立真实证据，全量workflow与独立权限验收仍见[Handover](../HANDOVER.md)。
 
-### 1.2 平台状态与profile现状
+### 1.2 平台数据与profile边界
 
 - profile外：OS代理配置、系统公开CA和系统信任；macOS安装的helper/launchd/授权配置；两端随App交付的native资源。Windows恢复journal另在用户级固定目录。
 - 两端profile内：Workspace规则/集合/TLS名单/MITM意图，Agent/MCP配置与凭据，Tool授权、Renderer偏好和诊断数据。Capture属于当前Core代际，不跨profile共享。
-- CA材料目前两端都在`userData/certificates`，由Main生成并加密存取；切profile不自动取得原CA。系统信任在OS不等于CA文件已跨profile复用。
-- macOS恢复journal仍在profile；与Windows路径、已实现能力及必要原生差异的逐项对照见[当前差距](../../apps/desktop/src/main/platform-capabilities/README.md#当前差距与必要差异)。
+- CA材料保存在用户级共享目录，Main先显示启动页，再由平台prepare完成原生组件/代理恢复、材料校验与按需授信；Core重启只同步材料/MITM意图，普通退出不删除。
+- 两端具体路径、能力和原生差异见[平台归属](../../apps/desktop/src/main/platform-capabilities/README.md#业务边界)。
 
 ## 2. 两条独立通道
 
@@ -231,7 +234,7 @@ Main 创建 frameless `BrowserWindow` 时以 `useContentSize: true` 配置 `1600
 
 | # | Workflow | 发起方 → 接收方 | 数据/调用 | 代码位置 | 成功结果 | 失败与清理 |
 | ---: | --- | --- | --- | --- | --- | --- |
-| 1 | Desktop 启动 | Electron → `DesktopApplication` | `app.whenReady()` | `apps/desktop/src/main/main.ts` | 创建SystemProxyService后，按共享journal的`current/original/owned`三态加载异常退出快照或清理失效记录，再初始化Agent/更新/Core、配置IPC并创建窗口 | 外部修改零WinINet写入；app未ready前不创建CoreProcess/窗口；后续初始化失败先恢复当前系统代理接管，再逐项清理并明确退出 |
+| 1 | Desktop 启动 | Electron → `DesktopApplication` | `app.whenReady()` | `apps/desktop/src/main/main.ts` | 先配置安全IPC并显示启动页，再调用readonly平台对象的prepare；内部准备helper、按共享journal三态加载/清理恢复记录并校验/授信共享CA，随后初始化Agent/更新/Core | 外部修改零系统代理写入；平台忙时Quit立即拒绝；后续初始化失败先尝试恢复当前系统代理接管，再逐项清理并明确退出 |
 | 2 | 配置安全边界 | `DesktopApplication` → Electron Session/WebContents | permission、webview、navigation、download + packaged protocol handlers | `main.ts`、`security/{trusted-renderer-url,packaged-renderer-protocol}.ts` | Renderer 只加载可信 Dev origin 或 `interceptor://app/index.html`；permission 仅放开 clipboard 读写供复制 | 非可信 authority/path/navigation/下载与其余权限被拒绝 |
 | 3 | 启动 CoreProcess | `DesktopApplication` → `CoreRuntime` | `start()` | `main.ts`、`core-runtime.ts` | CoreRuntime 调用 `startCoreProcess` | fork 抛错时进入退避重启 |
 | 4 | fork CoreProcess | `CoreRuntime` → Electron | `utilityProcess.fork(entry.cjs)` | `core-runtime.ts` | CoreRuntime 独占当前 `CoreProcessHandle`、状态和关闭流程 | 初始化失败时 kill CoreProcess 并进入重启 |
@@ -249,7 +252,7 @@ Main 创建 frameless `BrowserWindow` 时以 `useContentSize: true` 配置 `1600
 | 16 | explicit timeout/cancel | Caller → Main → Core | `cancel` + AbortController | `PendingRpcRequest`、`CoreRpcServer` | 只有调用方显式 timeout/abort 才取消；无默认业务 timeout | Cancel 发送失败时本地 Promise 仍清理 |
 | 17 | CoreProcess heartbeat 观测 | `CoreApplication` → `CoreRuntime` | 每秒 heartbeat；首个 ready 前 30 秒启动期限 | `core-application.ts`、`core-runtime.ts` | ready 后只更新 lastHeartbeatAt | 运行期暂停 heartbeat 不改变状态或重启 |
 | 18 | CoreProcess restart | OS/CoreProcess → `CoreRuntime` | `exit(code)` → backoff → new fork/port | `core-runtime.ts` | 新 PID、新 MessagePort，后续 RPC 正常 | 旧 port 上 pending Promise 被内部 `CoreRpcClient` 拒绝 |
-| 19 | graceful shutdown | Renderer/Electron → DesktopApplication → CoreRuntime/CoreApplication | `app:quit`、`before-quit`、`shutdown`、`stopped` | `desktop-api.ts`、`preload.ts`、`main.ts`、`lifecycle/application-shutdown.ts`、`core-runtime.ts`、`core-application.ts` | action gate同步拒绝新IPC并排空已接受命令，取消并等待Agent Turn；确认WinINet仍等于owned后恢复首次original、验证并清journal，再逐项停服务/Core并退出 | 重复quit仍被拦截；外部修改保持零WinINet写入并清失效journal；恢复/验证失败保留journal并恢复命令和Agent，若最后窗口已销毁先重建窗口再报错 |
+| 19 | graceful shutdown | Renderer/Electron → DesktopApplication → 平台/Core | `app:quit`、`before-quit`、`shutdown`、`stopped` | `main.ts`、`lifecycle/application-shutdown.ts`、`core-runtime.ts`、`core-application.ts` | 平台空闲后由action gate拒绝新IPC并收尾已接受命令/Agent Turn；平台恢复首次original、验证并清journal，再停止服务/Core | 平台忙时拒绝本次Quit且不重放；外部修改零系统写入；恢复失败保留journal并恢复命令、Agent和窗口 |
 | 20 | build/package/runtime | npm → esbuild → Forge → package/maker | 0-map Core + native helper → ASAR/extraResource → strict Fuses → sign → MSI/DMG/ZIP | root scripts、`proxy-core/build.mjs`、`forge.config.ts`、installer tests | package audit + packaged workflow smoke + platform installer smoke | 缺 tool/凭据、资源泄漏、Fuse 漂移、安装/升级失败均使门禁失败 |
 | 21 | GitHub Device Flow 与 token 刷新 | Renderer → Preload → Main → GitHub OAuth | get/signIn/open/signOut + auth status；启动 refresh；access 到期前 5 分钟 refresh | `desktop-api.ts`、`preload.ts`、`main.ts`、`updates/github-auth-service.ts`、Settings Updates | token/过期时间经 safeStorage 加密；每次成功轮换整组 token 并重排单 timer；Renderer 只见公开账号和设备码状态 | refresh token 缺失、过期或非退出刷新失败即删本地登录；退出取消 timer；无 client secret/private key |
 | 22 | 检查并手动下载私有更新 | Renderer → Preload → Main → GitHub Releases | get/check/download/openDownloaded + status event | `desktop-api.ts`、`preload.ts`、`main.ts`、`updates/github-release-update-service.ts`、Settings Updates | Bearer 读取固定仓库；app 内 changelog/进度；完整安装包原子落盘后由系统打开 | 非 stable、外域/Asset API/架构/size/hash 错误拒绝；失败清 `.part` 且当前应用不变 |

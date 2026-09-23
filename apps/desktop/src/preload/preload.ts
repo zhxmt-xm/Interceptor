@@ -3,6 +3,8 @@ import type { UiPreferenceAppliedChange } from '../shared/ui-preferences';
 
 import {
   DESKTOP_IPC_CHANNELS,
+  type ApplicationStartupStage,
+  type PlatformOperationConflict,
   CoreProcessStatus,
   type AgentRuntimeEvent,
   type CaptureReset,
@@ -21,6 +23,17 @@ import {
 } from '../shared/desktop-api';
 
 const api: InterceptorDesktopApi = {
+  getStartupStage: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.startupGetStage),
+  onStartupStageChange: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, stage: ApplicationStartupStage): void => listener(stage);
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.startupStageChanged, handler);
+    return () => { ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.startupStageChanged, handler); };
+  },
+  onPlatformOperationConflict: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, conflict: PlatformOperationConflict): void => listener(conflict);
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.platformOperationConflict, handler);
+    return () => { ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.platformOperationConflict, handler); };
+  },
   setUiLanguage: (language) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.uiLanguageSet, language),
   setUiTheme: (theme) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.uiThemeSet, theme),
   setExportPrivacyDefaults: (preferences) => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.exportPrivacyDefaultsSet, preferences),

@@ -1,6 +1,7 @@
 import type { MessageCatalog } from '../english-catalog';
 
 export const zhTWCatalog = {
+  'platform.operationInProgress': '正在進行：{{operation}}。完成後請重試。',
   'app.connectingToCore': '正在連線至 Proxy Core',
   'app.coreStatusUnavailable': '無法取得 Proxy Core 狀態',
   'app.minimizeWindow': '最小化',
@@ -58,6 +59,8 @@ export const zhTWCatalog = {
   'coreState.restarting': '重新啟動中',
   'coreState.stopping': '停止中',
   'coreState.stopped': '已停止',
+  'boot.preparingPlatform': '正在準備系統元件',
+  'boot.preparingCertificate': '正在準備 HTTPS 憑證',
   'boot.startingCore': '正在啟動代理核心',
   'boot.bindingListener': '正在綁定本機監聽連接埠',
   'boot.enablingSystemProxy': '正在接管系統代理',

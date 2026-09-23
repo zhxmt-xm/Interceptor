@@ -1,9 +1,12 @@
 import { createHash } from 'node:crypto';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { chromium, type Browser, type Page, type TestInfo } from '@playwright/test';
 
+import type { CaMeta } from '../../../../src/main/platform-capabilities/certificates/interfaces';
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
+import { sharedCertificateDirectory } from '../../fixtures/ui/https-capture';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { PlaygroundServer } from '../../fixtures/runtime/playground-server';
@@ -26,10 +29,12 @@ const INSECURE_HOST = 'readonly-insecure.example.test';
 const PASSTHROUGH_HOST = '*.readonly-passthrough.example.test';
 async function readSystemState(desktopApp: LocalElectronApplicationDriver): Promise<{
   appContainers: AppContainerSystemState;
+  certificate: CaMeta;
   proxy: unknown;
 }> {
   return {
     appContainers: await readAppContainerSystemState(desktopApp.desktopDirectory),
+    certificate: JSON.parse(await readFile(path.join(sharedCertificateDirectory(), 'ca-meta.json'), 'utf8')) as CaMeta,
     proxy: await desktopApp.readSystemProxySettings(),
   };
 }
@@ -49,7 +54,7 @@ async function openAgentSettings(page: Page): Promise<void> {
 async function configureTlsThroughUi(page: Page): Promise<void> {
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.certificates).click();
-  await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install)).toBeDisabled();
+  await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall)).toBeEnabled();
   await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.insecureHostInput).fill(INSECURE_HOST);
   await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.insecureHostAdd).click();
   await expect(getByAutomationId(page, AutomationIdFactory.insecureHost(INSECURE_HOST))).toBeVisible();
@@ -62,7 +67,7 @@ async function configureTlsThroughUi(page: Page): Promise<void> {
 async function verifyTlsThroughUi(page: Page): Promise<void> {
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.certificates).click();
-  await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install)).toBeDisabled();
+  await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall)).toBeEnabled();
   await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.mitmToggle))
     .toHaveAttribute('aria-checked', 'false');
   await expect(getByAutomationId(page, AutomationIdFactory.insecureHost(INSECURE_HOST))).toBeVisible();
@@ -138,6 +143,7 @@ async function callPlaygroundTool(page: Page, name: string): Promise<Readonly<Re
 function verifyToolValues(
   values: ReadonlyMap<string, Readonly<Record<string, unknown>>>,
   appContainers: AppContainerSystemState,
+  certificate: CaMeta,
 ): void {
   const core = values.get('settings_get_core_process_status')!;
   expect(core.state).toBe('running');
@@ -147,8 +153,9 @@ function verifyToolValues(
     supported: true, enabled: true, owned: true, ownershipLost: false,
   });
   expect(values.get('settings_get_certificate_status')).toEqual({
-    present: false, trusted: false, supported: true, mitmEnabled: false,
-    fingerprint: null, subject: null, createdAt: null, expiresAt: null,
+    present: true, trusted: true, supported: true, mitmEnabled: false,
+    fingerprint: certificate.fingerprint, subject: certificate.subject,
+    createdAt: certificate.createdAt, expiresAt: certificate.expiresAt,
   });
   expect(values.get('settings_get_tls_insecure_hosts')).toEqual({ hosts: [INSECURE_HOST] });
   expect(values.get('settings_get_tls_passthrough')).toEqual({ revision: 1, hosts: [PASSTHROUGH_HOST] });
@@ -259,7 +266,7 @@ test('settings.tools.readonly queries six real Settings owners without approval'
       await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolApproval(name)))
         .toHaveCount(0);
     }
-    verifyToolValues(agentValues, initialSystemState.appContainers);
+    verifyToolValues(agentValues, initialSystemState.appContainers, initialSystemState.certificate);
     const summaryKinds = ['coreProcess', 'systemProxy', 'certificateStatus', 'tlsHosts', 'tlsPassthrough', 'appContainers'];
     for (const [index, name] of SETTINGS_QUERY_NAMES.entries()) {
       await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolResult(name)))
@@ -288,7 +295,7 @@ test('settings.tools.readonly queries six real Settings owners without approval'
       mcpValues.set(name, await callPlaygroundTool(browserPage, name));
       await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.root)).toHaveCount(0);
     }
-    verifyToolValues(mcpValues, initialSystemState.appContainers);
+    verifyToolValues(mcpValues, initialSystemState.appContainers, initialSystemState.certificate);
     expect(mcpValues.get('settings_get_core_process_status')!.pid)
       .toBe(agentValues.get('settings_get_core_process_status')!.pid);
 
@@ -297,6 +304,7 @@ test('settings.tools.readonly queries six real Settings owners without approval'
     const afterQueries = await readSystemState(desktopApp);
     expect(JSON.stringify(afterQueries.proxy) === JSON.stringify(initialSystemState.proxy)).toBe(true);
     expect(exemptionHash(afterQueries.appContainers)).toBe(exemptionHash(initialSystemState.appContainers));
+    expect(afterQueries.certificate).toEqual(initialSystemState.certificate);
     await verifyTlsThroughUi(desktopApp.page);
 
     // 用户操作：逐项撤销 Agent 权限；旧披露仍必须返回 unknown_tool，MCP 保持独立可用。
@@ -393,6 +401,7 @@ test('settings.tools.readonly queries six real Settings owners without approval'
     await expect(getByAutomationId(relaunchedApp.page, AutomationIdFactory.insecureHost(INSECURE_HOST))).toHaveCount(0);
     const finalSystemState = await readSystemState(relaunchedApp);
     expect(exemptionHash(finalSystemState.appContainers)).toBe(exemptionHash(initialSystemState.appContainers));
+    expect(finalSystemState.certificate).toEqual(initialSystemState.certificate);
 
     // 证据：只保存协议字段、计数和 hash；两代 driver 与外层 guard 负责销毁和完整宿主恢复。
     // Evidence: retain protocol fields, counts, and hashes only; both drivers and the outer guard verify teardown and host restoration.

@@ -13,6 +13,8 @@ import styles from './BootScreen.module.css';
 const READY_DISMISS_MS = 420;
 
 const PHASE_MESSAGE_KEYS = {
+  platform: 'boot.preparingPlatform',
+  certificate: 'boot.preparingCertificate',
   core: 'boot.startingCore',
   listener: 'boot.bindingListener',
   proxy: 'boot.enablingSystemProxy',
@@ -21,7 +23,7 @@ const PHASE_MESSAGE_KEYS = {
 
 export interface BootScreenProps {
   /** Leaves the boot screen and opens the Diagnostics workspace. */
-  onOpenDiagnostics: () => void;
+  onOpenDiagnostics?: () => void;
 }
 
 /**
@@ -94,7 +96,7 @@ export function BootScreen({ onOpenDiagnostics }: BootScreenProps): React.JSX.El
             <p className={styles.note}>
               {failed ? t('boot.settingsUnchanged') : t('boot.systemProxyDisclosure')}
             </p>
-            {failed ? (
+            {failed && onOpenDiagnostics ? (
               <div className={styles.actions}>
                 <Button
                   icon={Terminal}

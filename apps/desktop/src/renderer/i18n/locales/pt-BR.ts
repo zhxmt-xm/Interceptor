@@ -1,6 +1,7 @@
 import type { MessageCatalog } from '../english-catalog';
 
 export const ptBRCatalog = {
+  'platform.operationInProgress': 'Em andamento: {{operation}}. Tente novamente após a conclusão.',
   'app.connectingToCore': 'Conectando ao Proxy Core',
   'app.coreStatusUnavailable': 'Status do Proxy Core indisponível',
   'app.minimizeWindow': 'Minimizar',
@@ -58,6 +59,8 @@ export const ptBRCatalog = {
   'coreState.restarting': 'Reiniciando',
   'coreState.stopping': 'Parando',
   'coreState.stopped': 'Parado',
+  'boot.preparingPlatform': 'Preparando componentes do sistema',
+  'boot.preparingCertificate': 'Preparando o certificado HTTPS',
   'boot.startingCore': 'Iniciando o Proxy Core',
   'boot.bindingListener': 'Vinculando o listener local',
   'boot.enablingSystemProxy': 'Ativando o proxy do sistema',

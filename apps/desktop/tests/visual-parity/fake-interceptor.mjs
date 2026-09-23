@@ -633,7 +633,7 @@ const pendingBreakpoints = [
         ruleId: 'token-cache-policy',
       },
     ],
-    bodyAvailable: true,
+    bodyAvailable: false,
   },
 ];
 
@@ -3210,6 +3210,9 @@ export function installFakeInterceptor({
       handledAt: '2026-07-16T12:00:00.000Z',
       traceId: 'trace-parity',
     }),
+    getStartupStage: async () => 'ready',
+    onStartupStageChange: () => () => undefined,
+    onPlatformOperationConflict: () => () => undefined,
     getCoreProcessStatus: async () => fixture.capture.coreStatus,
     getCoreTrace: async (traceId) => ({
       traceId,

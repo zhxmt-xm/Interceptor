@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   InterceptorToolArgumentError,
+  PlatformOperationInProgressError,
   buildInterceptorToolCatalog,
   buildInterceptorToolRegistry,
   type InterceptorToolDefinition,
@@ -109,6 +110,29 @@ describe('Settings certificate Tools', () => {
 
     await expect(certificateTool(name).describeChange!({}, context)).rejects.toThrow('Unable to read certificate state.');
     await expect(certificateTool(name).execute({}, context)).rejects.toThrow('Unable to complete certificate operation.');
+  });
+
+  it.each(CERTIFICATE_OPERATIONS)('$name preserves the safe operation conflict returned by Main', async ({ name }) => {
+    const conflict = new PlatformOperationInProgressError('certificate.install');
+    const host = { invoke: vi.fn(), invokeMain: vi.fn().mockRejectedValue(conflict) };
+    const context = { host, abortSignal: new AbortController().signal };
+
+    await expect(certificateTool(name).describeChange!({}, context)).rejects.toBe(conflict);
+    await expect(certificateTool(name).execute({}, context)).rejects.toMatchObject({
+      code: 'operation_in_progress', operation: 'certificate.install',
+      message: 'operation_in_progress: certificate.install',
+    });
+  });
+
+  it('does not expose native failures that merely copy operation conflict fields', async () => {
+    const nativeError = Object.assign(new Error('C:\\private\\root.pem secret output'), {
+      code: 'operation_in_progress', operation: 'C:\\private\\root.pem',
+    });
+    const host = { invoke: vi.fn(), invokeMain: vi.fn().mockRejectedValue(nativeError) };
+
+    await expect(certificateTool('settings_delete_certificate').execute({}, {
+      host, abortSignal: new AbortController().signal,
+    })).rejects.toThrow('Unable to complete certificate operation.');
   });
 
   it.each(CERTIFICATE_OPERATIONS)('$name preserves cancellation during approval and execution', async ({ name }) => {

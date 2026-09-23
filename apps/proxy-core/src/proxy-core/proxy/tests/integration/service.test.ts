@@ -1308,6 +1308,33 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     }
   }, 20_000);
 
+  it('applies and revokes origin certificate exceptions with a CA loaded before listener startup', async () => {
+    const certificateAuthority = await generateCACertificate();
+    const originCertificate = await generateCACertificate();
+    const origin = getLocal({ https: originCertificate });
+    await origin.forGet('/secure').thenReply(200, 'secure');
+    await origin.start();
+    try {
+      await proxyService.stop();
+      proxyService.useCertificate(certificateAuthority);
+      address = await proxyService.start();
+      await proxyService.startHttpsDecryption();
+      const listenerBefore = proxyService.status();
+
+      await proxyService.replaceInsecureHosts(['localhost', '127.0.0.1']);
+      await expect(passthroughHttpsGet(address.port, origin.port)).resolves.toBe(200);
+      await proxyService.replaceInsecureHosts([]);
+      await expect(passthroughHttpsGet(address.port, origin.port)).rejects.toBeDefined();
+      await proxyService.replaceInsecureHosts(['localhost', '127.0.0.1']);
+      await expect(passthroughHttpsGet(address.port, origin.port)).resolves.toBe(200);
+
+      expect(proxyService.status().port).toBe(listenerBefore.port);
+      expect(proxyService.status().sessionId).toBe(listenerBefore.sessionId);
+    } finally {
+      await origin.stop();
+    }
+  }, 20_000);
+
   it('applies passthrough list changes to new connections without rebuilding the listener', async () => {
     const ca = await generateCACertificate();
     const originCertificate = await generateCACertificate();

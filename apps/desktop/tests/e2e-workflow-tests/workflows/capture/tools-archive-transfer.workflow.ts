@@ -147,7 +147,8 @@ async function captureSources(desktopApp: LocalElectronApplicationDriver, httpTr
 }
 
 async function captureItems(client: Client): Promise<Record<string, unknown>[]> {
-  const value = mcpValue(await client.callTool({ name: 'capture_list_exchanges', arguments: { search: SOURCE_PATH, limit: 100 } }));
+  const value = mcpValue(await test.step('MCP capture_list_exchanges', () =>
+    client.callTool({ name: 'capture_list_exchanges', arguments: { search: SOURCE_PATH, limit: 100 } })));
   if (!Array.isArray(value.items) || !value.items.every(isRecord)) throw new Error('Capture omitted query items.');
   return value.items;
 }
@@ -195,7 +196,8 @@ function startedJob(value: unknown, kind: 'archive-export' | 'archive-import'): 
 
 async function waitForCompletedJob(client: Client, jobId: string): Promise<void> {
   await expect.poll(async () => {
-    const value = mcpValue(await client.callTool({ name: 'capture_get_transfer_job', arguments: { jobId } }));
+    const value = mcpValue(await test.step('MCP capture_get_transfer_job', () =>
+      client.callTool({ name: 'capture_get_transfer_job', arguments: { jobId } })));
     return isRecord(value.job) ? value.job.state : null;
   }).toBe('completed');
 }
@@ -209,15 +211,16 @@ async function readArchiveHash(filePath: string): Promise<string> {
 
 async function mcpNativeCall(desktopApp: LocalElectronApplicationDriver, client: Client, name: string, filePath: string | null, mode: 'ask' | 'auto'): Promise<Record<string, unknown>> {
   const [result] = await Promise.all([
-    client.callTool({ name, arguments: {} }),
-    (async () => {
+    test.step(`MCP ${name}: ${mode}, native ${filePath === null ? 'cancel' : 'confirm'}`, () =>
+      client.callTool({ name, arguments: {} })),
+    test.step(`Native dialog for ${name}`, async () => {
       if (mode === 'ask') {
         await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.root)).toHaveAttribute('data-tool-name', name);
         await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.allow).click();
       }
       if (filePath === null) await cancelFileDialog(desktopApp.nativeFileDialogOwner());
       else await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), filePath);
-    })(),
+    }),
   ]);
   await desktopApp.page.bringToFront();
   return mcpValue(result);
@@ -234,7 +237,7 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
       await desktopApp.captureFinalScreenshot(testInfo);
     }
     await desktopApp.stopTrace(testInfo);
-    await desktopApp.closeGracefully();
+    await test.step('Normal application Quit', () => desktopApp.closeGracefully());
     await desktopApp.writeEvidence(testInfo);
     expect(errors).toEqual([]);
   } finally {
@@ -347,7 +350,7 @@ test('capture.tools.archive-transfer exports and imports native archives through
     await expect(getByAutomationId(page, AutomationIdFactory.mcpClientRow(configured.clientId))).toHaveAttribute('data-execution-mode', 'ask');
     for (const name of TOOL_NAMES) {
       const [denied] = await Promise.all([
-        client.callTool({ name, arguments: {} }),
+        test.step(`MCP ${name}: deny`, () => client!.callTool({ name, arguments: {} })),
         (async () => {
           await expect(getByAutomationId(page, AUTOMATION_IDS.mcp.approval.root)).toHaveAttribute('data-tool-name', name);
           await getByAutomationId(page, AUTOMATION_IDS.mcp.approval.deny).click();

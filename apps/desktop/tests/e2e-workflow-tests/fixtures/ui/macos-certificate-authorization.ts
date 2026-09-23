@@ -59,6 +59,15 @@ export async function cancelMacosCertificateTrust(page: Page, owner: WorkflowPro
   if (process.platform !== 'darwin') throw new Error('Native certificate authorization cancellation requires macOS.');
   expect(await authorizationWindowProcessIds(), 'Another native authorization window is already open').toEqual([]);
   await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install).click();
+  const pendingAuthorization = await waitForMacosCertificateTrustRequest(owner);
+  await cancelMacosCertificateTrustRequest(owner, pendingAuthorization);
+  await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install)).toBeEnabled();
+  return pendingAuthorization.requester;
+}
+
+export async function waitForMacosCertificateTrustRequest(owner: WorkflowProcessIdentity): Promise<{
+  requester: WorkflowProcessIdentity; agent: WorkflowProcessIdentity;
+}> {
   const pendingAuthorization: { requester?: WorkflowProcessIdentity; agent?: WorkflowProcessIdentity } = {};
   await expect.poll(async () => {
     const requester = await foregroundTrustRequester(owner);
@@ -70,9 +79,14 @@ export async function cancelMacosCertificateTrust(page: Page, owner: WorkflowPro
     return true;
   }, { message: 'The native helper did not expose a unique trust authorization window', timeout: 30_000 }).toBe(true);
   if (!pendingAuthorization.requester || !pendingAuthorization.agent) throw new Error('Missing native trust authorization identity.');
-  await cancelAuthorizationWindow(owner, pendingAuthorization.requester, pendingAuthorization.agent);
-  await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install)).toBeEnabled();
-  return pendingAuthorization.requester;
+  return { requester: pendingAuthorization.requester, agent: pendingAuthorization.agent };
+}
+
+export async function cancelMacosCertificateTrustRequest(
+  owner: WorkflowProcessIdentity,
+  request: { requester: WorkflowProcessIdentity; agent: WorkflowProcessIdentity },
+): Promise<void> {
+  await cancelAuthorizationWindow(owner, request.requester, request.agent);
 }
 
 async function foregroundTrustRequester(owner: WorkflowProcessIdentity): Promise<WorkflowProcessIdentity | null> {

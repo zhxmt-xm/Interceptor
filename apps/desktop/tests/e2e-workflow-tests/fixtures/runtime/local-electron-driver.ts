@@ -23,7 +23,9 @@ import {
 import extract from 'extract-zip';
 
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
+import { resolveMacosSystemProxyJournalPath } from '../../../../src/main/platform-capabilities/system-proxy/macos/journal';
 import { getByAutomationId } from '../ui/automation';
+import { registerTlsCompatibilityDismissal, requireSharedCertificateReady } from '../ui/https-capture';
 import {
   TrafficLab,
   type HttpTrafficRunner,
@@ -48,8 +50,11 @@ const DEFAULT_CAPTURE_PORT = 8888;
 const E2E_DESKTOP_DIRECTORY_ENV = 'INTERCEPTOR_E2E_DESKTOP_DIRECTORY';
 const execFileAsync = promisify(execFile);
 const workflowHostSafetyGuardByTestInfo = new WeakMap<TestInfo, WorkflowHostSafetyGuard>();
+const dismissTlsCompatibilityByTestInfo = new WeakMap<TestInfo, boolean>();
 
 interface LocalWorkflowFixtures {
+  allowSharedCertificateInitialization: boolean;
+  dismissTlsCompatibilityDialogs: boolean;
   /** Test-owned unpackaged Electron application and its real Renderer page. */
   desktopApp: LocalElectronApplicationDriver;
   trafficLab: TrafficLab;
@@ -229,7 +234,10 @@ export class LocalElectronApplicationDriver {
           ? `${testInfo.title} · ${options.evidencePrefix}`
           : testInfo.title,
       });
-      const page = await application.firstWindow({ timeout: 20_000 });
+      const page = await application.firstWindow({ timeout: 120_000 });
+      if (dismissTlsCompatibilityByTestInfo.get(testInfo) !== false) {
+        await registerTlsCompatibilityDismissal(page);
+      }
       return new LocalElectronApplicationDriver(
         application,
         page,
@@ -289,6 +297,9 @@ export class LocalElectronApplicationDriver {
       const context = browser.contexts()[0]!;
       await context.tracing.start({ screenshots: true, snapshots: true, sources: true, title: testInfo.title });
       const page = context.pages()[0] ?? await context.waitForEvent('page', { timeout: 120_000 });
+      if (dismissTlsCompatibilityByTestInfo.get(testInfo) !== false) {
+        await registerTlsCompatibilityDismissal(page);
+      }
       if (testInfo.project.use.viewport) {
         await this.resizeMacosWorkflowWindow(page, owner, testInfo.project.use.viewport);
       }
@@ -452,10 +463,8 @@ end tell
   }
 
   private async relaunchMacosAfterCrash(testInfo: TestInfo, evidencePrefix: string): Promise<LocalElectronApplicationDriver> {
-    const restartedApp = await LocalElectronApplicationDriver.launch(testInfo, {
-      evidencePrefix, userDataDirectory: this.userDataDirectory,
-    });
-    expect(restartedApp.userDataDirectory).toBe(this.userDataDirectory);
+    const restartedApp = await LocalElectronApplicationDriver.launch(testInfo, { evidencePrefix });
+    expect(restartedApp.userDataDirectory).not.toBe(this.userDataDirectory);
     return restartedApp;
   }
 
@@ -502,6 +511,8 @@ end tell
         return;
       case 'darwin':
         expect(Object.keys(value).sort()).toEqual(['effectiveProxies', 'original', 'owned']);
+        expect(this.systemProxyJournalPath(), 'The macOS crash journal must survive a profile change')
+          .not.toBe(path.join(this.userDataDirectory, 'system-proxy/journal.json'));
         return;
       default: throw new Error('Journal evidence requires a supported platform.');
     }
@@ -532,7 +543,7 @@ end tell
   }
 
   private macosSystemProxyJournalPath(): string {
-    return path.join(this.userDataDirectory, 'system-proxy/journal.json');
+    return resolveMacosSystemProxyJournalPath(os.homedir());
   }
 
   private windowsSystemProxyJournalPath(): string {
@@ -562,7 +573,7 @@ end tell
   /** Wait until Renderer, Core and Capture bootstrap reach a stable workflow state. */
   async waitUntilReady(): Promise<void> {
     await this.page.waitForLoadState('domcontentloaded');
-    await expect(getByAutomationId(this.page, AUTOMATION_IDS.app.root)).toBeVisible();
+    await expect(getByAutomationId(this.page, AUTOMATION_IDS.app.root)).toBeVisible({ timeout: 120_000 });
     if (process.platform === 'darwin') {
       const applicationPath = process.env.INTERCEPTOR_E2E_MACOS_APP_PATH ? resolveMacosApplicationPath() : null;
       const helperPath = applicationPath
@@ -603,11 +614,11 @@ end tell
     await this.workflowHostSafetyGuard?.registerCaptureListenerProcess();
     await this.workflowHostSafetyGuard?.captureProcessTrees();
 
-    await this.dismissProxyReadiness();
     if (process.platform === 'darwin') {
       await expect(getByAutomationId(this.page, AUTOMATION_IDS.shell.boot.screen))
         .toBeHidden({ timeout: 120_000 });
     }
+    await this.dismissProxyReadiness();
   }
 
   /** Return the Capture listener port after waitUntilReady has verified it. */
@@ -904,13 +915,56 @@ events.keyCode(12, { using: ["command down"] });
   /** Request normal application shutdown and prove Main, Core and listener cleanup. */
   async closeGracefully(): Promise<void> {
     if (!this.applicationClosed && !this.page.isClosed()) {
-      await this.closeFromWindowButton();
+      if (this.macosApplication) {
+        await this.closeMacosFromNativeMenu();
+      } else {
+        await this.closeFromWindowButton();
+      }
     }
 
     await this.verifyProcessesAndListenerReleased();
     if (this.shutdownKind === 'graceful') {
       this.gracefulDestroyVerified = true;
     }
+  }
+
+  private async closeMacosFromNativeMenu(): Promise<void> {
+    const owner = this.macosApplication!.owner;
+    const current = await MacosWorkflowHostSafetyOperations.readProcessIdentity(owner.processId);
+    if (current.processStartedAt !== owner.processStartedAt) throw new Error('Test Main process generation changed.');
+    const closed = this.waitForApplicationClose();
+    void closed.catch(() => undefined);
+    this.shutdownKind = 'graceful';
+    await execFileAsync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', `
+const events = Application("System Events");
+const owners = events.applicationProcesses.whose({ unixId: ${owner.processId} })();
+if (owners.length !== 1) throw new Error("Test Main is unavailable");
+const ownedApp = owners[0];
+ownedApp.frontmost = true;
+const deadline = Date.now() + 5000;
+let appMenu;
+let quitItem;
+while (Date.now() < deadline) {
+  const menuBars = ownedApp.menuBars();
+  const menuBarItems = menuBars.length === 1 ? menuBars[0].menuBarItems() : [];
+  if (ownedApp.frontmost() && menuBarItems.length > 1) {
+    appMenu = menuBarItems[1];
+    const menus = appMenu.menus();
+    if (menus.length === 1) {
+      quitItem = menus[0].menuItems().find(item =>
+        item.attributes.whose({ name: "AXMenuItemCmdChar" })().some(attribute => attribute.value() === "Q"));
+      if (quitItem && quitItem.enabled()) break;
+    }
+  }
+  delay(0.05);
+}
+if (!ownedApp.frontmost() || !appMenu || !quitItem || !quitItem.enabled()) {
+  throw new Error("Test Main native Quit menu is unavailable; no menu was clicked");
+}
+appMenu.click();
+quitItem.click();
+`], { encoding: 'utf8', timeout: 15_000 });
+    await closed;
   }
 
   /** Persist process logs and metadata after the workflow and destroy assertions finish. */
@@ -1232,7 +1286,10 @@ events.keyCode(12, { using: ["command down"] });
 }
 
 export const test = base.extend<LocalWorkflowFixtures>({
-  desktopApp: async ({}, use, testInfo) => {
+  allowSharedCertificateInitialization: [false, { option: true }],
+  dismissTlsCompatibilityDialogs: [true, { option: true }],
+  desktopApp: async ({ allowSharedCertificateInitialization, dismissTlsCompatibilityDialogs }, use, testInfo) => {
+    if (!allowSharedCertificateInitialization) await requireSharedCertificateReady();
     const workflowHostSafetyGuard = await createWorkflowHostSafetyGuard();
     if (workflowHostSafetyGuard) {
       await workflowHostSafetyGuard.captureBaseline();
@@ -1242,18 +1299,29 @@ export const test = base.extend<LocalWorkflowFixtures>({
     let workflowError: unknown;
     let cleanupError: unknown;
     let hostSafetyError: unknown;
+    dismissTlsCompatibilityByTestInfo.set(testInfo, dismissTlsCompatibilityDialogs);
     try {
       driver = await LocalElectronApplicationDriver.launch(testInfo);
       await driver.waitUntilReady();
       await use(driver);
-      await driver.captureFinalScreenshot(testInfo);
+      if (process.platform !== 'darwin' || testInfo.status !== 'timedOut') {
+        await driver.captureFinalScreenshot(testInfo);
+      }
     } catch (error) {
       workflowError = error;
     } finally {
       if (driver) {
         try {
-          await driver.stopTrace(testInfo);
-          await driver.closeGracefully();
+          if (process.platform === 'darwin' && testInfo.status === 'timedOut') {
+            await driver.closeGracefully();
+            testInfo.annotations.push({
+              type: 'trace-unavailable',
+              description: 'The timed-out macOS application was quit before Renderer trace collection to restore the host proxy.',
+            });
+          } else {
+            await driver.stopTrace(testInfo);
+            await driver.closeGracefully();
+          }
         } catch (error) {
           cleanupError = error;
         }
@@ -1290,6 +1358,7 @@ export const test = base.extend<LocalWorkflowFixtures>({
           });
         }
       }
+      dismissTlsCompatibilityByTestInfo.delete(testInfo);
     }
     const errors = [workflowError, cleanupError, hostSafetyError]
       .filter((error) => error !== undefined);

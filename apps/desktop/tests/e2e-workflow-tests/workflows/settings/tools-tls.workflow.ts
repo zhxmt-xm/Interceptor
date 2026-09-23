@@ -5,8 +5,9 @@ import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
-import { isCertificateTrusted } from '../../fixtures/ui/https-capture';
-import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { isCertificateTrusted, removeCreatedSharedCertificate, sharedCertificateDirectory, waitForCertificateInstallation } from '../../fixtures/ui/https-capture';
+import { expect, LocalElectronApplicationDriver } from '../../fixtures/runtime/local-electron-driver';
+import { certificateLifecycleTest as test } from '../../fixtures/runtime/certificate-lifecycle-driver';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const TOOL_NAMES = [
@@ -105,12 +106,12 @@ async function setMode(page: Page, mode: 'ask' | 'auto'): Promise<void> {
 
 async function certificateThumbprint(desktopApp: LocalElectronApplicationDriver): Promise<string> {
   const certificate = new X509Certificate(await readFile(path.join(
-    desktopApp.userDataDirectory, 'certificates', 'root-cert.pem',
+    sharedCertificateDirectory(), 'root-cert.pem',
   )));
   return certificate.fingerprint.replaceAll(':', '');
 }
 
-async function cleanTlsThroughUi(page: Page, thumbprint: string | null): Promise<void> {
+async function cleanTlsThroughUi(page: Page): Promise<void> {
   await openCertificates(page);
   const generate = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.generate);
   const toggle = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.mitmToggle);
@@ -126,21 +127,6 @@ async function cleanTlsThroughUi(page: Page, thumbprint: string | null): Promise
     await expect(generate).toBeVisible();
     await expect(getByAutomationId(page, AutomationIdFactory.insecureHost(INSECURE_HOST))).toHaveCount(0);
   }
-  const uninstall = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall);
-  if (thumbprint !== null && await isCertificateTrusted(thumbprint)) {
-    await expect(uninstall).toBeEnabled();
-    await uninstall.click();
-    await expect.poll(() => isCertificateTrusted(thumbprint)).toBe(false);
-    await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete)).toBeVisible();
-  }
-  const remove = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete);
-  if (thumbprint !== null) {
-    await expect(remove).toBeEnabled();
-    await remove.click();
-    await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install)).toBeDisabled();
-    await expect(remove).toHaveCount(0);
-  }
-  if (thumbprint !== null) expect(await isCertificateTrusted(thumbprint)).toBe(false);
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.tlsPassthrough).click();
   for (const host of [...CONTROL_HOSTS, PASSTHROUGH_HOST]) {
     await expect(getByAutomationId(page, AUTOMATION_IDS.settings.tlsPassthrough.hostInput)).toBeVisible();
@@ -171,7 +157,7 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
 }
 
 test('settings.tools.tls keeps configuration intent trust and mounted panels consistent', async ({
-  desktopApp, openAiCompatibleLab,
+  desktopApp, openAiCompatibleLab, certificateRootsBeforeStartup,
 }, testInfo) => {
   test.setTimeout(300_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.tools.tls' });
@@ -245,6 +231,7 @@ test('settings.tools.tls keeps configuration intent trust and mounted panels con
 
     // 信任边界：未生成 CA 时只保存解密意图；证书只能由真实产品 UI 生成并通过 OS 正式安装。
     // Trust boundary: without a CA only decryption intent is saved; generate and install the certificate solely through real product UI and OS trust.
+    await removeCreatedSharedCertificate(desktopApp, certificateRootsBeforeStartup);
     await openCertificates(desktopApp.page);
     await callTool(desktopApp.page, openAiCompatibleLab, 'enable-untrusted', TOOL_NAMES[2]);
     expect(successfulValue(openAiCompatibleLab, 'enable-untrusted')).toMatchObject({ trusted: false, mitmEnabled: true });
@@ -254,7 +241,7 @@ test('settings.tools.tls keeps configuration intent trust and mounted panels con
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.certificates.install)).toBeEnabled();
     thumbprint = await certificateThumbprint(desktopApp);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.certificates.install).click();
-    await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.certificates.uninstall)).toBeVisible({ timeout: 30_000 });
+    await waitForCertificateInstallation(desktopApp.page);
     expect(await isCertificateTrusted(thumbprint)).toBe(true);
 
     // 用户操作：启用和停用分别覆盖 Ask Deny/Allow 与 Auto，当前开关及真实 Core 状态保持一致。
@@ -344,7 +331,8 @@ test('settings.tools.tls keeps configuration intent trust and mounted panels con
     const activeApp = relaunchedApp ?? desktopApp;
     if (!activeApp.page.isClosed()) {
       try {
-        await cleanTlsThroughUi(activeApp.page, thumbprint);
+        await cleanTlsThroughUi(activeApp.page);
+        await removeCreatedSharedCertificate(activeApp, certificateRootsBeforeStartup);
         await testInfo.attach('tls-cleanup.json', {
           body: Buffer.from(JSON.stringify({
             testCaWasGenerated: thumbprint !== null,

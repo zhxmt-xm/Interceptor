@@ -34,6 +34,8 @@
 
 ## 3. 存储所有权
 
+共享平台状态不属于业务profile：CA由Main平台模块保存于Windows `%LOCALAPPDATA%/Interceptor/certificates`或macOS `~/Library/Application Support/Interceptor Platform/certificates`，safeStorage加密私钥；系统代理恢复journal使用同一用户级根目录的`system-proxy/journal.json`（Windows根目录为`Interceptor`）。启动仅补缺失步骤，普通退出不清CA；profile删除不删除共享CA/journal，不迁移旧profile材料。
+
 三份数据完全隔离，任何一份的故障都不影响另外两份。
 
 | 所有者 | 存放 | 生命周期 |

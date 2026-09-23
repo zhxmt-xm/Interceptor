@@ -1,4 +1,4 @@
-import { generateCACertificate, getLocal, type Mockttp } from 'mockttp';
+import { generateCACertificate, getLocal, matchers, requestSteps, type Mockttp } from 'mockttp';
 import type {
   AbortedRequest,
   BodyData,
@@ -328,10 +328,11 @@ export class ProxyService {
         ? [...this.tlsConfig.insecureHosts]
         : undefined;
     const rules = process.platform === 'darwin'
-      ? (['http', 'https'] as const).map((protocol) => ({ protocol, rule: server.forAnyRequest().withProtocol(protocol) }))
-      : [{ protocol: 'http' as const, rule: server.forAnyRequest() }];
-    for (const { protocol, rule } of rules) {
-      await rule.thenPassThrough({
+      ? (['http', 'https'] as const).map((protocol) => ({ protocol, requestMatchers: [new matchers.WildcardMatcher(), new matchers.ProtocolMatcher(protocol)] }))
+      : [{ protocol: 'http' as const, requestMatchers: [new matchers.WildcardMatcher()] }];
+    await server.setRequestRules(...rules.map(({ protocol, requestMatchers }) => ({
+      matchers: requestMatchers,
+      steps: [new requestSteps.PassThroughStep({
         // 上游连接失败（DNS/TCP/TLS）按真实网络故障镜像给客户端，而不是伪造一个
         // 502 响应：Interceptor 是透明调试代理，客户端必须看到与不挂代理时一致的
         // 失败形态，Capture 里也才会记成 aborted + 真实 errorCode 而非假响应。
@@ -346,8 +347,8 @@ export class ProxyService {
               beforeResponseHead: (res, req) => this.applyRulesToResponse(res, req),
             }
           : {}),
-      });
-    }
+      })],
+    })));
   }
 
   /** WebSocket 桥自建上游连接、不经规则链，因此上游与证书例外都要单独接进去。 */

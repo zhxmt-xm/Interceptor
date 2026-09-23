@@ -60,6 +60,7 @@ import { createAppTheme, type ThemeMode } from '../theme/theme';
 import { WindowControls } from '../components/WindowControls/WindowControls';
 import styles from './App.module.css';
 import { BreakpointCreatedMessage } from './BreakpointCreatedMessage/BreakpointCreatedMessage';
+import { PlatformOperationMessage } from './PlatformOperationMessage/PlatformOperationMessage';
 import { BootScreen } from './BootScreen/BootScreen';
 import { useBootStore } from './bootStore';
 import { FEATURE_VIEWS, type FeatureActions } from './featureViews';
@@ -341,6 +342,7 @@ export function App(): React.JSX.Element {
           }}
         />
         <McpToolApprovalDialog />
+        <PlatformOperationMessage />
         <RulesImportDialog />
         <CollectionImportDialog />
         <BreakpointCreatedMessage

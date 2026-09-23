@@ -1,4 +1,5 @@
 import { rejectUnknownKeys } from '../arguments/entry';
+import { PlatformOperationInProgressError } from './errors';
 import type {
   InterceptorToolContext,
   InterceptorToolDefinition,
@@ -75,8 +76,9 @@ function defineSystemProxyChange(
           ],
           metadata: { supported: payload.supported, enabled: payload.enabled, owned: payload.owned },
         };
-      } catch {
+      } catch (error) {
         context.abortSignal.throwIfAborted();
+        if (error instanceof PlatformOperationInProgressError) throw error;
         throw new Error('Unable to read system proxy state.');
       }
     },
@@ -87,8 +89,9 @@ function defineSystemProxyChange(
         const result = await change(context);
         context.abortSignal.throwIfAborted();
         return result;
-      } catch {
+      } catch (error) {
         context.abortSignal.throwIfAborted();
+        if (error instanceof PlatformOperationInProgressError) throw error;
         throw new Error('Unable to change system proxy state.');
       }
     },

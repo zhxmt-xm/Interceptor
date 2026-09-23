@@ -8,7 +8,7 @@ import {
   AutomationIdFactory,
 } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
-import { isCertificateTrusted, waitForCertificateInstallation } from '../../fixtures/ui/https-capture';
+import { isCertificateTrusted, sharedCertificateDirectory, waitForCertificateInstallation } from '../../fixtures/ui/https-capture';
 import {
   expect,
   LocalElectronApplicationDriver,
@@ -39,7 +39,7 @@ interface PersistenceEvidence {
   mitmIntentRestored: boolean;
   insecureHostRestored: boolean;
   passthroughHostRestored: boolean;
-  testCaRemoved: boolean;
+  sharedCaPreserved: boolean;
   finalSystemProxyRestored: boolean;
   finalJournalAbsent: boolean;
 }
@@ -65,18 +65,6 @@ async function configurePersistenceThroughUi(page: Page): Promise<void> {
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.certificates).click();
 
-  const generate = getByAutomationId(
-    page,
-    AUTOMATION_IDS.settings.certificates.generate,
-  );
-  const install = getByAutomationId(
-    page,
-    AUTOMATION_IDS.settings.certificates.install,
-  );
-  await expect(generate).toBeEnabled();
-  await generate.click();
-  await expect(install).toBeEnabled();
-  await install.click();
   await waitForCertificateInstallation(page);
 
   const mitmToggle = getByAutomationId(
@@ -184,31 +172,9 @@ async function cleanPersistenceThroughUi(
       await expect(toggle).toHaveAttribute('aria-checked', 'false');
     }
   });
-  await attempt(async () => {
-    const uninstall = getByAutomationId(
-      page,
-      AUTOMATION_IDS.settings.certificates.uninstall,
-    );
-    if (await uninstall.isVisible().catch(() => false)) {
-      await uninstall.click();
-      await expect(getByAutomationId(
-        page,
-        AUTOMATION_IDS.settings.certificates.delete,
-      )).toBeVisible({ timeout: 30_000 });
-    }
-  });
-  await attempt(async () => {
-    const remove = getByAutomationId(
-      page,
-      AUTOMATION_IDS.settings.certificates.delete,
-    );
-    if (await remove.isVisible().catch(() => false)) {
-      await remove.click();
-      await expect(remove).not.toBeVisible();
-    }
-  });
-  if (await isCertificateTrusted(certificateSha1Thumbprint)) {
-    errors.push(new Error('The workflow CA remains in the local-machine Root store.'));
+  await attempt(() => waitForCertificateInstallation(page));
+  if (!await isCertificateTrusted(certificateSha1Thumbprint)) {
+    errors.push(new Error('The shared CA is no longer trusted after profile-local cleanup.'));
   }
   if (errors.length > 0) {
     throw new AggregateError(errors, 'Persistence UI cleanup failed.');
@@ -237,8 +203,7 @@ test('restores proxy ownership and persists MITM settings across processes', asy
   });
   desktopApp.preserveUserDataOnFailure();
   const certificatePath = path.join(
-    desktopApp.userDataDirectory,
-    'certificates',
+    sharedCertificateDirectory(),
     'root-cert.pem',
   );
   const evidence: Partial<PersistenceEvidence> = {};
@@ -358,8 +323,8 @@ test('restores proxy ownership and persists MITM settings across processes', asy
       }
     };
 
-    // 恢复副作用：始终由可用App经UI清除配置和测试CA。
-    // Restore side effects: a usable App always clears settings and the test CA through UI.
+    // 恢复副作用：经UI清除本profile配置，保留共享CA的材料和信任。
+    // Restore side effects: clear profile-local settings through UI and preserve shared CA material and trust.
     await attempt(async () => {
       if (initialCrashCompleted && !relaunchedApp) {
         relaunchedApp = await LocalElectronApplicationDriver.launch(testInfo, {
@@ -378,7 +343,11 @@ test('restores proxy ownership and persists MITM settings across processes', asy
         cleanupApp.page,
         certificateSha1Thumbprint!,
       ));
-      evidence.testCaRemoved = !await isCertificateTrusted(certificateSha1Thumbprint);
+      await attempt(async () => {
+        evidence.sharedCaPreserved = await isCertificateTrusted(certificateSha1Thumbprint!)
+          && await certificateSha1(certificatePath) === certificateSha1Thumbprint;
+        expect(evidence.sharedCaPreserved).toBe(true);
+      });
     }
     await attempt(() => closeGeneration(cleanupApp, testInfo));
 

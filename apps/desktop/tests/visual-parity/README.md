@@ -95,6 +95,8 @@ sequenceDiagram
 2. 测试覆盖正常的 Preload API 使用路径和加载状态。
 3. Fixture、场景和生成产物都留在测试目录，删除 parity 不会影响产品代码。
 
+HTTP断点fixture按真实头部挂起契约设置`bodyAvailable: false`，即使Capture详情已有可读原文，也不能把它当作断点snapshot正文。空Text态仍应显示`Using original`；WebSocket持有完整payload的snapshot继续使用`bodyAvailable: true`。
+
 ## 整体架构
 
 ```mermaid

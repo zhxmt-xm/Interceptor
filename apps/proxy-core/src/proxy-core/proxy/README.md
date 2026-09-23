@@ -25,6 +25,7 @@ Capture **只订阅 initiated / body-data 类事件，绝不订阅 completed 的
 - macOS按HTTP/HTTPS注册相同头部处理逻辑，接收`httpProxyUrl / httpsProxyUrl / exceptions / excludeSimpleHostnames`。
 - macOS WebSocket复用Mockttp的HTTP/SOCKS/PAC agent；选择发生在Core，不改系统代理或读取journal。
 - Main负责接管前配置和生命周期下发；Core只按当前配置转发，旧代际缓存随连接关闭清理。
+- 源站证书例外改变时通过Mockttp公开`setRequestRules()`整体替换HTTP转发规则，使未预热的首笔请求也使用最新例外；保留Windows单规则/macOS分协议规则及头部流式hooks，不重启listener或替换WebSocket规则。
 
 ## ExchangeTracker 的顺序前提
 

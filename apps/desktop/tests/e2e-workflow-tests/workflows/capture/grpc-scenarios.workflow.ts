@@ -24,7 +24,6 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
   test.setTimeout(300_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'capture.scenarios.grpc' });
   const { page } = desktopApp;
-  const tlsCompatibilityDismiss = getByAutomationId(page, AUTOMATION_IDS.settings.tlsCompatibility.dismiss);
   const rootsBefore = await rootCertificateThumbprints();
   const evidence: Array<{ scenarioId: string; exchangeId: string; status: string; truncated: boolean }> = [];
   let workflowError: unknown;
@@ -33,9 +32,6 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
   try {
     // 准备：正式Certificates UI准备本轮CA和localhost源站例外，再经UI开启Recording。
     // Arrange: prepare this CA and localhost exception through Certificates UI, then start Recording through UI.
-    await page.addLocatorHandler(tlsCompatibilityDismiss, async () => {
-      await tlsCompatibilityDismiss.click();
-    });
     await prepareHttpsCapture(desktopApp);
     await startRecording(desktopApp);
 
@@ -412,7 +408,6 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
   } finally {
     // 清理：真实UI清除本轮CA/解密设置，完整Root集合恢复；fixture验证进程、8888及WinINet/journal。
     // Cleanup: remove this CA/decryption configuration through UI and restore Root stores; fixtures verify processes, port 8888, WinINet, and journal.
-    await page.removeLocatorHandler(tlsCompatibilityDismiss).catch((error: unknown) => cleanupErrors.push(error));
     await cleanHttpsCapture(desktopApp).catch((error: unknown) => cleanupErrors.push(error));
     try { expect(await rootCertificateThumbprints()).toEqual(rootsBefore); } catch (error) { cleanupErrors.push(error); }
   }

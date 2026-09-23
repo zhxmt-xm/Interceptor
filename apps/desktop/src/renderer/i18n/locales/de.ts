@@ -1,6 +1,7 @@
 import type { MessageCatalog } from '../english-catalog';
 
 export const deCatalog = {
+  'platform.operationInProgress': 'Wird ausgeführt: {{operation}}. Bitte danach erneut versuchen.',
   'app.connectingToCore': 'Verbindung mit Proxy Core wird hergestellt',
   'app.coreStatusUnavailable': 'Status von Proxy Core nicht verfügbar',
   'app.minimizeWindow': 'Minimieren',
@@ -58,6 +59,8 @@ export const deCatalog = {
   'coreState.restarting': 'Wird neu gestartet',
   'coreState.stopping': 'Wird beendet',
   'coreState.stopped': 'Beendet',
+  'boot.preparingPlatform': 'Systemkomponenten werden vorbereitet',
+  'boot.preparingCertificate': 'HTTPS-Zertifikat wird vorbereitet',
   'boot.startingCore': 'Proxy Core wird gestartet',
   'boot.bindingListener': 'Lokaler Listener wird gebunden',
   'boot.enablingSystemProxy': 'Systemproxy wird aktiviert',

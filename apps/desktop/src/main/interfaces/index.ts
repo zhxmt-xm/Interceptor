@@ -15,6 +15,7 @@ import type {
   CoreProcessStatus,
   UpdateStatus,
 } from '../../shared/desktop-api';
+import type { SecureStore } from '../platform-capabilities/interfaces';
 
 // ─── core：CoreRuntime / CoreProcess 生命周期 ───
 
@@ -92,21 +93,6 @@ export interface MainDiagnosticsTransport {
   ingestDiagnostic(payload: DiagnosticIngestPayload): Promise<void>;
 }
 
-// ─── certificates ───
-
-/** 懒加载的 @peculiar/x509 模块类型。 */
-export type X509Module = typeof import('@peculiar/x509');
-
-/**
- * OS 级安全存储抽象（Electron `safeStorage`：Windows DPAPI / macOS Keychain）。
- * 抽成接口以便注入 fake 做单元测试；Root 私钥只经它加密后落盘。
- */
-export interface SecureStore {
-  isEncryptionAvailable(): boolean;
-  encryptString(plaintext: string): Buffer;
-  decryptString(data: Buffer): string;
-}
-
 /** Main-only GitHub user authorization encrypted at rest. */
 export interface GitHubAuthCredentials {
   readonly accessToken: string;
@@ -125,41 +111,6 @@ export interface GitHubAuthServiceOptions {
   readonly fetcher?: typeof fetch;
   readonly now?: () => Date;
   readonly wait?: (milliseconds: number, signal: AbortSignal) => Promise<void>;
-}
-
-/** CertificateService 构造可选项。 */
-export interface CertificateServiceOptions {
-  /** 证书目录（`<userData>/certificates`）；cert/加密 key/meta 都在其下。 */
-  readonly dataDir: string;
-  readonly secureStore: SecureStore;
-  readonly now?: () => Date;
-}
-
-/**
- * CA 材料（PEM）。私钥只在 Main 内存与下发 Core 做 MITM 时出现，
- * 绝不进入 Renderer、日志、导出文件或遥测。
- */
-export interface CaMaterial {
-  readonly key: string;
-  readonly cert: string;
-}
-
-/** 面向 Renderer 的 CA 状态；只含公开元数据，绝不含私钥。 */
-export interface CertificateStatus {
-  readonly present: boolean;
-  readonly fingerprint: string | null;
-  readonly subject: string | null;
-  readonly createdAt: string | null;
-  readonly expiresAt: string | null;
-}
-
-/** CA 公开元数据落盘结构。 */
-export interface CaMeta {
-  fingerprint: string;
-  sha1: string;
-  subject: string;
-  createdAt: string;
-  expiresAt: string;
 }
 
 // ─── updates ───

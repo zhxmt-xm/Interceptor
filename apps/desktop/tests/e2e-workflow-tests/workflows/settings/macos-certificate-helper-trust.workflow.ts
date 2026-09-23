@@ -5,9 +5,10 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
-import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { expect } from '../../fixtures/runtime/local-electron-driver';
+import { certificateLifecycleTest as test } from '../../fixtures/runtime/certificate-lifecycle-driver';
 import { getByAutomationId } from '../../fixtures/ui/automation';
-import { cleanHttpsCapture, rootCertificateThumbprints } from '../../fixtures/ui/https-capture';
+import { removeCreatedSharedCertificate, rootCertificateThumbprints, sharedCertificateDirectory } from '../../fixtures/ui/https-capture';
 import { cancelMacosCertificateTrust, installMacosCertificateThroughHelper } from '../../fixtures/ui/macos-certificate-authorization';
 
 const execute = promisify(execFile);
@@ -31,22 +32,24 @@ async function certificateAuthorizationMessages(userDataDirectory: string): Prom
 }
 
 test.skip(process.platform !== 'darwin', 'macOS native certificate helper only');
+test.setTimeout(300_000);
 
-test('settings.certificates.cancel-trust rolls back the new CA when helper authorization is cancelled', async ({ desktopApp }, testInfo) => {
-  test.setTimeout(90_000);
+test('settings.certificates.cancel-trust rolls back the new CA when helper authorization is cancelled', async ({ desktopApp, certificateRootsBeforeStartup }, testInfo) => {
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.certificates.cancel-trust' });
   desktopApp.preserveUserDataOnFailure();
   const { page } = desktopApp;
 
   // 准备：保存系统证书集合，通过真实UI生成本轮CA。
   // Arrange: retain the system certificate set and generate this run's CA through real UI.
-  const rootsBefore = await rootCertificateThumbprints();
+  const rootsBefore = certificateRootsBeforeStartup;
+  await removeCreatedSharedCertificate(desktopApp, rootsBefore);
+  const authorizationLogOffset = (await certificateAuthorizationMessages(desktopApp.userDataDirectory)).length;
   const ruleBefore = await readTrustAuthorizationRule();
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.certificates).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.generate).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install)).toBeEnabled();
-  const certificate = new X509Certificate(await readFile(path.join(desktopApp.userDataDirectory, 'certificates/root-cert.pem')));
+  const certificate = new X509Certificate(await readFile(path.join(sharedCertificateDirectory(), 'root-cert.pem')));
   const thumbprint = certificate.fingerprint.replaceAll(':', '');
   expect(rootsBefore).not.toContain(thumbprint);
 
@@ -70,7 +73,7 @@ test('settings.certificates.cancel-trust rolls back the new CA when helper autho
   await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete)).toBeHidden();
   expect(await readTrustAuthorizationRule()).toEqual(ruleBefore);
-  const authorizationMessages = await certificateAuthorizationMessages(desktopApp.userDataDirectory);
+  const authorizationMessages = (await certificateAuthorizationMessages(desktopApp.userDataDirectory)).slice(authorizationLogOffset);
   await writeFile(testInfo.outputPath('certificate-authorization-path.json'), JSON.stringify({
     authorizationMessages, authorizationRuleUnchanged: true,
   }, null, 2), 'utf8');
@@ -80,7 +83,7 @@ test('settings.certificates.cancel-trust rolls back the new CA when helper autho
   desktopApp.releasePreservedUserData();
 });
 
-test('settings.certificates.helper-trust installs and removes distinct CAs through the same native helper', async ({ desktopApp }, testInfo) => {
+test('settings.certificates.helper-trust installs and removes distinct CAs through the same native helper', async ({ desktopApp, certificateRootsBeforeStartup }, testInfo) => {
   test.setTimeout(300_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.certificates.helper-trust' });
   desktopApp.preserveUserDataOnFailure();
@@ -88,7 +91,9 @@ test('settings.certificates.helper-trust installs and removes distinct CAs throu
 
   // 准备：记录系统证书和已就绪helper，只经产品UI生成本轮CA。
   // Arrange: record the system certificate set and ready helper; generate each CA only through product UI.
-  const rootsBefore = await rootCertificateThumbprints();
+  const rootsBefore = certificateRootsBeforeStartup;
+  await removeCreatedSharedCertificate(desktopApp, rootsBefore);
+  const authorizationLogOffset = (await certificateAuthorizationMessages(desktopApp.userDataDirectory)).length;
   const ruleBefore = await readTrustAuthorizationRule();
   const helperBefore = await lstat(helperPath);
   expect(helperBefore.uid).toBe(0);
@@ -107,7 +112,7 @@ test('settings.certificates.helper-trust installs and removes distinct CAs throu
       // User actions: generate and install through the product; Main must not launch a separate security trust command.
       await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.generate).click();
       await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install)).toBeEnabled();
-      const certificatePath = path.join(desktopApp.userDataDirectory, 'certificates/root-cert.pem');
+      const certificatePath = path.join(sharedCertificateDirectory(), 'root-cert.pem');
       const certificate = new X509Certificate(await readFile(certificatePath));
       const thumbprint = certificate.fingerprint.replaceAll(':', '');
       expect(rootsBefore).not.toContain(thumbprint);
@@ -138,9 +143,9 @@ test('settings.certificates.helper-trust installs and removes distinct CAs throu
   } finally {
     // 清理与证据：只经产品撤销本轮CA，保存真实结果；fixture复核退出与完整宿主恢复。
     // Cleanup and evidence: remove only this run's CA through the product and retain actual outcomes; the fixture verifies exit and full host restoration.
-    await cleanHttpsCapture(desktopApp).catch((error: unknown) => cleanupErrors.push(error));
+    await removeCreatedSharedCertificate(desktopApp, rootsBefore).catch((error: unknown) => cleanupErrors.push(error));
     const rootsAfter = await rootCertificateThumbprints();
-    const authorizationMessages = await certificateAuthorizationMessages(desktopApp.userDataDirectory);
+    const authorizationMessages = (await certificateAuthorizationMessages(desktopApp.userDataDirectory)).slice(authorizationLogOffset);
     await writeFile(testInfo.outputPath('certificate-helper-trust.json'), JSON.stringify({
       helperProcessId: Number(helperProcessId), certificates, authorizationMessages,
       beforeSha256: createHash('sha256').update(JSON.stringify(rootsBefore)).digest('hex'),
@@ -152,7 +157,7 @@ test('settings.certificates.helper-trust installs and removes distinct CAs throu
   if (workflowError && cleanupErrors.length > 0) throw new AggregateError([workflowError, ...cleanupErrors], 'Certificate helper workflow and cleanup failed.');
   if (workflowError) throw workflowError;
   if (cleanupErrors.length > 0) throw new AggregateError(cleanupErrors, 'Certificate helper cleanup failed.');
-  const authorizationMessages = await certificateAuthorizationMessages(desktopApp.userDataDirectory);
+  const authorizationMessages = (await certificateAuthorizationMessages(desktopApp.userDataDirectory)).slice(authorizationLogOffset);
   for (const operation of ['certificate.trust', 'certificate.untrust']) {
     expect(authorizationMessages.filter((message) => message === `[platform-capabilities] ${operation} requesting system authorization`))
       .toHaveLength(2);

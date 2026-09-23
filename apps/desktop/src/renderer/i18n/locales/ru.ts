@@ -1,6 +1,7 @@
 import type { MessageCatalog } from '../english-catalog';
 
 export const ruCatalog = {
+  'platform.operationInProgress': 'Выполняется: {{operation}}. Повторите после завершения.',
   'app.connectingToCore': 'Подключение к Proxy Core',
   'app.coreStatusUnavailable': 'Состояние Proxy Core недоступно',
   'app.minimizeWindow': 'Свернуть',
@@ -58,6 +59,8 @@ export const ruCatalog = {
   'coreState.restarting': 'Перезапуск',
   'coreState.stopping': 'Остановка',
   'coreState.stopped': 'Остановлен',
+  'boot.preparingPlatform': 'Подготовка системных компонентов',
+  'boot.preparingCertificate': 'Подготовка сертификата HTTPS',
   'boot.startingCore': 'Запуск Proxy Core',
   'boot.bindingListener': 'Привязка локального слушателя',
   'boot.enablingSystemProxy': 'Включение системного прокси',

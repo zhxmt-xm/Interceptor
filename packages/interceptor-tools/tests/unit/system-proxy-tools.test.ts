@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   buildInterceptorToolRegistry,
   InterceptorToolArgumentError,
+  PlatformOperationInProgressError,
   type InterceptorToolDefinition,
 } from '../../src';
 
@@ -102,5 +103,12 @@ describe('System proxy change Tools', () => {
     };
     await expect(definition(name).execute({}, { host, abortSignal: new AbortController().signal }))
       .rejects.toThrow('Unable to change system proxy state.');
+  });
+
+  it.each(CHANGES)('$name preserves safe operation conflicts without exposing native errors', async ({ name }) => {
+    const error = new PlatformOperationInProgressError('system-proxy.enable');
+    const host = { invoke: vi.fn(), invokeMain: vi.fn().mockRejectedValue(error) };
+    await expect(definition(name).execute({}, { host, abortSignal: new AbortController().signal }))
+      .rejects.toBe(error);
   });
 });

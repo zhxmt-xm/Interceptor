@@ -9,7 +9,7 @@ describe('RulesImportService', () => {
     const requestImport = vi.fn();
     const cancelImport = vi.fn();
     const rulesImportService = new RulesImportService(requestImport, cancelImport);
-    const result = rulesImportService.startImport(new AbortController().signal);
+    const result = rulesImportService.startImport();
     const requestId = requestImport.mock.calls[0]?.[0] as string;
 
     expect(requestId).toEqual(expect.any(String));
@@ -23,9 +23,9 @@ describe('RulesImportService', () => {
   it('does not replace an active preview with a concurrent request', async () => {
     const requestImport = vi.fn();
     const rulesImportService = new RulesImportService(requestImport, vi.fn());
-    const first = rulesImportService.startImport(new AbortController().signal);
+    const first = rulesImportService.startImport();
 
-    await expect(rulesImportService.startImport(new AbortController().signal))
+    await expect(rulesImportService.startImport())
       .rejects.toThrow('A Rules import is already running.');
     expect(requestImport).toHaveBeenCalledOnce();
     rulesImportService.completeImport(requestImport.mock.calls[0]?.[0] as string, canceledResponse);
@@ -54,7 +54,7 @@ describe('RulesImportService', () => {
     await rejected;
     expect(cancelImport).toHaveBeenCalledExactlyOnceWith(firstRequestId);
 
-    const second = rulesImportService.startImport(new AbortController().signal);
+    const second = rulesImportService.startImport();
     const secondRequestId = requestImport.mock.calls[1]?.[0] as string;
     expect(secondRequestId).not.toBe(firstRequestId);
     rulesImportService.completeImport(firstRequestId, { status: 'failed' });
@@ -66,7 +66,7 @@ describe('RulesImportService', () => {
     const requestImport = vi.fn();
     const cancelImport = vi.fn();
     const rulesImportService = new RulesImportService(requestImport, cancelImport);
-    const result = rulesImportService.startImport(new AbortController().signal);
+    const result = rulesImportService.startImport();
     const rejected = expect(result).rejects.toMatchObject({ name: 'AbortError' });
 
     rulesImportService.cancelImport();
@@ -93,7 +93,7 @@ describe('RulesImportService', () => {
   it('settles a failed preparation without forwarding raw file errors', async () => {
     const requestImport = vi.fn();
     const rulesImportService = new RulesImportService(requestImport, vi.fn());
-    const result = rulesImportService.startImport(new AbortController().signal);
+    const result = rulesImportService.startImport();
 
     rulesImportService.completeImport(requestImport.mock.calls[0]?.[0] as string, { status: 'failed' });
 
@@ -111,12 +111,12 @@ describe('RulesImportService', () => {
   ])('拒绝非法Renderer响应并释放请求：%j', async (response) => {
     const requestImport = vi.fn();
     const rulesImportService = new RulesImportService(requestImport, vi.fn());
-    const result = rulesImportService.startImport(new AbortController().signal);
+    const result = rulesImportService.startImport();
     const rejected = expect(result).rejects.toThrow('Invalid Rules import response.');
 
     rulesImportService.completeImport(requestImport.mock.calls[0]?.[0] as string, response);
     await rejected;
-    const next = rulesImportService.startImport(new AbortController().signal);
+    const next = rulesImportService.startImport();
     rulesImportService.completeImport(requestImport.mock.calls[1]?.[0] as string, canceledResponse);
     await expect(next).resolves.toEqual(canceledResponse);
   });
@@ -124,7 +124,7 @@ describe('RulesImportService', () => {
   it('接受成功响应中的公开计数与revision', async () => {
     const requestImport = vi.fn();
     const rulesImportService = new RulesImportService(requestImport, vi.fn());
-    const result = rulesImportService.startImport(new AbortController().signal);
+    const result = rulesImportService.startImport();
     const response = { status: 'completed', result: {
       imported: true, revision: 2, ruleCount: 2, folderCount: 1, enabledCount: 1, skippedCount: 0,
     } } as const;

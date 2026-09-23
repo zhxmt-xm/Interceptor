@@ -28,6 +28,8 @@ Windows使用官方`_electron.launch()`启动未打包production bundle；macOS�
 - 产品路径无法产生的输入（结构非法的文件、越界层级、损坏字节）不属于 E2E 范畴，下沉到 owning 模块的 unit 测试；
 - 测试侧只允许创建真实 loopback origin/client、证据采集与进程清理。
 
+共享CA：普通workflow在App启动前只读检查用户级CA已生成且受信任；由开发者先通过正常产品启动初始化，不复制材料或写测试seed。普通准备/清理不Generate/Install/Uninstall/Delete，只修改本profile的MITM/TLS配置。首次初始化使用`certificate-startup.workflow.ts`；破坏性证书专项用`certificateLifecycleTest`且启动前共享目录必须为空，只清理本轮产品生成的CA。Windows CA启动行为同步，原certutil/UAC及系统代理原生命令保持。
+
 无法在零 Mock、零 seed 条件下完成的 workflow 保持 `planned/blocked`，不得用低保真替代测试冒充通过。
 
 ## 每条 Workflow 独立生命周期
@@ -312,6 +314,7 @@ diagnostics.row.<traceKey>
 | `settings.system-proxy.crash-recovery` | App A异常退出后由顺序启动的App B加载首次快照并完整恢复 | os-side-effect | passed |
 | `settings.proxy-mitm.persistence` | 异常退出后恢复系统代理并跨进程恢复MITM/TLS配置 | os-side-effect | passed |
 | `settings.certificates.generate-delete` | CA Generate/Regenerate/Delete | shared | planned |
+| `settings.certificates.shared-startup` | 自动准备共享CA，正常退出保留，跨fresh profile复用且不重写材料 | shared / os-side-effect | 见[Handover](../../../../architecture/HANDOVER.md#task-list) |
 | `settings.certificates.trust` | Install/Uninstall本机信任 | os-side-effect | planned |
 | `settings.certificates.helper-trust` | macOS两张不同CA直接经前台helper授信/撤销，复用同一常驻组件 | macOS / os-side-effect | 自动规则/后台trust已删除，最新产物及最终E2E待验；保留旧成功和后续撤销等待失败记录 |
 | `settings.certificates.cancel-trust` | 取消helper前台入口的系统确认，由产品撤回新增CA | macOS / os-side-effect | 直接授权目标的真实前置Red已保存，取消/清理和宿主恢复已验；最新最终Green待验 |

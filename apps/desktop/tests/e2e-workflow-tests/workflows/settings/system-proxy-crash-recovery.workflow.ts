@@ -107,8 +107,8 @@ test('loads a crashed system proxy journal across application generations', asyn
     await desktopApp.crashAbruptly(testInfo);
     evidence.firstGenerationDestroyed = true;
 
-    // 用户流程：Windows保持跨profile共享journal；macOS同profile重启，helper不重装。
-    // User flow: Windows retains its cross-profile journal; macOS restarts the same profile without redeploying the helper.
+    // 用户流程：两端均以全新profile恢复同一用户级journal，macOS helper不重装。
+    // User flow: both platforms recover the same user-level journal from a fresh profile without redeploying the macOS helper.
     secondGeneration = await desktopApp.relaunchAfterCrash(testInfo, 'relaunch');
     await secondGeneration.waitUntilReady();
     const secondJournal = await waitForCrashJournal(secondGeneration);

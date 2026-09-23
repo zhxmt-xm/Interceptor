@@ -1,5 +1,6 @@
 import { InterceptorToolArgumentError, rejectUnknownKeys, requireString } from '../arguments/entry';
 import type { InterceptorToolContext, InterceptorToolDefinition, MainToolResultPayloads } from '../interfaces';
+import { PlatformOperationInProgressError } from './errors';
 
 const OPERATIONS = [
   { name: 'settings_enable_app_container', command: 'settings.app-container.enable', single: true,
@@ -70,8 +71,9 @@ async function withAccessError<Result>(context: InterceptorToolContext, message:
     const result = await operation();
     context.abortSignal.throwIfAborted();
     return result;
-  } catch {
+  } catch (error) {
     context.abortSignal.throwIfAborted();
+    if (error instanceof PlatformOperationInProgressError) throw error;
     throw new Error(message);
   }
 }

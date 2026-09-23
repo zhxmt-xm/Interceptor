@@ -9,7 +9,7 @@ describe('Collection导入生命周期', () => {
   it('只接受当前请求的完成响应', async () => {
     const requestImport = vi.fn();
     const collectionImportService = new CollectionImportService(requestImport, vi.fn());
-    const result = collectionImportService.startImport(new AbortController().signal);
+    const result = collectionImportService.startImport();
     collectionImportService.completeImport('unknown', { status: 'failed' });
     collectionImportService.completeImport(requestImport.mock.calls[0]?.[0], imported);
     await expect(result).resolves.toEqual(imported);
@@ -18,8 +18,8 @@ describe('Collection导入生命周期', () => {
   it('拒绝并发导入，不覆盖当前请求', async () => {
     const requestImport = vi.fn();
     const collectionImportService = new CollectionImportService(requestImport, vi.fn());
-    const first = collectionImportService.startImport(new AbortController().signal);
-    await expect(collectionImportService.startImport(new AbortController().signal)).rejects.toThrow('A Collection import is already running.');
+    const first = collectionImportService.startImport();
+    await expect(collectionImportService.startImport()).rejects.toThrow('A Collection import is already running.');
     expect(requestImport).toHaveBeenCalledOnce();
     collectionImportService.completeImport(requestImport.mock.calls[0]?.[0], canceled);
     await expect(first).resolves.toEqual(canceled);
@@ -35,7 +35,7 @@ describe('Collection导入生命周期', () => {
     abortController.abort();
     await rejected;
     expect(cancelImport).toHaveBeenCalledExactlyOnceWith(requestImport.mock.calls[0]?.[0]);
-    const next = collectionImportService.startImport(new AbortController().signal);
+    const next = collectionImportService.startImport();
     collectionImportService.completeImport(requestImport.mock.calls[0]?.[0], imported);
     collectionImportService.completeImport(requestImport.mock.calls[1]?.[0], canceled);
     await expect(next).resolves.toEqual(canceled);
@@ -49,7 +49,7 @@ describe('Collection导入生命周期', () => {
     abortController.abort();
     await expect(collectionImportService.startImport(abortController.signal)).rejects.toMatchObject({ name: 'AbortError' });
     expect(requestImport).not.toHaveBeenCalled();
-    const result = collectionImportService.startImport(new AbortController().signal);
+    const result = collectionImportService.startImport();
     const rejected = expect(result).rejects.toMatchObject({ name: 'AbortError' });
     collectionImportService.cancelImport();
     collectionImportService.cancelImport();
@@ -65,7 +65,7 @@ describe('Collection导入生命周期', () => {
   ])('非法响应脱敏拒绝并释放请求：%j', async (response) => {
     const requestImport = vi.fn();
     const collectionImportService = new CollectionImportService(requestImport, vi.fn());
-    const result = collectionImportService.startImport(new AbortController().signal);
+    const result = collectionImportService.startImport();
     const rejected = expect(result).rejects.toThrow('Invalid Collection import response.');
     collectionImportService.completeImport(requestImport.mock.calls[0]?.[0], response);
     await rejected;

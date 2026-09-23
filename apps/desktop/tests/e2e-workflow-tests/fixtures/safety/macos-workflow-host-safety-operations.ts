@@ -1,11 +1,12 @@
 import { execFile } from 'node:child_process';
 import { once } from 'node:events';
 import net from 'node:net';
+import os from 'node:os';
 import path from 'node:path';
 import { isDeepStrictEqual, promisify } from 'node:util';
 
-import type { MacosSystemProxySnapshot } from '../../../../src/main/platform-capabilities/interfaces';
-import { MacosSystemProxyJournal } from '../../../../src/main/platform-capabilities/macos/system-proxy/journal';
+import type { MacosSystemProxySnapshot } from '../../../../src/main/platform-capabilities/system-proxy/interfaces';
+import { MacosSystemProxyJournal, resolveMacosSystemProxyJournalPath } from '../../../../src/main/platform-capabilities/system-proxy/macos/journal';
 import type {
   WorkflowHostSafetyOperations,
   WorkflowProcessIdentity,
@@ -23,8 +24,6 @@ export class MacosWorkflowHostSafetyOperations
 implements WorkflowHostSafetyOperations<MacosSystemProxySnapshot> {
   /** Production SystemConfiguration helper used for complete snapshot reads and recovery. */
   private readonly helperPath: string;
-  /** Profiles whose journals may be recovered after this workflow fails. */
-  private readonly userDataDirectories = new Set<string>();
   /** Native start tokens retained after a tracked process is reparented. */
   private readonly processStartedAtById = new Map<number, string>();
   private certificateTrustBaseline: string | null = null;
@@ -37,10 +36,8 @@ implements WorkflowHostSafetyOperations<MacosSystemProxySnapshot> {
     this.helperPath = helperPath;
   }
 
-  /** Register one isolated profile without reading or changing other application profiles. */
-  registerUserDataDirectory(userDataDirectory: string): void {
-    this.userDataDirectories.add(path.resolve(userDataDirectory));
-  }
+  /** The user-level journal does not depend on workflow profile registration. */
+  registerUserDataDirectory(): void {}
 
   /** Retain a process generation without accepting a reused process identifier. */
   registerProcessIdentity(processIdentity: WorkflowProcessIdentity): void {
@@ -124,12 +121,9 @@ implements WorkflowHostSafetyOperations<MacosSystemProxySnapshot> {
     return stdout;
   }
 
-  /** Inspect journals only inside profiles registered to this workflow. */
+  /** Inspect the shared journal before launch and after each workflow. */
   async hasCrashJournal(): Promise<boolean> {
-    for (const userDataDirectory of this.userDataDirectories) {
-      if (await this.journal(userDataDirectory).read()) return true;
-    }
-    return false;
+    return await this.journal().read() !== null;
   }
 
   /** Discover descendants while roots are alive and retain them after reparenting. */
@@ -232,24 +226,25 @@ end tell
 
   /** Recover the saved baseline only while current settings still equal a test-owned journal. */
   async restoreCrashJournal(baseline: MacosSystemProxySnapshot): Promise<void> {
-    for (const userDataDirectory of this.userDataDirectories) {
-      const journal = this.journal(userDataDirectory);
-      const record = await journal.read();
-      if (!record) continue;
-      const current = await this.readSystemProxySettings();
-      if (isDeepStrictEqual(current, baseline)) {
-        await journal.clear();
-        continue;
-      }
-      if (!isDeepStrictEqual(record.original, baseline) || !isDeepStrictEqual(record.owned, current)) {
-        throw new Error('macOS proxy recovery refused settings outside the workflow ownership baseline.');
-      }
-      throw new Error('macOS proxy is still owned by the failed workflow. Recovery must use the App and its preserved profile; the test runner will not request another authorization or stop the listener.');
+    const journal = this.journal();
+    const record = await journal.read();
+    if (!record) return;
+    if (!isDeepStrictEqual(record.original, baseline)) {
+      throw new Error('macOS proxy recovery refused settings outside the workflow ownership baseline.');
     }
+    const current = await this.readSystemProxySettings();
+    if (isDeepStrictEqual(current, baseline)) {
+      await journal.clear();
+      return;
+    }
+    if (!isDeepStrictEqual(record.owned, current)) {
+      throw new Error('macOS proxy recovery refused settings outside the workflow ownership baseline.');
+    }
+    throw new Error('macOS proxy is still owned by the failed workflow. Recovery must use the App and the shared journal; the test runner will not request another authorization or stop the listener.');
   }
 
   /** Use the product journal parser and regular-file checks for recovery evidence. */
-  private journal(userDataDirectory: string): MacosSystemProxyJournal {
-    return new MacosSystemProxyJournal(path.join(userDataDirectory, 'system-proxy/journal.json'));
+  private journal(): MacosSystemProxyJournal {
+    return new MacosSystemProxyJournal(resolveMacosSystemProxyJournalPath(os.homedir()));
   }
 }

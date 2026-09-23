@@ -1,5 +1,6 @@
 import { rejectUnknownKeys } from '../arguments/entry';
 import type { InterceptorToolContext, InterceptorToolDefinition, MainToolResultPayloads } from '../interfaces';
+import { PlatformOperationInProgressError } from './errors';
 
 const CERTIFICATE_OPERATIONS = [
   { name: 'settings_generate_certificate', command: 'settings.certificate.generate', title: 'Generate Root CA',
@@ -62,8 +63,9 @@ async function withCertificateError<Result>(
     const result = await operation();
     context.abortSignal.throwIfAborted();
     return result;
-  } catch {
+  } catch (error) {
     context.abortSignal.throwIfAborted();
+    if (error instanceof PlatformOperationInProgressError) throw error;
     throw new Error(message);
   }
 }

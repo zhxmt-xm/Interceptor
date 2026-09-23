@@ -5,6 +5,9 @@ export const AUTOMATION_IDS = {
     main: 'app.main',
     statusbar: 'app.statusbar',
   },
+  platform: {
+    operationConflict: 'platform.operation.conflict',
+  },
   shell: {
     navigation: 'shell.navigation',
     sidebarToggle: 'shell.sidebar.toggle',

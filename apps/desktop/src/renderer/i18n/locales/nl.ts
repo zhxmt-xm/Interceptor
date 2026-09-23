@@ -1,6 +1,7 @@
 import type { MessageCatalog } from '../english-catalog';
 
 export const nlCatalog = {
+  'platform.operationInProgress': 'Bezig met: {{operation}}. Probeer het na afloop opnieuw.',
   'app.connectingToCore': 'Verbinden met Proxy Core',
   'app.coreStatusUnavailable': 'Status van Proxy Core niet beschikbaar',
   'app.minimizeWindow': 'Minimaliseren',
@@ -58,6 +59,8 @@ export const nlCatalog = {
   'coreState.restarting': 'Wordt opnieuw gestart',
   'coreState.stopping': 'Wordt gestopt',
   'coreState.stopped': 'Gestopt',
+  'boot.preparingPlatform': 'Systeemonderdelen voorbereiden',
+  'boot.preparingCertificate': 'HTTPS-certificaat voorbereiden',
   'boot.startingCore': 'Proxy Core wordt gestart',
   'boot.bindingListener': 'Lokale listener wordt gebonden',
   'boot.enablingSystemProxy': 'Systeemproxy wordt ingeschakeld',

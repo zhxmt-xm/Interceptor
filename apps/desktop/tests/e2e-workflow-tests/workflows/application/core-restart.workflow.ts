@@ -54,6 +54,8 @@ interface CoreRestartEvidence {
   restartedCoreRpcUsable: boolean;
   /** Core B fault followed by normal Close left no workflow process alive. */
   closeAfterFaultLeftNoProcesses: boolean;
+  /** A busy Quit was explicitly rejected before a second user request. */
+  quitRejectedOperation: string | null;
   /** Normal Close restored WinINet and removed the crash journal. */
   finalHostRestored: boolean;
 }
@@ -191,12 +193,35 @@ test('application.lifecycle.core-restart restores Core and system proxy ordering
   }
   expect(desktopApp.rendererPageErrors()).toEqual([]);
 
-  // Evidence/teardown：精确终止Core B后立即真实Close，不得留下任何进程代际或宿主副作用。
-  // Evidence/teardown: close immediately after terminating exact Core B; no process generation or host side effect may remain.
+  // Evidence/teardown：Core B故障后立即Close；忙时核对拒绝且不自动退出，恢复后再显式Quit。
+  // Evidence/teardown: Close after Core B fails; verify a busy rejection is not replayed, then explicitly Quit after recovery.
   await desktopApp.captureFinalScreenshot(testInfo);
   await desktopApp.stopTrace(testInfo);
   await desktopApp.terminateCoreProcessGeneration(secondCore);
+  const closing = desktopApp.closeFromWindowButton();
+  void closing.catch(() => undefined);
+  const conflict = getByAutomationId(page, AUTOMATION_IDS.platform.operationConflict);
+  const outcome = await Promise.any([
+    closing.then(() => 'closed' as const),
+    conflict.waitFor({ state: 'visible', timeout: 15_000 }).then(() => 'busy' as const),
+  ]);
+  evidence.quitRejectedOperation = null;
+  if (outcome === 'busy') {
+    const operation = await conflict.getAttribute('data-operation');
+    expect(['certificate.sync', 'system-proxy.restore', 'system-proxy.update-upstream', 'system-proxy.enable']).toContain(operation);
+    evidence.quitRejectedOperation = operation;
+    await testInfo.attach('quit-rejected-operation', {
+      body: Buffer.from(JSON.stringify({ operation })), contentType: 'application/json',
+    });
+    await testInfo.attach('quit-rejected-message', { body: await conflict.screenshot(), contentType: 'image/png' });
+    await desktopApp.waitForRestartedCoreProcess(secondCore.processId);
+    await expect(recording).toHaveAttribute('aria-pressed', 'true', { timeout: 20_000 });
+    await expect(conflict).toHaveCount(0);
+    expect(page.isClosed()).toBe(false);
+    await desktopApp.captureFinalScreenshot(testInfo);
+  }
   await desktopApp.closeGracefully();
+  await closing;
   evidence.closeAfterFaultLeftNoProcesses = (
     await desktopApp.listLiveRegisteredProcessIds()
   ).length === 0;

@@ -529,7 +529,18 @@ export const DESKTOP_UI_LANGUAGES = [
 
 export type DesktopUiLanguage = (typeof DESKTOP_UI_LANGUAGES)[number];
 
+export type ApplicationStartupStage = 'platform' | 'certificate' | 'ready';
+
+export type PlatformOperation = import('@interceptor/tools').PlatformOperation;
+
+export interface PlatformOperationConflict {
+  readonly operation: PlatformOperation;
+}
+
 export const DESKTOP_IPC_CHANNELS = {
+  startupGetStage: 'startup:get-stage',
+  startupStageChanged: 'startup:stage-changed',
+  platformOperationConflict: 'platform:operation-conflict',
   uiLanguageSet: 'settings:language:set',
   uiThemeSet: 'settings:theme:set',
   exportPrivacyDefaultsSet: 'settings:export-privacy-defaults:set',
@@ -678,6 +689,9 @@ export const DESKTOP_IPC_CHANNELS = {
 } as const;
 
 export interface InterceptorDesktopApi {
+  getStartupStage(): Promise<ApplicationStartupStage>;
+  onStartupStageChange(listener: (stage: ApplicationStartupStage) => void): () => void;
+  onPlatformOperationConflict(listener: (conflict: PlatformOperationConflict) => void): () => void;
   setUiLanguage(language: DesktopUiLanguage): Promise<{ language: DesktopUiLanguage }>;
   setUiTheme(theme: DesktopUiTheme): Promise<{ theme: DesktopUiTheme }>;
   setExportPrivacyDefaults(preferences: Partial<ExportPrivacyDefaults>): Promise<ExportPrivacyDefaults>;

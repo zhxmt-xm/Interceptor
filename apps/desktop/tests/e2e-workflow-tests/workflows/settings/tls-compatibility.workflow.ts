@@ -11,6 +11,8 @@ import { getByAutomationId } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { cleanHttpsCapture, prepareHttpsCapture, rootCertificateThumbprints } from '../../fixtures/ui/https-capture';
 
+test.use({ dismissTlsCompatibilityDialogs: false });
+
 async function rejectInterceptedCertificate(
   proxyPort: number,
   originPort: number,
@@ -113,9 +115,21 @@ test('settings.tls-compatibility selects patterns from real failed TLS handshake
     // 业务断言：全部取消时不能保存，精确host与父域wildcard只按用户勾选持久化。
     // Product assertions: no selection disables Save; persist only the exact host and parent wildcard chosen by the user.
     for (const host of hosts) await patternCheckbox(host, host).click();
+    const selectedCheckboxes = hostList.locator('[role="checkbox"][aria-checked="true"]');
+    const backgroundPatternIds = await selectedCheckboxes.evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute('data-automation-id')!));
+    for (const automationId of backgroundPatternIds) {
+      await getByAutomationId(page, automationId).click();
+    }
+    await expect(selectedCheckboxes).toHaveCount(0);
     await expect(addSelected).toBeDisabled();
     await patternCheckbox(hosts[0]!, selectedPatterns[0]!).click();
     await patternCheckbox(hosts[1]!, selectedPatterns[1]!).click();
+    expect(await selectedCheckboxes.evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute('data-automation-id')).sort())).toEqual([
+      AutomationIdFactory.tlsCompatibilityPattern(hosts[0]!, selectedPatterns[0]!),
+      AutomationIdFactory.tlsCompatibilityPattern(hosts[1]!, selectedPatterns[1]!),
+    ].sort());
     await expect(addSelected).toBeEnabled();
     await dialog.screenshot({ path: testInfo.outputPath('tls-compatibility-selected.png') });
     await addSelected.click();
@@ -149,7 +163,7 @@ test('settings.tls-compatibility selects patterns from real failed TLS handshake
     expect(origin.applicationByteCount()).toBe(0);
     expect(desktopApp.rendererPageErrors()).toEqual([]);
     const evidencePath = testInfo.outputPath('tls-compatibility.json');
-    await writeFile(evidencePath, JSON.stringify({ observations, rowLayouts, selectedPatterns, applicationBytes: origin.applicationByteCount() }, null, 2), 'utf8');
+    await writeFile(evidencePath, JSON.stringify({ observations, rowLayouts, selectedPatterns, backgroundPatternIds, applicationBytes: origin.applicationByteCount() }, null, 2), 'utf8');
     await testInfo.attach('tls-compatibility.json', {
       path: evidencePath,
       contentType: 'application/json',

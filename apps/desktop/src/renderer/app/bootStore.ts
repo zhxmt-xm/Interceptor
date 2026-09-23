@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 
+import type { ApplicationStartupStage } from '../../shared/desktop-api';
+
 /** Startup steps that must complete before traffic can reach the proxy. */
-export const BOOT_STEPS = ['core', 'listener', 'proxy'] as const;
+export const BOOT_STEPS = ['platform', 'certificate', 'core', 'listener', 'proxy'] as const;
 
 export type BootStep = (typeof BOOT_STEPS)[number];
 export type BootPhase = BootStep | 'ready' | 'error';
@@ -9,6 +11,8 @@ export type BootStepState = 'pending' | 'active' | 'done' | 'failed';
 
 interface BootState {
   phase: BootPhase;
+  mainReady: boolean;
+  applyStartupStage: (stage: ApplicationStartupStage) => void;
   /** Step that failed, so the dots can show where startup stopped. */
   failedStep: BootStep | null;
   /** Failure detail shown in place of the current action line. */
@@ -23,10 +27,18 @@ interface BootState {
 }
 
 export const useBootStore = create<BootState>((set) => ({
-  phase: 'core',
+  phase: 'platform',
+  mainReady: false,
   failedStep: null,
   detail: null,
   dismissed: false,
+
+  applyStartupStage: (stage) => set((state) => {
+    if (state.mainReady || state.dismissed || state.phase === 'error') return state;
+    if (stage === 'ready') return { mainReady: true, phase: 'core', detail: null };
+    if (BOOT_STEPS.indexOf(stage) < BOOT_STEPS.indexOf(state.phase as BootStep)) return state;
+    return { phase: stage, detail: null };
+  }),
 
   advance: (phase) => set((state) => (state.dismissed ? state : { phase, detail: null })),
 

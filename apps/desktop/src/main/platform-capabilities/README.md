@@ -4,19 +4,21 @@ Desktop Main 的平台能力模块。先在 Main 内聚合现有代码和测试�
 
 ## 当前入口
 
-[entry.ts](entry.ts) 定义 `PlatformCapabilitiesService`，集中创建系统代理、系统信任库及 AppContainer 的唯一实例。创建对象不读写系统代理、安装服务或触发授权。
+[entry.ts](entry.ts)定义`PlatformCapabilitiesService`，私有组合Certificate、System Proxy、AppContainer、Client App和helper唯一实例。Main在成员声明处创建一个readonly平台对象，直接调用方法并接收结果/error和状态通知，不使用require/getter检查层，也不持有子service。构造仅组装对象；窗口显示后才调用`prepare()`开始原生操作。CoreRuntime、MainDiagnostics、safeStorage和Electron shell适配由Main注入，平台流程留在所属entry class。
 
-- `systemProxyService`：保持现有 `status / enable / restore / recoverAfterCrash / detectedUpstream` 契约。
-- `trustStoreService`：保留 `supported / install / uninstall / isTrusted`，平台原生命令分别位于 Windows/macOS 目录。
-- `appContainerService`：保留已有 Windows Network Isolation 行为；macOS 明确不支持，不执行伪造的成功写入。
-- `getSupportedCapabilities()`：返回已实现的能力，不随 helper 是否已构建或安装而改变；supported 不是 ready、owned 或 authorized。
-- `prepareNativeComponents()`：Main启动时在代理恢复/接管前调用。Windows不增加授权步骤；macOS按Main传入的真实`app.isPackaged`选择生产/开发入口，检查本次配套helper与对应授权，完成后确认服务和客户端写资格。默认严格生产入口，失败不回退到开发。
-- Main/CoreRuntime 从同一入口取得客户端应用 helper 的定位函数，原生资源根目录由调用方传入，本目录不导入 Electron。
+- 证书公开方法：`getCertificateInfo / generateCertificate / installCertificate / uninstallCertificate / deleteCertificate / revealCertificate / viewCertificate / openCertificateManager`；唯一内部CertificateService管理材料、TrustStore、MITM意图与Core同步。Windows DER/PEM与macOS前台helper保持各自实现。
+- 系统代理公开方法：`getSystemProxyStatus / enableSystemProxy / restoreSystemProxy`；内部SystemProxyService拥有listener检查、操作状态、journal、Core upstream同步和探活。
+- AppContainer公开方法：`listAppContainers / enableAppContainer / disableAppContainer / enableAllAppContainers / disableAllAppContainers`；内部单项/批量写入共用同组互斥，保留Windows Network Isolation与UAC命令，macOS明确不支持。
+- `getSupportedCapabilities()`：按业务module名称返回支持列表，不把Trust Store、连接归属或图标拆成平级capability；helper是内部执行设施，不列为业务能力。supported不随helper是否已构建或安装改变，也不是ready、owned或authorized。
+- `prepare()`顺序完成helper组件检查、异常退出journal读取和共享CA准备；helper准备忙时不能重复调用或退出。Windows不增加授权步骤，macOS按真实`app.isPackaged`选择生产/开发入口，失败不回退到开发。
+- `synchronizeCore / updateCoreProcessStatus / assertCanQuit / stop`封装平台相关生命周期；Main只调用，不实现恢复去重、Core配置或module忙状态。
+- `getClientAppIcons / loadClientAppIcons`由[client-app/entry.ts](client-app/entry.ts)的ClientAppService管理真实缓存及helper读取；CoreRuntime仍复用无状态`resolveClientAppHelperPath`。Main只转发图标通知，本目录不导入Electron运行时。
+- 平台业务API不接收AbortSignal。Agent/MCP在调用前检查取消，已开始操作必须完成或失败收尾；原生超时/断线不直接证明操作结束。用户冲突立即报错，不排队、不重放。
 
 | 平台 | 当前支持列表 |
 | --- | --- |
-| Windows | `system-proxy`、`certificate-trust`、`connection-owner`、`application-icon`、`app-container` |
-| macOS | `system-proxy`、`certificate-trust` |
+| Windows | `system-proxy`、`certificates`、`client-app`、`app-container` |
+| macOS | `system-proxy`、`certificates` |
 
 macOS 连接归属、图标尚未实现。生效上游检测与基础链式转发已接入，外部改写及特殊网络验收仍按原任务跟踪。
 
@@ -27,48 +29,61 @@ platform-capabilities/
   entry.ts
   interfaces/index.ts
   internal/
-    errors.ts
-    command-runners.ts
-    elevated-runner.ts
-    client-app.ts
-    trust-store-service.ts
-    operation-queue.ts
-    upstream-probe.ts
-    upstream.ts                共享上游摘要与探活目标
-  windows/
-    system-proxy/              WinINet、journal、上游转换、原生 helper 及测试
-    trust-store/entry.ts        Windows certutil 实现
-    app-container/             Network Isolation 原生实现及测试
-    client-app/                Windows 应用信息/图标原生 helper
-  macos/
-    helper-client.ts            常驻协议与固定前台trust命令客户端
-    utils.ts                    响应校验与共用快照解析
-    installation/               首次启动helper部署、原生授权及所属测试
-    system-proxy/              SystemConfiguration、journal、原生 helper 及测试
-    trust-store/entry.ts        证书安装/卸载业务编排与只读信任检查
-    trust-store/native-certificates.swift  原生证书库与前台admin trust操作
-  tests/
-    unit/
-    integration/
+    command-runners.ts          shared run / runElevated，sudo-prompt仅按需加载
+  certificates/
+    entry.ts                    CertificateService：材料与信任唯一入口
+    interfaces/
+    internal/                   既有TrustStore分派和errors
+    windows/                    certutil
+    macos/                      helper信任调用、native-certificates.swift
+    tests/
+  system-proxy/
+    entry.ts                    SystemProxyService：平台选择与业务入口
+    interfaces/
+    internal/                   upstream、probe、errors；无操作queue
+    windows/                    WinINet、journal、native helper及tests
+    macos/                      SystemConfiguration、journal及tests
+    tests/
+  app-container/
+    entry.ts                    AppContainerService
+    interfaces/
+    internal/errors.ts
+    windows/                    Network Isolation native helper/build
+    tests/
+  client-app/
+    entry.ts                    ClientAppService图标缓存及无状态helper定位
+    windows/                    应用图标、helper定位及native build
+  helper/
+    entry.ts                    HelperService：组件准备与调用资格
+    interfaces/
+    macos/
+      helper-client.ts
+      utils.ts
+      internal/errors.ts
+      installation/             既有部署实现与tests
+      native/                   helper入口、transport/authentication、build
+    tests/
+  tests/unit/                   平台组合契约
 ```
 
-[interfaces/index.ts](interfaces/index.ts) 集中已归入的平台DTO；CA类型与`SecureStore`仍待从Main interfaces整理。
-[internal/errors.ts](internal/errors.ts) 集中 `SystemProxyError`、`SystemProxyJournalError`、`TrustStoreError`、`AppContainerError`，当前保留原类名、错误消息和 `instanceof` 语义，未借重构改变既有失败处理。
+[interfaces/index.ts](interfaces/index.ts)只保留平台组装与shared execution/`SecureStore`契约，业务DTO归各module的`interfaces/`。errors已按module归位，类名、错误消息和`instanceof`语义保持；根级混合errors和独立elevated-runner已删除，不保留旧路径转发。
+
+`commandRunner.run()`使用`execFile`，`runElevated()`使用现有Windows UAC路径；Certificate与AppContainer复用同一个elevation实现，AppContainer的8MiB输出上限保持。macOS系统写入仍交native helper，不因runner合并转向sudo-prompt。state默认保存在所属entry class的private property，局部逻辑用private method；不新增独立state/manager/lifecycle文件。
 
 ## 业务边界
 
-- Main 仍负责 listener/Core 生命周期、退出顺序、用户审批、IPC/MCP/Agent 共用业务方法和状态广播。
-- `SystemProxyOperationQueue` 的实例仍由 Main 持有；文件聚合不意味着平台层另起一套退出或恢复编排。
-- Windows/macOS 的 original、owned、current 比较、journal 位置及回读检查保持。普通 Windows 代理操作不引入服务或新授权步骤。
-- CA生成与加密存取由`CertificateService`在Main进程执行；本地证书目录迁移及统一入口整理不纳入本次中间提交。特权helper只接公开证书，不接收私钥。
+- Main负责App/Core生命周期、用户审批、IPC安全、通知和error显示；平台业务只通过一个PlatformCapabilitiesService对象调用。
+- Certificate/SystemProxy/Core同步、upstream探活、必要恢复和各组互斥属于平台module。SystemProxyOperationQueue已删除，必要失败恢复只等待已开始操作，不缓存用户命令。
+- Windows/macOS 的 original、owned、current 比较及回读检查保持；macOS journal已改用户级目录，Windows原路径不变。普通Windows代理操作不引入服务或新授权步骤。
+- CA生成与加密存取由`CertificateService`在Main进程执行，类型归平台模块；特权helper只接公开证书，不接收私钥。共享目录不随profile切换，现有证书命令作用于共享材料，普通退出不删。
 - Core 的应用归属缓存、Capture 事件和关联逻辑继续留在 [Core ClientAppService](../../../../proxy-core/src/proxy-core/client-app/entry.ts)。
 - Renderer 仍通过 Preload 调用 Main，不能导入本模块或直接调用 native helper。
 
 ### 谁执行
 
-- Main：编排安装/撤销、代理接管/恢复、Core配置和状态通知；`CertificateService`在Main生成CA、用`safeStorage`加密私钥，私钥只交Core内存签发叶证书，不交helper。
+- Main：调用平台启动/退出入口并转发通知；平台module在Main进程执行。CertificateService生成CA、用safeStorage加密私钥，通过内部TrustStore完成安装/撤销/删除并同步Core；私钥只交Core内存签发叶证书，不交helper。
 - macOS常驻root helper：读写系统代理，向System.keychain导入/删除精确公开CA。没有trust/untrust socket命令，不修改授权规则。
-- macOS前台helper：同一个已安装二进制，以登录用户身份执行`certificate.trust/untrust`；Security框架请求系统确认。它不是常驻root服务，也不复用安装helper时的管理员批准。
+- macOS前台helper：同一个已安装二进制，以登录用户身份执行`certificate.trust/untrust`；Security框架请求系统确认。`certificate.view`另用SecurityInterface的`SFCertificatePanel`只读显示公开DER，关闭信任编辑；真实窗口显示且控件证书字节匹配后回复`{ sha256, opened: true }`，关闭或调用App退出时结束前台进程。后台root socket不开放View，参数不接受路径/私钥。
 - macOS部署入口：同包helper请求系统确认，获准的固定root操作负责安装、更新、卸载组件；不属于日常代理命令或证书信任授权。
 - Windows平台实现：WinINet由一次性native helper读写；证书由提权`certutil`操作Local Machine Root；AppContainer使用已有原生实现。没有macOS式常驻服务，不改变现行命令和授权步骤。
 - Core：监听、转发、MITM及叶证书签发；不改系统代理/系统信任，不管理helper部署或恢复journal。
@@ -79,6 +94,8 @@ platform-capabilities/
 - 系统CA与信任：Windows Local Machine Root、macOS System.keychain/admin trust都在OS；同一张CA的系统信任不因切profile消失。产品按精确指纹重新查询，不缓存一个跨profile的`trusted=true`。
 - macOS组件与批准：helper、launchd、socket和生产/开发配置在`/Library`固定位置。开发按获准UID复用；生产App身份或helper字节改变仍可能需要更新批准，与profile无关。
 - Windows恢复journal：`%LOCALAPPDATA%/Interceptor/system-proxy/journal.json`为用户级固定路径。它是待恢复的临时状态，不是永久保持代理接管的配置。
+- macOS恢复journal：`~/Library/Application Support/Interceptor Platform/system-proxy/journal.json`；不放进默认Interceptor profile，格式仍为`original/owned/effectiveProxies`。
+- 共享CA材料：Windows `%LOCALAPPDATA%/Interceptor/certificates`，macOS `~/Library/Application Support/Interceptor Platform/certificates`；同OS用户的开发/生产/fresh profile共用，safeStorage密文私钥不分发给其他用户。
 - 两端随App交付的native程序属于安装资源，不复制到各profile。
 
 ### profile内状态：两端业务隔离一致
@@ -89,19 +106,18 @@ platform-capabilities/
 
 ### 当前差距与必要差异
 
-- macOS恢复journal仍在`userData/system-proxy/journal.json`；不同profile找不到上一profile的恢复记录，与Windows用户级路径不一致。当前仅验证同profile崩溃恢复；这是待修差距，本轮未移动路径。
-- CA材料当前两端都在`userData/certificates`，不是macOS特有差异。`root-cert.pem`、加密`root-key.enc`、`ca-meta.json`还没有独立于profile的存储；本机同一OS账户长期复用CA是待确认目标，不是已实现能力，也不是给所有用户分发同一私钥。
-- macOS缺`connection-owner`、`application-icon`；AppContainer仅适用于Windows，不为macOS提供伪实现。
-- macOS证书View只确认启动Keychain Access，尚未验证目标证书窗口；Finder Reveal通过不能替代View。
+- CA原profile材料不迁移、不回退读取。共享材料残缺、损坏、过期、指纹或密钥不匹配时保留并报错；只在全部材料不存在时生成，信任就绪后不写文件或重复授信。
+- macOS尚不支持`client-app`，即本机连接归属与应用图标；AppContainer仅适用于Windows，不为macOS提供伪实现。
+- macOS证书View原实现只启动Keychain Access而未显示目标证书，已取得真实Red并改用只读系统面板；参数边界/材料/Windows查看契约及原native安全共63项通过，完整App流程和新产物仍以Handover为准。Finder识别兼容系统返回的已知路径引号，不依赖列表模式，复用窗口不关闭用户已有窗口。
 - WinINet与SystemConfiguration、UAC与macOS系统确认、DPAPI与Keychain是必要原生差异。macOS保存完整service快照和接管前生效上游，按HTTP/HTTPS分别下发；Windows保留原单一上游结构及journal版本，不为形式一致改Windows。
 - 仅Auto Detect的上游行为仍不同：Windows现行直连，macOS无显式代理/PAC时拒绝接管，不能宣称WPAD双端一致或已验。
 
 ### 聚合与迁移状态
 
 - 已归类：两端系统代理、系统信任库、macOS组件部署与通信、Windows应用信息/图标和AppContainer；目录归类不等于两端全部验收完成。
-- 仅本地暂停：CA实现/错误类/9项integration的目录迁移，private package骨架及lockfile；不纳入本轮提交。
-- 待整理：CA统一入口/类型、`SecureStore`窄契约、Core原生runner/输出解析、Main中的PEM转CER及系统查看器/管理器选择。
-- Main继续拥有操作顺序、`SystemProxyOperationQueue`、上游降级策略和状态广播；`UpstreamProbe`只提供事实，Core保留应用归属缓存与事件。
+- CA材料、错误类型、测试及SecureStore契约属于Main平台模块；private package未接入运行时。
+- 当前模块状态：Certificate/SystemProxy/AppContainer/helper准备各自持有private operation state，ApplicationActionGate平台表与旧queue已删除。Main进程内的HelperService只协调共享原生授权资源；Certificate与AppContainer不能同时发起授权，不需要该资源的SystemProxy操作仍可执行。native helper本身不保存这些业务状态。已确认结束的失败、未知写入与只读请求分别处理，最新真实验收与尚未确认结束的写入限制见下节及Handover。
+- SystemProxyService拥有上游降级策略并使用UpstreamProbe；ClientAppService拥有Main侧图标缓存，Core继续保留应用归属缓存与事件。
 - Electron的窗口、Dialog、clipboard、`safeStorage`、`shell`适配和各feature凭据格式不搬进root helper。独立package接入、依赖和发布后置，不反向依赖Desktop。
 
 ## 原生构建与资源
@@ -113,7 +129,7 @@ macOS原生构建使用固定`com.zhxmt.interceptor.platform-capabilities`签名
 ```sh
 npm run build:native --workspace @interceptor/desktop
 npm run typecheck --workspace @interceptor/desktop
-npm run test --workspace @interceptor/desktop -- src/main/platform-capabilities src/main/certificates/tests
+npm run test --workspace @interceptor/desktop -- src/main/platform-capabilities
 ```
 
 原生 Windows 测试必须在 Windows 运行；Mac 上的 skip 不计通过。真实 Electron E2E 和 packaged smoke 继续使用原产品操作和独立宿主恢复 guard，不能用本模块测试代替。
@@ -121,12 +137,12 @@ npm run test --workspace @interceptor/desktop -- src/main/platform-capabilities 
 原生集成可直接复验完整App内已经签名的helper。下面的环境变量仅由测试读取，不是产品参数，也不替换E2E中的helper；测试仍禁止root且不写系统设置。在仓库根执行：
 
 ```sh
-INTERCEPTOR_NATIVE_SERVICE_HELPER_PATH="$PWD/apps/desktop/out/Interceptor-darwin-x64/Interceptor.app/Contents/Resources/system-proxy/macos-proxy-helper" npm run test --workspace @interceptor/desktop -- src/main/platform-capabilities/macos/system-proxy/tests/integration/native-service.test.ts
+INTERCEPTOR_NATIVE_SERVICE_HELPER_PATH="$PWD/apps/desktop/out/Interceptor-darwin-x64/Interceptor.app/Contents/Resources/system-proxy/macos-proxy-helper" npm run test --workspace @interceptor/desktop -- src/main/platform-capabilities/helper/tests/integration/native-service.test.ts
 ```
 
 ## macOS 服务协议
 
-[macos/system-proxy/native-service.swift](macos/system-proxy/native-service.swift)的`serve`入口由launchd管理。Main通过[macos/helper-client.ts](macos/helper-client.ts)调用固定命令：
+[macos/system-proxy/native-service.swift](helper/macos/native/native-service.swift)的`serve`入口由launchd管理。Main通过[macos/helper-client.ts](helper/macos/helper-client.ts)调用固定命令：
 
 | 命令 | 参数 | 结果 |
 | --- | --- | --- |
@@ -138,26 +154,36 @@ INTERCEPTOR_NATIVE_SERVICE_HELPER_PATH="$PWD/apps/desktop/out/Interceptor-darwin
 | `certificate.remove` | 同一公开DER及SHA-256 | 精确指纹及present=false |
 
 - 同一服务进程按独立受保护配置提供两个Unix socket。生产`service.sock`每个连接核验内核peer audit token、UID、精确CDHash及canonical可执行路径；开发`development.sock`只核验内核UID，不绑定源码、项目目录、Electron签名或调试状态。协议不接受客户端自报环境切换鉴权。
+- launchd使用`ProcessType=Interactive`：Main同步等待这个服务的启动检查和系统操作，Background的CPU/I/O限流会使完整资源验证超出30秒客户端期限；Unix socket不能触发Adaptive的XPC调度提升。空闲时仍等待socket，不增加轮询、缓存或新协议。
 - 生产`status`写资格与所有写命令另外验证完整App资源、内嵌代码、全部架构和Hardened Runtime，拒绝可调试或可注入进程；普通公开代理读取不重复扫描整包资源。开发允许获准用户的本地代码调用固定能力，不保证隔离同用户恶意程序。App可以由用户拥有，不要求root拥有或移动整个App。
-- 严格校验字段、版本和256KiB单帧边界。代理条件写在同一SystemConfiguration事务中比对完整expected，冲突不覆盖外部修改；journal和退出恢复仍归Main。
+- 严格校验字段、版本和256KiB单帧边界。代理条件写在同一SystemConfiguration事务中比对完整expected，冲突不覆盖外部修改；journal和退出恢复归Main进程的SystemProxyService。
 - 生效代理读取与恢复快照分开；macOS journal只存`original/owned/effectiveProxies`，无版本或兼容读取。Core接收HTTP/HTTPS路由和原绕过规则；ClashX基础转发与开发入口恢复已有E2E Green，特殊网络及上游异常仍待联调。
-- 常驻服务只操作固定System.keychain，精确匹配公开DER，不接收CA私钥；Keychain读写禁止弹交互窗口。Main保留CA生成/safeStorage及安装/回滚编排，导入不等于受信任。
+- 常驻服务只操作固定System.keychain，精确匹配公开DER，不接收CA私钥；Keychain读写禁止弹交互窗口。CertificateService负责CA生成/safeStorage及安装/回滚编排，导入不等于受信任。
 - 服务正常结束清除自己的socket；崩溃重启只清理归属正确、ECONNREFUSED且inode未变的残留端点，快速断连不会以SIGPIPE终止服务。
 - 开发与生产使用同一套命令/参数校验/条件写入，授权不同不增加通用执行或任意文件访问能力。普通用户原生集成验证两入口的准入、拒绝和非root写入失败，不替代真实App、系统授权和恢复验收，最新结果见[Handover](../../../../../architecture/HANDOVER.md)。
 
 ### 前台证书信任入口
 
-Main通过`MacosHelperServiceClient.trustCertificate()`/`untrustCertificate()`直接启动同一已部署helper的固定前台CLI，不先请求常驻服务。只接收`{ certificate: <公开DER base64>, sha256: <大写SHA-256> }`，限制256KiB输入、64KiB DER，不接受路径、私钥、shell或调用方指定的trust域；返回`{ sha256, trusted }`并由客户端核验。
+Certificate模块通过`MacosHelperServiceClient.trustCertificate()`/`untrustCertificate()`启动同一已部署helper的固定前台CLI，不先请求常驻服务。只接收`{ certificate: <公开DER base64>, sha256: <大写SHA-256> }`，限制256KiB输入、64KiB DER，不接受路径、私钥、shell或调用方指定的trust域；返回`{ sha256, trusted }`并由客户端核验。
 
 前台helper只在当前登录用户GUI会话中执行，激活自身后调用Security公开API修改`.admin`并回读。它不具备常驻服务的root权限，系统确认由Security框架负责；Main不执行`security add-trusted-cert/remove-trusted-cert`、不请求原生提权、不接触密码。取消以`authorization-cancelled`返回，Main仅撤回本次新增CA；已有CA保留，撤销trust失败时不删系统证书。
 
 证书写入结果不确定返回`certificate-state-uncertain`；子进程异常、无效回复或回读失败不重试授信。Main保留公开CA及本地材料，不能把不确定结果当成“证书一定未写入”而盲删。
 
+### 客户端完成状态
+
+- `MacosHelperServiceError.executionState`只在客户端内部使用，不增加native协议字段。未发出socket请求、前台进程正常结束或收到匹配的正式失败回复时为`completed`；已发送写入后的超时/断线、信号终止或无法关联的回复仍为`unknown`。
+- stdin失败先结束前台进程，等退出回调后才结算；View同样等待失败进程退出，正常View仍在真实窗口ACK后返回，不占用用户查看窗口的整个生命周期。
+- 错误同时携带已知socket请求名。`status/system-proxy.read/system-proxy.read-effective`是只读请求，失败不等于有未知系统写入；不把只读检查超时变成永久修改锁。
+- 部署和身份检查的CLI只读命令结束后，失败或非法回复也标为`completed`；保留原错误但不占用helper准备组，允许Quit或用户显式重试。安装成功后的就绪回读失败同样不伪装成仍在写入；未确认结束的原生写入保持原保护。
+- 已确认结束的Certificate失败在材料保持不变的前提下回读信任、同步Core并通知，之后释放module占用；SystemProxy失败按journal比较完整当前状态并同步实际upstream，保留原错误。未知写入不执行这些可造成误判的清理，也不自动重试或释放占用。
+- 当前对真正未知的写入仍采用保守阻止后续冲突操作；没有“普通status成功就清除全部busy”的恢复后门。任何进一步解除必须取得原请求结束的可靠证据，尚缺该路径的真实异常验收时不能登记整项完成。
+
 不能把安装helper的授权等同于修改admin trust的授权。本机SIP开启时root授信返回`-60007`，真实root修改授权规则另返回`-60005`。已按用户要求删除临时规则写入、恢复记录、启动/卸载恢复以及后台trust/untrust；不为旧macOS保留兼容分支，不关闭SIP、使用私有entitlement或改成user trust。历史实验与本轮验证范围见[验证记录](../../../../../architecture/HANDOVER.md#verification)。
 
 ## 首次启动部署
 
-[macos/installation/helper-deployment.ts](macos/installation/helper-deployment.ts)是Main启动时的组件准备入口；[macos/installation/native-installation.swift](macos/installation/native-installation.swift)负责固定部署动作。
+[macos/installation/helper-deployment.ts](helper/macos/installation/helper-deployment.ts)是Main启动时的组件准备入口；[macos/installation/native-installation.swift](helper/macos/installation/native-installation.swift)负责固定部署动作。
 
 1. 通过本次构建的helper检查`missing / outdated / ready / stopped / invalid`。生产比较App构建、UID、路径和helper身份；开发只比较已核准UID和helper自身身份，不比较App构建或profile。ready直接复用；invalid、stopped或未知状态报错，不静默覆盖。
 2. 缺失或配套身份改变时，生产调用固定`request-installation`并核验App/同包helper；开发调用`request-development-installation`，先将同一helper暂存到当前用户系统临时目录（0700，文件0500），结束后无论成功/取消均删除。后者避免authd拒绝读取Desktop源码目录中的代码身份。两者激活请求方后调用系统管理员确认，不模拟键鼠或读取密码。

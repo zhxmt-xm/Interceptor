@@ -15,6 +15,7 @@ import {
   getByAutomationIdPrefix,
 } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { waitForCertificateInstallation } from '../../fixtures/ui/https-capture';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 const PASSTHROUGH_HOST = '127.0.0.1';
@@ -108,19 +109,11 @@ class ConnectTunnelLab {
   }
 }
 
-/** Generate and trust a test CA, enable MITM, and add one exact passthrough pattern through UI. */
+/** Reuse the shared CA, enable MITM, and add one exact passthrough pattern through UI. */
 async function configureTlsPassthrough(page: Page): Promise<void> {
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.certificates).click();
-  const generate = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.generate);
-  const install = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install);
-  await generate.click();
-  await expect(install).toBeEnabled();
-  await install.click();
-  await expect(getByAutomationId(
-    page,
-    AUTOMATION_IDS.settings.certificates.uninstall,
-  )).toBeVisible({ timeout: 30_000 });
+  await waitForCertificateInstallation(page);
   const mitmToggle = getByAutomationId(
     page,
     AUTOMATION_IDS.settings.certificates.mitmToggle,
@@ -143,7 +136,7 @@ async function configureTlsPassthrough(page: Page): Promise<void> {
   )).toBeVisible();
 }
 
-/** Remove the pattern and test CA through product controls, even when the assertion path fails. */
+/** Remove profile-local settings through product controls while preserving the shared CA. */
 async function cleanupTlsConfiguration(page: Page): Promise<void> {
   const errors: unknown[] = [];
   const attempt = async (operation: () => Promise<void>): Promise<void> => {
@@ -186,29 +179,7 @@ async function cleanupTlsConfiguration(page: Page): Promise<void> {
       await expect(toggle).toHaveAttribute('aria-checked', 'false');
     }
   });
-  await attempt(async () => {
-    const uninstall = getByAutomationId(
-      page,
-      AUTOMATION_IDS.settings.certificates.uninstall,
-    );
-    if (await uninstall.isVisible().catch(() => false)) {
-      await uninstall.click();
-      await expect(getByAutomationId(
-        page,
-        AUTOMATION_IDS.settings.certificates.delete,
-      )).toBeVisible({ timeout: 30_000 });
-    }
-  });
-  await attempt(async () => {
-    const remove = getByAutomationId(
-      page,
-      AUTOMATION_IDS.settings.certificates.delete,
-    );
-    if (await remove.isVisible().catch(() => false)) {
-      await remove.click();
-      await expect(remove).toHaveCount(0);
-    }
-  });
+  await attempt(() => waitForCertificateInstallation(page));
   if (errors.length > 0) {
     throw new AggregateError(errors, 'TLS navigation workflow cleanup failed.');
   }

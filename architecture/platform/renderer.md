@@ -12,9 +12,9 @@
 
 ## 2. 冷启动加载界面
 
-`app/BootScreen/` 在代理链路可用前全屏遮盖 shell，只留共享的 `components/WindowControls/`。它只表达三件必备且全自动的事：`CoreProcessStatus.state` → `CaptureStatus.listening` → `SystemProxyStatus.owned`；阶段存于 `app/bootStore.ts`，由 `bootstrapCapture` 推进。
+Main先显示启动窗口，再准备平台组件与共享CA。`ApplicationStartup`通过`getStartupStage/onStartupStageChange`读取`platform/certificate/ready`；准备期间只挂载BootScreen和WindowControls，ready后挂载业务App。
 
-系统代理**自动接管**（`ensureSystemProxyOwned` 直接调 `enableSystemProxy`），不要求启动时授权；MITM 不属于启动流程。遮盖只属于冷启动（`dismissed` 不可逆），运行期的 Core 重启与 ownership lost 仍由 `ProxyReadinessDialog` 承接，两者不同时显示。
+业务App由`bootstrapCapture`推进Core、listener和系统代理owned就绪。系统代理自动接管，组件或CA要求系统确认时由用户处理；CA初始化不自动开启MITM。BootScreen只用于冷启动，运行期Core重启与ownership lost由`ProxyReadinessDialog`承接。
 
 ## 3. 自有窗口 chrome
 

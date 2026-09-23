@@ -346,7 +346,7 @@ await server.listen();
 url = server.resolvedUrls?.local?.[0] ?? 'http://localhost:5199/';
 console.log('renderer:', url, '\n');
 
-browser = await chromium.launch({ channel: 'msedge', headless: true });
+browser = await chromium.launch({ channel: 'msedge', headless: true, args: ['--no-proxy-server'] });
 designPreview = await startDesignPreview(designRoot);
 designSession = await openDesignPage();
 let designPage = designSession.page;
@@ -711,10 +711,12 @@ console.log('== Parity summary ==');
 console.log(report);
 console.log(`Report: ${reportPath}\n`);
 
+const totalMissing = viewSummaries.reduce((total, view) => total + view.missing, 0);
+process.exitCode = totalFlags === 0 && totalMissing === 0 ? 0 : 1;
 console.log(
-  totalFlags === 0
+  process.exitCode === 0
     ? 'OK - parity within 1px and matching font style after canvas-border offset'
-    : `${totalFlags} element(s) flagged - inspect deltas above and the diff PNGs`,
+    : `${totalFlags} element(s) flagged, ${totalMissing} missing - inspect deltas above and the diff PNGs`,
 );
 } finally {
   await designSession?.context.close().catch(() => {});

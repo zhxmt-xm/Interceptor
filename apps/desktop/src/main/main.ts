@@ -1,6 +1,6 @@
-import { execFile } from 'node:child_process';
-import { randomUUID, X509Certificate } from 'node:crypto';
-import { readFile, stat, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { once } from 'node:events';
+import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -16,14 +16,13 @@ import {
 
 import type {
   BreakpointQueueKey,
-  ClientAppIdentity,
   CollectionNode,
   TlsCompatibilityEvent,
   TlsPassthroughSettings,
-  UpstreamProxyConfig,
 } from '@interceptor/core-protocol';
 import { AgentRuntime, type AgentRuntimeEvent } from '@interceptor/agent-runtime';
 import type { McpApprovalRequest, McpAuditEvent } from '@interceptor/mcp-server';
+import { PlatformOperationInProgressError } from '@interceptor/tools';
 import type {
   InterceptorToolHost,
   MainToolCommand,
@@ -34,6 +33,8 @@ import type {
 
 import {
   DESKTOP_IPC_CHANNELS,
+  type ApplicationStartupStage,
+  type PlatformOperation,
   type AppContainerAccessSnapshot,
   type CaptureExchangeEvent,
   type CaptureReset,
@@ -49,23 +50,10 @@ import {
   type UpdateStatus,
   type BreakpointBodyFile,
 } from '../shared/desktop-api';
-import type { AppContainerSnapshot } from './platform-capabilities/interfaces';
-import { CertificateService } from './certificates/certificate-service';
-import {
-  PlatformCapabilitiesService,
-  type AppContainerService,
-  type TrustStoreService,
-  readClientAppIcon,
-  resolveClientAppHelperPath,
-  SystemProxyOperationQueue,
-  toUpstreamAuthority,
-  UpstreamProbe,
-} from './platform-capabilities/entry';
+import { PlatformCapabilitiesService } from './platform-capabilities/entry';
 import {
   BREAKPOINT_BODY_FILE_PREVIEW_BYTES,
   IMPORT_FILE_MAX_BYTES,
-  UPSTREAM_PROBE_INTERVAL_MS,
-  UPSTREAM_PROBE_TIMEOUT_MS,
 } from './constants';
 import { CoreRuntime } from './core/core-runtime';
 import { MainDiagnostics } from './diagnostics/main-diagnostics';
@@ -74,7 +62,6 @@ import { startBodyExport } from './capture/start-body-export';
 import { startHarExport, startHarImport } from './capture/start-har-transfer';
 import { startArchiveExport, startArchiveImport } from './capture/start-archive-transfer';
 import type { UpdateService } from './interfaces';
-import type { SystemProxyService, SystemProxyStatus } from './platform-capabilities/interfaces';
 import { AgentToolService } from './agent/entry';
 import {
   ApplicationActionGate,
@@ -138,28 +125,24 @@ PackagedRendererProtocol.registerScheme();
 class DesktopApplication {
   private readonly coreRuntime = new CoreRuntime();
   private readonly diagnostics = new MainDiagnostics(this.coreRuntime);
-  private certificateService: CertificateService | null = null;
   /** Secure packaged Renderer protocol, installed only outside development. */
   private packagedRendererProtocol: PackagedRendererProtocol | null = null;
-  private platformCapabilitiesService: PlatformCapabilitiesService | null = null;
-  private get systemProxyService(): SystemProxyService | null {
-    return this.platformCapabilitiesService?.systemProxyService ?? null;
-  }
-  private get appContainerService(): AppContainerService | null {
-    return this.platformCapabilitiesService?.appContainerService ?? null;
-  }
-  /** 接管时检测到的上游代理；降级期间保留，供探活恢复后升级回去。 */
-  private detectedUpstreamProxy: UpstreamProxyConfig | null = null;
-  /** Core 当前实际使用的上游代理；null 表示直连。 */
-  private activeUpstreamProxy: UpstreamProxyConfig | null = null;
-  /** 上游探活；不可达时降级直连并告警，恢复后自动升级。 */
-  private readonly upstreamProbe = new UpstreamProbe(
-    UPSTREAM_PROBE_INTERVAL_MS,
-    UPSTREAM_PROBE_TIMEOUT_MS,
-    (reachable) => {
-      void this.onUpstreamReachabilityChange(reachable);
-    },
-  );
+  private readonly platformCapabilitiesService = new PlatformCapabilitiesService({
+    secureStore: safeStorage,
+    coreRuntime: this.coreRuntime,
+    diagnostics: this.diagnostics,
+    onCertificateChanged: () => this.broadcastTlsSettingsChanged(),
+    onAppContainersChanged: () => this.broadcastAppContainersChanged(),
+    onClientAppIconsChanged: (icons) => this.broadcastClientAppIcons(icons),
+    onSystemProxyChanged: (status) => this.broadcastSystemProxyStatus(status),
+    onStartupStageChanged: (stage) => this.publishStartupStage(stage),
+    onError: (operation, error) => this.reportPlatformError(operation, error),
+    applicationEnvironment: app.isPackaged ? 'production' : 'development',
+    nativeDirectory: app.isPackaged ? process.resourcesPath : path.join(app.getAppPath(), 'dist'),
+    userDataDirectory: app.getPath('userData'),
+    localAppDataDirectory: process.env.LOCALAPPDATA,
+    applicationPath: process.platform === 'darwin' && app.isPackaged ? path.resolve(process.execPath, '../../..') : undefined,
+  });
   /** GitHub user authorization owner; credentials remain encrypted inside Main. */
   private gitHubAuthService: GitHubAuthService | null = null;
   /** Agent domain composition root; Provider credentials remain encrypted inside Runtime. */
@@ -174,24 +157,11 @@ class DesktopApplication {
   private agentRuntimeUnsubscribe: (() => void) | null = null;
   /** Private GitHub release checker; downloads always remain user-controlled. */
   private updateService: UpdateService | null = null;
-  private get trustStore(): TrustStoreService {
-    if (!this.platformCapabilitiesService) throw new Error('Platform capabilities are not initialized.');
-    return this.platformCapabilitiesService.trustStoreService;
-  }
   /** Latest Workspace-backed TLS passthrough document. */
   private tlsPassthroughSettings: TlsPassthroughSettings | null = null;
-  /**
-   * HTTPS 解密（MITM）用户意图开关，启动时从 Core 持久化配置恢复。
-   * 与“CA 是否信任”解耦：信任是系统层安装，此开关只表达用户想不想解密。
-   */
-  private mitmEnabled = false;
   private lastCoreProcessState: CoreProcessStatus['state'] | null = null;
   /** Core 不可用期间暂存的首个失败原因；新 Core running 后补记到持久 Diagnostics。 */
   private pendingCoreFailureDetail: string | null = null;
-  /** In-flight recovery shared by duplicate unresponsive/restarting notifications. */
-  private systemProxyRecovery: Promise<void> | null = null;
-  /** Orders every system-proxy mutation inside this App process. */
-  private readonly systemProxyOperationQueue = new SystemProxyOperationQueue();
   /** Rejects and drains Renderer IPC when guarded shutdown starts. */
   private readonly applicationActionGate = new ApplicationActionGate();
   private readonly collectionImportService = new CollectionImportService(
@@ -206,10 +176,10 @@ class DesktopApplication {
     (requestId) => this.requestRendererUiPreferenceChange(requestId),
     (change, senderId) => this.publishUiPreferenceChange(change, senderId),
   );
-  /** 本机应用图标缓存（含解析失败的 null）；应用身份稳定，无需失效。 */
-  private readonly clientAppIcons = new Map<string, string | null>();
   private quitting = false;
   private shutdownComplete = false;
+  private startupStage: ApplicationStartupStage = 'platform';
+  private startupTask: Promise<void> | null = null;
 
   start(): void {
     process.on('uncaughtExceptionMonitor', (error, origin) => {
@@ -222,9 +192,10 @@ class DesktopApplication {
         },
       });
     });
-    void app.whenReady()
-      .then(() => this.onReady())
-      .catch((error: unknown) => this.failStartup(error));
+    this.startupTask = app.whenReady().then(() => this.onReady());
+    void this.startupTask.catch((error: unknown) => {
+      if (!this.quitting) return this.failStartup(error);
+    });
     app.on('activate', () => this.onActivate());
     app.on('window-all-closed', () => this.onAllWindowsClosed());
     app.on('before-quit', (event) => this.onBeforeQuit(event));
@@ -232,19 +203,18 @@ class DesktopApplication {
 
   private async onReady(): Promise<void> {
     this.configureSessionSecurity();
-    this.certificateService = new CertificateService({
-      dataDir: path.join(app.getPath('userData'), 'certificates'),
-      secureStore: safeStorage,
-    });
-    this.platformCapabilitiesService = new PlatformCapabilitiesService({
-      applicationEnvironment: app.isPackaged ? 'production' : 'development',
-      nativeDirectory: app.isPackaged ? process.resourcesPath : path.join(app.getAppPath(), 'dist'),
-      userDataDirectory: app.getPath('userData'),
-      localAppDataDirectory: process.env.LOCALAPPDATA,
-      applicationPath: process.platform === 'darwin' && app.isPackaged ? path.resolve(process.execPath, '../../..') : undefined,
-    });
-    await this.platformCapabilitiesService.prepareNativeComponents();
-    await this.recoverSystemProxyOnStartup();
+    if (!MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      this.packagedRendererProtocol = new PackagedRendererProtocol(
+        path.dirname(this.getPackagedRendererPath()),
+      );
+      this.packagedRendererProtocol.install();
+    }
+    this.configureRendererIpc();
+    const mainWindow = this.createMainWindow();
+    await once(mainWindow, 'ready-to-show', { signal: AbortSignal.timeout(15_000) });
+    if (this.quitting) return;
+    await this.platformCapabilitiesService.prepare();
+    if (this.quitting) return;
     this.gitHubAuthService = new GitHubAuthService({
       clientId: GitHubAuthService.clientId,
       dataDirectory: path.join(app.getPath('userData'), 'updates'),
@@ -254,10 +224,12 @@ class DesktopApplication {
       },
     });
     await this.gitHubAuthService.start();
+    if (this.quitting) return;
     this.toolCapabilitySettingsService = new ToolCapabilitySettingsService(
       path.join(app.getPath('userData'), 'tool-capabilities', 'settings.json'),
     );
     await this.toolCapabilitySettingsService.start();
+    if (this.quitting) return;
     const invokeMain: InterceptorToolHost['invokeMain'] = (command, abortSignal) => (
       this.invokeMainTool(command, abortSignal)
     );
@@ -293,6 +265,7 @@ class DesktopApplication {
       toolSource: this.agentToolService,
     });
     await this.agentRuntime.start();
+    if (this.quitting) return;
     this.agentRuntimeUnsubscribe = this.agentRuntime.subscribe((event) => {
       this.broadcastAgentSessionEvent(event);
     });
@@ -315,15 +288,7 @@ class DesktopApplication {
         void this.checkForUpdatesAfterAuthorization(updateService);
       }
     });
-    if (!MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-      this.packagedRendererProtocol = new PackagedRendererProtocol(
-        path.dirname(this.getPackagedRendererPath()),
-      );
-      this.packagedRendererProtocol.install();
-    }
-    this.configureRendererIpc();
     this.coreRuntime.onCoreProcessStatusChange((status) => {
-      const previousState = this.lastCoreProcessState;
       if (status.state !== this.lastCoreProcessState) {
         if (
           (status.state === 'unresponsive' || status.state === 'restarting')
@@ -361,17 +326,13 @@ class DesktopApplication {
       if (status.state === 'running') {
         this.diagnostics.resume();
       }
-      if (
-        previousState === 'running' &&
-        (status.state === 'unresponsive' || status.state === 'restarting')
-      ) {
-        this.scheduleSystemProxyRecovery('main.system-proxy.core-failure');
-      }
+      void this.platformCapabilitiesService.updateCoreProcessStatus(status)
+        .catch((error: unknown) => this.reportPlatformError('system-proxy.restore', error));
       this.broadcastCoreProcessStatus(status);
     });
     this.coreRuntime.onCaptureEvents((events, clientApps) => {
       this.broadcastCaptureEvents(events);
-      this.loadClientAppIcons(clientApps);
+      void this.platformCapabilitiesService.loadClientAppIcons(clientApps);
     });
     this.coreRuntime.onCaptureImported(() => {
       for (const mainWindow of BrowserWindow.getAllWindows()) {
@@ -392,24 +353,21 @@ class DesktopApplication {
         attributes: { detail },
       });
     });
-    // 新 CoreProcess 就绪后恢复上次的解密意图并下发 CA 材料（若已生成）；
-    // 上游代理同样保存在 Core 进程内，不重新下发会让重启后的企业环境断网。
-    this.coreRuntime.onCoreProcessReady(async () => {
-      const detectedUpstream = this.systemProxyService?.detectedUpstream() ?? null;
-      this.detectedUpstreamProxy = detectedUpstream;
-      await this.restoreDecryptionPreference();
-      await Promise.all([
-        this.syncCoreCertificate(true),
-        this.applyUpstreamProxy(detectedUpstream),
-      ]);
-      if (detectedUpstream) {
-        this.upstreamProbe.start(detectedUpstream);
-      }
-    });
+    this.coreRuntime.onCoreProcessReady(() => this.platformCapabilitiesService.synchronizeCore());
     this.coreRuntime.start();
-    this.createMainWindow();
     await this.mcpDesktopService.start();
+    if (this.quitting) return;
     updateService.start();
+    this.publishStartupStage('ready');
+  }
+
+  private publishStartupStage(stage: ApplicationStartupStage): void {
+    this.startupStage = stage;
+    for (const mainWindow of BrowserWindow.getAllWindows()) {
+      if (!mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+        mainWindow.webContents.send(DESKTOP_IPC_CHANNELS.startupStageChanged, stage);
+      }
+    }
   }
 
   private onActivate(): void {
@@ -434,14 +392,23 @@ class DesktopApplication {
       return;
     }
 
+    try {
+      this.platformCapabilitiesService.assertCanQuit();
+    } catch (error) {
+      if (error instanceof PlatformOperationInProgressError) this.broadcastPlatformOperationConflict(error.operation);
+      else dialog.showErrorBox('Unable to quit Interceptor', readErrorMessage(error));
+      return;
+    }
+
     // 先收敛 Agent Turn，再恢复系统代理；外层失败时 Agent 可恢复接收命令。
     this.quitting = true;
     this.collectionImportService.cancelImport();
     this.rulesImportService.cancelImport();
     this.uiPreferencesService.cancelChanges();
     void this.applicationActionGate.stopAcceptingAndDrain()
-      .then(() => this.requireAgentRuntime().beginShutdown())
-      .then(() => this.restoreSystemProxyBeforeShutdown())
+      .then(() => this.startupTask?.catch(() => undefined))
+      .then(() => this.agentRuntime?.beginShutdown())
+      .then(() => this.platformCapabilitiesService.stop())
       .then(
         () => this.finishShutdown(),
         (error: unknown) => this.resumeAfterShutdownFailure(error),
@@ -513,7 +480,7 @@ class DesktopApplication {
       errorCode: readErrorName(error),
     });
     await completeApplicationStartupFailure({
-      restoreSystemProxy: () => this.restoreSystemProxyBeforeShutdown(),
+      restoreSystemProxy: () => this.platformCapabilitiesService.stop(),
       tasks: [
         { name: 'update-service', stop: () => this.updateService?.stop() },
         { name: 'github-auth', stop: () => this.gitHubAuthService?.stop() },
@@ -584,12 +551,7 @@ class DesktopApplication {
     });
     // Renderer 重新加载后会丢失已推送的图标，补发一次已知集合。
     mainWindow.webContents.on('did-finish-load', () => {
-      this.broadcastClientAppIcons(
-        [...this.clientAppIcons].map(([clientAppId, icon]) => ({
-          clientAppId,
-          icon,
-        })),
-      );
+      this.broadcastClientAppIcons(this.platformCapabilitiesService.getClientAppIcons());
     });
     mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     mainWindow.webContents.on('will-navigate', (event, url) => {
@@ -681,30 +643,30 @@ class DesktopApplication {
         },
         'settings.core-process.status': () => this.coreRuntime.getCoreProcessStatus(),
         'settings.system-proxy.status': () => this.getSystemProxyStatus(),
-        'settings.system-proxy.enable': () => this.enableSystemProxy(abortSignal),
-        'settings.system-proxy.restore': () => this.restoreSystemProxy(abortSignal),
+        'settings.system-proxy.enable': () => this.enableSystemProxy(),
+        'settings.system-proxy.restore': () => this.restoreSystemProxy(),
         'settings.certificate.status': () => this.buildCertificateInfo(),
-        'settings.certificate.generate': () => this.generateCertificate(abortSignal),
-        'settings.certificate.install': () => this.installCertificate(abortSignal),
-        'settings.certificate.uninstall': () => this.uninstallCertificate(abortSignal),
-        'settings.certificate.delete': () => this.deleteCertificate(abortSignal),
+        'settings.certificate.generate': () => this.generateCertificate(),
+        'settings.certificate.install': () => this.installCertificate(),
+        'settings.certificate.uninstall': () => this.uninstallCertificate(),
+        'settings.certificate.delete': () => this.deleteCertificate(),
         'settings.certificate.reveal': async () => {
-          await this.revealCertificate(abortSignal);
+          await this.revealCertificate();
           return { requested: true };
         },
         'settings.certificate.view': async () => {
-          await this.viewCertificate(abortSignal);
+          await this.viewCertificate();
           return { requested: true };
         },
         'settings.certificate-manager.open': async () => {
-          await this.openCertificateManager(abortSignal);
+          await this.openCertificateManager();
           return { requested: true };
         },
         'settings.app-containers.list': () => this.listAppContainers(),
-        'settings.app-container.enable': (payload) => this.enableAppContainer(payload.appContainerSid, abortSignal),
-        'settings.app-container.disable': (payload) => this.disableAppContainer(payload.appContainerSid, abortSignal),
-        'settings.app-containers.enable-all': () => this.enableAllAppContainers(abortSignal),
-        'settings.app-containers.disable-all': () => this.disableAllAppContainers(abortSignal),
+        'settings.app-container.enable': (payload) => this.enableAppContainer(payload.appContainerSid),
+        'settings.app-container.disable': (payload) => this.disableAppContainer(payload.appContainerSid),
+        'settings.app-containers.enable-all': () => this.enableAllAppContainers(),
+        'settings.app-containers.disable-all': () => this.disableAllAppContainers(),
         'settings.tls-insecure-hosts.replace': async (payload) => ({ hosts: await this.replaceInsecureHosts(payload.hosts) }),
         'settings.tls-passthrough.replace': (payload) => this.replaceTlsPassthroughSettings(payload.expectedRevision, payload.hosts),
         'settings.https-decryption.enable': () => this.enableHttpsDecryption(),
@@ -712,7 +674,6 @@ class DesktopApplication {
       };
       const commandType = command.type;
       const payload = await commands[commandType](command.payload);
-      abortSignal.throwIfAborted();
       return { type: commandType, payload };
     });
   }
@@ -763,82 +724,35 @@ class DesktopApplication {
   }
 
   private async getSystemProxyStatus(): Promise<DesktopSystemProxyStatus> {
-    return this.withUpstreamProxy(await this.requireSystemProxyService().status());
+    return this.platformCapabilitiesService.getSystemProxyStatus();
   }
 
-  private enableSystemProxy(abortSignal?: AbortSignal): Promise<DesktopSystemProxyStatus> {
-    return this.runMainAction('main.system-proxy.enable', () =>
-      this.systemProxyOperationQueue.run(async () => {
-        abortSignal?.throwIfAborted();
-        const proxyStatus = await this.coreRuntime.request({
-          type: 'proxy.status', payload: {},
-        }, abortSignal === undefined ? {} : { abortSignal });
-        const { listening, host, port } = proxyStatus.payload;
-        if (!listening || !host || !port) {
-          throw new Error('Start capture before enabling the system proxy.');
-        }
-        abortSignal?.throwIfAborted();
-        const systemProxyService = this.requireSystemProxyService();
-        const systemProxyStatus = await systemProxyService.enable(host, port);
-        const detectedUpstream = systemProxyService.detectedUpstream();
-        this.detectedUpstreamProxy = detectedUpstream;
-        await this.applyUpstreamProxy(detectedUpstream);
-        if (detectedUpstream) this.upstreamProbe.start(detectedUpstream);
-        return this.withUpstreamProxy(systemProxyStatus);
-      }));
+  private async enableSystemProxy(): Promise<DesktopSystemProxyStatus> {
+    return this.runMainAction('main.system-proxy.enable', () => this.platformCapabilitiesService.enableSystemProxy());
   }
 
-  private restoreSystemProxy(abortSignal?: AbortSignal): Promise<SystemProxyRestoreResult> {
-    return this.runMainAction('main.system-proxy.restore', () =>
-      this.systemProxyOperationQueue.run(async () => {
-        abortSignal?.throwIfAborted();
-        const result = await this.requireSystemProxyService().restore();
-        this.upstreamProbe.stop();
-        this.detectedUpstreamProxy = null;
-        await this.applyUpstreamProxy(null);
-        return { ...result, status: this.withUpstreamProxy(result.status) };
-      }));
+  private async restoreSystemProxy(): Promise<SystemProxyRestoreResult> {
+    return this.runMainAction('main.system-proxy.restore', () => this.platformCapabilitiesService.restoreSystemProxy());
   }
 
   private async listAppContainers(): Promise<AppContainerAccessSnapshot> {
-    const snapshot = await this.requireAppContainerService().list();
-    return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
+    return this.platformCapabilitiesService.listAppContainers();
   }
 
-  private enableAppContainer(appContainerSid: string, abortSignal?: AbortSignal): Promise<AppContainerAccessSnapshot> {
-    return this.runMainAction('main.app-container.set-exemption', async () => {
-      abortSignal?.throwIfAborted();
-      const snapshot = await this.requireAppContainerService().setLoopbackExemption(appContainerSid, true);
-      this.broadcastAppContainersChanged();
-      return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
-    });
+  private async enableAppContainer(appContainerSid: string): Promise<AppContainerAccessSnapshot> {
+    return this.runMainAction('main.app-container.set-exemption', () => this.platformCapabilitiesService.enableAppContainer(appContainerSid));
   }
 
-  private disableAppContainer(appContainerSid: string, abortSignal?: AbortSignal): Promise<AppContainerAccessSnapshot> {
-    return this.runMainAction('main.app-container.set-exemption', async () => {
-      abortSignal?.throwIfAborted();
-      const snapshot = await this.requireAppContainerService().setLoopbackExemption(appContainerSid, false);
-      this.broadcastAppContainersChanged();
-      return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
-    });
+  private async disableAppContainer(appContainerSid: string): Promise<AppContainerAccessSnapshot> {
+    return this.runMainAction('main.app-container.set-exemption', () => this.platformCapabilitiesService.disableAppContainer(appContainerSid));
   }
 
-  private enableAllAppContainers(abortSignal?: AbortSignal): Promise<AppContainerAccessSnapshot> {
-    return this.runMainAction('main.app-container.enable-all', async () => {
-      abortSignal?.throwIfAborted();
-      const snapshot = await this.requireAppContainerService().enableAllLoopbackExemptions();
-      this.broadcastAppContainersChanged();
-      return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
-    });
+  private async enableAllAppContainers(): Promise<AppContainerAccessSnapshot> {
+    return this.runMainAction('main.app-container.enable-all', () => this.platformCapabilitiesService.enableAllAppContainers());
   }
 
-  private disableAllAppContainers(abortSignal?: AbortSignal): Promise<AppContainerAccessSnapshot> {
-    return this.runMainAction('main.app-container.disable-all', async () => {
-      abortSignal?.throwIfAborted();
-      const snapshot = await this.requireAppContainerService().disableAllLoopbackExemptions();
-      this.broadcastAppContainersChanged();
-      return DesktopApplication.toAppContainerAccessSnapshot(snapshot);
-    });
+  private async disableAllAppContainers(): Promise<AppContainerAccessSnapshot> {
+    return this.runMainAction('main.app-container.disable-all', () => this.platformCapabilitiesService.disableAllAppContainers());
   }
 
   private broadcastAppContainersChanged(): void {
@@ -864,12 +778,22 @@ class DesktopApplication {
   }
 
   private configureRendererIpc(): void {
+    const startupChannels: readonly string[] = [
+      DESKTOP_IPC_CHANNELS.startupGetStage,
+      DESKTOP_IPC_CHANNELS.appQuit,
+      DESKTOP_IPC_CHANNELS.windowMinimize,
+      DESKTOP_IPC_CHANNELS.windowToggleMaximize,
+    ];
     const ipcMain = {
       handle: (
         channel: string,
         listener: Parameters<typeof electronIpcMain.handle>[1],
       ): void => {
         electronIpcMain.handle(channel, async (event, ...args) => {
+          this.assertTrustedSender(event.senderFrame?.url);
+          if (this.startupStage !== 'ready' && !startupChannels.includes(channel)) {
+            throw new Error('Interceptor is still preparing its services.');
+          }
           return this.applicationActionGate.run(async () => {
             const startedAt = Date.now();
             try {
@@ -890,6 +814,8 @@ class DesktopApplication {
         });
       },
     };
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.startupGetStage, () => this.startupStage);
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.uiLanguageSet, (event, language: unknown) => {
       this.assertTrustedSender(event.senderFrame?.url);
@@ -1887,7 +1813,7 @@ class DesktopApplication {
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.collectionImport, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      await this.collectionImportService.startImport(new AbortController().signal);
+      await this.collectionImportService.startImport();
     });
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.collectionImportCompleted,
@@ -1900,7 +1826,7 @@ class DesktopApplication {
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.rulesImport, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
-      await this.rulesImportService.startImport(new AbortController().signal);
+      await this.rulesImportService.startImport();
     });
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.rulesImportCompleted,
@@ -2087,104 +2013,12 @@ class DesktopApplication {
     );
   }
 
-  /**
-   * 下发上游代理给 Core；失败不影响系统代理接管本身，只记诊断。
-   * Core 未运行时无需下发：代理没在跑就不会有流量。
-   */
-  private async applyUpstreamProxy(
-    upstream: UpstreamProxyConfig | null,
-  ): Promise<void> {
-    try {
-      await this.coreRuntime.request({
-        type: 'proxy.setUpstream',
-        payload: { upstream },
-      });
-      this.activeUpstreamProxy = upstream;
-    } catch (error) {
-      this.diagnostics.warn('main.system-proxy.upstream-apply-failed', {
-        outcome: 'failed',
-        errorCode: readErrorName(error),
-        attributes: { message: readErrorMessage(error) },
-      });
-    }
-  }
-
-  /**
-   * 给系统代理快照补上 Core 实际在用的上游，供底栏展示。
-   * 只给 host:port：上游 URL 可能带认证信息，不能原样进 Renderer。
-   */
-  private withUpstreamProxy(status: SystemProxyStatus): DesktopSystemProxyStatus {
-    return {
-      ...status,
-      upstreamProxy: toUpstreamAuthority(this.detectedUpstreamProxy),
-      upstreamReachable: this.activeUpstreamProxy !== null,
-    };
-  }
-
-  /**
-   * 上游可达性跃迁：不可达就降级直连，恢复就升级回代理链。
-   * 接管期间用户失去了对出口的控制，上游（如本地 Clash）退出后如果不降级，
-   * 所有外网流量会一直卡在死端口且无法自愈。降级是临时的，恢复后会自动接回上游。
-   */
-  private async onUpstreamReachabilityChange(reachable: boolean): Promise<void> {
-    const detected = this.detectedUpstreamProxy;
-    if (!detected) {
-      return;
-    }
-    this.diagnostics.warn('main.system-proxy.upstream-reachability', {
-      attributes: { reachable },
-    });
-    await this.applyUpstreamProxy(reachable ? detected : null);
-    await this.broadcastSystemProxyStatus();
-  }
-
   /** 把含上游健康状态的系统代理快照广播给所有 Renderer。 */
-  private async broadcastSystemProxyStatus(): Promise<void> {
-    const service = this.systemProxyService;
-    if (!service) {
-      return;
-    }
-    const status = this.withUpstreamProxy(await service.status());
+  private broadcastSystemProxyStatus(status: DesktopSystemProxyStatus): void {
     for (const window of BrowserWindow.getAllWindows()) {
       if (!window.isDestroyed()) {
         window.webContents.send(DESKTOP_IPC_CHANNELS.systemProxyStatus, status);
       }
-    }
-  }
-
-  /**
-   * 读取 Core 随事件批交来的新应用图标，取完即推给 Renderer。
-   * 图标按应用而非按请求去重，因此不会随每条 Exchange 重复传输。
-   */
-  private loadClientAppIcons(clientApps: ClientAppIdentity[]): void {
-    const helperPath = resolveClientAppHelperPath(
-      app.isPackaged ? process.resourcesPath : path.join(app.getAppPath(), 'dist'),
-    );
-    if (!helperPath) {
-      return;
-    }
-    for (const clientApp of clientApps) {
-      if (this.clientAppIcons.has(clientApp.id)) {
-        continue;
-      }
-      // 先占位，避免同一应用在读取期间被重复发起。
-      this.clientAppIcons.set(clientApp.id, null);
-      if (clientApp.path.length === 0) {
-        // 系统权限进程只反查到了进程名，没有可执行文件路径就取不到图标。
-        this.broadcastClientAppIcons([{ clientAppId: clientApp.id, icon: null }]);
-        continue;
-      }
-      void readClientAppIcon(helperPath, clientApp.path)
-        .catch((error: unknown) => {
-          this.diagnostics.warn('main.client-app.icon-failed', {
-            errorCode: error instanceof Error ? error.name : 'unknown',
-          });
-          return null;
-        })
-        .then((icon) => {
-          this.clientAppIcons.set(clientApp.id, icon);
-          this.broadcastClientAppIcons([{ clientAppId: clientApp.id, icon }]);
-        });
     }
   }
 
@@ -2340,55 +2174,6 @@ class DesktopApplication {
     }
   }
 
-  /**
-   * 把当前证书状态与解密意图同步给 Core（私钥不经 Renderer）。
-   * 调用方：Core 就绪，以及 Root CA 的生成 / 安装信任 / 卸载 / 删除。
-   */
-  private async syncCoreCertificate(throwOnError = false): Promise<void> {
-    if (!this.certificateService) {
-      return;
-    }
-    try {
-      const trusted = await this.isCaTrusted();
-      await this.coreRuntime.request({
-        type: 'tls.useCertificate',
-        payload: {
-          ca: trusted ? await this.certificateService.getMaterial() : null,
-        },
-      });
-      await this.syncCoreDecryption();
-    } catch (error) {
-      this.diagnostics.warn('main.tls.certificate-sync-failed', {
-        errorCode: readErrorName(error),
-        outcome: 'failed',
-        attributes: { message: readErrorMessage(error) },
-      });
-      // Core 尚未就绪、无代理或无存储时不阻断启动。
-      if (throwOnError) {
-        throw error;
-      }
-    }
-  }
-
-  /** 从 Core 持久化配置恢复上次的解密意图；实际是否解密仍由 syncCoreDecryption 定。 */
-  private async restoreDecryptionPreference(): Promise<void> {
-    const result = await this.coreRuntime.request({
-      type: 'tls.getDecryptionPreference',
-      payload: {},
-    });
-    this.mitmEnabled = result.payload.enabled;
-  }
-
-  /** 只切 Core 的解密开关；CA 未信任时即使用户开启也不解密。 */  private async syncCoreDecryption(): Promise<boolean> {
-    const decrypting = (await this.isCaTrusted()) && this.mitmEnabled;
-    const result = await this.coreRuntime.request(
-      decrypting
-        ? { type: 'tls.startDecryption', payload: {} }
-        : { type: 'tls.stopDecryption', payload: {} },
-    );
-    return result.payload.decrypting;
-  }
-
   private async replaceInsecureHosts(hosts: string[]): Promise<string[]> {
     const result = await this.coreRuntime.request({ type: 'tls.replaceInsecureHosts', payload: { hosts } });
     this.broadcastTlsSettingsChanged();
@@ -2396,21 +2181,11 @@ class DesktopApplication {
   }
 
   private async enableHttpsDecryption(): Promise<CertificateInfo & { decrypting: boolean }> {
-    this.mitmEnabled = true;
-    await this.coreRuntime.request({ type: 'tls.saveDecryptionPreference', payload: { enabled: true } });
-    const decrypting = await this.syncCoreDecryption();
-    const certificateInfo = await this.buildCertificateInfo();
-    this.broadcastTlsSettingsChanged();
-    return { ...certificateInfo, decrypting };
+    return this.runMainAction('main.tls.enable', () => this.platformCapabilitiesService.enableHttpsDecryption());
   }
 
   private async disableHttpsDecryption(): Promise<CertificateInfo & { decrypting: boolean }> {
-    this.mitmEnabled = false;
-    await this.coreRuntime.request({ type: 'tls.saveDecryptionPreference', payload: { enabled: false } });
-    const decrypting = await this.syncCoreDecryption();
-    const certificateInfo = await this.buildCertificateInfo();
-    this.broadcastTlsSettingsChanged();
-    return { ...certificateInfo, decrypting };
+    return this.runMainAction('main.tls.disable', () => this.platformCapabilitiesService.disableHttpsDecryption());
   }
 
   private async replaceTlsPassthroughSettings(
@@ -2457,6 +2232,9 @@ class DesktopApplication {
       });
       return result;
     } catch (error) {
+      if (error instanceof PlatformOperationInProgressError) {
+        this.broadcastPlatformOperationConflict(error.operation);
+      }
       this.diagnostics.error(`${phase}.failed`, {
         durationMs: Date.now() - startedAt,
         outcome: 'failed',
@@ -2467,43 +2245,12 @@ class DesktopApplication {
     }
   }
 
-  private requireCertificateService(): CertificateService {
-    if (!this.certificateService) {
-      throw new Error('CertificateService is not initialized');
+  private broadcastPlatformOperationConflict(operation: PlatformOperation): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed() && !window.webContents.isDestroyed()) {
+        window.webContents.send(DESKTOP_IPC_CHANNELS.platformOperationConflict, { operation });
+      }
     }
-    return this.certificateService;
-  }
-
-  private requireSystemProxyService(): SystemProxyService {
-    if (!this.systemProxyService) {
-      throw new Error('System proxy service is not initialized');
-    }
-    return this.systemProxyService;
-  }
-
-  /** Return the initialized Windows AppContainer permission owner. */
-  private requireAppContainerService(): AppContainerService {
-    if (!this.appContainerService) {
-      throw new Error('AppContainerService is not initialized');
-    }
-    return this.appContainerService;
-  }
-
-  /** Remove native-only paths and capability details before crossing into Renderer. */
-  private static toAppContainerAccessSnapshot(
-    snapshot: AppContainerSnapshot,
-  ): AppContainerAccessSnapshot {
-    return {
-      supported: snapshot.supported,
-      containers: snapshot.containers.map((appContainer) => ({
-        appContainerSid: appContainer.appContainerSid,
-        packageFamilyName: appContainer.packageFamilyName,
-        displayName: appContainer.displayName,
-        description: appContainer.description,
-        packageFullName: appContainer.packageFullName,
-        exempt: appContainer.exempt,
-      })),
-    };
   }
 
   /** Return the initialized GitHub authorization owner. */
@@ -2571,202 +2318,52 @@ class DesktopApplication {
     }
   }
 
-  private async restoreSystemProxyBeforeShutdown(): Promise<void> {
-    const service = this.systemProxyService;
-    if (!service?.supported()) {
+  private reportPlatformError(operation: PlatformOperation, error: unknown): void {
+    if (error instanceof PlatformOperationInProgressError) {
+      this.broadcastPlatformOperationConflict(error.operation);
       return;
     }
-    try {
-      const result = await this.systemProxyOperationQueue.run(() => service.restore());
-      if (result.reason === 'externally-modified') {
-        this.diagnostics.warn('main.system-proxy.ownership-lost', {
-          outcome: 'failed',
-        });
-      }
-    } catch (error) {
-      this.diagnostics.error('main.system-proxy.restore-failed', {
-        outcome: 'failed',
-        errorCode: readErrorName(error),
-        attributes: { message: readErrorMessage(error) },
-      });
-      throw error;
-    }
-  }
-
-  /** Load a crash journal before Core or Renderer starts, without blocking app access on failure. */
-  private async recoverSystemProxyOnStartup(): Promise<void> {
-    const service = this.systemProxyService;
-    if (!service?.supported()) {
-      return;
-    }
-    try {
-      const result = await this.systemProxyOperationQueue.run(() =>
-        service.recoverAfterCrash());
-      this.detectedUpstreamProxy = service.detectedUpstream();
-      this.recordSystemProxyRecovery('main.system-proxy.startup-recovery', result);
-    } catch (error) {
-      this.diagnostics.error('main.system-proxy.startup-recovery-failed', {
-        outcome: 'failed',
-        errorCode: readErrorName(error),
-        attributes: { message: readErrorMessage(error) },
-      });
-      dialog.showErrorBox(
-        'System proxy recovery required',
-        `${readErrorMessage(error)}\n\nCheck the Windows or macOS proxy settings before capturing again.`,
-      );
-    }
-  }
-
-  /** Serialize recovery triggered by duplicate Core failure state transitions. */
-  private scheduleSystemProxyRecovery(phase: string): void {
-    const service = this.systemProxyService;
-    if (this.quitting || this.systemProxyRecovery || !service?.supported()) {
-      return;
-    }
-    this.systemProxyRecovery = this.systemProxyOperationQueue.run(() => service.restore())
-      .then(async (result) => {
-        this.recordSystemProxyRecovery(phase, result);
-        // 代理已经交回用户，不广播会让 Renderer 继续显示“已接管”。
-        await this.broadcastSystemProxyStatus();
-      })
-      .catch((error: unknown) => {
-        this.diagnostics.error(`${phase}.failed`, {
-          outcome: 'failed',
-          errorCode: readErrorName(error),
-          attributes: { message: readErrorMessage(error) },
-        });
-        dialog.showErrorBox(
-          'Unable to restore system proxy',
-          `${readErrorMessage(error)}\n\nCheck the Windows or macOS proxy settings before capturing again.`,
-        );
-      })
-      .finally(() => {
-        this.systemProxyRecovery = null;
-      });
-  }
-
-  /** Record a guarded recovery outcome without exposing proxy snapshots. */
-  private recordSystemProxyRecovery(
-    phase: string,
-    result: Awaited<ReturnType<SystemProxyService['restore']>>,
-  ): void {
-    if (result.reason === 'externally-modified') {
-      this.diagnostics.warn(`${phase}.ownership-lost`, { outcome: 'failed' });
-    } else if (result.restored) {
-      this.diagnostics.info(`${phase}.completed`, { outcome: 'success' });
-    } else if (result.status.owned) {
-      this.diagnostics.info(`${phase}.journal-loaded`, { outcome: 'success' });
-    }
-  }
-
-  private async generateCertificate(abortSignal?: AbortSignal): Promise<CertificateInfo> {
-    return this.runMainAction('main.certificate.generate', async () => {
-      abortSignal?.throwIfAborted();
-      if (await this.isCaTrusted()) throw new Error('Uninstall the trusted Root CA before generating a replacement.');
-      abortSignal?.throwIfAborted();
-      await this.requireCertificateService().regenerate();
-      return this.finishCertificateChange();
+    this.diagnostics.error(`main.platform-capabilities.${operation}`, {
+      outcome: 'failed', errorCode: readErrorName(error), attributes: { message: readErrorMessage(error) },
     });
+    dialog.showErrorBox(
+      operation === 'system-proxy.recover' ? 'System proxy recovery required' : 'Unable to restore system proxy',
+      `${readErrorMessage(error)}\n\nCheck the Windows or macOS proxy settings before capturing again.`,
+    );
   }
 
-  private async installCertificate(abortSignal?: AbortSignal): Promise<CertificateInfo> {
-    return this.runMainAction('main.trust-store.install', async () => {
-      abortSignal?.throwIfAborted();
-      const certificateService = this.requireCertificateService();
-      if (!(await certificateService.getStatus()).present) throw new Error('Root CA has not been generated yet.');
-      abortSignal?.throwIfAborted();
-      await this.trustStore.install(certificateService.getCertificatePath());
-      return this.finishCertificateChange();
-    });
+  private async generateCertificate(): Promise<CertificateInfo> {
+    return this.runMainAction('main.certificate.generate', () => this.platformCapabilitiesService.generateCertificate());
   }
 
-  private async uninstallCertificate(abortSignal?: AbortSignal): Promise<CertificateInfo> {
-    return this.runMainAction('main.trust-store.uninstall', async () => {
-      abortSignal?.throwIfAborted();
-      const thumbprints = await this.requireCertificateService().getThumbprints();
-      abortSignal?.throwIfAborted();
-      if (thumbprints) await this.trustStore.uninstall(thumbprints.sha1);
-      return this.finishCertificateChange();
-    });
+  private async installCertificate(): Promise<CertificateInfo> {
+    return this.runMainAction('main.trust-store.install', () => this.platformCapabilitiesService.installCertificate());
   }
 
-  private async deleteCertificate(abortSignal?: AbortSignal): Promise<CertificateInfo> {
-    return this.runMainAction('main.certificate.delete', async () => {
-      abortSignal?.throwIfAborted();
-      const certificateService = this.requireCertificateService();
-      const thumbprints = await certificateService.getThumbprints();
-      const trusted = thumbprints !== null && await this.trustStore.isTrusted(thumbprints.sha1);
-      abortSignal?.throwIfAborted();
-      if (trusted && thumbprints) await this.trustStore.uninstall(thumbprints.sha1);
-      await certificateService.delete();
-      return this.finishCertificateChange();
-    });
+  private async uninstallCertificate(): Promise<CertificateInfo> {
+    return this.runMainAction('main.trust-store.uninstall', () => this.platformCapabilitiesService.uninstallCertificate());
   }
 
-  private async finishCertificateChange(): Promise<CertificateInfo> {
-    try {
-      await this.syncCoreCertificate(true);
-      return await this.buildCertificateInfo();
-    } finally {
-      this.broadcastTlsSettingsChanged();
-    }
+  private async deleteCertificate(): Promise<CertificateInfo> {
+    return this.runMainAction('main.certificate.delete', () => this.platformCapabilitiesService.deleteCertificate());
   }
 
-  private async revealCertificate(abortSignal?: AbortSignal): Promise<void> {
-    abortSignal?.throwIfAborted();
-    const certificateService = this.requireCertificateService();
-    if (!(await certificateService.getStatus()).present) throw new Error('Root CA has not been generated yet.');
-    abortSignal?.throwIfAborted();
-    shell.showItemInFolder(certificateService.getCertificatePath());
+  private async revealCertificate(): Promise<void> {
+    await this.runMainAction('main.certificate.reveal', () =>
+      this.platformCapabilitiesService.revealCertificate((filePath) => shell.showItemInFolder(filePath)));
   }
 
-  private async viewCertificate(abortSignal?: AbortSignal): Promise<void> {
-    abortSignal?.throwIfAborted();
-    const certificateService = this.requireCertificateService();
-    if (!(await certificateService.getStatus()).present) throw new Error('Root CA has not been generated yet.');
-    const certPath = certificateService.getCertificatePath();
-    const cerPath = certPath.replace(/\.pem$/i, '.cer');
-    const pem = await readFile(certPath, 'utf8');
-    abortSignal?.throwIfAborted();
-    await writeFile(cerPath, new X509Certificate(pem).raw);
-    const error = await shell.openPath(cerPath);
-    if (error && await shell.openPath(certPath)) throw new Error('Unable to open the system certificate viewer.');
+  private async viewCertificate(): Promise<void> {
+    await this.runMainAction('main.certificate.view', () =>
+      this.platformCapabilitiesService.viewCertificate((filePath) => shell.openPath(filePath)));
   }
 
-  private async openCertificateManager(abortSignal?: AbortSignal): Promise<void> {
-    abortSignal?.throwIfAborted();
-    await new Promise<void>((resolve, reject) => {
-      const command = process.platform === 'win32' ? 'cmd.exe' : 'open';
-      const args = process.platform === 'win32' ? ['/c', 'start', '', 'certmgr.msc'] : ['-a', 'Keychain Access'];
-      execFile(command, args, { windowsHide: true }, (error) => {
-        if (error) reject(error);
-        else resolve();
-      });
-    });
+  private async openCertificateManager(): Promise<void> {
+    await this.runMainAction('main.certificate-manager.open', () => this.platformCapabilitiesService.openCertificateManager());
   }
 
-  private async isCaTrusted(): Promise<boolean> {
-    const thumbprints = await this.requireCertificateService().getThumbprints();
-    return thumbprints ? this.trustStore.isTrusted(thumbprints.sha1) : false;
-  }
-
-  // 组装面向 Renderer 的证书状态 DTO（公开元数据 + 信任状态）；绝不含私钥。
   private async buildCertificateInfo(): Promise<CertificateInfo> {
-    const supported = this.trustStore.supported();
-    const service = this.requireCertificateService();
-    const status = await service.getStatus();
-    const trusted = status.present ? await this.isCaTrusted() : false;
-    return {
-      present: status.present,
-      trusted,
-      supported,
-      mitmEnabled: this.mitmEnabled,
-      fingerprint: status.fingerprint,
-      subject: status.subject,
-      createdAt: status.createdAt,
-      expiresAt: status.expiresAt,
-      path: status.present ? service.getCertificatePath() : null,
-    };
+    return this.platformCapabilitiesService.getCertificateInfo();
   }
 
   private assertTrustedSender(senderUrl: string | undefined): void {

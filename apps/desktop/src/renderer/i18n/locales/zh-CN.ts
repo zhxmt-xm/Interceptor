@@ -1,6 +1,7 @@
 import type { MessageCatalog } from '../english-catalog';
 
 export const zhCNCatalog = {
+  'platform.operationInProgress': '正在进行：{{operation}}。完成后请重试。',
   'app.connectingToCore': '正在连接代理核心',
   'app.coreStatusUnavailable': '代理核心状态不可用',
   'app.minimizeWindow': '最小化',
@@ -58,6 +59,8 @@ export const zhCNCatalog = {
   'coreState.restarting': '正在重启',
   'coreState.stopping': '正在停止',
   'coreState.stopped': '已停止',
+  'boot.preparingPlatform': '正在准备系统组件',
+  'boot.preparingCertificate': '正在准备 HTTPS 证书',
   'boot.startingCore': '正在启动代理核心',
   'boot.bindingListener': '正在绑定本机监听端口',
   'boot.enablingSystemProxy': '正在接管系统代理',

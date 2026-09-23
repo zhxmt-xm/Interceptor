@@ -31,7 +31,7 @@
 **状态**：passed
 **策略**：os-side-effect
 
-macOS续验使用相同真实请求、两代Core故障和退出恢复断言；读取完整SystemConfiguration快照及本次profile journal。Windows继续读取WinINet及LOCALAPPDATA共享journal，原命令、路径和业务检查不变。macOS尚待本轮实机结果，不沿用下面的Windows passed证据。
+macOS续验使用相同真实请求、Core故障和退出恢复断言；读取完整SystemConfiguration快照及用户级共享journal。Windows继续读取WinINet及LOCALAPPDATA共享journal，原命令和路径不变。忙时Quit拒绝按下述共同操作契约验证，两端均须保存各自证据，不沿用历史Windows passed记录。
 
 ### Steps
 
@@ -42,7 +42,7 @@ macOS续验使用相同真实请求、两代Core故障和退出恢复断言；�
 5. 等待UI进入Restarting再回Running，确认Core B PID不同、8888重新Listening且旧临时Capture已按代际清空。
 6. 确认Main已把系统代理从journal的`owned`恢复为`original`并清除journal；新Core ready后，Renderer代际bootstrap自动重新Enable，确认新journal的`original`仍等于workflow启动快照，没有把8888重记为恢复目标。
 7. 通过8888发送第二条真实请求，确认新row、Inspector和Rules/Composer/Capture导航可用，证明新Core、RPC与Renderer恢复。
-8. 记录Core B的PID+启动时间，精确终止Core B后立即点击真实 `shell.window.close`；Core重启计时与退出清理相遇时必须以退出为准。
+8. 记录Core B的PID+启动时间，精确终止Core B后立即点击真实`shell.window.close`。若平台已空闲则正常退出；若恢复或Core同步仍忙，必须显示公共`platform.operation.conflict`和真实operation，保存提示截图。等待新Core/listener/Recording恢复及提示消失，确认App未因旧请求自动退出，再发起一次真实Quit。不得增加产品排队、测试自动循环点击或放宽退出恢复断言。
 9. 验证Main/Renderer/Core/Worker没有任何代际存活、8888释放、journal不存在且完整WinINet等于workflow启动快照；保存两代PID、请求、代理和销毁evidence。
 10. 关闭origin并删除profile；任何强制清理、残留进程、journal或系统代理差异都使workflow失败。
 

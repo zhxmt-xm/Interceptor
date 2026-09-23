@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import { TransferService } from '../../entry';
@@ -75,7 +76,7 @@ describe('TransferService', () => {
     const completed = vi.fn();
     transferService.onCompleted(completed);
     const writeError = Object.assign(new Error('Cannot rename C:\\private\\capture.har'), { code: 'EACCES' });
-    transferService.start('failing-commit', 'har-export', 'C:\\private\\capture.har', async (abortSignal) => {
+    transferService.start('failing-commit', 'har-export', path.resolve('private', 'capture.har'), async (abortSignal) => {
       await new Promise<void>((resolve) => abortSignal.addEventListener('abort', () => resolve(), { once: true }));
       throw writeError;
     });
@@ -98,7 +99,7 @@ describe('TransferService', () => {
     });
 
     expect(
-      transferService.start('job-1', 'har-export', 'C:\\private\\capture.har', operation),
+      transferService.start('job-1', 'har-export', path.resolve('private', 'capture.har'), operation),
     ).toMatchObject({ state: 'running', kind: 'har-export', fileName: 'capture.har' });
     await new Promise<void>((resolve) => setImmediate(resolve));
 

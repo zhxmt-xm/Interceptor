@@ -4,7 +4,7 @@ import type { RulesImportResponse } from '../../shared/desktop-api';
 
 interface PendingRulesImport {
   readonly requestId: string;
-  readonly abortSignal: AbortSignal;
+  readonly abortSignal: AbortSignal | undefined;
   readonly cancel: () => void;
   readonly resolve: (response: RulesImportResponse) => void;
   readonly reject: (reason: unknown) => void;
@@ -18,14 +18,14 @@ export class RulesImportService {
     private readonly cancelRendererImport: (requestId: string) => void,
   ) {}
 
-  async startImport(abortSignal: AbortSignal): Promise<RulesImportResponse> {
-    abortSignal.throwIfAborted();
+  async startImport(abortSignal?: AbortSignal): Promise<RulesImportResponse> {
+    abortSignal?.throwIfAborted();
     if (this.pendingImport !== null) throw new Error('A Rules import is already running.');
     const requestId = randomUUID();
     return new Promise((resolve, reject) => {
       const cancel = (): void => this.cancelImport();
       this.pendingImport = { requestId, abortSignal, cancel, resolve, reject };
-      abortSignal.addEventListener('abort', cancel, { once: true });
+      abortSignal?.addEventListener('abort', cancel, { once: true });
       try {
         this.requestRendererImport(requestId);
       } catch {
@@ -37,7 +37,7 @@ export class RulesImportService {
   cancelImport(): void {
     const pendingImport = this.releasePendingImport();
     if (pendingImport === null) return;
-    pendingImport.reject(pendingImport.abortSignal.aborted
+    pendingImport.reject(pendingImport.abortSignal?.aborted
       ? pendingImport.abortSignal.reason
       : new DOMException('Rules import canceled.', 'AbortError'));
     this.cancelRendererImport(pendingImport.requestId);
@@ -91,7 +91,7 @@ export class RulesImportService {
     const pendingImport = this.pendingImport;
     if (pendingImport === null) return null;
     this.pendingImport = null;
-    pendingImport.abortSignal.removeEventListener('abort', pendingImport.cancel);
+    pendingImport.abortSignal?.removeEventListener('abort', pendingImport.cancel);
     return pendingImport;
   }
 }

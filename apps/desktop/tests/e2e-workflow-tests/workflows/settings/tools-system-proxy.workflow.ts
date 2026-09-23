@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import type { Page, TestInfo } from '@playwright/test';
+import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
@@ -141,6 +142,73 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
     await desktopApp.forceCleanup();
   }
 }
+
+test('settings.tools.system-proxy rejects overlapping Enable calls without a queue', async ({ desktopApp }, testInfo) => {
+  test.setTimeout(120_000);
+  testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.tools.system-proxy' });
+  desktopApp.preserveUserDataOnFailure();
+  const { page } = desktopApp;
+  let client: Client | null = null;
+  try {
+    // 准备：经真实UI创建Auto MCP Client，保留当前完整proxy/journal状态。
+    // Arrange: create an Auto MCP Client through product UI and retain the current proxy/journal state.
+    const before = await readProxyState(desktopApp);
+    expect(before.journal).not.toBeNull();
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
+    await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
+    await desktopApp.stopTrace(testInfo);
+    await getByAutomationId(page, AUTOMATION_IDS.mcp.server.enable).click();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.mcp.server.root)).toHaveAttribute('data-server-state', 'running');
+    await getByAutomationId(page, AUTOMATION_IDS.mcp.client.add).click();
+    await getByAutomationId(page, AUTOMATION_IDS.mcp.client.label).fill('System Proxy conflict');
+    await getByAutomationId(page, AUTOMATION_IDS.mcp.client.create).click();
+    const row = page.locator('[data-automation-id^="mcp.client.row."]');
+    await expect(row).toHaveCount(1);
+    const clientId = await row.getAttribute('data-client-id');
+    if (!clientId) throw new Error('Missing product-created MCP Client.');
+    await getByAutomationId(page, AutomationIdFactory.mcpClientCopyConfiguration(clientId)).click();
+    const copied = JSON.parse(await page.evaluate(() => navigator.clipboard.readText())) as {
+      servers: { interceptor: { url: string; headers: { Authorization: string } } };
+    };
+    const configuration = copied.servers.interceptor;
+    desktopApp.registerSensitiveTextForEvidenceAudit(configuration.headers.Authorization.slice('Bearer '.length));
+    client = new Client({ name: 'system-proxy-conflict', version: '1.0.0' }, { versionNegotiation: { mode: { pin: '2026-07-28' } } });
+    await client.connect(new StreamableHTTPClientTransport(new URL(configuration.url), { requestInit: { headers: configuration.headers } }));
+    await getByAutomationId(page, AutomationIdFactory.mcpClientAuto(clientId)).click();
+    await expect(row).toHaveAttribute('data-execution-mode', 'auto');
+    await desktopApp.startTrace(testInfo);
+
+    // 用户操作：同一真实Main并发接收两个Enable，冲突请求必须立即结束而不是排队。
+    // User actions: send two concurrent Enable calls to the same real Main; a conflicting call must finish without queuing.
+    const results = await Promise.all([
+      client.callTool({ name: TOOL_NAMES[0], arguments: {} }, { timeout: 15_000 }),
+      client.callTool({ name: TOOL_NAMES[0], arguments: {} }, { timeout: 15_000 }),
+    ]);
+    expect(results.filter(result => result.isError !== true)).toHaveLength(1);
+    const conflicts = results.filter(result => result.isError === true);
+    expect(conflicts).toHaveLength(1);
+    const error = conflicts[0]!.content.find(entry => entry.type === 'text')?.text ?? '';
+    expect(error).toContain('operation_in_progress');
+    expect(error).toContain('system-proxy.enable');
+    await expect(getByAutomationId(page, AUTOMATION_IDS.platform.operationConflict))
+      .toHaveAttribute('data-operation', 'system-proxy.enable');
+
+    // 业务断言与证据：先前original/owned不变，旧冲突不重放，新显式调用可以正常执行。
+    // Business assertions and evidence: preserve original/owned, never replay the conflict, and allow a new explicit call.
+    expect(desktopApp.matchesSystemProxyEvidence(await readProxyState(desktopApp), before)).toBe(true);
+    expect((await client.callTool({ name: TOOL_NAMES[0], arguments: {} })).isError).not.toBe(true);
+    expect(desktopApp.matchesSystemProxyEvidence(await readProxyState(desktopApp), before)).toBe(true);
+    await testInfo.attach('system-proxy-conflict.json', {
+      body: Buffer.from(JSON.stringify({ successfulCalls: 1, rejectedConflicts: 1, originalPreserved: true, explicitRetryPassed: true })),
+      contentType: 'application/json',
+    });
+    desktopApp.releasePreservedUserData();
+  } finally {
+    // 清理：关闭MCP连接，fixture经正式Quit恢复OS代理并验证进程和端口。
+    // Cleanup: close MCP transport; the fixture restores the OS proxy through normal Quit and verifies process/port release.
+    await client?.close();
+  }
+});
 
 test('settings.tools.system-proxy preserves ownership across Ask Auto and restart', async ({
   desktopApp,

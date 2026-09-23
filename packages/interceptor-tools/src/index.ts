@@ -9,6 +9,7 @@ export {
 } from './catalog/entry';
 export { InterceptorToolRedactor } from './redaction/entry';
 export { InterceptorToolArgumentError } from './arguments/entry';
+export { PlatformOperationInProgressError, type PlatformOperation } from './settings/errors';
 export {
   INTERCEPTOR_TOOL_CAPABILITIES,
   INTERCEPTOR_TOOL_NAMES,

@@ -39,7 +39,6 @@ export function verifyAndCloseCertificateWindow(
         kind, before as readonly WindowsCertificateWindow[], certificateDirectory, ownedWindows as WindowsCertificateWindow[],
       );
     case 'darwin':
-      if (kind === 'view') throw new Error('macOS certificate View has no verified native window ownership; interactive validation is still required.');
       return verifyAndCloseMacosCertificateWindow(
         kind, before as readonly MacosCertificateWindow[], certificateDirectory, ownedWindows as MacosCertificateWindow[],
       );

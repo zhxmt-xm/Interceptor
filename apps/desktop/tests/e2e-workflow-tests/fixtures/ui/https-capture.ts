@@ -1,16 +1,94 @@
 import { execFile } from 'node:child_process';
 import { X509Certificate } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { lstat, readFile } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
+import { expect, type Page } from '@playwright/test';
+
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
-import { expect, type LocalElectronApplicationDriver } from '../runtime/local-electron-driver';
+import type { LocalElectronApplicationDriver } from '../runtime/local-electron-driver';
 import { getByAutomationId } from './automation';
 
 const execFileAsync = promisify(execFile);
 const ORIGIN_HOST = 'localhost';
-const certificateWaitOptions = getCertificateWaitOptions();
+export const certificateWaitOptions = getCertificateWaitOptions();
+const certificateThumbprintsByApplication = new WeakMap<LocalElectronApplicationDriver, string>();
+
+export async function registerTlsCompatibilityDismissal(page: Page): Promise<void> {
+  const dismiss = getByAutomationId(page, AUTOMATION_IDS.settings.tlsCompatibility.dismiss);
+  const trigger = process.platform === 'darwin'
+    ? getByAutomationId(page, AUTOMATION_IDS.settings.tlsCompatibility.hostList)
+      .locator(':scope > [data-automation-id]').first()
+    : dismiss;
+  await page.addLocatorHandler(trigger, async () => {
+    if (process.platform === 'darwin') {
+      await dismiss.press('Enter', { timeout: 5_000 });
+    } else {
+      await dismiss.click();
+    }
+  }, process.platform === 'darwin' ? { noWaitAfter: true } : undefined);
+}
+
+export function sharedCertificateDirectory(): string {
+  switch (process.platform) {
+    case 'darwin':
+      return path.join(os.homedir(), 'Library', 'Application Support', 'Interceptor Platform', 'certificates');
+    case 'win32': {
+      const localAppDataDirectory = process.env.LOCALAPPDATA;
+      if (!localAppDataDirectory) throw new Error('LOCALAPPDATA is required for shared certificate evidence.');
+      return path.join(localAppDataDirectory, 'Interceptor', 'certificates');
+    }
+    default: throw new Error(`Shared certificates are not supported on ${process.platform}.`);
+  }
+}
+
+export async function requireSharedCertificateReady(): Promise<void> {
+  for (const name of ['root-cert.pem', 'root-key.enc', 'ca-meta.json']) {
+    const metadata = await lstat(path.join(sharedCertificateDirectory(), name)).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return null;
+      throw error;
+    });
+    if (!metadata?.isFile() || metadata.isSymbolicLink()) {
+      throw new Error('Initialize the shared CA through normal Interceptor startup before running ordinary workflows or packaged smoke.');
+    }
+  }
+  const thumbprint = await sharedCertificateThumbprint();
+  if (!thumbprint || !await isCertificateTrusted(thumbprint)) {
+    throw new Error('Complete the shared CA system authorization through normal Interceptor startup before running ordinary workflows or packaged smoke.');
+  }
+}
+
+export async function requireEmptySharedCertificateStore(): Promise<void> {
+  for (const name of ['root-cert.pem', 'root-key.enc', 'ca-meta.json']) {
+    const metadata = await lstat(path.join(sharedCertificateDirectory(), name)).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return null;
+      throw error;
+    });
+    if (metadata) throw new Error('Certificate lifecycle workflows require an empty shared CA store; existing material must not be used as test cleanup input.');
+  }
+}
+
+export async function removeCreatedSharedCertificate(
+  desktopApp: LocalElectronApplicationDriver, originalRootThumbprints: readonly string[],
+): Promise<void> {
+  const thumbprint = await sharedCertificateThumbprint();
+  if (!thumbprint) return;
+  expect(originalRootThumbprints, 'Never remove a CA from the original system root set').not.toContain(thumbprint);
+  const { page } = desktopApp;
+  await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click({ timeout: 15_000 });
+  await getByAutomationId(page, AUTOMATION_IDS.settings.section.certificates).click({ timeout: 15_000 });
+  await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.generate)).toBeVisible({ timeout: 15_000 });
+  const uninstall = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall);
+  if (await uninstall.isVisible()) {
+    await uninstall.click({ timeout: 15_000 });
+    await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install)).toBeEnabled(certificateWaitOptions.visibility);
+  }
+  await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete).click({ timeout: 15_000 });
+  await expect.poll(sharedCertificateThumbprint).toBeNull();
+  await expect.poll(rootCertificateThumbprints).toEqual(originalRootThumbprints);
+}
 
 export async function waitForCertificateInstallation(page: LocalElectronApplicationDriver['page']): Promise<void> {
   await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall))
@@ -85,20 +163,19 @@ async function readWindowsRootCertificateThumbprints(): Promise<string[]> {
 
 function getCertificateWaitOptions(): {
   visibility: { timeout: number };
-  removal?: { timeout: number };
 } {
   switch (process.platform) {
     case 'darwin':
-      return { visibility: { timeout: 120_000 }, removal: { timeout: 120_000 } };
+      return { visibility: { timeout: 120_000 } };
     default:
       return { visibility: { timeout: 30_000 } };
   }
 }
 
-async function profileCertificateThumbprint(desktopApp: LocalElectronApplicationDriver): Promise<string | null> {
+export async function sharedCertificateThumbprint(): Promise<string | null> {
   try {
     const certificate = new X509Certificate(await readFile(path.join(
-      desktopApp.userDataDirectory, 'certificates', 'root-cert.pem',
+      sharedCertificateDirectory(), 'root-cert.pem',
     )));
     return certificate.fingerprint.replaceAll(':', '');
   } catch (error) {
@@ -112,12 +189,12 @@ export async function prepareHttpsCapture(desktopApp: LocalElectronApplicationDr
   const { page } = desktopApp;
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.certificates).click();
-  await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.generate).click();
-  await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install).click();
   await waitForCertificateInstallation(page);
-  const thumbprint = await profileCertificateThumbprint(desktopApp);
+  const thumbprint = await sharedCertificateThumbprint();
   expect(thumbprint).not.toBeNull();
   await expect.poll(rootCertificateThumbprints).toContain(thumbprint);
+  expect(await isCertificateTrusted(thumbprint!)).toBe(true);
+  certificateThumbprintsByApplication.set(desktopApp, thumbprint!);
   await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.insecureHostInput).fill(ORIGIN_HOST);
   await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.insecureHostAdd).click();
   await expect(getByAutomationId(page, AutomationIdFactory.insecureHost(ORIGIN_HOST))).toBeVisible();
@@ -134,8 +211,11 @@ export async function cleanHttpsCapture(desktopApp: LocalElectronApplicationDriv
     try { await operation(); } catch (error) { errors.push(error); }
   };
   await attempt(async () => {
-    const dismiss = getByAutomationId(page, AUTOMATION_IDS.settings.tlsCompatibility.dismiss);
-    if (await dismiss.isVisible()) await dismiss.click();
+    const cancelSetup = getByAutomationId(page, AUTOMATION_IDS.capture.httpsSetup.cancel);
+    if (await cancelSetup.isVisible()) {
+      await cancelSetup.click();
+      await expect(cancelSetup).toBeHidden();
+    }
   });
   await attempt(async () => {
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
@@ -157,19 +237,11 @@ export async function cleanHttpsCapture(desktopApp: LocalElectronApplicationDriv
     }
   });
   await attempt(async () => {
-    const thumbprint = await profileCertificateThumbprint(desktopApp);
+    const thumbprint = certificateThumbprintsByApplication.get(desktopApp);
     if (!thumbprint) return;
-    if ((await rootCertificateThumbprints()).includes(thumbprint)) {
-      const uninstall = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall);
-      await expect(uninstall).toBeVisible(certificateWaitOptions.visibility);
-      await uninstall.click();
-      await expect.poll(rootCertificateThumbprints, certificateWaitOptions.removal).not.toContain(thumbprint);
-    }
-    const remove = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete);
-    await expect(remove).toBeVisible();
-    await remove.click();
-    await expect.poll(() => profileCertificateThumbprint(desktopApp)).toBeNull();
-    await expect(remove).toBeHidden();
+    expect(await sharedCertificateThumbprint()).toBe(thumbprint);
+    expect(await isCertificateTrusted(thumbprint)).toBe(true);
+    certificateThumbprintsByApplication.delete(desktopApp);
   });
   await attempt(() => getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click());
   if (errors.length > 0) throw new AggregateError(errors, 'HTTPS Capture UI cleanup failed.');

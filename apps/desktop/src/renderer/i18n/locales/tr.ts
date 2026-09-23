@@ -1,6 +1,7 @@
 import type { MessageCatalog } from '../english-catalog';
 
 export const trCatalog = {
+  'platform.operationInProgress': 'Devam ediyor: {{operation}}. Tamamlandıktan sonra yeniden deneyin.',
   'app.connectingToCore': 'Proxy Core bağlantısı kuruluyor',
   'app.coreStatusUnavailable': 'Proxy Core durumu kullanılamıyor',
   'app.minimizeWindow': 'Küçült',
@@ -58,6 +59,8 @@ export const trCatalog = {
   'coreState.restarting': 'Yeniden başlatılıyor',
   'coreState.stopping': 'Durduruluyor',
   'coreState.stopped': 'Durduruldu',
+  'boot.preparingPlatform': 'Sistem bileşenleri hazırlanıyor',
+  'boot.preparingCertificate': 'HTTPS sertifikası hazırlanıyor',
   'boot.startingCore': 'Proxy Core başlatılıyor',
   'boot.bindingListener': 'Yerel dinleyici bağlanıyor',
   'boot.enablingSystemProxy': 'Sistem proxy’si etkinleştiriliyor',

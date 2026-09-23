@@ -12,6 +12,7 @@ import {
   getByAutomationIdPrefix,
 } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { waitForCertificateInstallation } from '../../fixtures/ui/https-capture';
 import {
   expect,
   LocalElectronApplicationDriver,
@@ -41,10 +42,19 @@ const NEW_TOOL_NAMES = [
 const DISCOVERED_TRAFFIC_TOOL_NAMES = [
   'capture_get_proxy_status',
   'capture_get_storage_status',
+  'capture_start_recording',
+  'capture_stop_recording',
+  'capture_clear',
   'capture_list_exchanges',
   'capture_get_exchange',
   ...NEW_TOOL_NAMES,
-  'capture_stop_recording',
+  'capture_get_transfer_job',
+  'capture_cancel_transfer_job',
+  'capture_export_body',
+  'capture_export_har',
+  'capture_import_har',
+  'capture_export_archive',
+  'capture_import_archive',
 ] as const;
 
 interface BodyMessagesEvidence {
@@ -183,11 +193,7 @@ function responseBodyId(result: Readonly<Record<string, unknown>>): string {
 async function enableHttpsDecryption(page: Page): Promise<void> {
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.certificates).click();
-  await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.generate).click();
-  await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install)).toBeEnabled();
-  await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install).click();
-  await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall))
-    .toBeVisible({ timeout: 30_000 });
+  await waitForCertificateInstallation(page);
   await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.insecureHostInput)
     .fill(INSECURE_HOST);
   await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.insecureHostAdd).click();
@@ -198,7 +204,7 @@ async function enableHttpsDecryption(page: Page): Promise<void> {
   await expect(mitmToggle).toHaveAttribute('aria-checked', 'true');
 }
 
-/** Remove the workflow CA, localhost exception and decryption intent through product Settings. */
+/** Remove profile-local localhost and decryption settings without deleting the shared CA. */
 async function disableHttpsDecryption(page: Page): Promise<void> {
   const compatibilityDismiss = getByAutomationId(
     page,
@@ -219,17 +225,7 @@ async function disableHttpsDecryption(page: Page): Promise<void> {
     await mitmToggle.click();
     await expect(mitmToggle).toHaveAttribute('aria-checked', 'false');
   }
-  const uninstall = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall);
-  if (await uninstall.isVisible().catch(() => false)) {
-    await uninstall.click();
-    await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete))
-      .toBeVisible({ timeout: 30_000 });
-  }
-  const remove = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete);
-  if (await remove.isVisible().catch(() => false)) {
-    await remove.click();
-    await expect(remove).not.toBeVisible();
-  }
+  await waitForCertificateInstallation(page);
 }
 
 /** Close one app generation and retain its lifecycle evidence. */

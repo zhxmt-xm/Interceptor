@@ -1,6 +1,7 @@
 import type { MessageCatalog } from '../english-catalog';
 
 export const jaCatalog = {
+  'platform.operationInProgress': '{{operation}} を実行中です。完了後にもう一度お試しください。',
   'app.connectingToCore': 'Proxy Core に接続しています',
   'app.coreStatusUnavailable': 'Proxy Core の状態を取得できません',
   'app.minimizeWindow': '最小化',
@@ -58,6 +59,8 @@ export const jaCatalog = {
   'coreState.restarting': '再起動中',
   'coreState.stopping': '停止中',
   'coreState.stopped': '停止',
+  'boot.preparingPlatform': 'システムコンポーネントを準備しています',
+  'boot.preparingCertificate': 'HTTPS 証明書を準備しています',
   'boot.startingCore': 'Proxy Core を起動しています',
   'boot.bindingListener': 'ローカルリスナーをバインドしています',
   'boot.enablingSystemProxy': 'システムプロキシを有効化しています',

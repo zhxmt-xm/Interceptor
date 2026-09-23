@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { SecureStore } from '../../../interfaces';
+import type { SecureStore } from '../../../platform-capabilities/interfaces';
 import { McpSettingsStore } from '../../internal/settings-store';
 
 /** Reversible encryption fake that lets tests assert plaintext never reaches disk. */

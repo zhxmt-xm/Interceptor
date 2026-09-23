@@ -55,7 +55,7 @@ export function toClientAppName(
   if (trimmed.length > 0) {
     return trimmed;
   }
-  return path.basename(imagePath, path.extname(imagePath));
+  return path.win32.basename(imagePath, path.win32.extname(imagePath));
 }
 
 /**

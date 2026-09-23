@@ -1,7 +1,6 @@
 # Feature: Settings
 
-> 最后更新：2026-09-03
-> Main 模块：`apps/desktop/src/main/certificates/`、`system-proxy/`、`updates/`
+> Main 模块：`apps/desktop/src/main/platform-capabilities/`、`updates/`
 > Core 模块：`apps/proxy-core/src/proxy-core/capture/entry.ts`
 > Renderer 模块：`apps/desktop/src/renderer/features/settings/`
 
@@ -152,55 +151,67 @@ sequenceDiagram
     autonumber
     participant UI as Renderer
     participant Main as DesktopApplication
+    participant Platform as PlatformCapabilitiesService
     participant Cert as CertificateService
     participant Trust as TrustStoreService
     participant Runtime as CoreRuntime
     participant Proxy as ProxyService
 
-    Note over UI: 用户在 Tunnel 面板点击 HTTPS Setup
+    Note over UI: 用户显式管理CA和HTTPS解密
     UI->>Main: generateCertificate
-    Main->>Cert: generate()
+    Main->>Platform: generateCertificate()
+    Platform->>Cert: generate()
     Note over Cert: 懒加载 @peculiar/x509<br/>避免阻塞 Main 启动
     Cert->>Cert: RSA 2048 / SHA-256 Root CA
     Cert->>Cert: safeStorage 加密私钥
 
     UI->>Main: installCertificate
-    Main->>Trust: install()
-    Note over Trust: sudo-prompt 提权<br/>Windows certutil -addstore Root<br/>macOS security add-trusted-cert
-    Trust-->>Main: 结果
+    Main->>Platform: installCertificate()
+    Platform->>Cert: install()
+    Cert->>Trust: install()
+    Note over Trust: Windows certutil/UAC<br/>macOS常驻helper导入、前台helper请求信任
+    Trust-->>Cert: 结果
 
     UI->>Main: setHttpsDecryption(true)
-    Main->>Main: 检查 isTrusted 且 mitmEnabled
-    Main->>Runtime: tls.useCertificate（下发 CA 材料）
+    Main->>Platform: enableHttpsDecryption()
+    Platform->>Cert: enableHttpsDecryption()
+    Cert->>Runtime: tls.saveDecryptionPreference
+    Cert->>Trust: isTrusted()
+    Cert->>Runtime: tls.useCertificate（下发 CA 材料）
     Runtime->>Proxy: useCertificate(ca)
-    Main->>Runtime: tls.startDecryption
+    Note over Cert: 只有CA受信任且用户开启才解密
+    Cert->>Runtime: tls.startDecryption
     Runtime->>Proxy: startHttpsDecryption()
     Note over Proxy: listener 仍挂旧证书才原端口重建<br/>getLocal({ https, http2: true })
 ```
 
 **证书与解密开关正交**：`tls.useCertificate` 只记录当前可用的 CA 材料，`tls.startDecryption` /
 `tls.stopDecryption` 只切换是否 MITM。停止解密时全部 host 退回隧道、证书永不出示，因此
-卸载信任或删除 CA 都不必立刻换 listener。Main 侧只有 CA 已安装信任**且** `mitmEnabled` 开启时
+卸载信任或删除 CA 都不必立刻换 listener。CertificateService只有CA已安装信任**且** `mitmEnabled`开启时
 才发 `tls.startDecryption`，否则发 `tls.stopDecryption`。
 
-Main 启动时先从 Core 读回 `tls.getDecryptionPreference`，再按「CA 已信任 且 用户开启」决定是否真的
+CertificateService从Core读回`tls.getDecryptionPreference`，再按「CA已信任且用户开启」决定是否真的
 解密。持久化的是**用户意图**，不是运行态：`tls.saveDecryptionPreference` 只在用户拨开关时写，
 CA 不可用而发出的 `tls.stopDecryption` 不会擦掉它。
 
-**信任库是 local-machine 而非 current-user**，因此本机全部用户与进程（含浏览器）统一信任。`TrustStoreService` 用 `@vscode/sudo-prompt` 提权执行安装/卸载，检测则不需提权：
+源站证书例外的增加和撤销必须从下一笔请求生效，包括启动时已加载共享CA、从未转发过HTTP的listener。`ProxyService.replaceInsecureHosts()`需替换整组HTTP转发规则，不追加等待首笔匹配的旧规则；不重启listener、不清Capture会话、不改WebSocket规则。
+
+信任作用于Windows LocalMachine Root或macOS System Keychain/admin trust。Windows通过共用`commandRunner.runElevated()`执行固定certutil命令，macOS通过native helper分开执行公开证书存取和系统信任确认；检测不需提权。
 
 | 操作 | Windows | macOS |
 | --- | --- | --- |
-| 安装 | `certutil -addstore -f Root`（去掉 `-user`） | `security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain` |
+| 安装 | `certutil -addstore -f Root`（不带`-user`） | 常驻helper导入System Keychain，再由普通用户前台helper请求admin trust |
 | 检测 | `certutil -verifystore Root <sha1>` | `security find-certificate -a -p`精确匹配SHA-1后，`security verify-cert -p basic -L`查询根CA的系统信任链结果 |
 
-按 SHA-1 thumbprint 精确定位；`execFile` 不经 shell。注入 `ElevatedRunner`（默认 `sudoPromptRunner`）+ `CommandRunner` 便于 mock 单测。
+按SHA-1 thumbprint精确定位；共用`commandRunner.run()`和`commandRunner.runElevated()`执行固定命令，业务模块不重复创建runner或占位signal。
 
 macOS只将匹配的公开证书经stdin交给系统验证，不生成临时证书文件、不传入`-r`强制信任锚点、不读取私钥；未安装或系统评估拒绝均不报告trusted。此处检查根CA的基本系统信任，不以CA本身代替服务器叶证书执行SSL域名/用途验证，真实HTTPS握手仍需相应workflow验收。2026-09-16存在即信任的原用例1 Red/8 Green，补齐匹配和评估契约后3 Red/8 Green，证据`/tmp/interceptor-macos-trust-20260916-unit{,-contract}-red.log`；最终原生/E2E结果待补。
 
 ### 2.4 窄 API
 
-#### macOS trust授权续验（待最终验收）
+#### macOS trust授权历史记录
+
+以下日期对应当时的验证与阻塞；当前进度以[Handover](../HANDOVER.md#verification)为准。
 
 ##### 删除无效自动授信（2026-09-21进行中）
 
@@ -219,17 +230,16 @@ macOS只将匹配的公开证书经stdin交给系统验证，不生成临时证�
 - 公开API限制：`SecTrustSettingsSetTrustSettings`/`RemoveTrustSettings`不接收`AuthorizationRef`；[Apple实现](https://github.com/apple-oss-distributions/Security/blob/main/OSX/libsecurity_keychain/lib/TrustSettings.cpp)在每次写入中新建授权对象。不能直接沿用helper安装授权。
 - 前一阶段已验前台helper；2026-09-20授权的临时规则实验现已放弃，历史证据保留如下，不再作为未来兼容目标。
 
-##### CA与profile生命周期（目标待确认，未实现）
+##### CA与profile生命周期
 
-- 用户目标：本机专用开发CA通过真实产品UI生成、安装并授信一次，开发及普通HTTPS验收后续持续复用，不按workflow反复安装/卸载；不是把同一CA及私钥随产品分发。
-- 当前边界：`CertificateService`保存`root-cert.pem`、safeStorage加密的`root-key.enc`及`ca-meta.json`，Main绑定`userData/certificates`。同一开发profile本就复用材料；fresh E2E profile不会自动取得它，现有`prepareHttpsCapture/cleanHttpsCapture`还会安装/卸载。
-- 当前两端一致：Windows和macOS均绑定userData/certificates，不是macOS独有的问题。应区分OS里的信任与本地CA文件，系统已信任不代表fresh profile具备对应CA或私钥。
-- 待确认方向：CA材料按同一OS账户/安装环境独立存放，业务profile仍隔离；Main继续生成和safeStorage加密，不把私钥交给root helper，不向所有产品用户分发同一私钥。存放路径、显式Generate/Delete的影响范围及验收需先确定，本轮不实现迁移或修改UI。
-- 此前“仅复制三份CA文件”的测试方案未取得零seed例外授权，也未实施；不把该临时方案当作产品已具备CA独立存放。
-- 共享CA的安装与清理由开发者通过产品UI显式操作，普通workflow不重新生成、卸载或删除；运行前校验材料指纹、有效期及真实系统信任，结束时保持原有CA/trust基线。材料缺失或未信任时明确要求先完成本机设置，不能静默生成替代CA。
-- 证书生成、安装、撤销、取消和失败恢复专项仍用独立CA，完整恢复宿主；Windows现有输入、步骤、超时和fixture不变。不使用生产用户的CA作为测试清理目标。
-- 若选择按组复用profile，必须另行确认放宽逐workflow profile隔离；不能为了证书复用顺带共享全部业务状态。
-- 后续验收：同一环境两个fresh profile复用相同CA指纹，通过真实HTTPS请求及各自正常退出，过程中不调用Install/Uninstall；同时确认专项仍生成不同CA、共享CA和其他系统信任项不被清理。本方案尚未实施或取得该组Green。
+- 首窗和启动页先显示，再调用`PlatformCapabilitiesService.prepare()`；平台对象通知`platform/certificate`，Main通过`startup:get-stage`及`startup:stage-changed`转发，全部服务可用后发布`ready`。Renderer准备期间只挂载BootScreen和窗口控制，ready后才挂载业务订阅；迟到查询不得使进度倒退，Main在ready前拒绝业务IPC。
+- 材料为`root-cert.pem`、safeStorage加密的`root-key.enc`、`ca-meta.json`。Windows使用`%LOCALAPPDATA%/Interceptor/certificates`；macOS使用`~/Library/Application Support/Interceptor Platform/certificates`，均独立于默认及自定义profile。
+- 启动顺序为安全协议与IPC、启动窗口、原生组件、代理恢复、共享材料和真实信任检查、其余Main服务/Core准备、Renderer业务页面。只在App启动初始化，Core重启只同步材料和MITM意图，普通退出不删除或重复授信。
+- 已受信任的CA不改文件或重复安装；未信任的既有CA保留同一身份，只补原系统授权并回读。仅全部材料缺失才生成；残缺、损坏、过期、指纹/密钥不匹配或无法解密时保留并报错，不隐式换CA。新目录0700、材料0600，私钥仍由safeStorage加密。
+- Main只持有一个readonly平台对象，私有CertificateService统一拥有材料、Trust Store、MITM意图和Core同步；私钥不交root helper。Windows保留certutil/UAC，macOS保留前台helper系统确认，初始化CA不自动开启MITM。
+- 显式Generate/Regenerate、Uninstall、Delete作用于共享CA；受信任时不能直接Regenerate。Uninstall保留材料，Delete先撤销信任再删材料；下次启动补齐缺失步骤。
+- 不迁移或复制旧profile材料，不增加产品测试路径，不分发共享私钥；业务配置、凭据和Tool授权仍隔离。普通workflow只读复用既有共享CA，破坏性专项只清理空目录前提下本轮由产品生成的CA，不把日常CA作为清理输入。
+- 首次授权、取消与完整生命周期的未验证范围继续列在[Handover](../HANDOVER.md)，不以跨profile复用结果替代。
 
 ##### 临时规则尝试与受控回退（历史方案，已要求删除）
 
@@ -293,7 +303,19 @@ macOS只将匹配的公开证书经stdin交给系统验证，不生成临时证�
 
 `getCertificateStatus`、`generateCertificate`、`installCertificate`、`uninstallCertificate`、`deleteCertificate`、`revealCertificate`、`viewCertificate`、`openCertificateManager`、`getInsecureHosts`、`setInsecureHosts`、`setHttpsDecryption`。
 
-Main 组装的 `CertificateInfo` 含 `path` 与 `mitmEnabled`，**私钥不出 Main**。
+macOS View通过固定前台`certificate.view`只接公开DER/SHA-256，以`SFCertificatePanel`显示详情并关闭信任编辑。面板显示后才回复requested；普通用户运行、不经root socket、不写系统信任，Windows保留原生查看方式。
+
+### 平台模块操作互斥
+
+- 证书、系统代理、AppContainer和helper部署分别管理自己的在途状态。Main只直接调用平台方法、转发通知与错误；平台入口private组装各module，不集中复制全部busy状态。
+- 冲突立即返回`operation_in_progress`和当前operation，UI显示本地化操作名，Agent/MCP保留相同原因。被拒绝的调用不写文件、不触发helper/Core、不排队重放；忙时Quit立即拒绝且不保存延后退出。
+- 平台API不接受外部AbortSignal。Agent/MCP在进入业务前检查取消，已开始的操作完整收尾。证书组的占用覆盖材料、系统信任、回读及Core同步；系统代理组覆盖接管、恢复、journal和upstream应用；AppContainer单项/批量写入共用一组。
+- helper维护与使用同一helper的操作互斥，需要系统确认的操作共享授权占用；不同业务组可以并行，只读查询不长期占用修改组。Core故障恢复与失败回滚是必要收尾，不因普通用户冲突而丢弃。
+- 已结束的部署只读检查失败标为completed，不产生授权或保留修改占用；`system-proxy.read-effective`完整回复的value非法时，同样标明completed及只读operation。错误仍明确返回，不把这些情况误记为未知写入。
+- 真正已发出的原生写入若超时/断线，结束情况仍未知；取得可靠结束证据前保留占用，不靠普通status成功清除busy、不自动重试。可靠解除的剩余工作在Handover跟踪。
+- macOS常驻helper同步服务Main，launchd使用`ProcessType=Interactive`，避免Background的CPU/I/O限制拖过原30秒期限。Unix socket不具备Adaptive所需XPC activity；完整资源、内嵌代码、全部架构和运行时鉴权不变，部署与生产证据见[Handover](../HANDOVER.md#verification)。
+
+Certificate module组装的`CertificateInfo`含`path`与`mitmEnabled`，不含私钥；解密材料只经内部Core RPC发送。
 
 ## 3. 系统代理
 
@@ -302,9 +324,9 @@ Main 组装的 `CertificateInfo` 含 `path` 与 `mitmEnabled`，**私钥不出 M
 | 参与者 | 负责什么 | 不负责什么 |
 | --- | --- | --- |
 | Renderer | 通过窄 Desktop API 请求 Enable、Restore 和只读 Status | 不访问 WinINet、SystemConfiguration 或 journal |
-| `DesktopApplication`（Main） | 产品内唯一的系统代理流程编排者；决定何时恢复、何时退出，并同步 Core upstream 与 Renderer 状态 | 不把代理快照写入日志或发给 Renderer |
-| `SystemProxyOperationQueue`（Main 内存） | 按调用先后顺序执行启动恢复、Enable、Restore、Core 故障恢复与退出恢复 | 不保存 PID，不写磁盘，不是跨进程锁 |
-| 平台 `SystemProxyService` | 读取 `current`、比较完整快照、调用 native helper 写入并回读验证 | 不管理 Core 生命周期或 Renderer |
+| `DesktopApplication`（Main） | 调用唯一PlatformCapabilitiesService，捕获error并转发状态，管理App/Core生命周期 | 不管理平台module实例、操作状态、upstream或恢复步骤 |
+| `PlatformCapabilitiesService` | 私有组装各module，提供完整业务方法和启动/退出入口 | 不维护集中平台操作表或用户请求队列 |
+| 平台 `SystemProxyService` | 拥有操作状态、listener检查、upstream同步/探活及必要恢复；所属Windows/macOS实现比较完整快照并执行native写入/回读 | 不启动或停止Core进程，不访问Renderer |
 | Proxy Core UtilityProcess | 监听 `127.0.0.1:8888`，接收 Main 下发的 upstream 并转发流量 | 不读取或修改系统代理，不读 journal |
 | crash journal | 保存崩溃恢复需要的 `version/original/owned` | 不保存 owner、PID、启动时间、instance ID 或阶段状态 |
 | 操作系统 | 保存当前实际生效的代理配置 `current` | 不知道哪个 App “拥有”代理 |
@@ -320,9 +342,11 @@ Main 组装的 `CertificateInfo` 含 `path` 与 `mitmEnabled`，**私钥不出 M
 文档中的 `current == owned`、`current == original` 都表示完整快照逐字段相等，不表示 PID、进程或文件的所有权。
 
 Windows journal 固定为 `%LOCALAPPDATA%/Interceptor/system-proxy/journal.json`，不随 Electron
-`userData`、开发模式、packaged App 或 E2E `--user-data-dir` 改变；macOS journal 位于当前
-`userData/system-proxy/journal.json`。两平台都先把临时文件完整写入并同步，再原子 rename。
+`userData`、开发模式、packaged App 或 E2E `--user-data-dir` 改变；macOS journal 为
+`~/Library/Application Support/Interceptor Platform/system-proxy/journal.json`，也避开默认profile。两平台都先把临时文件完整写入并同步，再原子 rename。
 产品前提是同一时间只运行一个 Interceptor App，不处理两个 App 的竞争。
+
+启动用户级journal路径前必须确认旧实例已正常退出、系统代理已恢复、没有待处理旧journal；不能遗弃仍拥有OS代理的恢复记录。不增加旧profile迁移或回退读取，Windows原路径、原生命令和`version/original/owned`契约保持。
 
 ### 3.2 生命周期流程
 
@@ -333,37 +357,41 @@ sequenceDiagram
      autonumber
      participant UI as Renderer
      participant Main as DesktopApplication
-     participant Queue as SystemProxyOperationQueue
+    participant Platform as PlatformCapabilitiesService
      participant Svc as SystemProxyService
      participant Journal as crash journal
      participant OS as 操作系统代理
      participant Core as Proxy Core
 
      Note over Main: App A 正常冷启动
-     Main->>Queue: recoverAfterCrash
-     Queue->>Svc: 启动恢复
+    Main->>Platform: prepare()
+    Platform->>Svc: recoverAfterCrash()
      Svc->>OS: 读取 current
      Svc->>Journal: 读取
      Note over Svc,OS: 无 journal 时返回未接管，零系统代理写入
      Main->>Core: 启动8888 listener
      UI->>Main: Capture bootstrap 请求 Enable
-     Main->>Queue: 排入 Enable
-     Queue->>Core: 确认 listener host/port
-     Queue->>Svc: enable(host, port)
+    Main->>Platform: enableSystemProxy()
+    Platform->>Svc: enable()，冲突立即拒绝
+    Svc->>Core: 确认 listener host/port
      Svc->>OS: 读取完整 original
      Svc->>Journal: 原子保存 version/original/owned
      Svc->>OS: 写入 owned 并回读验证
-     Svc-->>Main: owned status + detected upstream
-     Main->>Core: 下发 original 推导出的 upstream
+    Svc->>Core: 下发 original 推导出的 upstream
+    Svc-->>Platform: 公开 owned status
+    Platform-->>Main: 完成结果与状态通知
 
      Note over Main,Core: App A 异常终止；OS 与 journal 仍保留 owned/original
      Note over Main: App A 完全退出后顺序启动 App B
-     Main->>Queue: recoverAfterCrash
-     Queue->>Svc: 启动恢复
+    Main->>Platform: prepare()
+    Platform->>Svc: recoverAfterCrash()
      Svc->>OS: 读取 current
      Svc->>Journal: 读取首次 original/owned
      Note over Svc,OS: current == owned，只加载快照与 upstream，零系统代理写入
-     Main->>Core: 启动新8888 listener并重新下发 upstream
+    Main->>Core: 启动新Core
+    Main->>Platform: synchronizeCore()
+    Platform->>Svc: synchronizeCore()
+    Svc->>Core: 重新下发 upstream
      Note over UI: status 已为 owned，不把8888重记为 original
 ```
 
@@ -375,16 +403,18 @@ sequenceDiagram
      participant Electron
      participant Main as DesktopApplication
      participant Gate as ApplicationActionGate
-     participant Queue as SystemProxyOperationQueue
+    participant Platform as PlatformCapabilitiesService
      participant Svc as SystemProxyService
      participant Services as Agent/MCP/Core等服务
 
      alt 正常退出
           Electron->>Main: before-quit
+          Main->>Platform: assertCanQuit()
+          Note over Main,Platform: 忙时立即提示并结束本次退出，不保存请求
           Main->>Main: quitting = true，阻止直接退出
           Main->>Gate: 拒绝新IPC并排空已接受命令
-          Main->>Queue: 排入最终 Restore
-          Queue->>Svc: 按判定表恢复
+          Main->>Platform: stop()
+          Platform->>Svc: 按判定表恢复
           alt 恢复成功或无需写入
                 Main->>Services: 逐项停止
                 Main->>Electron: app.quit
@@ -394,8 +424,8 @@ sequenceDiagram
           end
      else onReady 启动中途失败
           Main->>Main: quitting = true
-          Main->>Queue: 把 Restore 作为第一项清理任务
-          Queue->>Svc: 按判定表恢复
+          Main->>Platform: stop()作为第一项清理任务
+          Platform->>Svc: 按判定表恢复
           Note over Main,Svc: 恢复失败时保留 journal 并警告，但 App 已无法继续
           Main->>Services: 无论单项清理是否失败都继续停止其余服务
           Main->>Electron: app.quit
@@ -405,10 +435,10 @@ sequenceDiagram
 正常退出可以在代理恢复失败后继续运行，因此取消退出且不先停止 Core；启动失败表示 App 已经无法继续，
 所以即使代理恢复失败也会保留 journal、警告用户并继续销毁其余服务。这是两条流程最重要的差异。
 
-Core 从 `running` 进入 `unresponsive/restarting` 时，Main 只把一个自动 Restore 排入同一队列；重复状态通知
-不会重复排队。用户 Enable/Restore、启动恢复、Core 故障恢复和退出恢复严格 FIFO，前一项结束后下一项才读取
-新的 `current`。单项失败不堵塞后续；`quitting=true` 后不再接受新的 Core 故障恢复。该队列只解决单 Main
-进程内事件交错，不提供多 App 互斥。
+Core状态通知经PlatformCapabilitiesService交给SystemProxyService；从`running`进入`unresponsive/restarting`时，
+module合并一份必要Restore，等待已开始的操作明确结算后恢复。用户Enable/Restore发生冲突时立即拒绝，不保存、
+不重试、不延后执行。恢复前仍当场读取完整`current`；原生结果不确定时不能仅凭Promise失败释放占用。
+这些状态仅协调单Main进程，产品仍要求同一时间只运行一个App。
 
 所有启动恢复、用户 Restore、Core 故障恢复和退出恢复最终使用同一判定表：
 
@@ -454,7 +484,7 @@ Main首次启动部署同包helper，代理和System Keychain导入/删除已接
 - App鉴权递归验证内嵌代码、资源与全部架构；真实签名fixture在仅修改内嵌资源、Main CDHash不变时取得Red，递归校验后9/9 Green。此证据不代替正式App运行时身份与安装路径验证。
 - 协议为单连接单条newline JSON，校验协议版本和严格字段集合；`status`返回服务进程ID、是否root、客户端写资格和当前实际能力。未知命令、额外字段、未核准进程都明确拒绝。
 - 证书目标命令`certificate.import / certificate.remove`仅接受`parameters: { certificate, sha256 }`，certificate为公开X.509 DER的base64，sha256为64位大写十六进制。原生侧核对编码、大小、指纹和Interceptor自颁发主题，固定System.keychain；不接受路径、私钥、任意keychain或按模糊名称删除。
-- Main继续拥有CA生成、私钥safeStorage和TLS同步。系统证书导入/删除改走已安装helper；admin trust添加/移除仍用登录用户上下文的Security命令，信任失败不报成功，移除trust失败不删除证书。helper导入不等于受信任，不能替代系统独立授权；改后复跑真实TLS证书集合与admin trust完整恢复。
+- Main进程中的CertificateService拥有CA生成、私钥safeStorage和TLS同步。公开证书导入/删除使用常驻helper，admin trust添加/移除使用普通用户前台helper；信任失败不报成功，移除trust失败不删除证书。helper导入不等于受信任，不能替代系统独立授权。
 - 普通`system-proxy.read`保留内核进程、UID、canonical路径与精确CDHash检查，不需要特权的公开查询不再扫描整包资源；`status`和所有写命令仍严格校验完整App资源、内嵌代码及运行时。该区分用于避免只读查询排队拖延代理退出恢复，不能让篡改App获得写资格。
 - Recording就绪：Core重启时`CaptureStatus.recording=true`只说明Core正在记录，Renderer等支持平台的系统代理实际owned且未ownershipLost才显示Recording。迟到查询不能覆盖Stop、代理失权或Core代际变化；事件测试2 Red后7/7、Capture unit79/79，真实Core故障及App crash/relaunch 2/2 Green，证据`/tmp/interceptor-helper-fault-recovery-20260917-ready/`。先前真实失败明确记录了“Recording开启但owned尚未生效”，不以journal预写当作代理已接管。
 - 代理命令：`system-proxy.read`无参数，返回全部活动network service的原始快照；`system-proxy.replace`仅接收`parameters: { expectedSnapshot, replacementSnapshot }`，两个快照均为`{ services: [{ id, name, settings }] }`，不接收路径、shell或Authorization凭据。协议帧上限为256KiB以容纳双快照，过大数据明确拒绝，不截断或省略服务。
@@ -477,7 +507,7 @@ Main首次启动部署同包helper，代理和System Keychain导入/删除已接
 - 2026-09-18生产package与audit通过，开发授权已存在时packaged smoke1/1在`/tmp/interceptor-dual-entry-production-smoke-20260918-final/`；实装服务仍拒绝生产socket上的通用Node，开发socket接受获准UID。开发/生产配置互不覆盖，helper字节/inode复用；Main/Core/Worker退出、8888释放、完整代理/证书/admin trust恢复到本轮基线。全量macOS workflow、历史CA残留和root卸载/rollback不由本结果替代，详细阶段见Handover。
 - 2026-09-19阶段提交前已同步`8d153821`并排除暂停的弹窗动画/独立package骨架：227 passed、2 Windows native skipped及Desktop类型通过；Core恢复、helper复用、上游存储/标题/正文相关6条真实E2E全通过。重新package/audit为1487文件、339450724字节，`/tmp/interceptor-stage-sync-20260919-production-smoke/`1/1（2.5分钟）；用户本轮开启的完整代理、公开CA/admin trust精确恢复，helper字节/inode和开发授权未变。详细命令及范围见[Handover Verification](../HANDOVER.md#verification)，不把同步前65条结果提升为同步后全量通过。
 
-- App留在用户原位置，helper随App打包；Main首次启动在代理恢复/接管前调用`MacosHelperDeploymentService.ensureInstalled()`，缺失或本次App配套身份改变才请求一次系统管理员授权。后续启动只读核对并复用；不要求`.pkg`、不移动或更改App所有权，不下载独立helper。
+- App留在用户原位置，helper随App打包；平台prepare在代理恢复/接管前检查helper部署，缺失或所选入口的配套身份改变才请求系统管理员授权。后续启动只读核对并复用；不要求`.pkg`、不移动或更改App所有权，不下载独立helper。
 - 只将原生组件部署到`/Library/PrivilegedHelperTools/com.zhxmt.interceptor.platform-capabilities`，配置和socket位于`/Library/Application Support/Interceptor/PlatformHelper/`。配置由root拥有且不可被其他用户写入，记录实际登录UID、App canonical路径及精确CDHash；launchd服务与配套helper一起更新。
 - 授权后先在root私有暂存目录复制单个helper并核验精确签名，再执行固定`install-helper`。原生实现再次核验App/同包helper，按文件事务替换并注册服务；失败恢复原组件，不执行旧一次性写入路径。
 - `deployment-status`只读返回`missing / outdated / ready / stopped / invalid`；损坏/未知状态不触发覆盖安装，取消不重试。`status`将服务root权限与`clientAuthorizedForWrites`分别表达，运行中App须通过内核身份、完整签名与Hardened Runtime校验，不以root拥有整个App代替鉴权。

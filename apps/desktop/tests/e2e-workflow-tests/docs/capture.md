@@ -199,17 +199,17 @@ Compact正文尺寸：在真实binary JSON消息默认Pretty档、切Tree之前�
 
 ### Steps
 
-1. fresh profile通过Certificates UI生成/安装本轮CA、添加localhost源站例外并启用MITM；经UI启用Recording。
+1. fresh profile通过Certificates UI确认共享CA就绪、添加localhost源站例外并启用MITM；经UI启用Recording，不重复生成/安装CA。
 	- 新增streaming步骤先运行：复用`TlsTrafficRunner`与受控响应流，经真实8888/TLS/H2发送JSON gRPC。仅到达3-byte header时消息为0；收齐第一条envelope后，响应未结束时消息为1且真实Copy正确；第二条payload未收齐时仍为1，补齐后为2且Copy正确。最后结束流并核对实际grpc-status 0；全过程不调用业务API替代UI。
 	- 进行中失败必须先保存`grpc-streaming.png`与`grpc-streaming.json`，记录客户端是否结束、源站输入流是否结束及实际消息数，再结束流和恢复CA/Root，不能用流结束后出现消息的截图冒充前置状态。
-	- 系统背景流量触发TLS compatibility时，使用公共`settings.tls-compatibility.dismiss`对应的Not now控件真实关闭，不自动添加host或修改MITM策略。清理前移除Playwright locator handler，仍按原正式UI恢复CA与Root；弹窗挡点击的失败不算目标Red。
+	- 系统背景流量触发TLS compatibility时，共享driver用公共automation ID定位Not now控件真实激活，不自动添加host或修改MITM策略；handler保持至Page关闭，清理不重复注册或点击。弹窗挡点击的失败不算目标Red。
 	- Pause/Resume与Clear分别创建新H2 stream：第一条消息出现后真实点击Recording暂停或Clear，再发送第二条。暂停时第二条仍可查看和Copy，完整结束后恢复Recording；Clear后旧行与消息保持消失，真实两条消息及trailers仍完整到达client，后续五个原场景仍可产生新Capture记录。保存各自进行中和最终状态JSON，不把Clear当作断开网络。
 	- 双向streaming同时保持Request/Response未结束，各先发送一条完整JSON消息，再发送第二条缺两字节的payload；逐侧核对第一条可Copy、半条不生成消息，补齐后第二条出现且Copy正确。每次Copy时两侧均未结束，最后共同结束并核对实际请求/响应字节与trailers；保存`grpc-bidirectional-streaming.json/png`。
 2. 逐个运行Unary proto、Unary JSON、Trailers error、Compressed及Malformed场景，确认实际H2/200和grpc-status为0/13；不将HTTP 200当gRPC业务成功。
 3. 真实选择Capture H2行并打开gRPC；逐侧切换Request/Response，校验消息数、声明载荷长度和`@ 0x0005`偏移。
 4. 用真实Copy核对proto Hex、JSON文本及gzip原始压缩字节；Malformed仅响应末尾少两个字节，请求保持完整，UI声明长度保留，Copy只返回实际字节。
 5. status 13的Response消息为0，UI显示`grpc-status: 13`和`grpc-message: Playground failure`，不制造响应消息。
-6. 保存逐场景身份、trace与截图，Renderer无page error；finally通过UI停用MITM、移除例外、卸载/删除本轮CA并比较Root集合，fixture验证Main/Core/Worker、8888、WinINet/journal恢复。
+6. 保存逐场景身份、trace与截图，Renderer无page error；finally通过UI停用MITM、移除例外，保留共享CA并比较Root集合，fixture验证Main/Core/Worker、8888、完整系统代理/journal恢复。超时优先恢复宿主，缺trace和未完成的UI清理必须明确记录，不能算Green。
 
 2026-09-14在途结果：首条31 B到达时真实Red为1条预期/0条实际，client与origin均未结束；Green在63 B时显示两条且实际Copy分别为`stream-first`/`stream-second` JSON。Main/Core Red `10432/37368`、Green `27992/35704`均正常销毁，CA/Root与宿主guard通过；TEMP `interceptor-grpc-streaming-20260914-e2e-{red-valid,green}`保存JSON、截图、trace和metadata。此前背景TLS弹窗挡点击仅算环境干扰；不将本次结果外推为gRPC bidi、Pause/Resume、Clear或压力矩阵完成。
 
@@ -228,11 +228,11 @@ Compact正文尺寸：在真实binary JSON消息默认Pretty档、切Tree之前�
 ### Steps
 
 1. fresh profile只开启Recording，运行`tls-passthrough`；真实TLS握手完成但不发HTTP应用字节，Capture仅显示localhost的CONNECT/TLS行。
-2. 打开Tunnel，核对目标和端口；没有Response标签或正文预览。通过`capture.inspector.setup-https`打开HTTPS设置，确认连接示意可见、Generate可用、Install/Start decrypting禁用；截图后Cancel，仍无正文和CA副作用，不能伪造加密HTTP内容。
-3. 经真实Certificates UI生成、安装本轮CA，添加localhost源站例外并开启MITM，不调用Manager。
+2. 打开Tunnel，核对目标和端口；没有Response标签或正文预览。通过`capture.inspector.setup-https`打开HTTPS设置，确认连接示意可见；共享CA已就绪，Generate/Install不显示，Start decrypting可用。截图后Cancel，仍无正文和CA副作用。
+3. 经真实Certificates UI确认共享CA受信任，添加localhost源站例外并开启MITM，不重复Generate/Install，不调用Manager。
 4. 依次运行`tls-mitm-h1`与`tls-mitm-h2`，分别验证实际ALPN为http/1.1与h2、Capture显示对应GET/200行，Response Raw显示mode与secure字段。
-5. TLS页显示https、localhost、本轮端口和TLS事实；保存三个场景证据，Renderer无page error。
-6. finally经UI停用MITM、移除源站例外、按本轮身份卸载/删除CA；Root集合完全恢复，fixture验证origin及Main/Core/Worker、8888、WinINet/journal恢复。
+5. TLS页显示https、localhost、本轮端口和TLS事实；另启动独立Edge，经8888访问同一origin的`/playground/tls/browser-trust`固定页面，保留默认HTTPS校验，不指定CA或忽略证书错误。要求200、浏览器securityState为secure、localhost叶证书由当前共享CA签名；协议客户端的`rejectUnauthorized: false`不能代替这项验收。
+6. 保存三个场景、浏览器security state和公开证书指纹，Renderer无page error；finally关闭Edge，经UI停用MITM、移除源站例外，保留共享CA及Root集合，fixture验证origin及Main/Core/Worker、8888、完整系统代理/journal恢复。
 
 2026-09-12恢复授权后执行新增步骤2，连接示意可见、按钮前置状态和Cancel全部通过；后续未解密/H1/H2、CA/Root及宿主恢复同跑。与真实正文workflow联合2/2（45.7s），本条Main/Core13768/41652正常销毁；TEMP `interceptor-update-button-centering-20260912-e2e/`保存完整证据。2026-09-11暂停期间缺少实现前E2E Red的历史事实不变，组件渲染和parity仍不是其替代证据。
 
@@ -249,7 +249,7 @@ Compact正文尺寸：在真实binary JSON消息默认Pretty档、切Tree之前�
 ## `capture.tools.archive-transfer`
 
 **状态**：passed
-**策略**：native-ui；Windows；两代真实Electron；host-safety-guard
+**策略**：native-ui；Windows/macOS；两代真实Electron；host-safety-guard
 
 ### Steps
 
@@ -260,7 +260,7 @@ Compact正文尺寸：在真实binary JSON消息默认Pretty档、切Tree之前�
 5. Agent Auto导出仍显示Save，Auto导入仍显示Open；再导入时追加完整数据，已有Capture不被清空。结果和Transcript只含安全任务字段或取消摘要。
 6. 关闭Agent两项权限，旧Chat无法调用；产品UI创建MCP Client，独立开启MCP权限并验证Ask Deny/Allow、原生取消、Auto导出及追加导入。
 7. 原UI Archive Export/Import也完成同组操作，使用同一Main方法。菜单条目使用`display: flex`与`align-items: center`，16px行高、9px/10px padding，扩展名`.iarchive`为9.5px文字及2px/6px padding；总高为38px加扩展名上下边框，DPR=2时40px、DPR=1.5时39.3333px，按真实设备像素校验。Export说明/敏感警示均为12px文字、11px/13px内边距及15px图标，黄/红两种状态不混用。先点击产品Cancel再重新Export；Import保留单个说明警示。分别保存不含背景敏感正文的弹窗截图，完成真实Save/Open及原文件完整性断言；MCP撤权后旧连接不能披露或执行两项Tool。
-8. 正常关闭并保存trace/evidence；同profile重启，权限保持，Model/origin/文件操作零重放。两代Main/Core/Worker全部退出，8888释放，完整WinINet/journal恢复后清理产品文件。
+8. 正常关闭并保存trace/evidence；同profile重启，权限保持，Model/origin/文件操作零重放。两代Main/Core/Worker全部退出，8888释放，完整WinINet或macOS多network service代理、共享journal与证书信任恢复后清理产品文件。MCP与原生Dialog步骤只记录Tool名称、模式和操作，不在步骤标题中包含凭据、路径或正文。
 
 ### 预期与证据
 

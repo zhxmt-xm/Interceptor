@@ -1,6 +1,7 @@
 import type { MessageCatalog } from '../english-catalog';
 
 export const itCatalog = {
+  'platform.operationInProgress': 'In corso: {{operation}}. Riprova al termine.',
   'app.connectingToCore': 'Connessione a Proxy Core',
   'app.coreStatusUnavailable': 'Stato di Proxy Core non disponibile',
   'app.minimizeWindow': 'Riduci',
@@ -58,6 +59,8 @@ export const itCatalog = {
   'coreState.restarting': 'Riavvio',
   'coreState.stopping': 'Arresto',
   'coreState.stopped': 'Arrestato',
+  'boot.preparingPlatform': 'Preparazione dei componenti di sistema',
+  'boot.preparingCertificate': 'Preparazione del certificato HTTPS',
   'boot.startingCore': 'Avvio di Proxy Core',
   'boot.bindingListener': 'Associazione del listener locale',
   'boot.enablingSystemProxy': 'Attivazione del proxy di sistema',

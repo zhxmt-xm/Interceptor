@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { SecureStore } from '../../../interfaces';
+import type { SecureStore } from '../../../platform-capabilities/interfaces';
 import { GitHubAuthService } from '../../github-auth-service';
 
 /** Reversible test encryption that keeps token plaintext out of the file. */

@@ -6,7 +6,7 @@ import './styles/global.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { App } from './app/App';
+import { ApplicationStartup } from './app/ApplicationStartup/ApplicationStartup';
 import { reportRendererDiagnostic } from './app/reportRendererDiagnostic';
 import './i18n/i18n';
 
@@ -25,6 +25,6 @@ window.addEventListener('unhandledrejection', (event) => {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <App />
+    <ApplicationStartup />
   </StrictMode>,
 );

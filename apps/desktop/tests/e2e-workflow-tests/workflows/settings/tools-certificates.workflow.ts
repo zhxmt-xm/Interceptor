@@ -6,10 +6,12 @@ import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
-import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { expect, LocalElectronApplicationDriver } from '../../fixtures/runtime/local-electron-driver';
+import { certificateLifecycleTest as test } from '../../fixtures/runtime/certificate-lifecycle-driver';
 import { getByAutomationId } from '../../fixtures/ui/automation';
-import { rootCertificateThumbprints as rootFingerprints } from '../../fixtures/ui/https-capture';
+import { certificateWaitOptions, removeCreatedSharedCertificate, rootCertificateThumbprints as rootFingerprints, sharedCertificateDirectory } from '../../fixtures/ui/https-capture';
 import { closeCertificateWindow, listCertificateWindows, verifyAndCloseCertificateWindow, type CertificateWindow } from '../../fixtures/ui/certificate-windows';
+import { cancelMacosCertificateTrustRequest, waitForMacosCertificateTrustRequest } from '../../fixtures/ui/macos-certificate-authorization';
 
 const TOOL_NAMES = [
   'settings_generate_certificate', 'settings_install_certificate',
@@ -73,8 +75,11 @@ async function callAgentTool(
       ? AutomationIdFactory.agentToolAllow(callId) : AutomationIdFactory.agentToolDeny(callId);
     await getByAutomationId(page, verdictId).click();
   }
+  const requiresSystemAuthorization = options.verdict !== 'deny'
+    && (name === TOOL_NAMES[1] || name === TOOL_NAMES[2] || name === TOOL_NAMES[3]);
   await expect(getByAutomationId(page, AUTOMATION_IDS.agent.session.root))
-    .toHaveAttribute('data-turn-status', options.fails ? 'failed' : 'completed');
+    .toHaveAttribute('data-turn-status', options.fails ? 'failed' : 'completed',
+      requiresSystemAuthorization ? certificateWaitOptions.visibility : undefined);
   if (options.fails) return null;
   const result = resultForCall(lab, callId);
   const errorCode = options.verdict === 'deny' ? 'tool_denied' : options.expectedError;
@@ -86,7 +91,7 @@ async function callAgentTool(
 
 async function certificateIdentity(desktopApp: LocalElectronApplicationDriver): Promise<string | null> {
   try {
-    const pem = await readFile(path.join(desktopApp.userDataDirectory, 'certificates', 'root-cert.pem'));
+    const pem = await readFile(path.join(sharedCertificateDirectory(), 'root-cert.pem'));
     return new X509Certificate(pem).fingerprint.replaceAll(':', '');
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
@@ -162,14 +167,14 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
 }
 
 test('settings.tools.certificates shares certificate lifecycle and viewing across Agent and MCP', async ({
-  desktopApp, openAiCompatibleLab,
+  desktopApp, openAiCompatibleLab, certificateRootsBeforeStartup,
 }, testInfo) => {
   test.setTimeout(420_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.tools.certificates' });
   desktopApp.preserveUserDataOnFailure();
   for (const text of [PROMPT, ANSWER]) desktopApp.registerSensitiveTextForEvidenceAudit(text);
-  const rootsBefore = await rootFingerprints();
-  const certificateDirectory = path.join(desktopApp.userDataDirectory, 'certificates');
+  const rootsBefore = certificateRootsBeforeStartup;
+  const certificateDirectory = sharedCertificateDirectory();
   const windowsBefore = await listCertificateWindows(certificateDirectory);
   const ownedWindows: CertificateWindow[] = [];
   let relaunchedApp: LocalElectronApplicationDriver | null = null;
@@ -180,6 +185,7 @@ test('settings.tools.certificates shares certificate lifecycle and viewing acros
   try {
     // 准备：经真实UI配置Provider，发现六项证书生命周期与查看Tool。
     // Arrange: configure the Provider through UI and discover the six certificate lifecycle and viewing Tools.
+    await removeCreatedSharedCertificate(desktopApp, rootsBefore);
     await configureProvider(desktopApp.page, openAiCompatibleLab);
     await desktopApp.stopTrace(testInfo);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.panel.toggle).click();
@@ -272,8 +278,8 @@ test('settings.tools.certificates shares certificate lifecycle and viewing acros
     expect(await rootFingerprints()).toEqual(rootsBefore);
     expect(await certificateIdentity(desktopApp)).toBeNull();
 
-    // 撤权和重启：两列授权各自关闭，旧调用无效；保留未受信任CA确认跨代身份和零重放。
-    // Revocation and restart: disable both entry points, reject stale calls, and preserve an untrusted CA to verify identity without replay.
+    // 撤权和重启：旧调用无效；保留未受信任CA，启动只补授信，不重放Agent请求。
+    // Revocation and restart: reject stale calls; startup trusts the retained CA without replaying Agent requests.
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.section.agent).click();
     for (const name of TOOL_NAMES) {
       await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.tools.search).fill(name);
@@ -300,7 +306,7 @@ test('settings.tools.certificates shares certificate lifecycle and viewing acros
     await relaunchedApp.stopTrace(testInfo);
     expect(openAiCompatibleLab.evidence().length).toBe(modelRequestCount);
     expect(await certificateIdentity(relaunchedApp)).toBe(persistedIdentity);
-    expect(await rootFingerprints()).toEqual(rootsBefore);
+    expect(await rootFingerprints()).toEqual([...rootsBefore, persistedIdentity!].sort());
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.settings.section.agent).click();
     for (const name of TOOL_NAMES) {
@@ -322,31 +328,20 @@ test('settings.tools.certificates shares certificate lifecycle and viewing acros
     const activeApp = relaunchedApp ?? desktopApp;
     if (client) await client.close().catch((error: unknown) => cleanupErrors.push(error));
     try {
+      if (!activeApp.page.isClosed()) {
+        const session = getByAutomationId(activeApp.page, AUTOMATION_IDS.agent.session.root);
+        if (await session.isVisible()) {
+          await expect(session).not.toHaveAttribute('data-turn-status', 'running', certificateWaitOptions.visibility);
+        }
+      }
       const oldHandles = new Set(windowsBefore.map((window) => window.handle));
       const cleanupWindows = new Map([...ownedWindows, ...await listCertificateWindows(certificateDirectory)]
         .map((window) => [window.handle, window]));
       for (const window of cleanupWindows.values()) {
         if (!oldHandles.has(window.handle)) await closeCertificateWindow(window);
       }
-    } catch (error) {
-      cleanupErrors.push(error);
-    }
-    try {
       if (!activeApp.page.isClosed()) {
-        await openCertificates(activeApp.page);
-        const identity = await certificateIdentity(activeApp);
-        if (identity) {
-          if ((await rootFingerprints()).includes(identity)) {
-            const uninstall = getByAutomationId(activeApp.page, AUTOMATION_IDS.settings.certificates.uninstall);
-            await expect(uninstall).toBeEnabled();
-            await uninstall.click();
-            await expect.poll(async () => (await rootFingerprints()).includes(identity)).toBe(false);
-          }
-          const remove = getByAutomationId(activeApp.page, AUTOMATION_IDS.settings.certificates.delete);
-          await expect(remove).toBeEnabled();
-          await remove.click();
-          await expect.poll(() => certificateIdentity(activeApp)).toBeNull();
-        }
+        await removeCreatedSharedCertificate(activeApp, rootsBefore);
       }
       expect(await rootFingerprints()).toEqual(rootsBefore);
       await testInfo.attach('certificate-cleanup.json', {
@@ -360,4 +355,101 @@ test('settings.tools.certificates shares certificate lifecycle and viewing acros
   if (workflowError && cleanupErrors.length > 0) throw new AggregateError([workflowError, ...cleanupErrors], 'Certificate workflow and cleanup failed.');
   if (workflowError) throw workflowError;
   if (cleanupErrors.length > 0) throw new AggregateError(cleanupErrors, 'Certificate cleanup failed.');
+});
+
+test.describe('certificate operation conflicts', () => {
+  test.skip(process.platform !== 'darwin', 'Native authorization ownership and cancellation are verified by the macOS fixture.');
+
+  test('settings.tools.certificates rejects overlapping mutations without queuing or deleting material', async ({
+    desktopApp, certificateRootsBeforeStartup,
+  }, testInfo) => {
+    test.setTimeout(180_000);
+    testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.tools.certificates' });
+    desktopApp.preserveUserDataOnFailure();
+    const { page } = desktopApp;
+    const rootsBefore = certificateRootsBeforeStartup;
+    const owner = desktopApp.nativeFileDialogOwner();
+    let client: Client | null = null;
+    let installation: ReturnType<Client['callTool']> | null = null;
+    let authorization: Awaited<ReturnType<typeof waitForMacosCertificateTrustRequest>> | null = null;
+    let workflowError: unknown;
+    const cleanupErrors: unknown[] = [];
+
+    try {
+      // 准备：本轮CA与MCP凭据均经产品UI产生，系统基线不作为删除输入。
+      // Arrange: create this run's CA and MCP credential through product UI, never deleting baseline material.
+      await removeCreatedSharedCertificate(desktopApp, rootsBefore);
+      await openCertificates(page);
+      await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.generate).click();
+      await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install)).toBeEnabled();
+      const thumbprint = await certificateIdentity(desktopApp);
+      expect(thumbprint).not.toBeNull();
+      await desktopApp.stopTrace(testInfo);
+      const configured = await createMcpClient(desktopApp);
+      client = configured.client;
+      await getByAutomationId(page, AutomationIdFactory.mcpClientAuto(configured.clientId)).click();
+      await expect(getByAutomationId(page, AutomationIdFactory.mcpClientRow(configured.clientId)))
+        .toHaveAttribute('data-execution-mode', 'auto');
+      await openCertificates(page);
+      await desktopApp.startTrace(testInfo);
+
+      // 用户操作：授信保持在真实系统确认阶段，另一个MCP请求和实际Delete点击必须立即拒绝。
+      // User actions: while real system authorization is pending, reject a second MCP mutation and the actual Delete click immediately.
+      installation = client.callTool({ name: TOOL_NAMES[1], arguments: {} }, { timeout: 120_000 });
+      void installation.catch(() => undefined);
+      authorization = await waitForMacosCertificateTrustRequest(owner);
+      const rejected = await client.callTool({ name: TOOL_NAMES[3], arguments: {} }, { timeout: 5_000 });
+      expect(rejected.isError, 'Delete must fail while certificate installation is still awaiting system authorization').toBe(true);
+      const message = rejected.content.find((entry) => entry.type === 'text')?.text ?? '';
+      expect(message).toContain('operation_in_progress');
+      expect(message).toContain('certificate.install');
+      expect(await certificateIdentity(desktopApp)).toBe(thumbprint);
+      await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete).click({ timeout: 5_000 });
+      await expect(getByAutomationId(page, AUTOMATION_IDS.platform.operationConflict))
+        .toHaveAttribute('data-operation', 'certificate.install', { timeout: 5_000 });
+
+      // 用户操作：等待旧提示消失后点Quit，必须重新显示在途操作，不能提前关闭App。
+      // User actions: after the old message closes, Quit must report the active operation without closing the App.
+      await expect(getByAutomationId(page, AUTOMATION_IDS.platform.operationConflict)).toHaveCount(0);
+      await getByAutomationId(page, AUTOMATION_IDS.shell.window.close).click({ timeout: 5_000 });
+      await expect(getByAutomationId(page, AUTOMATION_IDS.platform.operationConflict))
+        .toHaveAttribute('data-operation', 'certificate.install', { timeout: 5_000 });
+
+      // 业务断言与证据：明确取消原生授信后，拒绝过的Delete与Quit不得重放。
+      // Business assertions and evidence: after native authorization is cancelled, rejected Delete and Quit requests must not replay.
+      await cancelMacosCertificateTrustRequest(owner, authorization);
+      authorization = null;
+      expect((await installation).isError).toBe(true);
+      installation = null;
+      await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.install)).toBeEnabled();
+      await expect(getByAutomationId(page, AUTOMATION_IDS.platform.operationConflict)).toHaveCount(0);
+      await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+      await openCertificates(page);
+      expect(await certificateIdentity(desktopApp)).toBe(thumbprint);
+      expect(await rootFingerprints()).toEqual(rootsBefore);
+      await testInfo.attach('certificate-conflict.json', {
+        body: Buffer.from(JSON.stringify({ operation: 'certificate.install', rejectedOperation: 'certificate.delete',
+          mcpRejected: true, uiRejected: true, quitRejected: true, deferredQuit: false,
+          materialRetained: true, authorizationCancelled: true, deferredDelete: false })),
+        contentType: 'application/json',
+      });
+    } catch (error) {
+      workflowError = error;
+    } finally {
+      // 清理：先结束已归属的原生确认及原请求，再通过UI清理本轮材料并核对完整系统集合。
+      // Cleanup: settle owned native authorization and the original request before UI cleanup and exact root-set verification.
+      try {
+        if (authorization) await cancelMacosCertificateTrustRequest(owner, authorization);
+        if (installation) await installation;
+        await removeCreatedSharedCertificate(desktopApp, rootsBefore);
+        expect(await rootFingerprints()).toEqual(rootsBefore);
+      } catch (error) { cleanupErrors.push(error); }
+      if (client) await client.close().catch((error: unknown) => cleanupErrors.push(error));
+    }
+    if (workflowError || cleanupErrors.length > 0) {
+      throw new AggregateError([workflowError, ...cleanupErrors].filter(error => error !== undefined),
+        'Certificate conflict verification or cleanup failed.');
+    }
+    desktopApp.releasePreservedUserData();
+  });
 });

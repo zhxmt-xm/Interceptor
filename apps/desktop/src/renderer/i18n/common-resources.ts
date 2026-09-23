@@ -1,4 +1,5 @@
 export const commonEnglishMessages = {
+  'platform.operationInProgress': 'In progress: {{operation}}. Try again after it finishes.',
   'app.connectingToCore': 'Connecting to Proxy Core',
   'app.coreStatusUnavailable': 'Proxy Core status unavailable',
   'app.minimizeWindow': 'Minimize',
@@ -56,6 +57,8 @@ export const commonEnglishMessages = {
   'coreState.restarting': 'Restarting',
   'coreState.stopping': 'Stopping',
   'coreState.stopped': 'Stopped',
+  'boot.preparingPlatform': 'Preparing system components',
+  'boot.preparingCertificate': 'Preparing the HTTPS certificate',
   'boot.startingCore': 'Starting Proxy Core',
   'boot.bindingListener': 'Binding the local listener',
   'boot.enablingSystemProxy': 'Enabling the system proxy',

@@ -222,16 +222,16 @@ Agent通过共享Capability Index渐进发现已开启Tool，并查询同一真�
 	预读body ID。每段严格遵守解码后明文字节`offset + length`，第一页明确`end=false`、末页`end=true`。
 4. Model调用`capture_list_websocket_messages`读取同一WebSocket exchange，分别验证双向完整页与单方向过滤；cursor、limit、
 	direction和返回frame顺序都使用共享schema与真实Core结果。
-5. 经产品Certificates UI生成并安装CA、添加`localhost`源站例外并开启HTTPS解密；再从正式Playground运行
+5. 经产品Certificates UI确认共享CA就绪、添加`localhost`源站例外并开启HTTPS解密，不重复生成或安装；再从正式Playground运行
 	`grpc-unary-json`。Model调用`capture_list_grpc_messages`读取request与response两侧，验证recognized、body metadata、
 	envelope offset/length、compressed/truncated标志和分页结果；payload字节继续通过正文range读取，不由该Tool复制。
-6. 确认首次Model request仍只有Capability Index与`discover_tools`；成功discovery后的request才披露三项新schema。
+6. 确认首次Model request仍只有Capability Index与`discover_tools`；成功discovery后的request精确披露当前17项Capture Tool，包含三项正文/消息schema；名称和顺序与正式契约一致，不仅检查子集。
 	每项Tool Call/Result保持call ID配对，query在Ask/Auto下均不出现审批。
 7. Transcript依调用顺序显示正文range、WebSocket消息和gRPC消息的结构化摘要与公开证据属性；下一次Provider
 	request包含三项未被UI摘要裁剪的完整、已脱敏Tool Result。
 8. 正常关闭并用同一profile重启，确认Transcript与三项Tool轨迹恢复，启动期间Model和Tool请求增量均为0。
 9. 在Settings关闭三项Agent开关，新Chat discovery与schema不再包含它们；分别猜测调用均返回`unknown_tool`。
-	重新开启后恢复。最后经产品UI关闭MITM、移除源站例外、卸载并删除本轮CA、恢复系统代理，关闭Edge、
+	重新开启后恢复。最后经产品UI关闭MITM、移除源站例外、保留共享CA及系统信任，正常退出恢复系统代理，关闭Edge、
 	Playground与两代Electron，验证Main/Core/8888/Playground端口和系统副作用全部收敛。
 
 ### 预期效果

@@ -1,116 +1,197 @@
+import os from 'node:os';
 import path from 'node:path';
+import { PlatformOperationInProgressError } from '@interceptor/tools';
+import type { ClientAppIdentity } from '@interceptor/core-protocol';
 
-import type { PlatformCapabilitiesOptions, PlatformCapability, SystemProxyService } from './interfaces';
-import { MacosHelperServiceError, SystemProxyError } from './internal/errors';
-import { TrustStoreService } from './internal/trust-store-service';
-import { MacosSystemProxyService } from './macos/system-proxy/entry';
-import { MacosSystemProxyJournal } from './macos/system-proxy/journal';
-import { MacosHelperServiceClient } from './macos/helper-client';
-import { MacosHelperDeploymentService } from './macos/installation/helper-deployment';
-import { AppContainerService } from './windows/app-container/app-container-service';
-import { WindowsSystemProxyService } from './windows/system-proxy/entry';
-import { resolveWindowsSystemProxyJournalPath, WindowsSystemProxyJournal } from './windows/system-proxy/journal';
+import type { AppContainerAccessSnapshot, CertificateInfo, ClientAppIcon, CoreProcessStatus, SystemProxyStatus, SystemProxyRestoreResult } from '../../shared/desktop-api';
+import type { PlatformCapabilitiesOptions, PlatformCapability } from './interfaces';
+import { CertificateService } from './certificates/entry';
+import { CertificateError } from './certificates/internal/errors';
+import { HelperService } from './helper/entry';
+import { SystemProxyService } from './system-proxy/entry';
+import { AppContainerService } from './app-container/entry';
+import type { AppContainerSnapshot } from './app-container/interfaces';
+import { ClientAppService } from './client-app/entry';
 
-export { readClientAppIcon } from './windows/client-app/client-app-helper';
-export { resolveClientAppHelperPath } from './internal/client-app';
-export type { TrustStoreService } from './internal/trust-store-service';
-export type { AppContainerService } from './windows/app-container/app-container-service';
-export { SystemProxyOperationQueue } from './internal/operation-queue';
-export { UpstreamProbe } from './internal/upstream-probe';
-export { toUpstreamAuthority } from './internal/upstream';
+export { resolveClientAppHelperPath } from './client-app/entry';
 
 /** Creates the platform-owned capabilities without starting processes or changing the host. */
 export class PlatformCapabilitiesService {
-  readonly systemProxyService: SystemProxyService;
-  readonly trustStoreService: TrustStoreService;
-  readonly appContainerService: AppContainerService;
+  private readonly helperService: HelperService;
+  private readonly systemProxyService: SystemProxyService;
+  private readonly certificateService: CertificateService;
+  private readonly appContainerService: AppContainerService;
+  private readonly clientAppService: ClientAppService;
   private readonly platform: NodeJS.Platform;
-  private readonly macosHelperServiceClient: MacosHelperServiceClient | null;
 
   constructor(private readonly options: PlatformCapabilitiesOptions) {
     this.platform = options.platform ?? process.platform;
-    this.macosHelperServiceClient = this.platform === 'darwin' ? new MacosHelperServiceClient(
-      options.applicationEnvironment === 'development'
-        ? '/Library/Application Support/Interceptor/PlatformHelper/development.sock'
-        : undefined,
-    ) : null;
-    this.systemProxyService = this.createSystemProxyService(options);
-    this.trustStoreService = new TrustStoreService({
-      platform: this.platform, macosHelperServiceClient: this.macosHelperServiceClient ?? undefined,
+    this.helperService = new HelperService(options);
+    this.systemProxyService = new SystemProxyService(options, this.helperService);
+    this.certificateService = new CertificateService({
+      dataDir: this.getCertificateDirectory(), secureStore: options.secureStore,
+      coreRuntime: options.coreRuntime, diagnostics: options.diagnostics,
+      helperService: this.helperService,
+      onChanged: options.onCertificateChanged,
+      platform: this.platform, macosHelperServiceClient: this.helperService.macosHelperServiceClient ?? undefined,
     });
     this.appContainerService = new AppContainerService({
       platform: this.platform,
       helperPath: path.join(options.nativeDirectory, 'app-container/app-container-helper.exe'),
+      helperService: this.helperService,
+      onChanged: options.onAppContainersChanged,
     });
+    this.clientAppService = new ClientAppService(options);
   }
 
-  async prepareNativeComponents(): Promise<void> {
+  async getCertificateInfo(): Promise<CertificateInfo> {
+    return this.certificateService.getInfo();
+  }
+
+  async prepare(): Promise<void> {
+    this.assertCanQuit();
+    this.options.onStartupStageChanged?.('platform');
+    await this.helperService.prepare();
     try {
-      if (this.platform === 'darwin') await this.prepareMacosNativeComponents();
+      await this.systemProxyService.recoverAfterCrash();
     } catch (error) {
-      const code = error instanceof MacosHelperServiceError ? error.code : 'operation-failed';
-      process.stderr.write(`[platform-capabilities] native preparation failed: ${code}\n`);
-      throw error;
+      this.options.onError?.('system-proxy.recover', error);
     }
+    this.options.onStartupStageChanged?.('certificate');
+    await this.certificateService.prepare();
   }
 
-  private async prepareMacosNativeComponents(): Promise<void> {
-    const deploymentOptions = {
-      helperPath: path.join(this.options.nativeDirectory, 'system-proxy/macos-proxy-helper'),
-      userId: this.options.userId ?? process.getuid!(),
+  async synchronizeCore(): Promise<void> {
+    await Promise.all([this.certificateService.synchronizeCore(), this.systemProxyService.synchronizeCore()]);
+  }
+
+  async updateCoreProcessStatus(status: CoreProcessStatus): Promise<void> {
+    await this.systemProxyService.updateCoreProcessStatus(status);
+  }
+
+  async getSystemProxyStatus(): Promise<SystemProxyStatus> {
+    return this.systemProxyService.status();
+  }
+
+  async enableSystemProxy(): Promise<SystemProxyStatus> {
+    return this.systemProxyService.enable();
+  }
+
+  async restoreSystemProxy(): Promise<SystemProxyRestoreResult> {
+    return this.systemProxyService.restore();
+  }
+
+  async stop(): Promise<void> {
+    this.assertCanQuit();
+    await this.systemProxyService.stop();
+  }
+
+  async enableHttpsDecryption(): Promise<CertificateInfo & { decrypting: boolean }> {
+    return this.certificateService.enableHttpsDecryption();
+  }
+
+  async disableHttpsDecryption(): Promise<CertificateInfo & { decrypting: boolean }> {
+    return this.certificateService.disableHttpsDecryption();
+  }
+
+  async generateCertificate(): Promise<CertificateInfo> {
+    await this.certificateService.regenerate();
+    return this.certificateService.getInfo();
+  }
+
+  async installCertificate(): Promise<CertificateInfo> {
+    await this.certificateService.install();
+    return this.certificateService.getInfo();
+  }
+
+  async uninstallCertificate(): Promise<CertificateInfo> {
+    await this.certificateService.uninstall();
+    return this.certificateService.getInfo();
+  }
+
+  async deleteCertificate(): Promise<CertificateInfo> {
+    await this.certificateService.delete();
+    return this.certificateService.getInfo();
+  }
+
+  async revealCertificate(showItemInFolder: (filePath: string) => void): Promise<void> {
+    await this.certificateService.reveal(showItemInFolder);
+  }
+
+  async viewCertificate(openPath: (filePath: string) => Promise<string>): Promise<void> {
+    await this.certificateService.view(openPath);
+  }
+
+  async openCertificateManager(): Promise<void> {
+    await this.certificateService.openManager();
+  }
+
+  getClientAppIcons(): ClientAppIcon[] {
+    return this.clientAppService.getIcons();
+  }
+
+  async loadClientAppIcons(clientApps: ClientAppIdentity[]): Promise<void> {
+    await this.clientAppService.loadIcons(clientApps);
+  }
+
+  async listAppContainers(): Promise<AppContainerAccessSnapshot> {
+    return PlatformCapabilitiesService.toAppContainerAccessSnapshot(await this.appContainerService.list());
+  }
+
+  async enableAppContainer(appContainerSid: string): Promise<AppContainerAccessSnapshot> {
+    return PlatformCapabilitiesService.toAppContainerAccessSnapshot(await this.appContainerService.enableLoopbackExemption(appContainerSid));
+  }
+
+  async disableAppContainer(appContainerSid: string): Promise<AppContainerAccessSnapshot> {
+    return PlatformCapabilitiesService.toAppContainerAccessSnapshot(await this.appContainerService.disableLoopbackExemption(appContainerSid));
+  }
+
+  async enableAllAppContainers(): Promise<AppContainerAccessSnapshot> {
+    return PlatformCapabilitiesService.toAppContainerAccessSnapshot(await this.appContainerService.enableAllLoopbackExemptions());
+  }
+
+  async disableAllAppContainers(): Promise<AppContainerAccessSnapshot> {
+    return PlatformCapabilitiesService.toAppContainerAccessSnapshot(await this.appContainerService.disableAllLoopbackExemptions());
+  }
+
+  private static toAppContainerAccessSnapshot(snapshot: AppContainerSnapshot): AppContainerAccessSnapshot {
+    return {
+      supported: snapshot.supported,
+      containers: snapshot.containers.map((appContainer) => ({
+        appContainerSid: appContainer.appContainerSid,
+        packageFamilyName: appContainer.packageFamilyName,
+        displayName: appContainer.displayName,
+        description: appContainer.description,
+        packageFullName: appContainer.packageFullName,
+        exempt: appContainer.exempt,
+      })),
     };
-    let macosHelperDeploymentService: MacosHelperDeploymentService;
-    if (this.options.applicationEnvironment === 'development') {
-      macosHelperDeploymentService = new MacosHelperDeploymentService({ ...deploymentOptions, environment: 'development' });
-    } else {
-      if (!this.options.applicationPath) throw new MacosHelperServiceError('unauthorized-client');
-      macosHelperDeploymentService = new MacosHelperDeploymentService({
-        ...deploymentOptions, environment: 'production', applicationPath: this.options.applicationPath,
-      });
-    }
-    await macosHelperDeploymentService.ensureInstalled();
-    process.stderr.write('[platform-capabilities] bundled helper deployment verified\n');
-    const status = await this.macosHelperServiceClient!.getStatus();
-    process.stderr.write(`[platform-capabilities] helper privileged=${status.privileged} client-authorized=${status.clientAuthorizedForWrites}\n`);
-    if (!status.privileged || !status.clientAuthorizedForWrites) throw new MacosHelperServiceError('unauthorized-client');
   }
 
-  private createSystemProxyService(options: PlatformCapabilitiesOptions): SystemProxyService {
+  assertCanQuit(): void {
+    const activeOperation = this.helperService.getActiveOperation()
+      ?? this.certificateService.getActiveOperation() ?? this.systemProxyService.getActiveOperation()
+      ?? this.appContainerService.getActiveOperation();
+    if (activeOperation) throw new PlatformOperationInProgressError(activeOperation.operation);
+  }
+
+  getCertificateDirectory(): string {
     switch (this.platform) {
       case 'win32':
-        return this.createWindowsSystemProxyService(options);
+        return path.win32.join(this.options.localAppDataDirectory!, 'Interceptor', 'certificates');
       case 'darwin':
-        return this.createMacosSystemProxyService(options);
+        return path.posix.join(os.homedir(), 'Library', 'Application Support', 'Interceptor Platform', 'certificates');
       default:
-        throw new SystemProxyError(`System proxy is not supported on ${this.platform}.`);
+        throw new CertificateError(`Certificate storage is not supported on ${this.platform}.`);
     }
-  }
-
-  private createWindowsSystemProxyService(options: PlatformCapabilitiesOptions): WindowsSystemProxyService {
-    if (!options.localAppDataDirectory) {
-      throw new Error('LOCALAPPDATA is required for Windows system proxy recovery.');
-    }
-    return new WindowsSystemProxyService({
-      platform: this.platform,
-      helperPath: path.join(options.nativeDirectory, 'system-proxy/wininet-proxy-helper.exe'),
-      journal: new WindowsSystemProxyJournal(resolveWindowsSystemProxyJournalPath(options.localAppDataDirectory)),
-    });
-  }
-
-  private createMacosSystemProxyService(options: PlatformCapabilitiesOptions): MacosSystemProxyService {
-    return new MacosSystemProxyService({
-      platform: this.platform,
-      macosHelperServiceClient: this.macosHelperServiceClient!,
-      journal: new MacosSystemProxyJournal(path.join(options.userDataDirectory, 'system-proxy/journal.json')),
-    });
   }
 
   getSupportedCapabilities(): readonly PlatformCapability[] {
     switch (this.platform) {
       case 'win32':
-        return ['system-proxy', 'certificate-trust', 'connection-owner', 'application-icon', 'app-container'];
+        return ['system-proxy', 'certificates', 'client-app', 'app-container'];
       case 'darwin':
-        return ['system-proxy', 'certificate-trust'];
+        return ['system-proxy', 'certificates'];
       default:
         return [];
     }

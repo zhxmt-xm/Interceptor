@@ -23,6 +23,13 @@ test('settings.helper-startup deploys the bundled component on launch and reuses
   const configurationBefore = await readFile(configurationPath);
   expect(helperBefore.uid).toBe(0);
   expect(helperBefore.mode & 0o022).toBe(0);
+  const { stdout: launchDaemonJson } = await execute('/usr/bin/plutil', [
+    '-convert', 'json', '-o', '-',
+    '/Library/LaunchDaemons/com.zhxmt.interceptor.platform-capabilities.plist',
+  ]);
+  expect(JSON.parse(launchDaemonJson)).toMatchObject({
+    ProcessType: 'Interactive', UserName: 'root', GroupName: 'wheel', Umask: 0o077,
+  });
   const { stdout } = await execute('/bin/ps', ['-axww', '-o', 'pid=,comm=']);
   const servicePid = stdout.split('\n').find((line) => line.trim().endsWith(helperPath))?.trim().split(/\s+/)[0];
   expect(servicePid).toMatch(/^\d+$/);

@@ -18,15 +18,11 @@ test('capture.scenarios.http2 captures decrypted H2 headers trailers and body', 
   const rootsBefore = await rootCertificateThumbprints();
   let workflowError: unknown;
   const cleanupErrors: unknown[] = [];
-  const tlsCompatibilityDismiss = getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.tlsCompatibility.dismiss);
 
   try {
     // 准备：真实Certificates UI生成、安装本轮CA并开启解密，origin仅为localhost例外。
     // Arrange: generate and install this CA and enable decryption through Certificates UI with only a localhost origin exception.
     await prepareHttpsCapture(desktopApp);
-    await desktopApp.page.addLocatorHandler(tlsCompatibilityDismiss, async () => {
-      await tlsCompatibilityDismiss.click();
-    });
     await startRecording(desktopApp);
     const scenario = trafficLab.scenarios().find((candidate) => candidate.id === 'h2-json');
     if (!scenario || scenario.defaultDraft.kind !== 'http') throw new Error('Missing H2 JSON traffic scenario.');
@@ -362,7 +358,6 @@ test('capture.scenarios.http2 captures decrypted H2 headers trailers and body', 
   } finally {
     // 清理：经真实UI停用解密、卸载删除本轮CA并比较Root集合，fixture验证进程及宿主恢复。
     // Cleanup: disable decryption and uninstall/delete this CA through UI, compare Root stores, and let fixtures verify host restoration.
-    await desktopApp.page.removeLocatorHandler(tlsCompatibilityDismiss).catch((error: unknown) => cleanupErrors.push(error));
     await cleanHttpsCapture(desktopApp).catch((error: unknown) => cleanupErrors.push(error));
     try { expect(await rootCertificateThumbprints()).toEqual(rootsBefore); } catch (error) { cleanupErrors.push(error); }
   }

@@ -1,15 +1,40 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { bootStepState, useBootStore } from '../../bootStore';
+import { BOOT_STEPS, bootStepState, useBootStore } from '../../bootStore';
 
 describe('boot store', () => {
+  it('shows platform and certificate preparation before Core startup', () => {
+    expect(useBootStore.getInitialState().phase).toBe('platform');
+    expect(BOOT_STEPS).toEqual(['platform', 'certificate', 'core', 'listener', 'proxy']);
+  });
+
   beforeEach(() => {
     useBootStore.setState({
       phase: 'core',
+      mainReady: false,
       failedStep: null,
       detail: null,
       dismissed: false,
     });
+  });
+
+  it('keeps the workspace closed until Main has prepared its services', () => {
+    useBootStore.setState({ phase: 'platform' });
+    useBootStore.getState().applyStartupStage('certificate');
+    expect(useBootStore.getState()).toMatchObject({ phase: 'certificate', mainReady: false });
+    useBootStore.getState().applyStartupStage('ready');
+    expect(useBootStore.getState()).toMatchObject({ phase: 'core', mainReady: true });
+  });
+
+  it('ignores a stale startup snapshot after a newer stage notification', () => {
+    useBootStore.setState({ phase: 'platform' });
+    useBootStore.getState().applyStartupStage('certificate');
+    useBootStore.getState().applyStartupStage('platform');
+    expect(useBootStore.getState().phase).toBe('certificate');
+    useBootStore.getState().applyStartupStage('ready');
+    useBootStore.getState().advance('listener');
+    useBootStore.getState().applyStartupStage('certificate');
+    expect(useBootStore.getState()).toMatchObject({ phase: 'listener', mainReady: true });
   });
 
   it('marks earlier steps done and the current one active', () => {

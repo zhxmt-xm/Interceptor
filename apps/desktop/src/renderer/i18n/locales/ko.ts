@@ -1,6 +1,7 @@
 import type { MessageCatalog } from '../english-catalog';
 
 export const koCatalog = {
+  'platform.operationInProgress': '{{operation}} 작업이 진행 중입니다. 완료 후 다시 시도하세요.',
   'app.connectingToCore': '프록시 코어에 연결하는 중',
   'app.coreStatusUnavailable': '프록시 코어 상태를 확인할 수 없음',
   'app.minimizeWindow': '최소화',
@@ -58,6 +59,8 @@ export const koCatalog = {
   'coreState.restarting': '재시작 중',
   'coreState.stopping': '중지 중',
   'coreState.stopped': '중지됨',
+  'boot.preparingPlatform': '시스템 구성 요소 준비 중',
+  'boot.preparingCertificate': 'HTTPS 인증서 준비 중',
   'boot.startingCore': 'Proxy Core 시작 중',
   'boot.bindingListener': '로컬 리스너 바인딩 중',
   'boot.enablingSystemProxy': '시스템 프록시 활성화 중',

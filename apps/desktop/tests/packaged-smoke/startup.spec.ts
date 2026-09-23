@@ -24,6 +24,8 @@ import { dismissWindowsFileDialogs } from '../e2e-workflow-tests/fixtures/ui/win
 import { WorkflowHostSafetyGuard } from '../e2e-workflow-tests/fixtures/safety/workflow-host-safety-guard';
 import { WindowsWorkflowHostSafetyOperations } from '../e2e-workflow-tests/fixtures/safety/windows-workflow-host-safety-operations';
 import { MacosWorkflowHostSafetyOperations } from '../e2e-workflow-tests/fixtures/safety/macos-workflow-host-safety-operations';
+import { requireSharedCertificateReady } from '../e2e-workflow-tests/fixtures/ui/https-capture';
+import { getByAutomationId } from '../e2e-workflow-tests/fixtures/ui/automation';
 
 /** Renderer 启动时自动接管的监听端口；产品不支持迁移，smoke 必须复用它。 */
 const DEFAULT_CAPTURE_PORT = 8888;
@@ -414,6 +416,7 @@ class PackagedWorkflowSmoke {
 test('packaged app starts with an isolated renderer and running core', async ({
   }, testInfo) => {
   test.setTimeout(180_000);
+  await requireSharedCertificateReady();
   const executablePath = resolvePackagedExecutable();
   expect(fs.existsSync(executablePath), `Missing package: ${executablePath}`).toBe(
     true,
@@ -498,6 +501,10 @@ test('packaged app starts with an isolated renderer and running core', async ({
     });
     await page.reload({ waitUntil: 'domcontentloaded' });
 
+    await expect(page.locator(
+      `[data-automation-id="${AUTOMATION_IDS.app.root}"]`,
+    )).toBeVisible({ timeout: 120_000 });
+
     // 侧栏默认折叠，品牌名不渲染；改用头部视图名确认 shell 与英文语言包都已生效。
     await expect(page.getByRole('banner')).toContainText('Capture');
     await expect(page.getByRole('navigation', { name: 'Workspaces' })).toBeVisible();
@@ -578,6 +585,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'getRecentDiagnostics',
         'getRuleHits',
         'getRules',
+        'getStartupStage',
         'getSystemProxyStatus',
         'getTlsPassthroughSettings',
         'getToolCapabilitySettings',
@@ -606,9 +614,11 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'onMcpApprovalRequest',
         'onMcpApprovalSettled',
         'onMcpStatusChange',
+        'onPlatformOperationConflict',
         'onRulesChanged',
         'onRulesImportCanceled',
         'onRulesImportRequested',
+        'onStartupStageChange',
         'onSystemProxyStatusChange',
         'onTlsCompatibilityChange',
         'onTlsSettingsChanged',
@@ -810,6 +820,8 @@ test('packaged app starts with an isolated renderer and running core', async ({
       window.interceptor.echoCore('m1-restarted-port'),
     );
     expect(restartedEcho.value).toBe('m1-restarted-port');
+    await expect(getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle))
+      .toHaveAttribute('aria-pressed', 'true', { timeout: 35_000 });
 
     // 存储栈端到端：Main IPC → CoreRuntime → 真实 Core → Core 内临时 Capture/Body Store。
     const storageStatus = await page.evaluate(
@@ -820,12 +832,12 @@ test('packaged app starts with an isolated renderer and running core', async ({
 
     // 保持 listener + Recording，但先恢复系统路由，避免宿主后台请求在 Clear 返回前
     // 立刻重新填入 Capture；后续 workflow 仍显式通过 8888 发送流量。
-    const restoredBeforeClear = await page.evaluate(() =>
-      window.interceptor.restoreSystemProxy(),
-    );
+    await restoreProxyBeforeShutdown(page);
+    const restoredBeforeClear = await page.evaluate(() => window.interceptor.getSystemProxyStatus());
     expect(restoredBeforeClear).toMatchObject({
-      status: { supported: true, owned: false, ownershipLost: false },
+      supported: true, owned: false, ownershipLost: false,
     });
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
 
     // Recording 期间清空应保留当前 Session 壳，但 Exchange/Body 必须归零。
     await expect.poll(
@@ -858,11 +870,10 @@ test('packaged app starts with an isolated renderer and running core', async ({
     if (!appProcess.pid) throw new Error('Screenshot Main process identity is unavailable.');
     await ReleaseScreenshotMatrix.capture(page, testInfo, await readPackagedProcessIdentity(appProcess.pid));
 
-    const restoredProxy = await page.evaluate(() =>
-      window.interceptor.restoreSystemProxy(),
-    );
+    await restoreProxyBeforeShutdown(page);
+    const restoredProxy = await page.evaluate(() => window.interceptor.getSystemProxyStatus());
     expect(restoredProxy).toMatchObject({
-      status: { supported: true, owned: false, ownershipLost: false },
+      supported: true, owned: false, ownershipLost: false,
     });
     await page.evaluate(() => window.interceptor.closeApplication());
     await expect
@@ -1003,22 +1014,14 @@ async function settleProxyReadiness(page: Page): Promise<void> {
 
 /** Confirm guarded system-proxy restore before any forced process fallback. */
 async function restoreProxyBeforeShutdown(page: Page): Promise<void> {
-  const deadline = Date.now() + 5_000;
-  let lastStatus = 'unavailable';
-  while (Date.now() < deadline) {
-    try {
-      const restore = await page.evaluate(() =>
-        window.interceptor.restoreSystemProxy());
-      lastStatus = JSON.stringify(restore.status);
-      if (!restore.status.owned) {
-        return;
-      }
-    } catch (error) {
-      lastStatus = error instanceof Error ? error.message : String(error);
-    }
-    await page.waitForTimeout(250);
-  }
-  throw new Error(`System proxy remained owned during smoke cleanup: ${lastStatus}`);
+  if (await page.evaluate(() => window.interceptor.getStartupStage()) !== 'ready') return;
+  await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
+  await getByAutomationId(page, AUTOMATION_IDS.settings.section.proxy).click();
+  const restore = getByAutomationId(page, AUTOMATION_IDS.settings.proxy.restore);
+  const enable = getByAutomationId(page, AUTOMATION_IDS.settings.proxy.enable);
+  await expect(restore.or(enable)).toBeVisible();
+  if (await restore.isVisible()) await restore.click();
+  await expect(enable).toBeEnabled({ timeout: 35_000 });
 }
 
 function resolvePackagedExecutable(): string {

@@ -360,7 +360,11 @@ export class TlsTrafficRunner {
     if (incoming.httpVersionMajor === 2) run?.onOriginStream?.(incoming.stream);
     const respond = (): void => {
       if (run === undefined) {
-        response.writeHead(404).end();
+        if (incoming.method === 'GET' && incoming.url === '/playground/tls/browser-trust') {
+          response.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' }).end('Interceptor TLS browser trust');
+        } else {
+          response.writeHead(404).end();
+        }
         return;
       }
       response.writeHead(run.statusCode ?? 200, run.responseHeaders);
@@ -432,6 +436,8 @@ export class TlsTrafficRunner {
         outgoing.on('error', reject);
         outgoing.end();
       });
+    } catch (error) {
+      throw new Error(`HTTP/1.1 over TLS failed: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
     } finally {
       tlsSocket.destroy();
     }
@@ -505,7 +511,7 @@ async function connectTls(
     }));
     tlsSocket.once('error', (error) => {
       tlsSocket.destroy();
-      reject(error);
+      reject(new Error(`TLS handshake after CONNECT failed: ${error.message}`, { cause: error }));
     });
   });
 }

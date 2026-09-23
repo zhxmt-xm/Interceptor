@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   buildInterceptorToolRegistry,
   InterceptorToolArgumentError,
+  PlatformOperationInProgressError,
   type InterceptorToolDefinition,
 } from '../../src';
 
@@ -38,6 +39,17 @@ function definition(name: string): InterceptorToolDefinition {
 }
 
 describe('TLS configuration Tools', () => {
+  it.each(['settings_enable_https_decryption', 'settings_disable_https_decryption'])(
+    '%s preserves a safe certificate operation conflict', async (name) => {
+      const failure = new PlatformOperationInProgressError('certificate.install');
+      const host = { invoke: vi.fn(), invokeMain: vi.fn().mockRejectedValue(failure) };
+      const context = { host, abortSignal: new AbortController().signal };
+
+      await expect(definition(name).describeChange!({}, context)).rejects.toBe(failure);
+      await expect(definition(name).execute({}, context)).rejects.toBe(failure);
+    },
+  );
+
   it.each(TLS_TOOLS)('$name is an independent non-destructive change', ({ name }) => {
     expect(definition(name)).toMatchObject({
       kind: 'change', capabilityId: 'settings', destructive: false, openWorld: false,

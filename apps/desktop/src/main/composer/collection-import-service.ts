@@ -4,7 +4,7 @@ import type { CollectionImportResponse } from '../../shared/desktop-api';
 
 interface PendingCollectionImport {
   readonly requestId: string;
-  readonly abortSignal: AbortSignal;
+  readonly abortSignal: AbortSignal | undefined;
   readonly cancel: () => void;
   readonly resolve: (response: CollectionImportResponse) => void;
   readonly reject: (reason: unknown) => void;
@@ -18,14 +18,14 @@ export class CollectionImportService {
     private readonly cancelRendererImport: (requestId: string) => void,
   ) {}
 
-  async startImport(abortSignal: AbortSignal): Promise<CollectionImportResponse> {
-    abortSignal.throwIfAborted();
+  async startImport(abortSignal?: AbortSignal): Promise<CollectionImportResponse> {
+    abortSignal?.throwIfAborted();
     if (this.pendingImport !== null) throw new Error('A Collection import is already running.');
     const requestId = randomUUID();
     return new Promise((resolve, reject) => {
       const cancel = (): void => this.cancelImport();
       this.pendingImport = { requestId, abortSignal, cancel, resolve, reject };
-      abortSignal.addEventListener('abort', cancel, { once: true });
+      abortSignal?.addEventListener('abort', cancel, { once: true });
       try {
         this.requestRendererImport(requestId);
       } catch {
@@ -37,7 +37,7 @@ export class CollectionImportService {
   cancelImport(): void {
     const pendingImport = this.releasePendingImport();
     if (pendingImport === null) return;
-    pendingImport.reject(pendingImport.abortSignal.aborted
+    pendingImport.reject(pendingImport.abortSignal?.aborted
       ? pendingImport.abortSignal.reason
       : new DOMException('Collection import canceled.', 'AbortError'));
     this.cancelRendererImport(pendingImport.requestId);
@@ -82,7 +82,7 @@ export class CollectionImportService {
     const pendingImport = this.pendingImport;
     if (pendingImport === null) return null;
     this.pendingImport = null;
-    pendingImport.abortSignal.removeEventListener('abort', pendingImport.cancel);
+    pendingImport.abortSignal?.removeEventListener('abort', pendingImport.cancel);
     return pendingImport;
   }
 }

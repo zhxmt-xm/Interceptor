@@ -4,7 +4,7 @@
 
 ## 主类
 
-`ClientAppService`（`entry.ts`）。`supported` getter 表示当前平台是否具备反查能力（Windows / macOS 有，其他平台返回 `false` 且所有解析降级为无结果）。
+`ClientAppService`（`entry.ts`）。`supported` getter表示是否注入本机反查helper路径；当前仅Windows提供，macOS未实现且返回无结果。helper的TSV应用标识按Windows路径解析，展示名缺失时只返回不含扩展名的文件名。
 
 ## 隐私边界
 

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   InterceptorToolArgumentError,
+  PlatformOperationInProgressError,
   buildInterceptorToolCatalog,
   buildInterceptorToolRegistry,
   type InterceptorToolDefinition,
@@ -108,6 +109,16 @@ describe('Settings AppContainer Tools', () => {
 
     await expect(tool(name).describeChange!(args, context)).rejects.toThrow('Unable to read AppContainer access.');
     await expect(tool(name).execute(args, context)).rejects.toThrow('Unable to change AppContainer access.');
+  });
+
+  it.each(OPERATIONS)('$name preserves a safe platform conflict in approval and execution', async ({ name, single }) => {
+    const failure = new PlatformOperationInProgressError('app-container.enable-all');
+    const host = { invoke: vi.fn(), invokeMain: vi.fn().mockRejectedValue(failure) };
+    const context = { host, abortSignal: new AbortController().signal };
+    const args = single ? { appContainerSid: TARGET_SID } : {};
+
+    await expect(tool(name).describeChange!(args, context)).rejects.toBe(failure);
+    await expect(tool(name).execute(args, context)).rejects.toBe(failure);
   });
 
   it.each(OPERATIONS)('$name preserves cancellation during owner work', async ({ name, single }) => {
