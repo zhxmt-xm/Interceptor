@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>启动证书授权取消契约</title>
+  <style>
+    :root { color: #24292f; background: #fff; color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14px/1.65 "Segoe UI", "PingFang SC", sans-serif; }
+    main { max-width: 960px; margin: auto; padding: 32px 24px; }
+    header { border-bottom: 2px solid #24292f; padding-bottom: 16px; }
+    h1 { font-size: 25px; margin: 0 0 8px; }
+    h2 { font-size: 19px; margin-top: 24px; }
+    p, li, code { overflow-wrap: anywhere; }
+    .time { color: #57606a; }
+    @media (max-width: 700px) { main { padding: 20px 16px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>提交：启动证书授权取消契约</h1>
+      <p class="time">时间：2026-09-24 10:08（UTC+08:00）</p>
+      <p>补充第3项现有启动行为的直接测试，产品实现、Renderer布局和原生授权方式不变。</p>
+    </header>
+    <section>
+      <h2>Main</h2>
+      <p>位置：<code>platform-capabilities/tests/unit/platform-capabilities.test.ts</code>。</p>
+      <ul>
+        <li>改前：已覆盖helper准备期间的Quit拒绝和证书信任检查，但没有直接覆盖certificate阶段等待授权后取消。</li>
+        <li>改后：Windows/macOS分支分别挂起授权，核对Quit和重复prepare立即拒绝，再取消并核对占用释放、原错误返回、阶段不冒进、没有自动重试或重生成。</li>
+        <li>原因与影响：明确“拒绝一次退出不等于排队退出”，避免取消后遗留busy；测试不修改真实系统CA或授权设置。</li>
+      </ul>
+    </section>
+    <section>
+      <h2>文档</h2>
+      <p>Handover区分模块行为覆盖与首次原生授权所需的真实窗口、CA生命周期前提，不将前者写成后者已经完成。</p>
+    </section>
+  </main>
+</body>
+</html>

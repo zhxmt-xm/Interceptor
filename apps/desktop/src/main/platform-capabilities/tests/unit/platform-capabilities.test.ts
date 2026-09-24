@@ -482,6 +482,45 @@ describe('PlatformCapabilitiesService', () => {
     expect(install).not.toHaveBeenCalled();
   });
 
+  it.each(['darwin', 'win32'] as const)('releases startup ownership after certificate authorization is cancelled on %s without replaying it', async (platform) => {
+    const stages: string[] = [];
+    const platformCapabilitiesService = new PlatformCapabilitiesService({
+      secureStore, coreRuntime, diagnostics, platform, nativeDirectory: '/resources',
+      userDataDirectory: '/profiles/startup', localAppDataDirectory: 'C:\\Users\\test\\AppData\\Local',
+      onStartupStageChanged: (stage) => stages.push(stage),
+    });
+    vi.spyOn(HelperService.prototype, 'prepare').mockResolvedValue();
+    vi.spyOn(CertificateService.prototype, 'ensure').mockResolvedValue({
+      present: true, fingerprint: 'AA', subject: 'Interceptor CA', createdAt: null, expiresAt: null,
+    });
+    vi.spyOn(CertificateService.prototype, 'getThumbprints').mockResolvedValue({ sha256: 'AA', sha1: 'BB' });
+    const isTrusted = vi.spyOn(TrustStoreService.prototype, 'isTrusted').mockResolvedValue(false);
+    const regenerate = vi.spyOn(CertificateService.prototype, 'regenerate');
+    let cancelInstallation!: (error: Error) => void;
+    const authorization = new Promise<void>((_resolve, reject) => { cancelInstallation = reject; });
+    const install = vi.spyOn(TrustStoreService.prototype, 'install').mockReturnValue(authorization);
+    const cancellation = platform === 'darwin'
+      ? new MacosHelperServiceError('authorization-cancelled', 'completed')
+      : new Error('The user cancelled certificate authorization.');
+    const preparing = platformCapabilitiesService.prepare().catch((error: unknown) => error);
+    try {
+      await expect.poll(() => install.mock.calls.length).toBe(1);
+      expect(stages).toEqual(['platform', 'certificate']);
+      expect(() => platformCapabilitiesService.assertCanQuit()).toThrow('operation_in_progress: certificate.prepare');
+      await expect(platformCapabilitiesService.prepare()).rejects.toMatchObject({
+        code: 'operation_in_progress', operation: 'certificate.prepare',
+      });
+    } finally {
+      cancelInstallation(cancellation);
+      expect(await preparing).toBe(cancellation);
+    }
+    expect(() => platformCapabilitiesService.assertCanQuit()).not.toThrow();
+    expect(stages).toEqual(['platform', 'certificate']);
+    expect(install).toHaveBeenCalledOnce();
+    expect(isTrusted).toHaveBeenCalledOnce();
+    expect(regenerate).not.toHaveBeenCalled();
+  });
+
   it.each(['darwin', 'win32'] as const)('rejects startup if the installed CA is still not trusted on %s', async (platform) => {
     const platformCapabilitiesService = new PlatformCapabilitiesService({
       secureStore, coreRuntime, diagnostics, platform, nativeDirectory: '/resources', userDataDirectory: '/profiles/startup',

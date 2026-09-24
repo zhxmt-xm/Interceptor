@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `799cbb1e`
+> Tracked commit: `d1142746`
 > Branch: `main`
 > 最后更新：2026-09-24
 
@@ -9,7 +9,7 @@
 ## 当前状态
 
 - 用户于2026-09-24明确授权先保存全部剩余工作区进度并push，提交后保持改动区为空；未完成的实现、文档审阅、设计确认与验收继续保留在下表。保存暂停草稿不等于恢复执行或确认设计。
-- 用户随后授权按第2–7项顺序继续，每项独立验收、报告、commit/push；当前只推进第2项，暂停子项和系统授权边界保持。
+- 用户随后授权按第2–7项顺序继续，每项独立验收、报告、commit/push；第2项进度已独立提交，当前推进第3项，暂停子项和系统授权边界保持。
 - 平台实现基线为`218295b0`，对应[平台报告](../commit-changes/202609240135_main_shared-ca_startup.html)；后续保存剩余工作区进度的提交对应独立[工作区报告](../commit-changes/202609240150_docs_workspace_progress.html)。两份均为9月24日，每个commit各有自己的报告，不共用、不覆盖。GitHub候选的四张图只放在工作区报告中，不额外生成预览报告。
 - 正文、HTTPS弹窗、Bilibili及独立package仅保存现有草稿，不扩展实现；第8项留Windows实机。日常CA保护和新系统授权专项仍须本机确认；提交不等于全部验收完成。
 
@@ -22,6 +22,7 @@
 	- 恢复：已通过本轮App真实Close正常退出Main/Core等5个进程；完整代理恢复到journal.original，journal删除、8888释放、日常CA保持且受信任。待本机解锁后直接复跑下面命令，不重复删除/初始化日常CA。
 3. **统一启动检查 · blocked**
 	- 当前：首窗先显示，再调用`PlatformCapabilitiesService.prepare()`；全缺才生成、未信任才授信、已信任不重复写入，ready前拒绝业务IPC。
+	- 当前步骤：不改现有产品实现；补Windows/macOS两分支的启动证书授权取消测试，覆盖certificate阶段Quit与重复prepare即时拒绝、取消后释放占用、不自动重试或重生成。与Renderer启动状态共45/45通过，Desktop typecheck通过。真实首窗/授权专项仍缺，测试不代替本机授权。
 	- 下一步：用户能处理系统确认后，验证首次授权页面可见、取消及准备期间Quit。对应前置真实E2E仍缺，不能用旧结果补代。
 4. **CA 操作与 E2E · 进行中**
 	- 当前：各module已实现即时冲突拒绝、共享授权和已结束失败的回读收尾；原生View已接入。真正未知的写入仍保守占用，可靠解除未解决。
@@ -93,6 +94,8 @@
 全部工作区进度保存检查：`npm run typecheck`的8个workspace全部通过；HTTPS弹窗与退出单测9/9通过，证据`/tmp/interceptor-workspace-checkpoint-20260924-ui-unit.json`。本次不启动已暂停的真实E2E，不重建产物，不将上述静态/单测结果替代4项parity差异、原生授权或终包验收；未确认设计和22份文档整理均保留相应待办。按用户明确授权重写两条提交，只调整各自报告及Handover引用，产品、测试、设计源码与配置保持原内容；报告分别为`202609240135_main_shared-ca_startup.html`和`202609240150_docs_workspace_progress.html`，没有旧创建时间说明。
 
 第2项续作证据：`/tmp/interceptor-item2-20260924-baseline.json`记录73/73；同前缀`e2e.json`及`e2e/`保存真实窗口准备失败，`host-recovered.json`证明经产品Close恢复完整代理、进程、8888及日常CA，失败profile保留为`/var/folders/h5/jmc6085s1gb9cgqszq8qtc_00000gn/T/interceptor-e2e-workflow/21931-YQyyLi`。编辑器problems请求30分钟无响应，随后用Desktop typecheck通过替代编译检查；不将工具阻塞计入产品结果。当前需解锁桌面，恢复命令：`npm exec --workspace @interceptor/desktop -- playwright test --config tests/e2e-workflow-tests/playwright.config.ts workflows/settings/certificate-startup.workflow.ts --project=macos`。删除profile后的新断言未取得Green，item保留。
+
+第3项续作证据：`/tmp/interceptor-item3-20260924-startup-green.json`记录平台准备与BootStore共45/45，Desktop typecheck通过；新增2项仅补已有行为覆盖，不人为制造Red。本机锁屏，首次授信/取消还要求只处理专项自行创建的CA，不能清空现有日常CA；本轮未运行原生授权专项，未取得新的真实首窗/取消/准备期间Quit证据。恢复条件是用户解锁并提供可执行首次CA专项的环境，再按第3/4项规格执行。
 
 ## Windows 复验
 
