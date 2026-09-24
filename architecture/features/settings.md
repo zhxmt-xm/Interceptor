@@ -629,6 +629,10 @@ sequenceDiagram
 
 **生命周期**：`DesktopApplication`初始化授权服务和updater，授权服务按过期时间维护一个refresh timer。授权布尔态变化会取消旧检查/下载并清除旧Release状态，经`github-auth:status`与`update:status`广播。退出时停止Device Flow、token/update timers和活动下载。packaged Renderer从受保护ASAR经`interceptor://app`加载，不存在远程代码覆盖层。
 
+### 与当前实现的差异
+
+无登录候选仅存在于`design-vite`的`updatesWithoutSignIn`状态：删除Updates顶部GitHub access整组，Version/Delivery自然上移，移除Private及账号授权文案，保留原检查/下载/打开按钮。产品仍使用上述GitHubAuthService及`authentication-required`状态；正式设计确认前不删除OAuth、凭据管理或更新门槛，不改变个人Git/CI配置、远端仓库可见性和固定更新来源。
+
 ### 更新通知按钮
 
 - `UpdatesPanel`通过共享Button的icon参数传入GitHub图标，label只放文字；装饰图标和spinner使用`aria-hidden`。
