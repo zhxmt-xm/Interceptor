@@ -89,6 +89,41 @@ export async function cancelMacosCertificateTrustRequest(
   await cancelAuthorizationWindow(owner, request.requester, request.agent);
 }
 
+export async function dismissMacosStartupFailure(owner: WorkflowProcessIdentity): Promise<void> {
+  await expect.poll(async () => {
+    try {
+      await verifyOwner(owner);
+    } catch (error) {
+      if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ESRCH') return true;
+      throw error;
+    }
+    const { stdout } = await execFileAsync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', `
+const events = Application("System Events");
+const owners = events.applicationProcesses.whose({ unixId: ${owner.processId} })();
+if (owners.length === 0) "closed";
+else {
+  if (owners.length !== 1) throw new Error("Startup App identity is ambiguous");
+  const app = owners[0];
+  const dialogs = app.windows().flatMap(window => [
+    ...(window.attributes.whose({ name: "AXSubrole" })().some(attribute => attribute.value() === "AXDialog") ? [window] : []),
+    ...window.sheets()
+  ]).filter(dialog => dialog.buttons().length === 1 && dialog.buttons()[0].enabled());
+  if (dialogs.length > 1) throw new Error("Startup failure dialog is ambiguous");
+  if (dialogs.length === 0) "pending";
+  else {
+    app.frontmost = true;
+    if (!app.frontmost()) throw new Error("Startup App is not in the foreground");
+    events.keyCode(36);
+    "dismissed";
+  }
+}
+`], { encoding: 'utf8', timeout: 5_000 });
+    const state = stdout.trim();
+    if (!['pending', 'closed', 'dismissed'].includes(state)) throw new Error('Unexpected native startup dialog state.');
+    return state !== 'pending';
+  }, { message: 'The owned startup failure dialog was not available', timeout: 15_000 }).toBe(true);
+}
+
 async function foregroundTrustRequester(owner: WorkflowProcessIdentity): Promise<WorkflowProcessIdentity | null> {
   await verifyOwner(owner);
   const { stdout } = await execFileAsync('/bin/ps', ['-axww', '-o', 'pid=,ppid=,comm='], { encoding: 'utf8' });

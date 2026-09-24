@@ -55,6 +55,7 @@ const dismissTlsCompatibilityByTestInfo = new WeakMap<TestInfo, boolean>();
 interface LocalWorkflowFixtures {
   allowSharedCertificateInitialization: boolean;
   dismissTlsCompatibilityDialogs: boolean;
+  waitForStartupReady: boolean;
   /** Test-owned unpackaged Electron application and its real Renderer page. */
   desktopApp: LocalElectronApplicationDriver;
   trafficLab: TrafficLab;
@@ -1291,7 +1292,8 @@ quitItem.click();
 export const test = base.extend<LocalWorkflowFixtures>({
   allowSharedCertificateInitialization: [false, { option: true }],
   dismissTlsCompatibilityDialogs: [true, { option: true }],
-  desktopApp: async ({ allowSharedCertificateInitialization, dismissTlsCompatibilityDialogs }, use, testInfo) => {
+  waitForStartupReady: [true, { option: true }],
+  desktopApp: async ({ allowSharedCertificateInitialization, dismissTlsCompatibilityDialogs, waitForStartupReady }, use, testInfo) => {
     if (!allowSharedCertificateInitialization) await requireSharedCertificateReady();
     const workflowHostSafetyGuard = await createWorkflowHostSafetyGuard();
     if (workflowHostSafetyGuard) {
@@ -1305,7 +1307,7 @@ export const test = base.extend<LocalWorkflowFixtures>({
     dismissTlsCompatibilityByTestInfo.set(testInfo, dismissTlsCompatibilityDialogs);
     try {
       driver = await LocalElectronApplicationDriver.launch(testInfo);
-      await driver.waitUntilReady();
+      if (waitForStartupReady) await driver.waitUntilReady();
       await use(driver);
       if (process.platform !== 'darwin' || testInfo.status !== 'timedOut') {
         await driver.captureFinalScreenshot(testInfo);

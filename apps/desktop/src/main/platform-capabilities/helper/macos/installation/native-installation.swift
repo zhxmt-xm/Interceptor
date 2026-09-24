@@ -101,6 +101,11 @@ enum MacosHelperInstallation {
     }
 
     static func inspectApplication(path: String) throws -> [String: Any] {
+        try readApplicationIdentity(path: path, validationFlags: SecCSFlags(
+            rawValue: kSecCSStrictValidate | kSecCSCheckNestedCode | kSecCSCheckAllArchitectures))
+    }
+
+    private static func readApplicationIdentity(path: String, validationFlags: SecCSFlags) throws -> [String: Any] {
         guard path.hasPrefix("/"), path.hasSuffix(".app"),
               let canonicalPath = try? MacosHelperServiceConfiguration.canonicalPath(path),
               let application = Bundle(path: canonicalPath),
@@ -115,10 +120,7 @@ enum MacosHelperInstallation {
         var signingInfo: CFDictionary?
         guard SecStaticCodeCreateWithPath(URL(fileURLWithPath: canonicalPath) as CFURL, [], &staticCode) == errSecSuccess,
               let staticCode,
-              SecStaticCodeCheckValidity(
-                staticCode,
-                SecCSFlags(rawValue: kSecCSStrictValidate | kSecCSCheckNestedCode | kSecCSCheckAllArchitectures), nil
-              ) == errSecSuccess,
+              SecStaticCodeCheckValidity(staticCode, validationFlags, nil) == errSecSuccess,
               SecCodeCopySigningInformation(staticCode, SecCSFlags(rawValue: kSecCSSigningInformation), &signingInfo) == errSecSuccess,
               let information = signingInfo as? [String: Any],
               let flags = information[kSecCodeInfoFlags as String] as? UInt32,
@@ -148,7 +150,9 @@ enum MacosHelperInstallation {
     }
 
     static func deploymentStatus(applicationPath: String, userId: uid_t) throws -> [String: Any] {
-        let identity = try inspectApplication(path: applicationPath)
+        // Deployment discovery is not authorization; the service still validates the complete App.
+        let identity = try readApplicationIdentity(path: applicationPath, validationFlags: SecCSFlags(
+            rawValue: kSecCSStrictValidate | kSecCSCheckAllArchitectures | kSecCSDoNotValidateResources))
         guard userId >= 501, userId == getuid(), getpwuid(userId) != nil else {
             throw MacosInstallationError.noConsoleUser
         }

@@ -198,6 +198,7 @@ macOS View：固定前台`certificate.view`只接公开DER与SHA-256，使用系
 - 证书材料与TrustStore属于同一证书模块；PlatformCapabilitiesService对外提供证书业务方法，内部唯一CertificateService完成生成/加密、安装、回滚、撤销、删除和Core同步。各module实例private，不暴露给Main；材料存在与系统受信任仍是独立事实，私钥不交helper。
 - helper只执行固定原生操作并回复结果，保留鉴权、参数校验、原子写入和回读，不增加业务队列。共享系统确认及维护资源只做必要的跨组协调，不重复存储各组状态。
 - macOS常驻helper同步服务Main的启动与系统操作，launchd使用`ProcessType=Interactive`，不能按无人等待的`Background`任务限制CPU和I/O；Unix socket不具备Adaptive所需的XPC activity。完整App资源、内嵌代码、全部架构和运行时校验及客户端30秒期限保持，不用缓存、跳过校验或延长期限替代调度修正。部署及生产验收证据见[Handover](../HANDOVER.md#verification)。
+- 部署发现与准入分开：`deployment-status`只比较组件部署、应用签名身份和主可执行文件，不是授权结论；正常启动仍必须通过常驻helper的完整资源/内嵌代码/全部架构及运行时检查才进入证书阶段。`inspect-application`、请求安装和root安装继续完整验证，不因部署发现结果而跳过验证；不得缓存历史信任结果。
 - 不排队。冲突立即返回`operation_in_progress`和当前操作标识；UI沿用现有提示并显示本地化操作名，Agent/MCP返回相同原因。被拒绝的请求不触发helper、写文件或Core变更，也不在当前操作结束后自动执行。
 - 证书组包括启动补齐、生成/重生成、安装/授信、撤销/卸载、删除、回滚、MITM启停和Core证书同步。操作开始前由模块占用，保护覆盖材料、系统信任、回读和Core同步；module使用注入的CoreRuntime，通知回调不承担业务步骤，内部调用不再次争抢同组。
 - 系统代理组包括接管、恢复、journal恢复、归属状态更新和上游结果应用；探测可并行，提交时检查当前配置与Core代际。Windows AppContainer单项/批量写入共用一组，因为底层写整份豁免名单。
@@ -230,6 +231,22 @@ macOS View：固定前台`certificate.view`只接公开DER与SHA-256，使用系
 当前新包的证书写入/取消专用workflow尚未运行：它要求空共享材料目录，本轮没有再次卸载/删除日常CA。需确认经产品清理与重建后再执行，不能把旧包生命周期结果或本轮非破坏性流程当作该专项的新Green。
 
 Certificate module组装的`CertificateInfo`含`path`与`mitmEnabled`，不含私钥；解密材料只经内部Core RPC发送。
+
+#### 部署发现性能验收
+
+第3项本轮证据前缀为`/tmp/interceptor-startup-performance-20260924-`；仅部署发现的耗时对照，不代表整个App启动耗时。
+
+| 范围 | 结果 | 证据后缀 |
+| --- | --- | --- |
+| native边界与回归 | 新目标1 Red/12 Green后，部署/安装、服务端资源与运行时校验及平台调用方共109/109；主可执行文件篡改仍拒绝，资源篡改仍阻止完整检查和请求安装 | `native-red.json`、`native-green.json` |
+| 同一签名App对照 | ASAR保持`78878acc97489b8c9234d7ea6e9173eadb5c43e5133bacb25ca478bd9e97fa2f`；三次检查的中位数2993ms→17ms，状态均为ready，没有替换实装服务或缓存信任 | `before.json`、`after.json` |
+| 新包静态检查 | Swift构建、Desktop类型、package、audit（1487文件/339493468字节）及严格deep/strict/all-architectures签名通过 | 本轮构建/audit命令输出 |
+| 部署前失败 | 当时新helper为`3b9005da50dd776414c9c3c725a7cc8ab6934efefc98e7b66f85d6e85fd50d61`、实装为旧`18590483b88049c8e1298bdc1f3e98418e8dafb9757ba17e2e73797f8035b86d`，production为outdated；E2E停在组件准备，未启动Core，1失败/1未运行。完整代理、CA和端口恢复；此历史失败不改为Green | `production-e2e.json`及目录、`deployment-blocker.json` |
+| 当前生产验收 | 新helper已通过正常App授权部署，包内与实装SHA-256相同，production为ready；生产helper复用/共享CA E2E 2/2、packaged smoke 1/1。四代Main/Core正常退出，CA指纹及三份材料元数据未变，完整代理恢复、无journal、8888释放 | `production-final.json`及目录、`smoke-final.json`及目录、`production-host.json` |
+
+本次新helper的生产结果已独立取得，不复用下文旧产物的Green。组件核准与正常关闭的记录在`/tmp/interceptor-component-resume-20260924-current.json`；未更改日常CA、安装权限、服务端完整准入或产品30秒期限。原启动实现的历史前置E2E缺口继续单独披露，不以本次结果补造。
+
+第3项本轮收尾范围为当前版本的启动顺序、CA准备/取消、组件发现性能、生产运行及退出恢复，上述证据覆盖该范围。原实现之前的E2E记录缺失作为历史实施过程缺口保留，不把当前Green标注成历史前置Red，也不将其混作当前版本尚未执行的测试。
 
 ## 3. 系统代理
 

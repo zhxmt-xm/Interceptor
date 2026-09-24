@@ -10,7 +10,7 @@ Windows使用官方`_electron.launch()`启动未打包production bundle；macOS�
 - `packaged-smoke`另行验证最终package的安全、资源、启动和退出边界，当前综合smoke不等于已经复用了全部workflow；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture、133条Inventory与134份详细workflow规格已建立；管理员MMC原生专项仅保留排除说明，不计入workflow。已实现的spec按owning feature放入`workflows/<feature>/`，Inventory只有满足对应前置测试及Green/销毁证据的条目才能标passed；仅补既有行为覆盖不人为制造Red。
+> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture及Inventory已建立，详细workflow规格见[规格索引](docs/README.md)；管理员MMC原生专项仅保留排除说明，不计入workflow。已实现的spec按owning feature放入`workflows/<feature>/`，Inventory只有满足对应前置测试及Green/销毁证据的条目才能标passed；仅补既有行为覆盖不人为制造Red。
 
 ## 零 Mock 硬性原则
 
@@ -314,10 +314,11 @@ diagnostics.row.<traceKey>
 | `settings.system-proxy.crash-recovery` | App A异常退出后由顺序启动的App B加载首次快照并完整恢复 | os-side-effect | passed |
 | `settings.proxy-mitm.persistence` | 异常退出后恢复系统代理并跨进程恢复MITM/TLS配置 | os-side-effect | passed |
 | `settings.certificates.generate-delete` | CA Generate/Regenerate/Delete | shared | planned |
-| `settings.certificates.shared-startup` | 自动准备共享CA，正常退出保留，跨fresh profile复用且不重写材料 | shared / os-side-effect | 见[Handover](../../../../architecture/HANDOVER.md#task-list) |
+| `settings.certificates.shared-startup` | 自动准备共享CA，正常退出保留，跨fresh profile复用且不重写材料 | shared / os-side-effect | macOS签名包生成/复用及删除profile后保留已验；范围见[Handover](../../../../architecture/HANDOVER.md#verification) |
+| `settings.certificates.startup-cancel` | 首次原生授权时首窗可见、Quit即时拒绝、取消收尾及同CA正常重启 | macOS / os-side-effect | 当前签名包Green及两代退出已验；原启动实现的历史前置证据缺口见[规格](docs/settings-updates.md#certificate-startup-cancel) |
 | `settings.certificates.trust` | Install/Uninstall本机信任 | os-side-effect | planned |
-| `settings.certificates.helper-trust` | macOS两张不同CA直接经前台helper授信/撤销，复用同一常驻组件 | macOS / os-side-effect | 自动规则/后台trust已删除，最新产物及最终E2E待验；保留旧成功和后续撤销等待失败记录 |
-| `settings.certificates.cancel-trust` | 取消helper前台入口的系统确认，由产品撤回新增CA | macOS / os-side-effect | 直接授权目标的真实前置Red已保存，取消/清理和宿主恢复已验；最新最终Green待验 |
+| `settings.certificates.helper-trust` | macOS两张不同CA直接经前台helper授信/撤销，复用同一常驻组件 | macOS / os-side-effect | 2026-09-24签名包Green及Root/admin trust、进程、8888恢复已验；保留历史失败及前置范围说明 |
+| `settings.certificates.cancel-trust` | 取消helper前台入口的系统确认，由产品撤回新增CA | macOS / os-side-effect | passed：直接授权目标前置Red保留，2026-09-24签名包取消/清理与宿主恢复Green |
 | `settings.helper-startup` | macOS首次部署及开发/生产入口复用，不覆盖另一份授权 | macOS / os-side-effect | passed：见对应规格的分阶段证据 |
 | `settings.certificates.https` | MITM switch和host例外 | os-side-effect | planned |
 | `settings.certificates.external-actions` | Reveal/View；不包含用户排除的管理员MMC原生验收 | native-ui | planned：macOS Reveal 1/1；View未通过，不计整体完成 |

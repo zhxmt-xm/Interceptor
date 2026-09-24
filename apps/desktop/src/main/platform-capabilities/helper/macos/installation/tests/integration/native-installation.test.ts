@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { copyFile, lstat, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
@@ -135,6 +135,40 @@ describe.runIf(process.platform === 'darwin')('macOS bundled helper deployment',
     await expect(execute(helperPath, ['request-installation', applicationPath, '0',
       `cdhash H"${'ab'.repeat(20)}"`, `cdhash H"${'cd'.repeat(20)}"`]))
       .rejects.toMatchObject({ code: 1, stderr: 'installation requires a logged-in local user\n' });
+  });
+
+  it('keeps deployment discovery separate from the full resource check required before authorization', async () => {
+    const identity = JSON.parse((await execute(helperPath, ['inspect-application', applicationPath])).stdout);
+    const argumentsList = ['deployment-status', applicationPath, String(process.getuid!())];
+    const before = JSON.parse((await execute(helperPath, argumentsList)).stdout);
+    const resourcePath = path.join(applicationPath, 'Contents', 'Resources', 'identity.txt');
+    await writeFile(resourcePath, 'changed', 'utf8');
+    try {
+      const after = JSON.parse((await execute(helperPath, argumentsList)).stdout);
+      expect(after).toEqual(before);
+      await expect(execute(helperPath, ['inspect-application', applicationPath]))
+        .rejects.toMatchObject({ code: 1, stdout: '', stderr: 'application signature is invalid\n' });
+      await expect(execute(helperPath, ['request-installation', applicationPath, String(process.getuid!()),
+        identity.clientRequirement, identity.helperRequirement], { timeout: 10_000 }))
+        .rejects.toMatchObject({ code: 1, stdout: '', stderr: 'application signature is invalid\n' });
+    } finally {
+      await writeFile(resourcePath, 'approved', 'utf8');
+    }
+  });
+
+  it('still rejects changed executable bytes during deployment discovery', async () => {
+    const executablePath = path.join(applicationPath, 'Contents', 'MacOS', 'Interceptor');
+    const original = await readFile(executablePath);
+    expect(original.byteLength).toBeGreaterThan(4096);
+    const changed = Buffer.from(original);
+    changed[4096] = changed[4096]! ^ 0xff;
+    await writeFile(executablePath, changed);
+    try {
+      await expect(execute(helperPath, ['deployment-status', applicationPath, String(process.getuid!())]))
+        .rejects.toMatchObject({ code: 1, stdout: '', stderr: 'application signature is invalid\n' });
+    } finally {
+      await writeFile(executablePath, original);
+    }
   });
 
   it('inspects the complete signed application and rejects a resource change', async () => {

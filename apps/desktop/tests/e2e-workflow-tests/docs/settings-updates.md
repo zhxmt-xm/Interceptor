@@ -10,6 +10,18 @@
 4. 保存两代trace、公开指纹和文件元数据，不读取/导出私钥。若本workflow首次创建CA，最后经产品Uninstall/Delete恢复初始基线；若CA已存在，则完全保留。第二代正常退出并保存证据后删除其临时profile，确认目录确实不存在，再回读共享CA的指纹/size/mtime与系统信任及完整Root集合，均须保持启动前基线；另存`shared-certificate-profile-deletion.json`。Main/Core/Worker全退、8888释放、完整代理/Root/admin trust恢复后才算Green。
 5. 材料已有未信任、系统拒绝/取消与损坏保留由产品unit/integration及对应真实原生流程覆盖；Windows UAC和产物验收由Windows item独立后验，不能用macOS结果代替。
 
+<a id="certificate-startup-cancel"></a>
+
+## `settings.certificates.startup-cancel`（macOS）
+
+1. 运行前共享材料必须为空，保存完整System Root/admin trust基线。启动真实App但由该workflow自己等待ready，先确认首窗可见、BootScreen为`certificate`且业务`app.root`尚未挂载，再定位本轮Main的前台helper及唯一授权窗口。
+2. 通过真实窗口Close发起退出，要求立即显示`certificate.prepare`冲突，首窗保持且不延后自动退出。保存启动页与冲突截图、trace及公开CA指纹。
+3. 对精确归属的原生授权窗口发送Escape；fixture只定位本轮Main的唯一单按钮失败对话框，前置该App后真实发送Enter确认，不改写原生返回值。Main正常退出且没有Core/listener。新增系统公开CA应撤回，Root集合恢复，但本地已生成材料保持同一身份，不能隐式重生成。
+4. 使用另一个fresh profile重启，用户正常确认同一CA授信；正式Settings显示同一指纹和可Uninstall，MITM仍关闭。只授权一次，不重放先前拒绝的Quit。
+5. 经产品Uninstall/Delete清理专项生成的CA，保存两代trace、取消与复用证据，正常Close；全部进程退出、8888、完整代理和Root/admin trust恢复。测试端的延后ready仅控制driver等待时机，不给产品增加参数或后门。
+
+2026-09-24当前行为验收：签名包首次生成/授权/两代复用1/1在`/tmp/interceptor-item3-20260924-first-ca-startup.json`；本取消专项最终1/1在`/tmp/interceptor-item3-20260924-startup-cancel-final.json`。`startup-cancel-host.json`确认首代Main55783未启动Core，次代Main55936/Core56024使用同一CA正常启动，全部正常退出、Root集合恢复、材料清理、8888释放，两个trace保留。前两次失败是窗口索引与原生错误提示未关闭，恢复记录分别为`startup-cancel-recovery.json`、`startup-cancel-fixed-recovery.json`（同前缀），不算产品Red。新增用例验证既有行为，不能补造原启动实现之前缺失的真实E2E证据。
+
 helper部署前只读检查失败时，启动保留原错误，不产生授权、CA或Core写入，也不保留修改占用阻止Quit。`system-proxy.read-effective`收到完整回复但value格式错误时，typed client须标明completed及只读operation，不误记为未知写入。非法原生回复与不可用组件的组合由所属module测试覆盖；真实E2E不篡改安装资源制造输入。已发送写入后的超时/断线仍必须保守保护，普通status成功不能证明该写入结束。
 
 第4项失联写入验收：传输/原生集成负责丢失终态回复、原ID/操作匹配、缺记录、记录淘汰/重启和查询失败，确认期间仍有原操作占用，失败命令绝不重放；只有精确匹配的结束记录才进入原业务回读/回滚。已确认import失败只撤回安装前不存在的精确公开CA，未确认或已有CA保持。真实UI流程继续覆盖Install/Uninstall/Delete、取消、跨入口状态通知、Quit及宿主恢复，不用fake Preload或篡改安装资源制造故障，也不将正常UI Green冒充断线分支已在E2E触发。
@@ -29,6 +41,8 @@ helper部署前只读检查失败时，启动保留原错误，不产生授权�
 5. 重复Generate/Install/Uninstall/Delete，第二张CA指纹必须不同，同一helper仍复用。保存两轮公开指纹、helper身份、系统验证及基线哈希证据；真实Close后由宿主guard验证Main/Core/Worker、8888、完整代理和admin trust恢复。
 
 本轮目标是macOS权限写入和确认归helper，不承诺绕过系统要求的用户认证，不改变Windows原流程；缺前置Red、最终Green或系统恢复证据不得标passed。API拒绝时的已有CA保护及撤销失败不删除由产品unit/native integration覆盖；不得为制造取消场景添加产品测试后门。
+
+2026-09-24续验：用户明确批准通过产品删除原日常CA后，当前签名包的cancel-trust与helper-trust两条2/2通过，记录在`/tmp/interceptor-item4-20260924-certificate-lifecycle.json`及同名trace目录。Main56784/Core56864、Main57319/Core57407均正常退出，两个不同测试CA经产品生成/信任/撤销/删除，常驻helper保持，其他System Root/admin trust恢复、材料与journal清理、8888释放；独立复核为`/tmp/interceptor-items2-7-20260924-pause.json`。此结果不覆盖真正未知写入的可靠解除，也不覆盖Windows实机。
 
 历史前台方案：开发成功/取消各1/1；同一生产产物成功授信/撤销及取消2/2，Main/Core、前台helper、8888、代理与证书恢复已验。证据为`/tmp/interceptor-macos-helper-trust-20260920-production/`及同前缀`-results.json`。后续自动方案已放弃，该旧Green不代表本轮新产物通过；产物范围见[Handover](../../../../../architecture/HANDOVER.md#verification)。
 
