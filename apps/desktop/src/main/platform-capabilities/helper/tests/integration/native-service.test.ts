@@ -1,21 +1,23 @@
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { createHash, webcrypto } from 'node:crypto';
+import { once } from 'node:events';
 import { chmod, copyFile, lstat, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
 import { isDeepStrictEqual, promisify } from 'node:util';
 
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as x509 from '@peculiar/x509';
 
 import { MacosHelperServiceClient } from '../../macos/helper-client';
+import { MacosHelperServiceError } from '../../macos/internal/errors';
 
 const execFileAsync = promisify(execFile);
 const helperPath = process.env.INTERCEPTOR_NATIVE_SERVICE_HELPER_PATH
   ?? path.resolve(import.meta.dirname, '../../../../../../dist/system-proxy/macos-proxy-helper');
 const capabilities = [
   'status', 'system-proxy.read', 'system-proxy.read-effective', 'system-proxy.replace',
-  'certificate.import', 'certificate.remove',
+  'certificate.import', 'certificate.remove', 'request.get-completion',
 ];
 
 describe.runIf(process.platform === 'darwin')('macOS native service transport', () => {
@@ -116,6 +118,140 @@ describe.runIf(process.platform === 'darwin')('macOS native service transport', 
     const { stdout } = await execFileAsync(clientPath, [socketPath, JSON.stringify(request)]);
     return JSON.parse(stdout) as Record<string, unknown>;
   }
+
+  it.each(['system-proxy.replace', 'certificate.import', 'certificate.remove'] as const)(
+    'reports completion metadata for an ended %s request without granting a system write', async (operation) => {
+      const before = JSON.parse((await execFileAsync(helperPath, ['get'])).stdout);
+      await startService({}, 'development');
+      const requestId = `completed-${operation}`;
+      const parameters = operation === 'system-proxy.replace'
+        ? { expectedSnapshot: { services: [] }, replacementSnapshot: { services: [] } }
+        : certificateParameters;
+      await expect(requestFromNativeClient({ protocolVersion: 1, requestId, operation, parameters }))
+        .resolves.toMatchObject({ ok: false, error: { code: 'authorization-required' } });
+
+      await expect(requestFromNativeClient({
+        protocolVersion: 1, requestId: 'completion-query', operation: 'request.get-completion',
+        parameters: { requestId },
+      })).resolves.toEqual({
+        protocolVersion: 1, requestId: 'completion-query', ok: true,
+        value: { requestId, state: 'completed', operation },
+      });
+      expect(JSON.parse((await execFileAsync(helperPath, ['get'])).stdout)).toEqual(before);
+    },
+  );
+
+  it('does not treat an absent request or a read as a completed mutation', async () => {
+    await startService({}, 'development');
+    await requestFromNativeClient({ protocolVersion: 1, requestId: 'read-only', operation: 'system-proxy.read' });
+    for (const requestId of ['not-received', 'read-only']) {
+      await expect(requestFromNativeClient({
+        protocolVersion: 1, requestId: `query-${requestId}`, operation: 'request.get-completion',
+        parameters: { requestId },
+      })).resolves.toMatchObject({ ok: true, value: { requestId, state: 'unknown' } });
+    }
+  });
+
+  it('bounds completed mutation metadata and reports evicted requests as unknown', async () => {
+    await startService({}, 'development');
+    for (let index = 0; index < 129; index += 1) {
+      await requestFromNativeClient({
+        protocolVersion: 1, requestId: `mutation-${index}`, operation: 'system-proxy.replace',
+        parameters: { expectedSnapshot: { services: [] }, replacementSnapshot: { services: [] } },
+      });
+    }
+    await expect(requestFromNativeClient({
+      protocolVersion: 1, requestId: 'old-query', operation: 'request.get-completion',
+      parameters: { requestId: 'mutation-0' },
+    })).resolves.toMatchObject({ ok: true, value: { requestId: 'mutation-0', state: 'unknown' } });
+    await expect(requestFromNativeClient({
+      protocolVersion: 1, requestId: 'latest-query', operation: 'request.get-completion',
+      parameters: { requestId: 'mutation-128' },
+    })).resolves.toMatchObject({
+      ok: true, value: { requestId: 'mutation-128', state: 'completed', operation: 'system-proxy.replace' },
+    });
+  }, 15_000);
+
+  it('rejects malformed completion queries without accepting caller-supplied completion facts', async () => {
+    await startService({}, 'development');
+    for (const parameters of [{ requestId: '' }, { requestId: true }, { requestId: 'x'.repeat(129) },
+      { requestId: 'known', state: 'completed' }, { operation: 'certificate.remove' }]) {
+      await expect(requestFromNativeClient({
+        protocolVersion: 1, requestId: 'invalid-query', operation: 'request.get-completion', parameters,
+      })).resolves.toMatchObject({ ok: false, error: { code: 'invalid-request' } });
+    }
+  });
+
+  it('retains mutation completion after the requesting client disconnects before reading the reply', async () => {
+    await startService({}, 'development');
+    const connection = net.createConnection(socketPath);
+    await once(connection, 'connect');
+    const closed = once(connection, 'close');
+    await new Promise<void>((resolve, reject) => {
+      connection.write(JSON.stringify({
+        protocolVersion: 1, requestId: 'disconnected-mutation', operation: 'system-proxy.replace',
+        parameters: { expectedSnapshot: { services: [] }, replacementSnapshot: { services: [] } },
+      }) + '\n', (error) => {
+        connection.destroy();
+        if (error) reject(error);
+        else resolve();
+      });
+    });
+    await closed;
+
+    await expect(requestFromNativeClient({
+      protocolVersion: 1, requestId: 'query-disconnected', operation: 'request.get-completion',
+      parameters: { requestId: 'disconnected-mutation' },
+    })).resolves.toMatchObject({
+      ok: true, value: { requestId: 'disconnected-mutation', state: 'completed', operation: 'system-proxy.replace' },
+    });
+    expect(serviceProcess!.exitCode).toBeNull();
+  });
+
+  it('does not reuse completion metadata after the native service restarts', async () => {
+    await startService({}, 'development');
+    await requestFromNativeClient({
+      protocolVersion: 1, requestId: 'previous-generation', operation: 'system-proxy.replace',
+      parameters: { expectedSnapshot: { services: [] }, replacementSnapshot: { services: [] } },
+    });
+    const exited = once(serviceProcess!, 'exit');
+    serviceProcess!.kill('SIGTERM');
+    await exited;
+    serviceProcess = null;
+    await startService({}, 'development');
+
+    await expect(requestFromNativeClient({
+      protocolVersion: 1, requestId: 'query-previous', operation: 'request.get-completion',
+      parameters: { requestId: 'previous-generation' },
+    })).resolves.toMatchObject({ ok: true, value: { requestId: 'previous-generation', state: 'unknown' } });
+  });
+
+  it('keeps completion metadata scoped to its production or development endpoint', async () => {
+    const developmentSocketPath = path.join(directory, 'development.sock');
+    await configureDevelopmentService({ socketPath: developmentSocketPath });
+    await startService();
+    await requestFromNativeClient({
+      protocolVersion: 1, requestId: 'production-attempt', operation: 'system-proxy.replace',
+      parameters: { expectedSnapshot: { services: [] }, replacementSnapshot: { services: [] } },
+    });
+    const query = {
+      protocolVersion: 1, requestId: 'query-endpoint', operation: 'request.get-completion',
+      parameters: { requestId: 'production-attempt' },
+    };
+    await expect(requestFromNativeClient(query)).resolves.toMatchObject({
+      ok: true, value: { requestId: 'production-attempt', state: 'completed', operation: 'system-proxy.replace' },
+    });
+    const { stdout } = await execFileAsync(clientPath, [developmentSocketPath, JSON.stringify(query)]);
+    expect(JSON.parse(stdout)).toMatchObject({ ok: true, value: { requestId: 'production-attempt', state: 'unknown' } });
+  });
+
+  it('authenticates the caller before looking up completion metadata', async () => {
+    await startService({ clientUserId: process.getuid!() + 1 }, 'development');
+    await expect(requestFromNativeClient({
+      protocolVersion: 1, requestId: 'unapproved-query', operation: 'request.get-completion',
+      parameters: { requestId: 'another-request' },
+    })).resolves.toMatchObject({ ok: false, error: { code: 'unauthorized-client' } });
+  });
 
   it('allows the approved development user without pinning code, paths or debugger permissions', async () => {
     const before = JSON.parse((await execFileAsync(helperPath, ['get'])).stdout);
@@ -629,7 +765,7 @@ describe.runIf(process.platform === 'darwin')('macOS native service transport', 
   it('reports an absent service instead of starting an installation or another helper', async () => {
     const macosHelperServiceClient = new MacosHelperServiceClient(socketPath);
     await expect(macosHelperServiceClient.getStatus()).rejects.toMatchObject({
-      code: 'unavailable', executionState: 'completed',
+      code: 'unavailable', executionState: 'completed', requestSent: false,
     });
   });
 
@@ -675,8 +811,12 @@ describe.runIf(process.platform === 'darwin')('macOS native service transport', 
     try {
       const client = new MacosHelperServiceClient(socketPath);
       await client.importCertificate(certificateParameters);
-      await expect(client.importCertificate(certificateParameters)).rejects.toMatchObject({ code: 'invalid-response' });
-      await expect(client.removeCertificate(certificateParameters)).rejects.toMatchObject({ code: 'invalid-response' });
+      await expect(client.importCertificate(certificateParameters)).rejects.toMatchObject({
+        code: 'invalid-response', executionState: 'completed', operation: 'certificate.import', requestSent: true,
+      });
+      await expect(client.removeCertificate(certificateParameters)).rejects.toMatchObject({
+        code: 'invalid-response', executionState: 'completed', operation: 'certificate.remove', requestSent: true,
+      });
       await client.removeCertificate(certificateParameters);
       expect(requests).toEqual([
         expect.objectContaining({ operation: 'certificate.import', parameters: certificateParameters }),
@@ -686,6 +826,224 @@ describe.runIf(process.platform === 'darwin')('macOS native service transport', 
       ]);
     } finally {
       await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it.each(['system-proxy.replace', 'certificate.import', 'certificate.remove'] as const)(
+    'confirms the original %s completion after a lost reply without replaying the write', async (operation) => {
+      const requests: Array<{ requestId: string; operation: string; parameters?: unknown }> = [];
+      let originalRequestId: string | undefined;
+      let releaseConfirmation: (() => void) | undefined;
+      let receivedConfirmation!: () => void;
+      const confirmationReceived = new Promise<void>((resolve) => { receivedConfirmation = resolve; });
+      const server = net.createServer((connection) => {
+        connection.once('data', (data) => {
+          const request = JSON.parse(data.toString('utf8')) as { requestId: string; operation: string; parameters?: unknown };
+          requests.push(request);
+          if (request.operation === operation) {
+            originalRequestId = request.requestId;
+            connection.end();
+          } else {
+            releaseConfirmation = () => connection.end(JSON.stringify({
+                protocolVersion: 1, requestId: request.requestId, ok: true,
+                value: { requestId: originalRequestId, state: 'completed', operation },
+              }) + '\n');
+            receivedConfirmation();
+          }
+        });
+      });
+      await new Promise<void>((resolve, reject) => {
+        server.once('error', reject);
+        server.listen(socketPath, resolve);
+      });
+      try {
+        const macosHelperServiceClient = new MacosHelperServiceClient(socketPath);
+        const request = operation === 'system-proxy.replace'
+          ? macosHelperServiceClient.replaceSystemProxySnapshot({ services: [] }, { services: [] })
+          : operation === 'certificate.import' ? macosHelperServiceClient.importCertificate(certificateParameters)
+            : macosHelperServiceClient.removeCertificate(certificateParameters);
+        let settled = false;
+        const result = request.then(() => { settled = true; return null; }, (error: unknown) => {
+          settled = true;
+          return error;
+        });
+        await confirmationReceived;
+        expect(settled).toBe(false);
+        releaseConfirmation!();
+        releaseConfirmation = undefined;
+        const outcome = await result;
+        expect(outcome).toBeInstanceOf(MacosHelperServiceError);
+        if (!(outcome instanceof MacosHelperServiceError)) throw new Error('Expected the original write error.');
+        expect(outcome).toMatchObject({ code: 'invalid-response', executionState: 'completed', operation, requestSent: true });
+        expect(outcome.hasUnconfirmedMutation()).toBe(false);
+        expect(requests.map((value) => value.operation)).toEqual([operation, 'request.get-completion']);
+        expect(requests[1]!.parameters).toEqual({ requestId: requests[0]!.requestId });
+        expect(requests[1]!.requestId).not.toBe(requests[0]!.requestId);
+      } finally {
+        releaseConfirmation?.();
+        await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      }
+    },
+  );
+
+  it.each(['success', 'formal-failure'] as const)('does not query completion for a normal %s reply', async (reply) => {
+    const operations: string[] = [];
+    const server = net.createServer((connection) => {
+      connection.once('data', (data) => {
+        const request = JSON.parse(data.toString('utf8')) as { requestId: string; operation: string };
+        operations.push(request.operation);
+        connection.end(JSON.stringify({
+          protocolVersion: 1, requestId: request.requestId,
+          ...(reply === 'success'
+            ? { ok: true, value: { services: [] } }
+            : { ok: false, error: { code: 'snapshot-conflict' } }),
+        }) + '\n');
+      });
+    });
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(socketPath, resolve);
+    });
+    try {
+      const macosHelperServiceClient = new MacosHelperServiceClient(socketPath);
+      const request = macosHelperServiceClient.replaceSystemProxySnapshot({ services: [] }, { services: [] });
+      if (reply === 'success') await expect(request).resolves.toEqual({ services: [] });
+      else await expect(request).rejects.toMatchObject({ code: 'snapshot-conflict', executionState: 'completed' });
+      expect(operations).toEqual(['system-proxy.replace']);
+    } finally {
+      await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    }
+  });
+
+  it.each(['status', 'system-proxy.read', 'system-proxy.read-effective'] as const)(
+    'does not query completion after a lost %s read reply', async (operation) => {
+      const operations: string[] = [];
+      const server = net.createServer((connection) => {
+        connection.once('data', (data) => {
+          operations.push((JSON.parse(data.toString('utf8')) as { operation: string }).operation);
+          connection.end();
+        });
+      });
+      await new Promise<void>((resolve, reject) => {
+        server.once('error', reject);
+        server.listen(socketPath, resolve);
+      });
+      try {
+        const macosHelperServiceClient = new MacosHelperServiceClient(socketPath);
+        const request = operation === 'status' ? macosHelperServiceClient.getStatus()
+          : operation === 'system-proxy.read' ? macosHelperServiceClient.readSystemProxySnapshot()
+            : macosHelperServiceClient.readEffectiveSystemProxySettings();
+        await expect(request).rejects.toMatchObject({ code: 'invalid-response', operation });
+        expect(operations).toEqual([operation]);
+      } finally {
+        await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      }
+    },
+  );
+
+  it('confirms a timed-out write only after its original 30-second deadline', async () => {
+    const operations: string[] = [];
+    let originalRequestId: string | undefined;
+    let receivedWrite!: () => void;
+    const writeReceived = new Promise<void>((resolve) => { receivedWrite = resolve; });
+    const server = net.createServer((connection) => {
+      connection.once('data', (data) => {
+        const request = JSON.parse(data.toString('utf8')) as { requestId: string; operation: string };
+        operations.push(request.operation);
+        if (request.operation === 'system-proxy.replace') {
+          originalRequestId = request.requestId;
+          receivedWrite();
+        } else {
+          connection.end(JSON.stringify({
+            protocolVersion: 1, requestId: request.requestId, ok: true,
+            value: { requestId: originalRequestId, state: 'completed', operation: 'system-proxy.replace' },
+          }) + '\n');
+        }
+      });
+    });
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(socketPath, resolve);
+    });
+    try {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const macosHelperServiceClient = new MacosHelperServiceClient(socketPath);
+      const pending = macosHelperServiceClient.replaceSystemProxySnapshot({ services: [] }, { services: [] })
+        .then(() => null, (error: unknown) => error);
+      await writeReceived;
+      await vi.advanceTimersByTimeAsync(29_999);
+      expect(operations).toEqual(['system-proxy.replace']);
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(pending).resolves.toMatchObject({
+        code: 'timeout', executionState: 'completed', operation: 'system-proxy.replace', requestSent: true,
+      });
+      expect(operations).toEqual(['system-proxy.replace', 'request.get-completion']);
+    } finally {
+      vi.useRealTimers();
+      await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    }
+  });
+
+  it.each(['unknown', 'wrong-request', 'wrong-operation', 'extra-field', 'invalid-value', 'disconnected'] as const)(
+    'preserves an unknown write after %s completion evidence and a later successful status', async (evidence) => {
+    const operations: string[] = [];
+    let originalRequestId: string | undefined;
+    const server = net.createServer((connection) => {
+      connection.once('data', (data) => {
+        const request = JSON.parse(data.toString('utf8')) as { requestId: string; operation: string };
+        operations.push(request.operation);
+        if (request.operation === 'system-proxy.replace') {
+          originalRequestId = request.requestId;
+          connection.end();
+          return;
+        }
+        if (request.operation === 'request.get-completion' && evidence === 'disconnected') {
+          connection.end();
+          return;
+        }
+        let value: unknown = {
+          processId: process.pid, privileged: true, clientAuthorizedForWrites: true, capabilities,
+        };
+        if (request.operation === 'request.get-completion') {
+          value = evidence === 'invalid-value' ? null : {
+            requestId: evidence === 'wrong-request' ? 'different' : originalRequestId,
+            state: evidence === 'unknown' ? 'unknown' : 'completed',
+            ...(evidence === 'unknown' ? {} : { operation: evidence === 'wrong-operation' ? 'certificate.remove' : 'system-proxy.replace' }),
+            ...(evidence === 'extra-field' ? { confirmed: true } : {}),
+          };
+        }
+        connection.end(JSON.stringify({
+          protocolVersion: 1, requestId: request.requestId, ok: true, value,
+        }) + '\n');
+      });
+    });
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(socketPath, resolve);
+    });
+    try {
+      const macosHelperServiceClient = new MacosHelperServiceClient(socketPath);
+      const snapshot = { services: [] };
+      const outcome = await macosHelperServiceClient.replaceSystemProxySnapshot(snapshot, snapshot)
+        .then(() => null, (error: unknown) => error);
+      expect(outcome).toBeInstanceOf(AggregateError);
+      if (!(outcome instanceof AggregateError)) throw new Error('Expected both write and confirmation errors.');
+      const errors: readonly unknown[] = outcome.errors;
+      expect(errors).toHaveLength(2);
+      const original = errors[0];
+      expect(original).toMatchObject({
+        code: 'invalid-response', executionState: 'unknown', operation: 'system-proxy.replace',
+      });
+      if (!(original instanceof MacosHelperServiceError)) throw new Error('The original write error was lost.');
+      expect(original.hasUnconfirmedMutation()).toBe(true);
+      expect(errors[1]).toMatchObject({ operation: 'request.get-completion' });
+      await expect(macosHelperServiceClient.getStatus()).resolves.toMatchObject({
+        privileged: true, clientAuthorizedForWrites: true,
+      });
+      expect(original.hasUnconfirmedMutation()).toBe(true);
+      expect(operations).toEqual(['system-proxy.replace', 'request.get-completion', 'status']);
+    } finally {
+      await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     }
   });
 

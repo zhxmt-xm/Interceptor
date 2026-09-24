@@ -1,4 +1,4 @@
-import type { MacosHelperServiceErrorCode, MacosHelperServiceOperation, MacosHelperServiceStatus } from '../interfaces';
+import type { MacosHelperRequestCompletion, MacosHelperServiceErrorCode, MacosHelperServiceOperation, MacosHelperServiceStatus } from '../interfaces';
 import type { MacosSystemProxySnapshot } from '../../system-proxy/interfaces';
 import { MacosHelperServiceError } from './internal/errors';
 import { SystemProxyError } from '../../system-proxy/internal/errors';
@@ -28,7 +28,7 @@ export function parseMacosHelperServiceReply(data: Uint8Array, requestId: string
 export function parseMacosHelperServiceStatus(value: unknown): MacosHelperServiceStatus {
   const capabilities: readonly MacosHelperServiceOperation[] = [
     'status', 'system-proxy.read', 'system-proxy.read-effective', 'system-proxy.replace',
-    'certificate.import', 'certificate.remove',
+    'certificate.import', 'certificate.remove', 'request.get-completion',
   ];
   const reportedCapabilities = isRecord(value) ? value.capabilities : undefined;
   if (!isRecord(value) || !hasFields(value, ['processId', 'privileged', 'clientAuthorizedForWrites', 'capabilities'])
@@ -40,6 +40,20 @@ export function parseMacosHelperServiceStatus(value: unknown): MacosHelperServic
     throw new MacosHelperServiceError('invalid-response');
   }
   return { processId: value.processId, privileged: value.privileged, clientAuthorizedForWrites: value.clientAuthorizedForWrites, capabilities };
+}
+
+export function parseMacosHelperRequestCompletion(value: unknown, requestId: string): MacosHelperRequestCompletion {
+  if (isRecord(value) && value.requestId === requestId) {
+    if (value.state === 'unknown' && hasFields(value, ['requestId', 'state'])) {
+      return { requestId, state: 'unknown' };
+    }
+    if (value.state === 'completed' && hasFields(value, ['requestId', 'state', 'operation'])
+      && (value.operation === 'system-proxy.replace' || value.operation === 'certificate.import'
+        || value.operation === 'certificate.remove')) {
+      return { requestId, state: 'completed', operation: value.operation };
+    }
+  }
+  throw new MacosHelperServiceError('invalid-response', 'completed', 'request.get-completion', true);
 }
 
 export function parseMacosSystemProxySnapshot(value: unknown): MacosSystemProxySnapshot {

@@ -111,6 +111,80 @@ describe('TrustStoreService', () => {
       args[0] === 'add-trusted-cert' || args[0] === 'remove-trusted-cert')).toEqual([]);
   });
 
+  it.each(['timeout', 'unavailable', 'invalid-response', 'verification-failed'] as const)(
+    'removes only the newly imported CA after a confirmed completed %s import failure', async (code) => {
+      const recordingRunner = new RecordingRunner();
+      const failure = new MacosHelperServiceError(code, 'completed', 'certificate.import', true);
+      vi.mocked(MacosHelperServiceClient.prototype.importCertificate).mockRejectedValueOnce(failure);
+      const trustStoreService = new TrustStoreService({ platform: 'darwin', runner: recordingRunner });
+
+      await expect(trustStoreService.install('/certs/root.pem')).rejects.toBe(failure);
+
+      expect(MacosHelperServiceClient.prototype.importCertificate).toHaveBeenCalledOnce();
+      expect(MacosHelperServiceClient.prototype.trustCertificate).not.toHaveBeenCalled();
+      expect(MacosHelperServiceClient.prototype.removeCertificate).toHaveBeenCalledExactlyOnceWith(certificatePayload);
+    },
+  );
+
+  it('preserves an existing CA after a confirmed import timeout', async () => {
+    const recordingRunner = new RecordingRunner();
+    recordingRunner.result = { code: 0, stdout: certificatePem, stderr: '' };
+    const failure = new MacosHelperServiceError('timeout', 'completed', 'certificate.import', true);
+    vi.mocked(MacosHelperServiceClient.prototype.importCertificate).mockRejectedValueOnce(failure);
+    const trustStoreService = new TrustStoreService({ platform: 'darwin', runner: recordingRunner });
+
+    await expect(trustStoreService.install('/certs/root.pem')).rejects.toBe(failure);
+    expect(MacosHelperServiceClient.prototype.trustCertificate).not.toHaveBeenCalled();
+    expect(MacosHelperServiceClient.prototype.removeCertificate).not.toHaveBeenCalled();
+  });
+
+  it('does not remove a CA when import completion could not be established', async () => {
+    const recordingRunner = new RecordingRunner();
+    const failure = new AggregateError([
+      new MacosHelperServiceError('timeout', 'unknown', 'certificate.import', true),
+      new Error('Completion was unavailable.'),
+    ]);
+    vi.mocked(MacosHelperServiceClient.prototype.importCertificate).mockRejectedValueOnce(failure);
+    const trustStoreService = new TrustStoreService({ platform: 'darwin', runner: recordingRunner });
+
+    await expect(trustStoreService.install('/certs/root.pem')).rejects.toBe(failure);
+    expect(MacosHelperServiceClient.prototype.trustCertificate).not.toHaveBeenCalled();
+    expect(MacosHelperServiceClient.prototype.removeCertificate).not.toHaveBeenCalled();
+  });
+
+  it('does not request rollback when import was rejected before changing the keychain', async () => {
+    const recordingRunner = new RecordingRunner();
+    const failure = new MacosHelperServiceError('authorization-required', 'completed', 'certificate.import');
+    vi.mocked(MacosHelperServiceClient.prototype.importCertificate).mockRejectedValueOnce(failure);
+    const trustStoreService = new TrustStoreService({ platform: 'darwin', runner: recordingRunner });
+
+    await expect(trustStoreService.install('/certs/root.pem')).rejects.toBe(failure);
+    expect(MacosHelperServiceClient.prototype.removeCertificate).not.toHaveBeenCalled();
+  });
+
+  it('does not request rollback when the import request was never sent', async () => {
+    const recordingRunner = new RecordingRunner();
+    const failure = new MacosHelperServiceError('unavailable', 'completed', 'certificate.import');
+    vi.mocked(MacosHelperServiceClient.prototype.importCertificate).mockRejectedValueOnce(failure);
+    const trustStoreService = new TrustStoreService({ platform: 'darwin', runner: recordingRunner });
+
+    await expect(trustStoreService.install('/certs/root.pem')).rejects.toBe(failure);
+    expect(MacosHelperServiceClient.prototype.trustCertificate).not.toHaveBeenCalled();
+    expect(MacosHelperServiceClient.prototype.removeCertificate).not.toHaveBeenCalled();
+  });
+
+  it('retains the confirmed import failure together with a rollback error', async () => {
+    const recordingRunner = new RecordingRunner();
+    const failure = new MacosHelperServiceError('timeout', 'completed', 'certificate.import', true);
+    const cleanupError = new MacosHelperServiceError('unavailable', 'unknown', 'certificate.remove', true);
+    vi.mocked(MacosHelperServiceClient.prototype.importCertificate).mockRejectedValueOnce(failure);
+    vi.mocked(MacosHelperServiceClient.prototype.removeCertificate).mockRejectedValueOnce(cleanupError);
+    const trustStoreService = new TrustStoreService({ platform: 'darwin', runner: recordingRunner });
+
+    await expect(trustStoreService.install('/certs/root.pem')).rejects.toMatchObject({ errors: [failure, cleanupError] });
+    expect(MacosHelperServiceClient.prototype.trustCertificate).not.toHaveBeenCalled();
+  });
+
   it('does not request macOS trust if the certificate import fails', async () => {
     const recordingRunner = new RecordingRunner();
     const recordingElevatedRunner = new RecordingElevatedRunner();

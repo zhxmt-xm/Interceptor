@@ -319,7 +319,7 @@ describe('CertificateService', () => {
     },
   );
 
-  it.each(['unavailable', 'invalid-response', 'verification-failed', 'certificate-state-uncertain'] as const)(
+  it.each(['timeout', 'unavailable', 'invalid-response', 'verification-failed', 'certificate-state-uncertain'] as const)(
     'releases a confirmed completed %s failure without deleting or replacing certificate material', async (code) => {
       const onChanged = vi.fn();
       const certificateService = new CertificateService({ dataDir, secureStore, coreRuntime, diagnostics, helperService, onChanged, platform: 'darwin' });

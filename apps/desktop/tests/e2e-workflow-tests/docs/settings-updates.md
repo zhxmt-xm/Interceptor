@@ -12,6 +12,8 @@
 
 helper部署前只读检查失败时，启动保留原错误，不产生授权、CA或Core写入，也不保留修改占用阻止Quit。`system-proxy.read-effective`收到完整回复但value格式错误时，typed client须标明completed及只读operation，不误记为未知写入。非法原生回复与不可用组件的组合由所属module测试覆盖；真实E2E不篡改安装资源制造输入。已发送写入后的超时/断线仍必须保守保护，普通status成功不能证明该写入结束。
 
+第4项失联写入验收：传输/原生集成负责丢失终态回复、原ID/操作匹配、缺记录、记录淘汰/重启和查询失败，确认期间仍有原操作占用，失败命令绝不重放；只有精确匹配的结束记录才进入原业务回读/回滚。已确认import失败只撤回安装前不存在的精确公开CA，未确认或已有CA保持。真实UI流程继续覆盖Install/Uninstall/Delete、取消、跨入口状态通知、Quit及宿主恢复，不用fake Preload或篡改安装资源制造故障，也不将正常UI Green冒充断线分支已在E2E触发。
+
 普通TLS workflow复用共享CA后，经UI添加测试origin的源站例外再开启MITM，首笔H1/H2请求即须成功；不靠预热失败请求或listener重建触发新规则。Core集成同时验证撤销例外立即恢复严格校验，端口和Capture会话不变。
 
 证书生命周期、取消及证书/TLS Tools专项使用`certificateLifecycleTest`：启动前只读确认共享目录没有三份材料，保留系统Root基线；经产品清理本轮启动自动生成的CA后再执行原有手工操作断言。已有共享材料时必须在启动App前拒绝，不能删除开发者CA以凑测试前提。普通协议、导航、Reveal和packaged smoke复用已初始化CA，入口先检查就绪；这是测试范围，不是产品隐藏参数。证书Tools保留未信任CA重启时，新契约要求启动补授信但不重放Agent请求。

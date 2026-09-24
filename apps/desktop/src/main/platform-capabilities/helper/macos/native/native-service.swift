@@ -37,6 +37,11 @@ final class MacosHelperService {
     /** Dispatch sources retain the socket and orderly shutdown callbacks. */
     private var listenerSource: DispatchSourceRead?
     private var shutdownSources: [DispatchSourceSignal] = []
+    /** Only ended mutation identifiers and names are retained, never parameters or trust decisions. */
+    private var completedOperationsByRequestId: [String: String] = [:]
+    /** Per-endpoint bounded retention; missing or evicted identifiers remain unknown. */
+    private var completedRequestIds: [String] = []
+    private static let completedRequestLimit = 128
 
     /** Load protected configuration without installing anything or changing system state. */
     init(configurationPath: String) throws {
@@ -294,6 +299,7 @@ final class MacosHelperService {
         _ = setsockopt(connection, SOL_SOCKET, SO_SNDTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
         _ = fcntl(connection, F_SETFL, 0)
         var requestId: String?
+        var mutationOperation: String?
         do {
             let client = try authenticate(connection: connection)
             let request = try MacosHelperServiceRequest.decode(readRequest(connection: connection))
@@ -305,20 +311,29 @@ final class MacosHelperService {
                 value = [
                     "processId": getpid(), "privileged": geteuid() == 0,
                     "clientAuthorizedForWrites": (try? requireWriteClient(client: client)) != nil,
-                    "capabilities": ["status", "system-proxy.read", "system-proxy.read-effective", "system-proxy.replace", "certificate.import", "certificate.remove"],
+                    "capabilities": ["status", "system-proxy.read", "system-proxy.read-effective", "system-proxy.replace", "certificate.import", "certificate.remove", "request.get-completion"],
                 ]
+            case "request.get-completion":
+                guard let originalRequestId = request.completionRequestId else { throw MacosHelperServiceError.invalidRequest }
+                if let operation = completedOperationsByRequestId[originalRequestId] {
+                    value = ["requestId": originalRequestId, "state": "completed", "operation": operation]
+                } else {
+                    value = ["requestId": originalRequestId, "state": "unknown"]
+                }
             case "system-proxy.read":
                 value = try SystemProxyHelper.readSystemProxySnapshot()
             case "system-proxy.read-effective":
                 value = try SystemProxyHelper.readEffectiveSystemProxySettings()
             case "system-proxy.replace":
                 guard let replacement = request.proxyReplacement else { throw MacosHelperServiceError.invalidRequest }
+                mutationOperation = request.operation
                 try requireWriteClient(client: client)
                 try validateClientResources(client)
                 guard geteuid() == 0 else { throw MacosHelperServiceError.authorizationRequired }
                 value = try SystemProxyHelper.replaceSystemProxySnapshot(replacement)
             case "certificate.import", "certificate.remove":
                 guard let certificate = request.certificate else { throw MacosHelperServiceError.invalidRequest }
+                mutationOperation = request.operation
                 try requireWriteClient(client: client)
                 try validateClientResources(client)
                 guard geteuid() == 0 else { throw MacosHelperServiceError.authorizationRequired }
@@ -328,6 +343,9 @@ final class MacosHelperService {
             default:
                 throw MacosHelperServiceError.unsupportedOperation
             }
+            if let mutationOperation {
+                recordMutationCompletion(requestId: request.requestId, operation: mutationOperation)
+            }
             send([
                 "protocolVersion": 1,
                 "requestId": request.requestId,
@@ -336,6 +354,9 @@ final class MacosHelperService {
             ], connection: connection)
         } catch {
             let failure = (error as? MacosHelperServiceError) ?? .operationFailed
+            if let requestId, let mutationOperation {
+                recordMutationCompletion(requestId: requestId, operation: mutationOperation)
+            }
             logger.error("request rejected: \(failure.rawValue, privacy: .public)")
             send([
                 "protocolVersion": 1,
@@ -343,6 +364,18 @@ final class MacosHelperService {
                 "ok": false,
                 "error": ["code": failure.rawValue],
             ], connection: connection)
+        }
+    }
+
+    /** Record termination before replying, so a lost reply never requires replaying the mutation. */
+    private func recordMutationCompletion(requestId: String, operation: String) {
+        if let previousIndex = completedRequestIds.firstIndex(of: requestId) {
+            completedRequestIds.remove(at: previousIndex)
+        }
+        completedOperationsByRequestId[requestId] = operation
+        completedRequestIds.append(requestId)
+        if completedRequestIds.count > Self.completedRequestLimit {
+            completedOperationsByRequestId.removeValue(forKey: completedRequestIds.removeFirst())
         }
     }
 

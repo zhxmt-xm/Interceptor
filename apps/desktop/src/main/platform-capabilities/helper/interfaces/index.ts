@@ -34,7 +34,15 @@ export interface MacosHelperServiceStatus {
 
 export type MacosHelperServiceOperation =
   | 'status' | 'system-proxy.read' | 'system-proxy.read-effective' | 'system-proxy.replace'
-  | 'certificate.import' | 'certificate.remove';
+  | 'certificate.import' | 'certificate.remove' | 'request.get-completion';
+
+export type MacosHelperRequestCompletion =
+  | { readonly requestId: string; readonly state: 'unknown' }
+  | {
+    readonly requestId: string;
+    readonly state: 'completed';
+    readonly operation: 'system-proxy.replace' | 'certificate.import' | 'certificate.remove';
+  };
 
 export interface MacosCertificatePayload {
   readonly certificate: string;
@@ -43,6 +51,10 @@ export interface MacosCertificatePayload {
 
 export type MacosHelperServiceRequest =
   | { readonly operation: 'status' | 'system-proxy.read' | 'system-proxy.read-effective' }
+  | {
+    readonly operation: 'request.get-completion';
+    readonly parameters: { readonly requestId: string };
+  }
   | {
     readonly operation: 'certificate.import' | 'certificate.remove';
     readonly parameters: MacosCertificatePayload;
@@ -57,6 +69,7 @@ export type MacosHelperServiceRequest =
 
 export type MacosHelperServiceErrorCode =
   | 'unavailable'
+  | 'completion-unavailable'
   | 'timeout'
   | 'invalid-response'
   | 'unauthorized-client'

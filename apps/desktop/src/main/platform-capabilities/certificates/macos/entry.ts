@@ -47,7 +47,16 @@ export class MacosTrustStoreService {
     if (inventory.code !== 0) return inventory;
     const existingCertificate = this.findCertificate(inventory.stdout, certificate.fingerprint.replaceAll(':', ''));
     const alreadyInstalled = existingCertificate?.raw.equals(certificate.raw) ?? false;
-    await this.macosHelperServiceClient.importCertificate(payload);
+    try {
+      await this.macosHelperServiceClient.importCertificate(payload);
+    } catch (importError) {
+      if (!alreadyInstalled && importError instanceof MacosHelperServiceError
+        && importError.requestSent && importError.executionState === 'completed'
+        && ['timeout', 'unavailable', 'invalid-response', 'verification-failed'].includes(importError.code)) {
+        return this.removeNewCertificateAfterFailure(payload, importError);
+      }
+      throw importError;
+    }
     try {
       await this.macosHelperServiceClient.trustCertificate(payload);
     } catch (trustError) {
@@ -56,15 +65,19 @@ export class MacosTrustStoreService {
         'unavailable', 'invalid-response', 'verification-failed',
       ].includes(trustError.code);
       if (alreadyInstalled || uncertain) throw trustError;
-      try {
-        await this.macosHelperServiceClient.removeCertificate(payload);
-      } catch (cleanupError) {
-        throw new AggregateError([trustError, cleanupError],
-          'macOS certificate trust failed and the newly imported certificate could not be removed.');
-      }
-      throw trustError;
+      return this.removeNewCertificateAfterFailure(payload, trustError);
     }
     return { code: 0, stdout: '', stderr: '' };
+  }
+
+  private async removeNewCertificateAfterFailure(payload: MacosCertificatePayload, failure: unknown): Promise<never> {
+    try {
+      await this.macosHelperServiceClient.removeCertificate(payload);
+    } catch (cleanupError) {
+      throw new AggregateError([failure, cleanupError],
+        'macOS certificate installation failed and the newly imported certificate could not be removed.');
+    }
+    throw failure;
   }
 
   async uninstall(sha1Thumbprint: string): Promise<CommandResult> {

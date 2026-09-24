@@ -68,6 +68,31 @@ describe('PlatformCapabilitiesService', () => {
     expect(status).not.toHaveBeenCalled();
   });
 
+  it.each(['completed', 'unknown'] as const)('keeps Quit consistent with a certificate import failure whose execution is %s', async (executionState) => {
+    vi.spyOn(CertificateService.prototype, 'getStatus').mockResolvedValue({
+      present: true, fingerprint: 'AA', subject: 'Interceptor CA', createdAt: null, expiresAt: null,
+    });
+    vi.spyOn(CertificateService.prototype, 'isTrusted').mockResolvedValue(false);
+    vi.spyOn(coreRuntime, 'request').mockImplementation(async (command) => ({
+      type: command.type, payload: { decrypting: false },
+    }) as never);
+    const failure = new MacosHelperServiceError('timeout', executionState, 'certificate.import');
+    const install = vi.spyOn(TrustStoreService.prototype, 'install').mockRejectedValue(failure);
+    const platformCapabilitiesService = new PlatformCapabilitiesService({
+      secureStore, coreRuntime, diagnostics, platform: 'darwin',
+      nativeDirectory: '/resources', userDataDirectory: '/profiles/test',
+    });
+
+    await expect(platformCapabilitiesService.installCertificate()).rejects.toBe(failure);
+
+    if (executionState === 'completed') {
+      expect(() => platformCapabilitiesService.assertCanQuit()).not.toThrow();
+    } else {
+      expect(() => platformCapabilitiesService.assertCanQuit()).toThrow('operation_in_progress: certificate.install');
+    }
+    expect(install).toHaveBeenCalledOnce();
+  });
+
   it('rejects quit and duplicate preparation while helper preparation is still running', async () => {
     let finishPreparation!: () => void;
     const preparation = new Promise<void>((resolve) => { finishPreparation = resolve; });

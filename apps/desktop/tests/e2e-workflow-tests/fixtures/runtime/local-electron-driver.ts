@@ -338,6 +338,8 @@ export class LocalElectronApplicationDriver {
       const { stdout } = await execFileAsync('/usr/bin/osascript', ['-e', `
 tell application "System Events"
   tell first application process whose unix id is ${owner.processId}
+    if not visible then set visible to true
+    if (count of windows) is 0 then set frontmost to true
     return count of windows
   end tell
 end tell

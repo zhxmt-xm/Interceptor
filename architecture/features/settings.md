@@ -203,8 +203,31 @@ macOS View：固定前台`certificate.view`只接公开DER与SHA-256，使用系
 - 系统代理组包括接管、恢复、journal恢复、归属状态更新和上游结果应用；探测可并行，提交时检查当前配置与Core代际。Windows AppContainer单项/批量写入共用一组，因为底层写整份豁免名单。
 - 不同组可以并行。helper维护与使用该helper的操作互斥；需要原生确认的操作之间互斥，冲突在产生写入前返回。只读查询不长期占用修改组，不能用中间状态决策后续写入。
 - 平台API不接受外部AbortSignal。Agent/MCP在进入Main业务前检查取消；调用开始后等待平台操作完成或失败收尾，调用方停止等待不解除模块占用。helper超时/断线同样不证明原生写入已停止；未取得明确结束或可靠核验前保留冲突状态，不自动重试。启动与退出的必要依赖是单次操作内部顺序，不是保存用户请求的队列。
-- helper部署前的`deployment-status / development-deployment-status / inspect-application / inspect-helper`只读检查不产生系统写入；命令结束后报告不可用、非法回复或拒绝时，必须保留错误并释放准备占用，不能把这些失败记为未知写入、永久阻止Quit。`system-proxy.read-effective`完整回复的value非法时，同样标明completed及只读operation。真正已发出的写入仍按上一条保护，不扩展协议或用普通status解除。
+- helper部署前的`deployment-status / development-deployment-status / inspect-application / inspect-helper`只读检查不产生系统写入；命令结束后报告不可用、非法回复或拒绝时，必须保留错误并释放准备占用，不能把这些失败记为未知写入、永久阻止Quit。`system-proxy.read-effective`完整回复的value非法时，同样标明completed及只读operation。真正已发出的写入按原请求结束证据收尾，不能用普通status解除。
 - 用户退出会打断系统写入时拒绝本次退出并提示，不等任务完成后自动退出；允许退出后先阻止新修改、恢复代理，再停止Core。Core故障恢复与失败回滚是必要收尾，不因普通冲突而丢弃。
+
+#### 失联写入收尾契约
+
+- 仅`system-proxy.replace`、`certificate.import`、`certificate.remove`在已发送后超时、断线或无法关联回复时，typed client发起一次只读`request.get-completion`，参数为`{ requestId: <原请求ID> }`，查询自身使用新的envelope requestId。正常成功、正式失败回复、只读失败和未发送请求不增加查询。
+- 结果为`{ requestId, state: "completed", operation }`或`{ requestId, state: "unknown" }`。原ID和原操作都匹配才证明调用已结束，不证明系统状态符合预期；仍返回原失败，由Certificate/SystemProxy既有业务收尾回读、同步Core和发布通知后释放占用。
+- helper在发送终态回复前记录结束元数据，生产/开发socket互不读取对方记录；每个实例只保留最近128个写请求ID及操作名，不保存参数、结果正文或授权结论。查无记录、实例重启、记录淘汰、非法回复及查询失败均不能解锁，也不能自动重放写入。
+- 原请求与确认请求分别遵守既有30秒传输期限；确认属于失败收尾，期间原业务保持占用。前台信任进程的异常结束不属于socket记录，不能凭无关记录或普通status解除。
+- 安装CA的import失联后若已确认结束，且安装前不存在该精确CA，在请求trust之前撤回本次可能新增的公开证书；已有CA、未发送或未确认的import不删。内部`requestSent`与`executionState`分别表达是否发出帧和是否结束，原错误与回滚错误都保留。
+
+#### 失联写入验收证据
+
+本轮证据前缀为`/tmp/interceptor-item4-20260925-`。故障帧与断连由真实Unix socket/native集成验证，模块回读、回滚及Quit占用由所属业务测试验证；不将这些结果冒充真实UI触发了故障。
+
+| 范围 | 结果 | 证据后缀 |
+| --- | --- | --- |
+| 实现前基线 | 原传输与证书/代理占用100/100；签名包正常helper复用和代理恢复2/2 | `completion-baseline.json`、`ui-baseline.json`及目录 |
+| 目标Red | 结束记录、原ID/操作关联、超时/断线及CA回滚23项Red；复核发现未发送import不应触发回滚，再取得1项目标Red | `completion-final-red.json`、`unsent-import-red.json` |
+| 当前代码回归 | 全平台312通过、2项Windows native跳过；包含原生实际断连、128条记录淘汰、重启/端点隔离、鉴权、30秒时钟边界、等待确认及未知结果不解锁。新CA/已有CA/未发送/未确认的行为分别覆盖 | `platform-verified.json`；Desktop及workspace类型检查通过 |
+| 新包静态与首次授权 | package、artifact audit与严格deep/strict/all-architectures签名通过；首次授权未完成后只取消所属窗口并正常恢复宿主，该次不算运行验收通过 | `component-current.json`、`artifact.json` |
+| 当前新包运行 | 正常App授权后实装helper与包内一致，生产入口ready；组件复用/共享CA/跨profile恢复3条、Agent/MCP代理入口2条真实E2E及smoke 1/1。九代App已退出（含1代预定crash），完整代理恢复，日常CA指纹、文件元数据与信任保持，无journal、8888释放 | `approval-current.json`、`production-lifecycle-final.json`、`tools-proxy.json`、`production-smoke.json`、`production-host.json`及对应目录 |
+| 窗口准备失败与修正 | 首次3条运行中共享CA通过，随后System Events未暴露新Main窗口，业务未开始；经真实Close恢复后，fixture只显示/前置该测试Main，再按原尺寸断言准备窗口。不改产品UI或尺寸，复跑3/3 | `production-lifecycle.json`、`window-recovery.json`、`production-lifecycle-final.json` |
+
+当前新包的证书写入/取消专用workflow尚未运行：它要求空共享材料目录，本轮没有再次卸载/删除日常CA。需确认经产品清理与重建后再执行，不能把旧包生命周期结果或本轮非破坏性流程当作该专项的新Green。
 
 Certificate module组装的`CertificateInfo`含`path`与`mitmEnabled`，不含私钥；解密材料只经内部Core RPC发送。
 

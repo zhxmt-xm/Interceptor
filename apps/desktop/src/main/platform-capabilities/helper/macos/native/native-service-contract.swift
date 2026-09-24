@@ -107,6 +107,7 @@ struct MacosHelperServiceRequest {
     let operation: String
     let proxyReplacement: MacosHelperProxyReplacement?
     let certificate: MacosHelperCertificate?
+    let completionRequestId: String?
 
     static func decode(_ data: Data) throws -> Self {
         guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
@@ -123,6 +124,7 @@ struct MacosHelperServiceRequest {
         }
         let certificateOperations = ["certificate.import", "certificate.remove"]
         let hasParameters = operation == "system-proxy.replace" || certificateOperations.contains(operation)
+            || operation == "request.get-completion"
         let expectedKeys: Set<String> = hasParameters
             ? ["protocolVersion", "requestId", "operation", "parameters"]
             : ["protocolVersion", "requestId", "operation"]
@@ -134,8 +136,19 @@ struct MacosHelperServiceRequest {
             proxyReplacement: operation == "system-proxy.replace"
                 ? try MacosHelperProxyReplacement.decode(object["parameters"]) : nil,
             certificate: certificateOperations.contains(operation)
-                ? try MacosHelperCertificate.decode(object["parameters"]) : nil
+                ? try MacosHelperCertificate.decode(object["parameters"]) : nil,
+            completionRequestId: operation == "request.get-completion"
+                ? try decodeCompletionRequestId(object["parameters"]) : nil
         )
+    }
+
+    private static func decodeCompletionRequestId(_ value: Any?) throws -> String {
+        guard let parameters = value as? [String: Any], Set(parameters.keys) == Set(["requestId"]),
+              let requestId = parameters["requestId"] as? String,
+              !requestId.isEmpty, requestId.utf8.count <= 128 else {
+            throw MacosHelperServiceError.invalidRequest
+        }
+        return requestId
     }
 }
 

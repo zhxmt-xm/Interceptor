@@ -1,15 +1,15 @@
 # Interceptor Handover
 
-> Tracked commit: `d1142746`
+> Tracked commit: `67f38668`
 > Branch: `main`
-> 最后更新：2026-09-24
+> 最后更新：2026-09-25
 
 **不允许记录流水账！！！执行任务列表时不允许停下**
 
 ## 当前状态
 
 - 用户于2026-09-24明确授权先保存全部剩余工作区进度并push，提交后保持改动区为空；未完成的实现、文档审阅、设计确认与验收继续保留在下表。保存暂停草稿不等于恢复执行或确认设计。
-- 用户随后授权按第2–7项顺序继续，每项独立验收、报告、commit/push；第2项进度已独立提交，当前推进第3项，暂停子项和系统授权边界保持。
+- 用户随后授权按第2–7项顺序继续，每项独立验收、报告、commit/push；第2/3项进度已独立提交，当前推进第4项，暂停子项和系统授权边界保持。
 - 平台实现基线为`218295b0`，对应[平台报告](../commit-changes/202609240135_main_shared-ca_startup.html)；后续保存剩余工作区进度的提交对应独立[工作区报告](../commit-changes/202609240150_docs_workspace_progress.html)。两份均为9月24日，每个commit各有自己的报告，不共用、不覆盖。GitHub候选的四张图只放在工作区报告中，不额外生成预览报告。
 - 正文、HTTPS弹窗、Bilibili及独立package仅保存现有草稿，不扩展实现；第8项留Windows实机。日常CA保护和新系统授权专项仍须本机确认；提交不等于全部验收完成。
 
@@ -24,9 +24,11 @@
 	- 当前：首窗先显示，再调用`PlatformCapabilitiesService.prepare()`；全缺才生成、未信任才授信、已信任不重复写入，ready前拒绝业务IPC。
 	- 当前步骤：不改现有产品实现；补Windows/macOS两分支的启动证书授权取消测试，覆盖certificate阶段Quit与重复prepare即时拒绝、取消后释放占用、不自动重试或重生成。与Renderer启动状态共45/45通过，Desktop typecheck通过。真实首窗/授权专项仍缺，测试不代替本机授权。
 	- 下一步：用户能处理系统确认后，验证首次授权页面可见、取消及准备期间Quit。对应前置真实E2E仍缺，不能用旧结果补代。
-4. **CA 操作与 E2E · 进行中**
-	- 当前：各module已实现即时冲突拒绝、共享授权和已结束失败的回读收尾；原生View已接入。真正未知的写入仍保守占用，可靠解除未解决。
-	- 当前步骤：只读部署检查错误占用取得8项Red后修正；提交审阅再发现生效代理快照解析失败被误记unknown，补3项目标Red并标明completed及只读operation。最终平台串行回归265通过、2项Windows native跳过，Desktop类型通过；不扩展helper协议，真正未知写入仍保护。共享CA/helper复用、原生View和跨profile journal四条真实E2E全部Green，七代退出及CA保留已验。授权、取消与完整生命周期仍缺，普通workflow不得清理日常CA。
+4. **CA 操作与 E2E · 代码完成 · 待证书专项确认**
+	- 当前实现：仅失联写入后查询原ID的结束记录；匹配后仍返回原错误，由原module回读/回滚并释放占用，不重放。未发送、未确认或已有CA不清理。目标23项Red及未发送import的补充Red后，平台312通过/2 Windows native跳过、类型、构建、audit与严格签名通过。
+	- 边界：结束记录仅在各自受保护socket所属helper实例中保留最近128个写请求的ID/操作名，无代理配置、证书或信任缓存；重启/淘汰后无记录不能解锁，前台授权进程异常也不借用该证明。现有显式CA生命周期与共享调用方须同组复验，再执行新包验收。
+	- 当前产物：新helper已获授权并与包内一致；组件/共享CA/代理恢复3条及Agent/MCP共享入口2条真实E2E、smoke 1/1通过，九代App全退、完整代理和日常CA保持。窗口准备的fixture遗漏已修正，失败与恢复证据保留。
+	- 剩余：新包证书写入/取消专用E2E要求空共享CA目录；本轮保留日常CA，尚未获准再次清理/重建，因此未运行。故障帧/失联分支的native及传输集成结果不冒充真实UI触发故障；不进入第5项。
 	- 正文子项暂停：只读预览2 MiB、完整且不超过1 MiB自动格式化、1–2 MiB可手动格式化，截断不格式化；图片独立16 MiB。Text完整编辑，File只预览但使用完整文件；初始高度、内滚动和resize不影响完整保存/导出/发送。产品未实现；本次仅保存已有compact正文、resize及自定义gRPC设计候选，不改正式shots、不视为定稿。
 5. **macOS journal 收尾 · 进行中**
 	- 当前：[journal](../apps/desktop/src/main/platform-capabilities/system-proxy/macos/journal.ts)跨profile恢复复验Green。生产超时已定位并修复：完整资源校验37.4秒超过30秒，同一签名API只读对照为Background26.99秒、普通6.27秒；不反推历史14:09缺失的耗时证据。
@@ -96,6 +98,8 @@
 第2项续作证据：`/tmp/interceptor-item2-20260924-baseline.json`记录73/73；同前缀`e2e.json`及`e2e/`保存真实窗口准备失败，`host-recovered.json`证明经产品Close恢复完整代理、进程、8888及日常CA，失败profile保留为`/var/folders/h5/jmc6085s1gb9cgqszq8qtc_00000gn/T/interceptor-e2e-workflow/21931-YQyyLi`。编辑器problems请求30分钟无响应，随后用Desktop typecheck通过替代编译检查；不将工具阻塞计入产品结果。当前需解锁桌面，恢复命令：`npm exec --workspace @interceptor/desktop -- playwright test --config tests/e2e-workflow-tests/playwright.config.ts workflows/settings/certificate-startup.workflow.ts --project=macos`。删除profile后的新断言未取得Green，item保留。
 
 第3项续作证据：`/tmp/interceptor-item3-20260924-startup-green.json`记录平台准备与BootStore共45/45，Desktop typecheck通过；新增2项仅补已有行为覆盖，不人为制造Red。本机锁屏，首次授信/取消还要求只处理专项自行创建的CA，不能清空现有日常CA；本轮未运行原生授权专项，未取得新的真实首窗/取消/准备期间Quit证据。恢复条件是用户解锁并提供可执行首次CA专项的环境，再按第3/4项规格执行。
+
+第4项续作证据：`/tmp/interceptor-item4-20260924-target-green.json`为54通过、46条名称过滤未运行，覆盖新真实socket断线和证书/代理占用；Desktop typecheck通过。此前较大组`unknown-outcome-green.json`实际99通过/1失败（同前缀），唯一失败为既有Node签名客户端15秒超时；`native-read-retry.json`单独重跑仍超时且afterEach超过10秒，未查明原因，不算Green。后查没有本轮非特权helper残留，不触碰安装的常驻helper。可靠终态协议需确认，证书原生生命周期仍需解锁和专项环境，不以新增防护测试冒充解除路径实现。
 
 ## Windows 复验
 

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>原生写入失联后的安全收尾</title>
+  <style>
+    :root { color: #24292f; background: #fff; color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14px/1.65 "Segoe UI", "PingFang SC", sans-serif; }
+    main { max-width: 960px; margin: auto; padding: 32px 24px; }
+    header { padding-bottom: 16px; border-bottom: 2px solid #24292f; }
+    h1 { margin: 0 0 8px; font-size: 25px; }
+    h2 { font-size: 19px; margin-top: 24px; }
+    p, li, code { overflow-wrap: anywhere; }
+    .time { color: #57606a; }
+    @media (max-width: 700px) { main { padding: 20px 16px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>提交：原生写入失联后的安全收尾</h1>
+      <p class="time">时间：2026-09-24 10:20（UTC+08:00）</p>
+      <p>第4项为已发送但丢失回复的原生写入补上结束确认，复用原业务的回读和回滚。保留原错误，不重放写入，也不给正常启动增加查询。</p>
+    </header>
+    <section>
+      <h2>Main</h2>
+      <p>位置：<code>helper/macos/native/native-service.swift</code> 与协议定义。</p>
+      <ul>
+        <li>改前：原生调用结束后只向原连接回复，连接丢失后Main无法证明该调用已结束。</li>
+        <li>改后：增加固定只读 <code>request.get-completion</code>，只接受原requestId；每个端点实例在回复前记录最近128个已结束写请求的ID和操作名，不存参数、证书、代理快照或授权结果。</li>
+        <li>原因与影响：ID和操作都匹配才能作为结束证明；生产/开发端点隔离，重启、淘汰或查无记录仍为unknown。查询先执行原socket身份校验，不提供写权限。</li>
+      </ul>
+      <p>位置：<code>helper/macos/helper-client.ts</code>、完成状态解析及错误分类。</p>
+      <ul>
+        <li>改前：已发送的写入超时或断线后一直按unknown处理，占用无法回到既有收尾流程。</li>
+        <li>改后：仅对这类失联写入确认一次；确认期间不结算原业务，匹配后以completed返回原错误。未知、错配、非法或失败的查询与原错误一起报告，继续保护。</li>
+        <li>原因与影响：原请求与确认请求各有既有30秒传输期限；正常成功、正式失败、只读失败及未发送请求不增加查询。没有写入重试、用户操作队列或无界后台轮询。</li>
+      </ul>
+      <p>位置：<code>certificates/macos/entry.ts</code> 与原Certificate/SystemProxy业务收尾。</p>
+      <ul>
+        <li>改前：仅trust失败会考虑撤回新导入CA，import的失联失败不能安全区分是否结束。</li>
+        <li>改后：通过requestSent区分是否真正发出服务帧；已发送且确认import结束、尚未请求trust时，只撤回安装前不存在的精确公开CA。已有CA、未发送和未确认import保持；原错误与回滚错误都保留，后续回读、Core同步和通知仍由原module负责。</li>
+        <li>原因与影响：未完成原生写入时不清理、不释放；已确认结束才允许正常失败收尾。前台信任进程的异常不借用socket记录，Windows流程和产品UI不变。</li>
+      </ul>
+    </section>
+    <section>
+      <h2>相关测试</h2>
+      <ul>
+        <li>原生及传输覆盖：丢回复、30秒边界、等待确认、缺失/错配/非法查询、身份检查、端点隔离、重启和记录淘汰；正常路径不得查询或重放写入。</li>
+        <li>业务覆盖：确认后回读并释放Quit、未确认继续保护、新CA回滚、已有CA保留以及双重错误回传。</li>
+        <li>macOS窗口驱动：只等待System Events可能取不到隐藏或未前置的测试App；改为校验Main代际后显示所属App，没有窗口时仅前置该Main，再继续原尺寸检查。不更改产品或模拟viewport。</li>
+      </ul>
+    </section>
+    <section>
+      <h2>文档</h2>
+      <p>平台模块README和Settings规格同步固定查询参数、结果、记录范围及失败收尾约定；具体证据和仍不可确认的异常边界由Handover与功能证据索引跟踪。</p>
+    </section>
+  </main>
+</body>
+</html>

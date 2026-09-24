@@ -13,6 +13,7 @@
 
 ## 平台分派
 
+- macOS窗口准备仅操作已核对PID/启动时间的测试Main：所属App隐藏时显示，System Events尚无窗口时前置该Main，再继续原有窗口等待与尺寸断言，不改变产品或模拟viewport。
 - 业务workflow共用UI操作、真实流量输入和业务结果，不为macOS增加query、替换输入或改Windows超时。原生差异只放driver/fixture的明确Windows/Macos方法，不复制两套业务流程。
 - `LocalElectronApplicationDriver`提供代理只读证据与journal路径；Windows继续读取WinINet和`LOCALAPPDATA`共享journal，macOS读取SystemConfiguration和用户级Interceptor Platform journal，两端crash恢复均用fresh profile。
 - 普通workflow在启动前只读检查共享CA已就绪，运行中只恢复profile内TLS配置，不Generate/Install/Uninstall/Delete。首次初始化使用certificate-startup workflow；破坏性证书专项使用`certificate-lifecycle-driver.ts`，要求启动前共享材料为空，基线包含完整系统Root/admin trust，只能清理本轮CA，不使用产品隐藏参数。

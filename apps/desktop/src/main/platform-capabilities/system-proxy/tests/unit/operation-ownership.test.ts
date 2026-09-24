@@ -156,7 +156,7 @@ describe('SystemProxyService operation ownership', () => {
     expect(systemProxyService.getActiveOperation()).toBeNull();
   });
 
-  it.each(['unavailable', 'invalid-response', 'verification-failed'] as const)(
+  it.each(['timeout', 'unavailable', 'invalid-response', 'verification-failed'] as const)(
     'reconciles the journal after a confirmed %s failure before releasing the operation', async (code) => {
       const failure = new MacosHelperServiceError(code, 'completed');
       vi.spyOn(MacosSystemProxyService.prototype, 'enable').mockRejectedValue(failure);

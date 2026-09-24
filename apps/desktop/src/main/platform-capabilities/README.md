@@ -14,6 +14,7 @@ Desktop Main 的平台能力模块。先在 Main 内聚合现有代码和测试�
 - `synchronizeCore / updateCoreProcessStatus / assertCanQuit / stop`封装平台相关生命周期；Main只调用，不实现恢复去重、Core配置或module忙状态。
 - `getClientAppIcons / loadClientAppIcons`由[client-app/entry.ts](client-app/entry.ts)的ClientAppService管理真实缓存及helper读取；CoreRuntime仍复用无状态`resolveClientAppHelperPath`。Main只转发图标通知，本目录不导入Electron运行时。
 - 平台业务API不接收AbortSignal。Agent/MCP在调用前检查取消，已开始操作必须完成或失败收尾；原生超时/断线不直接证明操作结束。用户冲突立即报错，不排队、不重放。
+- 已发送socket写入失去终态回复时，客户端只查询原requestId的结束记录；匹配原ID和操作后，仍返回原错误，由所属module回读或回滚再释放占用。普通status不作为证明，缺记录或确认失败保持unknown，也不重发写入。
 
 | 平台 | 当前支持列表 |
 | --- | --- |
@@ -152,15 +153,17 @@ INTERCEPTOR_NATIVE_SERVICE_HELPER_PATH="$PWD/apps/desktop/out/Interceptor-darwin
 | `system-proxy.replace` | expectedSnapshot、replacementSnapshot | 条件写入并回读后的完整快照 |
 | `certificate.import` | 公开DER的base64、SHA-256 | 精确指纹及present=true |
 | `certificate.remove` | 同一公开DER及SHA-256 | 精确指纹及present=false |
+| `request.get-completion` | 原写请求的`requestId` | `{ requestId, state: "completed", operation }`或`{ requestId, state: "unknown" }` |
 
 - 同一服务进程按独立受保护配置提供两个Unix socket。生产`service.sock`每个连接核验内核peer audit token、UID、精确CDHash及canonical可执行路径；开发`development.sock`只核验内核UID，不绑定源码、项目目录、Electron签名或调试状态。协议不接受客户端自报环境切换鉴权。
-- launchd使用`ProcessType=Interactive`：Main同步等待这个服务的启动检查和系统操作，Background的CPU/I/O限流会使完整资源验证超出30秒客户端期限；Unix socket不能触发Adaptive的XPC调度提升。空闲时仍等待socket，不增加轮询、缓存或新协议。
+- launchd使用`ProcessType=Interactive`：Main同步等待这个服务的启动检查和系统操作，Background的CPU/I/O限流会使完整资源验证超出30秒客户端期限；Unix socket不能触发Adaptive的XPC调度提升。空闲时仍等待socket，不增加业务轮询或信任缓存。
 - 生产`status`写资格与所有写命令另外验证完整App资源、内嵌代码、全部架构和Hardened Runtime，拒绝可调试或可注入进程；普通公开代理读取不重复扫描整包资源。开发允许获准用户的本地代码调用固定能力，不保证隔离同用户恶意程序。App可以由用户拥有，不要求root拥有或移动整个App。
 - 严格校验字段、版本和256KiB单帧边界。代理条件写在同一SystemConfiguration事务中比对完整expected，冲突不覆盖外部修改；journal和退出恢复归Main进程的SystemProxyService。
 - 生效代理读取与恢复快照分开；macOS journal只存`original/owned/effectiveProxies`，无版本或兼容读取。Core接收HTTP/HTTPS路由和原绕过规则；ClashX基础转发与开发入口恢复已有E2E Green，特殊网络及上游异常仍待联调。
 - 常驻服务只操作固定System.keychain，精确匹配公开DER，不接收CA私钥；Keychain读写禁止弹交互窗口。CertificateService负责CA生成/safeStorage及安装/回滚编排，导入不等于受信任。
 - 服务正常结束清除自己的socket；崩溃重启只清理归属正确、ECONNREFUSED且inode未变的残留端点，快速断连不会以SIGPIPE终止服务。
 - 开发与生产使用同一套命令/参数校验/条件写入，授权不同不增加通用执行或任意文件访问能力。普通用户原生集成验证两入口的准入、拒绝和非root写入失败，不替代真实App、系统授权和恢复验收，最新结果见[Handover](../../../../../architecture/HANDOVER.md)。
+- 结束查询与普通只读命令一样先通过该socket的UID/代码身份检查，不提供系统写权限。每个生产/开发端点实例在发送写请求的成功或失败回复前，仅记录最近128个已结束请求的ID和操作名；不保存参数、证书、代理快照或信任结论。记录不跨实例重启或端点共享，缺失/淘汰返回unknown，不推断“从未执行”或“已经停止”。
 
 ### 前台证书信任入口
 
@@ -172,12 +175,14 @@ Certificate模块通过`MacosHelperServiceClient.trustCertificate()`/`untrustCer
 
 ### 客户端完成状态
 
-- `MacosHelperServiceError.executionState`只在客户端内部使用，不增加native协议字段。未发出socket请求、前台进程正常结束或收到匹配的正式失败回复时为`completed`；已发送写入后的超时/断线、信号终止或无法关联的回复仍为`unknown`。
+- `MacosHelperServiceError.executionState`是Main内部错误分类，原写命令的回复格式保持。未发出socket请求、前台进程正常结束或收到匹配的正式失败回复时为`completed`；已发送写入后的超时/断线或无法关联回复，只有原ID及操作匹配的结束记录能改为completed。前台进程信号终止仍为unknown，不借用socket记录。
 - stdin失败先结束前台进程，等退出回调后才结算；View同样等待失败进程退出，正常View仍在真实窗口ACK后返回，不占用用户查看窗口的整个生命周期。
-- 错误同时携带已知socket请求名。`status/system-proxy.read/system-proxy.read-effective`是只读请求，失败不等于有未知系统写入；不把只读检查超时变成永久修改锁。
+- 错误同时携带已知socket请求名。`status/system-proxy.read/system-proxy.read-effective/request.get-completion`是只读请求，失败不等于有未知系统写入；不把只读检查超时变成永久修改锁。
 - 部署和身份检查的CLI只读命令结束后，失败或非法回复也标为`completed`；保留原错误但不占用helper准备组，允许Quit或用户显式重试。安装成功后的就绪回读失败同样不伪装成仍在写入；未确认结束的原生写入保持原保护。
 - 已确认结束的Certificate失败在材料保持不变的前提下回读信任、同步Core并通知，之后释放module占用；SystemProxy失败按journal比较完整当前状态并同步实际upstream，保留原错误。未知写入不执行这些可造成误判的清理，也不自动重试或释放占用。
-- 当前对真正未知的写入仍采用保守阻止后续冲突操作；没有“普通status成功就清除全部busy”的恢复后门。任何进一步解除必须取得原请求结束的可靠证据，尚缺该路径的真实异常验收时不能登记整项完成。
+- 只在已发送的`system-proxy.replace/certificate.import/certificate.remove`失联失败后确认一次；正常成功、正式失败回复、只读失败和未发送请求不查询。原请求和确认请求各自遵守30秒期限，确认期间原业务仍占用；查询失败/unknown/错配将原错误与确认错误一起返回，保持保护，不进行无界后台轮询。
+- import失联确认结束但尚未请求trust时，只撤回安装前不存在的精确公开CA；已有CA、未知import和已经拒绝的授权不清理。回滚失败同时保留原错误，不能假装操作成功或安全恢复。
+- `requestSent`独立记录是否已向服务socket提交帧；连接前失败虽然已结束，但没有发出import，不请求回滚删除。该标记不进入native协议，也不用于判断前台授权进程的完成状态。
 
 不能把安装helper的授权等同于修改admin trust的授权。本机SIP开启时root授信返回`-60007`，真实root修改授权规则另返回`-60005`。已按用户要求删除临时规则写入、恢复记录、启动/卸载恢复以及后台trust/untrust；不为旧macOS保留兼容分支，不关闭SIP、使用私有entitlement或改成user trust。历史实验与本轮验证范围见[验证记录](../../../../../architecture/HANDOVER.md#verification)。
 

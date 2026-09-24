@@ -5,7 +5,7 @@ import { createConnection } from 'node:net';
 import type { MacosCertificatePayload, MacosHelperServiceRequest, MacosHelperServiceStatus } from '../interfaces';
 import type { MacosSystemProxySnapshot } from '../../system-proxy/interfaces';
 import { MacosHelperServiceError } from './internal/errors';
-import { parseMacosEffectiveProxySettings, parseMacosHelperServiceReply, parseMacosHelperServiceStatus, parseMacosSystemProxySnapshot } from './utils';
+import { parseMacosEffectiveProxySettings, parseMacosHelperRequestCompletion, parseMacosHelperServiceReply, parseMacosHelperServiceStatus, parseMacosSystemProxySnapshot } from './utils';
 
 /** Calls the native service and delegates interactive trust authorization to the installed helper. */
 export class MacosHelperServiceClient {
@@ -19,12 +19,12 @@ export class MacosHelperServiceClient {
     try {
       return parseMacosHelperServiceStatus(value);
     } catch {
-      throw new MacosHelperServiceError('invalid-response', 'completed', 'status');
+      throw new MacosHelperServiceError('invalid-response', 'completed', 'status', true);
     }
   }
 
   async readSystemProxySnapshot(): Promise<MacosSystemProxySnapshot> {
-    return this.parseProxySnapshot(await this.requestService({ operation: 'system-proxy.read' }));
+    return this.parseProxySnapshot(await this.requestService({ operation: 'system-proxy.read' }), 'system-proxy.read');
   }
 
   async readEffectiveSystemProxySettings(): Promise<Record<string, unknown>> {
@@ -32,7 +32,7 @@ export class MacosHelperServiceClient {
     try {
       return parseMacosEffectiveProxySettings(value);
     } catch {
-      throw new MacosHelperServiceError('invalid-response', 'completed', 'system-proxy.read-effective');
+      throw new MacosHelperServiceError('invalid-response', 'completed', 'system-proxy.read-effective', true);
     }
   }
 
@@ -42,20 +42,20 @@ export class MacosHelperServiceClient {
   ): Promise<MacosSystemProxySnapshot> {
     return this.parseProxySnapshot(await this.requestService({
       operation: 'system-proxy.replace', parameters: { expectedSnapshot, replacementSnapshot },
-    }));
+    }), 'system-proxy.replace');
   }
 
-  private parseProxySnapshot(value: unknown): MacosSystemProxySnapshot {
+  private parseProxySnapshot(value: unknown, operation: 'system-proxy.read' | 'system-proxy.replace'): MacosSystemProxySnapshot {
     try {
       return parseMacosSystemProxySnapshot(value);
     } catch {
-      throw new MacosHelperServiceError('invalid-response', 'completed');
+      throw new MacosHelperServiceError('invalid-response', 'completed', operation, true);
     }
   }
 
   async importCertificate(certificate: MacosCertificatePayload): Promise<void> {
     const result = await this.requestService({ operation: 'certificate.import', parameters: certificate });
-    this.verifyCertificateResult(result, certificate.sha256, true);
+    this.verifyCertificateResult(result, certificate.sha256, true, 'certificate.import');
   }
 
   async trustCertificate(certificate: MacosCertificatePayload): Promise<void> {
@@ -109,7 +109,7 @@ export class MacosHelperServiceClient {
 
   async removeCertificate(certificate: MacosCertificatePayload): Promise<void> {
     const result = await this.requestService({ operation: 'certificate.remove', parameters: certificate });
-    this.verifyCertificateResult(result, certificate.sha256, false);
+    this.verifyCertificateResult(result, certificate.sha256, false, 'certificate.remove');
   }
 
   viewCertificate(certificate: MacosCertificatePayload): Promise<void> {
@@ -164,15 +164,43 @@ export class MacosHelperServiceClient {
     });
   }
 
-  private verifyCertificateResult(value: unknown, sha256: string, present: boolean): void {
+  private verifyCertificateResult(
+    value: unknown, sha256: string, present: boolean, operation: 'certificate.import' | 'certificate.remove',
+  ): void {
     if (typeof value !== 'object' || value === null || Array.isArray(value) || Object.keys(value).length !== 2
       || !('sha256' in value) || value.sha256 !== sha256 || !('present' in value) || value.present !== present) {
-      throw new MacosHelperServiceError('invalid-response', 'completed');
+      throw new MacosHelperServiceError('invalid-response', 'completed', operation, true);
     }
   }
 
-  private requestService(request: MacosHelperServiceRequest): Promise<unknown> {
+  private async requestService(request: MacosHelperServiceRequest): Promise<unknown> {
     const requestId = randomUUID();
+    try {
+      return await this.sendServiceRequest(request, requestId);
+    } catch (error) {
+      if (!(error instanceof MacosHelperServiceError) || !error.hasUnconfirmedMutation()
+        || (request.operation !== 'system-proxy.replace' && request.operation !== 'certificate.import'
+          && request.operation !== 'certificate.remove')) throw error;
+      try {
+        const value = await this.sendServiceRequest({
+          operation: 'request.get-completion', parameters: { requestId },
+        }, randomUUID());
+        const completion = parseMacosHelperRequestCompletion(value, requestId);
+        if (completion.state === 'unknown') {
+          throw new MacosHelperServiceError('completion-unavailable', 'completed', 'request.get-completion', true);
+        }
+        if (completion.operation !== request.operation) {
+          throw new MacosHelperServiceError('invalid-response', 'completed', 'request.get-completion', true);
+        }
+      } catch (completionError) {
+        throw new AggregateError([error, completionError],
+          'macOS helper write failed and its completion could not be confirmed.');
+      }
+      throw new MacosHelperServiceError(error.code, 'completed', request.operation, error.requestSent);
+    }
+  }
+
+  private sendServiceRequest(request: MacosHelperServiceRequest, requestId: string): Promise<unknown> {
     const frame = Buffer.from(JSON.stringify({ protocolVersion: 1, requestId, ...request }) + '\n', 'utf8');
     if (frame.length > 262_144) return Promise.reject(new MacosHelperServiceError('invalid-request'));
     return new Promise((resolve, reject) => {
@@ -187,7 +215,7 @@ export class MacosHelperServiceClient {
         finished = true;
         clearTimeout(deadline);
         connection.destroy();
-        if (error) reject(new MacosHelperServiceError(error.code, error.executionState, request.operation));
+        if (error) reject(new MacosHelperServiceError(error.code, error.executionState, request.operation, requestSent));
         else resolve(value);
       }
 
