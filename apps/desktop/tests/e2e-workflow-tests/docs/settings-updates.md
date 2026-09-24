@@ -7,7 +7,7 @@
 1. 启动前只读保存共享材料是否存在、公开指纹及完整系统Root/admin trust；禁止预造CA。已有材料须可用且受信任，否则先由用户完成产品初始化，不把既有CA当作清理目标。
 2. fresh profile启动真实App；先显示启动页和窗口控制，再准备系统组件及共享CA。材料缺失时由Main生成并请求正常系统授权，用户亲自确认；确认窗口出现时必须已有可见App首窗及对应启动阶段，不允许用延长firstWindow等待掩盖顺序错误。启动完成后经Settings Certificates核验可Uninstall，并读取共享目录的公开CA、文件大小/mtime及真实系统信任；profile内不得另存CA。
 3. 正常Close，不点击Uninstall/Delete；确认材料和信任保留。另一fresh profile启动后仍为同一指纹、文件大小/mtime不变，Settings可Uninstall，MITM默认关闭；不能用预造文件或测试API代替初始化。
-4. 保存两代trace、公开指纹和文件元数据，不读取/导出私钥。若本workflow首次创建CA，最后经产品Uninstall/Delete恢复初始基线；若CA已存在，则完全保留。Main/Core/Worker全退、8888释放、完整代理/Root/admin trust恢复后才算Green。
+4. 保存两代trace、公开指纹和文件元数据，不读取/导出私钥。若本workflow首次创建CA，最后经产品Uninstall/Delete恢复初始基线；若CA已存在，则完全保留。第二代正常退出并保存证据后删除其临时profile，确认目录确实不存在，再回读共享CA的指纹/size/mtime与系统信任及完整Root集合，均须保持启动前基线；另存`shared-certificate-profile-deletion.json`。Main/Core/Worker全退、8888释放、完整代理/Root/admin trust恢复后才算Green。
 5. 材料已有未信任、系统拒绝/取消与损坏保留由产品unit/integration及对应真实原生流程覆盖；Windows UAC和产物验收由Windows item独立后验，不能用macOS结果代替。
 
 helper部署前只读检查失败时，启动保留原错误，不产生授权、CA或Core写入，也不保留修改占用阻止Quit。`system-proxy.read-effective`收到完整回复但value格式错误时，typed client须标明completed及只读operation，不误记为未知写入。非法原生回复与不可用组件的组合由所属module测试覆盖；真实E2E不篡改安装资源制造输入。已发送写入后的超时/断线仍必须保守保护，普通status成功不能证明该写入结束。

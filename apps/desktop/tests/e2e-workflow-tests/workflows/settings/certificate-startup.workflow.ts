@@ -123,7 +123,21 @@ startupTest('settings.certificates.shared-startup reuses a trusted CA across fre
         await secondGeneration.closeGracefully();
         await secondGeneration.writeEvidence(testInfo);
         await secondGeneration.forceCleanup();
-        if (!workflowError && cleanupErrors.length === 0) await secondGeneration.removeUserData();
+        if (!workflowError && cleanupErrors.length === 0) {
+          await secondGeneration.removeUserData();
+          await expect(stat(secondGeneration.userDataDirectory)).rejects.toMatchObject({ code: 'ENOENT' });
+          const certificateAfterProfileRemoval = await readSharedCertificate();
+          expect(certificateAfterProfileRemoval).toEqual(certificateBaseline.certificate);
+          if (certificateAfterProfileRemoval) {
+            expect(await isCertificateTrusted(certificateAfterProfileRemoval.thumbprint)).toBe(true);
+          }
+          expect(await rootCertificateThumbprints()).toEqual(certificateBaseline.roots);
+          await writeFile(testInfo.outputPath('shared-certificate-profile-deletion.json'), JSON.stringify({
+            deletedProfile: secondGeneration.userDataDirectory,
+            certificate: certificateAfterProfileRemoval,
+            rootSetPreserved: true,
+          }, null, 2), 'utf8');
+        }
       } catch (error) { cleanupErrors.push(error); }
     }
   }

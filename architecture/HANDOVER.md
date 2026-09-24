@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `218295b0`（平台实现基线；本次在其后保存剩余工作区进度）
+> Tracked commit: `799cbb1e`
 > Branch: `main`
 > 最后更新：2026-09-24
 
@@ -9,14 +9,17 @@
 ## 当前状态
 
 - 用户于2026-09-24明确授权先保存全部剩余工作区进度并push，提交后保持改动区为空；未完成的实现、文档审阅、设计确认与验收继续保留在下表。保存暂停草稿不等于恢复执行或确认设计。
+- 用户随后授权按第2–7项顺序继续，每项独立验收、报告、commit/push；当前只推进第2项，暂停子项和系统授权边界保持。
 - 平台实现基线为`218295b0`，对应[平台报告](../commit-changes/202609240135_main_shared-ca_startup.html)；后续保存剩余工作区进度的提交对应独立[工作区报告](../commit-changes/202609240150_docs_workspace_progress.html)。两份均为9月24日，每个commit各有自己的报告，不共用、不覆盖。GitHub候选的四张图只放在工作区报告中，不额外生成预览报告。
 - 正文、HTTPS弹窗、Bilibili及独立package仅保存现有草稿，不扩展实现；第8项留Windows实机。日常CA保护和新系统授权专项仍须本机确认；提交不等于全部验收完成。
 
 ## Task List
 
-2. **Windows/macOS 共享 CA · 待验证**
+2. **Windows/macOS 共享 CA · blocked（锁屏）**
 	- 当前：同一OS用户跨profile共享三份CA材料已实现，已有CA跨fresh profile复用已验；业务配置和凭据仍隔离，私钥仍由safeStorage加密。
 	- 剩余：新启动顺序下的首次创建与完整证书生命周期由第3/4项继续；Windows路径、safeStorage及真实系统授权留第8项，不能用macOS结果代替。
+	- 当前步骤：CertificateService与平台组合73/73通过，Desktop typecheck及E2E构建通过；补共享启动workflow删除第二代profile后的材料/信任检查。本轮真实E2E在窗口准备阶段失败，CoreGraphics确认`CGSSessionScreenIsLocked=true`，没有进入目标断言，不算产品Red。
+	- 恢复：已通过本轮App真实Close正常退出Main/Core等5个进程；完整代理恢复到journal.original，journal删除、8888释放、日常CA保持且受信任。待本机解锁后直接复跑下面命令，不重复删除/初始化日常CA。
 3. **统一启动检查 · blocked**
 	- 当前：首窗先显示，再调用`PlatformCapabilitiesService.prepare()`；全缺才生成、未信任才授信、已信任不重复写入，ready前拒绝业务IPC。
 	- 下一步：用户能处理系统确认后，验证首次授权页面可见、取消及准备期间Quit。对应前置真实E2E仍缺，不能用旧结果补代。
@@ -88,6 +91,8 @@
 提交审阅收尾：`effective-read-payload-red.json`为null/array/string三种完整只读回复的3项目标Red；修正后`effective-read-serial-green.json`为265通过/2 Windows native跳过，Desktop typecheck通过。并发首跑`effective-read-green.json`实际为264通过/1失败/2跳过，失败是`UpstreamProbe`的10ms网络期限断言；同组串行复跑通过，保留首跑失败，不放宽期限或改写结果。最后仅改typed client的只读解析收尾，没有重建/重新核准App；终包验证仍由第7项跟踪。报告在1600px和480px宽度下已检查，截图内嵌、红框位置正确、无折叠和横向溢出，结果为`report-preview.json`。
 
 全部工作区进度保存检查：`npm run typecheck`的8个workspace全部通过；HTTPS弹窗与退出单测9/9通过，证据`/tmp/interceptor-workspace-checkpoint-20260924-ui-unit.json`。本次不启动已暂停的真实E2E，不重建产物，不将上述静态/单测结果替代4项parity差异、原生授权或终包验收；未确认设计和22份文档整理均保留相应待办。按用户明确授权重写两条提交，只调整各自报告及Handover引用，产品、测试、设计源码与配置保持原内容；报告分别为`202609240135_main_shared-ca_startup.html`和`202609240150_docs_workspace_progress.html`，没有旧创建时间说明。
+
+第2项续作证据：`/tmp/interceptor-item2-20260924-baseline.json`记录73/73；同前缀`e2e.json`及`e2e/`保存真实窗口准备失败，`host-recovered.json`证明经产品Close恢复完整代理、进程、8888及日常CA，失败profile保留为`/var/folders/h5/jmc6085s1gb9cgqszq8qtc_00000gn/T/interceptor-e2e-workflow/21931-YQyyLi`。编辑器problems请求30分钟无响应，随后用Desktop typecheck通过替代编译检查；不将工具阻塞计入产品结果。当前需解锁桌面，恢复命令：`npm exec --workspace @interceptor/desktop -- playwright test --config tests/e2e-workflow-tests/playwright.config.ts workflows/settings/certificate-startup.workflow.ts --project=macos`。删除profile后的新断言未取得Green，item保留。
 
 ## Windows 复验
 
