@@ -431,21 +431,29 @@ test('packaged app starts with an isolated renderer and running core', async ({
   const userDataPath = fs.mkdtempSync(
     path.join(os.tmpdir(), 'interceptor-packaged-smoke-'),
   );
-  const appProcess = spawn(
-    executablePath,
-    [
-      `--remote-debugging-port=${debuggingPort}`,
-      `--user-data-dir=${userDataPath}`,
-    ],
-    {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      windowsHide: true,
-    },
-  );
-  const processOutput = captureProcessOutput(appProcess);
+  const outputPath = process.platform === 'darwin' ? path.join(userDataPath, 'main.log') : null;
+  const outputFile = outputPath === null ? null : fs.openSync(outputPath, 'wx', 0o600);
+  let appProcess: ChildProcess;
+  try {
+    appProcess = spawn(
+      executablePath,
+      [
+        `--remote-debugging-port=${debuggingPort}`,
+        `--user-data-dir=${userDataPath}`,
+      ],
+      {
+        stdio: outputFile === null ? ['ignore', 'pipe', 'pipe'] : ['ignore', outputFile, outputFile],
+        windowsHide: true,
+      },
+    );
+  } finally {
+    if (outputFile !== null) fs.closeSync(outputFile);
+  }
+  const processOutput = captureProcessOutput(appProcess, outputPath);
   let browser: Browser | null = null;
   let page: Page | null = null;
   let corePid: number | null = null;
+  let workflowError: unknown = null;
 
   try {
     if (workflowHostSafetyGuard) {
@@ -802,7 +810,8 @@ test('packaged app starts with an isolated renderer and running core', async ({
           }
           return false;
         },
-        { message: 'Core did not restart with a new PID', timeout: 15_000 },
+        // macOS publishes running only after native proxy recovery, whose request budget is 30 seconds.
+        { message: 'Core did not restart with a new PID', timeout: process.platform === 'darwin' ? 35_000 : 15_000 },
       )
       .toBe(true);
 
@@ -883,6 +892,8 @@ test('packaged app starts with an isolated renderer and running core', async ({
         timeout: 5_000,
       })
       .not.toBeNull();
+  } catch (error) {
+    workflowError = error;
   } finally {
     let proxyCleanupError: unknown = null;
     const hostSafetyErrors: unknown[] = [];
@@ -924,7 +935,11 @@ test('packaged app starts with an isolated renderer and running core', async ({
     await workflowHostSafetyGuard?.verifyRestored().catch((error) => {
       hostSafetyErrors.push(error);
     });
-    const cleanupErrors = [proxyCleanupError, ...hostSafetyErrors]
+    await testInfo.attach('main-process-log', {
+      body: Buffer.from(processOutput.read(), 'utf8'),
+      contentType: 'text/plain',
+    });
+    const cleanupErrors = [workflowError, proxyCleanupError, ...hostSafetyErrors]
       .filter((error) => error !== null);
     if (cleanupErrors.length === 0) {
       fs.rmSync(userDataPath, {
@@ -943,7 +958,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
       throw cleanupErrors[0];
     }
     if (cleanupErrors.length > 1) {
-      throw new AggregateError(cleanupErrors, 'Packaged smoke cleanup failed.');
+      throw new AggregateError(cleanupErrors, 'Packaged smoke or cleanup failed.');
     }
   }
 
@@ -1091,7 +1106,10 @@ async function isCdpReady(port: number): Promise<boolean> {
   }
 }
 
-function captureProcessOutput(process: ChildProcess): { read: () => string } {
+function captureProcessOutput(process: ChildProcess, outputPath: string | null): { read: () => string } {
+  if (outputPath !== null) {
+    return { read: () => fs.readFileSync(outputPath, 'utf8').slice(-8_000) };
+  }
   let output = '';
   const append = (chunk: Buffer | string): void => {
     output = `${output}${chunk.toString()}`.slice(-8_000);

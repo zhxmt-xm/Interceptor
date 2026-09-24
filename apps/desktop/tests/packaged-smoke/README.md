@@ -98,6 +98,8 @@ macOS 使用当前架构的 `out/Interceptor-darwin-<arch>/Interceptor.app/Conte
 
 macOS启动App前先只读检查登录桌面可用且未锁定；锁屏时明确要求解锁，保留失败结果但不启动App、不触发授权或代理接管。解锁后用同一命令重跑，不能将前置检查的拒绝记为smoke通过。
 
+macOS Main的stdout/stderr继承测试profile内0600日志文件，父runner在spawn后关闭自己的句柄；失败保留App时不依赖runner的pipe，避免runner退出后Main写日志触发EPIPE。结果只附加最后8000个字符，完整日志随失败profile保留；Windows继续原pipe和进程清理路径。原业务断言错误与清理错误同时保留，不能被finally中的恢复失败覆盖。
+
 ## 推荐运行方式
 
 从仓库根目录构建真实 package：
@@ -172,6 +174,8 @@ sequenceDiagram
 首窗可能仍在`ApplicationStartup`的组件/证书准备阶段；smoke与真实workflow一致，等待公共`app.root`就绪（120秒）后才执行主界面断言。准备阶段失败退出走正式Close，由Main等待已开始的准备操作并恢复代理，宿主guard仍验证完整基线；不提前调用被启动门禁拒绝的业务API，也不放宽门禁或白名单。Preload精确白名单包含正式`getStartupStage`和`onStartupStageChange`。
 
 Core重启后，`running`只说明Core已就绪，不代表Renderer已完成listener启动及系统代理接管。smoke先等待公开Recording控件的`aria-pressed=true`，再通过Settings中的Restore按钮恢复路由；正常步骤和失败清理共用同一UI操作，不直接调用恢复API或反复重试冲突命令。产品仍立即拒绝与进行中Enable冲突的Restore，不为smoke保留队列。
+
+macOS新Core发布`running`前还会等待上一代的原生代理恢复；该helper请求的产品期限为30秒，因此smoke等待新PID与running使用35秒，Windows保留15秒。这个等待不替代后续Recording/代理归属断言，不改产品请求期限或任何鉴权。
 
 macOS截图矩阵通过真实Main PID和启动时间校验后，使用System Events调整该测试窗口的实际大小，并验证Renderer内容尺寸；不在1600×900原生窗口里仅模拟较小viewport。每张图附带inner/outer尺寸及deviceScaleFactor。Windows保留既有矩阵路径。该操作只影响本轮临时测试实例，不改产品默认1600×900尺寸；原生窗口调整需要测试宿主已具有辅助功能权限。
 

@@ -37,6 +37,13 @@ const TLS_PASSTHROUGH_VALUE_TARGET = {
   measureText: true,
 };
 
+const TLS_TUNNEL_NOTICE_TITLE_TARGET = {
+  name: 'HTTPS content is encrypted',
+  designSelector: '.tunnel-copy > b',
+  appSelector: 'b:text-is("HTTPS content is encrypted")',
+  measureText: true,
+};
+
 const WEBSOCKET_DIRECTION_TARGETS = [
   {
     name: 'Message direction group',
@@ -2539,7 +2546,7 @@ export const views = [
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       { name: 'Inspector status', parity: 'capture-inspector-status' },
       'TLS tunnel',
-      'HTTPS content is encrypted',
+      TLS_TUNNEL_NOTICE_TITLE_TARGET,
       'Decrypt HTTPS (MITM)',
       TLS_PASSTHROUGH_VALUE_TARGET,
       'No local CA was generated or trusted. Only connection metadata is stored.',
@@ -2564,7 +2571,7 @@ export const views = [
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       { name: 'Inspector status', parity: 'capture-inspector-status' },
       'TLS tunnel',
-      'HTTPS content is encrypted',
+      TLS_TUNNEL_NOTICE_TITLE_TARGET,
       'Decrypt HTTPS (MITM)',
       TLS_PASSTHROUGH_VALUE_TARGET,
       'No local CA was generated or trusted. Only connection metadata is stored.',
@@ -2589,7 +2596,7 @@ export const views = [
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       { name: 'Inspector status', parity: 'capture-inspector-status' },
       'TLS tunnel',
-      'HTTPS content is encrypted',
+      TLS_TUNNEL_NOTICE_TITLE_TARGET,
       { name: 'View passthrough pattern', parity: 'tls-tunnel-view-passthrough' },
       'MITM active',
       TLS_PASSTHROUGH_VALUE_TARGET,
@@ -2615,7 +2622,7 @@ export const views = [
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       { name: 'Inspector status', parity: 'capture-inspector-status' },
       'TLS tunnel',
-      'HTTPS content is encrypted',
+      TLS_TUNNEL_NOTICE_TITLE_TARGET,
       { name: 'View passthrough pattern', parity: 'tls-tunnel-view-passthrough' },
       'MITM active',
       TLS_PASSTHROUGH_VALUE_TARGET,

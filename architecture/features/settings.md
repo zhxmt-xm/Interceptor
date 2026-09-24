@@ -838,3 +838,67 @@ passthrough额外要求`expectedRevision`；空数组仅表示清空该名单，
 - 更新下载的 SHA-256 与 size 校验失败时不保留文件。
 - 15 种语言切换后无页面溢出，持久化生效。
 - 存在 PAC 或上游代理时 Enable 有明确提示而非静默断网。
+
+<a id="platform-verification-evidence"></a>
+## 11. 平台验收证据
+
+这里保存详细证据与历史失败边界；当前未完成任务只在[Handover](../HANDOVER.md)维护。不同产物、平台和测试层的结果不相加，不把旧Green或fixture失败当作新流程的前置证据。
+
+### 当前可复用结果
+
+| 范围 | 已验证事实 | 证据 |
+| --- | --- | --- |
+| CA服务归属 | Main仅持有readonly平台对象，材料/Trust Store、模块状态、Core同步、upstream和图标缓存归各module；相关类型、平台回归、真实E2E及产物检查覆盖已迁移调用方 | 下方平台前置与回归证据；原第1项已关闭，不包含独立package迁移或Windows实机 |
+| 共享CA与profile | 两代fresh profile复用同一CA，真实删除第二代profile后公开指纹、size/mtime、信任及Root集合保持；两代正常退出，8888与journal恢复 | `/tmp/interceptor-item2-20260924-unlocked-e2e.json`、`unlocked-host.json`及同名trace目录 |
+| 首次启动与取消 | 首次生成/授权/复用1/1；启动取消1/1，首代无Core、Quit即时拒绝、次代同CA正常授信且无冲突提示；两代trace与正常退出齐全 | `/tmp/interceptor-item3-20260924-first-ca-startup.json`、`startup-cancel-final.json`、`startup-cancel-host.json`；历史前置E2E缺口不补造 |
+| 显式CA生命周期 | 取消回滚与两轮不同CA安装/撤销/删除2/2；其他Root/admin trust恢复，测试材料清理，Main/Core退出及8888释放 | `/tmp/interceptor-item4-20260924-certificate-lifecycle.json`及目录；`/tmp/interceptor-items2-7-20260924-pause.json` |
+| helper与journal | helper跨启动复用、跨profile crash recovery 2/2；文件集成与service增减零覆盖37/37 | `/tmp/interceptor-item5-20260924-unlocked-e2e.json`、`baseline.json`（32/32）、`journal-green.json`、`journal-final.json`（37/37） |
+| 定向回归 | 第2项73/73，第3项45/45，第4项54通过/46条过滤；解锁后原生与占用同组100/100，原签名用例在15秒原期限内通过 | `/tmp/interceptor-item2-20260924-baseline.json`；`/tmp/interceptor-item3-20260924-startup-green.json`；`/tmp/interceptor-item4-20260924-{target-green,unlocked-native-read,unlocked-group}.json`；各组有重叠 |
+| 已验macOS基线 | 产品源码对应`b5101f5a`，这是部署发现优化前的包；package、audit与deep/strict/all-architectures签名通过，当时生产身份已获核准，实装helper为Interactive | `/tmp/interceptor-item7-20260924-artifact.json`；audit为1487文件、339493308字节。不覆盖第3项本轮新helper |
+| 已验smoke基线 | 同一旧包在文件日志修正后及最终版本均1/1，保留既有截图矩阵；日常CA保持、完整代理恢复、App全退、journal删除、8888释放 | `/tmp/interceptor-item7-20260924-{persistent-log-smoke,final-smoke,persistent-log-host}.json`；独立复核`/tmp/interceptor-resume-20260924-current.json`；新helper需重跑 |
+| 当前parity | 406/406无missing/flagged：402项源码未变结果复用，4个Tunnel场景重跑；32目标最大差0.8px，8份前后PNG字节一致。只修重复文案定位，产品/设计/阈值不变 | `/tmp/interceptor-item7-20260924-{tunnel-before,tunnel-after,parity-current}.json`；原80–80.75px差异不是HTTPS弹窗问题 |
+| 类型与相关UI | 8个workspace类型通过，HTTPS弹窗/退出单测9/9；最新fixture修改后Desktop typecheck通过 | `npm run typecheck`；`/tmp/interceptor-workspace-checkpoint-20260924-ui-unit.json` |
+| Updates候选 | 4张1600×900浅/深色前后图，Inter/JetBrains Mono实际字重已加载，检查/下载交互达到available/downloaded；未改正式shots或产品OAuth | `/tmp/interceptor-item6-20260924-design/evidence.json`；设计未确认，不算产品实现 |
+
+上表同一单元格中未写目录的文件与首个文件同前缀；带花括号的是各个独立文件，不是一次合并运行。完整产物身份：
+
+- ASAR SHA-256：`78878acc97489b8c9234d7ea6e9173eadb5c43e5133bacb25ca478bd9e97fa2f`。
+- helper SHA-256：`18590483b88049c8e1298bdc1f3e98418e8dafb9757ba17e2e73797f8035b86d`，包内与实装相同。
+- 日常CA：`3C2E5F2AC71BDB4E82AA47AA49E79276D3EACDD5`。原CA `16CEB8D0990CCC29FA7313B7F85F1167B227C26C`经用户明确授权，由产品Uninstall/Delete清理；其他3张System Root不变。空材料基线在`/tmp/interceptor-approved-ca-reset-20260924-current.json`，新CA正常生成、授信和退出保留在`/tmp/interceptor-daily-ca-20260924-current.json`。
+
+### 历史基线与前置证据
+
+以下是当时的范围，不代表当前仍存在同一阻塞，也不覆盖后续代码。
+
+| 范围 | 原始结果与边界 | 证据位置 |
+| --- | --- | --- |
+| 原整轮基线 | 当时E2E为73/87 Green，14条未执行：Windows AppContainer 3、Certificate/TLS 5、外部上游/ClashX 2、暂停Bilibili/HTTPS弹窗2、gRPC长正文/Execute edited 2。原parity只覆盖305/406；Body/Archive隔离复验通过，但首次偶发超时未根治 | `/tmp/interceptor-platform-final-20260923-`下`workflow-inventory.json`、`parity-combined.json`、`parity-batch-300.json`、`package.json` |
+| 原整轮代码检查 | macOS适用Desktop/Tools/MCP/Agent与类型通过；Core有2项framing失败，5个Windows文件窗口fixture在macOS失败并排除，2项Windows native跳过，均不算通过 | 同上前缀的`{desktop,desktop-macos,core,core-paths}.json` |
+| 平台前置检查 | module、完成状态、授权互斥、维护与布局的原Red保留；启动准备失败不等于产品目标Red | `/tmp/interceptor-platform-{modules,completion,authorization,maintenance,layout}-20260923-*`；`/tmp/interceptor-daily-ca-ready-20260923-MhBXIZ/` |
+| 工作区checkpoint | 全workspace类型与9项UI/退出单测通过；两次历史重写只调整报告和Handover，产品/测试/配置源码不变。12份保护文件与7份stash均保留 | `/tmp/interceptor-workspace-checkpoint-20260924-ui-unit.json`；`/tmp/interceptor-macos-resource-check-20260922-preserved.json`；`/tmp/interceptor-commit-rewrite-20260924.json` |
+
+以下文件共享前缀`/tmp/interceptor-platform-resume-20260923-`：
+
+这一组早期产物来自保留工作区，不等于独立item提交树；当时暂停的HTTPS弹窗修改尚未纳入对应提交。旧产物通过不能自动覆盖后续提交或新的授权专项。
+
+| 范围 | 原始结果与边界 | 文件后缀 |
+| --- | --- | --- |
+| 只读部署检查 | 8项目标Red，修正后262通过/2 Windows native跳过；共享CA/helper复用、原生View及跨profile journal四条Green，七代退出/端口/当时日常CA保留 | `inspection-red.json`、`inspection-green.json`、`platform-e2e-green.json`及目录、`host-check.json` |
+| 旧包授权与超时 | `package.json`是授权前快照；人工启动/Close核准和恢复不代替workflow。名称含green的生产重跑实际失败，完整资源校验37.4秒超出30秒；不反推缺耗时日志的历史14:09失败 | `package.json`、`approved-startup.*`、`approved-close.json`、`production-helper-green/`、`production-timeout.log` |
+| 调度修正 | 实际Background断言Red；同一签名API只读对照Background26.99秒、普通6.27秒，不算E2E。改Interactive后回归262/2 skip、生产helper 1/1、smoke 1/1，进程/代理/CA恢复 | `signature-{background,foreground}.jsonl`、`launchd-policy-red.json`、`qos-regression.json`、`qos-production-helper.json`、`qos-smoke-ui.json`、`qos-package.json`、`final-host-check.json` |
+| 生效代理解析 | null/array/string完整只读回复3项Red；串行265通过/2 Windows native跳过。并发首跑264通过/1失败/2跳过，失败为UpstreamProbe的10ms网络断言，未放宽期限 | `effective-read-payload-red.json`、`effective-read-serial-green.json`；名称含green的`effective-read-green.json`实际有失败 |
+| 原完整parity | 406场景已执行，当时402通过、4个Tunnel同文案目标错量；产品/设计未改，后续只修测量范围 | `parity-complete.json`；旧报告宽1600/480、图片/红框检查为`report-preview.json` |
+
+### 必须保留的失败与恢复边界
+
+| 范围 | 失败事实与恢复 | 证据 |
+| --- | --- | --- |
+| 显示与锁屏 | 旧1536×875不能满足真实1600×900；Main85537未启动Core/listener并已退出，但trace保存ENOENT。后续已解锁/调整显示，旧失败不改为Green | `/tmp/interceptor-platform-resume-20260923-window-probe-recovery.json`及原workflow输出 |
+| 共享CA窗口准备 | 锁屏时System Events没有测试窗口，未进入删除profile断言；经真实Close恢复完整代理、5个进程、journal、8888及当时CA。problems工具30分钟无响应，后用Desktop typecheck通过，不计产品失败 | `/tmp/interceptor-item2-20260924-{e2e,host-recovered}.json`及`e2e/`；原保留profile为`/var/folders/h5/jmc6085s1gb9cgqszq8qtc_00000gn/T/interceptor-e2e-workflow/21931-YQyyLi` |
+| 启动取消fixture | 两次失败分别是System Events窗口索引和原生错误提示未确认；后来改WindowServer只读窗口检查与精确Main原生Enter，原失败不算产品Red | `/tmp/interceptor-item3-20260924-{startup-cancel,startup-cancel-fixed,startup-cancel-recovery,startup-cancel-fixed-recovery}.json` |
+| 原生读取超时 | 原同组99通过/1失败；单独Node签名用例仍超15秒，afterEach超过10秒，无测试helper残留。解锁后原期限及同组复验通过，不能倒推前次失败原因 | `/tmp/interceptor-item4-20260924-{unknown-outcome-green,native-read-retry,unlocked-native-read,unlocked-group}.json` |
+| 锁屏前置 | 两个真实入口在spawn前分别180ms、48ms拒绝，未进入产品步骤，不算Green；未启动App或改代理/CA | `/tmp/interceptor-item7-20260924-{e2e-preflight,smoke-preflight,preflight-host}.json` |
+| smoke断管 | 原Core新PID/running的15秒断言先超时；runner结束后保留App的console.error遇EPIPE。仅在完整代理确认恢复后强制清理5个测试进程，不能记正常退出。后续macOS文件日志、错误合并和35秒等待修正，不改产品30秒/Windows15秒 | `/tmp/interceptor-item7-20260924-{resume-smoke,epipe-safe-cleanup,persistent-log-smoke,final-smoke,persistent-log-host}.json` |
+| 组件准备耗时 | 已有17次helper资源校验中位5335ms、最大13733ms；peer中位1ms。deployment-status也完整扫描，优化未实施，不用缓存、跳过校验或延长期限冒充解决 | `/tmp/interceptor-startup-verification-20260924.log` |
+
+Windows、特殊VPN/TUN、动态切网、ClashX、真实更新下载/打开安装器及未知写入解除仍按各自工作项处理。当前macOS包验收通过不等于正式tag release或这些范围通过；新代码/环境影响结果时，按[测试分层](../platform/testing.md)重验。

@@ -97,6 +97,8 @@ sequenceDiagram
 
 HTTP断点fixture按真实头部挂起契约设置`bodyAvailable: false`，即使Capture详情已有可读原文，也不能把它当作断点snapshot正文。空Text态仍应显示`Using original`；WebSocket持有完整payload的snapshot继续使用`bodyAvailable: true`。
 
+Tunnel详情的`HTTPS content is encrypted`与请求列表行文案重复；该场景须用显式selector配对详情callout的标题，并按文字范围测量，不能让裸文本匹配退到列表行。只修配对范围，不改变产品、设计基准或几何阈值。
+
 ## 整体架构
 
 ```mermaid
