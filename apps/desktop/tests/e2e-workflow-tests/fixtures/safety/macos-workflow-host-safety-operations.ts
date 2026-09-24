@@ -36,6 +36,29 @@ implements WorkflowHostSafetyOperations<MacosSystemProxySnapshot> {
     this.helperPath = helperPath;
   }
 
+  /** Reject a locked or unavailable GUI before any test-owned App can change the host. */
+  static async assertDesktopUnlocked(): Promise<void> {
+    const { stdout } = await execFileAsync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', `
+ObjC.import("CoreGraphics");
+const value = $.CGSessionCopyCurrentDictionary();
+if (!value) throw new Error("No macOS GUI session is available");
+const session = ObjC.deepUnwrap(ObjC.castRefToObject(value));
+JSON.stringify({
+  loginDone: session.kCGSessionLoginDoneKey === true,
+  screenLocked: session.CGSSessionScreenIsLocked === true
+});
+`], { encoding: 'utf8', timeout: 5_000 });
+    const state: unknown = JSON.parse(stdout);
+    if (typeof state !== 'object' || state === null || !('loginDone' in state)
+      || typeof state.loginDone !== 'boolean' || !('screenLocked' in state)
+      || typeof state.screenLocked !== 'boolean') {
+      throw new Error('macOS desktop session inspection returned an invalid result.');
+    }
+    if (!state.loginDone || state.screenLocked) {
+      throw new Error('Unlock the macOS desktop before running real Electron workflows or packaged smoke; no App has been launched.');
+    }
+  }
+
   /** The user-level journal does not depend on workflow profile registration. */
   registerUserDataDirectory(): void {}
 

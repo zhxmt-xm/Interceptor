@@ -260,6 +260,7 @@ export class LocalElectronApplicationDriver {
   private static async launchMacosApplication(
     testInfo: TestInfo, options: LocalElectronLaunchOptions,
   ): Promise<LocalElectronApplicationDriver> {
+    await MacosWorkflowHostSafetyOperations.assertDesktopUnlocked();
     const desktopDirectory = resolveDesktopDirectory();
     const applicationPath = process.env.INTERCEPTOR_E2E_MACOS_APP_PATH ? resolveMacosApplicationPath() : null;
     const executablePath = applicationPath

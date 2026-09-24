@@ -20,6 +20,7 @@
 - `LocalElectronApplicationDriver.launch()`为每代App的Page注册TLS兼容性提示handler，保留到Page关闭；准备、业务操作、清理和relaunch使用相同策略。仅激活“暂不”，不添加规则；macOS以仍存在的host行为触发条件，用真实Enter激活按钮，不等待可能被新事件重新占据的提示selector消失，原操作仍需通过actionability；Windows保留dismiss按钮触发/click。普通清理不再重复点击同一按钮。专门验证该提示的workflow声明`test.use({ dismissTlsCompatibilityDialogs: false })`，不自动关闭待测弹窗；策略只在测试端，不进入产品。
 - Windows宿主guard使用原六字段比较；macOS完整比较network service快照，并额外保存/复核admin trust。该检查只属于Macos宿主操作，不在TLS/gRPC/H2 workflow追加Windows证书读取。
 - macOS driver按Playwright项目配置准备真实窗口：常规`macos`使用1600x900，只有body-fill滚轮边界用`macos-scroll-boundary`的1600x800，两个项目不重复运行workflow。先校验Main PID/启动时间并等待System Events看到窗口，再调整和验证内容尺寸。Windows不增加项目或窗口调整；业务workflow不通过产品CSS或额外请求数据制造滚动。
+- macOS每代App启动前，通过CoreGraphics只读确认登录完成且桌面未锁定；锁屏时明确要求解锁，不创建测试profile或启动App，避免先自动接管代理后才发现原生窗口不可访问。packaged smoke共用同一前置检查；通过前置检查不代表后续窗口或授权验收已通过。
 - macOS Electron stdout/stderr继承profile内0600日志文件，runner退出时保留App仍能写日志，不因断开的pipe产生EPIPE。附加证据前扫描完整日志中的敏感值，只输出有界末尾；保留profile的私有日志不直接作为附件。主动crash确认后立即保存该代metadata/trace/log，不能等同profile的下一代删除日志后再采集。Windows仍使用原Playwright日志通道。
 - [settings-workflow.ts](ui/settings-workflow.ts)分别验证Windows AppContainer搜索控件与macOS不支持状态；共同导航顺序和当前section断言不变。
 - [file-dialog.ts](ui/file-dialog.ts)只分派原生操作：Windows调用原有UI Automation，macOS按PID/启动时间定位`save-panel / open-panel`，以真实键鼠打开GoTo、粘贴并核对完整路径/文件名后提交。macOS坐标click发给目标process，不发给System Events应用；文件名选区必须包含扩展名，只读直接textFields，避免遍历文件列表阻塞。失败只取消本轮面板，让产品正常退出，不写原生返回值。媒体/正文、Rules/Collection、HAR/Archive/Diagnostics的Save/Open/Cancel已纳入65条真实Green，逐条结果以Handover为准。

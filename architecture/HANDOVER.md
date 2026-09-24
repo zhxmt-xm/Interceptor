@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `2ba0a912`
+> Tracked commit: `009f7965`
 > Branch: `main`
 > 最后更新：2026-09-25
 
@@ -9,7 +9,7 @@
 ## 当前状态
 
 - 用户于2026-09-24明确授权先保存全部剩余工作区进度并push，提交后保持改动区为空；未完成的实现、文档审阅、设计确认与验收继续保留在下表。保存暂停草稿不等于恢复执行或确认设计。
-- 用户随后授权按第2–7项顺序继续，每项独立验收、报告、commit/push；第2–5项进度已分别提交，当前推进第6项设计确认，暂停子项和系统授权边界保持。
+- 本轮按第2–7项顺序继续：第2–6项进度已分别提交为`d1142746`、`67f38668`、`3ef17329`、`16a6e506`、`b5101f5a`，各有独立报告；第7项完成当前包静态验收及锁屏前置保护。仍受锁屏、原生授权/外部网络和协议/设计确认阻塞的item不删除、不标完成。
 - 平台实现基线为`218295b0`，对应[平台报告](../commit-changes/202609240135_main_shared-ca_startup.html)；后续保存剩余工作区进度的提交对应独立[工作区报告](../commit-changes/202609240150_docs_workspace_progress.html)。两份均为9月24日，每个commit各有自己的报告，不共用、不覆盖。GitHub候选的四张图只放在工作区报告中，不额外生成预览报告。
 - 正文、HTTPS弹窗、Bilibili及独立package仅保存现有草稿，不扩展实现；第8项留Windows实机。日常CA保护和新系统授权专项仍须本机确认；提交不等于全部验收完成。
 
@@ -39,9 +39,10 @@
 	- 当前：已从当前设计SPA重新生成`updatesWithoutSignIn`浅/深色前后图，逐字重加载字体，画布1600×900，并实际点击检查/下载到available/downloaded；[本项预览](../commit-changes/202609241039_ui_updates_remove-signin-preview.html)逐处红框说明。已请求用户确认，但当前不可响应；产品OAuth/Token及登录门槛未删，正式shots不改。
 	- 下一步：用户确认设计后再实现、验收；保留匿名更新，不碰个人Git/CI凭据或远端仓库可见性。
 	- 更新验收缺口：通知的真实下载/打开安装器流程尚缺专属E2E，需可用的新Release与签名包；其他按钮验收不代替。
-7. **macOS 最终验收 · 待验证**
-	- 当前：新helper和产物已获本机核准；生产workflow、packaged smoke及最后一次Desktop typecheck通过。全量parity已跑完，402/406通过，4个暂停中的HTTPS弹窗位置差异未通过；不能登记全量Green。现有结果针对保留工作区，不等于独立item提交树已验收。
-	- 剩余：第3/4项授权专项及第16项全量验收。最后的只读解析修正已有3项Red、265项Green和类型结果，但尚未重新打包；已验包的smoke不冒充最终源码产物。本轮为已授权中间进度，终包复验留本项，不再为保存进度重复触发系统授权。现有暂停UI源码一并保存，正式设计基准不改。
+7. **macOS 最终验收 · blocked（锁屏与生产授权）**
+	- 当前：已按`b5101f5a`重建当前包，含最后的只读解析修正；package、artifact audit、严格deep/strict/all-architectures签名及8个workspace类型检查通过。实装helper与包内字节相同且仍为Interactive，但新App生产入口`outdated`、开发入口`ready`，需用户核准新生产身份。
+	- 当前步骤：新增测试端共享登录/锁屏检查，真实E2E与smoke在spawn前拒绝锁屏，不创建App/profile或接管代理；两条既有验收命令分别在180ms、48ms报告该阻塞，未进入产品步骤，不算Green。后验完整代理快照不变、无App或测试helper、无journal、8888释放、日常CA保持。
+	- 剩余：用户解锁并核准新包后复跑生产workflow/smoke及第3/4项专项。Renderer、design-vite和parity源码从`799cbb1e`以来无改动，复用此前402/406结果；4个暂停弹窗位置差异仍未通过，不放宽阈值或改基准。第6项设计未确认，产品GitHub登录仍存在。
 	- 显示环境调整后已通过真实1600×900准备。旧1536×875失败、手动Close恢复及Main85537的trace保存ENOENT均保留为历史失败，不改成Green。
 8. **Windows 实机验收 · 待验收**
 	- 当前：未执行，由用户回Windows后验收；macOS通过或native skip不能替代。
@@ -76,10 +77,10 @@
 | 范围 | 结果 | 缺口 |
 | --- | --- | --- |
 | CA服务归属（原第1项） | Main仅持有readonly平台对象；材料/Trust Store、模块状态、Core同步、upstream和图标缓存归对应module。相关类型、265项平台回归、四条真实E2E及归属迁移产物的package/audit/smoke通过，完成项已从任务列表删除 | 不包含第3/4项尚缺的授权专项或第8项Windows实机；不迁独立package |
-| 类型/单测/集成 | 类型与macOS适用Desktop、Tools、MCP、Agent测试通过；平台定向检查通过 | Core仍有2项framing失败；5个Windows文件窗口fixture在macOS失败并被适用命令排除，2项Windows native跳过，均不算通过 |
+| 类型/单测/集成 | 本轮8个workspace类型通过；第2/3/4/5项相关组分别73、45、54、37通过，范围重叠不相加 | 本轮既有Node签名读取1项持续超时；历史Core仍有2项framing失败、5个Windows文件窗口fixture排除、2项Windows native跳过，均不算通过 |
 | 真实E2E | 73/87条取得最终Green，退出和宿主恢复有证据 | 14条未执行；Body/Archive隔离复验通过，但首跑偶发超时原因未根治 |
 | UI parity | **未通过**：406/406已执行，402通过；无遗漏及缺失配对，4个TLS位置偏差80–80.75px | 4项属于本次保存的暂停HTTPS弹窗定位；不改产品或基准掩盖差异 |
-| 最近已验macOS产物 | Interactive helper已部署；package、artifact audit、严格签名、生产helper workflow 1/1、packaged smoke 1/1均通过 | 产物早于最后只读解析修正，且含未提交的保护UI，不是最终commit产物；特殊VPN/TUN及ClashX未验 |
+| 当前macOS产物 | `b5101f5a`源码包已重建，artifact audit和严格签名通过；实装helper为Interactive且与包内一致 | 新生产身份outdated；本轮真实E2E/smoke因锁屏在启动前阻塞，不能复用旧包1/1。特殊VPN/TUN及ClashX未验 |
 | 证书/启动专项 | **blocked**：日常CA保留，新的系统授权专项仍需本机确认 | 新启动顺序缺前置真实E2E；真正未知写入的可靠解除、取消与完整生命周期仍缺；生产helper status超时已解决 |
 
 未执行14条：Windows AppContainer 3条；需空共享目录/本机确认的Certificate/TLS 5条；外部上游/ClashX 2条；用户暂停的Bilibili/HTTPS弹窗2条；gRPC长正文/第10项Execute edited 2条。均不计通过。
@@ -105,6 +106,8 @@
 第5项续作证据：`/tmp/interceptor-item5-20260924-baseline.json`为32/32，`journal-green.json`为37/37，Desktop类型通过。新增1项真实文件集成、4项service增减的Restore/Recover零覆盖检查，不改产品行为、不制造Red。跨profile真实crash-recovery沿用前轮明确产物范围的证据；本轮锁屏，VPN/TUN、真实切网和ClashX环境未运行，也未修改宿主网络。恢复时需用户解锁并提供对应网络环境，再按Settings代理规格验证实际路由和退出恢复。
 
 第6项续作证据：`/tmp/interceptor-item6-20260924-design/evidence.json`记录4张当前SPA设计截图、实际加载的Inter/JetBrains Mono字重及候选检查/下载状态；正式设计源码和shots均未改。用户不可回应设计确认，故只保存方案预览和当前实现差异，不启动产品实现或声称OAuth已移除。恢复条件为确认本项报告中的页面、组件、具体位置和前后效果；随后按产品TDD、真实E2E与parity顺序实施。
+
+第7项续作证据：`/tmp/interceptor-item7-20260924-artifact.json`保存源码`b5101f5a`、ASAR SHA-256 `78878acc97489b8c9234d7ea6e9173eadb5c43e5133bacb25ca478bd9e97fa2f`、helper SHA-256 `18590483b88049c8e1298bdc1f3e98418e8dafb9757ba17e2e73797f8035b86d`、audit1487文件/339493308字节及生产outdated/开发ready。`e2e-preflight.json`、`smoke-preflight.json`记录两个真实入口的锁屏拒绝，`preflight-host.json`确认完整代理及CA保持、无进程/journal、8888释放。测试设施最后修改后Desktop typecheck通过，不新增“测试的测试”；未解锁，故通过前置后的正常窗口/新包运行分支尚未复跑。
 
 ## Windows 复验
 

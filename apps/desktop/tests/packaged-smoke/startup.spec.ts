@@ -416,6 +416,7 @@ class PackagedWorkflowSmoke {
 test('packaged app starts with an isolated renderer and running core', async ({
   }, testInfo) => {
   test.setTimeout(180_000);
+  if (process.platform === 'darwin') await MacosWorkflowHostSafetyOperations.assertDesktopUnlocked();
   await requireSharedCertificateReady();
   const executablePath = resolvePackagedExecutable();
   expect(fs.existsSync(executablePath), `Missing package: ${executablePath}`).toBe(

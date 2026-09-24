@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>macOS 验收启动前检查</title>
+  <style>
+    :root { color: #24292f; background: #fff; color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14px/1.65 "Segoe UI", "PingFang SC", sans-serif; }
+    main { max-width: 1020px; margin: auto; padding: 32px 24px; }
+    header { padding-bottom: 16px; border-bottom: 2px solid #24292f; }
+    h1 { margin: 0 0 8px; font-size: 25px; }
+    h2 { margin-top: 24px; font-size: 19px; }
+    .time { color: #57606a; }
+    p, td, code { overflow-wrap: anywhere; }
+    table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+    th, td { padding: 10px; text-align: left; vertical-align: top; border-bottom: 1px solid #d0d7de; }
+    th { background: #f6f8fa; }
+    @media (max-width: 700px) {
+      main { padding: 20px 16px; }
+      table, tbody, tr, td { display: block; width: 100%; }
+      thead { display: none; }
+      tr { padding: 10px 0; border-bottom: 1px solid #d0d7de; }
+      td { padding: 4px 0; border: 0; }
+      td::before { content: attr(data-label) "："; font-weight: 600; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>提交：macOS 验收启动前检查</h1>
+      <p class="time">时间：2026-09-24 10:56（UTC+08:00）</p>
+      <p>第7项按当前产品源码重建验收产物，并修正锁屏环境下测试可能先启动App、接管系统代理再失败的问题。产品启动与系统权限规则不变。</p>
+    </header>
+    <section>
+      <h2>工程与文档</h2>
+      <table>
+        <thead><tr><th>位置</th><th>改前</th><th>改后</th><th>原因与影响</th></tr></thead>
+        <tbody>
+          <tr><td data-label="位置">MacosWorkflowHostSafetyOperations</td><td data-label="改前">没有在App启动前检查GUI会话是否可用。</td><td data-label="改后">通过CoreGraphics只读取得登录与锁屏状态，失败或锁屏时显式报错。</td><td data-label="原因与影响">不解锁桌面、不修改授权、不读取凭据；无效检查结果不静默放行。</td></tr>
+          <tr><td data-label="位置">LocalElectronApplicationDriver与packaged smoke</td><td data-label="改前">App可能先接管系统代理，之后因System Events看不到窗口而失败。</td><td data-label="改后">每代macOS App和smoke均在创建profile或spawn前调用同一个前置检查。</td><td data-label="原因与影响">已锁屏时不启动App、不触发组件确认或代理接管；Windows原行为保持。</td></tr>
+          <tr><td data-label="位置">fixture及smoke说明、Handover</td><td data-label="改前">窗口失败需要事后恢复，旧包的验证范围不包含最后的只读解析修正。</td><td data-label="改后">说明解锁前置、当前产物源码身份和各层验证范围，区分前置拒绝与产品流程通过。</td><td data-label="原因与影响">恢复执行时使用当前包及原有workflow，不将旧smoke或锁屏拒绝当成新包验收完成。</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>
