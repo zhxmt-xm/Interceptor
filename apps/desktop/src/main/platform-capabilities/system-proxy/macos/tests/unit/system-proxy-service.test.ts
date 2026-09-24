@@ -423,6 +423,37 @@ describe('MacosSystemProxyService', () => {
     expect(fakeMacosHelperRunner.calls.slice(callCount)).toEqual(['read']);
     expect(fakeJournal.record).toBeNull();
   });
+
+  it.each([
+    { change: 'added', operation: 'restore' },
+    { change: 'removed', operation: 'restore' },
+    { change: 'added', operation: 'recoverAfterCrash' },
+    { change: 'removed', operation: 'recoverAfterCrash' },
+  ] as const)('does not overwrite network services $change before $operation', async ({ change, operation }) => {
+    const macosHelperServiceClient = new FakeMacosHelperRunner();
+    const fakeJournal = new FakeJournal();
+    const macosSystemProxyService = createService(macosHelperServiceClient, fakeJournal);
+    await macosSystemProxyService.enable('127.0.0.1', 8888);
+    const services = macosHelperServiceClient.snapshot.services;
+    macosHelperServiceClient.snapshot = {
+      services: change === 'added'
+        ? [...services, { id: 'service-vpn', name: 'VPN', settings: { HTTPEnable: 0 } }]
+        : services.slice(1),
+    };
+    const externalSnapshot = structuredClone(macosHelperServiceClient.snapshot);
+    const callsBefore = macosHelperServiceClient.calls.length;
+    const operatingMacosSystemProxyService = operation === 'recoverAfterCrash'
+      ? createService(macosHelperServiceClient, fakeJournal) : macosSystemProxyService;
+
+    const result = await operatingMacosSystemProxyService[operation]();
+
+    expect(result).toMatchObject({
+      restored: false, reason: 'externally-modified', status: { owned: false, ownershipLost: true },
+    });
+    expect(macosHelperServiceClient.snapshot).toEqual(externalSnapshot);
+    expect(macosHelperServiceClient.calls.slice(callsBefore)).toEqual(['read']);
+    expect(fakeJournal.record).toBeNull();
+  });
 });
 
 /** Create one macOS service with optional shared crash journal. */

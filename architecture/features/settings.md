@@ -254,6 +254,7 @@ Certificate module组装的`CertificateInfo`含`path`与`mitmEnabled`，不含�
 | `current` | 每次恢复判定时 | Main 通过平台 helper 当场读取的操作系统实际配置 |
 
 文档中的 `current == owned`、`current == original` 都表示完整快照逐字段相等，不表示 PID、进程或文件的所有权。
+network service的增加或删除也属于完整快照的外部变化；恢复与跨代journal加载都不得只比较仍存在的service或覆盖新配置。状态机测试不等于VPN/TUN、ClashX或真实切网验收。
 
 Windows journal 固定为 `%LOCALAPPDATA%/Interceptor/system-proxy/journal.json`，不随 Electron
 `userData`、开发模式、packaged App 或 E2E `--user-data-dir` 改变；macOS journal 为

@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `67f38668`
+> Tracked commit: `0033f9ab`
 > Branch: `main`
 > 最后更新：2026-09-25
 
@@ -9,7 +9,7 @@
 ## 当前状态
 
 - 用户于2026-09-24明确授权先保存全部剩余工作区进度并push，提交后保持改动区为空；未完成的实现、文档审阅、设计确认与验收继续保留在下表。保存暂停草稿不等于恢复执行或确认设计。
-- 用户随后授权按第2–7项顺序继续，每项独立验收、报告、commit/push；第2/3项进度已独立提交，当前推进第4项，暂停子项和系统授权边界保持。
+- 用户随后授权按第2–7项顺序继续，每项独立验收、报告、commit/push；第2–4项进度已分别提交，当前推进第5项，暂停子项和系统授权边界保持。
 - 平台实现基线为`218295b0`，对应[平台报告](../commit-changes/202609240135_main_shared-ca_startup.html)；后续保存剩余工作区进度的提交对应独立[工作区报告](../commit-changes/202609240150_docs_workspace_progress.html)。两份均为9月24日，每个commit各有自己的报告，不共用、不覆盖。GitHub候选的四张图只放在工作区报告中，不额外生成预览报告。
 - 正文、HTTPS弹窗、Bilibili及独立package仅保存现有草稿，不扩展实现；第8项留Windows实机。日常CA保护和新系统授权专项仍须本机确认；提交不等于全部验收完成。
 
@@ -30,10 +30,11 @@
 	- 当前产物：新helper已获授权并与包内一致；组件/共享CA/代理恢复3条及Agent/MCP共享入口2条真实E2E、smoke 1/1通过，九代App全退、完整代理和日常CA保持。窗口准备的fixture遗漏已修正，失败与恢复证据保留。
 	- 剩余：新包证书写入/取消专用E2E要求空共享CA目录；本轮保留日常CA，尚未获准再次清理/重建，因此未运行。故障帧/失联分支的native及传输集成结果不冒充真实UI触发故障；不进入第5项。
 	- 正文子项暂停：只读预览2 MiB、完整且不超过1 MiB自动格式化、1–2 MiB可手动格式化，截断不格式化；图片独立16 MiB。Text完整编辑，File只预览但使用完整文件；初始高度、内滚动和resize不影响完整保存/导出/发送。产品未实现；本次仅保存已有compact正文、resize及自定义gRPC设计候选，不改正式shots、不视为定稿。
-5. **macOS journal 收尾 · 进行中**
+5. **macOS journal 收尾 · blocked（外部环境）**
 	- 当前：[journal](../apps/desktop/src/main/platform-capabilities/system-proxy/macos/journal.ts)跨profile恢复复验Green。生产超时已定位并修复：完整资源校验37.4秒超过30秒，同一签名API只读对照为Background26.99秒、普通6.27秒；不反推历史14:09缺失的耗时证据。
 	- 当前步骤：实际launchd策略取得Background的Red后，仅将ProcessType改为Interactive并由用户核准部署；实装plist与运行中的spawn type均为Interactive。平台回归262通过、2项Windows native跳过，最新package、artifact audit、严格签名、生产helper workflow 1/1和packaged smoke 1/1均通过；完整鉴权及30秒期限不变。本轮按用户授权与第1–4项合并保存进度，以下外部验收不标为通过。
 	- 外部环境缺口：特殊VPN/TUN、动态网络切换及ClashX联调仍需对应环境，不由普通loopback结果代替。
+	- 当前步骤：不改产品journal逻辑；补临时home下真实删除默认profile后重建journal实例的文件集成，以及service增加/删除时Restore和跨代Recover零覆盖的状态机检查。原32项与新增5项共37/37通过，Desktop类型通过。锁屏期间不运行真实Electron或修改宿主网络，外部场景仍未验。
 6. **删除产品 GitHub 登录 · 待确认**
 	- 当前：保存`design-vite`的`updatesWithoutSignIn`设计候选；浅/深色改前与拟议图位于[工作区报告](../commit-changes/202609240150_docs_workspace_progress.html#updates-design-preview)。产品OAuth/Token及登录门槛未删，保存预览不代表确认设计。
 	- 下一步：用户确认设计后再实现、验收；保留匿名更新，不碰个人Git/CI凭据或远端仓库可见性。
@@ -100,6 +101,8 @@
 第3项续作证据：`/tmp/interceptor-item3-20260924-startup-green.json`记录平台准备与BootStore共45/45，Desktop typecheck通过；新增2项仅补已有行为覆盖，不人为制造Red。本机锁屏，首次授信/取消还要求只处理专项自行创建的CA，不能清空现有日常CA；本轮未运行原生授权专项，未取得新的真实首窗/取消/准备期间Quit证据。恢复条件是用户解锁并提供可执行首次CA专项的环境，再按第3/4项规格执行。
 
 第4项续作证据：`/tmp/interceptor-item4-20260924-target-green.json`为54通过、46条名称过滤未运行，覆盖新真实socket断线和证书/代理占用；Desktop typecheck通过。此前较大组`unknown-outcome-green.json`实际99通过/1失败（同前缀），唯一失败为既有Node签名客户端15秒超时；`native-read-retry.json`单独重跑仍超时且afterEach超过10秒，未查明原因，不算Green。后查没有本轮非特权helper残留，不触碰安装的常驻helper。可靠终态协议需确认，证书原生生命周期仍需解锁和专项环境，不以新增防护测试冒充解除路径实现。
+
+第5项续作证据：`/tmp/interceptor-item5-20260924-baseline.json`为32/32，`journal-green.json`为37/37，Desktop类型通过。新增1项真实文件集成、4项service增减的Restore/Recover零覆盖检查，不改产品行为、不制造Red。跨profile真实crash-recovery沿用前轮明确产物范围的证据；本轮锁屏，VPN/TUN、真实切网和ClashX环境未运行，也未修改宿主网络。恢复时需用户解锁并提供对应网络环境，再按Settings代理规格验证实际路由和退出恢复。
 
 ## Windows 复验
 

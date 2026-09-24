@@ -1,10 +1,10 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { MacosSystemProxyJournal } from '../../journal';
+import { MacosSystemProxyJournal, resolveMacosSystemProxyJournalPath } from '../../journal';
 import { SystemProxyJournalError } from '../../../internal/errors';
 
 describe('SystemProxyJournal', () => {
@@ -39,6 +39,34 @@ describe('SystemProxyJournal', () => {
 
     await systemProxyJournal.clear();
     expect(await systemProxyJournal.read()).toBeNull();
+  });
+
+  it.runIf(process.platform === 'darwin')('reopens the user-level journal after the default application profile is deleted', async () => {
+    const homeDirectory = await mkdtemp(path.join(os.tmpdir(), 'interceptor-journal-home-'));
+    directories.push(homeDirectory);
+    const profileDirectory = path.join(homeDirectory, 'Library', 'Application Support', 'Interceptor');
+    await mkdir(profileDirectory, { recursive: true });
+    const journalPath = resolveMacosSystemProxyJournalPath(homeDirectory);
+    const macosSystemProxyJournal = new MacosSystemProxyJournal(journalPath);
+    const record = {
+      original: { services: [{ id: 'wifi', name: 'Wi-Fi', settings: { HTTPEnable: 0 } }] },
+      owned: { services: [{ id: 'wifi', name: 'Wi-Fi', settings: { HTTPEnable: 1, HTTPProxy: '127.0.0.1', HTTPPort: 8888 } }] },
+      effectiveProxies: { HTTPEnable: 1, HTTPProxy: '127.0.0.1', HTTPPort: 7890 },
+    };
+    await macosSystemProxyJournal.save(record.original, record.owned, record.effectiveProxies);
+    const bytesBefore = await readFile(journalPath);
+    const metadataBefore = await stat(journalPath);
+
+    await rm(profileDirectory, { recursive: true });
+    await expect(stat(profileDirectory)).rejects.toMatchObject({ code: 'ENOENT' });
+    const restartedJournal = new MacosSystemProxyJournal(resolveMacosSystemProxyJournalPath(homeDirectory));
+
+    expect(await restartedJournal.read()).toEqual(record);
+    expect(await readFile(journalPath)).toEqual(bytesBefore);
+    expect((await stat(journalPath)).mtimeMs).toBe(metadataBefore.mtimeMs);
+    expect((await stat(journalPath)).mode & 0o777).toBe(0o600);
+    await restartedJournal.clear();
+    expect(await macosSystemProxyJournal.read()).toBeNull();
   });
 
   it('rejects malformed JSON and accepts data beyond the former size limit', async () => {

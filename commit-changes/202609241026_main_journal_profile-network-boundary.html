@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>macOS journal 的 profile 与网络边界</title>
+  <style>
+    :root { color: #24292f; background: #fff; color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 14px/1.65 "Segoe UI", "PingFang SC", sans-serif; }
+    main { max-width: 960px; margin: auto; padding: 32px 24px; }
+    header { border-bottom: 2px solid #24292f; padding-bottom: 16px; }
+    h1 { margin: 0 0 8px; font-size: 25px; }
+    h2 { margin-top: 24px; font-size: 19px; }
+    p, li, code { overflow-wrap: anywhere; }
+    .time { color: #57606a; }
+    @media (max-width: 700px) { main { padding: 20px 16px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>提交：macOS journal 的 profile 与网络边界</h1>
+      <p class="time">时间：2026-09-24 10:26（UTC+08:00）</p>
+      <p>补充第5项既有journal行为的文件集成和状态机覆盖；不修改产品恢复逻辑、Windows路径或宿主网络。</p>
+    </header>
+    <section>
+      <h2>Main</h2>
+      <ul>
+        <li>位置：macOS <code>system-proxy-journal.test.ts</code>。改前只测试给定路径的存取；改后使用临时home解析真实用户级路径，删除默认profile后重新创建journal对象，比较原始字节、mtime、0600权限与完整record。用于直接约束profile和journal的不同生命周期。</li>
+        <li>位置：macOS <code>system-proxy-service.test.ts</code>。改前覆盖service字段被外部修改；改后同时覆盖service增加或删除，分别执行当前实例Restore与新实例Recover。断言外部快照不被覆盖，不发送replace，旧journal不再作为归属依据。</li>
+      </ul>
+    </section>
+    <section>
+      <h2>文档</h2>
+      <p>Settings明确完整快照比较包含service集合本身，不只比较仍存在的service；文件测试和fake native状态机不替代VPN/TUN、ClashX或真实切网的验收结论。</p>
+    </section>
+  </main>
+</body>
+</html>
