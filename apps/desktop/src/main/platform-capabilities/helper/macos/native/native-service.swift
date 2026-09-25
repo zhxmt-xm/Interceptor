@@ -233,21 +233,15 @@ final class MacosHelperService {
         return .production(guest, staticCode, info)
     }
 
-    private func validateClientResources(_ client: MacosHelperAuthenticatedClient) throws {
-        guard case .production(_, let staticCode, _) = client else { return }
-        guard case .production(_, let clientRequirement) = authentication else {
-            throw MacosHelperServiceError.unauthorizedClient
-        }
-        let started = DispatchTime.now().uptimeNanoseconds
-        defer {
-            let milliseconds = (DispatchTime.now().uptimeNanoseconds - started) / 1_000_000
-            logger.info("resource verification duration-ms=\(milliseconds, privacy: .public)")
-        }
-        var codePath: CFURL?
+    /** Verify all signed bytes in a fresh process without retaining validation or allocator state. */
+    static func verifyCodeSignature(path: String, requirement: String) throws {
+        var clientRequirement: SecRequirement?
         var diskCode: SecStaticCode?
-        guard SecCodeCopyPath(staticCode, [], &codePath) == errSecSuccess,
-              let codePath,
-              SecStaticCodeCreateWithPath(codePath, [], &diskCode) == errSecSuccess,
+        guard path.hasPrefix("/"),
+              requirement.range(of: "^cdhash H\"[0-9a-fA-F]{40,64}\"$", options: .regularExpression) != nil,
+              SecRequirementCreateWithString(requirement as CFString, [], &clientRequirement) == errSecSuccess,
+              let clientRequirement,
+              SecStaticCodeCreateWithPath(URL(fileURLWithPath: path) as CFURL, [], &diskCode) == errSecSuccess,
               let diskCode else { throw MacosHelperServiceError.unauthorizedClient }
         guard SecStaticCodeCheckValidity(
             diskCode,
@@ -259,7 +253,41 @@ final class MacosHelperService {
                   SecCSFlags(rawValue: kSecCSStrictValidate | kSecCSCheckNestedCode | kSecCSCheckAllArchitectures | SecCSFlags.noNetworkAccess.rawValue),
                   nil
               ) == errSecSuccess else {
-            logger.error("client application resources rejected")
+            throw MacosHelperServiceError.unauthorizedClient
+        }
+    }
+
+    /** Keep full validation isolated from the long-lived service's allocation history. */
+    private func validateClientResources(_ client: MacosHelperAuthenticatedClient) throws {
+        guard case .production(_, let staticCode, _) = client else { return }
+        guard case .production(let configuration, _) = authentication,
+              let executableURL = Bundle.main.executableURL else {
+            throw MacosHelperServiceError.unauthorizedClient
+        }
+        let started = DispatchTime.now().uptimeNanoseconds
+        defer {
+            let milliseconds = (DispatchTime.now().uptimeNanoseconds - started) / 1_000_000
+            logger.info("resource verification duration-ms=\(milliseconds, privacy: .public)")
+        }
+        var codePath: CFURL?
+        guard SecCodeCopyPath(staticCode, [], &codePath) == errSecSuccess, let codePath else {
+            throw MacosHelperServiceError.unauthorizedClient
+        }
+        let validationProcess = Process()
+        validationProcess.executableURL = executableURL
+        validationProcess.arguments = ["verify-code-signature", (codePath as URL).path, configuration.clientRequirement]
+        validationProcess.standardInput = FileHandle.nullDevice
+        validationProcess.standardOutput = FileHandle.nullDevice
+        validationProcess.standardError = FileHandle.nullDevice
+        do {
+            try validationProcess.run()
+        } catch {
+            logger.error("signature verification process could not start")
+            throw MacosHelperServiceError.operationFailed
+        }
+        validationProcess.waitUntilExit()
+        guard validationProcess.terminationReason == .exit, validationProcess.terminationStatus == 0 else {
+            logger.error("client application resources rejected: verifier exit=\(validationProcess.terminationStatus, privacy: .public)")
             throw MacosHelperServiceError.unauthorizedClient
         }
     }

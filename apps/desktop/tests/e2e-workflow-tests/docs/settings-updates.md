@@ -227,10 +227,10 @@ Green必须包含审批裁决、两项真实执行、重复Restore、撤权零�
 <a id="settings-tools-tls"></a>
 ## `settings.tools.tls`
 
-**状态**：passed；2026-09-08真实E2E及最终CA清理、双代销毁和宿主恢复全部通过
-**策略**：privileged UI；Windows；host-safety-guard；两代Electron
+**状态**：Windows历史passed；2026-09-26 macOS新签名包1/1，CA清理、双代销毁和宿主恢复通过
+**策略**：privileged UI；Windows/macOS；host-safety-guard；两代Electron
 
-macOS只读信任查询已分派到平台fixture，Windows原certutil参数/输出判断保持。macOS完整流程仍待用户在场完成授信验收，不能计passed。
+macOS只读信任查询使用平台fixture，Windows原certutil参数/输出判断保持。当前macOS证据为`/tmp/interceptor-item4-resume-20260925-certificates-positive.json`及同名目录：四项TLS Tool的Ask/Auto、挂载面板同步、revision冲突、未信任意图、实际解密、撤权和重启零重放均通过；最终经产品清理自产CA，完整Root/admin trust与代理恢复，全部进程退出且8888释放。
 
 ### Steps
 
@@ -290,14 +290,16 @@ TLS专项16 views / 96 targets / 0 missing / 0 flagged / 最大0.5px与package/a
 <a id="settings-tools-certificates"></a>
 ## `settings.tools.certificates`
 
-**状态**：passed；六项Agent/MCP、Explorer/Viewer真实关窗及双代清理通过；Manager管理员MMC原生专项按用户要求排除
+**状态**：Windows历史passed；2026-09-26 macOS新签名包六项Agent/MCP、Finder/Viewer真实关窗、双代清理及取消冲突通过；Manager管理员MMC原生专项按用户要求排除
 **策略**：native-ui + privileged UI；Windows/macOS；host-safety-guard；两代Electron
 
 可能触发系统确认的Agent Install/Uninstall/Delete复用平台证书等待配置（macOS 120秒、Windows 30秒）；Deny与普通Tool仍使用15秒。finally先确认运行中的Agent进入终态，再关闭本轮窗口、清理CA；前一步不确定时保留材料并报告失败，不在授信仍进行时删除材料。该测试收尾顺序不证明产品多入口并发变更已受保护，也不替代MCP超时/取消的专项验证。
 
 并发验收：由产品生成CA，Agent或MCP Install仍等待真实系统确认时，通过实际Settings UI点击Delete/Generate或切换MITM。Main必须立即拒绝后来的冲突请求，提示当前正在安装证书，公开指纹、材料和Core状态保持；再完成原生确认，原调用才完成，之前拒绝的操作不得稍后执行。同组IPC/Agent/MCP使用同一保护，退出冲突也只拒绝本次退出。保留前置Red、最终Green、原生确认与UI提示的trace/截图、完整Root/admin trust/代理和两代退出证据；不注入Store、不暂停helper或伪造系统确认。
 
-macOS定向用例同在`tools-certificates.workflow.ts`，名称含`rejects overlapping mutations`：从空共享目录启动并清理本轮启动CA，经Generate生成待装CA、通过UI创建Auto MCP Client；Install的真实helper确认窗口存在时，第二个MCP Delete须在5秒内返回`operation_in_progress`及`certificate.install`，随后实际UI Delete显示相同操作标识。用例按Main/helper/SecurityAgent进程代际取消自己的原生确认，等待原Install终态，再确认被拒绝Delete未重放、材料指纹不变；最后经UI删除测试材料，fixture验证完整宿主恢复。原MCP请求允许120秒系统确认，不能把5秒冲突返回期限套到原生写入上。Windows原生取消fixture未实现前该定向用例明确skip，不计Windows通过。
+macOS定向用例同在`tools-certificates.workflow.ts`，名称含`rejects overlapping mutations`：从空共享目录启动并清理本轮启动CA，经Generate生成待装CA、通过UI创建Auto MCP Client；Install的真实helper确认窗口存在且原调用未结算时，先实际点击Quit，原空提示区须在5秒内显示`certificate.install`且App保持。随后第二个MCP Delete须在5秒内返回`operation_in_progress`及`certificate.install`，实际UI Delete同样显示该操作标识且材料保持。用例按Main/helper/SecurityAgent进程代际取消自己的原生确认，等待原Install终态，再确认被拒绝Delete/Quit未重放、材料指纹不变；最后经UI删除测试材料，fixture验证完整宿主恢复。原MCP请求允许120秒系统确认，不能把5秒冲突返回期限套到原生写入上。Windows原生取消fixture未实现前该定向用例明确skip，不计Windows通过。
+
+本用例首次启动授信和准备清理的撤销需要正常人工确认；进入业务Install后保持原生窗口不动，由workflow自动取消。先验Quit的新提示，再验Delete，避免等待旧提示自动消失时原生授权已结束；Quit之前仍明确断言原Install尚未结算，不缩短或跳过真实授权。若确认提前完成导致条件消失，记录为验收前提失败，不将正常允许Quit判为busy缺陷。清理分别收尾原请求和产品删除，即使原授权已结束也不重复取消已退出的进程，不因取消失败跳过本轮CA的正常清理。
 
 ### Steps
 
@@ -322,6 +324,8 @@ macOS定向用例同在`tools-certificates.workflow.ts`，名称含`rejects over
 
 ### 证据
 
+- 2026-09-26 macOS：六项Agent/MCP、各六次Deny、受信任重生成拒绝、四次Finder/Viewer真实打开关闭、十二项入口撤权及重启零重放1/1，证据为`/tmp/interceptor-item4-resume-20260925-certificates-positive.json`及同名目录；两代均正常退出，测试CA清理，完整Root/admin trust与系统代理恢复、8888释放。
+- 同轮取消冲突1/1在`/tmp/interceptor-item4-resume-20260925-certificate-conflict-ordered.json`及同名目录：Quit/MCP Delete/UI Delete在授信未结束时拒绝，取消后不重放且材料保持，最终通过产品删除。此前三次因授权先于Quit断言结束而失败的结果保留，不冒充产品Red；首轮精确CA恢复为`/tmp/interceptor-item4-resume-20260925-conflict-recovery-daily-remove.json`，后两轮收尾均已清理。
 - 2026-09-09删除MMC原生专项后，本条复跑1/1 Green；两代Main/Core `14248/2888`、`39644/4212`均`gracefulDestroyVerified=true`，Root/CA/WinINet/journal恢复，8888释放、MMC无残留。最新归档为TEMP下`interceptor-certificates-keep-six-green-20260909-142011.zip`，SHA256 `C433C0B4A6A61821F3A437FF22740F6E3F30CDD3784ACBB41CD899A700BC3F7B`。
 - 2026-09-09最终Green：本条1/1（54.2s，Runner总计55.9s），两代Main/Core为`47704/19820`、`35384/17472`，均`gracefulDestroyVerified=true`。
 - 六项Agent/MCP、各六次Deny、受信任重生成拒绝、四次Explorer/Viewer打开关闭、十二项入口撤权及重启零重放通过；Root集合、WinINet/journal恢复、8888释放，成功profile删除。

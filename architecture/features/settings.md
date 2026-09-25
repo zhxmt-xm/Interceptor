@@ -217,7 +217,7 @@ macOS View：固定前台`certificate.view`只接公开DER与SHA-256，使用系
 
 #### 失联写入验收证据
 
-本轮证据前缀为`/tmp/interceptor-item4-20260925-`。故障帧与断连由真实Unix socket/native集成验证，模块回读、回滚及Quit占用由所属业务测试验证；不将这些结果冒充真实UI触发了故障。
+以下为2026-09-25恢复验收前的证据，前缀为`/tmp/interceptor-item4-20260925-`；新产物的最终结果见下方“第4项恢复验收”。故障帧与断连由真实Unix socket/native集成验证，模块回读、回滚及Quit占用由所属业务测试验证；不将这些结果冒充真实UI触发了故障。
 
 | 范围 | 结果 | 证据后缀 |
 | --- | --- | --- |
@@ -228,7 +228,41 @@ macOS View：固定前台`certificate.view`只接公开DER与SHA-256，使用系
 | 当前新包运行 | 正常App授权后实装helper与包内一致，生产入口ready；组件复用/共享CA/跨profile恢复3条、Agent/MCP代理入口2条真实E2E及smoke 1/1。九代App已退出（含1代预定crash），完整代理恢复，日常CA指纹、文件元数据与信任保持，无journal、8888释放 | `approval-current.json`、`production-lifecycle-final.json`、`tools-proxy.json`、`production-smoke.json`、`production-host.json`及对应目录 |
 | 窗口准备失败与修正 | 首次3条运行中共享CA通过，随后System Events未暴露新Main窗口，业务未开始；经真实Close恢复后，fixture只显示/前置该测试Main，再按原尺寸断言准备窗口。不改产品UI或尺寸，复跑3/3 | `production-lifecycle.json`、`window-recovery.json`、`production-lifecycle-final.json` |
 
-当前新包的证书写入/取消专用workflow尚未运行：它要求空共享材料目录，本轮没有再次卸载/删除日常CA。需确认经产品清理与重建后再执行，不能把旧包生命周期结果或本轮非破坏性流程当作该专项的新Green。
+22:35暂停时该产物已执行部分证书专项，但当时未全部通过；这些历史失败不改写为Green：
+
+| 范围 | 结果及边界 | 证据后缀 |
+| --- | --- | --- |
+| 产品清理与直接生命周期 | 原日常CA经产品Uninstall/Delete清理，其余Root保持；cancel-trust 1/1与两张不同CA的helper-trust 1/1通过，取消/安装/撤销/删除走真实UI | `ca-reset.json`、`ca-e2e.json`（首条Green，第二条fixture竞态失败）、`helper-trust-final.json` |
+| 授权驱动 | 已修正helper退出与窗口/Renderer更新之间的采样竞态；首次初始化只在识别本轮helper及certificate阶段原生窗口后单独等待人工确认，Playwright独立fixture预算不扩大首窗/普通启动/产品请求期限 | helper-trust修正后Green；`startup-fixture-regression.json`非交互2/2，新增人工等待分支尚待实际运行 |
+| 证书Tools未通过 | 首例在120秒首次授信准备中超时，未进入业务正文，后一条未运行；授权晚于准备期限后App启动，恢复时只处理本轮自产CA | `tools-ca-final.json`、`ca-remaining.json`及目录；不得标为Tool功能Green |
+| 当前日常CA与宿主 | 已取消本轮未完成的撤销，将产品正常生成并已受信任的`B705FBDEF2397E85DAE3605550B916A0EA946ED6`保留为新日常CA；其他Root未变，App与helper子进程退出，完整代理恢复、无journal、8888释放 | `daily-ca-current.json`；旧`3C2E…`仅为历史基线 |
+| 真实失联收尾 | 后续非交互启动两次发生原生代理写请求30秒超时；第一次资源校验33.610秒，已确认服务实际为Interactive。typed client取得原请求完成证据，保留timeout并标completed，业务允许正常Close恢复；这不是普通启动Green，也不归因为人工授权 | `startup-wait-final.json`、`startup-wait-rerun.json`及Main日志/trace，`real-timeout-native.log`；资源验证尾延迟未解决 |
+
+#### 启动完整资源校验的进程隔离
+
+- 本轮恢复时同一已部署helper再次出现31.304秒完整资源校验；授权采样中主线程等待Security资源任务，资源线程主要停留在可执行文件扫描后的`free_medium → madvise`。新root进程同包校验2.29秒，连续六次完整验证2.2–2.9秒；用户级Interactive、QoS和串行对照未证明能解决常驻进程问题，不据此修改调度或验证内容。
+- 当前实现：常驻helper继续核验socket audit身份、固定App路径和运行时保护；每次需要完整资源校验时启动同一受保护helper的只读`verify-code-signature <absolute-code-path> <cdhash-requirement>`子进程。子进程只执行原Security API的身份、strict、nested、all-architectures及no-network检查，正常退出码0才可继续；失败或异常退出拒绝请求，不将CLI开放为socket命令。
+- 原请求保持占用，完成记录必须晚于校验子进程退出及真实系统写入收尾；30秒期限、128条结束记录边界、不重放、Windows与开发UID入口不变，不保存签名或信任缓存。此改动隔离已观测到的长期进程校验慢路径，不声称已证明macOS内存分配器的内部缺陷或覆盖所有长期负载。
+
+<a id="item4-resumed-acceptance"></a>
+#### 第4项恢复验收（2026-09-26）
+
+证据前缀为`/tmp/interceptor-item4-resume-20260925-`，日期保留首次恢复时的命名；JSON与同名目录中的trace、metadata及日志对应同一签名包，不与旧包数量相加。
+
+| 范围 | 结果及边界 | 证据后缀 |
+| --- | --- | --- |
+| 前置与失败定位 | 原生/证书/操作占用基线120/120；真实生产启动在完整校验31.304秒时超时，采样轮另有33.617秒。新只读入口与嵌套资源验证2项Red后才改native实现 | `native-baseline.json`、`startup-baseline.json`、`startup-sample.json`、`helper-active.sample.txt`、`sampled-native.log`、`signature-worker-red.json` |
+| 最终代码与类型 | 平台315通过、2项Windows native跳过；覆盖校验进程缺失/非零退出、错误身份、嵌套资源修改、结束记录及CA回滚。全workspace类型通过，最终fixture/测试改动后Desktop类型再通过 | `signature-worker-green.json`、`signature-failures-green.json`、`final-platform.json`、`typecheck.log` |
+| 新包与组件 | package、artifact audit（1487文件/339505825字节）、deep/strict/all-architectures签名通过；正常产品授权更新helper，包内与实装一致 | `package.log`、`artifact-audit.log`、`new-helper-startup.json`、`final-host.json` |
+| 生产共同路径 | helper复用1/1；共享CA、跨profile crash recovery、MCP代理冲突、Agent代理Ask/Auto/撤权/重启4/4；所有App代际退出，既有CA和完整系统代理保持 | `new-helper-startup.json`、`production-regression.json`及目录 |
+| 证书正向 | 两张不同CA直接Install/Uninstall/Delete、Agent/MCP六项证书操作与四次原生Reveal/View关窗、TLS意图/实际解密/撤权/重启3/3；首次人工授权及relaunch等待均实际执行 | `certificates-positive.json`及目录 |
+| 取消与占用 | 直接cancel-trust 1/1，首次启动取消/同CA重启1/1，并发Quit/MCP Delete/UI Delete拒绝且不重放1/1；每条均清理自产CA并恢复完整宿主 | `certificates-cancel-conflict.json`中的首条、`startup-cancel.json`、`certificate-conflict-ordered.json`及目录 |
+| 失败与恢复 | 原并发用例等待旧提示消失时Install已完成，Quit前提消失，不能记为产品busy Red。首轮留下的精确自产CA经产品恢复；后两轮前提断言失败但清理成功。调整为先验证Quit新提示，再验证两种Delete，保留原取消/材料/恢复断言 | `certificates-cancel-conflict.json`第二条、`certificate-conflict-final.json`、`certificate-conflict-confirmed.json`、`conflict-recovery-daily-remove.json` |
+| 校验耗时 | 同一新常驻helper保留约一小时期间，已保存并去重的60次生产完整校验837–1714ms，均低于原30秒期限；不是整个App启动耗时，也不把系统未保留的info日志当成已采集事件 | `observed-verification.log`、`final-host.json` |
+| 最终产物与宿主 | packaged smoke 1/1及已有截图矩阵通过；正常启动重建日常CA并授信，其他3张Root/admin trust保持，完整代理恢复、App/Core/Worker全退、仅常驻helper保留，无journal、8888释放 | `final-smoke.json`、`daily-restore.json`及trace、`final-host.json` |
+| 工具边界 | 尝试让人工确认等待300秒，但授权提前完成，该次实际为共享CA初始化/复用1/1；不能声称触发了driver的300秒超时自动取消catch分支。产品真实取消及回滚已由上面两条专项覆盖 | `startup-manual-timeout.json`及目录；该catch分支未覆盖 |
+
+最终日常CA为`D74D4BFB3C3708511A755AC6CD905840B464B255`；旧`B705…`与失败自产`54B224…`均已按精确身份经产品清理，不能继续作为当前日常CA。最终ASAR SHA-256为`359f44ea97cff9eee47cdf46eb8b23aa9eeafd7cb5e1e9021878c4d4e16ae6b4`；包内与实装helper SHA-256均为`21e129c9395239b52d647cd7d1c33531a790b08c02837ae58e1af3c2f73cc260`。
 
 Certificate module组装的`CertificateInfo`含`path`与`mitmEnabled`，不含私钥；解密材料只经内部Core RPC发送。
 
@@ -860,7 +894,7 @@ passthrough额外要求`expectedRevision`；空数组仅表示清空该名单，
 | 类型与相关UI | 8个workspace类型通过，HTTPS弹窗/退出单测9/9；最新fixture修改后Desktop typecheck通过 | `npm run typecheck`；`/tmp/interceptor-workspace-checkpoint-20260924-ui-unit.json` |
 | Updates候选 | 4张1600×900浅/深色前后图，Inter/JetBrains Mono实际字重已加载，检查/下载交互达到available/downloaded；未改正式shots或产品OAuth | `/tmp/interceptor-item6-20260924-design/evidence.json`；设计未确认，不算产品实现 |
 
-上表同一单元格中未写目录的文件与首个文件同前缀；带花括号的是各个独立文件，不是一次合并运行。完整产物身份：
+上表同一单元格中未写目录的文件与首个文件同前缀；带花括号的是各个独立文件，不是一次合并运行。以下是9月24日基线产物身份，不是第4项恢复后的最终包或当前日常CA；最新身份见“第4项恢复验收”：
 
 - ASAR SHA-256：`78878acc97489b8c9234d7ea6e9173eadb5c43e5133bacb25ca478bd9e97fa2f`。
 - helper SHA-256：`18590483b88049c8e1298bdc1f3e98418e8dafb9757ba17e2e73797f8035b86d`，包内与实装相同。

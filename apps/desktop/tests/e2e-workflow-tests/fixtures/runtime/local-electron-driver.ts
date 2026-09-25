@@ -26,6 +26,7 @@ import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { resolveMacosSystemProxyJournalPath } from '../../../../src/main/platform-capabilities/system-proxy/macos/journal';
 import { getByAutomationId } from '../ui/automation';
 import { registerTlsCompatibilityDismissal, requireSharedCertificateReady } from '../ui/https-capture';
+import { waitForMacosStartupCertificateAuthorization } from '../ui/macos-certificate-authorization';
 import {
   TrafficLab,
   type HttpTrafficRunner,
@@ -577,6 +578,9 @@ end tell
   /** Wait until Renderer, Core and Capture bootstrap reach a stable workflow state. */
   async waitUntilReady(): Promise<void> {
     await this.page.waitForLoadState('domcontentloaded');
+    if (process.platform === 'darwin') {
+      await waitForMacosStartupCertificateAuthorization(this.page, this.nativeFileDialogOwner());
+    }
     await expect(getByAutomationId(this.page, AUTOMATION_IDS.app.root)).toBeVisible({ timeout: 120_000 });
     if (process.platform === 'darwin') {
       const applicationPath = process.env.INTERCEPTOR_E2E_MACOS_APP_PATH ? resolveMacosApplicationPath() : null;
@@ -619,8 +623,12 @@ end tell
     await this.workflowHostSafetyGuard?.captureProcessTrees();
 
     if (process.platform === 'darwin') {
-      await expect(getByAutomationId(this.page, AUTOMATION_IDS.shell.boot.screen))
-        .toBeHidden({ timeout: 120_000 });
+      await expect.poll(async () => {
+        const bootScreen = getByAutomationId(this.page, AUTOMATION_IDS.shell.boot.screen);
+        const phase = await bootScreen.evaluateAll((elements) => elements[0]?.getAttribute('data-phase') ?? null);
+        if (phase === 'error') throw new Error('App reported a startup failure; inspect the Main log and startup trace.');
+        return !await bootScreen.isVisible();
+      }, { message: 'App startup did not finish', timeout: 120_000 }).toBe(true);
     }
     await this.dismissProxyReadiness();
   }
@@ -1293,7 +1301,7 @@ export const test = base.extend<LocalWorkflowFixtures>({
   allowSharedCertificateInitialization: [false, { option: true }],
   dismissTlsCompatibilityDialogs: [true, { option: true }],
   waitForStartupReady: [true, { option: true }],
-  desktopApp: async ({ allowSharedCertificateInitialization, dismissTlsCompatibilityDialogs, waitForStartupReady }, use, testInfo) => {
+  desktopApp: [async ({ allowSharedCertificateInitialization, dismissTlsCompatibilityDialogs, waitForStartupReady }, use, testInfo) => {
     if (!allowSharedCertificateInitialization) await requireSharedCertificateReady();
     const workflowHostSafetyGuard = await createWorkflowHostSafetyGuard();
     if (workflowHostSafetyGuard) {
@@ -1373,7 +1381,7 @@ export const test = base.extend<LocalWorkflowFixtures>({
     if (errors.length > 1) {
       throw new AggregateError(errors, 'Workflow and host cleanup both failed.');
     }
-  },
+  }, { timeout: process.platform === 'darwin' ? 600_000 : undefined }],
   trafficLab: async ({}, use) => {
     const trafficLab = await TrafficLab.start();
     try {

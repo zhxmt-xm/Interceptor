@@ -28,6 +28,9 @@ final class SystemProxyHelper {
         case "inspect-application":
             guard arguments.count == 2 else { throw HelperError.usage }
             try writeJSON(try MacosHelperInstallation.inspectApplication(path: arguments[1]))
+        case "verify-code-signature":
+            guard arguments.count == 3 else { throw HelperError.usage }
+            try MacosHelperService.verifyCodeSignature(path: arguments[1], requirement: arguments[2])
         case "deployment-status":
             guard arguments.count == 3, let userId = uid_t(arguments[2]) else { throw HelperError.usage }
             try writeJSON(try MacosHelperInstallation.deploymentStatus(applicationPath: arguments[1], userId: userId))

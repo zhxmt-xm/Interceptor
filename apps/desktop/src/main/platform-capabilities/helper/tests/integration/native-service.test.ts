@@ -1,7 +1,7 @@
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { createHash, webcrypto } from 'node:crypto';
 import { once } from 'node:events';
-import { chmod, copyFile, lstat, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { chmod, copyFile, lstat, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
 import { isDeepStrictEqual, promisify } from 'node:util';
@@ -93,10 +93,14 @@ describe.runIf(process.platform === 'darwin')('macOS native service transport', 
     return configurationPath;
   }
 
-  async function startService(overrides: Record<string, unknown> = {}, environment: 'production' | 'development' = 'production'): Promise<void> {
+  async function startService(
+    overrides: Record<string, unknown> = {},
+    environment: 'production' | 'development' = 'production',
+    serviceExecutablePath = helperPath,
+  ): Promise<void> {
     const configurationPath = environment === 'development'
       ? await configureDevelopmentService(overrides) : await configureService(overrides);
-    serviceProcess = spawn(helperPath, [environment === 'development' ? 'serve-development' : 'serve', configurationPath], { stdio: ['ignore', 'pipe', 'pipe'] });
+    serviceProcess = spawn(serviceExecutablePath, [environment === 'development' ? 'serve-development' : 'serve', configurationPath], { stdio: ['ignore', 'pipe', 'pipe'] });
     let stderr = '';
     let stdout = '';
     serviceProcess.stderr!.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
@@ -118,6 +122,45 @@ describe.runIf(process.platform === 'darwin')('macOS native service transport', 
     const { stdout } = await execFileAsync(clientPath, [socketPath, JSON.stringify(request)]);
     return JSON.parse(stdout) as Record<string, unknown>;
   }
+
+  it('verifies the expected code identity in an isolated read-only native invocation', async () => {
+    const before = JSON.parse((await execFileAsync(helperPath, ['get'])).stdout);
+    await expect(execFileAsync(helperPath, ['verify-code-signature', clientPath, clientRequirement]))
+      .resolves.toMatchObject({ stdout: '' });
+    await expect(execFileAsync(helperPath, [
+      'verify-code-signature', clientPath, `cdhash H"${'00'.repeat(20)}"`,
+    ])).rejects.toMatchObject({ code: 1 });
+    await expect(execFileAsync(helperPath, [
+      'verify-code-signature', path.join(directory, 'missing-client'), clientRequirement,
+    ])).rejects.toMatchObject({ code: 1 });
+    expect(JSON.parse((await execFileAsync(helperPath, ['get'])).stdout)).toEqual(before);
+  });
+
+  it.each([
+    ['missing', 'operation-failed'],
+    ['failed', 'unauthorized-client'],
+  ] as const)('rejects a %s signature verifier without returning successful status', async (failure, code) => {
+    const copiedHelperPath = path.join(directory, `verifier-${failure}`);
+    await copyFile(helperPath, copiedHelperPath);
+    await chmod(copiedHelperPath, 0o700);
+    const before = JSON.parse((await execFileAsync(helperPath, ['get'])).stdout);
+    await startService({}, 'production', copiedHelperPath);
+    expect(await requestFromNativeClient({ protocolVersion: 1, requestId: 'verified', operation: 'status' }))
+      .toMatchObject({ ok: true });
+
+    if (failure === 'missing') {
+      await rm(copiedHelperPath);
+    } else {
+      const replacementPath = path.join(directory, 'failed-verifier');
+      await writeFile(replacementPath, '#!/bin/sh\nexit 7\n', { encoding: 'utf8', mode: 0o700 });
+      await rename(replacementPath, copiedHelperPath);
+    }
+
+    expect(await requestFromNativeClient({ protocolVersion: 1, requestId: failure, operation: 'status' }))
+      .toMatchObject({ ok: false, error: { code } });
+    expect(serviceProcess!.exitCode).toBeNull();
+    expect(JSON.parse((await execFileAsync(helperPath, ['get'])).stdout)).toEqual(before);
+  });
 
   it.each(['system-proxy.replace', 'certificate.import', 'certificate.remove'] as const)(
     'reports completion metadata for an ended %s request without granting a system write', async (operation) => {
@@ -540,22 +583,27 @@ describe.runIf(process.platform === 'darwin')('macOS native service transport', 
     const { stderr } = await execFileAsync('/usr/bin/codesign', ['--display', '--verbose=4', applicationPath]);
     const applicationCodeHash = /^CDHash=([a-f0-9]+)$/m.exec(stderr)?.[1];
     if (!applicationCodeHash) throw new Error('The application fixture has no code identity.');
+    const requirement = `cdhash H"${applicationCodeHash}"`;
+    await expect(execFileAsync(helperPath, ['verify-code-signature', applicationPath, requirement]))
+      .resolves.toMatchObject({ stdout: '' });
     await startService({
       clientExecutablePath: applicationExecutablePath,
-      clientRequirement: `cdhash H"${applicationCodeHash}"`,
+      clientRequirement: requirement,
     });
     const request = JSON.stringify({ protocolVersion: 1, requestId: 'bundle', operation: 'status' });
     const approved = await execFileAsync(applicationExecutablePath, [socketPath, request]);
     expect(JSON.parse(approved.stdout)).toMatchObject({ ok: true });
 
     await writeFile(path.join(nestedApplicationPath, 'Contents', 'Resources', 'resource.txt'), 'changed', 'utf8');
+    await expect(execFileAsync(helperPath, ['verify-code-signature', applicationPath, requirement]))
+      .rejects.toMatchObject({ code: 1 });
     const changed = await execFileAsync(applicationExecutablePath, [socketPath, request]);
     expect(JSON.parse(changed.stdout)).toMatchObject({ ok: false, error: { code: 'unauthorized-client' } });
   });
 
   it('rejects unknown commands and unexpected parameters instead of exposing command execution', async () => {
     await startService();
-    for (const operation of ['execute', 'proxy.set', 'certificate.install', 'install-helper', 'uninstall-helper']) {
+    for (const operation of ['execute', 'proxy.set', 'certificate.install', 'install-helper', 'uninstall-helper', 'verify-code-signature']) {
       expect(await requestFromNativeClient({ protocolVersion: 1, requestId: operation, operation }))
         .toMatchObject({ ok: false, error: { code: 'unsupported-operation' } });
     }

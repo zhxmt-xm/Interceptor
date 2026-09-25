@@ -1,26 +1,28 @@
 # Interceptor Handover
 
-> Tracked commit: `0033f9ab`
+> Tracked commit: `2eaaaf87`（第4项收尾提交前基线；原已提交部分为`0033f9ab`，本交接与收尾代码同次提交）
 > Branch: `main`
-> 最后更新：2026-09-25
+> 最后更新：2026-09-26
 
-**不允许记录流水账！！！执行任务列表时不允许停下**
+**用户于2026-09-26 01:13授权将第4项CA产品范围与启动阻塞修正合为一个收尾commit并push main；不改写已推送历史，不推进第5/6项或正文设计。交接只记录结论、缺口与证据入口，不追加流水账。**
 
 ## 当前状态
 
-- 第2项共享CA、第3项当前版本统一启动检查、第7项产物验收已关闭。用户要求继续下一项，本轮只实现第4项的失联写入收尾；不进入第5/6项或恢复暂停的正文设计。
-- 用户于2026-09-24明确授权先保存全部剩余工作区进度并push，提交后保持改动区为空；未完成的实现、文档审阅、设计确认与验收继续保留在下表。保存暂停草稿不等于恢复执行或确认设计。
-- item状态、实现与报告同步更新到各自对应commit；本轮状态更正按用户要求并回原提交，不另建后续文档commit。
+- 第4项CA产品范围已取得最终验收：原生失联收尾、证书生命周期/取消、Agent/MCP/TLS、并发拒绝及宿主恢复通过；新包已部署且smoke通过。原第2/3/7项关闭范围不变，第5/6项及正文设计未推进。
+- 本次提交前`main`与本地`origin/main`基线均为`2eaaaf87`。接手时6个未提交文件均保留并整合；本轮另修改native helper的只读签名校验执行方式及所属测试/文档，未改依赖或其他item。
+- 接手的[local-electron-driver.ts](../apps/desktop/tests/e2e-workflow-tests/fixtures/runtime/local-electron-driver.ts)与[macos-certificate-authorization.ts](../apps/desktop/tests/e2e-workflow-tests/fixtures/ui/macos-certificate-authorization.ts)已由真实启动、人工授信、取消及relaunch验收。额外尝试的300秒无人确认场景提前完成授权，实际为初始化/复用Green；driver的300秒超时catch未触发，不宣称工具所有分支均已覆盖。
+- 本次收尾统一包含原有[fixture README](../apps/desktop/tests/e2e-workflow-tests/fixtures/README.md)、[settings.md](features/settings.md)、[第4项原报告](../commit-changes/202609241020_main_ca_unknown-write-boundary.html)及本交接，连同native、fixture、所属测试和平台文档共15个文件；沿用原报告，不另拆文档或测试commit。
 - 平台实现基线为`218295b0`，对应[平台报告](../commit-changes/202609240135_main_shared-ca_startup.html)；后续保存剩余工作区进度的提交对应独立[工作区报告](../commit-changes/202609240150_docs_workspace_progress.html)。两份均为9月24日，每个commit各有自己的报告，不共用、不覆盖。GitHub候选的四张图只放在工作区报告中，不额外生成预览报告。
-- 用户现已解锁，并明确允许通过产品卸载、删除当前日常CA后重新生成，愿意确认系统授权；只清理产品管理的精确CA，不处理其他系统根证书。正文、HTTPS弹窗、Bilibili及独立package仍不扩展，第8项留Windows实机。
+- 最终宿主：日常CA已通过正常启动重建并授信，当前指纹`D74D4BFB3C3708511A755AC6CD905840B464B255`；原日常CA与失败自产CA均经产品清理，其他3张Root/admin trust保持。App/Main/Core/Worker全退，完整代理恢复、无journal、8888释放，仅保留获准常驻helper。
 
 ## Task List
 
-- **4. CA 操作与 E2E · 代码完成 · 待证书专项确认**
-	- 当前实现：仅失联写入后查询原ID的结束记录；匹配后仍返回原错误，由原module回读/回滚并释放占用，不重放。未发送、未确认或已有CA不清理。目标23项Red及未发送import的补充Red后，平台312通过/2 Windows native跳过、类型、构建、audit与严格签名通过。
-	- 边界：结束记录仅在各自受保护socket所属helper实例中保留最近128个写请求的ID/操作名，无代理配置、证书或信任缓存；重启/淘汰后无记录不能解锁，前台授权进程异常也不借用该证明。现有显式CA生命周期与共享调用方须同组复验，再执行新包验收。
-	- 当前产物：新helper已获授权并与包内一致；组件/共享CA/代理恢复3条及Agent/MCP共享入口2条真实E2E、smoke 1/1通过，九代App全退、完整代理和日常CA保持。窗口准备的fixture遗漏已修正，失败与恢复证据保留。
-	- 剩余：新包证书写入/取消专用E2E要求空共享CA目录；本轮保留日常CA，尚未获准再次清理/重建，因此未运行。故障帧/失联分支的native及传输集成结果不冒充真实UI触发故障；不进入第5项。
+- **4. CA 操作与 E2E · CA范围已验收；正文子项待确认（暂停）**
+	- CA产品范围的实现、测试、验收证据和原报告按用户授权纳入本次收尾commit。`0033f9ab`保留为原已推送中间commit，不amend；本项只剩暂停的正文子项，不为验收子步骤拆commit。
+	- 当前实现：失联写入仅查询原ID/操作的结束记录，仍返回原错误，由原module回读/回滚并释放占用，不重放；未发送、未确认或已有CA不清理。生产完整资源校验由同一受保护helper的短生命周期只读子进程执行，身份、strict/nested/all-architectures及no-network检查保留。
+	- 最终验证：原生新入口2项Red后，平台315通过/2 Windows native跳过、全workspace类型及最终Desktop复查通过；package、artifact audit、严格签名、11条不同真实E2E及共享CA首次初始化的额外1次运行、smoke 1/1均通过。前置失败、3次冲突前提失败和恢复证据保留，不改写为Green。
+	- 启动结论：旧常驻进程完整校验31.304/33.617秒；采样定位到Security扫描后的`free_medium → madvise`。新helper约一小时生产运行期间已保存去重60次完整校验837–1714ms，无30秒超时；此数值不是整个App启动耗时，不宣称已查明macOS分配器内部成因。证据前缀`/tmp/interceptor-item4-resume-20260925-`，详细矩阵见[Settings](features/settings.md#item4-resumed-acceptance)。
+	- 边界：helper每端点只留最近128个结束请求的ID/操作名；重启/淘汰/缺记录或前台授权异常不能推断结束。不自动重放、不放宽产品期限、不缓存信任。
 	- 正文子项暂停：只读预览2 MiB、完整且不超过1 MiB自动格式化、1–2 MiB可手动格式化，截断不格式化；图片独立16 MiB。Text完整编辑，File只预览但使用完整文件；初始高度、内滚动和resize不影响完整保存/导出/发送。产品未实现；本次仅保存已有compact正文、resize及自定义gRPC设计候选，不改正式shots、不视为定稿。
 - **5. macOS journal 收尾 · blocked（外部环境）**
 	- 当前：[journal](../apps/desktop/src/main/platform-capabilities/system-proxy/macos/journal.ts)跨profile恢复复验Green。生产超时已定位并修复：完整资源校验37.4秒超过30秒，同一签名API只读对照为Background26.99秒、普通6.27秒；不反推历史14:09缺失的耗时证据。
@@ -54,9 +56,9 @@
 
 ## Constraints
 
-- 用户已明确授权经产品Uninstall/Delete清理当前CA `16CEB8D0990CCC29FA7313B7F85F1167B227C26C`并重新生成，新指纹会变化；只处理该CA及专项由产品新生成的CA，其他系统Root/admin trust保持。helper卸载/rollback、历史其他CA及ClashX不自动处理。
-- 当前日常CA为`3C2E5F2AC71BDB4E82AA47AA49E79276D3EACDD5`，已经正常产品启动生成并授信。普通workflow/smoke保留它；不再以旧指纹作为当前基线，不复制或注入材料。
-- 剩余草稿已按用户授权保存；本次历史修正仅回写第3、7项对应提交，其他历史和暂停功能不动。未完成项继续跟踪，不因commit而标passed。
+- `16CEB8D0990CCC29FA7313B7F85F1167B227C26C`与`3C2E5F2AC71BDB4E82AA47AA49E79276D3EACDD5`是已经按授权处理过的历史CA，不是当前身份。恢复第4项只通过产品处理重新核对后的本轮日常CA及专项自产CA；其他Root、历史CA、ClashX与helper卸载不在范围。
+- 历史日常CA `3C2E5F2AC71BDB4E82AA47AA49E79276D3EACDD5`、`B705FBDEF2397E85DAE3605550B916A0EA946ED6`及失败自产`54B224ABC1D2C88BBDB2B43396A5EBC4DC8B023C`均已按精确身份经产品清理。当前日常CA为`D74D4BFB3C3708511A755AC6CD905840B464B255`，普通workflow/smoke保留它；其他Root保持，未复制或注入材料。
+- 接手时6个未提交修改已保留、审阅并整合进本次15文件收尾范围，不回滚或覆盖其他工作，不重写已有commit。已有证据不删除，未验证或暂停范围不因提交而标passed。
 - 12份原保护文件的内容保持，现按授权纳入checkpoint；7份stash不得重复apply/drop。原保护清单：`/tmp/interceptor-macos-resource-check-20260922-preserved.json`。
 - macOS App/E2E/smoke共用`8888`与系统代理，必须串行，结束核对完整宿主恢复。其余通用规则依[AGENTS.md](../AGENTS.md)，不在这里重复。
 
@@ -67,11 +69,13 @@
 | 范围 | 当前结论 | 未覆盖或限制 |
 | --- | --- | --- |
 | 共享CA（原第2项） | 跨profile与删除profile后保留1/1，材料/信任和退出恢复通过 | Windows实机留第8项 |
-| 启动与证书（原第3项） | 已验基线首次生成/授权1/1、启动取消/Quit1/1、显式取消与完整生命周期2/2 | 第4项失联写入收尾已实现，新包运行验收待组件授权 |
-| 当前macOS产物 | 第4项新helper已部署，生产E2E 5条及smoke 1/1、类型和静态检查通过 | 新包证书写入/取消专项待清理CA的确认，不复用旧包结果 |
+| 证书验收 | 新包直接生命周期、Agent/MCP六项及原生窗口、TLS、取消回滚、启动取消、Quit/Delete冲突均Green | driver的300秒人工等待超时catch未触发；不冒充产品取消缺口或全分支覆盖 |
+| 当前macOS产物 | 新helper已部署且包内一致；11条不同真实E2E与额外首次初始化运行通过，smoke 1/1；已保存60次完整校验837–1714ms | Windows实机留第8项；本轮未恢复其他暂停流程 |
 | UI parity | 406/406，无missing/flagged；402复用、4重跑，修正前后PNG一致 | 没有修改产品、设计或阈值 |
-| 类型/回归 | workspace类型通过；第4项平台回归312通过、2项Windows native跳过 | 其他有效基线见证据索引；Core的2项framing失败及Windows实机缺口保留 |
-| 宿主恢复 | 新日常CA受信任并保留；完整代理恢复、App全退、无journal、8888释放 | 当前CA身份见Constraints |
+| 类型/回归 | workspace类型及最终Desktop类型通过；第4项平台315通过、2项Windows native跳过 | 其他有效基线见证据索引；Core的2项framing失败及Windows实机缺口保留，未跑无关全套 |
+| 最后宿主核验 | 新日常CA受信任；其他Root/admin trust保持、完整代理恢复、App/Core/Worker全退、无journal、8888释放 | `/tmp/interceptor-item4-resume-20260925-daily-restore.json`及trace、`final-host.json`；仅获准常驻helper保留 |
+
+本轮证据已另存持久副本：`/Users/zhxmt/.copilot/session-state/df17625e-cb60-4ece-a735-8d703667fab6/files/item4-acceptance-summary.json`；同目录`item4-acceptance-20260926.tar.gz`保留原始Red、失败、Green与trace，SHA-256为`ba3f9ee81b6aae05a96d6bfdb69fba76fbe2ffff0cf46d87bd8c0e9e0d9937f8`。最终逐项核对12次成功运行、11条不同workflow的trace存在及每代退出metadata，未将失败记录算入。
 
 ## Windows 复验
 
@@ -88,7 +92,7 @@
 
 ## 恢复命令
 
-用户在场并恢复验收后，先正常启动新包处理必要的系统确认，再关闭App运行smoke。证书生命周期专项要求空共享目录，不能直接对日常CA执行。其他具体命令查[测试说明](platform/testing.md)和[证书规格](../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md)。
+当前helper已经部署且日常CA就绪，不为重复验收更新组件或清理日常CA。后续证书专项若需要空材料，须重新确认当前身份与清理范围。其他具体命令查[测试说明](platform/testing.md)和[证书规格](../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md)。
 
 ```sh
 open -n -a "$PWD/apps/desktop/out/Interceptor-darwin-x64/Interceptor.app" --args --user-data-dir="$(mktemp -d /tmp/interceptor-helper-approval.XXXXXX)"

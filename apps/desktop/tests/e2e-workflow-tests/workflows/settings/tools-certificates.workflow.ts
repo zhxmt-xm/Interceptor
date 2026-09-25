@@ -371,6 +371,7 @@ test.describe('certificate operation conflicts', () => {
     const owner = desktopApp.nativeFileDialogOwner();
     let client: Client | null = null;
     let installation: ReturnType<Client['callTool']> | null = null;
+    let installationSettled = false;
     let authorization: Awaited<ReturnType<typeof waitForMacosCertificateTrustRequest>> | null = null;
     let workflowError: unknown;
     const cleanupErrors: unknown[] = [];
@@ -393,11 +394,21 @@ test.describe('certificate operation conflicts', () => {
       await openCertificates(page);
       await desktopApp.startTrace(testInfo);
 
-      // 用户操作：授信保持在真实系统确认阶段，另一个MCP请求和实际Delete点击必须立即拒绝。
-      // User actions: while real system authorization is pending, reject a second MCP mutation and the actual Delete click immediately.
+      // 用户操作：在真实授信等待中先点Quit，空提示区必须立即出现冲突且App保持。
+      // User actions: while trust is pending, Quit must create a fresh conflict notification and keep the App open.
+      await expect(getByAutomationId(page, AUTOMATION_IDS.platform.operationConflict)).toHaveCount(0);
+      console.info('[workflow] Keep the next certificate Install confirmation open; the workflow will cancel it after checking conflicts.');
       installation = client.callTool({ name: TOOL_NAMES[1], arguments: {} }, { timeout: 120_000 });
-      void installation.catch(() => undefined);
+      void installation.then(() => { installationSettled = true; }, () => { installationSettled = true; });
       authorization = await waitForMacosCertificateTrustRequest(owner);
+      expect(installationSettled, 'Keep native Install authorization pending until the workflow cancels it').toBe(false);
+      await getByAutomationId(page, AUTOMATION_IDS.shell.window.close).click({ timeout: 5_000 });
+      await expect(getByAutomationId(page, AUTOMATION_IDS.platform.operationConflict))
+        .toHaveAttribute('data-operation', 'certificate.install', { timeout: 5_000 });
+      expect(page.isClosed()).toBe(false);
+
+      // 用户操作：同一次授权未结算时，另一个MCP Delete和实际UI Delete均拒绝且材料不变。
+      // User actions: during the same pending authorization, reject both MCP and UI Delete without changing material.
       const rejected = await client.callTool({ name: TOOL_NAMES[3], arguments: {} }, { timeout: 5_000 });
       expect(rejected.isError, 'Delete must fail while certificate installation is still awaiting system authorization').toBe(true);
       const message = rejected.content.find((entry) => entry.type === 'text')?.text ?? '';
@@ -405,13 +416,6 @@ test.describe('certificate operation conflicts', () => {
       expect(message).toContain('certificate.install');
       expect(await certificateIdentity(desktopApp)).toBe(thumbprint);
       await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete).click({ timeout: 5_000 });
-      await expect(getByAutomationId(page, AUTOMATION_IDS.platform.operationConflict))
-        .toHaveAttribute('data-operation', 'certificate.install', { timeout: 5_000 });
-
-      // 用户操作：等待旧提示消失后点Quit，必须重新显示在途操作，不能提前关闭App。
-      // User actions: after the old message closes, Quit must report the active operation without closing the App.
-      await expect(getByAutomationId(page, AUTOMATION_IDS.platform.operationConflict)).toHaveCount(0);
-      await getByAutomationId(page, AUTOMATION_IDS.shell.window.close).click({ timeout: 5_000 });
       await expect(getByAutomationId(page, AUTOMATION_IDS.platform.operationConflict))
         .toHaveAttribute('data-operation', 'certificate.install', { timeout: 5_000 });
 
@@ -439,8 +443,10 @@ test.describe('certificate operation conflicts', () => {
       // 清理：先结束已归属的原生确认及原请求，再通过UI清理本轮材料并核对完整系统集合。
       // Cleanup: settle owned native authorization and the original request before UI cleanup and exact root-set verification.
       try {
-        if (authorization) await cancelMacosCertificateTrustRequest(owner, authorization);
+        if (authorization && !installationSettled) await cancelMacosCertificateTrustRequest(owner, authorization);
         if (installation) await installation;
+      } catch (error) { cleanupErrors.push(error); }
+      try {
         await removeCreatedSharedCertificate(desktopApp, rootsBefore);
         expect(await rootFingerprints()).toEqual(rootsBefore);
       } catch (error) { cleanupErrors.push(error); }

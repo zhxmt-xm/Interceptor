@@ -12,6 +12,66 @@ import { getByAutomationId } from './automation';
 const execFileAsync = promisify(execFile);
 const helperPath = '/Library/PrivilegedHelperTools/com.zhxmt.interceptor.platform-capabilities';
 
+export async function waitForMacosStartupCertificateAuthorization(
+  page: Page, owner: WorkflowProcessIdentity,
+): Promise<void> {
+  const pending: { requester?: WorkflowProcessIdentity; agent?: WorkflowProcessIdentity } = {};
+  await expect.poll(async () => {
+    await verifyOwner(owner);
+    if (await getByAutomationId(page, AUTOMATION_IDS.app.root).isVisible()) return 'ready';
+    const phase = await getByAutomationId(page, AUTOMATION_IDS.shell.boot.screen)
+      .evaluateAll((elements) => elements[0]?.getAttribute('data-phase') ?? null);
+    if (phase === 'error') throw new Error('App reported a startup failure; inspect the Main log and startup trace.');
+    if (phase !== 'certificate') return 'preparing';
+    const requester = await foregroundTrustRequester(owner);
+    if (!requester) return 'preparing';
+    const agents = await authorizationWindowProcessIds();
+    if (agents.length === 0) return 'preparing';
+    expect(agents, 'Startup must expose one native authorization window').toHaveLength(1);
+    pending.requester = requester;
+    pending.agent = await MacosWorkflowHostSafetyOperations.readProcessIdentity(agents[0]!);
+    return 'authorization';
+  }, { message: 'Startup did not reach readiness or its owned certificate authorization', timeout: 120_000 })
+    .not.toBe('preparing');
+  if (!pending.agent || !pending.requester) return;
+  await verifyOwner(owner);
+  const { stdout } = await execFileAsync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', `
+const events = Application("System Events");
+const agents = events.applicationProcesses.whose({ unixId: ${pending.agent.processId} })();
+if (agents.length === 0 || agents[0].windows().length === 0) "settled";
+else {
+  if (agents.length !== 1 || agents[0].windows().length !== 1) throw new Error("Startup authorization is ambiguous");
+  const agent = agents[0];
+  agent.visible = true;
+  agent.frontmost = true;
+  const raise = agent.windows()[0].actions.whose({ name: "AXRaise" })();
+  if (raise.length === 1) raise[0].perform();
+  "awaiting-user";
+}
+`], { encoding: 'utf8', timeout: 5_000 });
+  if (!['settled', 'awaiting-user'].includes(stdout.trim())) {
+    throw new Error('Unexpected startup authorization window state.');
+  }
+  console.info(`[workflow] Waiting for the system certificate confirmation owned by Main ${owner.processId}.`);
+  const authorization = { requester: pending.requester, agent: pending.agent };
+  try {
+    await expect.poll(async () => {
+      await verifyOwner(owner);
+      return (await authorizationWindowProcessIds()).includes(authorization.agent.processId);
+    }, { message: 'The owned startup certificate authorization was not completed', timeout: 300_000 }).toBe(false);
+  } catch (error) {
+    try {
+      if ((await authorizationWindowProcessIds()).includes(authorization.agent.processId)) {
+        await cancelMacosCertificateTrustRequest(owner, authorization);
+        await dismissMacosStartupFailure(owner);
+      }
+    } catch (cleanupError) {
+      throw new AggregateError([error, cleanupError], 'Startup authorization did not settle and its native cancellation failed.');
+    }
+    throw error;
+  }
+}
+
 export async function installMacosCertificateThroughHelper(
   page: Page, owner: WorkflowProcessIdentity, certificatePath: string,
 ): Promise<void> {
@@ -32,7 +92,10 @@ export async function installMacosCertificateThroughHelper(
       const agents = await authorizationWindowProcessIds();
       if (agents.length > 0) {
         expect(agents).toHaveLength(1);
-        expect(await foregroundTrustRequester(owner), 'Only the native helper may request certificate trust authorization').not.toBeNull();
+        if (!await foregroundTrustRequester(owner)) {
+          // The helper can exit between the native-window and process snapshots.
+          return getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall).isVisible();
+        }
       }
       return false;
     }
@@ -47,7 +110,9 @@ export async function installMacosCertificateThroughHelper(
   }, { message: 'The native helper did not complete certificate trust', timeout: 120_000 }).toBe(true);
   if (!pendingAuthorization.securityProcess || !pendingAuthorization.agentProcess) {
     await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.uninstall)).toBeEnabled();
-    expect(await authorizationWindowProcessIds(), 'The helper authorization window did not close').toEqual([]);
+    await expect.poll(authorizationWindowProcessIds, {
+      message: 'The helper authorization window did not close',
+    }).toEqual([]);
     return;
   }
   await cancelAuthorizationWindow(owner, pendingAuthorization.securityProcess, pendingAuthorization.agentProcess);
@@ -132,9 +197,25 @@ async function foregroundTrustRequester(owner: WorkflowProcessIdentity): Promise
     return match && Number(match[2]) === owner.processId && match[3] === helperPath ? [Number(match[1])] : [];
   });
   if (children.length !== 1) return null;
-  const argumentsResult = await execFileAsync('/bin/ps', ['-ww', '-p', String(children[0]), '-o', 'args='], { encoding: 'utf8' });
-  if (argumentsResult.stdout.trim() !== `${helperPath} certificate.trust`) return null;
-  return MacosWorkflowHostSafetyOperations.readProcessIdentity(children[0]!);
+  try {
+    const argumentsResult = await execFileAsync('/bin/ps', ['-ww', '-p', String(children[0]), '-o', 'args='], { encoding: 'utf8' });
+    if (argumentsResult.stdout.trim() !== `${helperPath} certificate.trust`) return null;
+    return await MacosWorkflowHostSafetyOperations.readProcessIdentity(children[0]!);
+  } catch (error) {
+    if (typeof error === 'object' && error !== null && 'code' in error) {
+      if (error.code === 'ESRCH') return null;
+      if (error.code === 1) {
+        try {
+          await MacosWorkflowHostSafetyOperations.readProcessIdentity(children[0]!);
+        } catch (identityError) {
+          if (typeof identityError === 'object' && identityError !== null
+            && 'code' in identityError && identityError.code === 'ESRCH') return null;
+          throw identityError;
+        }
+      }
+    }
+    throw error;
+  }
 }
 
 async function cancelAuthorizationWindow(

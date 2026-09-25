@@ -18,6 +18,9 @@
 - `LocalElectronApplicationDriver`提供代理只读证据与journal路径；Windows继续读取WinINet和`LOCALAPPDATA`共享journal，macOS读取SystemConfiguration和用户级Interceptor Platform journal，两端crash恢复均用fresh profile。
 - 普通workflow在启动前只读检查共享CA已就绪，运行中只恢复profile内TLS配置，不Generate/Install/Uninstall/Delete。首次初始化使用certificate-startup workflow；破坏性证书专项使用`certificate-lifecycle-driver.ts`，要求启动前共享材料为空，基线包含完整系统Root/admin trust，只能清理本轮CA，不使用产品隐藏参数。
 - 首次授权/取消workflow用测试端`waitForStartupReady: false`取得准备中的首窗，自己验证BootScreen、原生确认与失败退出；普通workflow默认仍等ready。该选项只控制driver的等待时机，不改变产品参数、Store、IPC或原生返回值。
+- macOS的`waitUntilReady()`先在既有120秒自动准备时限内观察ready或本轮helper的唯一授信窗口，首次启动与relaunch使用同一路径；仅确认该窗口存在且启动阶段为certificate后，前置并单独等待用户确认（最多300秒），再执行原来的ready/Core/listener检查。超时只取消归属明确的本轮窗口，保留失败，不继续业务步骤。`desktopApp`使用Playwright独立的600秒fixture预算，人工准备不消耗测试正文预算；首窗、普通启动和业务断言期限不变，Windows不变。`waitForStartupReady: false`的取消专项仍自己控制授权。
+- macOS证书授权窗口和helper进程是分次采样：helper已退出但窗口或Renderer尚未更新时继续等待正式完成状态，不把该瞬间当成错误授权路径。仍检查本轮Main的真实`security add-trusted-cert`调用并明确拒绝；成功后等待原生窗口退出，不跳过系统确认。
+- 启动页已进入公开的`data-phase="error"`时，driver立即报告启动失败并保留Main日志/trace，不再继续等待hidden直到耗尽120秒，也不自动点击Retry把失败改成通过。
 - `LocalElectronApplicationDriver.launch()`为每代App的Page注册TLS兼容性提示handler，保留到Page关闭；准备、业务操作、清理和relaunch使用相同策略。仅激活“暂不”，不添加规则；macOS以仍存在的host行为触发条件，用真实Enter激活按钮，不等待可能被新事件重新占据的提示selector消失，原操作仍需通过actionability；Windows保留dismiss按钮触发/click。普通清理不再重复点击同一按钮。专门验证该提示的workflow声明`test.use({ dismissTlsCompatibilityDialogs: false })`，不自动关闭待测弹窗；策略只在测试端，不进入产品。
 - Windows宿主guard使用原六字段比较；macOS完整比较network service快照，并额外保存/复核admin trust。该检查只属于Macos宿主操作，不在TLS/gRPC/H2 workflow追加Windows证书读取。
 - macOS driver按Playwright项目配置准备真实窗口：常规`macos`使用1600x900，只有body-fill滚轮边界用`macos-scroll-boundary`的1600x800，两个项目不重复运行workflow。先校验Main PID/启动时间并等待System Events看到窗口，再调整和验证内容尺寸。Windows不增加项目或窗口调整；业务workflow不通过产品CSS或额外请求数据制造滚动。

@@ -302,8 +302,8 @@ diagnostics.row.<traceKey>
 | `settings.navigation` | 九个Settings section与跨workspace返回保持 | shared | passed |
 | `settings.tools.readonly` | Agent/MCP六项Settings只读查询、脱敏、撤权、双代零重放与完整宿主恢复 | shared | passed |
 | `settings.tools.system-proxy` | Agent审批/Auto启用与恢复系统代理、首次original保持、撤权和双代零重放 | os-side-effect | passed |
-| `settings.tools.tls` | TLS名单与解密意图/有效状态、即时UI同步、撤权、重启和测试CA清理 | privileged UI | Windows历史passed；macOS平台查询已接入，完整流程待验 |
-| `settings.tools.certificates` | Agent/MCP六项证书生命周期与查看、授权、重启及完整CA清理 | native-ui + privileged UI | Windows历史passed；macOS清点/Finder已分派，View及完整流程待验 |
+| `settings.tools.tls` | TLS名单与解密意图/有效状态、即时UI同步、撤权、重启和测试CA清理 | privileged UI | Windows历史passed；2026-09-26 macOS签名包全流程与双代退出、Root/admin trust/代理恢复通过，见[规格](docs/settings-updates.md#settings-tools-tls) |
+| `settings.tools.certificates` | Agent/MCP六项证书生命周期与查看、授权、重启及完整CA清理 | native-ui + privileged UI | Windows历史passed；2026-09-26 macOS签名包六项、原生View/Finder、重启及取消冲突通过，见[规格](docs/settings-updates.md#settings-tools-certificates) |
 | `settings.tools.app-containers` | Agent/MCP单项及批量exemption、挂载同步、撤权与双代恢复 | privileged UI | passed |
 | `settings.tools.language` | 原UI/Agent/MCP语言设置、独立授权、持久化与双代销毁 | shared | passed |
 | `settings.tools.preferences` | 原UI/Agent/MCP主题与Privacy默认值、HAR草稿隔离和双代销毁 | shared | passed |
@@ -317,7 +317,7 @@ diagnostics.row.<traceKey>
 | `settings.certificates.shared-startup` | 自动准备共享CA，正常退出保留，跨fresh profile复用且不重写材料 | shared / os-side-effect | macOS签名包生成/复用及删除profile后保留已验；范围见[Handover](../../../../architecture/HANDOVER.md#verification) |
 | `settings.certificates.startup-cancel` | 首次原生授权时首窗可见、Quit即时拒绝、取消收尾及同CA正常重启 | macOS / os-side-effect | 当前签名包Green及两代退出已验；原启动实现的历史前置证据缺口见[规格](docs/settings-updates.md#certificate-startup-cancel) |
 | `settings.certificates.trust` | Install/Uninstall本机信任 | os-side-effect | planned |
-| `settings.certificates.helper-trust` | macOS两张不同CA直接经前台helper授信/撤销，复用同一常驻组件 | macOS / os-side-effect | 2026-09-24签名包Green及Root/admin trust、进程、8888恢复已验；保留历史失败及前置范围说明 |
+| `settings.certificates.helper-trust` | macOS两张不同CA直接经前台helper授信/撤销，复用同一常驻组件 | macOS / os-side-effect | 2026-09-26新签名包Green及Root/admin trust、进程、8888恢复已验；保留历史失败及前置范围说明 |
 | `settings.certificates.cancel-trust` | 取消helper前台入口的系统确认，由产品撤回新增CA | macOS / os-side-effect | passed：直接授权目标前置Red保留，2026-09-24签名包取消/清理与宿主恢复Green |
 | `settings.helper-startup` | macOS首次部署及开发/生产入口复用，不覆盖另一份授权 | macOS / os-side-effect | passed：见对应规格的分阶段证据 |
 | `settings.certificates.https` | MITM switch和host例外 | os-side-effect | planned |

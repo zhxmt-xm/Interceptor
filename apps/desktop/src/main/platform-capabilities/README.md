@@ -12,6 +12,7 @@ Desktop Main 的平台能力模块。先在 Main 内聚合现有代码和测试�
 - `getSupportedCapabilities()`：按业务module名称返回支持列表，不把Trust Store、连接归属或图标拆成平级capability；helper是内部执行设施，不列为业务能力。supported不随helper是否已构建或安装改变，也不是ready、owned或authorized。
 - `prepare()`顺序完成helper组件检查、异常退出journal读取和共享CA准备；helper准备忙时不能重复调用或退出。Windows不增加授权步骤，macOS按真实`app.isPackaged`选择生产/开发入口，失败不回退到开发。
 - 生产`deployment-status`只做部署发现：校验应用身份、Hardened Runtime/entitlements及所有架构的主可执行文件，再核对受保护组件、配置和socket；不重复扫描bundle资源。此结果不授权写入，`HelperService.prepare()`随后必须取得服务端完整App准入；`inspect-application`、请求安装和root安装仍使用完整资源/内嵌代码校验，不缓存信任或改变30秒请求期限。
+- 生产socket的完整资源校验由常驻服务启动同一受保护helper的短生命周期`verify-code-signature <absolute-code-path> <cdhash-requirement>`子进程；路径取自已认证的SecCode，requirement取自受保护配置，不接收socket payload中的路径或校验结果。子进程执行原Security API的身份、strict、nested、all-architectures及no-network检查，正常退出0后服务才继续；身份/运行时保护、系统写入和结束记录仍由常驻服务负责。该只读CLI不开放为socket命令，不缓存任何验证结果，用进程隔离避免长期分配历史拖慢大可执行文件校验。
 - `synchronizeCore / updateCoreProcessStatus / assertCanQuit / stop`封装平台相关生命周期；Main只调用，不实现恢复去重、Core配置或module忙状态。
 - `getClientAppIcons / loadClientAppIcons`由[client-app/entry.ts](client-app/entry.ts)的ClientAppService管理真实缓存及helper读取；CoreRuntime仍复用无状态`resolveClientAppHelperPath`。Main只转发图标通知，本目录不导入Electron运行时。
 - 平台业务API不接收AbortSignal。Agent/MCP在调用前检查取消，已开始操作必须完成或失败收尾；原生超时/断线不直接证明操作结束。用户冲突立即报错，不排队、不重放。
