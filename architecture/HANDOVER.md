@@ -1,14 +1,14 @@
 # Interceptor Handover
 
-> Tracked commit: `d6debb2e`（第4项CA范围收尾已提交并push；原已提交部分为`0033f9ab`）
+> Tracked commit: `4e766148`（第4项正文已验收、提交并push；CA阶段为`d6debb2e`，原中间提交为`0033f9ab`）
 > Branch: `main`
 > 最后更新：2026-09-29
 
-**9月29日最终签名包系统授权已完成，两代启动及packaged smoke通过。按原授权提交第4项，再独立交付第17项；其他授权或平台阻塞不冒充通过。**
+**9月29日第4项已完成最终签名验收并提交push，文档整理按第17项独立交付；其他授权或平台阻塞不冒充通过。**
 
 ## 当前状态
 
-- 第4项CA范围已提交`d6debb2e`；正文及最终签名包验收现已全部通过，正在提交。第16项Mac全量430态parity通过。后续项目保持各自验收和授权边界。
+- 第4项正文已通过全部所需验收并以`4e766148`提交push，CA阶段保留`d6debb2e`。第16项Mac全量430态parity通过；第17项文档承接及检查通过，纳入独立文档交付。
 - CA收尾commit为`d6debb2e`，已push。本轮接手工作区干净；正文改动包含普通消息、Original/File/Text、Main有限预览读取、共享预算、设计稿、语言、测试与对应文档，不改CA产品代码或依赖。
 - 接手的[local-electron-driver.ts](../apps/desktop/tests/e2e-workflow-tests/fixtures/runtime/local-electron-driver.ts)与[macos-certificate-authorization.ts](../apps/desktop/tests/e2e-workflow-tests/fixtures/ui/macos-certificate-authorization.ts)已由真实启动、人工授信、取消及relaunch验收。额外尝试的300秒无人确认场景提前完成授权，实际为初始化/复用Green；driver的300秒超时catch未触发，不宣称工具所有分支均已覆盖。
 - CA收尾已统一提交[fixture README](../apps/desktop/tests/e2e-workflow-tests/fixtures/README.md)、[settings.md](features/settings.md)、[第4项原报告](../commit-changes/202609241020_main_ca_unknown-write-boundary.html)及当时交接。正文沿用同一报告，保留CA内容并补前后图；原方案预览另存session证据，不另拆文档或测试commit。
@@ -18,7 +18,7 @@
 ## 第4项验证证据
 
 - **CA与正文的分阶段证据**
-	- CA产品范围的实现、测试、验收证据和原报告已纳入`d6debb2e`并push；`0033f9ab`保留为原已推送中间commit，不amend。正文方案经9月27日普通消息确认、9月28日精简前后图后继续授权，已完成实现与开发验收；最终产物授权及smoke通过后才提交剩余正文。
+	- CA产品范围的实现、测试、验收证据和原报告已纳入`d6debb2e`并push；`0033f9ab`保留为原已推送中间commit，不amend。正文方案经9月27日普通消息确认、9月28日精简前后图后继续授权，完成实现、开发验收和9月29日最终签名包验收后，以`4e766148`统一提交push，未混入第14/17项。
 	- 当前实现：失联写入仅查询原ID/操作的结束记录，仍返回原错误，由原module回读/回滚并释放占用，不重放；未发送、未确认或已有CA不清理。生产完整资源校验由同一受保护helper的短生命周期只读子进程执行，身份、strict/nested/all-architectures及no-network检查保留。
 	- 最终验证：原生新入口2项Red后，平台315通过/2 Windows native跳过、全workspace类型及最终Desktop复查通过；package、artifact audit、严格签名、11条不同真实E2E及共享CA首次初始化的额外1次运行、smoke 1/1均通过。前置失败、3次冲突前提失败和恢复证据保留，不改写为Green。
 	- 启动结论：旧常驻进程完整校验31.304/33.617秒；采样定位到Security扫描后的`free_medium → madvise`。新helper约一小时生产运行期间已保存去重60次完整校验837–1714ms，无30秒超时；此数值不是整个App启动耗时，不宣称已查明macOS分配器内部成因。证据前缀`/tmp/interceptor-item4-resume-20260925-`，详细矩阵见[Settings](features/settings.md#item4-resumed-acceptance)。
@@ -69,9 +69,15 @@
 	- 独立暂停/平台范围：HTTPS弹窗的`transitionName=""`及逐帧定位workflow仍保留原暂停，不纳入本轮产品改动或Green；workflow的fresh CA Generate断言与共享CA不符，恢复该专项前须修正。Bilibili依赖Windows UIAutomation及真实已登录Edge，当前macOS环境未复验。gRPC Copy/焦点已在本轮最终真实workflow通过，并核对`workflows.json`内request/response各两份`grpc-keyboard-*.json`证据，不再列为未复跑。
 	- 本轮Mac最终：430态3169目标无missing/flagged，所有字体检查一致，最大几何差0.859375px。115:120的弹层可见性等待与测量竞态改为同次采样并等待定位稳定；DeepSeek Endpoint限定dialog内标签后浅/深色复跑通过。只改验收工具配对/等待，不改产品、设计基准或1px阈值。
 	- 证据：session files的`item16-parity-final-20260928.json`和`item16-parity-summary-20260928.json`保留最终合并及来源；`item16-parity-evidence-20260928.tar.gz`含1084项、294175737字节，SHA-256为`9b31bc3967170271f41e4189bc1aa855f68bb381b478c0d2cb0751355c3fa8ee`。原弹层失败、Endpoint 40px配对失败及含该失败的全量原始结果一并保留，不改写历史Green。
-- **17. 文档整理 · 待审阅**
-	- 当前：22份`architecture/`压缩与导航改动按用户授权保存为中间进度，不登记文档整理完成；完整原文仍在平台基线`218295b0`，可用`git show 218295b0:architecture/features/settings.md`等精确回读。
-	- 剩余：逐项承接被删的独有验证事实和证据，重点为Settings、Capture、Tool capabilities及TODO；保留69项Tool/68项真实E2E的历史范围、Manager原生验收排除、各次Red/Green/trace和明确风险，不把链接替代当前状态判断所需的事实。当前源码和设计契约也须复核，不能因文字更短而当成无害整理。
+
+## 第17项文档验证
+
+- **承接范围与检查**
+	- 历史基线：22份`architecture/`压缩与导航改动曾按用户授权保存为中间进度，当时未登记整理完成；本轮已完成事实承接。完整原文仍在平台基线`218295b0`，可用`git show 218295b0:architecture/features/settings.md`等精确回读。
+	- 本轮：三份优先承接之后，已完成可由Git证明的22份非Handover文档核对，补回余下40组事实与11个有正文锚点，DeepSeek调研、Agent、MCP三份partial已清零。保留69项Tool/68项真实E2E的历史范围、Manager原生排除及失败/恢复记录；当前契约不回滚，不用链接替代独有事实。
+	- 检查：22份原有字节前缀全部保留，第4/14项文字未覆盖；212/212本地路径/锚点、历史hash、JSON、diff及编辑器检查通过。仅恢复文档事实，不宣称重新执行历史产品验收。
+	- 历史资料限制：早期Core bundle/截图范围、Windows Client App样本、Manager TEMP短名、DeepSeek研究、Agent query和MCP Host等7类原文未给完整日期或独立归档，已按原文标注，未补造。逐项位置及来源保存在session files的`item17-doc-facts.json`的`carryover`。
+	- [本项改动说明](../commit-changes/202609281939_docs_architecture_restore-evidence.html)仅列改前/改后，未混入其他item报告；Edge真实1280/390宽度无页面溢出，窄表格键盘横向滚动通过、全部展开且无外联资源。VS Code内嵌浏览器的宽度和键盘检查受限，未把该次超时算通过，改用独立Edge复验。第4项已先独立提交push，本项仅提交文档、报告及所属交接，不包含第14项Red测试。
 
 ## Constraints
 
@@ -92,6 +98,7 @@
 | 当前macOS产物 | 最终package/audit/严格签名通过，ASAR SHA-256为`68cbaba4738d8deff1ff7d58f47acf7b74f43f9cfb2afb2bd2aaa8aaf2e836b0`；9月29日系统授权ready、签名两代启动1/1、smoke1/1和16张截图矩阵通过，helper与实装字节一致 | 9月28日未授权失败独立保留；不是Developer ID/公证或Windows验收 |
 | UI parity | Mac全量430态3169目标无missing/flagged，字体一致、最大0.859375px；正文85态717目标仍有效，其中Original/File/Text34态400目标为0px | fake Preload不替代真实E2E或Windows验收；原竞态/配对失败保留 |
 | 类型/回归 | 全workspace类型和相关303 tests通过，Core解码15项有效基线；当前正文真实E2E16条通过，含大小File、2MiB、窗口/滚轮、完整发送和Composer | Windows实机未验；Core两项chunked失败属第10项，新发现NO_ERROR尾段缺失属第14项 |
+| 文档承接 | 22份非Handover文档完成核对，余下40组事实/11锚点已补；212/212本地链接、历史hash及diff检查通过，报告1280/390及键盘横向滚动通过 | 7类历史元数据不足如实标注；独立文档交付，不新增产品验收结论 |
 | 最后宿主核验 | 9月29日签名启动及smoke后，日常CA指纹/三份材料size/mtime/信任保持，完整代理恢复，无journal、App全退、8888释放；51份源码与ASAR/helper哈希不变 | 当前证据`item4-final-acceptance-20260929.json`；9月28日失败与开发证据仍分别保留，不覆盖历史记录 |
 
 本轮证据已另存持久副本：`/Users/zhxmt/.copilot/session-state/df17625e-cb60-4ece-a735-8d703667fab6/files/item4-acceptance-summary.json`；同目录`item4-acceptance-20260926.tar.gz`保留原始Red、失败、Green与trace，SHA-256为`ba3f9ee81b6aae05a96d6bfdb69fba76fbe2ffff0cf46d87bd8c0e9e0d9937f8`。最终逐项核对12次成功运行、11条不同workflow的trace存在及每代退出metadata，未将失败记录算入。
@@ -122,7 +129,7 @@ INTERCEPTOR_E2E_MACOS_APP_PATH="$PWD/apps/desktop/out/Interceptor-darwin-x64/Int
 npm run test:smoke --workspace @interceptor/desktop
 ```
 
-本轮合并commit后立即push；后续仍按获准item交付。直连失败时可用`git -c http.proxy=http://127.0.0.1:7890 push origin HEAD`，不修改全局Git或系统代理。
+每个获准item独立commit后立即push，不混入其他工作。直连失败时可用`git -c http.proxy=http://127.0.0.1:7890 push origin HEAD`，不修改全局Git或系统代理。
 
 ## References
 

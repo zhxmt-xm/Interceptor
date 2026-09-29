@@ -399,3 +399,53 @@ Manager使用自然行高；Advanced rules复用28px高、7px gap的`Button size
 - 草稿按 `breakpointId` 独立保存，并在 resolve / abort / 消失 / Core 换代后精确清理。
 - `Continue all`、`Drop all` 与 `Continue all from this rule` 分别走独立命令并只处理调用开始快照。
 - HTTP/WebSocket不产生`timed_out`结果，生命周期释放使用`aborted`。
+
+<a id="breakpoint-history"></a>
+## 9. 历史验证证据
+
+以下承接`218295b0`的历史事实，不替换当前Original/File/Text、2/16 MiB预览或第4项最终验收。日期、旧图数量、TEMP归档和hash只描述原运行；本轮未重跑产品或重新校验旧归档。当前Header effect布局与HTTP wire正确性仍分别验收。
+
+`d854588`四条队列Red/Green与各代PID、`89d8dda`最终Rule state/Header effect及菜单生命周期，已在[Breakpoints规格](../../apps/desktop/tests/e2e-workflow-tests/docs/breakpoints.md)和[Capture规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md)承接。批量Tool门禁见[能力目录历史](tool-capabilities.md#tool-validation-history)，不重复整份验证矩阵。
+
+<a id="breakpoint-unbounded-history"></a>
+### 9.1 无隐藏上限（2026-08-25）
+
+owner以25条命中在第11条返回`null`取得Red；删除`BREAKPOINT_QUEUE_LIMIT`、nullable suspension及queue-full状态后25条全部pending并保持插入顺序。MCP无timeout调用先Red于未发Core命令，删除schema/解析/payload字段后MCP46/46及类型通过。
+
+这不是把未挂起数量设为25；产品仍无隐藏上限。真实11请求及四条队列流程的恢复证据见[逻辑队列规格](../../apps/desktop/tests/e2e-workflow-tests/docs/breakpoints.md)。
+
+<a id="72-文件替换空态视觉修复"></a>
+### 9.2 文件替换空态（2026-09-09）
+
+前置宽差302.1px、按钮34px、警告缺失及Using original错位14px的Red归档为`interceptor-breakpoint-file-presentation-red-20260909-210935.zip`，SHA-256为`3440F775BAF9B408DAF9FE6F1C9E1BE6589AFF680C51B0DAC3828EAB42074086`。
+
+四个空File视图12区域最大0.6px通过，但当时22视图仍240 matched/2 missing/94 flagged。最终归档`interceptor-breakpoint-file-final-green-20260909-211705.zip`的SHA-256为`4FCC1E36F4ACED2F34DC6AD6AAEAE599DF55948C7BD658D0DB905FCD10FE5A6B`；19项、26.2秒真实文件替换及退出恢复已在[Rules证据](../../apps/desktop/tests/e2e-workflow-tests/docs/rules.md)保存，不把局部Green扩成整组。
+
+<a id="73-标题与页脚还原"></a>
+### 9.3 标题、页脚与字体（2026-09-09～10）
+
+- 暂停时22视图240 matched/0 flagged、最大0.8px，仍有Response空Text两个Using original missing；判断依据是快照`bodyAvailable`，不是Inspector是否显示原文，不修改业务或伪造新标签来消除missing。
+- 旧报告为`interceptor-breakpoint-chrome-{237,242,247,252,257}.{json,md}`及`interceptor-breakpoint-chrome-matrix-20260909.log`；原生前台焦点失败在`interceptor-breakpoint-chrome-e2e-20260909.log`。进程正常销毁也不等于该workflow通过。
+- 暂停归档`interceptor-breakpoint-chrome-pending-e2e-20260909-220030.zip`的SHA-256为`4A619F1D64B0A7A7B56224DDA25501BE7E479FB0EAD35DDBA8DFBE9FC9C7F976`；`interceptor-breakpoint-no-e2e-checks-20260909-215929.log`只记录19项与类型，不补造E2E。
+- 9月10日逐视图确认字体loaded后的归档`interceptor-breakpoint-chrome-font-verified-20260910-132342.zip`，SHA-256为`929F4F85EF2A3BF0BD56DFDF02F8379AEE05DB34112AEFABF2CAF2CE2082A42A`，仍有上述两missing。四份源码hash与[原生输入Green](../../apps/desktop/tests/e2e-workflow-tests/docs/rules.md)一致，362张旧PNG保持，不代表整仓parity。
+
+<a id="breakpoint-header-effect-history"></a>
+### 9.4 Header effect下置（2026-09-10）
+
+有效Red在`interceptor-header-effect-e2e-valid-red-20260910-174123`：旧effect行name/value分别窄约21/30px，marker仍在右侧且为9.5px/18px。简化客户端误用、0.00009px浮点断言及draft元数据类型错误不算产品Red。
+
+最终[两条真实流程](../../apps/desktop/tests/e2e-workflow-tests/docs/rules.md)与26视图296 matched/0 flagged仍有两处旧空Text missing，平均pixel diff2.5793%。综合归档`interceptor-header-effect-verified-20260910-1811.zip`的SHA-256为`3C5A8AC9FE5FE8406B2AAE34B7B4B5E9F1FDDF9FA75D03A7783024927516E5DF`；22张更新、4张新增、366张旧图不变，WebSocket握手继续inline。当前布局见[Header effect契约](#74-header-effect下置布局)。
+
+<a id="breakpoint-websocket-visual-history"></a>
+### 9.5 WebSocket局部视觉范围（2026-09-11～12）
+
+- 9月11日入口样式专项42目标通过，WS整页仍4个旧正文flag；证据`interceptor-websocket-toggle-20260911`。150%缩放的0.666667px边框误报不是产品回归，真实8.3秒Close与origin1001已由[Close规格](../../apps/desktop/tests/e2e-workflow-tests/docs/breakpoints.md)承接。
+- 9月12日标题修复八态58/58、最大0.8px，平均像素2.71%仍有数据/图标/字体差；补充路径`interceptor-ws-heading-20260912-{unit-red,unit-green,directions,pixels}*`及`interceptor-ws-heading-20260912-review/evidence.json`。
+- 最初生成8张中2张paused-sent与队首不同而撤下，仅6张入库、408张旧图hash保持，清单`interceptor-ws-shots-20260912-{before,result}.json`。真实标题38→36px的Red/Green不能补齐暂停期phase、列表、分隔的历史前置缺口。
+
+<a id="breakpoint-manager-history"></a>
+### 9.6 Breakpoint Manager（2026-09-13）
+
+计数12px而非normal先取得真实Red（Main/Core `31288/26884`）；最终queue-commands1/1（23.5秒，`38380/34056`）与三批量命令/原正文验证、43项前后Green、Desktop类型和构建通过。浅色8/8最大0.53125px，两代正常退出并恢复宿主。
+
+日志为`interceptor-ui-parity-20260913-manager-{unit-baseline,unit-green,types,prepare}.log`；原文另列`manager-e2e-{red,green}`、`manager-green.{json,md}`短名，未给独立保存目录，本节不扩猜路径。这是断点Manager的历史验证，不是系统证书Manager或当前全量回归。

@@ -124,3 +124,5 @@ App只更新DOM属性，不在确认之后重复写存储。隐私单字段patch
 - 各工作区、主题、窗口尺寸和语言下均不得出现页面级内容溢出。
 - 多语言 smoke 在真实 Windows package 中逐项切换 15 种语言，验证持久化、UI 文案与页面无溢出。
 - catalog 契约测试校验完整主 key、插值与 CLDR 多复数。
+
+历史范围分别见[Shell测量修正](../features/settings.md#settings-shell-history)、[42张共享UI截图](../features/settings.md#settings-ui-baseline-history)与[Agent阶段1](../features/agent.md#agent-stage1-history)。旧几何、截图数量和局部Green不作为当前全量结果。

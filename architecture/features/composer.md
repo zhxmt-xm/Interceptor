@@ -290,3 +290,36 @@ XML走`xml-formatter`。任一formatter失败都必须恢复调用前原文、�
 ### Collection请求行
 
 请求名称字号12.5px、行高30px；长名称单行省略，选中目录不改变正在打开的请求。
+
+<a id="composer-historical-evidence"></a>
+## 7. 历史验证证据
+
+本节仅承接`218295b0`中的独有历史事实，不恢复旧设计数量为当前总数，也不修改现行2/1/2 MiB响应预览、完整编辑值、File/Text或第4项验收。TEMP与日期属于原运行，不表示本轮重跑。
+
+Collection查询/替换、导入导出、`884dcc4`原UI导入Red、socket取消及主要产物已由[Composer规格](../../apps/desktop/tests/e2e-workflow-tests/docs/composer.md)与[Agent网络Tool规格](../../apps/desktop/tests/e2e-workflow-tests/docs/agent.md#agent-tools-composer)承接；共用Main方法70项/四流程八代见[能力目录](tool-capabilities.md#main-actions-validation-history)。
+
+<a id="composer-collection-baseline-history"></a>
+### 7.1 Collection早期基线（2026-09-06）
+
+首次真实Green两代Main/Core为`36256/36056`、`24452/27452`，完整树/旧导入/Store与同步30/30。这是最终七流程十二代之前的子集，不与最终`32292/40736`、`44792/3792`相加；缺失Tool、编辑器与最终归档沿用[Collection规格](../../apps/desktop/tests/e2e-workflow-tests/docs/composer.md#composer-tools-collection)。
+
+<a id="composer-tree-visual-history"></a>
+### 7.2 目录选中与缩进（2026-09-11）
+
+目录选中前12 matched/10 flagged，修复后12/12；鼠标hover造成计数missing、设计选择残留属于场景问题。明确选择后四场景30/30、最大0.9px；两张新增图之外400张旧PNG不变，证据`interceptor-composer-folder-20260911-isolated.md`及同前缀。
+
+首层30/26px的真实Red和最终17.8秒Green、各代恢复在[树交互规格](../../apps/desktop/tests/e2e-workflow-tests/docs/composer.md)保留，不把目录缩进验收等同于标签内部居中。
+
+<a id="collection请求行parity"></a>
+### 7.3 请求行parity（2026-09-11）
+
+请求行明暗18/18，行几何为0px、全场景最大0.9px，但pixel diff仍1.51%/1.52%，不表示整页相同。选择前提修正与字号修正的三阶段报告在`interceptor-composer-targets-20260911`；parity、12/12 unit、类型及两次真实流程在`interceptor-composer-rows-20260911`。
+
+前后1/1（11.5秒/17.2秒）、Main/Core `35828/27528`与`28932/36364`正常销毁及宿主恢复已由[树交互规格](../../apps/desktop/tests/e2e-workflow-tests/docs/composer.md)承接；未改变三级目录、rename、落点或splitter语义。
+
+<a id="方法标签样式差异"></a>
+### 7.4 方法标签（2026-09-11）
+
+最终45/45、明暗24/24及1000×700长标题检查通过，证据`interceptor-method-badge-flex-20260911-review/`。四张Composer设计图像素为0；Capture断点预览的2.29%/2.24%不能归因于标签或用于更新基准，记录在`interceptor-method-badge-flex-20260911-design/`。
+
+完整历史391 views/2735 targets/2732 matched/3 missing/115 flagged在`interceptor-method-badge-flex-20260911-complete.{md,json}`。首轮340:345因overlay残留中断，修正场景重置后续跑；不把其他UI欠账变Green，不恢复早期normal行高作为当前居中判据。实际双轴flex与两流程2/2（31.3秒）及恢复见[Composer规格](../../apps/desktop/tests/e2e-workflow-tests/docs/composer.md)。

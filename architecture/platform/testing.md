@@ -69,3 +69,5 @@ npm run test:package-audit --workspace @interceptor/desktop
 npm run test:smoke --workspace @interceptor/desktop
 npm audit --omit=dev
 ```
+
+5-view分批对应的146-view历史失败与适用限制见[验证依据](../features/settings.md#settings-parity-batch-history)；分批策略不改变单场景断言，也不以旧内存观察替代当前验收。

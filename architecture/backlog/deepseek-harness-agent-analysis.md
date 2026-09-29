@@ -1496,3 +1496,34 @@ Interceptor的Streaming、持久化、Tool disclosure、审批与Core RPC已有�
 - [`architecture/features/agent.md`](../features/agent.md)
 - [`architecture/features/tool-capabilities.md`](../features/tool-capabilities.md)
 - [`architecture/platform/processes.md`](../platform/processes.md)
+
+<a id="deepseek-research-history"></a>
+## 22. 调研日期与历史核对证据
+
+本调研日期为2026-08-31；外部基线是文首的DeepSeek Harness `0.1.2-alpha.2` / `0a53fb55bea101816fa226bb964ae2bed71c343b`，Interceptor对照为当日工作树，原文没有提供其独立commit。以下由`218295b0`原文承接，不是对当前产品或上游新版本的代码审计。
+
+### 22.1 当时逐源码核对的范围
+
+- DSH Context：`compaction-basic`的触发/请求/事件/Surface replacement/失败恢复，pruner组合优先级，token-meter replay与Usage anchor，默认web Profile的实际装配。
+- DSH执行与UI：DeepSeek SSE/thinking continuation/Usage/cache/错误映射，Approval/permission preset/sandbox调用链，subagent fresh/fork/continuable的lineage/取消/完成，Web Session Controller的prompt/queue/cancel/follow与重连竞态。
+- Interceptor：`#modelMessages()`的Retry/partial assistant/缺失Result筛选，Tool Call/Result/approval/ModelCall提交与sequence顺序，Renderer full snapshot/delta/selection generation/gap reload。
+
+当时记录过alpha包及Client service的破坏性删除/改名，因此研究结论限定于所列版本；“未接Desktop MCP”“24项Tool”等旧工作树描述不恢复成当前能力判断。优先级和相对工作量表属于当时建议，不重新列为已授权实施清单。
+
+### 22.2 原文记录的可执行检查
+
+这些是2026-08-31调研记录，不是本轮命令，也不把过滤跳过算通过：
+
+| 原检查 | 结果 |
+| --- | --- |
+| `npm test --workspace @interceptor/desktop -- src/renderer/features/agent/tests/unit/agent-session-store.test.ts` | 1文件13项通过 |
+| `npm test --workspace @interceptor/agent-runtime -- tests/integration/session-runtime.test.ts -t "emits strictly ordered Streaming snapshots\|cancels after a visible delta\|keeps an Ask change Tool pending\|cancels a pending change Tool approval"` | 选中的4项integration通过，另32项按过滤器跳过 |
+| 文档诊断 | 无错误 |
+
+命令中的测试路径和筛选名称仅用于追溯原记录；本轮未重新执行，原文未提供独立日志或trace路径。
+
+### 22.3 已验证与未验证的分界
+
+上述检查证明当时已有sequence、gap reload、Retry、Deny和approval cancellation行为；旧测试覆盖select/load/gap的陈旧回包，没有覆盖`rename/setModel/requireToolApproval/automaticallyExecuteTools/allow/deny`六类mutation response与更高sequence event的竞态。它是当时待新增测试的风险窗口，不是已复现线上故障，也不由本轮文档恢复推断当前是否仍存在。
+
+当前Agent合同与已承接的真实流程见[Agent历史验证](../features/agent.md#agent-historical-evidence)及[Tool目录历史](../features/tool-capabilities.md#tool-validation-history)；研究候选不替代产品验收。
