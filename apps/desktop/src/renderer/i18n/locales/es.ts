@@ -189,13 +189,18 @@ export const esCatalog = {
   'body.format': "Formatear",
   'body.fullscreen': 'Pantalla completa',
   'body.exitFullscreen': 'Salir de pantalla completa',
-  'body.formatBlocked': "El cuerpo supera 8 MB: el formateo está desactivado. Guárdalo para formatearlo en otra herramienta.",
+  'body.formatBlocked': "El cuerpo supera 2 MiB: el formateo está desactivado. Guárdalo para formatearlo en otra herramienta.",
+  'body.formatTruncated': 'Las vistas previas truncadas no se pueden formatear.',
+  'body.formatFailed': 'No se pudo formatear. El contenido original no ha cambiado.',
+  'body.formatManual': 'Cuerpo completo · {{size}}. Usa «Formatear» para cuerpos de entre 1 y 2 MiB.',
   'body.copyValue': "Copiar valor",
   'body.copyObject': "Copiar objeto",
   'body.copyPath': "Copiar ruta",
   'body.field': "Campo",
   'body.value': "Valor",
   'body.imageTooLarge': "Demasiado grande para la vista previa. Guarda el archivo para abrirlo en un visor de imágenes.",
+  'body.imagePreviewLimit': 'Se supera el límite independiente de 16 MiB para la vista previa de imágenes. La imagen no se carga.',
+  'body.previewLimited': 'Vista previa: {{preview}} de {{total}}.',
   'body.imageUndecodable': "No se pudo decodificar esta imagen. Guarda el archivo para abrirlo en un visor de imágenes.",
   'body.mediaNotRead': "El audio y el vídeo nunca se cargan en la vista previa. Guarda el archivo para reproducirlo en un reproductor.",
   'capture.failedSaveBody': 'No se pudo guardar el cuerpo: {{error}}',
@@ -647,7 +652,10 @@ export const esCatalog = {
 
 
 
-  'breakpoints.filePreviewUnavailable': 'Demasiado grande o no es texto: se envía desde el disco tal cual.',
+  'breakpoints.filePreviewUnavailable': 'Vista previa no disponible. El archivo completo se enviará sin cambios.',
+  'breakpoints.filePreviewOnly': 'Solo vista previa. «Reenviar editado» usa el archivo seleccionado completo, no la vista previa visible.',
+  'breakpoints.fileForwardComplete': '«Reenviar editado» sigue usando el archivo seleccionado completo.',
+  'breakpoints.textComplete': 'El texto completo sigue siendo editable. Los límites de la vista previa de solo lectura no recortan este valor.',
 
   'breakpoints.replacementBody': 'Cuerpo de reemplazo',
   'breakpoints.replacementMessage': 'Mensaje de reemplazo',

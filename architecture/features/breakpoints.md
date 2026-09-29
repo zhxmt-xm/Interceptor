@@ -299,6 +299,8 @@ pending registry不设隐藏上限。每次命中都由`suspend`创建等待项�
 
 ## 7. 队列与编辑契约
 
+Original与File预览按可用空间限高并可拖拽；File使用12px/20px正文和完整文件说明，Text保持完整受控值。Main的`readBreakpointBodyFile()`最多读取2 MiB文本或16 MiB完整图片，返回`{ path, name, size, mediaType, preview?: { bytes: Uint8Array, truncated: boolean } }`；不再返回可误作编辑值的`text`。Renderer不把预览写回File或Text草稿，Forward edited仍只传完整文件路径。JSON/XML等结构化MIME可以预览，未知二进制、音视频及超限图片只给原因；UTF-8截断不影响完整文件。选择失败明确报告，空Text/Using original语义不变。
+
 Manager使用自然行高；Advanced rules复用28px高、7px gap的`Button size="sm"`。WebSocket单帧整体进入snapshot，预览上限不能代替快照内存边界；HTTP编辑后的线上字节遵守[消息编辑契约](http-message-editing.md)。
 
 ### 空Text替换语义

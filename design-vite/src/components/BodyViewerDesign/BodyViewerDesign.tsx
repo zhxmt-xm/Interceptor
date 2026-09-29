@@ -19,6 +19,7 @@ interface BodyViewerDesignProps {
   readonly onFullscreen: () => void;
   readonly onModeChange: (mode: string) => void;
   readonly onSave?: () => void;
+  readonly resizable?: boolean;
   readonly source: string;
   readonly tree?: ReactNode;
   readonly value: string;
@@ -37,6 +38,7 @@ export function BodyViewerDesign({
   onFullscreen,
   onModeChange,
   onSave,
+  resizable = false,
   source,
   tree,
   value,
@@ -102,6 +104,7 @@ export function BodyViewerDesign({
           className={styles.bodyViewerCode}
           language={language}
           preset={codePreset}
+          resizable={resizable && !fullscreen}
           source={source}
         />
       )}

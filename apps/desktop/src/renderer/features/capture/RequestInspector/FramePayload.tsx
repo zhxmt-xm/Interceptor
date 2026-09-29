@@ -68,7 +68,7 @@ export function FramePayload({
         />
       </div>
       {frame.payload ? (
-        <BodyView body={frame.payload} fullscreenTitle={t('capture.payload')} compact />
+        <BodyView body={frame.payload} fullscreenTitle={t('capture.payload')} compact resizable />
       ) : (
         <div className={styles.empty}>{t('capture.payloadNotRetained')}</div>
       )}

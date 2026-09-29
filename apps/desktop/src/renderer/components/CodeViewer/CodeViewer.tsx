@@ -12,13 +12,16 @@ export interface CodeViewerProps {
   language: string;
   /** Inline variant used by the WebSocket and gRPC message panels. */
   compact?: boolean;
+  /** Bound an ordinary inline message to its viewport and allow vertical resizing. */
+  resizable?: boolean;
+  borderless?: boolean;
   automationId?: AutomationId;
   parityId?: string;
 }
 
 export interface CodeViewerHandle {
   /** Pretty-prints the current document in place. */
-  format(): Promise<string | undefined>;
+  format(language?: string): Promise<string | undefined>;
   /** Return the text currently displayed by Monaco. */
   value(): string | undefined;
 }
@@ -45,6 +48,8 @@ export const CodeViewer = forwardRef<CodeViewerHandle, CodeViewerProps>(function
   value,
   language,
   compact = false,
+  resizable = false,
+  borderless = false,
   automationId,
   parityId,
 }, ref): React.JSX.Element {
@@ -53,7 +58,7 @@ export const CodeViewer = forwardRef<CodeViewerHandle, CodeViewerProps>(function
   const initial = useRef({ value, language });
 
   useImperativeHandle(ref, () => ({
-    async format(): Promise<string | undefined> {
+    async format(language?: string): Promise<string | undefined> {
       const editor = await waitForEditor(() => editorRef.current);
       const model = editor.getModel();
       if (!model) {
@@ -62,7 +67,7 @@ export const CodeViewer = forwardRef<CodeViewerHandle, CodeViewerProps>(function
       const version = model.getVersionId();
       let appliedValue: string | undefined;
       await formatCodeDocument({
-        language: model.getLanguageId(),
+        language: language ?? model.getLanguageId(),
         value: model.getValue(),
         replace: (nextValue) => {
           if (!model.isDisposed() && model.getVersionId() === version) {
@@ -71,7 +76,11 @@ export const CodeViewer = forwardRef<CodeViewerHandle, CodeViewerProps>(function
           }
         },
         run: async () => {
-          const formatted = await formatMonacoModel(model);
+          const formatModel = language && language !== model.getLanguageId()
+            ? monaco.editor.createModel(model.getValue(), language) : model;
+          let formatted: string;
+          try { formatted = await formatMonacoModel(formatModel); }
+          finally { if (formatModel !== model) formatModel.dispose(); }
           if (model.isDisposed() || model.getVersionId() !== version) {
             throw new Error('Code viewer changed while formatting.');
           }
@@ -99,24 +108,65 @@ export const CodeViewer = forwardRef<CodeViewerHandle, CodeViewerProps>(function
       padding: compact ? { top: 13, bottom: 13 } : VIEWER_OPTIONS.padding,
     });
     editorRef.current = editor;
-    // Compact viewers hug their content; full-size ones absorb whatever height the panel
-    // leaves them and follow with automaticLayout.
+    let appliedHeight: number | undefined;
+    let requestedHeight: number | undefined;
+    let scrollContainer = resizable && compact ? host.parentElement : null;
+    while (scrollContainer && !/auto|scroll/.test(getComputedStyle(scrollContainer).overflowY)) {
+      scrollContainer = scrollContainer.parentElement;
+    }
     const hugContent = (): void => {
+      if (resizable && (host.getClientRects().length === 0 || host.clientWidth === 0 || scrollContainer?.clientHeight === 0)) return;
       const style = getComputedStyle(host);
       const borderHeight = Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth);
-      host.style.height = `${editor.getContentHeight() + borderHeight}px`;
+      const contentHeight = editor.getContentHeight() + borderHeight;
+      let height = contentHeight;
+      if (resizable && scrollContainer) {
+        const inlineHeight = Number.parseFloat(host.style.height);
+        if (appliedHeight !== undefined && Number.isFinite(inlineHeight) && Math.abs(inlineHeight - appliedHeight) > 0.5) {
+          requestedHeight = inlineHeight;
+        }
+        const minimumHeight = 20 + 26 + borderHeight;
+        const availableHeight = scrollContainer.clientHeight - scrollContainer.scrollTop
+          - host.getBoundingClientRect().top + scrollContainer.getBoundingClientRect().top;
+        const maximumHeight = Math.max(minimumHeight, availableHeight);
+        height = Math.max(minimumHeight, Math.min(requestedHeight ?? contentHeight, maximumHeight));
+        host.style.minHeight = `${minimumHeight}px`;
+        host.style.maxHeight = `${maximumHeight}px`;
+      }
+      host.style.height = `${height}px`;
+      appliedHeight = height;
       editor.layout();
     };
     const sizeListener = compact ? editor.onDidContentSizeChange(hugContent) : null;
+    const observer = resizable && compact && scrollContainer ? new ResizeObserver(hugContent) : null;
+    if (observer && scrollContainer) {
+      observer.observe(scrollContainer);
+      // Earlier sections can move the preview without resizing it or its scroll viewport.
+      let current: HTMLElement | null = host;
+      while (current && current !== scrollContainer) {
+        observer.observe(current);
+        let previous = current.previousElementSibling;
+        while (previous) {
+          observer.observe(previous);
+          previous = previous.previousElementSibling;
+        }
+        current = current.parentElement;
+      }
+    }
     if (compact) {
       hugContent();
     }
     return () => {
       sizeListener?.dispose();
+      observer?.disconnect();
+      if (resizable) {
+        host.style.minHeight = '';
+        host.style.maxHeight = '';
+      }
       editor.dispose();
       editorRef.current = null;
     };
-  }, [compact]);
+  }, [compact, resizable]);
 
   useEffect(() => {
     const model = editorRef.current?.getModel();
@@ -132,7 +182,7 @@ export const CodeViewer = forwardRef<CodeViewerHandle, CodeViewerProps>(function
   return (
     <div
       ref={hostRef}
-      className={cx(styles.host, compact && styles.compact)}
+      className={cx(styles.host, compact && styles.compact, compact && resizable && styles.resizable, borderless && styles.borderless)}
       data-automation-id={automationId}
       data-parity={parityId}
     />

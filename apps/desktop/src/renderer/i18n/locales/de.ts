@@ -188,13 +188,18 @@ export const deCatalog = {
   'body.format': "Formatieren",
   'body.fullscreen': 'Vollbild',
   'body.exitFullscreen': 'Vollbild beenden',
-  'body.formatBlocked': "Body über 8 MB — Formatierung deaktiviert. Speichern Sie ihn, um ihn extern zu formatieren.",
+  'body.formatBlocked': "Body über 2 MiB — Formatierung deaktiviert. Speichern Sie ihn, um ihn extern zu formatieren.",
+  'body.formatTruncated': 'Gekürzte Vorschauen können nicht formatiert werden.',
+  'body.formatFailed': 'Formatierung fehlgeschlagen. Der ursprüngliche Inhalt bleibt unverändert.',
+  'body.formatManual': 'Vollständiger Body · {{size}}. Verwenden Sie „Formatieren“ für Bodys zwischen 1 und 2 MiB.',
   'body.copyValue': "Wert kopieren",
   'body.copyObject': "Objekt kopieren",
   'body.copyPath': "Pfad kopieren",
   'body.field': "Feld",
   'body.value': "Wert",
   'body.imageTooLarge': "Zu groß für die Vorschau. Speichern Sie die Datei, um sie in einem Bildbetrachter zu öffnen.",
+  'body.imagePreviewLimit': 'Die separate Grenze von 16 MiB für die Bildvorschau ist überschritten. Das Bild wird nicht geladen.',
+  'body.previewLimited': 'Vorschau: {{preview}} von {{total}}.',
   'body.imageUndecodable': "Dieses Bild konnte nicht dekodiert werden. Speichern Sie die Datei, um sie in einem Bildbetrachter zu öffnen.",
   'body.mediaNotRead': "Video und Audio werden nie in die Vorschau geladen. Speichern Sie die Datei, um sie im Player abzuspielen.",
   'capture.failedSaveBody': 'Body konnte nicht gespeichert werden: {{error}}',
@@ -644,7 +649,10 @@ export const deCatalog = {
 
 
 
-  'breakpoints.filePreviewUnavailable': 'Zu groß oder kein Text – wird unverändert von der Festplatte gesendet.',
+  'breakpoints.filePreviewUnavailable': 'Vorschau nicht verfügbar. Die vollständige Datei wird unverändert gesendet.',
+  'breakpoints.filePreviewOnly': 'Nur Vorschau. „Bearbeitet weiterleiten“ verwendet die gesamte ausgewählte Datei, nicht die sichtbare Vorschau.',
+  'breakpoints.fileForwardComplete': '„Bearbeitet weiterleiten“ verwendet weiterhin die gesamte ausgewählte Datei.',
+  'breakpoints.textComplete': 'Der gesamte Text bleibt bearbeitbar. Grenzen für schreibgeschützte Vorschauen kürzen diesen Wert nicht.',
 
   'breakpoints.replacementBody': 'Ersatzinhalt',
   'breakpoints.replacementMessage': 'Ersatznachricht',

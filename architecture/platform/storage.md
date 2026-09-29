@@ -62,7 +62,7 @@
 
 Live Capture Body 小于 3 MiB 驻内存，超过后 spill 到 Core 临时目录（首次跨阈时已缓存内容全量迁移进文件）。**没有单正文或总量配额**，磁盘 I/O 失败只跳过该正文捕获，不影响流量转发、RPC 或进程状态。
 
-Renderer Inspector 是独立的展示边界：文本/结构化 Body、WS 与 gRPC 最多读取前 `5 MiB`（`BODY_PREVIEW_MAX_BYTES`），压缩解码输出同样限制为 `5 MiB`；图片有独立的 `IMAGE_PREVIEW_MAX_BYTES`（16 MiB），超过或解码输出被截断时**不读字节**——半张图比不显示更糟；音视频不进入 Renderer，只能经 Main Save Dialog + Core 流式任务保存。
+Renderer Inspector 是独立的展示边界：文本/结构化 Body、WS 与 gRPC 最多读取前 `2 MiB`（`BODY_PREVIEW_MAX_BYTES`），压缩文本解码输出也为2 MiB；图片使用独立的16 MiB读取/解码预算，输入超限时不读、解码输出被截断时不渲染。音视频不进入预览，只能经 Main Save Dialog + Core 流式任务保存。文件替换的Main预览按同一2/16 MiB边界读取，完整文件仍由Core按路径发送，不将预览覆盖实际输入。
 
 gRPC在途预览通过`CaptureService.getExchangeBodySnapshot/readExchangeBodyRange`按Exchange/side读取当前writer的有限range；hash只在写完后确定。读取与写入/finalize/abort串行，内存与spill共用一份正文；Final引用绑定后优先读取已提交Blob。Clear/Dispose等待被移除Exchange的writer队列再清理文件。
 

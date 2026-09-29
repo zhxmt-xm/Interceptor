@@ -25,9 +25,26 @@
   line-height: var(--interceptor-line-height);
 }
 
-.note svg {
+.note > svg {
   width: 14px;
   height: 14px;
   flex: 0 0 auto;
   color: var(--accent);
+}
+
+.formatNotice {
+  line-height: 1.5;
+}
+
+.formatNotice > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.formatNotice > svg {
+  color: var(--accent);
+}
+
+.formatNotice[data-warning] > svg {
+  color: var(--yellow);
 }

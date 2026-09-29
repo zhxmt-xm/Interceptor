@@ -465,15 +465,14 @@ export interface BreakpointsSnapshot {
  * 用户选来替换正文的文件。
  *
  * 路径交给 Renderer 只是为了放行时回传给 Core（同 Map Local），Renderer 自己不读写文件。
- * 只有小到能放进编辑器的文本才带 `text`；其余情况只给元数据，和 Inspector 里超限正文一致。
+ * preview只承载有界只读字节，不是编辑值；放行仍使用完整文件路径。
  */
 export interface BreakpointBodyFile {
   path: string;
   name: string;
   size: number;
   mediaType: string;
-  /** 可预览可编辑的文本；过大或非文本时缺省。 */
-  text?: string;
+  preview?: { bytes: Uint8Array; truncated: boolean };
 }
 
 /** TLS 探测结果 DTO：协议/套件/ALPN/授权/证书链；失败 ok=false + error。 */

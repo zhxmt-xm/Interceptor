@@ -82,9 +82,9 @@ test('capture.scenarios.bodies displays the captured text document and form bodi
     });
   }
 
-  // 截断边界：真实响应使5 MiB落在多字节字符内，只比较剪贴板摘要，不向trace返回完整大正文。
-  // Truncation boundary: real responses split UTF-8 characters at 5 MiB; compare clipboard digests without returning large bodies to the trace.
-  const previewLimit = 5 * 1024 * 1024;
+  // 截断边界：真实响应使2 MiB落在多字节字符内，只比较剪贴板摘要，不向trace返回完整大正文。
+  // Truncation boundary: real responses split UTF-8 characters at 2 MiB; compare clipboard digests without returning large bodies to the trace.
+  const previewLimit = 2 * 1024 * 1024;
   for (const boundary of [
     { id: 'two-byte', character: '\u00e9', partialBytes: 1, mime: 'text/plain; charset=utf-8', mode: 'default' },
     { id: 'three-byte', character: '\u4e2d', partialBytes: 2, mime: 'application/x-interceptor-text', mode: 'default' },

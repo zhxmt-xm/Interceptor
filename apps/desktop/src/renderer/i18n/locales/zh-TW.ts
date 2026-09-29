@@ -188,13 +188,18 @@ export const zhTWCatalog = {
   'body.format': "格式化",
   'body.fullscreen': '全螢幕',
   'body.exitFullscreen': '離開全螢幕',
-  'body.formatBlocked': "本文超過 8 MB，已停用格式化。儲存後用外部工具格式化。",
+  'body.formatBlocked': "本文超過 2 MiB，已停用格式化。儲存後用外部工具格式化。",
+  'body.formatTruncated': '截斷的預覽無法格式化。',
+  'body.formatFailed': '格式化失敗。原始內容未變更。',
+  'body.formatManual': '完整本文 · {{size}}。1 至 2 MiB 的本文請使用「格式化」。',
   'body.copyValue': "複製值",
   'body.copyObject': "複製物件",
   'body.copyPath': "複製路徑",
   'body.field': "欄位",
   'body.value': "值",
   'body.imageTooLarge': "圖片過大，無法預覽。儲存後用圖片工具開啟。",
+  'body.imagePreviewLimit': '超過獨立的 16 MiB 圖片預覽上限。圖片未載入。',
+  'body.previewLimited': '預覽 {{preview}}，共 {{total}}。',
   'body.imageUndecodable': "無法解碼此圖片。儲存後用圖片工具開啟。",
   'body.mediaNotRead': "影音從不讀入預覽。儲存後用播放器開啟。",
   'capture.failedSaveBody': '儲存本文失敗：{{error}}',
@@ -644,7 +649,10 @@ export const zhTWCatalog = {
 
 
 
-  'breakpoints.filePreviewUnavailable': '檔案過大或非文字，將原樣從磁碟送出。',
+  'breakpoints.filePreviewUnavailable': '預覽無法使用。將原樣送出完整檔案。',
+  'breakpoints.filePreviewOnly': '僅供預覽。「轉送已編輯內容」使用所選的完整檔案，而非目前可見的預覽。',
+  'breakpoints.fileForwardComplete': '「轉送已編輯內容」仍使用所選的完整檔案。',
+  'breakpoints.textComplete': '完整文字仍可編輯。唯讀預覽限制不會截斷此值。',
 
   'breakpoints.replacementBody': '替換內文',
   'breakpoints.replacementMessage': '替換訊息',

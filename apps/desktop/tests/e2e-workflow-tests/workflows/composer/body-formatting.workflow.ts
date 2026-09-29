@@ -55,6 +55,8 @@ test('composer.response.body-formatting formats by language and preserves failur
   });
 
   const { page } = desktopApp;
+  const pageFailures: Array<{ name: string; message: string; stack: string | undefined }> = [];
+  page.on('pageerror', error => pageFailures.push({ name: error.name, message: error.message, stack: error.stack }));
   const format = getByAutomationId(
     page,
     AUTOMATION_IDS.composer.responseBodyAction.format,
@@ -79,7 +81,7 @@ test('composer.response.body-formatting formats by language and preserves failur
     body: javascriptBody,
   });
   const cssPath = '/e2e/composer/body-formatting/manual-css';
-  const cssBody = `/*${'x'.repeat(2 * 1024 * 1024)}*/.a{color:red}`;
+  const cssBody = `/*${'x'.repeat(1024 * 1024)}*/.a{color:red}`;
   loopbackLab.respondWith(cssPath, {
     headers: { 'content-type': 'text/css; charset=utf-8' },
     body: cssBody,
@@ -157,6 +159,7 @@ test('composer.response.body-formatting formats by language and preserves failur
     prefix: xmlBody,
     suffix: xmlBody,
   });
+  await writeFile(testInfo.outputPath('body-formatting-errors.json'), JSON.stringify(pageFailures, null, 2), 'utf8');
   expect(desktopApp.rendererPageErrors()).toEqual(errorsBefore);
 
   // 切回CSS文档时不再触发Format，必须恢复该response自己的格式化view cache。

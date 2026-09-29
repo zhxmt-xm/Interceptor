@@ -13,7 +13,8 @@ export async function formatCodeDocument(document: CodeDocumentFormatter): Promi
       ? xmlFormat(document.value, { indentation: '  ', lineSeparator: '\n' })
       : await document.run();
     document.replace(formatted);
-  } catch {
+  } catch (error) {
     document.replace(document.value);
+    throw error;
   }
 }

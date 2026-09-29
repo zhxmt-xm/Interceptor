@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type {
   GrpcMessagePage,
@@ -76,9 +76,9 @@ export function useGrpcMessages(
     };
   }, [exchangeId, side]);
 
-  const loadMore = (): void => {
+  const loadMore = useCallback((): void => {
     loadMoreRef.current?.();
-  };
+  }, []);
 
   return { page, messages, loading, loadingMore, error, loadMore };
 }

@@ -1,5 +1,12 @@
 # Capture Workflows
 
+## `capture.body-preview-limits`
+
+1. fresh profile通过UI开启录制，loopback origin分别返回完整1.25MiB和3MiB JSON；客户端校验完整响应。
+2. 选择自产行的Response正文。1.25MiB初始不格式化，Copy长度/hash等于原文；点击Format后才得到格式化结果。
+3. 3MiB正文只预览/Copy前2MiB，Format禁用，完整网络数据不受影响。
+4. 保存截图、字节数/hash和trace；正常Close后核对Main/Core/Worker、8888、系统代理与日常CA恢复。当前macOS两条Red→Green；Windows未执行。历史5MiB测试证据保留，现行正文/压缩/WS/gRPC边界测试使用2MiB。
+
 本文件定义 Capture 工作区的完整 E2E 流程。每条 workflow 都独立启动 Electron、独占 profile、trace 和 loopback fixture，并从 fresh App 写到 Close/destroy。
 
 <a id="capture-body-fullscreen"></a>
@@ -160,6 +167,20 @@ Raw模式必须显示捕获的原始内容，不能残留Code模式自动格式�
 UTF-8追加步骤：通过同一真实origin发送超过5 MiB的gzip输入，解码明文在5 MiB处只包含中文字符的前两个字节；Raw/Copy和编辑器全选复制必须只有完整前缀。2026-09-10当前workflow1/1、Main/Core `25284/11364`正常退出且host guard通过；原`min(encodedSize, 5 MiB)`读取契约不变，首次小gzip预期错误不算产品Red，归档见[UTF-8预览](../../../../../architecture/features/capture.md#utf-8预览截断)。
 
 <a id="capture-scenarios-websocket"></a>
+## `capture.messages.compact-layout`（普通WebSocket与gRPC正文）
+
+**状态**：2026-09-27 macOS两条前置Red（`resize:none`）、最终2/2 Green；Windows未执行。原协议、HTTP填充与队列隔离同轮共6/6，证据前缀`/tmp/interceptor-item4-messages-20260927-`下`e2e-red`、`final-workflows`与`final-workflows.json`，包含每代trace/metadata和实际几何。
+
+1. 每种协议独立fresh profile、trace及完整宿主基线；通过真实UI启动Recording。WebSocket使用现有loopback echo；gRPC通过Certificates复用共享CA、添加localhost源站例外并开启MITM，使用现有TLS/H2 origin，不能生成/清理日常CA。
+2. 经真实8888发送一条短消息和一条含末尾唯一标记的长消息。客户端/origin核对完整字节与协议结束，再由Capture自产路径定位连接，使用公共消息ID展开载荷，选择Text/Raw或默认Pretty，不注入Store或正文。
+3. 短消息外框等于Monaco内容高加实际上下边框，字体12px/行高20px/上下padding13px保持；长消息初始外框不能超过所属滚动容器当前可用空间且必须存在内部滚动，不能使用固定441px或360px断言代替容器计算。
+4. 实际鼠标拖动右下角缩小正文，外框高度随拖拽改变；真实滚轮先移动正文而不滚消息标题，到末行后继续滚外层。键盘到首/尾均可达。窗口或Inspector可用空间缩小后按容器clamp，恢复后保留手动高度。
+5. 拖拽/滚动后点击正文Copy，结果与该模式应有的完整消息一致；消息专用Copy和客户端记录仍保真。切Hex、Tree、全屏以及切换/收起消息，不错误套用可拖拽布局或向下一条消息泄漏手动高度；现有协议专项继续覆盖消息保存与完整字节。
+6. gRPC额外生成205条真实消息，经同一Inspector滚动加载第三页，定位并复制第205条，验证虚拟化的scrollMargin及分页不会因移除内部固定360px上限而失效。
+7. 保存同主题/尺寸的改前/改后PNG、实际高度、内外scroll位置、Copy长度/hash与trace。gRPC通过真实UI关闭本profile的MITM及测试host配置；正常Close后验证Main/Core/Worker全退、8888释放、完整系统代理与CA/Root/admin trust保持，不能把fixture/授权失败当产品目标Red。
+
+WebSocket输入使用binary JSON消息以沿用内容探测与Pretty/Raw，正文Copy是完整UTF-8，而消息专用Copy仍是原binary Hex；不能为了统一断言修改产品语义。内外滚动使用足够的后续真实消息确保外层确有溢出，不给产品注入高度。gRPC第三页加载保持loadMore回调稳定，避免虚拟列表滚动触发同步重渲染时移除同一事件上的分页监听；失败与修复均保留真实证据。
+
 ## `capture.scenarios.websocket`
 
 **状态**：2026-09-14Compact Tree及Binary消息行均取得各自真实Red；当前同一workflow1/1（54.7s）Green，原四场景与5MiB同跑，Main/Core与宿主恢复通过

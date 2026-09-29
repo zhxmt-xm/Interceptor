@@ -1,29 +1,46 @@
 # Interceptor Handover
 
-> Tracked commit: `2eaaaf87`（第4项收尾提交前基线；原已提交部分为`0033f9ab`，本交接与收尾代码同次提交）
+> Tracked commit: `d6debb2e`（第4项CA范围收尾已提交并push；原已提交部分为`0033f9ab`）
 > Branch: `main`
-> 最后更新：2026-09-26
+> 最后更新：2026-09-29
 
-**用户于2026-09-26 01:13授权将第4项CA产品范围与启动阻塞修正合为一个收尾commit并push main；不改写已推送历史，不推进第5/6项或正文设计。交接只记录结论、缺口与证据入口，不追加流水账。**
+**9月29日最终签名包系统授权已完成，两代启动及packaged smoke通过。按原授权提交第4项，再独立交付第17项；其他授权或平台阻塞不冒充通过。**
 
 ## 当前状态
 
-- 第4项CA产品范围已取得最终验收：原生失联收尾、证书生命周期/取消、Agent/MCP/TLS、并发拒绝及宿主恢复通过；新包已部署且smoke通过。原第2/3/7项关闭范围不变，第5/6项及正文设计未推进。
-- 本次提交前`main`与本地`origin/main`基线均为`2eaaaf87`。接手时6个未提交文件均保留并整合；本轮另修改native helper的只读签名校验执行方式及所属测试/文档，未改依赖或其他item。
+- 第4项CA范围已提交`d6debb2e`；正文及最终签名包验收现已全部通过，正在提交。第16项Mac全量430态parity通过。后续项目保持各自验收和授权边界。
+- CA收尾commit为`d6debb2e`，已push。本轮接手工作区干净；正文改动包含普通消息、Original/File/Text、Main有限预览读取、共享预算、设计稿、语言、测试与对应文档，不改CA产品代码或依赖。
 - 接手的[local-electron-driver.ts](../apps/desktop/tests/e2e-workflow-tests/fixtures/runtime/local-electron-driver.ts)与[macos-certificate-authorization.ts](../apps/desktop/tests/e2e-workflow-tests/fixtures/ui/macos-certificate-authorization.ts)已由真实启动、人工授信、取消及relaunch验收。额外尝试的300秒无人确认场景提前完成授权，实际为初始化/复用Green；driver的300秒超时catch未触发，不宣称工具所有分支均已覆盖。
-- 本次收尾统一包含原有[fixture README](../apps/desktop/tests/e2e-workflow-tests/fixtures/README.md)、[settings.md](features/settings.md)、[第4项原报告](../commit-changes/202609241020_main_ca_unknown-write-boundary.html)及本交接，连同native、fixture、所属测试和平台文档共15个文件；沿用原报告，不另拆文档或测试commit。
+- CA收尾已统一提交[fixture README](../apps/desktop/tests/e2e-workflow-tests/fixtures/README.md)、[settings.md](features/settings.md)、[第4项原报告](../commit-changes/202609241020_main_ca_unknown-write-boundary.html)及当时交接。正文沿用同一报告，保留CA内容并补前后图；原方案预览另存session证据，不另拆文档或测试commit。
 - 平台实现基线为`218295b0`，对应[平台报告](../commit-changes/202609240135_main_shared-ca_startup.html)；后续保存剩余工作区进度的提交对应独立[工作区报告](../commit-changes/202609240150_docs_workspace_progress.html)。两份均为9月24日，每个commit各有自己的报告，不共用、不覆盖。GitHub候选的四张图只放在工作区报告中，不额外生成预览报告。
-- 最终宿主：日常CA已通过正常启动重建并授信，当前指纹`D74D4BFB3C3708511A755AC6CD905840B464B255`；原日常CA与失败自产CA均经产品清理，其他3张Root/admin trust保持。App/Main/Core/Worker全退，完整代理恢复、无journal、8888释放，仅保留获准常驻helper。
+- 日常CA继续保留`D74D4BFB3C3708511A755AC6CD905840B464B255`。本轮开发E2E、最终签名两代启动及smoke均正常退出并由宿主guard验证恢复；App全退、8888释放、无journal，常驻helper保留。新包`deployment-status`为`ready`，三份CA材料size/mtime及完整代理保持。
 
-## Task List
+## 第4项验证证据
 
-- **4. CA 操作与 E2E · CA范围已验收；正文子项待确认（暂停）**
-	- CA产品范围的实现、测试、验收证据和原报告按用户授权纳入本次收尾commit。`0033f9ab`保留为原已推送中间commit，不amend；本项只剩暂停的正文子项，不为验收子步骤拆commit。
+- **CA与正文的分阶段证据**
+	- CA产品范围的实现、测试、验收证据和原报告已纳入`d6debb2e`并push；`0033f9ab`保留为原已推送中间commit，不amend。正文方案经9月27日普通消息确认、9月28日精简前后图后继续授权，已完成实现与开发验收；最终产物授权及smoke通过后才提交剩余正文。
 	- 当前实现：失联写入仅查询原ID/操作的结束记录，仍返回原错误，由原module回读/回滚并释放占用，不重放；未发送、未确认或已有CA不清理。生产完整资源校验由同一受保护helper的短生命周期只读子进程执行，身份、strict/nested/all-architectures及no-network检查保留。
 	- 最终验证：原生新入口2项Red后，平台315通过/2 Windows native跳过、全workspace类型及最终Desktop复查通过；package、artifact audit、严格签名、11条不同真实E2E及共享CA首次初始化的额外1次运行、smoke 1/1均通过。前置失败、3次冲突前提失败和恢复证据保留，不改写为Green。
 	- 启动结论：旧常驻进程完整校验31.304/33.617秒；采样定位到Security扫描后的`free_medium → madvise`。新helper约一小时生产运行期间已保存去重60次完整校验837–1714ms，无30秒超时；此数值不是整个App启动耗时，不宣称已查明macOS分配器内部成因。证据前缀`/tmp/interceptor-item4-resume-20260925-`，详细矩阵见[Settings](features/settings.md#item4-resumed-acceptance)。
 	- 边界：helper每端点只留最近128个结束请求的ID/操作名；重启/淘汰/缺记录或前台授权异常不能推断结束。不自动重放、不放宽产品期限、不缓存信任。
-	- 正文子项暂停：只读预览2 MiB、完整且不超过1 MiB自动格式化、1–2 MiB可手动格式化，截断不格式化；图片独立16 MiB。Text完整编辑，File只预览但使用完整文件；初始高度、内滚动和resize不影响完整保存/导出/发送。产品未实现；本次仅保存已有compact正文、resize及自定义gRPC设计候选，不改正式shots、不视为定稿。
+	- 正文已实现：只读预览2 MiB、完整正文1 MiB内自动格式化、1–2 MiB手动、截断禁止；图片独立16 MiB。Text完整编辑，File只传完整路径并返回独立preview字节/截断标记；Original/File/gRPC/WS按可用空间限高、可拖拽，Composer保留填充。捕获不完整与预览截断分开，格式化失败保留原文并明确提示。
+	- 9月27日设计前置：核对content/viewport候选，修正`MonacoFixture.tsx`隐藏初始化时把短正文误压至48px的问题，当时默认content分支不变。四主题32张framed、浅深色16张full及拖拽/滚动2图已生成，字体实际加载；长消息示例2688→441px、短消息仍128px，实际拖到321px、滚轮到末行后外层继续滚动、键盘首尾、完整Copy与窗口收缩恢复均通过。设计typecheck通过，三组原content前后0像素变化。
+	- 设计确认：9月27日确认gRPC/WebSocket普通Monaco消息限高、内部滚动及拖拽；长消息按实际容器空间限高、短消息保持自然高度，完整Copy不变。原图与批准依据在session的`body-design-20260927-verified/review.html#grpc-difference`、`evidence.json`和`scroll-comparison.json`。9月28日按用户要求将剩余Original/File/Text及阈值方案精简为前后图，用户12:37要求继续后完成实现；Composer填充布局不变。
+	- 当前实现步骤：产品目标8项unit Red、两种协议真实E2E各1项Red后，resizable链路、消息容器及稳定分页回调实现完成；最终58项相关unit与Desktop类型、6/6真实E2E（含205条gRPC分页、原协议、HTTP填充、WS断点隔离）Green。最终合并去重68态555目标无missing/flagged、最大0.672px；四主题普通消息12态的正文pane/toolbar/首行0px差异，原HTTP/WS断点、默认gRPC Hex、Rule正文与消息空态复验。WS排队详情flex回归已修正；没有放宽parity阈值。
+	- 剩余正文进度：预览/格式化6项unit Red、错误/图片3项Red、捕获残缺1项Red及原文件读取6项integration Red均保留；Original真实resize Red、File真实大JSON无预览Red、manual/truncated字节Red后实现。2MiB预览/1MiB自动/2MiB手动、独立16MiB图片、完整File路径/预览bytes分离与完整Text已接入，最新相关78项unit/integration、Core解码15项、全workspace类型曾Green。
+	- 9月28日暂停前验证：File预览2MiB但完整3MiB文件发送、完整Text超过2MiB发送、Original/手动格式化/截断3条、文本/媒体2条、压缩/gRPC/WS3条真实流程通过；当时package/audit/严格签名、生产两代启动和smoke1/1通过。随后增加精确1/2/16MiB边界测试、图片避免多余拷贝、提示与错误显示调整，15:27暂停时尚未全部复跑；两名代理及所属preview/browser/server当时已停。17:05恢复后的结果以下列最终验证为准，不以旧Green覆盖最后修改。
+	- 暂停时parity的6项缺口已修复：CodeViewer观察前置分组尺寸，短File不再沿用旧clamp；Capture提示改为KiB/MiB。前置unit1 Red与原4处高度/2处文案失败保留，原交接为session files的`body-parity-calibration-20260928/handoff.json`。最终85态717目标无missing/flagged，最大0.86px；Original/File/Text相关34态400目标全0px，未修改基准掩盖偏差。
+	- 当前最终验证：相关303项tests与全workspace类型通过；真实正文/协议/File/Original/Composer共16个测试通过（15条联合Green＋Composer按新1–2MiB输入单跑Green）。标准Content-Length File完整3MiB发送与Text完整编辑已验；误带仅Content-Type的测试会进入已知chunked缺陷，仍归第10项，不宣称framing矩阵已通过。并行构建时Composer曾有空Renderer error，单独复跑通过，失败不改写。
+	- 后续交付复核：Mac全量430态3169目标parity通过；51份验收源码与最终ASAR/helper哈希保持，开发验收结果仍适用。只修parity弹层等待和Endpoint配对，不改产品或设计。
+	- 9月28日产物阻塞：package、artifact audit（1487文件/339528858字节）与严格deep/strict/all-architectures签名通过；当时新App首次组件授权未完成，`packaged-startup`失败，后续smoke未运行。该失败保留，不复用15:21旧smoke、不改鉴权或期限。
+	- 9月29日最终Green：人工系统组件授权后`deployment-status=ready`，同一最终签名包helper-startup 1/1（两代Main/Core均正常销毁，组件PID/inode/配置复用）、packaged smoke1/1及16张既有截图矩阵通过。再次核对严格签名、51份源码及ASAR/helper哈希不变，App全退、8888释放、无journal、日常CA信任/三份材料及完整代理保持。详细证据见[正文最终验收](features/capture.md#body-preview-final-acceptance)和session files的`item4-final-acceptance-20260929.json`。
+	- 最终证据前缀：`/tmp/interceptor-item4-final-20260928-`，含`clamp-red.json`、`unit-green.json`、`related-tests.json`、`workflows.json`（15通过/1旧CSS阈值失败）、`composer-isolated.json`、`file-green.json`、五组`parity-*.json`、`package.log`和`packaged-startup.json`。原生授权失败后App已退出，签名状态仍outdated。
+	- 原生窗口：反复GoTo/焦点失败不计产品Red；最终由CoreGraphics真实HID键鼠、精确Main代际与面板焦点完成Save/Open，不改原生返回值。一次遗留journal经正常产品启动/Close恢复，证据`/tmp/interceptor-body-journal-recovery-mZTwAr/evidence.json`；暂停时无测试App、8888空闲。完整前置、失败、Green见`/tmp/interceptor-item4-remainder-20260928-*`，未删除或改写。
+	- 原剩余方案入口：session files的`body-remainder-preview/review.html`，按用户要求精简为“改前一句、改后一句＋图”，保留24张浅/深图与红框；Composer不变，不再重复放图。`handoff.json`保存当时默认开关false、未改正式shots的预览状态；确认后临时开关已删除、正式设计与shots已同步。File字号10/15→12/20、Original左间距12→16px等变化保留，MiB提示已有下述真实字节边界验收，不再仅为设计图。
+	- 本轮证据：`/tmp/interceptor-item4-messages-20260927-`下`unit-red.json`、`e2e-red.json`及截图/trace、`unit-green.json`、`capture-unit.json`、`pagination-green.json`、`protocol-regression.json`。额外失败如实保留：WS专用Copy是binary Hex，最初误按文本断言；三条消息缩短后可能无外层溢出，改用足够后续消息；第三页分页真实失败由不稳定scroll listener触发，最终205条及末条Copy均通过。未修改产品协议或降低断言期限。
+	- 最终证据：同前缀`final-unit.json`、`final-workflows.json`及目录、`parity-final/queue-final/grpc-hex/effects`等JSON与PNG、`final-host.json`；session files的`item4-messages-acceptance-summary.json`记录每代退出、产品源码SHA-256及去重结果，同目录`item4-messages-acceptance-20260927.tar.gz`已校验，SHA-256为`470abcd2795e28d4c5336e0f68f7a22802fef0f342e3e661e15fd3c1b137c559`。Main/Core/Worker全退、8888释放、无journal，日常CA身份与三份文件size/mtime不变，完整代理恢复；没有为了验收重新生成CA。本项原HTML报告保留CA内容并补实际同消息产品前后局部图/红框，1280/390宽度检查通过。
+## Task List
+
 - **5. macOS journal 收尾 · blocked（外部环境）**
 	- 当前：[journal](../apps/desktop/src/main/platform-capabilities/system-proxy/macos/journal.ts)跨profile恢复复验Green。生产超时已定位并修复：完整资源校验37.4秒超过30秒，同一签名API只读对照为Background26.99秒、普通6.27秒；不反推历史14:09缺失的耗时证据。
 	- 当前步骤：实际launchd策略取得Background的Red后，仅将ProcessType改为Interactive并由用户核准部署；实装plist与运行中的spawn type均为Interactive。平台回归262通过、2项Windows native跳过，最新package、artifact audit、严格签名、生产helper workflow 1/1和packaged smoke 1/1均通过；完整鉴权及30秒期限不变。本轮按用户授权与第1–4项合并保存进度，以下外部验收不标为通过。
@@ -46,10 +63,12 @@
 - **13. 首个真实 tag release · 待验收**：签名、公证及Windows/macOS发布产物待验。[发布说明](platform/release.md)。
 - **14. H2源站正常GOAWAY · 待验证**：验证源站`NO_ERROR`后的stream收尾、上游新连接与Capture记录。[覆盖](features/capture.md#h2-range与多stream集成)。
 - **15. H2事件诊断 · 待实现/待验证**：缺生产原始帧和请求关联，Mockttp/patch采集暂缓；复用Diagnostics，不另建页面。[范围](features/diagnostics.md#h2事件采集范围)。
-- **16. 共享代码全量复验 · 待验证**
+- **16. 共享代码全量复验 · blocked（Windows及外部场景）**
 	- 当前：Main/Preload/Renderer启动、每代Page handler、HTTPS fixture、公共HTTP转发和导入取消调用方均受影响；macOS仅有可执行子集结果，Windows未验。
-	- 当前步骤：HTTP snapshot fixture与Tunnel重复标题的selector均已按真实契约修正，当前406/406无missing/flagged（402项有效结果复用、4项复跑）；不改产品/设计或阈值。签名包首次授权、取消、证书生命周期和当前smoke通过；Windows及各item剩余范围仍未验，本项是交付检查，不另拆feature commit。
-	- 暂停验收源码已保存：HTTPS弹窗的`transitionName=""`及逐帧定位workflow尚未取得真实定位Green，workflow仍按fresh CA断言Generate，和当前共享CA基线不一致，恢复执行前须修正；Bilibili复用CA与gRPC Copy/焦点诊断未复跑，不以保存代码计passed。
+	- 历史基线：HTTP snapshot fixture与Tunnel重复标题的selector曾按真实契约修正，406/406无missing/flagged（402项有效结果复用、4项复跑）；未改产品/设计或阈值。当时签名首次授权、取消、证书生命周期和smoke通过，不替代本轮最终签名包。本项是交付检查，不另拆feature commit。
+	- 独立暂停/平台范围：HTTPS弹窗的`transitionName=""`及逐帧定位workflow仍保留原暂停，不纳入本轮产品改动或Green；workflow的fresh CA Generate断言与共享CA不符，恢复该专项前须修正。Bilibili依赖Windows UIAutomation及真实已登录Edge，当前macOS环境未复验。gRPC Copy/焦点已在本轮最终真实workflow通过，并核对`workflows.json`内request/response各两份`grpc-keyboard-*.json`证据，不再列为未复跑。
+	- 本轮Mac最终：430态3169目标无missing/flagged，所有字体检查一致，最大几何差0.859375px。115:120的弹层可见性等待与测量竞态改为同次采样并等待定位稳定；DeepSeek Endpoint限定dialog内标签后浅/深色复跑通过。只改验收工具配对/等待，不改产品、设计基准或1px阈值。
+	- 证据：session files的`item16-parity-final-20260928.json`和`item16-parity-summary-20260928.json`保留最终合并及来源；`item16-parity-evidence-20260928.tar.gz`含1084项、294175737字节，SHA-256为`9b31bc3967170271f41e4189bc1aa855f68bb381b478c0d2cb0751355c3fa8ee`。原弹层失败、Endpoint 40px配对失败及含该失败的全量原始结果一并保留，不改写历史Green。
 - **17. 文档整理 · 待审阅**
 	- 当前：22份`architecture/`压缩与导航改动按用户授权保存为中间进度，不登记文档整理完成；完整原文仍在平台基线`218295b0`，可用`git show 218295b0:architecture/features/settings.md`等精确回读。
 	- 剩余：逐项承接被删的独有验证事实和证据，重点为Settings、Capture、Tool capabilities及TODO；保留69项Tool/68项真实E2E的历史范围、Manager原生验收排除、各次Red/Green/trace和明确风险，不把链接替代当前状态判断所需的事实。当前源码和设计契约也须复核，不能因文字更短而当成无害整理。
@@ -69,13 +88,17 @@
 | 范围 | 当前结论 | 未覆盖或限制 |
 | --- | --- | --- |
 | 共享CA（原第2项） | 跨profile与删除profile后保留1/1，材料/信任和退出恢复通过 | Windows实机留第8项 |
-| 证书验收 | 新包直接生命周期、Agent/MCP六项及原生窗口、TLS、取消回滚、启动取消、Quit/Delete冲突均Green | driver的300秒人工等待超时catch未触发；不冒充产品取消缺口或全分支覆盖 |
-| 当前macOS产物 | 新helper已部署且包内一致；11条不同真实E2E与额外首次初始化运行通过，smoke 1/1；已保存60次完整校验837–1714ms | Windows实机留第8项；本轮未恢复其他暂停流程 |
-| UI parity | 406/406，无missing/flagged；402复用、4重跑，修正前后PNG一致 | 没有修改产品、设计或阈值 |
-| 类型/回归 | workspace类型及最终Desktop类型通过；第4项平台315通过、2项Windows native跳过 | 其他有效基线见证据索引；Core的2项framing失败及Windows实机缺口保留，未跑无关全套 |
-| 最后宿主核验 | 新日常CA受信任；其他Root/admin trust保持、完整代理恢复、App/Core/Worker全退、无journal、8888释放 | `/tmp/interceptor-item4-resume-20260925-daily-restore.json`及trace、`final-host.json`；仅获准常驻helper保留 |
+| CA阶段历史验收 | 9月26日生命周期、Agent/MCP六项、TLS、取消及冲突Green；11条不同E2E与额外初始化、smoke1/1，60次签名校验837–1714ms | 对应`d6debb2e`阶段，不代替9月28日新包；driver300秒超时catch未触发 |
+| 当前macOS产物 | 最终package/audit/严格签名通过，ASAR SHA-256为`68cbaba4738d8deff1ff7d58f47acf7b74f43f9cfb2afb2bd2aaa8aaf2e836b0`；9月29日系统授权ready、签名两代启动1/1、smoke1/1和16张截图矩阵通过，helper与实装字节一致 | 9月28日未授权失败独立保留；不是Developer ID/公证或Windows验收 |
+| UI parity | Mac全量430态3169目标无missing/flagged，字体一致、最大0.859375px；正文85态717目标仍有效，其中Original/File/Text34态400目标为0px | fake Preload不替代真实E2E或Windows验收；原竞态/配对失败保留 |
+| 类型/回归 | 全workspace类型和相关303 tests通过，Core解码15项有效基线；当前正文真实E2E16条通过，含大小File、2MiB、窗口/滚轮、完整发送和Composer | Windows实机未验；Core两项chunked失败属第10项，新发现NO_ERROR尾段缺失属第14项 |
+| 最后宿主核验 | 9月29日签名启动及smoke后，日常CA指纹/三份材料size/mtime/信任保持，完整代理恢复，无journal、App全退、8888释放；51份源码与ASAR/helper哈希不变 | 当前证据`item4-final-acceptance-20260929.json`；9月28日失败与开发证据仍分别保留，不覆盖历史记录 |
 
 本轮证据已另存持久副本：`/Users/zhxmt/.copilot/session-state/df17625e-cb60-4ece-a735-8d703667fab6/files/item4-acceptance-summary.json`；同目录`item4-acceptance-20260926.tar.gz`保留原始Red、失败、Green与trace，SHA-256为`ba3f9ee81b6aae05a96d6bfdb69fba76fbe2ffff0cf46d87bd8c0e9e0d9937f8`。最终逐项核对12次成功运行、11条不同workflow的trace存在及每代退出metadata，未将失败记录算入。
+
+9月28日最终正文证据位于同一session files的`item4-final-acceptance-20260928.json`，记录303 tests、16条开发E2E、85态parity、源码/产物hash与签名授权阻塞。`item4-final-evidence-20260928.tar.gz`已校验，SHA-256为`a8394689606dd4d397bbef2b0418580bc16ed910d0ab077445f278aa8d237178`；旧包证据独立保留，不把最终未运行的smoke写为通过。
+
+9月29日授权后的新结果独立保存为`item4-final-acceptance-20260929.json`；`item4-signed-final-evidence-20260929.tar.gz`含48项、26520921字节，SHA-256为`c5d17420658b7485741e827266135445953383e1f08a72a7e285e2cba33dcc02`。原始入口为`/tmp/interceptor-item4-20260929-{signed-startup,packaged-smoke}`及同名JSON/log；两代trace、16张截图与最终恢复已核对。
 
 ## Windows 复验
 
@@ -90,12 +113,12 @@
 | 构建/路径 | `build:native`及平台所属测试；[Client App](../apps/proxy-core/src/proxy-core/client-app/tests/unit/service.test.ts)、[Transfer](../apps/proxy-core/src/proxy-core/transfer/tests/unit/job-manager.test.ts)、[Windows文件窗口fixture](../apps/desktop/tests/e2e-workflow-tests/fixtures/ui/tests/unit/windows-file-dialog.test.ts) | 共用runner、8 MiB枚举、certutil/UAC、Windows路径解析；不使用macOS skip替代 |
 | 产物/全量 | 全部适用workflow及[packaged smoke](../apps/desktop/tests/packaged-smoke/startup.spec.ts) | ready门禁、精确Preload白名单、Core重启、截图矩阵、系统设置/进程恢复 |
 
-## 恢复命令
+## 复验命令
 
-当前helper已经部署且日常CA就绪，不为重复验收更新组件或清理日常CA。后续证书专项若需要空材料，须重新确认当前身份与清理范围。其他具体命令查[测试说明](platform/testing.md)和[证书规格](../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md)。
+日常CA及当前最终包的production批准已就绪；下面命令仅用于需要重新验证时，按顺序执行，不重复prepare或改写产物。不要删除CA、改授权规则或手改helper配置；详细命令见[测试说明](platform/testing.md)。
 
 ```sh
-open -n -a "$PWD/apps/desktop/out/Interceptor-darwin-x64/Interceptor.app" --args --user-data-dir="$(mktemp -d /tmp/interceptor-helper-approval.XXXXXX)"
+INTERCEPTOR_E2E_MACOS_APP_PATH="$PWD/apps/desktop/out/Interceptor-darwin-x64/Interceptor.app" npm exec --workspace @interceptor/desktop playwright test -- --config tests/e2e-workflow-tests/playwright.config.ts workflows/settings/helper-startup.workflow.ts --project macos
 npm run test:smoke --workspace @interceptor/desktop
 ```
 

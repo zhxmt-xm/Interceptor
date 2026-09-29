@@ -12,7 +12,7 @@ interface UnavailableBodyProps {
   /** 一句话说明为什么没有内容可渲染，而不只是「无法预览」。 */
   reason: string;
   saving?: boolean;
-  onSave(): void;
+  onSave?: () => void;
   parityId?: string;
 }
 
@@ -37,9 +37,9 @@ export function UnavailableBody({
           <span className={styles.reason}>{reason}</span>
         </div>
       </div>
-      <Button className={styles.save} icon={Download} size="sm" loading={saving} onClick={onSave}>
+      {onSave ? <Button className={styles.save} icon={Download} size="sm" loading={saving} onClick={onSave}>
         {t('body.save')}
-      </Button>
+      </Button> : null}
     </div>
   );
 }

@@ -64,10 +64,10 @@ test('capture.scenarios.encoding decodes compressed bodies and preserves damaged
     });
   }
 
-    // 解码边界：压缩输入超过5 MiB，Core按明文字节截断，保留边界前的完整字符。
-    // Decoded boundary: compressed input exceeds 5 MiB and Core limits decoded bytes without displaying an incomplete final character.
+    // 解码边界：压缩输入超过2 MiB，Core按明文字节截断，保留边界前的完整字符。
+    // Decoded boundary: compressed input exceeds 2 MiB and Core limits decoded bytes without displaying an incomplete final character.
     await test.step('gzip-decoded-utf8-boundary', async () => {
-      const previewLimit = 5 * 1024 * 1024;
+      const previewLimit = 2 * 1024 * 1024;
       const requestPath = '/e2e/encoding/decoded-utf8-boundary';
       const visibleText = randomBytes(previewLimit).toString('base64').slice(0, previewLimit - 2);
       const remainingText = randomBytes(previewLimit / 2).toString('base64');

@@ -60,6 +60,111 @@ describe('Compact CodeViewer content height', () => {
   });
 });
 
+describe('Resizable message CodeViewer', () => {
+  function mount(contentHeight: number) {
+    const changes: (() => void)[] = [];
+    const observed = new Set<unknown>();
+    const disconnect = vi.fn();
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: () => void) { changes.push(callback); }
+      observe = vi.fn((element: unknown) => observed.add(element));
+      disconnect = disconnect;
+    });
+    let visible = true;
+    let precedingHeight = 0;
+    const precedingSection = { previousElementSibling: null };
+    const scroll = {
+      clientHeight: 681,
+      scrollTop: 0,
+      parentElement: null,
+      getBoundingClientRect: () => ({ top: 100 }),
+    };
+    const host = {
+      style: { height: '', minHeight: '', maxHeight: '' },
+      clientWidth: 386,
+      parentElement: scroll,
+      previousElementSibling: precedingSection,
+      getClientRects: () => visible ? [{}] : [],
+      getBoundingClientRect: () => ({ top: 340 + precedingHeight - scroll.scrollTop, height: Number.parseFloat(host.style.height) || 0 }),
+    };
+    vi.stubGlobal('getComputedStyle', vi.fn((element) => element === host
+      ? { borderTopWidth: '1', borderBottomWidth: '1', overflowY: 'hidden' }
+      : { overflowY: 'auto' }));
+    fixture.editor.getContentHeight.mockReturnValue(contentHeight);
+    const component = CodeViewer as unknown as { render(props: CodeViewerProps, ref: null): unknown };
+    component.render({ value: 'message', language: 'plaintext', compact: true, resizable: true }, null);
+    fixture.references[0]!.current = host;
+    return {
+      host, scroll, changes, disconnect,
+      hide: () => { visible = false; },
+      show: () => { visible = true; },
+      start: () => fixture.effects[0]!(),
+      resize: () => changes.forEach(callback => callback()),
+      resizePrecedingSection: (height: number) => {
+        precedingHeight = height;
+        if (observed.has(precedingSection)) changes.forEach(callback => callback());
+      },
+    };
+  }
+
+  it('limits a long message to the current scroll viewport without changing the model', () => {
+    const view = mount(2686);
+    view.start();
+    expect(view.host.style.height).toBe('441px');
+    expect(view.host.style.maxHeight).toBe('441px');
+    expect(view.host.style.minHeight).toBe('48px');
+  });
+
+  it('keeps short content natural and recomputes after wrapping without assuming a user resize', () => {
+    const view = mount(126);
+    view.start();
+    expect(view.host.style.height).toBe('128px');
+    fixture.editor.getContentHeight.mockReturnValue(166);
+    fixture.editor.onDidContentSizeChange.mock.calls[0]![0]();
+    expect(view.host.style.height).toBe('168px');
+    expect(view.host.style.maxHeight).toBe('441px');
+  });
+
+  it('restores a manually resized message after its container shrinks and expands', () => {
+    const view = mount(2686);
+    const cleanup = view.start();
+    view.host.style.height = '321px';
+    view.resize();
+    view.scroll.clientHeight = 481;
+    view.resize();
+    expect(view.host.style.height).toBe('241px');
+    view.scroll.clientHeight = 681;
+    view.resize();
+    expect(view.host.style.height).toBe('321px');
+    view.scroll.scrollTop = 120;
+    view.resize();
+    expect(view.host.style.maxHeight).toBe('441px');
+    (cleanup as () => void)();
+    expect(view.disconnect).toHaveBeenCalledOnce();
+  });
+
+  it('waits for visibility before choosing the initial height', () => {
+    const view = mount(26);
+    view.hide();
+    view.start();
+    expect(view.host.style.height).toBe('');
+    view.show();
+    fixture.editor.getContentHeight.mockReturnValue(126);
+    view.resize();
+    expect(view.host.style.height).toBe('128px');
+  });
+
+  it('reclamps a short preview when the preceding Original section changes height', () => {
+    const view = mount(104);
+    view.start();
+    expect(view.host.style.height).toBe('106px');
+    view.resizePrecedingSection(405);
+    expect(view.host.style.height).toBe('48px');
+    view.resizePrecedingSection(0);
+    expect(view.host.style.height).toBe('106px');
+  });
+});
+
 describe('CodeViewer model disposal', () => {
   it('lets the editor detach and dispose its implicit model once when a body mode unmounts', () => {
     const component = CodeViewer as unknown as { render(props: CodeViewerProps, ref: null): unknown };

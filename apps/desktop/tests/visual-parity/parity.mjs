@@ -8,10 +8,12 @@ import { fileURLToPath } from 'node:url';
 
 import pixelmatch from 'pixelmatch';
 import { chromium } from 'playwright-core';
+import { expect } from '@playwright/test';
 import { PNG } from 'pngjs';
 import { createServer } from 'vite';
 
 import { startDesignPreview } from '../../../../design-vite/tools/design-preview.mjs';
+import { describeReadonlyBody, describeLimitedCaptureBody } from '../../../../design-vite/src/fixtures/readonlyBodyData.ts';
 import * as config from './parity.config.mjs';
 import {
   fakeInterceptorFixture,
@@ -48,7 +50,7 @@ const rendererViewport = viewportMatch
   : config.viewport;
 const inspectPopover = process.argv.includes('--inspect-popover');
 const inspectSelect = process.argv.includes('--inspect-select');
-const filteredViews = config.views.filter((view) => !onlyView || view.id === onlyView);
+const filteredViews = config.views.filter((view) => !onlyView || onlyView.split(',').includes(view.id));
 const views = sliceMatch
   ? filteredViews.slice(Number(sliceMatch[1]), Number(sliceMatch[2]))
   : filteredViews;
@@ -208,21 +210,15 @@ async function applyRendererActions(page, actions = []) {
         });
         break;
       case 'assertInsideViewport':
-        await page.locator(action.selector).filter({ visible: true }).first().waitFor({ state: 'visible' });
-        await page.locator(action.selector).filter({ visible: true }).evaluateAll((elements) => {
-          if (elements.length === 0) throw new Error('Expected a visible popup');
-          for (const element of elements) {
+        await expect.poll(() => page.locator(action.selector).filter({ visible: true }).evaluateAll((elements) => ({
+          visible: elements.length > 0,
+          outside: elements.flatMap(element => {
             const rect = element.getBoundingClientRect();
-            if (
-              rect.top < 0 ||
-              rect.left < 0 ||
-              rect.right > window.innerWidth ||
-              rect.bottom > window.innerHeight
-            ) {
-              throw new Error(`Popup exceeds viewport: ${JSON.stringify(rect.toJSON())}`);
-            }
-          }
-        });
+            return rect.top < 0 || rect.left < 0 || rect.right > window.innerWidth || rect.bottom > window.innerHeight
+              ? [rect.toJSON()] : [];
+          }),
+        })), { message: 'Expected a visible popup entirely inside the viewport', timeout: 5_000 })
+          .toEqual({ visible: true, outside: [] });
         break;
       case 'assertSelectorVisible':
         await page.locator(action.selector).waitFor({ state: 'visible' });
@@ -231,7 +227,13 @@ async function applyRendererActions(page, actions = []) {
         await page.getByRole(action.role, { name: action.name, exact: true }).nth(index).click();
         break;
       case 'fillLabel':
-        await page.getByLabel(action.label, { exact: true }).nth(index).fill(action.value);
+        await page.getByLabel(action.label, { exact: true }).filter({ visible: true }).nth(index).fill(action.value);
+        break;
+      case 'pressLabel':
+        await page.getByLabel(action.label, { exact: true }).filter({ visible: true }).nth(index).press(action.key);
+        break;
+      case 'typeLabel':
+        await page.getByLabel(action.label, { exact: true }).filter({ visible: true }).nth(index).pressSequentially(action.value);
         break;
       case 'fillAutomation':
         await page
@@ -240,6 +242,18 @@ async function applyRendererActions(page, actions = []) {
           .nth(index)
           .fill(action.value);
         break;
+      case 'resizeVertical': {
+        const control = page.locator(action.selector).filter({ visible: true }).nth(index);
+        const box = await control.boundingBox();
+        if (!box) throw new Error('The resizable body is not visible.');
+        const start = { x: box.x + box.width - 3, y: box.y + box.height - 3 };
+        await page.mouse.move(start.x, start.y);
+        await page.mouse.down();
+        await page.mouse.move(start.x, start.y + action.delta, { steps: 12 });
+        await page.mouse.up();
+        await page.waitForTimeout(200);
+        break;
+      }
       case 'emitTlsCompatibility':
         await page.evaluate((events) => {
           window.__emitTlsCompatibility?.(events);
@@ -358,7 +372,8 @@ const viewSummaries = [];
 const elementDiffs = [];
 
 for (const view of views) {
-  if (designPageViewCount === 24 || previousDesignState?.tlsPatterns) {
+  if (designPageViewCount === 24 || previousDesignState?.tlsPatterns
+    || (view.freshDesign === true && designPageViewCount > 0)) {
     await designSession.context.close();
     designSession = await openDesignPage();
     designPage = designSession.page;
@@ -390,6 +405,8 @@ for (const view of views) {
     breakpointState: '',
     breakpointBody: 'loading',
     breakpointFile: 'none',
+    bodyRemainderSample: 'current',
+    bodyRemainderNotice: 'none',
     breakpointPanel: '',
     breakpointMessage: '',
     breakpointQueueSelection: 'http-head',
@@ -432,11 +449,15 @@ for (const view of views) {
     freshProfile: view.freshProfile === true,
     largeBody: view.largeBody === true,
     largeTextBody: view.largeTextBody === true,
+    readonlyData: view.readonlyData
+      ? describeReadonlyBody(view.readonlyData.sample, view.readonlyData.notice)
+      : view.largeTextBody ? describeLimitedCaptureBody() : null,
     noRuleHits: view.noRuleHits === true,
     pausedBreakpoints: view.pausedBreakpoints === true,
     pausedBreakpointPhase: view.pausedBreakpointPhase ?? null,
     pausedWebSocketBreakpoint: view.pausedWebSocketBreakpoint === true,
     websocketMessagesState: view.websocketMessagesState ?? 'ready',
+    grpcMessageSource: view.grpcMessageSource ?? null,
     breakpointBodyState: view.breakpointBodyState ?? 'request-ready',
     breakpointFile: view.breakpointFile ?? null,
     breakpointsEnabled: view.breakpointsEnabled !== false,

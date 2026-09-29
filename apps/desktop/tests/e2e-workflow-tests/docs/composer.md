@@ -225,9 +225,9 @@ Response Headers、Request Headers、Cookies、Timing与Connection沿用同一�
 ### Steps
 
 1. 创建独立profile、trace和HTTP loopback origin；启动本地production Electron并等待App/Core/8888，fresh-profile readiness只执行Cancel，不修改系统代理。
-2. 通过Composer UI发送小于2 MiB的单行HTML响应；等待自动Format结束，点击公共Copy动作并从系统剪贴板确认正文已分行且内容保持。
+2. 通过Composer UI发送完整且不超过1 MiB的单行HTML响应；等待自动Format结束，点击公共Copy动作并从系统剪贴板确认正文已分行且内容保持。
 3. 新建请求并发送小JavaScript响应；确认自动Format补齐空格且Copy读取当前model。
-4. 新建请求并发送2–8 MiB的单行CSS响应；Format前Copy确认原文无换行，点击公共Format动作，等待busy结束后再次Copy并确认已分行。
+4. 新建请求并发送完整1–2 MiB的单行CSS响应；Format前Copy确认原文无换行，点击公共Format动作，等待busy结束后再次Copy并确认已分行。
 5. 新建请求并发送无法解析的XML；记录Renderer page errors，点击Format后确认原文逐字节不变、按钮恢复可用且未新增未处理page error。
 6. 不再点击Format，切回此前CSS request；Copy必须仍返回该response的4行格式化视图，证明格式化副本按文档隔离且未改写原始body。
 7. 附加四段正文摘要、CSS恢复摘要与Renderer错误增量；正常Close并验证Main/Core/Renderer退出、8888释放和profile删除。

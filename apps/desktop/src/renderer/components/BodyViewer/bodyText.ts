@@ -9,6 +9,13 @@ export function decodeUtf8(bytes: Uint8Array, truncated = false): string {
   return new TextDecoder('utf-8', { fatal: false }).decode(bytes, { stream: truncated });
 }
 
+export function previewSizeLabel(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const divisor = bytes < 1024 * 1024 ? 1024 : 1024 * 1024;
+  const value = bytes / divisor;
+  return `${Number.isInteger(value) ? value : value.toFixed(1)} ${divisor === 1024 ? 'KiB' : 'MiB'}`;
+}
+
 /** 只把对象/数组根视为 JSON 文档，避免把 `42`、`"text"` 这类纯文本当成 JSON。 */
 function parseJsonDocument(record: string): unknown {
   const trimmed = record.trim();

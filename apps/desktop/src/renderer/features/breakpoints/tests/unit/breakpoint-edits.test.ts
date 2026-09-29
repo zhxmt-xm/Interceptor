@@ -110,7 +110,7 @@ describe('breakpoint edits', () => {
         name: 'checkout.json',
         size: 12,
         mediaType: 'application/json',
-        text: '{"ok":true}',
+        preview: { bytes: new TextEncoder().encode('{"ok":true}'), truncated: false },
       },
     };
 

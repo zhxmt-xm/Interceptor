@@ -2,6 +2,22 @@
 
 本文件定义 Capture 内嵌 Breakpoint 能力的完整 E2E 流程。产品没有独立 Breakpoints workspace：配置入口是 Capture workbar manager，命中与编辑入口是 paused Capture 行及其 Inspector。每条 workflow 独立启动 Electron、独占 profile/trace，并通过真实 Rules breakpoint action、Core queue 和客户端连接验证。
 
+## `breakpoints.body-preview`
+
+macOS最终大小File、完整Text与原生Save/Open均通过；2MiB预览不影响3MiB文件和Text发送。短File另覆盖展开前置Original后的高度重算，Windows原生窗口未验。普通文件用Content-Length请求；继承chunked的编辑framing仍属于第10项，不以本流程Green代替。
+
+1. fresh profile启动真实Electron，保存宿主基线，通过UI开始Recording；使用现有HTTP origin产生完整且超过2 MiB的UTF-8正文，通过产品Save body导出本轮文件，不自行写入替换文件。
+2. 通过Rules UI创建request breakpoint并Apply，向测试origin发送含长正文请求；从实际Capture行打开断点，Original预览最多2 MiB并显示截断，禁止Format；正文限高且右下角可拖，滚轮/键盘可达预览末尾。
+3. 收起Original，Text填入完整超过2 MiB输入并在末尾追加自产标记，Forward edited后origin收到完整文本。再次挂起，选择File并用真实Open Dialog选步骤1产品导出的文件；显示可读JSON/文本预览和完整文件说明，File预览不是编辑值。
+4. 拖拽File高度后Forward edited，origin的完整长度/hash与步骤1保存文件一致；预览末尾截断不影响发送。分别保留无替换、空Text、File模式切换与取消选文件的原有语义。
+5. 保存改前/改后PNG、预览字节数、完整文件/发送hash和trace；通过正常Close退出，Main/Core/Worker全退、8888释放、完整代理/日常CA保持。不得以fake Preload或预造文件替代产品保存、选择与发送。
+
+## `breakpoints.original-body`
+
+1. fresh profile通过真实UI开始Recording并创建POST断点，客户端向loopback origin发送完整3MiB JSON。
+2. Original显示有限2MiB且禁止Format；容器限高、右下角可拖，Raw/Copy不读取超出预览的字节。
+3. 通过Continue unmodified释放，origin收到完整原始字节；保存几何/截图/trace，正常退出并验证进程、8888、代理与日常CA恢复。
+
 <a id="breakpoints-tools-batch"></a>
 ## `breakpoints.tools.batch`
 

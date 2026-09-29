@@ -18,6 +18,7 @@ import {
 } from '../../../components';
 import { readCompleteBody } from '../data/readCompleteBody';
 import { bodyPreviewRequest } from '../utils';
+import { previewSizeLabel } from '../../../components/BodyViewer/bodyText';
 import styles from './BodyView.module.css';
 
 interface BodyViewProps {
@@ -26,6 +27,8 @@ interface BodyViewProps {
   /** 全屏弹窗标题；内联消息体不给，也就没有全屏入口。 */
   fullscreenTitle?: string;
   compact?: boolean;
+  resizable?: boolean;
+  showFormatNotice?: boolean;
   offset?: number;
   suggestedFileName?: string;
 }
@@ -44,6 +47,8 @@ export function BodyView({
   grpcBody,
   fullscreenTitle,
   compact = false,
+  resizable = false,
+  showFormatNotice = false,
   offset = 0,
   suggestedFileName = 'response-body.bin',
 }: BodyViewProps): React.JSX.Element {
@@ -153,12 +158,12 @@ export function BodyView({
     const notes: string[] = [];
     if (loaded?.decodeStatus === 'limited') {
       notes.push(t('capture.decodedBodyPreviewLimited', {
-        preview: sizeLabel(loaded.bytes.byteLength, i18n.language),
+        preview: previewSizeLabel(loaded.bytes.byteLength),
       }));
     } else if (!preview.decode && preview.limited) {
       notes.push(t('capture.bodyPreviewLimited', {
-        preview: sizeLabel(preview.length, i18n.language),
-        total: sizeLabel(body.encodedSize, i18n.language),
+        preview: previewSizeLabel(preview.length),
+        total: previewSizeLabel(body.encodedSize),
       }));
     }
     if (loaded?.decodeStatus === 'failed' || (preview.decode && loaded?.decodeStatus === 'skipped')) {
@@ -202,11 +207,14 @@ export function BodyView({
       mediaType={body.mediaType}
       size={body.encodedSize}
       previewTruncated={preview.decode ? loaded.decodeStatus === 'limited' : preview.limited}
+      incomplete={body.truncated}
       fullscreenTitle={fullscreenTitle}
       notes={bodyNotes()}
       onSave={body.bodyHash ? saveBody : undefined}
       saving={saveJob?.state === 'running'}
       compact={compact}
+      resizable={resizable}
+      showFormatNotice={showFormatNotice}
       automationId={AUTOMATION_IDS.capture.inspector.bodyView}
       paneAutomationId={AUTOMATION_IDS.capture.inspector.bodyPane}
       actionAutomationIds={AUTOMATION_IDS.capture.inspector.bodyAction}

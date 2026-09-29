@@ -5,16 +5,16 @@
 | 分类 | 详细文档 | Workflow 数量 |
 | --- | --- | ---: |
 | Application 与 Shell | [application-shell.md](application-shell.md) | 9 |
-| Capture 与协议 | [capture.md](capture.md) | 38 |
+| Capture 与协议 | [capture.md](capture.md) | 40 |
 | Rules | [rules.md](rules.md) | 15 |
 | Composer | [composer.md](composer.md) | 11 |
-| Breakpoints | [breakpoints.md](breakpoints.md) | 12 |
+| Breakpoints | [breakpoints.md](breakpoints.md) | 14 |
 | Diagnostics | [diagnostics.md](diagnostics.md) | 6 |
 | Agent | [agent.md](agent.md) | 13 |
 | MCP | [mcp.md](mcp.md) | 3 |
 | Settings 与 Updates | [settings-updates.md](settings-updates.md) | 29 |
 
-总计：136 条 workflow 契约（含共享CA启动和启动授权取消）。管理员MMC原生专项另保留排除说明，不计入workflow数量。
+总计：140 条 workflow 契约（含共享CA启动、普通消息高度、正文阈值及Original/File预览；部分契约含多个协议或大小测试）。管理员MMC原生专项另保留排除说明，不计入workflow数量。
 
 ## 文档约定
 

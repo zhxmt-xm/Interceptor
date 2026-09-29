@@ -24,24 +24,46 @@ export function GrpcMessagePayload(): React.JSX.Element | null {
   const source = state.grpcMessageSource ?? HEX_DUMP;
   const bytes = state.grpcMessageSource === null ? undefined : new TextEncoder().encode(source);
   const hex = bytes ? formatHexDump(bytes, 16) : HEX_DUMP;
+  const payloadLength = bytes?.byteLength;
+  const payloadSize = payloadLength === undefined
+    ? '1.2 KB'
+    : payloadLength < 1024 ? `${payloadLength} B` : `${(payloadLength / 1024).toFixed(1)} KB`;
 
   useLayoutEffect(() => {
     setHost(document.querySelector('.grpcpayload'));
   }, []);
+
+  useLayoutEffect(() => {
+    if (!host || payloadLength === undefined) return;
+    const messageSize = host.previousElementSibling?.querySelector('.grpcsize');
+    const messageOffset = host.previousElementSibling?.querySelector('.grpcoffset');
+    const nextOffset = host.nextElementSibling?.querySelector('.grpcoffset');
+    if (!messageSize || !messageOffset || !nextOffset) return;
+    const previousSize = messageSize.textContent;
+    const previousOffset = nextOffset.textContent;
+    const payloadOffset = Number.parseInt(messageOffset.textContent!.slice(2), 16);
+    messageSize.textContent = payloadSize;
+    nextOffset.textContent = `@ 0x${(payloadOffset + payloadLength + 5).toString(16).padStart(4, '0')}`;
+    return () => {
+      messageSize.textContent = previousSize;
+      nextOffset.textContent = previousOffset;
+    };
+  }, [host, payloadLength, payloadSize]);
 
   if (!host) return null;
   return createPortal(
     <div className={styles.grpcMessagePayload}>
       <div className={styles.grpcMessagePayloadHead}>
         <b>Response message 2</b>
-        <span>{bytes ? `UTF-8 payload · ${bytes.byteLength} B` : 'raw protobuf · 1.2 KB'}</span>
+        <span>{`raw protobuf · ${payloadSize}`}</span>
         <IconButton label="Copy message" icon={<Copy aria-hidden="true" />} onClick={bytes ? () => void navigator.clipboard.writeText(source) : undefined} />
       </div>
       <BodyViewerDesign
         ariaLabel="Response message view"
+        resizable
         value={view}
         modes={VIEW_OPTIONS}
-        meta="application/octet-stream"
+        meta={bytes ? `application/octet-stream · ${payloadSize}` : 'application/octet-stream'}
         source={source}
         hex={hex}
         bytes={bytes}

@@ -189,13 +189,18 @@ export const koCatalog = {
   'body.format': "서식 정리",
   'body.fullscreen': '전체 화면',
   'body.exitFullscreen': '전체 화면 종료',
-  'body.formatBlocked': "본문이 8 MB를 초과하여 서식 정리를 사용할 수 없습니다. 저장한 뒤 외부 도구를 사용하세요.",
+  'body.formatBlocked': "본문이 2 MiB를 초과하여 서식 정리를 사용할 수 없습니다. 저장한 뒤 외부 도구를 사용하세요.",
+  'body.formatTruncated': '잘린 미리보기는 서식 정리를 할 수 없습니다.',
+  'body.formatFailed': '서식 정리에 실패했습니다. 원본 내용은 변경되지 않았습니다.',
+  'body.formatManual': '전체 본문 · {{size}}. 1~2 MiB 크기의 본문에는 "서식 정리"를 사용하세요.',
   'body.copyValue': "값 복사",
   'body.copyObject': "객체 복사",
   'body.copyPath': "경로 복사",
   'body.field': "필드",
   'body.value': "값",
   'body.imageTooLarge': "너무 커서 미리 볼 수 없습니다. 저장한 뒤 이미지 뷰어에서 여세요.",
+  'body.imagePreviewLimit': '이미지 미리보기 전용 한도인 16 MiB를 초과했습니다. 이미지를 불러오지 않습니다.',
+  'body.previewLimited': '전체 {{total}} 중 {{preview}} 미리보기.',
   'body.imageUndecodable': "이 이미지를 디코딩할 수 없습니다. 저장한 뒤 이미지 뷰어에서 여세요.",
   'body.mediaNotRead': "오디오와 비디오는 미리보기로 읽지 않습니다. 저장한 뒤 재생기에서 여세요.",
   'capture.failedSaveBody': '본문 저장 실패: {{error}}',
@@ -647,7 +652,10 @@ export const koCatalog = {
 
 
 
-  'breakpoints.filePreviewUnavailable': '너무 크거나 텍스트가 아니어서 디스크에서 그대로 전달합니다.',
+  'breakpoints.filePreviewUnavailable': '미리보기를 사용할 수 없습니다. 전체 파일을 변경 없이 전송합니다.',
+  'breakpoints.filePreviewOnly': '미리보기 전용입니다. "수정본 전달"은 보이는 미리보기가 아닌 선택한 파일 전체를 사용합니다.',
+  'breakpoints.fileForwardComplete': '"수정본 전달"은 여전히 선택한 파일 전체를 사용합니다.',
+  'breakpoints.textComplete': '전체 텍스트를 계속 편집할 수 있습니다. 읽기 전용 미리보기 한도로 인해 이 값이 잘리지는 않습니다.',
 
   'breakpoints.replacementBody': '대체 본문',
   'breakpoints.replacementMessage': '대체 메시지',

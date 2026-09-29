@@ -13653,7 +13653,7 @@ export const captureFixture: FixtureNode = {
                                       "children": [
                                         {
                                           "type": "text",
-                                          "value": "html · 12 MB"
+                                          "value": "html · 12 MiB"
                                         }
                                       ]
                                     },
@@ -15034,7 +15034,7 @@ export const captureFixture: FixtureNode = {
                                         },
                                         {
                                           "type": "text",
-                                          "value": "Showing the first 5 MB of 12 MB. The full body remains captured for export."
+                                          "value": "Showing the first 2 MiB of 12 MiB. The full body remains captured for export."
                                         }
                                       ]
                                     },
@@ -15067,7 +15067,7 @@ export const captureFixture: FixtureNode = {
                                         },
                                         {
                                           "type": "text",
-                                          "value": "Body is 12 MB — formatting is disabled above 8 MB. Save the body to format it in an external tool."
+                                          "value": "Truncated previews cannot be formatted."
                                         }
                                       ]
                                     },

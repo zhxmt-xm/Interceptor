@@ -1,0 +1,75 @@
+.preview {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+.fileNote {
+  margin: 0;
+  padding: 10px 12px 0;
+  color: var(--text-3);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text-2);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.notice > svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+.notice[data-warning] > svg {
+  color: var(--yellow);
+}
+.notice > span {
+  flex: 1;
+  min-width: 0;
+}
+.imageLimit {
+  display: flex;
+  min-height: 160px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text-2);
+  text-align: center;
+}
+.imageLimit > svg {
+  width: 24px;
+  height: 24px;
+  color: var(--text-3);
+}
+.imageLimit b {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.imageLimit p,
+.imageLimit small,
+.unavailable {
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.imageLimit p,
+.imageLimit small {
+  max-width: 340px;
+}
+.unavailable {
+  padding: 10px 12px;
+  color: var(--text-3);
+}

@@ -143,7 +143,8 @@ export function WebSocketMessages({
         />
       </div>
 
-      <div className={cx(styles.frameList, selectedPending && selectedPendingIsHead && styles.pausedFrameList)}>
+      <div className={cx(styles.frameList, selectedPending && selectedPendingIsHead && styles.pausedFrameList,
+        selectedPending && !selectedPendingIsHead && styles.queuedFrameList)}>
         <div className={styles.frameScroll} ref={scrollRef} onScroll={handleScroll}>
           {loading ? <div className={styles.empty} data-parity="websocket-message-state">{t('capture.loadingMessages')}</div> : null}
           {!loading && error ? (
@@ -330,4 +331,3 @@ const FrameRow = memo(function FrameRow({
     </button>
   );
 });
-

@@ -23,6 +23,7 @@ interface BodyToolbarProps {
   /** MIME 加该类型的硬数字，如 `image/png · 1200 × 630`。 */
   meta: string;
   formatState?: FormatState;
+  formatBlockedReason?: string;
   onFormat?: () => void;
   onCopy?: () => void;
   onSave?: () => void;
@@ -39,6 +40,7 @@ export function BodyToolbar({
   onModeChange,
   meta,
   formatState = 'hidden',
+  formatBlockedReason,
   onFormat,
   onCopy,
   onSave,
@@ -65,7 +67,7 @@ export function BodyToolbar({
             size="sm"
             loading={formatState === 'busy'}
             disabled={formatState === 'blocked'}
-            disabledTooltip={t('body.formatBlocked')}
+            disabledTooltip={formatBlockedReason ?? t('body.formatBlocked')}
             onClick={onFormat}
             automationId={actionAutomationIds?.format}
           />

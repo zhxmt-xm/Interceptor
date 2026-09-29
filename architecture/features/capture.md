@@ -316,6 +316,30 @@ stateDiagram-v2
 - Compact CodeViewer与设计Monaco的box/message使用`getContentHeight()`加宿主实际上下边框，不重复预留横向滚动条空间；字号12px、行高20px、上下padding13px。
 - PayloadEditor的Original body和WebSocket暂停容器按内容定高，不额外增加底部预留或固定最小高度；普通查看器仍填充容器。
 
+##### 普通消息正文限高与拖拽
+
+- 2026-09-27确认：只对普通gRPC/WebSocket展开消息的Monaco视图启用可调整高度，HTTP Original/File、断点编辑、Composer、Tree、Hex、全屏及正文读取/格式化阈值保持现行契约。
+- `FramePayload/GrpcMessagePayload → BodyView → BodyViewer → CodeViewer`显式传`resizable`，只有`compact && resizable && !fullscreen`启用。gRPC虚拟列表跟随Inspector外层滚动并使用scrollMargin；WebSocket列表填充剩余空间，队首/排队断点仍使用各自既有布局，不以固定360px高度限制普通消息。
+- 初始高度为`min(完整显示内容高度, 所属滚动容器内正文起点至底边的可用高度)`，至少保留一行、原上下padding和实际边框。短内容贴合，不固定为441px或360px；隐藏状态不决定初始高度，字体加载和换行重排仍重新计算。
+- 用户可通过正文右下角向上/下拖拽；窗口缩小时按当前容器收缩，恢复空间后还原用户拖拽高度。只改变显示高度，Monaco模型、消息字节、Copy、Save及转发不裁剪。
+- 滚轮、触控板和键盘可到达正文首尾；Monaco保持`alwaysConsumeMouseWheel: false`，正文到边界后继续滚动消息列表/Inspector。长消息内部滚动时消息标题及工具栏不被一并滚走。
+- 前置证据：CodeViewer/BodyViewer新增8项unit Red，既有15项Green；gRPC/WS两个真实workflow均在`resize:none`取得目标Red，长正文2948px、可用空间182/184px。最终同组及消息/读取/格式化共58项Green，Desktop类型通过。
+- 最终真实验收6/6：两种消息布局（短/长、拖拽、滚轮交接、键盘末行、窗口缩放恢复、全文Copy、全屏隔离）、205条gRPC分页及末条Copy，原gRPC流式/压缩/错误/UTF-8边界、WebSocket Tree/协议/大消息、HTTP填充和WS断点队列隔离；Main/Core/Worker退出、日常CA和完整代理恢复由fixture验证。
+- 设计校准只修复跨WS→gRPC后隐藏tab未发现滚动容器的问题，不改批准几何或阈值；四主题12态80目标无missing/flagged，正文pane/首行/toolbar为0px差异。另回归HTTP断点、WS队列/空态、默认gRPC Hex及Rule正文，WS排队说明曾被flex推到底部，已修复且复验。
+- 证据前缀`/tmp/interceptor-item4-messages-20260927-`：`unit-red.json`、`e2e-red.json`及目录、`final-unit.json`、`final-workflows.json`及目录、`parity-final.json`、`parity-breakpoints.json`、`parity-websocket.json`（原2处队列差异）、`parity-queue-final.json`（修复后）、`parity-grpc-hex.json`、`parity-effects.json`。中间WS binary专用Copy应为Hex、外层无溢出前提和不稳定分页回调的失败分别保留，不以最终Green改写历史。Windows未执行，不改变5/2/8MiB原阈值。
+
+<a id="body-preview-final-acceptance"></a>
+##### 正文完整范围验收（2026-09-28～29）
+
+- 9月28日继续确认Original/File/Text方案后，预览/格式化预算改为2/1/2 MiB，图片独立16 MiB；Original/File与普通消息限高并可拖拽，Text保留完整编辑值，Composer继续填充。File仅预览前2 MiB，Forward edited仍发送完整路径对应的文件。
+- 前置证据包括预算/错误/图片/捕获不完整的unit、真实文件读取integration，以及Original不可拖拽、File大JSON无预览、旧自动格式化和预览长度的真实Red。短File随前置分组改变高度的1项unit Red也保留；原生窗口焦点失败、旧CSS输入超过新阈值等不计产品Red。
+- 最终303项相关unit/integration与全workspace类型通过；16条不同正文/协议真实流程通过，包含2 MiB预览、1–2 MiB手动格式化、3 MiB File/Original完整转发、超过2 MiB Text完整编辑发送、滚轮交接、窗口收缩恢复、205条gRPC分页、Copy及全屏。15条联合Green后Composer按新阈值独立Green，失败结果不改写。
+- Mac全量430态3169目标无missing/flagged，字体一致，最大几何差0.859375px；正文定向85态717目标仍有效，其中Original/File/Text34态400目标全0px。弹层同次采样等待和Endpoint作用域修正仅涉及parity工具，不改设计基准或1px阈值。
+- 最终包沿用9月28日已通过package/audit的ASAR `68cbaba4738d8deff1ff7d58f47acf7b74f43f9cfb2afb2bd2aaa8aaf2e836b0`。9月29日人工系统组件授权后，严格签名、签名包两代启动/同组件复用1/1及packaged smoke1/1通过，16张既有截图矩阵已保存；51份已验源码及helper哈希不变。
+- 两代Main/Core均`gracefulDestroyVerified=true`，全部App进程退出、8888释放、journal不存在，完整代理恢复。日常CA `D74D4BFB3C3708511A755AC6CD905840B464B255`的信任及三份材料size/mtime保持，不重新生成或删除CA。
+- session files的`item4-final-acceptance-20260928.json`保存开发证据，`item16-parity-final-20260928.json`保存全量parity；新增`item4-final-acceptance-20260929.json`保存签名启动、smoke与宿主恢复。`item4-signed-final-evidence-20260929.tar.gz`含48项、26520921字节，SHA-256为`c5d17420658b7485741e827266135445953383e1f08a72a7e285e2cba33dcc02`。9月28日未授权的失败仍保留，不以新Green改写。
+- Windows仍归独立实机验收；继承chunked的编辑正文framing及源站正常GOAWAY尾段丢失仍是第10/14项，不以本轮标准Content-Length完整发送或客户端GOAWAY证据代替。
+
 #### Header值与Copy
 
 - `KvValue`保留文字可用宽度和自然换行，逐行inline-flex居中；Rule marker与共享18px按钮、14px图标放末行，gap4px，marker不继承失效值的删除线。
@@ -1534,7 +1558,7 @@ HTML点Raw变成JSON）。内容探测用于选择未知MIME的默认文本或�
 
 **各档实现要点：**
 
-- **Hex**：逐行虚拟化。它是最重的渲染路径（5 MiB ≈ 35 万行），不虚拟化会在拖动 Inspector 分栏时因
+- **Hex**：逐行虚拟化。按16字节一行时2 MiB约13万行，不虚拟化会在拖动 Inspector 分栏时因
   `ResizeObserver` 重算整份 dump。
 - **JSON Tree**：自建 + `@tanstack/react-virtual`，可右键复制 value / object / path。Monaco 是编辑器，
   **折叠 ≠ 树**，没有 tree view 这种 UI 形态，自建才能套设计 token 并挂右键菜单。
@@ -1550,17 +1574,18 @@ HTML点Raw变成JSON）。内容探测用于选择未知MIME的默认文本或�
 
 **阈值**（全部定义在 `packages/core-protocol/src/messages.ts`）：
 
+只读文本/结构化/WS/gRPC最多2 MiB；完整正文≤1 MiB自动格式化，1–2 MiB只手动，预览或捕获截断都不格式化。`previewTruncated`只表达读取上限，以便丢弃半个UTF-8尾字符；`incomplete`单独表达捕获不完整，阻止格式化但保留真实坏字节。图片读取和解压使用独立16 MiB预算。压缩输入大小不能充当解码输出预算；正文保存、HAR/Archive、编辑与发送仍使用完整数据。
+
 | 常量 | 值 | 作用 |
 | --- | --- | --- |
-| `BODY_PREVIEW_MAX_BYTES` | 5 MiB | 文本 / WebSocket / gRPC payload / Core decode 输出四处共用的单次读取上限 |
+| `BODY_PREVIEW_MAX_BYTES` | 2 MiB | 文本 / WebSocket / gRPC payload的单次只读预览上限，压缩文本解码按相同输出预算 |
 | `IMAGE_PREVIEW_MAX_BYTES` | 16 MiB | 超过则连 IPC 都不发，直接给元信息 + Save body |
-| `FORMAT_AUTO_MAX_BYTES` | 2 MiB | 及以下自动格式化 |
-| `FORMAT_MAX_BYTES` | 8 MiB | 2–8 MiB 需手动点 Format（带 loading，结果可丢弃）；超过则禁用并提示 Save body |
+| `FORMAT_AUTO_MAX_BYTES` | 1 MiB | 完整正文及以下自动格式化 |
+| `FORMAT_MAX_BYTES` | 2 MiB | 1–2 MiB只响应用户Format；超限、预览截断或捕获不完整禁用 |
 
 阈值作用是**防用户干等**，不是防卡：Monaco 在 worker 里跑不阻塞主线程，但 TS parser 处理超大 min.js
 仍是几十秒。图片上限的作用也不是防崩溃，而是**防半张图**（截断字节喂给 `<img>` 比不显示更糟）并省下 IPC。
-已知边界：Core 的 decode 分支硬编码 `BODY_PREVIEW_MAX_BYTES`，所以**被 gzip 的图片有效上限仍是 5 MiB**
-（图片几乎不被 gzip，可接受）；未完整拿到字节时 `decodeStatus === 'limited'` 兜底为元信息 + Save body。
+Core decode接收调用方的输出预算：文本2 MiB、图片16 MiB，不以压缩输入size缩小该预算。图片未完整拿到字节时`decodeStatus === 'limited'`回到元信息与Save，不向`img`传半张图。
 
 正文读取链路传`Uint8Array`，不为IPC增加base64/dataURL转换。下表区分各项工作所在进程；进程隔离不保证端到端延迟，也不消除大正文进入Renderer后的解析和分配开销：
 

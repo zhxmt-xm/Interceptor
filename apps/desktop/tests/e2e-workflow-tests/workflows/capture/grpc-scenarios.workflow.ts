@@ -348,7 +348,7 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
     await test.step('grpc-json-utf8-preview-boundary', async () => {
       const scenario = trafficLab.scenarios().find((candidate) => candidate.id === 'grpc-unary-json');
       if (!scenario || scenario.defaultDraft.kind !== 'grpc') throw new Error('Missing gRPC JSON scenario.');
-      const previewLimit = 5 * 1024 * 1024;
+      const previewLimit = 2 * 1024 * 1024;
       const prefix = '{"message":"';
       const requestPreview = prefix + 'q'.repeat(previewLimit - 2 - prefix.length);
       const responsePreview = prefix + 'r'.repeat(previewLimit - 3 - prefix.length);

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from 'react';
+import { useLayoutEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { ActionFooter } from '../../components/ActionFooter/ActionFooter';
@@ -11,6 +11,7 @@ import {
 } from '../../components/PayloadEditor/PayloadEditor';
 import { useDesignState } from '../../state/useDesignState';
 import { BreakpointQueueMenu } from './BreakpointQueueMenu';
+import { bodyRemainderFixture } from './utils';
 import styles from './HttpBreakpointDesign.module.css';
 
 interface BreakpointHosts {
@@ -52,6 +53,9 @@ export function HttpBreakpointDesign(): React.JSX.Element | null {
   const queueHead = state.breakpointState === 'queue'
     && state.breakpointQueueSelection === 'http-head';
   const visible = state.breakpointState === 'request' || response || queueHead;
+  const remainderFixture = useMemo(() => response ? undefined
+    : bodyRemainderFixture(state.bodyRemainderSample, state.bodyRemainderNotice),
+  [response, state.bodyRemainderSample, state.bodyRemainderNotice]);
   const replacementMode: ReplacementMode = state.breakpointBody === 'replace'
     ? 'text'
     : state.breakpointBody === 'file'
@@ -129,34 +133,43 @@ export function HttpBreakpointDesign(): React.JSX.Element | null {
             </CollapsibleSection>
           ) : null}
           <HeaderFieldsEditor
+            key={remainderFixture?.mediaType ?? 'application/json'}
             effectPlacement="below"
-            initialFields={response ? RESPONSE_HEADERS : REQUEST_HEADERS}
+            initialFields={response ? RESPONSE_HEADERS : REQUEST_HEADERS.map((field) => field.name === 'content-type'
+              ? { ...field, value: remainderFixture?.mediaType ?? field.value } : field)}
             title={response ? 'Response headers' : 'Request headers'}
           />
           <PayloadEditor
+            contentKind="body"
+            key={remainderFixture ? `${state.bodyRemainderSample}-${state.bodyRemainderNotice}` : 'current'}
             file={{
-              name: response ? 'token-response.json' : 'checkout-body.txt',
-              meta: response ? '2.4 KB · application/json' : '38 B · text/plain',
-              preview: response
+              mediaType: remainderFixture?.mediaType ?? (response ? 'application/json' : 'text/plain'),
+              previewMetadata: remainderFixture?.metadata,
+              name: remainderFixture?.fileName ?? (response ? 'token-response.json' : 'checkout-body.txt'),
+              meta: remainderFixture ? `${remainderFixture.size} · ${remainderFixture.mediaType}`
+                : response ? '2.4 KiB · application/json' : '51 B · text/plain',
+              preview: remainderFixture?.source ?? (response
                 ? '{\n  "access_token": "eyJhbGci…",\n  "expires_in": 3600\n}'
-                : '{\n  "cartId": "c_9f83a1",\n  "coupon": "WELCOME20"\n}',
+                : '{\n  "cartId": "c_9f83a1",\n  "coupon": "WELCOME20"\n}'),
               ready: state.breakpointFile === 'valid',
             }}
             loading={state.breakpointBody === 'loading' ? {
               title: response ? 'Receiving response body…' : 'Receiving request body…',
               detail: response ? '416 B received so far' : '18 B received so far',
             } : undefined}
-            originalFormat="application/json"
-            originalMeta={response ? '842 B · json' : '63 B · json'}
-            originalPayload={response
+            originalFormat={remainderFixture?.mediaType ?? 'application/json'}
+            originalMeta={remainderFixture ? `${remainderFixture.size} · ${remainderFixture.mediaType === 'image/png' ? 'png' : 'json'}`
+              : response ? '842 B · json' : '63 B · json'}
+            originalPayload={remainderFixture?.source ?? (response
               ? '{\n  "access_token": "eyJhbGci…",\n  "expires_in": 3600\n}'
-              : '{\n  "cartId": "c_9f83a1",\n  "coupon": "WELCOME20"\n}'}
+              : '{\n  "cartId": "c_9f83a1",\n  "coupon": "WELCOME20"\n}')}
             originalTitle="Original body"
             originalViewOptions={['Pretty', 'Tree', 'Raw', 'Hex']}
             replacementMode={replacementMode}
             replacementOptions={HTTP_REPLACEMENT_OPTIONS}
             replacementPayload=""
             replacementTitle="Replacement body"
+            previewMetadata={remainderFixture?.metadata}
             onChooseFile={() => updateState({ breakpointBody: 'file', breakpointFile: 'valid' })}
             onRemoveFile={() => updateState({ breakpointBody: 'file', breakpointFile: 'none' })}
             onReplacementModeChange={(mode) => updateState({

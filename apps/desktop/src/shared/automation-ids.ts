@@ -148,6 +148,7 @@ export const AUTOMATION_IDS = {
         unavailable: 'capture.inspector.body-effect.original-unavailable',
       },
       bodyAction: {
+        format: 'capture.inspector.body-action.format',
         save: 'capture.inspector.body-action.save',
         copy: 'capture.inspector.body-action.copy',
         fullscreen: 'capture.inspector.body-action.fullscreen',
@@ -353,6 +354,8 @@ export const AUTOMATION_IDS = {
     body: 'breakpoints.body',
     chooseFile: 'breakpoints.file.choose',
     selectedFile: 'breakpoints.file.selected',
+    filePreview: 'breakpoints.file.preview',
+    fileFormat: 'breakpoints.file.format',
     drop: 'breakpoints.drop',
     continueUnmodified: 'breakpoints.continue-unmodified',
     executeEdited: 'breakpoints.execute-edited',

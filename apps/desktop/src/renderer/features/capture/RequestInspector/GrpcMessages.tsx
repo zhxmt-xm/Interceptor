@@ -1,6 +1,6 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Copy, Download, Info } from 'lucide-react';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type {
@@ -21,8 +21,10 @@ const ROW_HEIGHT = 38;
 
 export function GrpcMessages({
   detail,
+  scrollContainerRef,
 }: {
   detail: CaptureExchangeDetail;
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
 }): React.JSX.Element {
   const { t } = useTranslation();
   const [side, setSide] = useState<GrpcMessageSide>(
@@ -33,11 +35,13 @@ export function GrpcMessages({
     useGrpcMessages(detail.summary.id, side);
   const selected = messages.find((message) => message.index === selectedIndex) ?? null;
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
   const virtualizer = useVirtualizer({
     count: messages.length,
-    getScrollElement: () => scrollRef.current,
+    getScrollElement: () => scrollContainerRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 10,
+    scrollMargin,
   });
 
   useEffect(() => {
@@ -48,15 +52,33 @@ export function GrpcMessages({
     virtualizer.measure();
   }, [selectedIndex, virtualizer]);
 
-  const handleScroll = (): void => {
-    const element = scrollRef.current;
+  const handleScroll = useCallback((): void => {
+    const element = scrollContainerRef.current;
     if (!element || !page?.hasMore || loadingMore) {
       return;
     }
     if (element.scrollHeight - element.scrollTop - element.clientHeight < ROW_HEIGHT * 6) {
       loadMore();
     }
-  };
+  }, [scrollContainerRef, page?.hasMore, loadingMore, loadMore]);
+
+  useEffect(() => {
+    const scroll = scrollContainerRef.current;
+    const list = scrollRef.current;
+    if (!scroll || !list) return;
+    const measureOffset = (): void => {
+      setScrollMargin(list.getBoundingClientRect().top - scroll.getBoundingClientRect().top + scroll.scrollTop);
+    };
+    const observer = new ResizeObserver(measureOffset);
+    observer.observe(scroll);
+    observer.observe(list);
+    scroll.addEventListener('scroll', handleScroll);
+    measureOffset();
+    return () => {
+      observer.disconnect();
+      scroll.removeEventListener('scroll', handleScroll);
+    };
+  }, [scrollContainerRef, handleScroll]);
 
   const handleSelectMessage = useCallback((index: number): void => {
     setSelectedIndex((current) => (current === index ? null : index));
@@ -92,7 +114,7 @@ export function GrpcMessages({
       </div>
 
       <div className={styles.messageList}>
-        <div className={styles.messageScroll} ref={scrollRef} onScroll={handleScroll}>
+        <div className={styles.messageScroll} ref={scrollRef}>
           {loading ? <div className={styles.empty}>{t('capture.loadingGrpcMessages')}</div> : null}
           {!loading && error ? (
             <div className={styles.empty}>{t('capture.failedLoadMessages', { error })}</div>
@@ -125,7 +147,7 @@ export function GrpcMessages({
                       left: 0,
                       top: 0,
                       width: '100%',
-                      transform: `translateY(${virtualRow.start}px)`,
+                      transform: `translateY(${virtualRow.start - scrollMargin}px)`,
                     }}
                   >
                     <MessageRow
@@ -226,4 +248,3 @@ const MessageRow = memo(function MessageRow({
     </button>
   );
 });
-

@@ -49,6 +49,7 @@ export function WebSocketMessagePayload(): React.JSX.Element | null {
         value={view}
         codePreset="message"
         fullscreen={fullscreen}
+        resizable
       />
   );
 

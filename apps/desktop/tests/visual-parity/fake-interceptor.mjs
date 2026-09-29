@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { padReadonlyText } from '../../../../design-vite/src/fixtures/readonlyBodyData.ts';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -153,8 +154,8 @@ sessions.forEach((session, index) => {
 
 const bodyText = {
   'http-request-body': '{"name":"interceptor","enabled":true,"limits":{"requests":250}}',
-  'bp-checkout-body': '{\n  "cartId": "c_9f83a1",\n  "coupon": "WELCOME20"\n}',
-  'bp-token-body': '{\n  "access_token": "eyJhbGci...",\n  "expires_in": 3600\n}',
+  'bp-checkout-body': padReadonlyText('{\n  "cartId": "c_9f83a1",\n  "coupon": "WELCOME20"\n}', 63),
+  'bp-token-body': padReadonlyText('{\n  "access_token": "eyJhbGci…",\n  "expires_in": 3600\n}', 842),
   'ws-body-1': '{"type":"subscribe","channel":"builds"}',
   'ws-body-2': '{"type":"subscribed","channel":"builds"}',
   'ws-body-3': '{"buildId":8431,"state":"running","branch":"main"}',
@@ -1065,11 +1066,13 @@ export function installFakeInterceptor({
   htmlBody = false,
   largeBody = false,
   largeTextBody = false,
+  readonlyData = null,
   noRuleHits = false,
   pausedBreakpoints = false,
   pausedBreakpointPhase = null,
   pausedWebSocketBreakpoint = false,
   websocketMessagesState = 'ready',
+  grpcMessageSource = null,
   breakpointBodyState = 'request-ready',
   breakpointFile = null,
   breakpointsEnabled = true,
@@ -2890,6 +2893,25 @@ export function installFakeInterceptor({
       },
     };
   }
+  if (grpcMessageSource !== null) {
+    const payload = Array.from(new TextEncoder().encode(grpcMessageSource));
+    const body = fixture.capture.bodies['grpc-response-body'];
+    const selected = fixture.capture.grpcMessages.response[1];
+    const following = fixture.capture.grpcMessages.response[2];
+    const length = payload.length;
+    const envelope = [selected.compressed ? 1 : 0, (length >>> 24) & 255,
+      (length >>> 16) & 255, (length >>> 8) & 255, length & 255, ...payload];
+    const nextBody = [
+      ...body.slice(0, selected.envelopeOffset), ...envelope,
+      ...body.slice(following.envelopeOffset),
+    ];
+    const difference = length - selected.payloadLength;
+    fixture.capture.bodies['grpc-response-body'] = nextBody;
+    selected.payloadLength = length;
+    following.envelopeOffset += difference;
+    following.payloadOffset += difference;
+    fixture.capture.details['grpc-fixture'].responseBody.encodedSize = nextBody.length;
+  }
   if (largeBody) {
     const largeSummary = {
       ...fixture.capture.sessions.find((session) => session.id === 'http-1'),
@@ -2915,29 +2937,62 @@ export function installFakeInterceptor({
       },
     };
   }
-  if (largeTextBody) {
+  let readonlyBytes = null;
+  if (readonlyData?.kind === 'text') {
+    readonlyBytes = new TextEncoder().encode(readonlyData.text);
+  } else if (readonlyData?.kind === 'image') {
+    readonlyBytes = new Uint8Array(readonlyData.byteLength).fill(readonlyData.fillByte);
+    readonlyBytes.set(Uint8Array.from(atob(readonlyData.prefixBase64), (character) => character.charCodeAt(0)));
+    const suffix = atob(readonlyData.suffixBase64);
+    readonlyBytes.set(Uint8Array.from(suffix, (character) => character.charCodeAt(0)), readonlyBytes.byteLength - suffix.length);
+  }
+  let readonlyBreakpointFile = null;
+  if (readonlyBytes && pausedBreakpoints) {
+    const bodyHash = 'readonly-checkout-body';
+    const original = fixture.capture.details['bp-exchange-checkout'];
+    const summary = { ...original.summary, requestBytes: readonlyBytes.byteLength };
+    fixture.capture.bodies[bodyHash] = readonlyBytes;
+    fixture.capture.details['bp-exchange-checkout'] = {
+      ...original, summary, requestMime: readonlyData.mediaType,
+      requestHeaders: original.requestHeaders.map((header) => header.name === 'content-type'
+        ? { ...header, value: readonlyData.mediaType } : header),
+      requestBody: {
+        bodyHash, mediaType: readonlyData.mediaType, encodedSize: readonlyBytes.byteLength,
+        truncated: false, decodeStatus: 'ok',
+      },
+    };
+    fixture.capture.sessions = fixture.capture.sessions.map((session) => session.id === summary.id ? summary : session);
+    fixture.breakpoints.items = fixture.breakpoints.items.map((item) => item.exchangeId === summary.id
+      ? { ...item, headers: item.headers.map((header) => header.name === 'content-type'
+        ? { ...header, value: readonlyData.mediaType } : header) } : item);
+    readonlyBreakpointFile = {
+      path: `C:\\parity\\${readonlyData.name}`, name: readonlyData.name,
+      size: readonlyBytes.byteLength, mediaType: readonlyData.mediaType,
+      ...(readonlyData.kind === 'image' ? {} : {
+        preview: {
+          bytes: readonlyBytes.slice(0, 2 * 1024 * 1024),
+          truncated: readonlyBytes.byteLength > 2 * 1024 * 1024,
+        },
+      }),
+    };
+  }
+  if (largeTextBody && readonlyBytes) {
     const largeSummary = {
       ...fixture.capture.sessions.find((session) => session.id === 'http-1'),
       responseMime: 'text/html; charset=utf-8',
-      responseBytes: 12 * 1024 * 1024,
+      responseBytes: readonlyBytes.byteLength,
     };
     fixture.capture.sessions = fixture.capture.sessions.map((session) =>
       session.id === 'http-1' ? largeSummary : session,
     );
-    fixture.capture.bodies['large-text-response-body'] = Array.from(
-      new TextEncoder().encode(
-        `<!doctype html><html lang="zh-CN"><head><title>大唐 EV</title></head><body>\n${
-          Array.from({ length: 120 }, (_value, index) => `<section>配置参数 ${index + 1}</section>`).join('\n')
-        }\n</body></html>`,
-      ),
-    );
+    fixture.capture.bodies['large-text-response-body'] = readonlyBytes;
     fixture.capture.details['http-1'] = {
       ...fixture.capture.details['http-1'],
       summary: largeSummary,
       responseBody: {
         bodyHash: 'large-text-response-body',
         mediaType: 'text/html; charset=utf-8',
-        encodedSize: 12 * 1024 * 1024,
+        encodedSize: readonlyBytes.byteLength,
         truncated: false,
         decodeStatus: 'ok',
       },
@@ -3831,7 +3886,12 @@ export function installFakeInterceptor({
       breakpoints: breakpointItems,
       enabled: breakpointsEnabledState,
     }),
-    pickBreakpointBodyFile: async () => breakpointFile,
+    pickBreakpointBodyFile: async () => readonlyBreakpointFile ?? (breakpointFile === null ? null : {
+      ...breakpointFile,
+      ...(breakpointFile.preview ? {
+        preview: { ...breakpointFile.preview, bytes: new Uint8Array(breakpointFile.preview.bytes) },
+      } : {}),
+    }),
     resolveBreakpoint: async (breakpointId, action, edit) => {
       breakpointItems = breakpointItems.filter((item) => item.id !== breakpointId);
       return { state: action === 'drop' ? 'dropped' : edit ? 'edited' : 'continued' };

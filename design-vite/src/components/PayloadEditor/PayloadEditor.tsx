@@ -1,10 +1,12 @@
 import { Input, Spin } from 'antd';
-import { Check, Copy, File, Maximize, Upload, X } from 'lucide-react';
+import { Check, Copy, File, Info, Maximize, Upload, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { CollapsibleSection } from '../CollapsibleSection/CollapsibleSection';
 import { IconButton } from '../IconButton/IconButton';
 import { SegmentedControl } from '../SegmentedControl/SegmentedControl';
+import { BodyRemainderPreview } from './BodyRemainderPreview';
+import type { PayloadPreviewMetadata } from './utils';
 import styles from './PayloadEditor.module.css';
 
 export type ReplacementMode = 'off' | 'text' | 'file';
@@ -20,6 +22,8 @@ interface LoadingPayload {
 }
 
 interface ReplacementFile {
+  readonly mediaType?: string;
+  readonly previewMetadata?: PayloadPreviewMetadata;
   readonly meta: string;
   readonly name: string;
   readonly preview: string;
@@ -27,6 +31,7 @@ interface ReplacementFile {
 }
 
 interface PayloadEditorProps {
+  readonly contentKind: 'body' | 'message';
   readonly file?: ReplacementFile;
   readonly loading?: LoadingPayload;
   readonly onChooseFile?: () => void;
@@ -41,9 +46,11 @@ interface PayloadEditorProps {
   readonly replacementOptions: readonly ReplacementOption[];
   readonly replacementPayload: string;
   readonly replacementTitle: string;
+  readonly previewMetadata?: PayloadPreviewMetadata;
 }
 
 export function PayloadEditor({
+  contentKind,
   file,
   loading,
   onChooseFile,
@@ -58,11 +65,15 @@ export function PayloadEditor({
   replacementOptions,
   replacementPayload,
   replacementTitle,
+  previewMetadata,
 }: PayloadEditorProps): React.JSX.Element {
   const [view, setView] = useState(originalViewOptions[0] ?? 'Raw');
   const [originalOpen, setOriginalOpen] = useState(true);
   const [replacementOpen, setReplacementOpen] = useState(true);
   const [replacementText, setReplacementText] = useState(replacementPayload);
+  const [formattedOriginal, setFormattedOriginal] = useState<string | null>(null);
+  const [formattedFile, setFormattedFile] = useState<string | null>(null);
+  const originalPreview = formattedOriginal ?? originalPayload;
   const textReady = replacementMode === 'text' && replacementText.length > 0;
   const usingFile = replacementMode === 'file' && file?.ready === true;
   const replacementWarning = (replacementMode === 'text' && !textReady)
@@ -102,10 +113,22 @@ export function PayloadEditor({
               <span className={styles.payloadEditorFormat}>{originalFormat}</span>
               <div className={styles.payloadEditorIconActions}>
                 <IconButton label="Open fullscreen" icon={<Maximize aria-hidden="true" />} />
-                <IconButton label={`Copy ${payloadName}`} icon={<Copy aria-hidden="true" />} />
+                <IconButton
+                  label={`Copy ${payloadName}`}
+                  icon={<Copy aria-hidden="true" />}
+                  onClick={contentKind === 'body' ? () => void navigator.clipboard.writeText(originalPreview) : undefined}
+                />
               </div>
             </div>
-            <pre className={styles.payloadEditorOriginalCode}>{originalPayload}</pre>
+            {contentKind === 'body' && view !== 'Hex' && view !== 'Tree' ? (
+              <BodyRemainderPreview
+                mediaType={originalFormat}
+                metadata={previewMetadata}
+                onFormat={setFormattedOriginal}
+                source={originalPreview}
+                variant="original"
+              />
+            ) : <pre className={styles.payloadEditorOriginalCode}>{originalPayload}</pre>}
           </div>
         )}
       </CollapsibleSection>
@@ -131,14 +154,22 @@ export function PayloadEditor({
         onOpenChange={setReplacementOpen}
       >
         {replacementMode === 'text' ? (
-          <Input.TextArea
-            aria-label={replacementTitle}
-            autoSize={{ minRows: 4, maxRows: 8 }}
-            className={styles.payloadEditorReplacementInput}
-            spellCheck={false}
-            value={replacementText}
-            onChange={(event) => setReplacementText(event.target.value)}
-          />
+          <>
+            {contentKind === 'body' ? (
+              <div className={styles.payloadEditorCandidateNotice}>
+                <Info aria-hidden="true" />
+                <span>The full text stays editable. Read-only preview limits do not clip this value.</span>
+              </div>
+            ) : null}
+            <Input.TextArea
+              aria-label={replacementTitle}
+              autoSize={{ minRows: 4, maxRows: 8 }}
+              className={styles.payloadEditorReplacementInput}
+              spellCheck={false}
+              value={replacementText}
+              onChange={(event) => setReplacementText(event.target.value)}
+            />
+          </>
         ) : replacementMode === 'file' ? (
           file?.ready ? (
             <div className={styles.payloadEditorFileCard}>
@@ -147,7 +178,13 @@ export function PayloadEditor({
                 <span className={styles.payloadEditorFileMeta}><b>{file.name}</b><small>{file.meta}</small></span>
                 <IconButton label="Remove replacement file" icon={<X aria-hidden="true" />} onClick={onRemoveFile} />
               </div>
-              <pre className={styles.payloadEditorFilePreview}>{file.preview}</pre>
+              <BodyRemainderPreview
+                mediaType={file.mediaType ?? originalFormat}
+                metadata={file.previewMetadata}
+                onFormat={setFormattedFile}
+                source={formattedFile ?? file.preview}
+                variant="file"
+              />
             </div>
           ) : (
             <div className={styles.payloadEditorChooseFile}>

@@ -52,6 +52,8 @@ export type BodyPreview =
 export type BodyKind = 'json' | 'code' | 'limited' | 'image' | 'image-large' | 'binary' | 'form' | 'md' | 'media';
 export type BodyMode = 'default' | 'tree' | 'raw' | 'hex' | 'split' | 'source';
 export type BodyState = 'menu' | 'busy' | 'format-off' | '';
+export type BodyRemainderSample = 'current' | 'long' | 'invalid-json';
+export type BodyRemainderNotice = 'none' | 'auto-format' | 'manual-format' | 'truncated' | 'image-limit';
 export type BodyRuleEffectState =
   | 'request-text'
   | 'request-file'
@@ -224,8 +226,9 @@ export interface DesignState {
   readonly bodyKind: BodyKind;
   readonly bodyMode: BodyMode;
   readonly bodyState: BodyState;
-  readonly compactBodyLayout: 'content' | 'viewport';
   readonly grpcMessageSource: string | null;
+  readonly bodyRemainderSample: BodyRemainderSample;
+  readonly bodyRemainderNotice: BodyRemainderNotice;
   readonly bodyRuleEffect: BodyRuleEffectState;
   readonly breakpoints: 'on' | 'off';
   readonly breakpointState: BreakpointState;

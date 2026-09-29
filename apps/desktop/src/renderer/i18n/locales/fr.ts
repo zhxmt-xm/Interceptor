@@ -189,13 +189,18 @@ export const frCatalog = {
   'body.format': "Formater",
   'body.fullscreen': 'Plein écran',
   'body.exitFullscreen': 'Quitter le plein écran',
-  'body.formatBlocked': "Le body dépasse 8 Mo — le formatage est désactivé. Enregistrez-le pour le formater ailleurs.",
+  'body.formatBlocked': "Le body dépasse 2 MiB — le formatage est désactivé. Enregistrez-le pour le formater ailleurs.",
+  'body.formatTruncated': 'Les aperçus tronqués ne peuvent pas être formatés.',
+  'body.formatFailed': 'Le formatage a échoué. Le contenu d’origine est inchangé.',
+  'body.formatManual': 'Corps complet · {{size}}. Utilisez « Formater » pour les corps de 1 à 2 MiB.',
   'body.copyValue': "Copier la valeur",
   'body.copyObject': "Copier l’objet",
   'body.copyPath': "Copier le chemin",
   'body.field': "Champ",
   'body.value': "Valeur",
   'body.imageTooLarge': "Trop volumineuse pour l’aperçu. Enregistrez le fichier pour l’ouvrir dans une visionneuse.",
+  'body.imagePreviewLimit': 'La limite distincte de 16 MiB pour l’aperçu des images est dépassée. L’image n’est pas chargée.',
+  'body.previewLimited': 'Aperçu de {{preview}} sur {{total}}.',
   'body.imageUndecodable': "Cette image n’a pas pu être décodée. Enregistrez le fichier pour l’ouvrir dans une visionneuse.",
   'body.mediaNotRead': "L’audio et la vidéo ne sont jamais chargés dans l’aperçu. Enregistrez le fichier pour le lire dans un lecteur.",
   'capture.failedSaveBody': 'Échec de l’enregistrement du body : {{error}}',
@@ -647,7 +652,10 @@ export const frCatalog = {
 
 
 
-  'breakpoints.filePreviewUnavailable': 'Trop volumineux ou non textuel — transmis tel quel depuis le disque.',
+  'breakpoints.filePreviewUnavailable': 'Aperçu indisponible. Le fichier complet sera envoyé sans modification.',
+  'breakpoints.filePreviewOnly': 'Aperçu uniquement. « Transmettre la version modifiée » utilise le fichier sélectionné complet, pas l’aperçu visible.',
+  'breakpoints.fileForwardComplete': '« Transmettre la version modifiée » utilise toujours le fichier sélectionné complet.',
+  'breakpoints.textComplete': 'Le texte intégral reste modifiable. Les limites de l’aperçu en lecture seule ne tronquent pas cette valeur.',
 
   'breakpoints.replacementBody': 'Corps de remplacement',
   'breakpoints.replacementMessage': 'Message de remplacement',

@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
 
 import { KvValueDesign } from '../components/KvValueDesign/KvValueDesign';
+import { CaptureCodePreview } from './CaptureCodePreview';
 import styles from './FixtureDetailSection/FixtureDetailSection.module.css';
 import { FixtureDetailSection } from './FixtureDetailSection/FixtureDetailSection';
-import { FixtureRenderer, type FixtureElementRenderer } from './FixtureRenderer';
+import { FixtureRenderer, fixtureClassNames, type FixtureElementRenderer } from './FixtureRenderer';
 import type { FixtureElementNode, FixtureNode } from './FixtureNode';
 
 interface DetailFixtureRendererProps {
@@ -21,6 +22,13 @@ function textContent(node: FixtureNode): string {
 }
 
 const renderDetailSection: FixtureElementRenderer = (node, children) => {
+  if (hasClass(node, 'bpane') && node.attributes['data-pane'] === 'code') {
+    return (
+      <div className={fixtureClassNames('bpane')} data-pane="code" data-fixture-node="">
+        <CaptureCodePreview>{children}</CaptureCodePreview>
+      </div>
+    );
+  }
   const value = node.children[0];
   if (hasClass(node, 'v') && value?.type === 'element'
     && (hasClass(value, 'kv-value-text') || hasClass(value, 'rulefx-old'))

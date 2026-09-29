@@ -237,11 +237,11 @@ test('capture.scenarios.websocket captures directional text binary and controlle
     });
   }
 
-  // 预览边界：真实大消息跨过5 MiB，网络保留完整字符，行预览与两种Copy只保留完整前缀。
-  // Preview boundary: a real message crosses 5 MiB; forwarding retains every byte while row previews and both Copy actions keep complete characters.
+  // 预览边界：真实大消息跨过2 MiB，网络保留完整字符，行预览与两种Copy只保留完整前缀。
+  // Preview boundary: a real message crosses 2 MiB; forwarding retains every byte while row previews and both Copy actions keep complete characters.
   await test.step('websocket-utf8-preview-boundary', async () => {
     const requestPath = '/e2e/websocket/utf8-preview-boundary';
-    const visibleText = 'w'.repeat(5 * 1024 * 1024 - 3);
+    const visibleText = 'w'.repeat(2 * 1024 * 1024 - 3);
     const payload = `${visibleText}\ud83d\ude42after-preview`;
     const client = await trafficLab.webSocketTrafficRunner.openThroughProxy(desktopApp.capturePort(), requestPath);
     try {

@@ -1,6 +1,21 @@
 // Each case declares design state, real Renderer navigation/actions, and comparison targets.
+import { describeReadonlyBody, padReadonlyText } from '../../../../design-vite/src/fixtures/readonlyBodyData.ts';
+
 export const viewport = { width: 1600, height: 900 };
 export const designShotsDir = 'design-vite/shots';
+
+const GRPC_LONG_MESSAGE = 'catalog-stream-4281\n' + JSON.stringify({
+  requestId: 'catalog-stream-4281',
+  region: 'ap-east-1',
+  products: Array.from({ length: 18 }, (_, index) => ({
+    id: `sku-${1042 + index}`,
+    name: `Wireless keyboard ${index + 1}`,
+    price: 89.9,
+    currency: 'USD',
+    available: true,
+  })),
+  nextPageToken: '',
+}, null, 2);
 
 const EXPAND_RULE_TREE_ACTIONS = [
   { type: 'clickRole', role: 'button', name: 'Expand folder', index: 0 },
@@ -275,16 +290,16 @@ const BREAKPOINT_FILE_BY_PHASE = {
   request: {
     path: 'C:\\parity\\checkout-body.txt',
     name: 'checkout-body.txt',
-    size: 38,
+    size: 51,
     mediaType: 'text/plain',
-    text: '{\n  "cartId": "c_9f83a1",\n  "coupon": "WELCOME20"\n}',
+    preview: { bytes: Array.from(new TextEncoder().encode('{\n  "cartId": "c_9f83a1",\n  "coupon": "WELCOME20"\n}')), truncated: false },
   },
   response: {
     path: 'C:\\parity\\token-response.json',
     name: 'token-response.json',
     size: 2_458,
     mediaType: 'application/json',
-    text: '{\n  "access_token": "eyJhbGci...",\n  "expires_in": 3600\n}',
+    preview: { bytes: Array.from(new TextEncoder().encode(padReadonlyText('{\n  "access_token": "eyJhbGci…",\n  "expires_in": 3600\n}', 2458))), truncated: false },
   },
 };
 
@@ -356,7 +371,21 @@ function httpBreakpointView(theme, { variant, phase, body }) {
         }]
       : []),
     ...(body === 'file-empty' ? ['Choose file…'] : []),
-    ...(body === 'file' ? [BREAKPOINT_FILE_BY_PHASE[phase].name] : []),
+    ...(body === 'file' ? [
+      BREAKPOINT_FILE_BY_PHASE[phase].name,
+      {
+        name: 'Short file preview',
+        designSelector: '[data-remainder-preview="file"] [data-monaco]',
+        appSelector: '[data-automation-id="breakpoints.file.preview"]',
+        styleKeys: ['borderTopWidth', 'borderBottomWidth', 'borderRadius', 'backgroundColor'],
+      },
+      {
+        name: 'Short file first line',
+        designSelector: '[data-remainder-preview="file"] .view-line:first-child',
+        appSelector: '[data-automation-id="breakpoints.file.preview"] .view-line:first-child',
+        styleKeys: ['fontSize', 'lineHeight'],
+      },
+    ] : []),
     isResponse ? 'Rule appended' : 'Rule set',
     'Drop',
     'Continue',
@@ -391,6 +420,114 @@ function httpBreakpointView(theme, { variant, phase, body }) {
 
 const HTTP_BREAKPOINT_VIEWS = ['light', 'dark'].flatMap((theme) =>
   HTTP_BREAKPOINT_VARIANTS.map((variant) => httpBreakpointView(theme, variant)));
+
+const readonlyText = describeReadonlyBody('long', 'none').text;
+const HTTP_READONLY_BODY_VIEWS = ['light', 'dark'].flatMap((theme) => [
+  ['original-long', 'original', 'none'],
+  ['file-long', 'file', 'none'],
+  ['text-long', 'text', 'none'],
+  ['file-manual', 'file', 'manual-format'],
+  ['file-truncated', 'file', 'truncated'],
+  ['file-image-limit', 'file', 'image-limit'],
+].map(([variant, mode, notice]) => {
+  const designActions = [];
+  const rendererActions = [{ type: 'clickText', text: '/checkout' }];
+  if (mode === 'original') {
+    rendererActions.push({
+      type: 'assertSelectorVisible',
+      selector: '[data-parity="breakpoint-original-ready"] .view-line:nth-child(2) span:text-is("\\"cartId\\"")',
+    });
+  }
+  if (mode !== 'original') {
+    designActions.push({ type: 'clickSelector', selector: '.payloadEditor > .collapsibleSection:first-child [role="button"]' });
+    rendererActions.push({ type: 'clickSelector', selector: 'button:has(> span:text-is("Original body"))' });
+    const select = { type: 'clickRole', role: 'radio', name: mode === 'file' ? 'File' : 'Text' };
+    designActions.push(select);
+    rendererActions.push(select);
+    if (mode === 'file') {
+      const choose = { type: 'clickRole', role: 'button', name: 'Choose file…' };
+      designActions.push(choose);
+      rendererActions.push(choose);
+    } else {
+      const edit = [
+        { type: 'fillLabel', label: 'Replacement body', value: readonlyText },
+        ...['ControlOrMeta+End', 'End', 'ArrowRight'].map((key) => ({ type: 'pressLabel', label: 'Replacement body', key })),
+        { type: 'typeLabel', label: 'Replacement body', value: '\ncomplete-text-kept-after-preview-end' },
+      ];
+      designActions.push(...edit);
+      rendererActions.push(...edit);
+    }
+  }
+  const file = mode === 'file';
+  const image = notice === 'image-limit';
+  const targets = [
+    'Request paused',
+    'Original body',
+    'Replacement body',
+    'Drop',
+    'Continue',
+    'Forward edited',
+    ...(mode === 'original' ? [{
+      name: 'Original JSON key highlighting',
+      designSelector: '[data-remainder-preview="original"] .view-line:nth-child(2) span:text-is("\\"cartId\\"")',
+      appSelector: '[data-parity="breakpoint-original-ready"] .view-line:nth-child(2) span:text-is("\\"cartId\\"")',
+      styleKeys: ['fontSize', 'color'],
+    }] : []),
+    ...(mode === 'text' ? [{
+      name: 'Full Text explanation',
+      designSelector: '.payloadEditorCandidateNotice',
+      appSelector: 'section:has(textarea[data-automation-id="breakpoints.body"]) > div:has(> svg)',
+      styleKeys: ['fontSize', 'lineHeight', 'padding', 'gap', 'backgroundColor'],
+    }, {
+      name: 'Complete Text input',
+      designSelector: 'textarea[aria-label="Replacement body"]:visible',
+      appSelector: 'textarea[aria-label="Replacement body"]:visible',
+    }] : [{
+      name: file ? 'File preview' : 'Original preview',
+      designSelector: image ? '.bodyRemainderImageLimit' : `[data-remainder-preview="${file ? 'file' : 'original'}"] [data-monaco]`,
+      appSelector: image ? '[data-automation-id="breakpoints.file.selected"] > div:last-child'
+        : file ? '[data-automation-id="breakpoints.file.preview"]'
+          : '[data-parity="breakpoint-original-ready"] [data-parity="capture-body-preview"]',
+      styleKeys: ['borderTopWidth', 'borderBottomWidth', 'borderRadius', 'backgroundColor'],
+    }, ...image ? [] : [{
+      name: file ? 'File first line' : 'Original first line',
+      designSelector: `[data-remainder-preview="${file ? 'file' : 'original'}"] .view-line:first-child`,
+      appSelector: file ? '[data-automation-id="breakpoints.file.preview"] .view-line:first-child'
+        : '[data-parity="breakpoint-original-ready"] .view-line:first-child',
+      styleKeys: ['fontSize', 'lineHeight'],
+    }]]),
+    ...(file && !image ? [{
+      name: 'Complete file explanation',
+      designSelector: '.bodyRemainderFileNote',
+      appSelector: '[data-automation-id="breakpoints.file.selected"] p:first-child',
+      styleKeys: ['fontSize', 'lineHeight', 'padding', 'color'],
+    }] : []),
+    ...(notice === 'manual-format' || notice === 'truncated' ? [{
+      name: 'File format notice',
+      designSelector: '[data-remainder-preview="file"] .bodyRemainderNotice',
+      appSelector: 'div:has(> [data-automation-id="breakpoints.file.format"])',
+      styleKeys: ['fontSize', 'lineHeight', 'padding', 'gap', 'backgroundColor'],
+    }] : []),
+  ];
+  return {
+    id: `breakpoint-readonly-${variant}${theme === 'dark' ? '-dark' : ''}`,
+    theme,
+    freshDesign: true,
+    pausedBreakpoints: true,
+    pausedBreakpointPhase: 'request',
+    breakpointBodyState: 'request-ready',
+    readonlyData: { sample: 'long', notice },
+    designState: {
+      view: 'capture', theme, sidebar: 'collapsed', detail: 'open', overlay: '', scene: 'http',
+      breakpointState: 'request', breakpointBody: 'ready', breakpointFile: 'none',
+      bodyRemainderSample: 'long', bodyRemainderNotice: notice,
+    },
+    designShot: `${theme}/capture/breakpoint-request-${variant}.png`,
+    designActions,
+    rendererActions,
+    targets,
+  };
+}));
 
 const BREAKPOINT_QUEUE_VIEWS = ['light', 'dark'].flatMap((theme) => {
   const darkSuffix = theme === 'dark' ? '-dark' : '';
@@ -480,6 +617,85 @@ const BREAKPOINT_QUEUE_VIEWS = ['light', 'dark'].flatMap((theme) => {
 });
 
 export const views = [
+  ...['light', 'dark', 'warm', 'ember'].flatMap(theme => [
+    ...[false, true].map(resized => ({
+      id: `capture-message-grpc-${theme}${resized ? '-resized' : ''}`,
+      theme,
+      mitmActive: false,
+      grpcMessageSource: GRPC_LONG_MESSAGE,
+      designState: {
+        view: 'capture', theme, sidebar: 'collapsed', overlay: '', detail: 'open',
+        scene: 'grpc', tab: 'grpc', grpcMessageSource: GRPC_LONG_MESSAGE,
+      },
+      designShot: `${theme}/capture/inspector-grpc-long-text${resized ? '-resized' : ''}.png`,
+      designActions: [
+        { type: 'clickRole', role: 'radio', name: 'Text' },
+        ...(resized ? [{ type: 'resizeVertical', selector: '.grpcpayload [data-monaco]', delta: -120 }] : []),
+      ],
+      rendererActions: [
+        { type: 'clickText', text: '/orders.v1.OrderService/Watch' },
+        { type: 'clickText', text: 'Messages' },
+        { type: 'clickText', text: 'Message 2' },
+        { type: 'clickAutomation', automationId: 'capture.inspector.body-mode.default' },
+        ...(resized ? [{ type: 'resizeVertical', selector: '[data-automation-id="capture.inspector.body-pane"]', delta: -120 }] : []),
+      ],
+      targets: [
+        { name: 'Capture header', parity: 'window-header-title', measureText: true },
+        'Messages', 'Message 2', 'Response message 2',
+        {
+          name: 'Body toolbar',
+          designSelector: '.grpcpayload .bodyViewerToolbar',
+          appSelector: '[data-automation-id="capture.inspector.body-view"] > :first-child',
+        },
+        {
+          name: 'Message pane',
+          designSelector: '.grpcpayload [data-monaco]',
+          appSelector: '[data-automation-id="capture.inspector.body-pane"]',
+          styleKeys: ['borderTopWidth', 'borderRadius', 'backgroundColor', 'resize'],
+        },
+        {
+          name: 'Message first line',
+          designSelector: '.grpcpayload [data-monaco] .view-lines > :first-child',
+          appSelector: '[data-automation-id="capture.inspector.body-pane"] .view-lines > :first-child',
+        },
+      ],
+    })),
+    {
+      id: `capture-message-websocket-${theme}`,
+      theme,
+      mitmActive: false,
+      designState: {
+        view: 'capture', theme, sidebar: 'collapsed', overlay: '', detail: 'open',
+        scene: 'websocket', tab: 'messages',
+      },
+      designShot: `${theme}/capture/inspector-websocket.png`,
+      rendererActions: [
+        { type: 'clickText', text: '/socket' },
+        { type: 'clickText', text: 'Messages' },
+        { type: 'clickText', text: '{"buildId":8431,"state":"running","branch":"main"}' },
+      ],
+      targets: [
+        { name: 'Capture header', parity: 'window-header-title', measureText: true },
+        'Messages', 'Received text',
+        {
+          name: 'Body toolbar',
+          designSelector: '.wspayload .bodyViewerToolbar',
+          appSelector: '[data-automation-id="capture.inspector.body-view"] > :first-child',
+        },
+        {
+          name: 'Message pane',
+          designSelector: '.wspayload [data-monaco]',
+          appSelector: '[data-automation-id="capture.inspector.body-pane"]',
+          styleKeys: ['borderTopWidth', 'borderRadius', 'backgroundColor', 'resize'],
+        },
+        {
+          name: 'Message first line',
+          designSelector: '.wspayload [data-monaco] .view-lines > :first-child',
+          appSelector: '[data-automation-id="capture.inspector.body-pane"] .view-lines > :first-child',
+        },
+      ],
+    },
+  ]),
   ...INITIAL_VIEWS,
   ...['light', 'dark'].flatMap((theme) => {
     const suffix = theme === 'dark' ? '-dark' : '';
@@ -1954,7 +2170,11 @@ export const views = [
           },
           'DeepSeek',
           'Profile name',
-          'Endpoint',
+          {
+            name: 'Endpoint',
+            designSelector: '[data-parity="model-provider-dialog"] label > span:first-child:text-is("Endpoint")',
+            appSelector: '[data-automation-id="agent.provider.dialog"] label > span:first-child:text-is("Endpoint")',
+          },
           'API key',
           'Model ID',
           'Test connection',
@@ -2052,6 +2272,7 @@ export const views = [
     ];
   }),
   ...HTTP_BREAKPOINT_VIEWS,
+  ...HTTP_READONLY_BODY_VIEWS,
   ...BREAKPOINT_QUEUE_VIEWS,
   ...['light', 'dark'].flatMap((theme) => ['loading', 'empty', 'error'].map((messageState) => ({
     id: `capture-websocket-messages-${messageState}${theme === 'dark' ? '-dark' : ''}`,
@@ -3083,8 +3304,10 @@ export const views = [
     rendererActions: [
       { type: 'clickText', text: '/user' },
       { type: 'clickText', text: 'Response' },
+      { type: 'assertSelectorVisible', selector: '[data-parity="capture-body-preview"] .view-line:nth-child(2) span:text-is("html")' },
     ],
     targets: [
+      'Showing the first 2 MiB of 12 MiB. The full body remains captured for export.',
       {
         name: 'Limited body preview',
         designSelector: '.bpane[data-pane="code"] > [data-monaco="fill"]',

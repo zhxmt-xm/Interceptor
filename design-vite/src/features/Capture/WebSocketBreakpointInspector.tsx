@@ -86,6 +86,7 @@ export function WebSocketBreakpointInspector(): React.JSX.Element {
           </CollapsibleSection>
         ) : null}
         <PayloadEditor
+          contentKind="message"
           originalFormat={binary || controlFrame ? 'raw bytes' : 'application/json'}
           originalMeta={payloadMeta}
           originalPayload={originalPayload}

@@ -1,11 +1,12 @@
-import { Image as ImageIcon, Info } from 'lucide-react';
+import { CodeXml, Image as ImageIcon, Info, TriangleAlert } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { FORMAT_AUTO_MAX_BYTES, FORMAT_MAX_BYTES } from '../../../shared/desktop-api';
+import { BODY_PREVIEW_MAX_BYTES, FORMAT_AUTO_MAX_BYTES, FORMAT_MAX_BYTES, IMAGE_PREVIEW_MAX_BYTES } from '../../../shared/desktop-api';
 import type { AutomationId } from '../../../shared/automation-ids';
 import { BodyFullscreen } from '../BodyFullscreen/BodyFullscreen';
 import { CodeViewer, type CodeViewerHandle } from '../CodeViewer/CodeViewer';
+import { IconButton } from '../IconButton/IconButton';
 import { cx } from '../share/cx';
 import { sizeLabel } from '../share/sizeLabel';
 import { useClipboardCopy } from '../share/useClipboardCopy';
@@ -19,8 +20,9 @@ import {
   type BodyMode,
   bodyFormat,
   formatMediaType,
+  isImageMime,
 } from './bodyFormats';
-import { decodeUtf8, formatJsonBody, parseFormBody, toHexDump } from './bodyText';
+import { decodeUtf8, formatJsonBody, parseFormBody, previewSizeLabel, toHexDump } from './bodyText';
 import { FormView } from './FormView/FormView';
 import { HexView } from './HexView/HexView';
 import { ImageView } from './ImageView/ImageView';
@@ -37,6 +39,7 @@ export interface BodyViewerProps {
   /** Evidence-owned byte size; defaults to the provided byte buffer length. */
   size?: number;
   previewTruncated?: boolean;
+  incomplete?: boolean;
   /** 全屏弹窗的标题；不给就不提供全屏入口。 */
   fullscreenTitle?: string;
   /** 关于这份正文的提示行：预览截断、解码失败等，按传入顺序显示在正文上方。 */
@@ -46,6 +49,8 @@ export interface BodyViewerProps {
   saving?: boolean;
   /** 内联消息面板用的紧凑排版。 */
   compact?: boolean;
+  resizable?: boolean;
+  showFormatNotice?: boolean;
   automationId?: AutomationId;
   paneAutomationId?: AutomationId;
   parityId?: string;
@@ -63,15 +68,18 @@ export interface BodyViewerProps {
  * `kind` 由内容决定并锁定标签，`mode` 只切换渲染方式，两者互不影响。
  */
 export function BodyViewer({
-  bytes,
+  bytes: suppliedBytes,
   mediaType,
-  size = bytes.byteLength,
-  previewTruncated = false,
+  size = suppliedBytes.byteLength,
+  previewTruncated: suppliedTruncated = false,
+  incomplete = false,
   fullscreenTitle,
   notes,
   onSave,
   saving = false,
   compact = false,
+  resizable = false,
+  showFormatNotice = false,
   automationId,
   paneAutomationId,
   parityId,
@@ -83,6 +91,12 @@ export function BodyViewer({
 }: BodyViewerProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
   const copy = useClipboardCopy();
+  const imageMime = isImageMime(mediaType);
+  const previewLimit = imageMime ? IMAGE_PREVIEW_MAX_BYTES : BODY_PREVIEW_MAX_BYTES;
+  const bytes = useMemo(() => !imageMime && suppliedBytes.byteLength > previewLimit
+    ? suppliedBytes.slice(0, previewLimit) : suppliedBytes, [suppliedBytes, previewLimit, imageMime]);
+  const previewTruncated = suppliedTruncated || suppliedBytes.byteLength > previewLimit;
+  const partialDocument = incomplete || previewTruncated;
   const viewerRef = useRef<CodeViewerHandle>(null);
   const nextFormatId = useRef(0);
   const format = useMemo(() => bodyFormat(mediaType, bytes, previewTruncated), [mediaType, bytes, previewTruncated]);
@@ -91,14 +105,19 @@ export function BodyViewer({
   const [imageFailed, setImageFailed] = useState(false);
   const [activeFormatId, setActiveFormatId] = useState<number | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [localFormattedText, setLocalFormattedText] = useState<{ bytes: Uint8Array; text: string } | null>(null);
+  const [formatFailed, setFormatFailed] = useState(false);
+  const displayedFormattedText = formattedText ?? (localFormattedText?.bytes === bytes ? localFormattedText.text : undefined);
+  useEffect(() => setFormatFailed(false), [bytes, selected]);
 
   const text = useMemo(
     () => (format.kind === 'image' || format.kind === 'media' ? '' : decodeUtf8(bytes, previewTruncated)),
     [bytes, format.kind, previewTruncated],
   );
   const pretty = useMemo(
-    () => (format.kind === 'json' ? formatJsonBody(text) ?? text : text),
-    [format.kind, text],
+    () => (format.kind === 'json' && !partialDocument && bytes.byteLength <= FORMAT_AUTO_MAX_BYTES
+      ? formatJsonBody(text) ?? text : text),
+    [format.kind, text, partialDocument, bytes.byteLength],
   );
   const fields = useMemo(
     () => (format.kind === 'form' ? parseFormBody(text) : []),
@@ -107,8 +126,8 @@ export function BodyViewer({
   // A truncated or streamed JSON body has no single tree to show, so the档位 disappears
   // instead of failing after the user picks it.
   const tree = useMemo(
-    () => (format.kind === 'json' ? parseJsonTree(text) : undefined),
-    [format.kind, text],
+    () => (format.kind === 'json' && !partialDocument ? parseJsonTree(text) : undefined),
+    [format.kind, text, partialDocument],
   );
   const available = useMemo(
     () => (tree === undefined
@@ -124,25 +143,28 @@ export function BodyViewer({
     ? `${formatMediaType(mediaType)} · ${imageSize.width} × ${imageSize.height}`
     : `${formatMediaType(mediaType)} · ${sizeLabel(size, i18n.language)}`;
 
-  // Only minified code benefits: JSON already renders pretty-printed and the other kinds
-  // have no formatter at all.
-  const formattable = available.kind === 'code' && mode === 'default';
+  const formattable = (available.kind === 'code' || available.kind === 'json') && mode === 'default';
   const oversizeToFormat = bytes.byteLength > FORMAT_MAX_BYTES;
+  const formatBlocked = oversizeToFormat || partialDocument;
   const formatting = activeFormatId !== null;
-  const formatState: FormatState = !formattable
+  const autoJson = available.kind === 'json' && !formatBlocked && bytes.byteLength <= FORMAT_AUTO_MAX_BYTES;
+  const formatState: FormatState = !formattable || autoJson
     ? 'hidden'
-    : oversizeToFormat ? 'blocked' : formatting ? 'busy' : 'idle';
+    : formatBlocked ? 'blocked' : formatting ? 'busy' : 'idle';
 
   const runFormat = async (): Promise<void> => {
+    if (!formattable || formatBlocked) return;
     const formatId = ++nextFormatId.current;
     setActiveFormatId(formatId);
+    setFormatFailed(false);
     try {
-      const formatted = await viewerRef.current?.format();
+      const formatted = available.kind === 'json' ? formatJsonBody(text) ?? undefined : await viewerRef.current?.format();
       if (formatted !== undefined) {
-        onFormattedTextChange?.(formatted);
-      }
+        if (onFormattedTextChange) onFormattedTextChange(formatted);
+        else setLocalFormattedText({ bytes, text: formatted });
+      } else setFormatFailed(true);
     } catch {
-      // Formatting is best-effort; CodeViewer keeps the current model on failure.
+      setFormatFailed(true);
     } finally {
       setActiveFormatId((current) => current === formatId ? null : current);
     }
@@ -151,21 +173,39 @@ export function BodyViewer({
   useEffect(() => {
     if (
       formattable
-      && formattedText === undefined
+      && available.kind === 'code'
+      && !formatBlocked
+      && displayedFormattedText === undefined
       && bytes.byteLength <= FORMAT_AUTO_MAX_BYTES
     ) {
       void runFormat();
     }
     // Re-formats when the body or the selected view changes, not on every render.
-  }, [bytes, formattable, formattedText]);
+  }, [bytes, formattable, displayedFormattedText, formatBlocked]);
 
-  const bodyNotes = oversizeToFormat && formattable
-    ? [...(notes ?? []), t('body.formatBlocked')]
-    : notes;
+  const previewNotes = [
+    ...(notes ?? []),
+    ...(suppliedBytes.byteLength > previewLimit ? [t('capture.bodyPreviewLimited', {
+      preview: previewSizeLabel(previewLimit), total: previewSizeLabel(size),
+    })] : []),
+  ];
+  const formatNotice = showFormatNotice && formattable
+    && (formatBlocked || bytes.byteLength > FORMAT_AUTO_MAX_BYTES || formatFailed);
+  const formatNoticeText = formatFailed ? t('body.formatFailed')
+    : partialDocument ? `${t('body.previewLimited', {
+      preview: previewSizeLabel(bytes.byteLength), total: previewSizeLabel(size),
+    })} ${t('body.formatTruncated')}`
+      : t('body.formatManual', { size: previewSizeLabel(bytes.byteLength) });
+  const bodyNotes = formatNotice ? [] : [
+    ...previewNotes,
+    ...(formattable && partialDocument ? [t('body.formatTruncated')] : []),
+    ...(oversizeToFormat && formattable ? [t('body.formatBlocked')] : []),
+    ...(formatFailed ? [t('body.formatFailed')] : []),
+  ];
 
   const copyBody = (): void => {
-    const visibleText = format.kind === 'code' && mode === 'default'
-      ? formattedText ?? viewerRef.current?.value() ?? pretty
+    const visibleText = formattable
+      ? displayedFormattedText ?? viewerRef.current?.value() ?? pretty
       : mode === 'hex' ? toHexDump(bytes) : mode === 'default' ? pretty : text;
     copy(visibleText);
   };
@@ -178,7 +218,8 @@ export function BodyViewer({
         mode={mode}
         onModeChange={(next) => setSelected({ kind: available.kind, mode: next })}
         meta={meta}
-        formatState={formatState}
+        formatState={formatNotice ? 'hidden' : formatState}
+        formatBlockedReason={partialDocument ? t('body.formatTruncated') : undefined}
         onFormat={() => void runFormat()}
         onCopy={fullscreen ? undefined : copyAction}
         onSave={onSave}
@@ -188,6 +229,22 @@ export function BodyViewer({
         actionAutomationIds={actionAutomationIds}
         modeAutomationIds={modeAutomationIds}
       />
+      {formatNotice ? (
+        <div className={cx(styles.note, styles.formatNotice)} data-warning={partialDocument || undefined}>
+          {partialDocument ? <TriangleAlert aria-hidden="true" /> : <Info aria-hidden="true" />}
+          <span>{formatNoticeText}</span>
+          <IconButton
+            icon={CodeXml}
+            label={t('body.format')}
+            size="sm"
+            loading={formatting}
+            disabled={formatBlocked}
+            disabledTooltip={partialDocument ? t('body.formatTruncated') : t('body.formatBlocked')}
+            onClick={() => void runFormat()}
+            automationId={actionAutomationIds?.format}
+          />
+        </div>
+      ) : null}
       {bodyNotes?.map((note) => (
         <div key={note} className={styles.note}>
           <Info aria-hidden="true" />
@@ -220,6 +277,19 @@ export function BodyViewer({
   );
 
   function renderPane(): React.JSX.Element {
+    if (format.kind === 'image' && partialDocument) {
+      return (
+        <UnavailableBody
+          icon={ImageIcon}
+          mediaType={formatMediaType(mediaType)}
+          measures={sizeLabel(size, i18n.language)}
+          reason={t('body.imageTooLarge')}
+          saving={saving}
+          onSave={onSave}
+          parityId={paneParityId}
+        />
+      );
+    }
     if (mode === 'hex') {
       return <HexView bytes={bytes} compact={compact} parityId={paneParityId} />;
     }
@@ -241,7 +311,7 @@ export function BodyViewer({
             measures={sizeLabel(bytes.byteLength, i18n.language)}
             reason={t('body.imageUndecodable')}
             saving={saving}
-            onSave={onSave ?? (() => {})}
+            onSave={onSave}
             parityId={paneParityId}
           />
         );
@@ -265,11 +335,12 @@ export function BodyViewer({
         ref={viewerRef}
         value={
           mode === 'default' && format.kind === 'code'
-            ? formattedText ?? pretty
-            : mode === 'default' ? pretty : text
+            ? displayedFormattedText ?? pretty
+            : mode === 'default' ? displayedFormattedText ?? pretty : text
         }
         language={mode === 'raw' && format.kind === 'form' ? 'plaintext' : format.language}
         compact={compact}
+        resizable={compact && resizable && !fullscreen}
         automationId={paneAutomationId}
         parityId={paneParityId}
       />

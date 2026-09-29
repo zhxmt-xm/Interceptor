@@ -192,13 +192,18 @@ export const plCatalog = {
   'body.format': "Formatuj",
   'body.fullscreen': 'Pełny ekran',
   'body.exitFullscreen': 'Zamknij pełny ekran',
-  'body.formatBlocked': "Treść przekracza 8 MB — formatowanie wyłączone. Zapisz plik, aby sformatować go w innym narzędziu.",
+  'body.formatBlocked': "Treść przekracza 2 MiB — formatowanie wyłączone. Zapisz plik, aby sformatować go w innym narzędziu.",
+  'body.formatTruncated': 'Nie można formatować uciętych podglądów.',
+  'body.formatFailed': 'Formatowanie nie powiodło się. Oryginalna zawartość pozostała bez zmian.',
+  'body.formatManual': 'Pełna treść · {{size}}. Użyj opcji „Formatuj” dla treści o rozmiarze od 1 do 2 MiB.',
   'body.copyValue': "Kopiuj wartość",
   'body.copyObject': "Kopiuj obiekt",
   'body.copyPath': "Kopiuj ścieżkę",
   'body.field': "Pole",
   'body.value': "Wartość",
   'body.imageTooLarge': "Zbyt duży, aby wyświetlić podgląd. Zapisz plik, aby otworzyć go w przeglądarce obrazów.",
+  'body.imagePreviewLimit': 'Przekroczono osobny limit 16 MiB dla podglądu obrazów. Obraz nie zostanie wczytany.',
+  'body.previewLimited': 'Podgląd {{preview}} z {{total}}.',
   'body.imageUndecodable': "Nie udało się zdekodować tego obrazu. Zapisz plik, aby otworzyć go w przeglądarce obrazów.",
   'body.mediaNotRead': "Audio i wideo nigdy nie trafiają do podglądu. Zapisz plik, aby odtworzyć go w odtwarzaczu.",
   'capture.failedSaveBody': 'Nie udało się zapisać treści: {{error}}',
@@ -656,7 +661,10 @@ export const plCatalog = {
 
 
 
-  'breakpoints.filePreviewUnavailable': 'Za duży lub nietekstowy — wysyłany z dysku bez zmian.',
+  'breakpoints.filePreviewUnavailable': 'Podgląd niedostępny. Cały plik zostanie wysłany bez zmian.',
+  'breakpoints.filePreviewOnly': 'Tylko podgląd. Opcja „Przekaż zmienione” używa całego wybranego pliku, a nie widocznego podglądu.',
+  'breakpoints.fileForwardComplete': 'Opcja „Przekaż zmienione” nadal używa całego wybranego pliku.',
+  'breakpoints.textComplete': 'Cały tekst pozostaje edytowalny. Limity podglądu tylko do odczytu nie przycinają tej wartości.',
 
   'breakpoints.replacementBody': 'Treść zastępcza',
   'breakpoints.replacementMessage': 'Wiadomość zastępcza',

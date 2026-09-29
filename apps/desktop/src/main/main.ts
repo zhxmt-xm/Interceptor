@@ -48,17 +48,16 @@ import {
   type SystemProxyStatus as DesktopSystemProxyStatus,
   type SystemProxyRestoreResult,
   type UpdateStatus,
-  type BreakpointBodyFile,
 } from '../shared/desktop-api';
 import { PlatformCapabilitiesService } from './platform-capabilities/entry';
 import {
-  BREAKPOINT_BODY_FILE_PREVIEW_BYTES,
   IMPORT_FILE_MAX_BYTES,
 } from './constants';
 import { CoreRuntime } from './core/core-runtime';
 import { MainDiagnostics } from './diagnostics/main-diagnostics';
 import { startDiagnosticsExport } from './diagnostics/start-export';
 import { startBodyExport } from './capture/start-body-export';
+import { readBreakpointBodyFile } from './capture/read-breakpoint-body-file';
 import { startHarExport, startHarImport } from './capture/start-har-transfer';
 import { startArchiveExport, startArchiveImport } from './capture/start-archive-transfer';
 import type { UpdateService } from './interfaces';
@@ -87,7 +86,6 @@ import {
   isJsonImportPath,
   toBodyDecodeOptions,
   toBodyExportRequest,
-  breakpointBodyMediaType,
   toBreakpointEdit,
   toByteRange,
   toCollectionNodes,
@@ -1908,7 +1906,7 @@ class DesktopApplication {
     });
 
     // 选一个文件作为断点替换正文。路径交给 Renderer 只为放行时回传 Core（同 Map Local）；
-    // 只有小到能编辑的文本才顺便读出来做预览，大文件与二进制不经 IPC 搬运。
+    // 只读预览有独立字节边界；替换始终由Core读取完整文件。
     ipcMain.handle(DESKTOP_IPC_CHANNELS.breakpointPickBodyFile, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       const selection = await dialog.showOpenDialog({ properties: ['openFile'] });
@@ -1916,17 +1914,7 @@ class DesktopApplication {
       if (selection.canceled || !filePath) {
         return null;
       }
-      const mediaType = breakpointBodyMediaType(filePath);
-      const file: BreakpointBodyFile = {
-        path: filePath,
-        name: path.basename(filePath),
-        size: (await stat(filePath)).size,
-        mediaType,
-      };
-      if (file.size > BREAKPOINT_BODY_FILE_PREVIEW_BYTES || !mediaType.startsWith('text/')) {
-        return file;
-      }
-      return { ...file, text: await readFile(filePath, 'utf8') };
+      return readBreakpointBodyFile(filePath);
     });
 
     // 放行断点：continue（可带 edit）/ drop；payload 原样转交 Core。

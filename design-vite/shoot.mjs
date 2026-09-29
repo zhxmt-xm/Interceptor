@@ -5,7 +5,7 @@
 import { chromium } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { startDesignPreview } from './tools/design-preview.mjs';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
@@ -15,6 +15,18 @@ const shotsRoot = path.resolve(process.argv
 
 const FEATURES = ['capture', 'rules', 'composer', 'settings', 'diagnostics', 'playground'];
 const TOKEN = { light: 'light', dark: 'dark' }; // folder name -> data-theme token
+const GRPC_LONG_MESSAGE = 'catalog-stream-4281\n' + JSON.stringify({
+  requestId: 'catalog-stream-4281',
+  region: 'ap-east-1',
+  products: Array.from({ length: 18 }, (_, index) => ({
+    id: `sku-${1042 + index}`,
+    name: `Wireless keyboard ${index + 1}`,
+    price: 89.9,
+    currency: 'USD',
+    available: true,
+  })),
+  nextPageToken: '',
+}, null, 2);
 const onlyFeature = process.argv
   .find((argument) => argument.startsWith('--feature='))
   ?.split('=')[1];
@@ -28,6 +40,42 @@ const onlyTheme = process.argv
 // Every shot declares { feature, theme, variant, state, full? }.
 // Output path is shots/<theme>/<feature>/<variant>.png so light and dark stay separated.
 const shots = [];
+for (const theme of ['light', 'dark']) {
+  for (const [variant, mode, notice] of [
+    ['breakpoint-request-original-long', 'original', 'none'],
+    ['breakpoint-request-file-long', 'file', 'none'],
+    ['breakpoint-request-text-long', 'text', 'none'],
+    ['breakpoint-request-file-manual', 'file', 'manual-format'],
+    ['breakpoint-request-file-truncated', 'file', 'truncated'],
+    ['breakpoint-request-file-image-limit', 'file', 'image-limit'],
+  ]) {
+    shots.push({
+      feature: 'capture', theme, variant, interaction: `http-body-${mode}`,
+      state: {
+        view: 'capture', theme, sidebar: 'collapsed', overlay: '', detail: 'open',
+        scene: 'http', tab: 'headers', breakpointState: 'request', breakpointBody: 'ready',
+        breakpointFile: 'none', bodyRemainderSample: 'long', bodyRemainderNotice: notice,
+      },
+    });
+  }
+}
+for (const theme of ['light', 'dark', 'warm', 'ember']) {
+  const state = {
+    view: 'capture', theme, sidebar: 'collapsed', overlay: '',
+    detail: 'open', scene: 'grpc', tab: 'grpc', grpcMessageSource: GRPC_LONG_MESSAGE,
+  };
+  shots.push({ feature: 'capture', theme, variant: 'inspector-grpc-long-text', interaction: 'grpc-text', state });
+  shots.push({
+    feature: 'capture', theme, variant: 'inspector-grpc-long-text-resized',
+    interaction: 'grpc-text', resizeBodyDelta: -120, state,
+  });
+  if (theme === 'light' || theme === 'dark') {
+    shots.push({ feature: 'capture', theme, variant: 'inspector-grpc-long-text-full', full: true, interaction: 'grpc-text', state });
+  } else {
+    shots.push({ feature: 'capture', theme, variant: 'inspector-websocket',
+      state: { view: 'capture', theme, sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages' } });
+  }
+}
 for (const feature of FEATURES) {
   for (const theme of ['light', 'dark']) {
     const base = { view: feature, theme: TOKEN[theme], sidebar: feature === 'capture' ? 'collapsed' : 'expanded', overlay: '', ...(feature === 'settings' ? { settings: 'certificates' } : {}) };
@@ -666,7 +714,7 @@ const FULL_CSS = `
 
 const selectedShots = shots.filter((shot) =>
   (!onlyFeature || shot.feature === onlyFeature) &&
-  (!onlyVariant || shot.variant === onlyVariant) &&
+  (!onlyVariant || onlyVariant.split(',').includes(shot.variant)) &&
   (!onlyTheme || shot.theme === onlyTheme),
 );
 
@@ -721,9 +769,13 @@ async function shoot(list) {
       || s.interaction === 'websocket-breakpoint-setup'
       || previousInteraction === 'rule-action-tags'
       || previousInteraction === 'provider-menu'
+      || previousInteraction === 'grpc-text'
+      || s.interaction?.startsWith('http-body-')
+      || previousInteraction.startsWith('http-body-')
     ) {
       await page.reload({ waitUntil: 'load', timeout: 120_000 });
       await prepareDesignPage();
+      if (s.full) await page.addStyleTag({ content: FULL_CSS });
     }
     await page.evaluate(() => window.__setState({
       overlay: '',
@@ -736,6 +788,9 @@ async function shoot(list) {
       breakpointMessage: '',
       websocketBreakpoint: 'disabled',
       websocketMessagesState: 'ready',
+      grpcMessageSource: null,
+      bodyRemainderSample: 'current',
+      bodyRemainderNotice: 'none',
       pop: false,
       pop2: '',
       ctxmenu: '',
@@ -855,6 +910,9 @@ async function shoot(list) {
       websocketMessageDirection: 'sent',
       websocketMessagePayload: 'text',
       websocketMessagesState: 'ready',
+      grpcMessageSource: null,
+      bodyRemainderSample: 'current',
+      bodyRemainderNotice: 'none',
       ruleTypography: 'composer',
       composer: '',
       collection: 'open',
@@ -964,6 +1022,54 @@ async function shoot(list) {
       await page.locator('.ccol [data-grp="github-repos"] > .cgrp-h .cgrp-namebtn').click();
       await page.mouse.move(0, 0);
     }
+    if (s.interaction === 'grpc-text') {
+      const textMode = page.getByRole('radiogroup', { name: 'Response message view' })
+        .getByRole('radio', { name: 'Text', exact: true });
+      await textMode.click();
+      await page.waitForFunction(() => document.querySelector(
+        '.grpcpayload [role="radio"][aria-checked="true"]',
+      )?.textContent === 'Text');
+      await page.mouse.move(0, 0);
+    }
+    let httpBodySource;
+    if (s.interaction?.startsWith('http-body-')) {
+      if (s.state.bodyRemainderNotice !== 'image-limit') {
+        await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+        await page.getByRole('button', { name: 'Copy body', exact: true }).click();
+        httpBodySource = await page.evaluate(() => navigator.clipboard.readText());
+      }
+      if (s.interaction !== 'http-body-original') {
+        await page.getByRole('button', { name: /^Original body/ }).click();
+        await page.waitForTimeout(250);
+        const mode = s.interaction === 'http-body-file' ? 'File' : 'Text';
+        await page.getByRole('radiogroup', { name: 'Replacement body mode' })
+          .getByRole('radio', { name: mode, exact: true }).click();
+        if (mode === 'File') {
+          await page.getByRole('button', { name: /^Choose file/ }).click();
+        } else {
+          if (httpBodySource === undefined) throw new Error('HTTP Text scene has no source');
+          const input = page.getByRole('textbox', { name: 'Replacement body', exact: true });
+          await input.fill(httpBodySource);
+          await input.press('ControlOrMeta+End');
+          await input.press('End');
+          await input.press('ArrowRight');
+          await input.pressSequentially('\ncomplete-text-kept-after-preview-end');
+        }
+      }
+      await page.mouse.move(0, 0);
+      await page.waitForTimeout(250);
+    }
+    if (s.resizeBodyDelta) {
+      const body = page.locator('.grpcpayload [data-monaco]').filter({ visible: true });
+      const box = await body.boundingBox();
+      if (!box) throw new Error('The message body is not visible for resizing.');
+      await page.mouse.move(box.x + box.width - 3, box.y + box.height - 3);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width - 3, box.y + box.height - 3 + s.resizeBodyDelta, { steps: 12 });
+      await page.mouse.up();
+      await page.mouse.move(0, 0);
+      await page.waitForTimeout(200);
+    }
     if (
       s.interaction !== 'request-menu'
       && s.interaction !== 'breakpoint-menu'
@@ -995,6 +1101,25 @@ async function shoot(list) {
       await page.screenshot({ path: outputPath, clip });
     } else {
       await app.screenshot({ path: outputPath });
+    }
+    if (s.interaction?.startsWith('http-body-')) {
+      const actual = await page.evaluate(() => {
+        const host = [...document.querySelectorAll('[data-remainder-preview] [data-monaco]')]
+          .find((element) => element.getClientRects().length > 0 && element.clientWidth > 0);
+        const rect = host?.getBoundingClientRect();
+        const input = [...document.querySelectorAll('textarea[aria-label="Replacement body"]')]
+          .find((element) => element.getClientRects().length > 0 && element.clientWidth > 0);
+        return {
+          preview: rect ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height, resize: getComputedStyle(host).resize } : null,
+          replacementMode: document.querySelector('[role="radiogroup"][aria-label="Replacement body mode"] [aria-checked="true"]')?.textContent,
+          notice: document.querySelector('[data-remainder-preview="file"] [role="status"]')?.textContent
+            ?? document.querySelector('[data-remainder-preview="original"] [role="status"]')?.textContent ?? null,
+          inputValue: input instanceof HTMLTextAreaElement ? input.value : null,
+        };
+      });
+      await writeFile(path.join(dest, `${s.variant}.json`), JSON.stringify({
+        state: s.state, interaction: s.interaction, source: httpBodySource ?? null, actual,
+      }, null, 2), 'utf8');
     }
     console.log('  ✓', `${s.theme}/${s.feature}/${s.variant}`);
     previousInteraction = s.interaction ?? '';

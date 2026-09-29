@@ -32,18 +32,18 @@ describe('code viewer formatting', () => {
     expect(document.run).not.toHaveBeenCalled();
   });
 
-  it('restores the original value when the Monaco formatter fails', async () => {
+  it('restores the original value and reports failure to the caller', async () => {
     const document = formatter('html', '<main></main>');
     document.run.mockRejectedValueOnce(new Error('formatter failed'));
 
-    await expect(formatCodeDocument(document)).resolves.toBeUndefined();
+    await expect(formatCodeDocument(document)).rejects.toThrow('formatter failed');
     expect(document.replace).toHaveBeenCalledWith('<main></main>');
   });
 
-  it('keeps malformed XML unchanged instead of leaking the parser failure', async () => {
+  it('keeps malformed XML unchanged and lets the caller display a formatting failure', async () => {
     const document = formatter('xml', '<root><');
 
-    await expect(formatCodeDocument(document)).resolves.toBeUndefined();
+    await expect(formatCodeDocument(document)).rejects.toThrow();
     expect(document.replace).toHaveBeenCalledWith('<root><');
     expect(document.run).not.toHaveBeenCalled();
   });

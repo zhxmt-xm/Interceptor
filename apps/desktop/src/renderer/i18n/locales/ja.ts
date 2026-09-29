@@ -189,13 +189,18 @@ export const jaCatalog = {
   'body.format': "整形",
   'body.fullscreen': '全画面',
   'body.exitFullscreen': '全画面を終了',
-  'body.formatBlocked': "ボディが 8 MB を超えるため整形を無効化しました。保存して外部ツールで整形してください。",
+  'body.formatBlocked': "ボディが 2 MiB を超えるため整形を無効化しました。保存して外部ツールで整形してください。",
+  'body.formatTruncated': '切り詰められたプレビューは整形できません。',
+  'body.formatFailed': '整形に失敗しました。元の内容は変更されていません。',
+  'body.formatManual': '完全なボディ · {{size}}。1～2 MiB のボディには「整形」を使用してください。',
   'body.copyValue': "値をコピー",
   'body.copyObject': "オブジェクトをコピー",
   'body.copyPath': "パスをコピー",
   'body.field': "フィールド",
   'body.value': "値",
   'body.imageTooLarge': "大きすぎてプレビューできません。保存して画像ビューアで開いてください。",
+  'body.imagePreviewLimit': '画像プレビュー専用の上限 16 MiB を超えています。画像は読み込まれません。',
+  'body.previewLimited': '{{total}} のうち {{preview}} をプレビューしています。',
   'body.imageUndecodable': "この画像はデコードできませんでした。保存して画像ビューアで開いてください。",
   'body.mediaNotRead': "音声・動画はプレビューに読み込みません。保存してプレイヤーで再生してください。",
   'capture.failedSaveBody': 'ボディの保存に失敗しました: {{error}}',
@@ -647,7 +652,10 @@ export const jaCatalog = {
 
 
 
-  'breakpoints.filePreviewUnavailable': 'サイズが大きい、またはテキストではないため、ディスクからそのまま送信します。',
+  'breakpoints.filePreviewUnavailable': 'プレビューを表示できません。ファイル全体を変更せずに送信します。',
+  'breakpoints.filePreviewOnly': 'プレビューのみです。「編集内容を転送」では、表示中のプレビューではなく、選択したファイル全体を使用します。',
+  'breakpoints.fileForwardComplete': '「編集内容を転送」では、引き続き選択したファイル全体を使用します。',
+  'breakpoints.textComplete': 'テキスト全体を編集できます。読み取り専用プレビューの制限によって、この値が切り詰められることはありません。',
 
   'breakpoints.replacementBody': '置換ボディ',
   'breakpoints.replacementMessage': '置換メッセージ',

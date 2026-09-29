@@ -1282,14 +1282,16 @@ button.break-section-head { border: 0; background: transparent; cursor: pointer;
 .bpane[data-pane="image-large"] .body-media, .bpane[data-pane="media"] .body-media { display: flex; }
 
 .app[data-body-kind="limited"][data-body-mode="default"] .bodynote[data-note="limited"],
-.app[data-body-state="format-off"] .bodynote[data-note="format-off"] { display: flex; }
+.app[data-body-state="format-off"] .bodynote[data-note="format-off"],
+.app[data-body-kind="limited"][data-body-mode="default"] .bodynote[data-note="format-off"] { display: flex; }
 
 /* Format button: idle icon, busy spinner, disabled above the format ceiling. */
 .bodyfmt .fmt-busy { display: none; }
 .app[data-body-state="busy"] .bodyfmt { background: var(--accent-soft); color: var(--accent); }
 .app[data-body-state="busy"] .bodyfmt .fmt-idle { display: none; }
 .app[data-body-state="busy"] .bodyfmt .fmt-busy { display: block; }
-.app[data-body-state="format-off"] .bodyfmt { color: var(--text-3); cursor: not-allowed; opacity: .55; }
+.app[data-body-state="format-off"] .bodyfmt,
+.app[data-body-kind="limited"] .bodyfmt { color: var(--text-3); cursor: not-allowed; opacity: .55; }
 
 /* JSON tree: 22px rows, 15px per level, chevron only on expandable nodes. */
 .jtree { position: relative; flex: 1 1 0; min-height: 0; overflow: auto; padding: 8px 6px; border: 1px solid var(--border-2); border-radius: 10px; background: var(--panel-2); font-family: var(--font-mono); font-size: 12px; }

@@ -99,6 +99,12 @@ HTTP断点fixture按真实头部挂起契约设置`bodyAvailable: false`，即�
 
 Tunnel详情的`HTTPS content is encrypted`与请求列表行文案重复；该场景须用显式selector配对详情callout的标题，并按文字范围测量，不能让裸文本匹配退到列表行。只修配对范围，不改变产品、设计基准或几何阈值。
 
+DeepSeek弹窗的`Endpoint`标签显式限定在双方dialog内，避免使用页面级同名文本配对。
+
+普通消息高度场景位于`capture-message-*`：四主题gRPC长Text的初始/真实拖矮状态与WebSocket短Pretty；`resizeVertical`通过鼠标拖拽右下角，不改DOM高度。fake Preload的`grpcMessageSource`只替换该fixture的消息字节和相邻envelope偏移，设计source采用文本前缀加JSON，避免合法JSON被产品正常探测为Pretty而与Text设计不一致。不修改产品探测、预览上限或copy语义。已批准默认gRPC Hex/Tree/全屏及Composer继续使用原设计，HTTP正文见下段。
+
+HTTP正文新增`breakpoint-readonly-*`六场景×浅/深：长Original/File/Text、手动格式化、截断、图片超限。`readonlyData: { sample, notice }`经`design-vite/src/fixtures/readonlyBodyData.ts`转为可序列化字节描述，fake Preload在内存构造实际数据，再按正常`readBody`/`pickBreakpointBodyFile`契约返回Uint8Array。总大小、预览长度和truncated由同一真实字节源派生；不以几KiB正文配假MiB长度，不设置产品Store或新增产品参数。Original仍为JSON高亮，File仍plaintext；通过真实点击Original折叠、Text/File、Choose file和受控输入建立状态。`pressLabel`/`typeLabel`仅驱动已有输入控件；`freshDesign`为这些独立流程重建已加载字体的设计页，避免上一场景的折叠状态泄漏。
+
 ## 整体架构
 
 ```mermaid
@@ -374,7 +380,7 @@ node apps/desktop/tests/visual-parity/parity.mjs --view=capture-websocket
 
 场景唯一标识。用于：
 
-- `--view=<id>` 过滤；
+- `--view=<id>`过滤，多个完整ID可用逗号分隔；
 - Renderer 截图文件名；
 - 报告中的 View 列。
 
@@ -439,6 +445,14 @@ Capture 是默认 view，可省略。
 ```
 
 `index` 默认为 `0`，用于处理同名元素。
+
+#### 等待弹层进入视口
+
+```js
+{ type: 'assertInsideViewport', selector: '[data-parity="agent-model-menu"]' }
+```
+
+每次采样同时检查可见元素和四边范围，由Playwright在5秒内等待定位稳定。不能先等待可见、再单独测量：弹层重定位期间可能暂时不可见。始终要求至少一个可见元素且所有可见元素完全位于viewport内；永久消失或持续越界仍失败。
 
 新增动作类型时，应扩展 `parity.mjs` 的 `applyRendererActions()`，不要在 Renderer 中增加测试 hook。
 

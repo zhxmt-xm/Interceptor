@@ -189,13 +189,18 @@ export const ptBRCatalog = {
   'body.format': "Formatar",
   'body.fullscreen': 'Tela cheia',
   'body.exitFullscreen': 'Sair da tela cheia',
-  'body.formatBlocked': "O corpo passa de 8 MB — a formatação está desativada. Salve-o para formatar em outra ferramenta.",
+  'body.formatBlocked': "O corpo passa de 2 MiB — a formatação está desativada. Salve-o para formatar em outra ferramenta.",
+  'body.formatTruncated': 'Prévias truncadas não podem ser formatadas.',
+  'body.formatFailed': 'A formatação falhou. O conteúdo original não foi alterado.',
+  'body.formatManual': 'Corpo completo · {{size}}. Use "Formatar" para corpos entre 1 e 2 MiB.',
   'body.copyValue': "Copiar valor",
   'body.copyObject': "Copiar objeto",
   'body.copyPath': "Copiar caminho",
   'body.field': "Campo",
   'body.value': "Valor",
   'body.imageTooLarge': "Grande demais para a prévia. Salve o arquivo para abri-lo em um visualizador de imagens.",
+  'body.imagePreviewLimit': 'O limite separado de 16 MiB para a prévia de imagens foi excedido. A imagem não será carregada.',
+  'body.previewLimited': 'Prévia: {{preview}} de {{total}}.',
   'body.imageUndecodable': "Não foi possível decodificar esta imagem. Salve o arquivo para abri-lo em um visualizador de imagens.",
   'body.mediaNotRead': "Áudio e vídeo nunca são carregados na prévia. Salve o arquivo para reproduzi-lo em um player.",
   'capture.failedSaveBody': 'Falha ao salvar o corpo: {{error}}',
@@ -647,7 +652,10 @@ export const ptBRCatalog = {
 
 
 
-  'breakpoints.filePreviewUnavailable': 'Grande demais ou não é texto — enviado do disco como está.',
+  'breakpoints.filePreviewUnavailable': 'Prévia indisponível. O arquivo completo será enviado sem alterações.',
+  'breakpoints.filePreviewOnly': 'Somente prévia. "Encaminhar editado" usa o arquivo selecionado completo, não a prévia visível.',
+  'breakpoints.fileForwardComplete': '"Encaminhar editado" continua usando o arquivo selecionado completo.',
+  'breakpoints.textComplete': 'O texto completo continua editável. Os limites da prévia somente leitura não truncam este valor.',
 
   'breakpoints.replacementBody': 'Corpo de substituição',
   'breakpoints.replacementMessage': 'Mensagem de substituição',

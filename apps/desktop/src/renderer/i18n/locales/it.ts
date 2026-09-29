@@ -189,13 +189,18 @@ export const itCatalog = {
   'body.format': "Formatta",
   'body.fullscreen': 'Schermo intero',
   'body.exitFullscreen': 'Esci da schermo intero',
-  'body.formatBlocked': "Il corpo supera 8 MB: la formattazione è disattivata. Salvalo per formattarlo altrove.",
+  'body.formatBlocked': "Il corpo supera 2 MiB: la formattazione è disattivata. Salvalo per formattarlo altrove.",
+  'body.formatTruncated': 'Le anteprime troncate non possono essere formattate.',
+  'body.formatFailed': 'Formattazione non riuscita. Il contenuto originale è invariato.',
+  'body.formatManual': 'Corpo completo · {{size}}. Usa «Formatta» per i corpi tra 1 e 2 MiB.',
   'body.copyValue': "Copia valore",
   'body.copyObject': "Copia oggetto",
   'body.copyPath': "Copia percorso",
   'body.field': "Campo",
   'body.value': "Valore",
   'body.imageTooLarge': "Troppo grande per l’anteprima. Salva il file per aprirlo in un visualizzatore di immagini.",
+  'body.imagePreviewLimit': 'È stato superato il limite separato di 16 MiB per l’anteprima delle immagini. L’immagine non viene caricata.',
+  'body.previewLimited': 'Anteprima: {{preview}} di {{total}}.',
   'body.imageUndecodable': "Impossibile decodificare questa immagine. Salva il file per aprirlo in un visualizzatore di immagini.",
   'body.mediaNotRead': "Audio e video non vengono mai caricati nell’anteprima. Salva il file per riprodurlo in un lettore multimediale.",
   'capture.failedSaveBody': 'Impossibile salvare il corpo: {{error}}',
@@ -647,7 +652,10 @@ export const itCatalog = {
 
 
 
-  'breakpoints.filePreviewUnavailable': 'Troppo grande o non testuale: inviato dal disco così com’è.',
+  'breakpoints.filePreviewUnavailable': 'Anteprima non disponibile. Il file completo verrà inviato senza modifiche.',
+  'breakpoints.filePreviewOnly': 'Solo anteprima. «Inoltra modificato» usa l’intero file selezionato, non l’anteprima visibile.',
+  'breakpoints.fileForwardComplete': '«Inoltra modificato» usa comunque l’intero file selezionato.',
+  'breakpoints.textComplete': 'Il testo completo rimane modificabile. I limiti dell’anteprima in sola lettura non troncano questo valore.',
 
   'breakpoints.replacementBody': 'Corpo sostitutivo',
   'breakpoints.replacementMessage': 'Messaggio sostitutivo',

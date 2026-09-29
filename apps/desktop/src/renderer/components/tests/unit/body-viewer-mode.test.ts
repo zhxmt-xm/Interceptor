@@ -2,7 +2,7 @@ import { Children, isValidElement, type ComponentProps, type ReactElement, type 
 import { FileVideo2 } from 'lucide-react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { BodyViewer } from '../../BodyViewer/BodyViewer';
+import { BodyViewer, type BodyViewerProps } from '../../BodyViewer/BodyViewer';
 import { BodyToolbar } from '../../BodyViewer/BodyToolbar/BodyToolbar';
 import { HexView } from '../../BodyViewer/HexView/HexView';
 import { JsonTreeView } from '../../BodyViewer/JsonTreeView/JsonTreeView';
@@ -118,6 +118,86 @@ describe('Compact JSON tree layout', () => {
       toolbar.props.onCopy!();
       expect(fixture.copy).toHaveBeenCalledExactlyOnceWith(source);
     }
+  });
+});
+
+describe('Resizable ordinary message layout', () => {
+  it.each([
+    { compact: true, fullscreen: false, resizable: true, expected: true },
+    { compact: true, fullscreen: true, resizable: true, expected: false },
+    { compact: false, fullscreen: false, resizable: true, expected: false },
+    { compact: true, fullscreen: false, resizable: false, expected: false },
+  ])('only resizes an opted-in inline Monaco message: %j', ({ compact, fullscreen, resizable, expected }) => {
+    fixture.fullscreen = fullscreen;
+    const source = '{"buildId":8431,"state":"running","branch":"main"}';
+    const props: BodyViewerProps = {
+      bytes: new TextEncoder().encode(source), mediaType: 'application/json',
+      fullscreenTitle: 'Payload', compact, resizable,
+    };
+    const body = BodyViewer(props);
+    const code = findBodyComponent<CodeViewerProps>(body, CodeViewer);
+    expect(code.props.resizable).toBe(expected);
+    expect(code.props.value).toBe(JSON.stringify(JSON.parse(source), null, 2));
+  });
+});
+
+describe('Readonly body format budgets', () => {
+  it.each([
+    { size: 1024 * 1024, formatState: 'hidden', automatic: true },
+    { size: 1024 * 1024 + 1, formatState: 'idle', automatic: false },
+    { size: 2 * 1024 * 1024, formatState: 'idle', automatic: false },
+    { size: 2 * 1024 * 1024 + 1, formatState: 'blocked', automatic: false },
+  ] as const)('uses exact UTF-8 boundaries at $size bytes', ({ size, formatState, automatic }) => {
+    const source = `{"data":"${'a'.repeat(size - 11)}"}`;
+    const bytes = new TextEncoder().encode(source);
+    expect(bytes.byteLength).toBe(size);
+    const body = BodyViewer({ bytes, mediaType: 'application/json' });
+    const viewer = findBodyComponent<CodeViewerProps>(body, CodeViewer);
+    const toolbar = findBodyComponent<ComponentProps<typeof BodyToolbar>>(body, BodyToolbar);
+    expect(toolbar.props.formatState).toBe(formatState);
+    expect(viewer.props.value === (automatic ? JSON.stringify(JSON.parse(source), null, 2) : source.slice(0, 2 * 1024 * 1024))).toBe(true);
+  });
+  it('blocks incomplete captured documents without hiding their actual broken UTF-8 suffix', () => {
+    const props: BodyViewerProps = {
+      bytes: new Uint8Array([0x3c, 0x70, 0x3e, 0xe4, 0xbd]),
+      mediaType: 'text/html', incomplete: true,
+    };
+    const body = BodyViewer(props);
+    expect(findBodyComponent<ComponentProps<typeof BodyToolbar>>(body, BodyToolbar).props.formatState).toBe('blocked');
+    expect(findBodyComponent<CodeViewerProps>(body, CodeViewer).props.value).toBe('<p>\ufffd');
+  });
+  it('does not pass an oversized image prefix to the image decoder', () => {
+    const body = BodyViewer({
+      bytes: new Uint8Array(16 * 1024 * 1024 + 1),
+      mediaType: 'image/png',
+    });
+    expect(findBodyComponent<ComponentProps<typeof UnavailableBody>>(body, UnavailableBody).props.reason)
+      .toBe('body.imageTooLarge');
+  });
+  it('keeps complete JSON above 1 MiB unformatted until Format is requested', () => {
+    const source = JSON.stringify({ text: 'x'.repeat(1024 * 1024) });
+    const body = BodyViewer({ bytes: new TextEncoder().encode(source), mediaType: 'application/json' });
+    const viewer = findBodyComponent<CodeViewerProps>(body, CodeViewer);
+    const toolbar = findBodyComponent<ComponentProps<typeof BodyToolbar>>(body, BodyToolbar);
+    expect(viewer.props.value === source).toBe(true);
+    expect(toolbar.props.formatState).toBe('idle');
+  });
+
+  it.each(['application/json', 'text/html'])('blocks formatting on an explicitly truncated %s preview', (mediaType) => {
+    const source = mediaType === 'application/json' ? '{"ok":true}' : '<html><p>partial</p></html>';
+    const body = BodyViewer({ bytes: new TextEncoder().encode(source), mediaType, previewTruncated: true });
+    const toolbar = findBodyComponent<ComponentProps<typeof BodyToolbar>>(body, BodyToolbar);
+    const viewer = findBodyComponent<CodeViewerProps>(body, CodeViewer);
+    expect(toolbar.props.formatState).toBe('blocked');
+    expect(viewer.props.value).toBe(source);
+  });
+
+  it('blocks formatting complete code above 2 MiB without changing its source', () => {
+    const source = '<html>' + 'x'.repeat(2 * 1024 * 1024) + '</html>';
+    const body = BodyViewer({ bytes: new TextEncoder().encode(source), mediaType: 'text/html' });
+    const toolbar = findBodyComponent<ComponentProps<typeof BodyToolbar>>(body, BodyToolbar);
+    expect(toolbar.props.formatState).toBe('blocked');
+    expect(findBodyComponent<CodeViewerProps>(body, CodeViewer).props.value === source.slice(0, 2 * 1024 * 1024)).toBe(true);
   });
 });
 

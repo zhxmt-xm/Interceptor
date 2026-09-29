@@ -15,6 +15,7 @@ import {
   IMAGE_PREVIEW_MAX_BYTES,
 } from '../../../shared/desktop-api';
 import { decodeUtf8 } from '../../components/BodyViewer/bodyText';
+import { isImageMime } from '../../components/BodyViewer/bodyFormats';
 import {
   CAPTURE_FACET_IDS,
   FAILED_FACET_VALUE,
@@ -255,11 +256,12 @@ export interface BodyPreviewRequest {
 
 /** 计算安全的正文预览读取范围；压缩输入不完整时禁止尝试解码。 */
 export function bodyPreviewRequest(body: CaptureBodyRef): BodyPreviewRequest {
-  const length = Math.min(body.encodedSize, BODY_PREVIEW_MAX_BYTES);
   const encodings = body.contentEncoding
     ?.split(',')
     .map((encoding) => encoding.trim().toLowerCase())
     .filter((encoding) => encoding && encoding !== 'identity') ?? [];
+  const limit = isImageMime(body.mediaType) ? IMAGE_PREVIEW_MAX_BYTES : BODY_PREVIEW_MAX_BYTES;
+  const length = encodings.length > 0 ? limit : Math.min(body.encodedSize, limit);
   return {
     length,
     decode: encodings.length > 0,

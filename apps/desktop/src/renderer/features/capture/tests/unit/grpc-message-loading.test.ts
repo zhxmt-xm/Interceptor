@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const hooks = vi.hoisted(() => ({ states: [] as unknown[], cleanups: [] as Array<() => void> }));
 
 vi.mock('react', () => ({
+  useCallback: (callback: () => void) => callback,
   useEffect: (effect: () => void | (() => void)) => {
     const cleanup = effect();
     if (cleanup) hooks.cleanups.push(cleanup);

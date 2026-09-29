@@ -188,13 +188,18 @@ export const nlCatalog = {
   'body.format': "Opmaken",
   'body.fullscreen': 'Volledig scherm',
   'body.exitFullscreen': 'Volledig scherm verlaten',
-  'body.formatBlocked': "Body is groter dan 8 MB — opmaken is uitgeschakeld. Sla het op om het extern op te maken.",
+  'body.formatBlocked': "Body is groter dan 2 MiB — opmaken is uitgeschakeld. Sla het op om het extern op te maken.",
+  'body.formatTruncated': 'Afgekorte voorbeelden kunnen niet worden opgemaakt.',
+  'body.formatFailed': 'Opmaken is mislukt. De oorspronkelijke inhoud is ongewijzigd.',
+  'body.formatManual': 'Volledige body · {{size}}. Gebruik ‘Opmaken’ voor body’s tussen 1 en 2 MiB.',
   'body.copyValue': "Waarde kopiëren",
   'body.copyObject': "Object kopiëren",
   'body.copyPath': "Pad kopiëren",
   'body.field': "Veld",
   'body.value': "Waarde",
   'body.imageTooLarge': "Te groot voor een voorbeeld. Sla het bestand op om het in een afbeeldingsviewer te openen.",
+  'body.imagePreviewLimit': 'De afzonderlijke limiet van 16 MiB voor afbeeldingsvoorbeelden is overschreden. De afbeelding wordt niet geladen.',
+  'body.previewLimited': 'Voorbeeld: {{preview}} van {{total}}.',
   'body.imageUndecodable': "Deze afbeelding kon niet worden gedecodeerd. Sla het bestand op om het in een afbeeldingsviewer te openen.",
   'body.mediaNotRead': "Audio en video worden nooit in het voorbeeld geladen. Sla het bestand op om het in een speler af te spelen.",
   'capture.failedSaveBody': 'Body opslaan mislukt: {{error}}',
@@ -644,7 +649,10 @@ export const nlCatalog = {
 
 
 
-  'breakpoints.filePreviewUnavailable': 'Te groot of geen tekst — wordt ongewijzigd vanaf schijf verzonden.',
+  'breakpoints.filePreviewUnavailable': 'Voorbeeld niet beschikbaar. Het volledige bestand wordt ongewijzigd verzonden.',
+  'breakpoints.filePreviewOnly': 'Alleen een voorbeeld. ‘Bewerkt doorsturen’ gebruikt het volledige geselecteerde bestand, niet het zichtbare voorbeeld.',
+  'breakpoints.fileForwardComplete': '‘Bewerkt doorsturen’ gebruikt nog steeds het volledige geselecteerde bestand.',
+  'breakpoints.textComplete': 'De volledige tekst blijft bewerkbaar. De limieten voor alleen-lezenvoorbeelden korten deze waarde niet in.',
 
   'breakpoints.replacementBody': 'Vervangende inhoud',
   'breakpoints.replacementMessage': 'Vervangend bericht',

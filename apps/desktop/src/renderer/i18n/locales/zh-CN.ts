@@ -188,13 +188,18 @@ export const zhCNCatalog = {
   'body.format': "格式化",
   'body.fullscreen': '全屏',
   'body.exitFullscreen': '退出全屏',
-  'body.formatBlocked': "正文超过 8 MB，已停用格式化。保存后用外部工具格式化。",
+  'body.formatBlocked': "正文超过 2 MiB，已停用格式化。保存后用外部工具格式化。",
+  'body.formatTruncated': '截断的预览无法格式化。',
+  'body.formatFailed': '格式化失败。原始内容未更改。',
+  'body.formatManual': '完整正文 · {{size}}。1 至 2 MiB 的正文请使用“格式化”。',
   'body.copyValue': "复制值",
   'body.copyObject': "复制对象",
   'body.copyPath': "复制路径",
   'body.field': "字段",
   'body.value': "值",
   'body.imageTooLarge': "图片过大，无法预览。保存后用图片工具打开。",
+  'body.imagePreviewLimit': '超过独立的 16 MiB 图片预览上限。图片未加载。',
+  'body.previewLimited': '预览 {{preview}}，共 {{total}}。',
   'body.imageUndecodable': "无法解码该图片。保存后用图片工具打开。",
   'body.mediaNotRead': "音视频从不读入预览。保存后用播放器打开。",
   'capture.failedSaveBody': '保存正文失败：{{error}}',
@@ -644,7 +649,10 @@ export const zhCNCatalog = {
 
 
 
-  'breakpoints.filePreviewUnavailable': '文件过大或非文本，将按原样从磁盘发送。',
+  'breakpoints.filePreviewUnavailable': '预览不可用。将原样发送完整文件。',
+  'breakpoints.filePreviewOnly': '仅供预览。“转发已编辑内容”使用所选完整文件，而非当前可见的预览。',
+  'breakpoints.fileForwardComplete': '“转发已编辑内容”仍使用所选完整文件。',
+  'breakpoints.textComplete': '完整文本仍可编辑。只读预览限制不会截断此值。',
 
   'breakpoints.replacementBody': '替换正文',
   'breakpoints.replacementMessage': '替换消息',

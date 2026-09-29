@@ -17,10 +17,11 @@ const PRESETS = {
 interface MonacoFixtureProps extends HTMLAttributes<HTMLDivElement> {
   readonly language: string;
   readonly preset: MonacoFixturePreset;
+  readonly resizable?: boolean;
   readonly source: string;
 }
 
-export function MonacoFixture({ language, preset, source, ...attributes }: MonacoFixtureProps): React.JSX.Element {
+export function MonacoFixture({ language, preset, resizable = false, source, ...attributes }: MonacoFixtureProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
   const { state } = useDesignState();
 
@@ -72,12 +73,24 @@ export function MonacoFixture({ language, preset, source, ...attributes }: Monac
     let contentSizeDisposable: monaco.IDisposable | undefined;
     let viewportObserver: ResizeObserver | undefined;
     if (preset === 'box' || preset === 'message') {
-      let initialHeightApplied = false;
-      let scrollContainer = host.parentElement;
-      while (scrollContainer && !/auto|scroll/.test(getComputedStyle(scrollContainer).overflowY)) {
-        scrollContainer = scrollContainer.parentElement;
-      }
+      let appliedHeight: number | undefined;
+      let requestedHeight: number | undefined;
+      let scrollContainer: HTMLElement | null = null;
       const resize = () => {
+        if (resizable
+          && (host.getClientRects().length === 0 || host.clientWidth === 0)) return;
+        if (resizable) {
+          let nextScrollContainer = host.parentElement;
+          while (nextScrollContainer && !/auto|scroll/.test(getComputedStyle(nextScrollContainer).overflowY)) {
+            nextScrollContainer = nextScrollContainer.parentElement;
+          }
+          if (nextScrollContainer !== scrollContainer) {
+            if (scrollContainer) viewportObserver?.unobserve(scrollContainer);
+            scrollContainer = nextScrollContainer;
+            if (scrollContainer) viewportObserver?.observe(scrollContainer);
+          }
+          if (scrollContainer?.clientHeight === 0) return;
+        }
         const style = getComputedStyle(host);
         const borderHeight = Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth);
         const contentHeight = editorInstance.getContentHeight() + borderHeight;
@@ -87,20 +100,24 @@ export function MonacoFixture({ language, preset, source, ...attributes }: Monac
           : contentHeight;
         const minimumHeight = geometry.lineHeight + geometry.padding * 2 + borderHeight;
         let height = contentHeight;
-        if (state.compactBodyLayout === 'viewport' && scrollContainer) {
+        if (resizable && scrollContainer) {
+          const inlineHeight = Number.parseFloat(host.style.height);
+          if (appliedHeight !== undefined && Number.isFinite(inlineHeight) && Math.abs(inlineHeight - appliedHeight) > 0.5) {
+            requestedHeight = inlineHeight;
+          }
           const maximumHeight = Math.max(minimumHeight, availableHeight);
-          height = Math.min(initialHeightApplied ? host.getBoundingClientRect().height : contentHeight, maximumHeight);
+          height = Math.max(minimumHeight, Math.min(requestedHeight ?? contentHeight, maximumHeight));
           host.style.minHeight = `${minimumHeight}px`;
           host.style.maxHeight = `${maximumHeight}px`;
         }
         host.style.height = `${height}px`;
-        initialHeightApplied = true;
+        appliedHeight = height;
         editorInstance.layout();
       };
       contentSizeDisposable = editorInstance.onDidContentSizeChange(resize);
-      if (state.compactBodyLayout === 'viewport' && scrollContainer) {
+      if (resizable) {
         viewportObserver = new ResizeObserver(resize);
-        viewportObserver.observe(scrollContainer);
+        viewportObserver.observe(host);
       }
       resize();
     }
@@ -108,14 +125,14 @@ export function MonacoFixture({ language, preset, source, ...attributes }: Monac
       unregister();
       viewportObserver?.disconnect();
       contentSizeDisposable?.dispose();
-      if (state.compactBodyLayout === 'viewport') {
+      if (resizable) {
         host.style.minHeight = '';
         host.style.maxHeight = '';
       }
       editorInstance.dispose();
       model.dispose();
     };
-  }, [language, preset, source, state.compactBodyLayout]);
+  }, [language, preset, resizable, source]);
 
   useEffect(() => {
     applyMonacoFixtureTheme(state.theme);
@@ -123,7 +140,7 @@ export function MonacoFixture({ language, preset, source, ...attributes }: Monac
 
   return <div
     {...attributes}
-    className={state.compactBodyLayout === 'viewport' && (preset === 'box' || preset === 'message')
+    className={resizable && (preset === 'box' || preset === 'message')
       ? [attributes.className, styles.resizableBodyPreview].filter(Boolean).join(' ')
       : attributes.className}
     ref={hostRef}

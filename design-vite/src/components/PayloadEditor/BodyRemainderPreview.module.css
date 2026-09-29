@@ -1,0 +1,90 @@
+.bodyRemainderPreview {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bodyRemainderOriginalCode,
+.bodyRemainderFileCode {
+  flex: 0 0 auto;
+  min-width: 0;
+  border: 1px solid var(--border-2);
+  border-radius: 7px;
+  background: var(--panel-2);
+}
+
+.bodyRemainderFileCode {
+  border: 0;
+  border-radius: 0;
+}
+
+.bodyRemainderNotice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text-2);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.bodyRemainderNotice > svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+.bodyRemainderNotice[data-warning] > svg {
+  color: var(--yellow);
+}
+
+.bodyRemainderNotice > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.bodyRemainderFileNote {
+  margin: 0;
+  padding: 10px 12px 0;
+  color: var(--text-3);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.bodyRemainderImageLimit {
+  display: flex;
+  min-height: 160px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 7px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text-2);
+  text-align: center;
+}
+
+.bodyRemainderImageLimit > svg {
+  width: 24px;
+  height: 24px;
+  color: var(--text-3);
+}
+
+.bodyRemainderImageLimit b {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.bodyRemainderImageLimit p,
+.bodyRemainderImageLimit small {
+  max-width: 340px;
+  font-size: 11.5px;
+  line-height: 1.5;
+}

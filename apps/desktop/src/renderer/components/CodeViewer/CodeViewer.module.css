@@ -20,3 +20,12 @@
   min-height: 0;
   border-radius: 7px;
 }
+
+.resizable {
+  resize: vertical;
+}
+
+.borderless {
+  border: 0;
+  border-radius: 0;
+}

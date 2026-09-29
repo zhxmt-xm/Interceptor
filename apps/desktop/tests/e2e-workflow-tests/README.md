@@ -198,6 +198,8 @@ diagnostics.row.<traceKey>
 | `capture.navigate-tls-passthrough` | 从TLS tunnel跳到最具体的覆盖pattern并短暂高亮 | privileged UI | passed |
 | `capture.facets-clear-menu` | Facet顺序、Breakpoint菜单和Clear同步回归 | privileged UI | planned |
 | `capture.detail-body-fill` | Detail Response BodyViewer填满剩余高度 | privileged UI | passed |
+| `capture.messages.compact-layout` | 普通gRPC/WS短长消息限高、拖拽、内外滚动、窗口缩放、Copy/全屏及205条gRPC分页 | privileged UI | macOS 2026-09-27：两条前置Red、最终2/2 Green及宿主恢复；Windows待实机 |
+| `capture.body-preview-limits` | 2MiB预览、1–2MiB手动格式化与截断禁止 | os-side-effect | macOS 2026-09-28：前置Red与最终2/2；Windows待实机 |
 | `capture.body.fullscreen` | Request/Response全屏、真实Copy、关闭/再开、Raw/Hex模式保持 | os-side-effect | passed |
 | `capture.list.virtual-scroll` | 大列表虚拟滚动和状态保持 | shared | planned |
 | `capture.inspector.body-modes` | Auto/Text/JSON/Hex精确正文 | shared | planned |
@@ -278,6 +280,8 @@ diagnostics.row.<traceKey>
 | `breakpoints.execute-edited` | Header-only、Body-only、Header+Body三段真实HTTP编辑 | privileged UI | planned |
 | `breakpoints.drop` | Drop并终止数据面 | shared | planned |
 | `breakpoints.resize` | Capture列表/Inspector splitter | shared | planned |
+| `breakpoints.body-preview` | 产品导出File的有界预览、完整文件/Text发送及短File布局联动 | native-ui | macOS 2026-09-28：File前置Red、大小File两条Green；Windows待实机 |
+| `breakpoints.original-body` | Original限高、2MiB预览与完整原文放行 | os-side-effect | macOS前置resize Red、完整3MiB最终Green；Windows待实机 |
 | `breakpoints.websocket-close` | WebSocket close-code-only编辑 | privileged UI | planned |
 
 详细步骤：[docs/breakpoints.md](docs/breakpoints.md)

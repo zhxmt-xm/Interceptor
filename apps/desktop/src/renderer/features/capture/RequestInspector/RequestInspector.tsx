@@ -1,6 +1,6 @@
 import { Tooltip } from 'antd';
 import { Copy, ListOrdered, X } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS, type AutomationId } from '../../../../shared/automation-ids';
@@ -69,6 +69,7 @@ export function RequestInspector({
 }: RequestInspectorProps): React.JSX.Element {
   const { i18n, t } = useTranslation();
   const copy = useClipboardCopy();
+  const scrollRef = useRef<HTMLDivElement>(null);
   const tab = useCaptureStore((state) => state.inspectorTab);
   const setTab = useCaptureStore((state) => state.setInspectorTab);
   const selectedId = useCaptureStore((state) => state.selectedId);
@@ -281,6 +282,7 @@ export function RequestInspector({
       </div>
 
       <div
+        ref={scrollRef}
         className={styles.scroll}
         data-automation-id={AUTOMATION_IDS.capture.inspector.scroll}
       >
@@ -423,7 +425,7 @@ export function RequestInspector({
         ) : null}
 
         {tab === 'grpc' && isGrpc && detail ? (
-          <GrpcMessages detail={detail} />
+          <GrpcMessages detail={detail} scrollContainerRef={scrollRef} />
         ) : null}
 
         {tab === 'timing' ? (

@@ -189,13 +189,18 @@ export const trCatalog = {
   'body.format': "Biçimlendir",
   'body.fullscreen': 'Tam ekran',
   'body.exitFullscreen': 'Tam ekrandan çık',
-  'body.formatBlocked': "Gövde 8 MB’ı aşıyor — biçimlendirme devre dışı. Harici bir araçta biçimlendirmek için kaydedin.",
+  'body.formatBlocked': "Gövde 2 MiB’ı aşıyor — biçimlendirme devre dışı. Harici bir araçta biçimlendirmek için kaydedin.",
+  'body.formatTruncated': 'Kırpılmış önizlemeler biçimlendirilemez.',
+  'body.formatFailed': 'Biçimlendirme başarısız oldu. Özgün içerik değiştirilmedi.',
+  'body.formatManual': 'Tam gövde · {{size}}. 1 ile 2 MiB arasındaki gövdeler için "Biçimlendir" seçeneğini kullanın.',
   'body.copyValue': "Değeri kopyala",
   'body.copyObject': "Nesneyi kopyala",
   'body.copyPath': "Yolu kopyala",
   'body.field': "Alan",
   'body.value': "Değer",
   'body.imageTooLarge': "Önizleme için çok büyük. Bir görüntüleyicide açmak için dosyayı kaydedin.",
+  'body.imagePreviewLimit': 'Görüntü önizlemesi için ayrı olan 16 MiB sınırı aşıldı. Görüntü yüklenmez.',
+  'body.previewLimited': '{{total}} içinden {{preview}} önizleniyor.',
   'body.imageUndecodable': "Bu görüntü çözülemedi. Bir görüntüleyicide açmak için dosyayı kaydedin.",
   'body.mediaNotRead': "Ses ve video asla önizlemeye yüklenmez. Bir oynatıcıda çalmak için dosyayı kaydedin.",
   'capture.failedSaveBody': 'Gövde kaydedilemedi: {{error}}',
@@ -647,7 +652,10 @@ export const trCatalog = {
 
 
 
-  'breakpoints.filePreviewUnavailable': 'Çok büyük veya metin değil — diskten olduğu gibi gönderilir.',
+  'breakpoints.filePreviewUnavailable': 'Önizleme kullanılamıyor. Dosyanın tamamı değiştirilmeden gönderilecektir.',
+  'breakpoints.filePreviewOnly': 'Yalnızca önizlemedir. "Düzenleneni ilet", görünen önizlemeyi değil, seçilen dosyanın tamamını kullanır.',
+  'breakpoints.fileForwardComplete': '"Düzenleneni ilet" yine de seçilen dosyanın tamamını kullanır.',
+  'breakpoints.textComplete': 'Metnin tamamı düzenlenebilir durumda kalır. Salt okunur önizleme sınırları bu değeri kırpmaz.',
 
   'breakpoints.replacementBody': 'Değiştirme gövdesi',
   'breakpoints.replacementMessage': 'Değiştirme mesajı',

@@ -76,7 +76,7 @@ export function toInsecureHosts(value: unknown): string[] {
   return value as string[];
 }
 
-/** 断点替换正文按扩展名猜 media type；猜不出按纯文本处理。 */
+/** 断点替换正文按扩展名提供预览类型；未知类型不作为文本解码。 */
 const BREAKPOINT_BODY_MEDIA_TYPES: Record<string, string> = {
   '.json': 'application/json',
   '.xml': 'application/xml',
@@ -89,11 +89,25 @@ const BREAKPOINT_BODY_MEDIA_TYPES: Record<string, string> = {
   '.md': 'text/markdown',
   '.yaml': 'application/yaml',
   '.yml': 'application/yaml',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.avif': 'image/avif',
+  '.bmp': 'image/bmp',
+  '.ico': 'image/x-icon',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
 };
 
 export function breakpointBodyMediaType(filePath: string): string {
   const extension = path.extname(filePath).toLowerCase();
-  return BREAKPOINT_BODY_MEDIA_TYPES[extension] ?? 'text/plain';
+  return BREAKPOINT_BODY_MEDIA_TYPES[extension] ?? 'application/octet-stream';
 }
 
 /** Preserve trusted body range values without imposing an IPC allocation limit. */

@@ -5,12 +5,13 @@ import {
   CircleAlert,
   CircleSlash,
   FileText,
+  Info,
   Play,
   Plus,
   Upload,
   X,
 } from 'lucide-react';
-import { Spin } from 'antd';
+import { Input, Spin } from 'antd';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -34,6 +35,7 @@ import { expectsBody, replacesBody } from '../../breakpoints/utils';
 import { BodyView } from '../RequestInspector/BodyView';
 import { Section } from '../RequestInspector/Section';
 import { BreakpointQueueMenu } from './BreakpointQueueMenu';
+import { BreakpointFilePreview } from './BreakpointFilePreview';
 import styles from './BreakpointInspector.module.css';
 
 type ControlFrame = 'ping' | 'pong' | 'close';
@@ -73,6 +75,7 @@ export function BreakpointInspector({
   const setFile = useBreakpointsStore((state) => state.setFile);
   // 标题行里有 Segmented，整行点击会和它打架，所以只用 chevron 做命中区。
   const [replacementCollapsed, setReplacementCollapsed] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
   const setBody = useBreakpointsStore((state) => state.setBody);
   const addHeader = useBreakpointsStore((state) => state.addHeader);
   const updateHeader = useBreakpointsStore((state) => state.updateHeader);
@@ -86,9 +89,12 @@ export function BreakpointInspector({
   }, [breakpoint.id, draft?.breakpointId, select]);
 
   const pickFile = async (): Promise<void> => {
-    const picked = await window.interceptor.pickBreakpointBodyFile();
-    if (picked !== null) {
-      setFile(picked);
+    setFileError(null);
+    try {
+      const picked = await window.interceptor.pickBreakpointBodyFile();
+      if (picked !== null) setFile(picked);
+    } catch (error) {
+      setFileError(error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -292,7 +298,7 @@ export function BreakpointInspector({
                 className={styles.originalReady}
                 data-parity="breakpoint-original-ready"
               >
-                <BodyView body={originalBody} compact />
+                <BodyView body={originalBody} compact resizable showFormatNotice />
               </div>
             )}
           </Section>
@@ -361,6 +367,7 @@ export function BreakpointInspector({
             </div>
           ) : draft.replacement === 'file' ? (
             <div className={cx(styles.fileArea, draft.file === null && styles.fileEmpty)}>
+              {fileError ? <div className={styles.fileError} role="alert">{fileError}</div> : null}
               {draft.file === null ? (
                 <Button
                   automationId={AUTOMATION_IDS.breakpoints.chooseFile}
@@ -394,25 +401,26 @@ export function BreakpointInspector({
                       onClick={() => setFile(null)}
                     />
                   </div>
-                  {draft.file.text === undefined ? (
-                    <div className={styles.fileUnavailable}>
-                      {t('breakpoints.filePreviewUnavailable')}
-                    </div>
-                  ) : (
-                    <pre className={styles.filePreview}>{draft.file.text}</pre>
-                  )}
+                  <BreakpointFilePreview key={draft.file.path} file={draft.file} />
                 </div>
               )}
             </div>
           ) : (
-            <textarea
-              className={styles.bodyEdit}
-              aria-label={isWebSocket ? t('breakpoints.payload') : t('breakpoints.replacementBody')}
-              value={draft.body}
-              spellCheck={false}
-              onChange={(event) => setBody(event.target.value)}
-              data-automation-id={AUTOMATION_IDS.breakpoints.body}
-            />
+            <>
+              <div className={styles.textNote}>
+                <Info aria-hidden="true" />
+                <span>{t('breakpoints.textComplete')}</span>
+              </div>
+              <Input.TextArea
+                className={styles.bodyEdit}
+                aria-label={isWebSocket ? t('breakpoints.payload') : t('breakpoints.replacementBody')}
+                value={draft.body}
+                autoSize={{ minRows: 4, maxRows: 8 }}
+                spellCheck={false}
+                onChange={(event) => setBody(event.target.value)}
+                data-automation-id={AUTOMATION_IDS.breakpoints.body}
+              />
+            </>
           )}
         </section>
       </div>

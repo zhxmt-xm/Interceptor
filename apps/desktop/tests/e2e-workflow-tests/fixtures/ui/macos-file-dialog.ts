@@ -38,7 +38,7 @@ async function navigateMacosFileDialog(owner: WorkflowProcessIdentity, targetPat
     message: 'The workflow-owned macOS file dialog did not appear', timeout: 15_000,
   }).toBe(true);
   const initial = await readMacosFileDialog(owner);
-  await sendMacosFileDialogKeys(owner, 'events.keyCode(5, { using: ["command down", "shift down"] });');
+  await sendMacosFileDialogKeys(owner, 'pressKey(5, $.kCGEventFlagMaskCommand | $.kCGEventFlagMaskShift);');
   await expect.poll(async () => (await readMacosFileDialog(owner)).goToVisible, {
     message: 'The macOS Go to Folder sheet did not open',
   }).toBe(true);
@@ -47,17 +47,17 @@ async function navigateMacosFileDialog(owner: WorkflowProcessIdentity, targetPat
   await expect.poll(async () => (await readMacosFileDialog(owner)).navigationPath, {
     message: 'The macOS Go to Folder path was not entered completely',
   }).toBe(navigationPath);
-  await sendMacosFileDialogKeys(owner, 'events.keyCode(36);');
+  await sendMacosFileDialogKeys(owner, 'pressKey(36);');
   await expect.poll(async () => (await readMacosFileDialog(owner)).goToVisible, {
     message: 'The macOS Go to Folder sheet did not finish navigating',
   }).toBe(false);
   if (initial.save) {
     const state = await readMacosFileDialog(owner);
     if (!state.nameFieldCenter) throw new Error('The macOS Save dialog omitted its file name control.');
-    await sendMacosFileDialogKeys(owner, `ownedApp.click({ at: ${JSON.stringify(state.nameFieldCenter)} });`);
+    await sendMacosFileDialogKeys(owner, `clickAt(${JSON.stringify(state.nameFieldCenter)});`);
     await sendMacosFileDialogKeys(owner, `
-events.keyCode(124, { using: ["command down"] });
-events.keyCode(123, { using: ["command down", "shift down"] });
+pressKey(124, $.kCGEventFlagMaskCommand);
+pressKey(123, $.kCGEventFlagMaskCommand | $.kCGEventFlagMaskShift);
 `);
     const selectedName = await readMacosFileDialog(owner);
     if (selectedName.nameFieldSelection !== selectedName.nameFieldValue) {
@@ -68,7 +68,7 @@ events.keyCode(123, { using: ["command down", "shift down"] });
       message: 'The macOS Save file name was not entered completely',
     }).toBe(path.basename(targetPath));
   }
-  await sendMacosFileDialogKeys(owner, 'events.keyCode(36);');
+  await sendMacosFileDialogKeys(owner, 'pressKey(36);');
   await expect.poll(async () => (await readMacosFileDialog(owner)).visible, {
     message: 'The macOS file dialog did not accept the selected path',
   }).toBe(false);
@@ -79,10 +79,10 @@ export async function cancelMacosFileDialog(owner: WorkflowProcessIdentity): Pro
     message: 'The workflow-owned macOS file dialog did not appear', timeout: 15_000,
   }).toBe(true);
   if ((await readMacosFileDialog(owner)).goToVisible) {
-    await sendMacosFileDialogKeys(owner, 'events.keyCode(53);');
+    await sendMacosFileDialogKeys(owner, 'pressKey(53);');
     await expect.poll(async () => (await readMacosFileDialog(owner)).goToVisible).toBe(false);
   }
-  await sendMacosFileDialogKeys(owner, 'events.keyCode(53);');
+  await sendMacosFileDialogKeys(owner, 'pressKey(53);');
   await expect.poll(async () => (await readMacosFileDialog(owner)).visible).toBe(false);
 }
 
@@ -114,7 +114,36 @@ if (!panel) {
 }
 
 async function sendMacosFileDialogKeys(owner: WorkflowProcessIdentity, script: string): Promise<void> {
-  await runMacosDialogScript(owner, `ownedApp.frontmost = true;\n${script}`);
+  await runMacosDialogScript(owner, `
+function identifier(element) {
+  const values = element.attributes.whose({ name: "AXIdentifier" })();
+  return values.length ? values[0].value() : null;
+}
+const panels = ownedApp.windows().flatMap(window => [window, ...window.sheets()])
+  .filter(panel => ["save-panel", "open-panel"].includes(identifier(panel)));
+if (panels.length !== 1) throw new Error("The owned file dialog is unavailable");
+const target = panels[0].sheets().find(sheet => identifier(sheet) === "GoToWindow") ?? panels[0];
+ownedApp.frontmost = true;
+const raise = target.actions.whose({ name: "AXRaise" })();
+if (raise.length === 1) raise[0].perform();
+delay(0.2);
+if (!ownedApp.frontmost()) throw new Error("The owned file dialog did not become foreground");
+ObjC.import("CoreGraphics");
+function pressKey(code, flags = 0) {
+  for (const down of [true, false]) {
+    const event = $.CGEventCreateKeyboardEvent(null, code, down);
+    $.CGEventSetFlags(event, flags);
+    $.CGEventPost($.kCGHIDEventTap, event);
+    delay(0.05);
+  }
+}
+function clickAt(coordinates) {
+  const point = $.CGPointMake(coordinates[0], coordinates[1]);
+  $.CGEventPost($.kCGHIDEventTap, $.CGEventCreateMouseEvent(null, $.kCGEventLeftMouseDown, point, $.kCGMouseButtonLeft));
+  $.CGEventPost($.kCGHIDEventTap, $.CGEventCreateMouseEvent(null, $.kCGEventLeftMouseUp, point, $.kCGMouseButtonLeft));
+  delay(0.1);
+}
+${script}`);
 }
 
 async function pasteMacosFileDialogText(owner: WorkflowProcessIdentity, value: string, selectAll = true): Promise<void> {
@@ -123,8 +152,8 @@ async function pasteMacosFileDialogText(owner: WorkflowProcessIdentity, value: s
     child.stdin!.end(Buffer.from(value, 'utf8'));
   });
   await sendMacosFileDialogKeys(owner, `
-${selectAll ? 'events.keyCode(0, { using: ["command down"] });' : ''}
-events.keyCode(9, { using: ["command down"] });
+${selectAll ? 'pressKey(0, $.kCGEventFlagMaskCommand);' : ''}
+pressKey(9, $.kCGEventFlagMaskCommand);
 `);
 }
 
