@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `eee31544`
+> Tracked commit: `e2c75270`
 > Branch: `main`
 > 最后更新：2026-09-29
 
@@ -58,7 +58,7 @@
   - 目标：源站发送`GOAWAY(NO_ERROR)`后，旧session的在途stream完整收尾，新请求改用新上游连接，Capture仍保留正确正文、trailer与终态。
   - 范围：源站正常GOAWAY，不是已验证的客户端GOAWAY或非零错误GOAWAY；新连接成功不能掩盖旧请求丢尾段，也不能重放旧请求。
   - 已有/缺口：Node和Electron内嵌Node均复现旧stream只收到262144/393216字节，无end/trailer；后续新session正常。定向3通过/1失败，诊断指向暂停缓冲未排空就销毁，见[事实与证据](features/capture.md#normal-goaway-gap)。
-  - 下一步：保留未提交的[h2.test.ts](../apps/proxy-core/src/proxy-core/proxy/tests/integration/h2.test.ts)，取得第三方生命周期修改授权后修复，再验完整字节、trailer、Capture终态和无重放；不假补EOF或改全量缓冲。
+  - 下一步：未完成的新增诊断测试已按用户要求删除，原有[h2.test.ts](../apps/proxy-core/src/proxy-core/proxy/tests/integration/h2.test.ts)保持。取得第三方修改授权后，将正式回归测试与修复一起完成并提交，验证完整字节、trailer、Capture终态和无重放；不假补EOF或改全量缓冲。
 
 - **15. H2事件诊断 · 待实现/待验证**
   - 目标：在Diagnostics中看到真实H2协议事件并关联到请求，能判断哪一侧、哪个session/stream触发SETTINGS、RST_STREAM或GOAWAY；不是仅增加一条错误文案。
@@ -90,7 +90,7 @@
 - 保留日常CA `D74D4BFB3C3708511A755AC6CD905840B464B255`、其他Root及获准常驻helper；不凭历史指纹清理，不卸载ClashX或helper。
 - Electron/E2E/smoke共用`8888`和系统代理，必须串行；结束核对Main/Core/Worker、端口、journal及系统设置恢复。
 - 保留已有7份stash和12份受保护文件，不重复apply/drop；清单为`/tmp/interceptor-macos-resource-check-20260922-preserved.json`。
-- 只有第14项诊断测试保留为未提交代码，不混入其他item；第三方修改仍须明确授权。
+- 第14项临时复现patch已保存到证据目录，不留未完成测试在工作区；第三方修改仍须明确授权。
 
 ## 复验入口（暂停执行）
 

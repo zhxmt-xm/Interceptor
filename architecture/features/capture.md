@@ -243,7 +243,7 @@ stateDiagram-v2
 
 非消费式`diagnostics_channel`观测到：trailer到达时原始上游stream暂停且仍缓冲131072字节，约1ms后Node的`socketOnClose → closeSession`销毁未排空stream，`readableEnded=false`；http2-wrapper等不到end，Mockttp无法转发trailer。fixture约5秒后才清理，排除提前关闭。不得在close时假补EOF、强制全量缓冲或把Capture改成completed。
 
-本地诊断测试为`proxy/tests/integration/h2.test.ts`，尚未提交；第三方生命周期修复待明确授权，具体补丁或已修复版本未验证。证据在session files的`item14-normal-goaway-20260928/{summary,diagnosis-summary,lifecycle-facts}.json`及日志，Electron运行时结果为`/tmp/interceptor-item14-20260928-electron-runtime.json`。
+上述结果来自`proxy/tests/integration/h2.test.ts`中的临时新增诊断case。9月29日按用户要求移除该未完成case及专用import，原有已提交测试保持不变；完整复现patch保存在session files的`item14-normal-goaway-20260928/uncommitted-reproduction.patch`。第三方生命周期修复仍待明确授权，正式回归测试须与修复一起交付，不因清理测试而把故障标为已解决。原证据仍在同目录的`{summary,diagnosis-summary,lifecycle-facts}.json`及日志，Electron运行时结果为`/tmp/interceptor-item14-20260928-electron-runtime.json`。
 
 #### H2错误GOAWAY
 
