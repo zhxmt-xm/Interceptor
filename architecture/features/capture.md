@@ -236,6 +236,15 @@ stateDiagram-v2
 - Clear移除已有记录但不阻断stream；同连接上的后续新请求仍可录制。
 - SETTINGS以真实ACK确认生效；session的`closed`与`destroyed`不同，正常GOAWAY后的在途stream仍需独立收尾，不能仅凭session关闭标记判定正文完成。
 
+<a id="normal-goaway-gap"></a>
+##### 源站正常GOAWAY的实现缺口
+
+2026-09-28真实集成在Node24.21及Electron43.1内嵌Node24.18均复现：旧响应仅到达262144/393216字节，没有end/trailer，Capture停在`response-streaming`；源站stream正常finish/close且rstCode=0。后续请求转入新上游session并完整捕获，未重放旧请求。定向3通过/1失败，另10条未运行，Core类型通过；所有流、socket、随机端口与临时Capture已回收。
+
+非消费式`diagnostics_channel`观测到：trailer到达时原始上游stream暂停且仍缓冲131072字节，约1ms后Node的`socketOnClose → closeSession`销毁未排空stream，`readableEnded=false`；http2-wrapper等不到end，Mockttp无法转发trailer。fixture约5秒后才清理，排除提前关闭。不得在close时假补EOF、强制全量缓冲或把Capture改成completed。
+
+本地诊断测试为`proxy/tests/integration/h2.test.ts`，尚未提交；第三方生命周期修复待明确授权，具体补丁或已修复版本未验证。证据在session files的`item14-normal-goaway-20260928/{summary,diagnosis-summary,lifecycle-facts}.json`及日志，Electron运行时结果为`/tmp/interceptor-item14-20260928-electron-runtime.json`。
+
 #### H2错误GOAWAY
 
 - 源站或客户端发出非零GOAWAY导致stream中断时，保留真实响应头、已收正文和耗时，记录`aborted/failed`，不得把部分正文当作完整成功。
@@ -339,6 +348,23 @@ stateDiagram-v2
 - 两代Main/Core均`gracefulDestroyVerified=true`，全部App进程退出、8888释放、journal不存在，完整代理恢复。日常CA `D74D4BFB3C3708511A755AC6CD905840B464B255`的信任及三份材料size/mtime保持，不重新生成或删除CA。
 - session files的`item4-final-acceptance-20260928.json`保存开发证据，`item16-parity-final-20260928.json`保存全量parity；新增`item4-final-acceptance-20260929.json`保存签名启动、smoke与宿主恢复。`item4-signed-final-evidence-20260929.tar.gz`含48项、26520921字节，SHA-256为`c5d17420658b7485741e827266135445953383e1f08a72a7e285e2cba33dcc02`。9月28日未授权的失败仍保留，不以新Green改写。
 - Windows仍归独立实机验收；继承chunked的编辑正文framing及源站正常GOAWAY尾段丢失仍是第10/14项，不以本轮标准Content-Length完整发送或客户端GOAWAY证据代替。
+
+##### 正文分阶段证据索引
+
+下表仅定位历史范围，不把旧结果当成当前包。session files根目录为`/Users/zhxmt/.copilot/session-state/df17625e-cb60-4ece-a735-8d703667fab6/files`，原始Red、失败和中断均保留。
+
+| 范围 | 原始事实及证据 |
+| --- | --- |
+| 9月27日设计确认 | 四主题32张framed、浅深16张full和2张拖拽/滚动图，字体实际加载；长2688→441px、短128px、实际拖到321px，键盘首尾、Copy及窗口恢复通过。三组旧content前后0像素。隐藏初始化误压48px在设计侧修正；`body-design-20260927-verified/{review.html,evidence.json,scroll-comparison.json}`保留批准依据。 |
+| 消息阶段 | 8项unit及两协议真实resize Red后，58项相关测试、6条真实流程、68态555目标通过，最大0.672px。`item4-messages-acceptance-summary.json`记录每代退出与源码hash；`item4-messages-acceptance-20260927.tar.gz`的SHA-256为`470abcd2795e28d4c5336e0f68f7a22802fef0f342e3e661e15fd3c1b137c559`。原WS binary Copy、外层无溢出前提及分页listener失败见上段证据前缀。 |
+| 剩余正文前置 | 预算/格式化6项、错误/图片3项、捕获残缺1项unit及文件读取6项integration Red；Original resize、File大JSON无预览、manual/truncated真实Red后实现。早期78项相关测试、Core解码15项及全workspace类型Green不代替最终303项。 |
+| 9月28日方案与暂停 | `body-remainder-preview/{review.html,handoff.json}`保留24张浅深前后图及12:37继续授权；当时默认关闭的预览开关后来删除，正式设计/shots同步。File字号10/15→12/20、Original左间距12→16px。15:27暂停时新增精确1/2/16MiB边界、图片/提示调整尚未全复跑；17:05恢复后取得上段最终结果。 |
+| 校准与真实窗口 | `body-parity-calibration-20260928/handoff.json`保留4处短File高度与2处MiB文案差异；前置unit1 Red后CodeViewer观察前置分组，85态最终通过。GoTo/焦点失败不算产品Red；CoreGraphics真实HID键鼠核验路径/文件名，不改原生返回值。一次journal由正常App启动/Close恢复，证据`/tmp/interceptor-body-journal-recovery-mZTwAr/evidence.json`。 |
+| 9月28日最终开发证据 | `/tmp/interceptor-item4-final-20260928-`下`clamp-red.json`、`unit-green.json`、`related-tests.json`、`workflows.json`、`composer-isolated.json`、`file-green.json`、`parity-*.json`、`package.log`和`packaged-startup.json`。并行构建时Composer曾出现空Renderer error，单独复跑通过，未证明其内部成因。早期包smoke及暂停前Green不替代后续包；最终包当日未授权的失败也不算通过。 |
+| 开发证据归档 | `item4-final-evidence-20260928.tar.gz`的SHA-256为`a8394689606dd4d397bbef2b0418580bc16ed910d0ab077445f278aa8d237178`。完整前置与中间失败仍在`/tmp/interceptor-item4-remainder-20260928-*`；当天所有测试App已退、8888释放。9月29日签名包Green见上段。 |
+| 共享parity | 旧406态为402有效结果复用＋4复跑，不代替本轮430态。弹层wait/测量竞态及Endpoint 40px错误配对保留；只修harness，不改产品、基准或1px阈值。`item16-parity-final-20260928.json`、`item16-parity-summary-20260928.json`及`item16-parity-evidence-20260928.tar.gz`（1084项/294175737字节，SHA-256 `9b31bc3967170271f41e4189bc1aa855f68bb381b478c0d2cb0751355c3fa8ee`）保存完整结果。 |
+
+最终产物audit为1487文件/339528858字节，9月29日再次确认51份源码、ASAR与helper不变。gRPC真实Copy/焦点包含request/response各两份`grpc-keyboard-*.json`；HTTPS定位专项仍按原要求暂停，其fresh CA Generate断言须在恢复专项前修正，Bilibili复验仍依赖Windows已登录Edge。原[正文/CA报告](../../commit-changes/202609241020_main_ca_unknown-write-boundary.html)保留同主题前后图、红框和1280/390检查，不另拆报告。
 
 #### Header值与Copy
 

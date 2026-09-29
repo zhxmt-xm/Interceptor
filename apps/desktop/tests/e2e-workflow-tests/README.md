@@ -84,6 +84,19 @@ npm exec --workspace @interceptor/desktop playwright test -- --config tests/e2e-
 
 macOS业务窗口由driver按项目配置准备：常规场景保持真实1600x900，只有body-fill滚轮边界场景使用1600x800，Windows项目/窗口逻辑不变。macOS admin trust前后检查统一在宿主guard；TLS/gRPC/H2保持相同业务步骤。macOS HTTPS弹窗动画及定位workflow仍按用户要求暂停，仅保留在本地未提交工作中，不纳入本阶段代码或Green。
 
+### Windows 复验
+
+以下是Handover第8项的实机验收范围，macOS结果或native skip不能替代。Manager管理员MMC原生专项已由用户排除，Manager功能、逻辑与UI仍保留。路径相对[workflows/](workflows/)，`{a,b}`代表两份文件，详细步骤见[规格索引](docs/README.md)。
+
+| 分组 | 用例 | 重点 |
+| --- | --- | --- |
+| CA/启动/View | `settings/{certificate-startup,tools-certificates,tools-tls}.workflow.ts` | 首窗先于UAC、取消、跨profile/safeStorage复用、坏材料保留、卸载/删除及真实View关窗；就绪120秒、证书操作30秒、普通操作15秒，先终态后清理 |
+| 代理/AppContainer | `settings/{tools-system-proxy,system-proxy-crash-recovery,app-container-bulk-access,tools-app-containers,app-container-ordering}.workflow.ts` | 单项/批量UAC、冲突/Quit立即拒绝、无重放、完整WinINet/exemption恢复 |
+| 协议/交互 | `capture/{tls-scenarios,http2-scenarios,grpc-scenarios,navigate-tls-passthrough}.workflow.ts`；`settings/{tls-compatibility,proxy-mitm-persistence}.workflow.ts`；`agent/body-messages.workflow.ts` | 首请求源站例外、Edge证书校验、Raw/Copy长度及hash、每代Page；取消背景host默认选择，Capture discovery精确17项 |
+| 导入/只读 | `composer/{collection-import,tools-transfer}.workflow.ts`；`rules/{import-tree,tools-import}.workflow.ts`；`settings/tools-readonly.workflow.ts` | 真实signal、原生/预览Cancel与Confirm、退出取消、重启零重放；六项无审批查询及CA不变 |
+| 构建/路径 | `build:native`及平台所属测试；[Client App](../../../proxy-core/src/proxy-core/client-app/tests/unit/service.test.ts)、[Transfer](../../../proxy-core/src/proxy-core/transfer/tests/unit/job-manager.test.ts)、[Windows文件窗口fixture](fixtures/ui/tests/unit/windows-file-dialog.test.ts) | 共用runner、8 MiB枚举、certutil/UAC、Windows路径解析；不使用macOS skip替代 |
+| 产物/全量 | 全部适用workflow及[packaged smoke](../packaged-smoke/startup.spec.ts) | ready门禁、精确Preload白名单、Core重启、截图矩阵、系统设置/进程恢复 |
+
 ## 目录结构
 
 ```text

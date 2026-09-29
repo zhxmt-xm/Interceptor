@@ -42,18 +42,18 @@
       <span class="category">工程与文档</span>
       <h1>补回架构文档的历史事实与证据</h1>
       <p class="meta">提交说明 · 第17项 · 2026-09-28 19:39</p>
-      <p>补回文档压缩时遗漏的事实和证据入口，保留较新的实现说明。</p>
+      <p>补回遗漏的事实和证据入口；交接只保留未完成任务、当前结论和运行约束。</p>
     </header>
 
     <section aria-label="改前改后">
       <div class="comparison">
         <div>
           <h3>改前</h3>
-          <p>部分历史记录只剩概括或链接，独有的失败原因、验收边界和证据定位被删，旧链接无法落到原内容。</p>
+          <p>独有事实和证据入口曾被删；Handover又混入大量已完成过程，任务状态难以辨认。</p>
         </div>
         <div>
           <h3>改后</h3>
-          <p>补回有来源的历史事实和对应正文，恢复原锚点；历史记录与当前实现分开，不改产品行为。</p>
+          <p>历史证据归入对应文档，Handover只列未完成项和必要结论，交接更新随提交同步推送。</p>
         </div>
       </div>
     </section>
@@ -82,6 +82,7 @@
                 <li><code>architecture/features/breakpoints.md</code></li>
                 <li><code>architecture/features/composer.md</code></li>
                 <li><code>architecture/features/transfer.md</code></li>
+                <li><code>architecture/features/http-message-editing.md</code></li>
               </ul></td>
               <td>部分协议、正文、布局与传输记录被压缩，原规格中的链接失去对应内容。</td>
               <td>追加历史证据段和有正文的原锚点，保留已存在的较新契约。</td>
@@ -96,6 +97,16 @@
               <td>部分阶段记录、真实 Host 观察和研究依据缺少完整承接。</td>
               <td>补回删除段中的独有事实，已在其他规格保留的内容使用精确链接。</td>
               <td>区分研究候选、测试 Client 与真实 Host，不重复旧计划或扩大当前能力。</td>
+            </tr>
+            <tr>
+              <td><ul class="paths">
+                <li><code>architecture/HANDOVER.md</code></li>
+                <li><code>architecture/README.md</code></li>
+                <li><code>apps/desktop/tests/e2e-workflow-tests/README.md</code></li>
+              </ul></td>
+              <td>交接重复保留已完成项的过程，未完成任务与旧阻塞混写，状态修改留在未提交区。</td>
+              <td>交接只保留未完成任务、当前验证和运行约束；Windows矩阵归入E2E说明，历史证据归入对应文档。</td>
+              <td>直接看见下一步和阻塞，完成项不再占待办；交接更新与提交、推送一起收尾。</td>
             </tr>
             <tr>
               <td><ul class="paths">

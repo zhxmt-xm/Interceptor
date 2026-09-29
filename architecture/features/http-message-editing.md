@@ -161,3 +161,9 @@ Body替换与framing正确性正交：`CaptureBodyRuleEffect`记录最终写入�
 ### Local E2E
 
 `breakpoints.execute-edited` 必须从真实 App UI 创建规则、触发断点并通过公共 automation ID 编辑，loopback origin 断言实际 headers/body，Capture 断言实际转发结果。E2E 不替代 wire tests，只验证用户意图从 UI 到 Core 的完整传递。
+
+## 8. 与当前实现的差异
+
+2026-09-28复验两条`keeps inherited chunked`集成仍Red：请求被改为`content-length:19`并删除chunked，响应同时出现Content-Length与Transfer-Encoding，被Node以`Content-Length can't be present with Transfer-Encoding`拒绝。证据为`/tmp/interceptor-item10-20260928-chunked-baseline.json`。
+
+根因位于`patches/mockttp+4.5.0.patch`的两处headers-stage body override，无条件写Content-Length，Core返回的`editedHeaderNames`未阻止覆盖。第三方修改尚未获授权，未改patch或node_modules。修复后仍须补齐请求/响应、H1/H2与四类header的wire矩阵；标准Content-Length下完整File/Text发送或UI effect通过不代表此矩阵通过。

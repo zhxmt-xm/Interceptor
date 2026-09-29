@@ -266,6 +266,12 @@ macOS View：固定前台`certificate.view`只接公开DER与SHA-256，使用系
 
 最终日常CA为`D74D4BFB3C3708511A755AC6CD905840B464B255`；旧`B705…`与失败自产`54B224…`均已按精确身份经产品清理，不能继续作为当前日常CA。最终ASAR SHA-256为`359f44ea97cff9eee47cdf46eb8b23aa9eeafd7cb5e1e9021878c4d4e16ae6b4`；包内与实装helper SHA-256均为`21e129c9395239b52d647cd7d1c33531a790b08c02837ae58e1af3c2f73cc260`。
 
+该阶段以`d6debb2e`提交，保留已推送的`0033f9ab`，未amend；接手的6处修改随15文件一起审阅交付。[原报告](../../commit-changes/202609241020_main_ca_unknown-write-boundary.html)保留CA内容，后续正文继续使用同一文件。平台基线`218295b0`对应[平台报告](../../commit-changes/202609240135_main_shared-ca_startup.html)，工作区checkpoint对应[独立报告](../../commit-changes/202609240150_docs_workspace_progress.html)；GitHub候选四图仍在后者，不覆盖平台报告。
+
+CA证据持久根目录为`/Users/zhxmt/.copilot/session-state/df17625e-cb60-4ece-a735-8d703667fab6/files`。`item4-acceptance-summary.json`核对12次成功运行、11条不同workflow的trace和每代退出；`item4-acceptance-20260926.tar.gz`的SHA-256为`ba3f9ee81b6aae05a96d6bfdb69fba76fbe2ffff0cf46d87bd8c0e9e0d9937f8`，包含原始Red、失败、Green及恢复。历史`16CEB8D0990CCC29FA7313B7F85F1167B227C26C`、`3C2E5F2AC71BDB4E82AA47AA49E79276D3EACDD5`、`B705FBDEF2397E85DAE3605550B916A0EA946ED6`和`54B224ABC1D2C88BBDB2B43396A5EBC4DC8B023C`均不是当前清理目标。
+
+此前journal/launchd调度阶段的37.4秒完整校验超过30秒；只读对照为Background26.99秒、普通6.27秒，不反推旧14:09缺失的时序。实际launchd Red后改用Interactive并经用户部署，平台262通过/2 Windows native跳过、package/audit/严格签名、生产helper 1/1及smoke1/1通过。另有profile删除重建journal、service增删时Restore/跨代Recover零覆盖的37/37及Desktop类型通过；VPN/TUN、动态网络切换和ClashX未验，不能由这些结果代替。
+
 Certificate module组装的`CertificateInfo`含`path`与`mitmEnabled`，不含私钥；解密材料只经内部Core RPC发送。
 
 #### 部署发现性能验收
