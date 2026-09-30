@@ -71,5 +71,3 @@ gRPC在途预览通过`CaptureService.getExchangeBodySnapshot/readExchangeBodyRa
 ## 6. 构建产物
 
 `proxy-core` 输出 `entry.cjs` + 按需的 `archive/worker/entry.cjs` + 常驻的 `diagnostics/worker/entry.cjs`；Forge 递归复制整个 `dist/proxy-core`。运行时依赖的随包策略见 [release.md](release.md)。
-
-在途正文18/18、178/178早期子集与后续排空修复的历史范围统一保存在[Capture验证记录](../features/capture.md#capture-streaming-core-history)，不与当前预览预算或新产物混用。

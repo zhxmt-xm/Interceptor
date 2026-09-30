@@ -50,11 +50,6 @@ macOS续验使用相同真实请求、Core故障和退出恢复断言；读取�
 
 Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；旧临时Capture不泄漏；系统代理在Core故障后先安全交回，在新Core ready后由Renderer代际bootstrap自动重新接管；Core故障后立即正常退出时不留下任何进程代际或系统代理副作用。
 
-### 证据
-
-- Retrospective Red：在`8ff403d1`旧产品上运行同一workflow，真实Electron完成启动后因“用户级三字段crash journal未创建”失败；Main/Core `30600/4076`正常销毁，宿主恢复且无journal、8888或Electron残留。
-- 当前Green：`1/1`通过（17.2秒）；Main `17376`，Core `7840 -> 11712`。Core A精确终止、旧journal删除、WinINet先恢复`original`、Core B与新journal建立、首次`original/owned`保持、两代真实请求、旧Capture清空、Rules RPC恢复、Core B故障后Close无存活进程及最终宿主恢复共13项脱敏证据全部为`true`，`gracefulDestroyVerified=true`。
-
 <a id="application-lifecycle-graceful-close"></a>
 ## `application.lifecycle.graceful-close`
 

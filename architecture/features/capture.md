@@ -172,6 +172,8 @@ Mockttp **不等待**我们处理完成，因此背压责任在 Capture 侧。
 
 有 CA（MITM）时使用 Mockttp `http2:true`，双协议浏览器与 H2-only / gRPC 客户端均可协商 H2；**上游按源站 ALPN 独立协商 h2/h1**，下游用什么协议不决定上游用什么。
 
+Electron运行时不追加OpenSSL专用的`@SECLEVEL=0`，Node运行时保留原配置。
+
 Mockttp 4.5 的 `beforeRequest` / `beforeResponse` 会分别等待完整请求与 `streamToBuffer` 完整响应，因此 Proxy 改用 patch 提供的 `beforeRequestHead` / `beforeResponseHead`——**全部规则在头部阶段执行，正文任何情况下都不缓冲**。这样 67 MB Range 视频被取消时不会全量缓冲，也不会污染复用的 H2 session，同时保留浏览器的 H2 pseudo-header 与 trailer。
 
 完整H2帧级观测需要独立采集streamId、GOAWAY、RST和SETTINGS，不能从HTTP成功状态推导。[协议调研](../backlog/research.md)。
@@ -239,11 +241,9 @@ stateDiagram-v2
 <a id="normal-goaway-gap"></a>
 ##### 源站正常GOAWAY的实现缺口
 
-2026-09-28真实集成在Node24.21及Electron43.1内嵌Node24.18均复现：旧响应仅到达262144/393216字节，没有end/trailer，Capture停在`response-streaming`；源站stream正常finish/close且rstCode=0。后续请求转入新上游session并完整捕获，未重放旧请求。定向3通过/1失败，另10条未运行，Core类型通过；所有流、socket、随机端口与临时Capture已回收。
+源站正常GOAWAY后，旧响应可能仅到达262144/393216字节，没有end/trailer，Capture停在`response-streaming`；源站stream正常finish/close且rstCode=0。后续请求转入新上游session并完整捕获，不能据此把旧请求记为成功。
 
-非消费式`diagnostics_channel`观测到：trailer到达时原始上游stream暂停且仍缓冲131072字节，约1ms后Node的`socketOnClose → closeSession`销毁未排空stream，`readableEnded=false`；http2-wrapper等不到end，Mockttp无法转发trailer。fixture约5秒后才清理，排除提前关闭。不得在close时假补EOF、强制全量缓冲或把Capture改成completed。
-
-上述结果来自`proxy/tests/integration/h2.test.ts`中的临时新增诊断case。9月29日按用户要求移除该未完成case及专用import，原有已提交测试保持不变；完整复现patch保存在session files的`item14-normal-goaway-20260928/uncommitted-reproduction.patch`。第三方生命周期修复仍待明确授权，正式回归测试须与修复一起交付，不因清理测试而把故障标为已解决。原证据仍在同目录的`{summary,diagnosis-summary,lifecycle-facts}.json`及日志，Electron运行时结果为`/tmp/interceptor-item14-20260928-electron-runtime.json`。
+诊断指向暂停的上游stream尚有缓冲时被Node的`socketOnClose → closeSession`销毁，`readableEnded=false`；http2-wrapper等不到end，Mockttp无法转发trailer。修复需要第三方生命周期修改授权；不得在close时假补EOF、强制全量缓冲或把Capture改成completed。
 
 #### H2错误GOAWAY
 
@@ -327,44 +327,19 @@ stateDiagram-v2
 
 ##### 普通消息正文限高与拖拽
 
-- 2026-09-27确认：只对普通gRPC/WebSocket展开消息的Monaco视图启用可调整高度，HTTP Original/File、断点编辑、Composer、Tree、Hex、全屏及正文读取/格式化阈值保持现行契约。
+- 普通gRPC/WebSocket展开消息的Monaco视图支持可调整高度；HTTP Original/File、断点编辑、Composer、Tree、Hex及全屏遵循各自的布局契约。
 - `FramePayload/GrpcMessagePayload → BodyView → BodyViewer → CodeViewer`显式传`resizable`，只有`compact && resizable && !fullscreen`启用。gRPC虚拟列表跟随Inspector外层滚动并使用scrollMargin；WebSocket列表填充剩余空间，队首/排队断点仍使用各自既有布局，不以固定360px高度限制普通消息。
 - 初始高度为`min(完整显示内容高度, 所属滚动容器内正文起点至底边的可用高度)`，至少保留一行、原上下padding和实际边框。短内容贴合，不固定为441px或360px；隐藏状态不决定初始高度，字体加载和换行重排仍重新计算。
 - 用户可通过正文右下角向上/下拖拽；窗口缩小时按当前容器收缩，恢复空间后还原用户拖拽高度。只改变显示高度，Monaco模型、消息字节、Copy、Save及转发不裁剪。
 - 滚轮、触控板和键盘可到达正文首尾；Monaco保持`alwaysConsumeMouseWheel: false`，正文到边界后继续滚动消息列表/Inspector。长消息内部滚动时消息标题及工具栏不被一并滚走。
-- 前置证据：CodeViewer/BodyViewer新增8项unit Red，既有15项Green；gRPC/WS两个真实workflow均在`resize:none`取得目标Red，长正文2948px、可用空间182/184px。最终同组及消息/读取/格式化共58项Green，Desktop类型通过。
-- 最终真实验收6/6：两种消息布局（短/长、拖拽、滚轮交接、键盘末行、窗口缩放恢复、全文Copy、全屏隔离）、205条gRPC分页及末条Copy，原gRPC流式/压缩/错误/UTF-8边界、WebSocket Tree/协议/大消息、HTTP填充和WS断点队列隔离；Main/Core/Worker退出、日常CA和完整代理恢复由fixture验证。
-- 设计校准只修复跨WS→gRPC后隐藏tab未发现滚动容器的问题，不改批准几何或阈值；四主题12态80目标无missing/flagged，正文pane/首行/toolbar为0px差异。另回归HTTP断点、WS队列/空态、默认gRPC Hex及Rule正文，WS排队说明曾被flex推到底部，已修复且复验。
-- 证据前缀`/tmp/interceptor-item4-messages-20260927-`：`unit-red.json`、`e2e-red.json`及目录、`final-unit.json`、`final-workflows.json`及目录、`parity-final.json`、`parity-breakpoints.json`、`parity-websocket.json`（原2处队列差异）、`parity-queue-final.json`（修复后）、`parity-grpc-hex.json`、`parity-effects.json`。中间WS binary专用Copy应为Hex、外层无溢出前提和不稳定分页回调的失败分别保留，不以最终Green改写历史。Windows未执行，不改变5/2/8MiB原阈值。
 
 <a id="body-preview-final-acceptance"></a>
-##### 正文完整范围验收（2026-09-28～29）
+##### 正文预览与完整数据边界
 
-- 9月28日继续确认Original/File/Text方案后，预览/格式化预算改为2/1/2 MiB，图片独立16 MiB；Original/File与普通消息限高并可拖拽，Text保留完整编辑值，Composer继续填充。File仅预览前2 MiB，Forward edited仍发送完整路径对应的文件。
-- 前置证据包括预算/错误/图片/捕获不完整的unit、真实文件读取integration，以及Original不可拖拽、File大JSON无预览、旧自动格式化和预览长度的真实Red。短File随前置分组改变高度的1项unit Red也保留；原生窗口焦点失败、旧CSS输入超过新阈值等不计产品Red。
-- 最终303项相关unit/integration与全workspace类型通过；16条不同正文/协议真实流程通过，包含2 MiB预览、1–2 MiB手动格式化、3 MiB File/Original完整转发、超过2 MiB Text完整编辑发送、滚轮交接、窗口收缩恢复、205条gRPC分页、Copy及全屏。15条联合Green后Composer按新阈值独立Green，失败结果不改写。
-- Mac全量430态3169目标无missing/flagged，字体一致，最大几何差0.859375px；正文定向85态717目标仍有效，其中Original/File/Text34态400目标全0px。弹层同次采样等待和Endpoint作用域修正仅涉及parity工具，不改设计基准或1px阈值。
-- 最终包沿用9月28日已通过package/audit的ASAR `68cbaba4738d8deff1ff7d58f47acf7b74f43f9cfb2afb2bd2aaa8aaf2e836b0`。9月29日人工系统组件授权后，严格签名、签名包两代启动/同组件复用1/1及packaged smoke1/1通过，16张既有截图矩阵已保存；51份已验源码及helper哈希不变。
-- 两代Main/Core均`gracefulDestroyVerified=true`，全部App进程退出、8888释放、journal不存在，完整代理恢复。日常CA `D74D4BFB3C3708511A755AC6CD905840B464B255`的信任及三份材料size/mtime保持，不重新生成或删除CA。
-- session files的`item4-final-acceptance-20260928.json`保存开发证据，`item16-parity-final-20260928.json`保存全量parity；新增`item4-final-acceptance-20260929.json`保存签名启动、smoke与宿主恢复。`item4-signed-final-evidence-20260929.tar.gz`含48项、26520921字节，SHA-256为`c5d17420658b7485741e827266135445953383e1f08a72a7e285e2cba33dcc02`。9月28日未授权的失败仍保留，不以新Green改写。
-- Windows仍归独立实机验收；继承chunked的编辑正文framing及源站正常GOAWAY尾段丢失仍是第10/14项，不以本轮标准Content-Length完整发送或客户端GOAWAY证据代替。
-
-##### 正文分阶段证据索引
-
-下表仅定位历史范围，不把旧结果当成当前包。session files根目录为`/Users/zhxmt/.copilot/session-state/df17625e-cb60-4ece-a735-8d703667fab6/files`，原始Red、失败和中断均保留。
-
-| 范围 | 原始事实及证据 |
-| --- | --- |
-| 9月27日设计确认 | 四主题32张framed、浅深16张full和2张拖拽/滚动图，字体实际加载；长2688→441px、短128px、实际拖到321px，键盘首尾、Copy及窗口恢复通过。三组旧content前后0像素。隐藏初始化误压48px在设计侧修正；`body-design-20260927-verified/{review.html,evidence.json,scroll-comparison.json}`保留批准依据。 |
-| 消息阶段 | 8项unit及两协议真实resize Red后，58项相关测试、6条真实流程、68态555目标通过，最大0.672px。`item4-messages-acceptance-summary.json`记录每代退出与源码hash；`item4-messages-acceptance-20260927.tar.gz`的SHA-256为`470abcd2795e28d4c5336e0f68f7a22802fef0f342e3e661e15fd3c1b137c559`。原WS binary Copy、外层无溢出前提及分页listener失败见上段证据前缀。 |
-| 剩余正文前置 | 预算/格式化6项、错误/图片3项、捕获残缺1项unit及文件读取6项integration Red；Original resize、File大JSON无预览、manual/truncated真实Red后实现。早期78项相关测试、Core解码15项及全workspace类型Green不代替最终303项。 |
-| 9月28日方案与暂停 | `body-remainder-preview/{review.html,handoff.json}`保留24张浅深前后图及12:37继续授权；当时默认关闭的预览开关后来删除，正式设计/shots同步。File字号10/15→12/20、Original左间距12→16px。15:27暂停时新增精确1/2/16MiB边界、图片/提示调整尚未全复跑；17:05恢复后取得上段最终结果。 |
-| 校准与真实窗口 | `body-parity-calibration-20260928/handoff.json`保留4处短File高度与2处MiB文案差异；前置unit1 Red后CodeViewer观察前置分组，85态最终通过。GoTo/焦点失败不算产品Red；CoreGraphics真实HID键鼠核验路径/文件名，不改原生返回值。一次journal由正常App启动/Close恢复，证据`/tmp/interceptor-body-journal-recovery-mZTwAr/evidence.json`。 |
-| 9月28日最终开发证据 | `/tmp/interceptor-item4-final-20260928-`下`clamp-red.json`、`unit-green.json`、`related-tests.json`、`workflows.json`、`composer-isolated.json`、`file-green.json`、`parity-*.json`、`package.log`和`packaged-startup.json`。并行构建时Composer曾出现空Renderer error，单独复跑通过，未证明其内部成因。早期包smoke及暂停前Green不替代后续包；最终包当日未授权的失败也不算通过。 |
-| 开发证据归档 | `item4-final-evidence-20260928.tar.gz`的SHA-256为`a8394689606dd4d397bbef2b0418580bc16ed910d0ab077445f278aa8d237178`。完整前置与中间失败仍在`/tmp/interceptor-item4-remainder-20260928-*`；当天所有测试App已退、8888释放。9月29日签名包Green见上段。 |
-| 共享parity | 旧406态为402有效结果复用＋4复跑，不代替本轮430态。弹层wait/测量竞态及Endpoint 40px错误配对保留；只修harness，不改产品、基准或1px阈值。`item16-parity-final-20260928.json`、`item16-parity-summary-20260928.json`及`item16-parity-evidence-20260928.tar.gz`（1084项/294175737字节，SHA-256 `9b31bc3967170271f41e4189bc1aa855f68bb381b478c0d2cb0751355c3fa8ee`）保存完整结果。 |
-
-最终产物audit为1487文件/339528858字节，9月29日再次确认51份源码、ASAR与helper不变。gRPC真实Copy/焦点包含request/response各两份`grpc-keyboard-*.json`；HTTPS定位专项仍按原要求暂停，其fresh CA Generate断言须在恢复专项前修正，Bilibili复验仍依赖Windows已登录Edge。原[正文/CA报告](../../commit-changes/202609241020_main_ca_unknown-write-boundary.html)保留同主题前后图、红框和1280/390检查，不另拆报告。
+- 文本预览最多2 MiB，完整且不超过1 MiB自动格式化，完整1–2 MiB手动格式化；截断正文禁止格式化。图片使用独立16 MiB上限。
+- Original/File与普通消息限高并可拖拽，Text保留完整编辑值，Composer继续填充容器。File仅预览前2 MiB，Forward edited仍发送完整文件。
+- 界面预览限制不截断Core正文、网络发送、Save或Archive；Copy使用当前视图定义的预览范围。
+- chunked编辑的framing缺陷和源站正常GOAWAY的旧stream丢尾段是独立限制，不能由常规正文显示正确推导为已解决。
 
 #### Header值与Copy
 
@@ -1644,198 +1619,3 @@ Core decode接收调用方的输出预算：文本2 MiB、图片16 MiB，不以�
 - SSE 与无限 chunked 响应：行立即出现，字节持续增长。
 - Pause 前开始、Pause 后完成的请求继续记录。
 - Header规则效果与四组wire headers分别核对，不能用effect marker代替真实传输证据。
-
-<a id="capture-historical-evidence"></a>
-## 12. 历史验证证据
-
-本节承接`218295b0`保存的历史记录，不重放测试，也不以旧Green覆盖后续代码。旧5 MiB预览、当时的图像/Tool数量和阶段产物仅用于定位原证据；当前2/1/2 MiB、独立16 MiB图片、完整File/Text和第4项验收仍以上文为准。源站正常GOAWAY的失败不在旧客户端正常GOAWAY或双向错误GOAWAY的Green中。
-
-TEMP名称、归档SHA-256及耗时按原文保留，不表示本轮核验了旧文件实存。原文没有独立日期或日志的记录明确标注，不补造前置Red、当前性能保证或全量覆盖。
-
-<a id="http收尾与验证"></a>
-### 12.1 HTTP收尾的前置证据（2026-09-09）
-
-最新HTTP1/1、矩阵8/8、Proxy102/102与完整退出已由[HTTP规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md#capture-scenarios-http)承接。三组故障各自的前置证据不能由同一份最终Green代替：
-
-| 故障与当时范围 | TEMP归档 | SHA-256 |
-| --- | --- | --- |
-| early response先结束时仍在上传的正文/终态 | `interceptor-capture-early-response-red-20260909-151821.zip` | `DEDFC9DDE26C61A7FC4CC29F96362C90FEA9ECC73932CC91B2FF93086F56EB3D` |
-| 完整413响应后保存已观察上传并结束记录 | `interceptor-http413-valid-red-20260909-200057.zip` | `361B8326A92250C93CA2D55CC55923F70C8A8230336D9032D207314341226FE3` |
-| 迟到应用归属覆盖耗时、413终态回退 | `interceptor-capture-terminal-summary-red-20260909-200755.zip` | `5EEA9E45C7CF18E4FAE4FB2E35C6A562C77527C7D6813605827D409B6E681510` |
-
-最终early-response owner7/7、应用归属9/9；413只调整Capture记录，不阻断真实上传，不将该例外扩大到其他状态码。
-
-<a id="capture-http-streaming-history"></a>
-### 12.2 HTTP进行中记录（2026-09-14）
-
-以下是同一HTTP workflow的重叠运行，不相加作为四套独立覆盖；每次均正常退出并恢复宿主，未修改产品或第三方。
-
-| 范围 | 原结果 | TEMP目录 |
-| --- | --- | --- |
-| SSE正常结束、同一行36/72/108 B | 1/1，11.4秒 | `interceptor-streaming-20260914-e2e-default` |
-| SSE正常/客户端取消/origin reset，部分正文与真实200保持 | 1/1，27.6秒 | `interceptor-streaming-20260914-e2e-exits` |
-| chunked、Content-Length、Expect三种6 MiB上传，结束前已收到2/4 MiB | 1/1，15.0秒 | `interceptor-streaming-20260914-e2e-uploads` |
-| 6 MiB下载的正常/Pause/Clear，Clear后余下4 MiB继续转发 | 1/1，17.4秒 | `interceptor-streaming-20260914-e2e-downloads` |
-
-Raw/不存在的Text selector失败不算产品Red。该组不覆盖Rule命中、无限chunked、H2 Range或gRPC压力；操作与最终文件hash要求见[HTTP规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md#capture-scenarios-http)。
-
-<a id="capture-h2-history"></a>
-### 12.3 H2集成与证据索引（2026-09-14～15）
-
-- 双Range集成9/9、Core类型通过，日志为`interceptor-h2-ranges-20260914-{baseline,final,types-final}.log`。取消检查误用关闭后的`writableEnded`及丢失数字status属于测试缺陷，不是产品Red。
-- 三种Range、后续SETTINGS/客户端GOAWAY及双向错误GOAWAY的真实结果、各代退出与清理已在[H2规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md#capture-scenarios-http2)；普通H2 Headers/trailer流程不能替代Range/多stream的UI覆盖。
-- 错误GOAWAY的原集成日志前缀为`interceptor-h2-error-goaway-20260915-`，后缀为`baseline.log`、`directions-final.log`、`regression.log`、`desktop-types-delivery.log`、`playground-types-final.log`、`proxy-core-types-final.log`。两方向已收262,144 B的SHA-256均为`dd3dde87623d9a6b354c68c943d189c89c63652d945e7bbdf0986cae91a49521`，不能按声明的524,288 B或Node的end事件判完整。
-- 13项是旧11项加双向错误GOAWAY；源站正常GOAWAY当时另行失败并被过滤，不称完整H2组通过。既有`MaxListenersExceededWarning`保留，未提高监听器上限掩盖。
-
-<a id="capture-streaming-core-history"></a>
-### 12.4 在途正文与存储排空（2026-09-14～15）
-
-早期Capture/Writer18/18、相关Core178/178是当时子集。续作另取得cursor2、Final快照2、spill提交1、Exchange终态3、终态排空2、HTTP Clear排空1项Red；最终21文件198/198、Core类型通过。误用内部`completedAt`而非公开`durationMs`的测试失败独立保留。
-
-- Red/Green前缀：`interceptor-grpc-cursor-20260914-*`、`interceptor-capture-snapshot-20260914-*`、`interceptor-body-commit-state-20260914-*`、`interceptor-exchange-finalization-20260914-*`、`interceptor-exchange-drain-20260914-*`、`interceptor-http-clear-drain-20260914-*`。
-- 汇总：`interceptor-streaming-lifecycle-20260914-clear-{regression,types}.log`。31 B首条envelope的真实Red/Green、半消息及各方向Copy已由[gRPC规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md#capture-scenarios-grpc)承接。
-- 9月15日最终HTTP33.9秒、gRPC2.5分钟，加H2和四条文件任务共七条逐次通过、十一代正常退出，索引为`interceptor-streaming-acceptance-20260915-evidence.json`，不是一次合跑。
-- gRPC首轮正文检查已结束但CA清理触180秒总预算，失败目录为`interceptor-streaming-acceptance-20260915-grpc`；仅该workflow总预算改300秒，最终为`-grpc-green`。37份产品源码及Core/Worker随包字节一致的复用依据在同前缀`-artifact-applicability.json`，只证明当时产物适用，不覆盖当前构建。
-
-<a id="capture-body-viewer-history"></a>
-### 12.5 正文模式与模型生命周期（2026-09-09）
-
-模式隔离/Monaco生命周期owner22/22、两条真实Body workflow的16场景通过，最终归档`interceptor-bodies-sixteen-green-20260909-154736.zip`，Main/Core两代`18540/48608`、`5084/16272`正常退出。原owner/真实Red分别为`interceptor-body-mode-red-20260909-153356.zip`、`interceptor-viewer-lifecycle-red-20260909-154133.zip`。
-
-`interceptor-body-viewer-parity-20260909.{json,md}`只核对九个既有视图与旧报告一致，仍有11 flagged、1 missing，没有覆盖旧基准或宣称完整parity通过。
-
-<a id="websocket消息状态"></a>
-<a id="websocket载荷标题"></a>
-### 12.6 WebSocket状态与载荷标题（2026-09-09～14）
-
-- 空态前置归档`interceptor-websocket-message-state-red-20260909-203133.zip`的SHA-256为`93B60A04F592A71A870F0677078A27818E95A29701CE9BDB8BDB97D814E74DA7`；原区域少100px、字号13px且颜色不符。最终19.2秒Green及归档/hash已在[WebSocket规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md)保存，外层Inspector仍有1.6px既有差异。
-- 9月11日标题资源键修复取得真实Red/Green；`interceptor-websocket-{title,scene}-20260911`保留14 matched/6 flagged、平均像素2.73%、392张旧图hash不变的范围，不把标题Green说成当时整页视觉通过。
-- 9月14日Binary行自然行高的真实Red/Green及Compact Tree110/22px已由同一规格承接；补充unit/类型/prepare前缀为`interceptor-websocket-row-20260914-{unit-baseline,unit-green,types,prepare}`，共享Tree回归为Renderer48文件432/432。相关默认/暂停四态42目标无missing/flagged，不代表当时所有视图重跑。
-
-<a id="capture-utf8-history"></a>
-### 12.7 UTF-8预览边界（2026-09-09～10）
-
-四组unit Red覆盖2/3/4-byte尾字符、显示/Copy、消息Copy与未知MIME；最终7文件40/40和Desktop类型通过。实现前用户禁止E2E，缺真实Red，不回滚补造。前置归档`interceptor-utf8-preview-pending-e2e-20260909-224752.zip`的SHA-256为`537171D9CBD29D4171C616E573F5233EFD5F186EE734524D5DD1BFD3EE8E3FDF`，最终日志`interceptor-utf8-final-checks-20260910-004253.log`。
-
-恢复授权后的四条真实流程分别1/1，不是修改前Red或一次四条合跑。四代正常退出，完整Save、CA与宿主恢复通过；旧5 MiB只指当时预览契约。
-
-| 流程 | TEMP归档 | SHA-256 |
-| --- | --- | --- |
-| HTTP | `interceptor-utf8-http-green-20260910-003002.zip` | `CFC6C97448E58155740670589DFE47002ABB0D0F736778BAD7DC594EE4736196` |
-| Encoding | `interceptor-utf8-encoding-green-20260910-003432.zip` | `6F098AB753E521710D12D7DC34BA17C09878AAE45C6EC7BF8AFC4C2DC5F812A3` |
-| WebSocket | `interceptor-utf8-websocket-green-20260910-003725.zip` | `41BD814E57B68F9A47C4DD8B8724DA38FF680001D0E79A0D3743C1309FF608E7` |
-| gRPC | `interceptor-utf8-grpc-green-20260910-004310.zip` | `A6F2AC42072642240ED75DC23C183F79760DADCF3E5FFF5298E57164C87A537D` |
-
-<a id="73-pauseresume验证证据"></a>
-### 12.8 录制边界（2026-09-09）
-
-151→191 B的孤立正文故障、最终151 B及Proxy122/122已在[Pause/Resume规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md)承接。三层证据与相邻队列不能互相替代：
-
-| 范围 | TEMP归档 | SHA-256 |
-| --- | --- | --- |
-| owner、真实socket与真实UI Red | `interceptor-websocket-recording-valid-red-20260909-234524.zip` | `08093659DECF1D4A20519161FD897DED4BF0DBF04B642964C74BE520797D824B` |
-| 录制Green | `interceptor-recording-boundary-green-20260909-235505.zip` | `937C238B078DB278DE6A637D28CBD8CD528F2BDEDD8ECD3BAC9FF8B5153B85C4` |
-| 队列回归Green | `interceptor-recording-queue-green-20260909-235735.zip` | `2C25226D68A26E914E200A77371124D6FC95DA80FD2426782A96B5E34E85E131` |
-
-HTTP六个跨Pause集成不包含更广gRPC/压力；Main仍有非目标`rules:get internal`及退出`breakpoint:list`拒绝，不宣称日志零错误。
-
-<a id="capture-writer-pressure-history"></a>
-### 12.9 待写上限验证（2026-09-15）
-
-四writer沿用fixture的1 MiB内存/8 MiB待写阈值，各恰收8 MiB时不降级，合计复制32 MiB；各再送32 MiB只累计到40 MiB observed、不再复制。另一条2 MiB spill仍能独立提交、核对hash与完整读取。
-
-`finalize/abort`等待gate释放后清除降级文件。新增2/2、相邻20/20（最终497ms，完整`Buffer.equals()`）与Core类型通过；日志为`interceptor-capture-writer-pressure-20260915-{baseline,regression,regression-final,types,types-final}.log`。生产3/128 MiB常量未变，这不是全Core RSS、生产并发规模、磁盘满、event ACK或10万行验收。
-
-<a id="capture-client-app-history"></a>
-### 12.10 客户端应用归属的单机样本
-
-以下为`218295b0`记载的早期Windows观测，原文未给独立日期/trace，不作为当前性能保证或全部Windows版本覆盖：
-
-- 56个安装应用：卸载表19、MSIX37；逐进程resolve无循环/超时，约55ms。
-- 51进程的名称来源：主程序登记名7、目录登记名23、`FileDescription`21；89个`svchost`中80个`OpenProcess`被拒绝。
-- 7个`ProductName`过滤样本只纠正`node.exe`，却错伤`OpenConsole.exe`和`lghub_agent.exe`，因此未采用。GlobalProtect的`InstallLocation/DisplayIcon`为空、快捷方式指向广告stub且使用其他发布者WebView2，也是当时的实测依据，不据此按发布者截断祖先链。
-
-<a id="capture-browser-history"></a>
-### 12.11 外部页面验证日期
-
-[Bilibili规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md)中真实Edge Default profile的六次独立workflow、18次原生刷新是2026-08-19的历史结果。当时未复现通用Cookie转发缺陷，未改Proxy Core转发；这不等于本轮暂停的Bilibili专项已复验。
-
-<a id="capture-ui-fixture-history"></a>
-### 12.12 旧验收场景与定位（2026-09-10）
-
-字体error造成的URL 3px差异不是产品偏差，诊断为`interceptor-inspector-font-load-probe-20260910.log`；`document.fonts.ready`不等于实际FontFace成功。URL真实Copy与最终归档已在[正文全屏规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md#capture-body-fullscreen)保存。
-
-| 验收侧修正 | 原范围与未通过项 | TEMP证据 |
-| --- | --- | --- |
-| 侧栏expanded/collapsed导致±160px | 两视图6/6最大0.5px，像素2.9166%/2.7429%，不算整页一致 | `interceptor-capture-sidebar-verified-20260910-143141.zip` |
-| Rule筛选/普通Capture状态与重复目标 | 当时普通34 matched/4 missing/20 flagged，Rule3 matched/1 flagged；53px偏移来自Rule marker而非facet | `interceptor-capture-rule-scenes-verified-20260910-144808.zip` |
-| 默认MITM/搜索/图标目标 | 38 matched/0 missing/22 flagged，像素2.8843%，不改阈值 | `interceptor-capture-targets-verified-20260910-151852.zip` |
-| 列表fixture13→18行 | 只使应用cell纵差-260.1→-0.1px；4px列差和其他flag保持，未改产品/正文fixture/设计基准 | `interceptor-capture-list-fixture-20260910-182434`、`interceptor-capture-fixture-regression-20260910-182601-*` |
-
-这些是设计/Renderer验收前提修正，不是产品E2E或整页Green。
-
-<a id="capture-list-history"></a>
-### 12.13 状态栏、列轨道与控件（2026-09-11）
-
-- 状态栏16px gap只使端点宽差归零，38目标22→21 flagged；上下游不可达两个场景6/6但无PNG，像素n/a。证据`interceptor-capture-status-20260911-125914`。
-- 列表两主题30目标为0px，14组218–730px窄宽度检查通过，仍各6个非列表flag；证据`interceptor-capture-list-20260911-1310`。
-- 清除筛选控件修正后仍各4个Header flag；临时enabled/hover状态没有PNG，只记几何，证据`interceptor-capture-controls-20260911`。
-- 相关29项、Pause1/1（22.3秒）、Clear1/1（7.6秒/15.1秒）及宿主恢复不代表全量UI通过；系统CONNECT流量造成首轮计数失败不是产品Red。
-
-<a id="请求正文分组的计数标签"></a>
-<a id="capture-body-layout-history"></a>
-### 12.14 正文排版的独立证据（2026-09-11～12）
-
-- 计数6.3px、空Query4.8px、标题行高各自取得真实Red；最终25项及三流程Green。Request明暗各8/8，十个相邻视图148 matched仍有8个Header flag，证据`interceptor-section-{count,typography}-20260911*`及`interceptor-section-typography-20260911-review/`。
-- 受限提示原两行少8.8px；两态6/6最大0.4px，像素2.73%/2.75%。八组浏览器换行/Hex提示检查没有触发Save或真实网络；记录在`interceptor-limited-body-20260912-{before.md,after.md,unit-green.log,typecheck.log,final.md,final.json,design-hashes.json,review/evidence.json}`。
-- 媒体占位12/12最大0.4px，像素2.15%/2.27%；音视频/超限图零读取、损坏图尝试读取的16组浏览器检查不是原生保存E2E，记录在`interceptor-media-body-20260911-{before,unit-baseline}*`与`interceptor-media-body-20260912-{unit-green.log,typecheck.log,final.md,final.json,design-hashes.json,review/evidence.json}`。
-- 恢复后的正文/媒体/TLS导航/AppContainer四条4/4（52.7秒）及相邻encoding/WS/队列三条3/3（1.4分钟）分别在`interceptor-e2e-resumed-20260912-body-settings`、`interceptor-ui-adjacent-20260912-e2e`，不补造暂停期布局前置E2E。
-- HTTPS连接示意13项、24 matched仍有旧Cancel约1px flag；原数据在`interceptor-https-chain-20260911-review/`、`interceptor-https-title-20260911-dom/`。后来的真实2/2与恢复不等于存在实现前E2E Red。
-
-<a id="capture-protocol-layout-history"></a>
-### 12.15 协议显示的局部范围（2026-09-11）
-
-gRPC行高16/16最大0.6px，但像素2.72%/2.93%；Tunnel五场景33/33最大0.8px、平均像素2.32%；POST配色修复后gRPC18/18。相关33项及各自真实协议workflow通过，不代表其他Header/WS差异已修复。
-
-证据分别为`interceptor-grpc-rows-20260911`、`interceptor-protocol-scenes-20260911-grpc-*`、`interceptor-tunnel-item-20260911`、`interceptor-method-colour-20260911`；Tunnel改前图为`interceptor-protocol-scenes-20260911-tunnel-aligned-shots/capture-tunnel-light.png`。不拿行高Green代替配色或整页像素结果。
-
-<a id="capture-copy-selection-history"></a>
-### 12.16 末行Copy与原生选择（2026-09-14）
-
-owner先3 Red/14 Green，最终19/19及Renderer437/437；两主题19值在默认/340/500/恢复宽度下的Selection、Copy、hover、失效删除线通过。证据为`interceptor-header-copy-20260914-{unit-red,unit-green,renderer,types-final,parity-light,capture-dark,capture-rule-filter,final,design-synced.json}`。真实父行54→18px与inline图标6×14→14×14px的各自Red/Green已在[正文全屏规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md#capture-body-fullscreen)承接。
-
-早期逐字素/contents候选产生换行、丢空格或删除线不绘制，记录在`interceptor-ui-copy-last-line-20260914-*`、`interceptor-header-copy-isolated-preview-20260914/`及`interceptor-ui-item-20260914-inline-copy-context/evidence.json`。不得以trim、剪贴板拦截、隐藏副本或只测Copy按钮掩盖，未采用的候选不作为当前实现。
-
-<a id="capture-parity-snapshots-history"></a>
-### 12.17 完整parity与合并快照（2026-09-14）
-
-| 原时点/来源 | 事实与适用范围 |
-| --- | --- |
-| 16:46，`interceptor-ui-approved-20260914-full.{json,md,log}` | 398场景、2825目标/2823 matched/2 missing/29 flagged，早于Tree修复 |
-| 20:28，`interceptor-ui-final-20260914.{json,md,log}` | 398场景、2 missing/22 flagged；Header/Binary旧flag已消除 |
-| `interceptor-header-copy-20260914-tunnel-green` | 定向四场景32/32；修正fixture误把只读TLS字段转成Copy布局，不称再次全量 |
-| `interceptor-ui-delivery-20260914-evidence/parity-current.json`及`parity-current-summary.json` | 合并250未变、148续验及最后6态来源，0 flagged但仍2个独立空Text missing；不是单次全量或全流程Green |
-
-原Handover归档`interceptor-handover-before-cleanup-20260914-181426.zip`的SHA-256为`1D065702923CE3C1A358E958E70EB238FD89CFC794B2A29278B7083D7C15EAC4`。这些快照不是当前第4项85态的结果，也不产生新的完成门禁。
-
-<a id="capture-shared-header-history"></a>
-### 12.18 公共标题与Timing翻译（2026-09-16）
-
-真实24→36px Red/Green已在[分组折叠规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md)保留；相关9文件80项、Desktop/design类型通过。406场景首跑4 missing/3 flagged，Timing/Tunnel复跑后2973目标/2971 matched/0 flagged，仍2处旧Using original missing，最大0.859375px。
-
-603设计场景中165场景330个标题满足下限；只同步102张已有PNG、363张旧图hash保持。证据为`interceptor-shared-header-height-20260916/{full,full-296,full-303,final-parity,shots-synced,header-measurements-summary}.json`。`settings.responseBodies`误删造成的8.703125px差异另以1 Red→9/9、Timing8目标0px修正，日志为同目录`timing-i18n-{red,green}.log`、`timing-parity-green.log`，不归因于公共标题样式。
-
-<a id="capture-timing-history"></a>
-### 12.19 Timing的失败与替代方案（2026-09-11～14）
-
-9月13日父行grid→flex真实Red后14/14与两主题8目标0px，前缀`interceptor-ui-parity-20260913-timing-flex-*`。名称含green的首轮在listener前退出、graceful/abrupt均false，不记通过。9月14日同流程最终1/1（20.2秒）与恢复在`interceptor-ui-parity-20260914-timing-{unit.log,prepare.log,e2e.log,e2e/}`。
-
-9月11日token/Grid与矩形中心实验仅保留在`interceptor-centering-audit-20260911/`、`interceptor-timing-20260911*`、`interceptor-timing-alignment-review-20260911-*`，不恢复为当前flex验收目标；旧外框居中不能证明用户视觉认可。
-
-<a id="capture-compact-history"></a>
-### 12.20 Compact正文与WS16态（2026-09-14～15）
-
-- 两项unit Red后3/3，真实外框136px而内容126px加约1.33px边框取得Red，最终127.33px；前缀`interceptor-compact-height-20260914-*`。随后Original底部8px及185px下限修正当时只有parity，不用早期Green替代。
-- WS16态正文像素14/16为0；Tree浅/深仍0.08652%/0.00911%。200字段、202行4462px可滚至末行；600/440px窗口外层无溢出时，接续不适用，不把脚本假设失败算产品问题。证据`interceptor-ws-state-parity-20260914-{final/evidence.json,scroll}`与`interceptor-ws-design-approved-20260914/evidence.json`。
-- 早期8态/32宽度的86px内容、88px外框预览在`interceptor-compact-content-preview-20260914/evidence.json`；隐藏匹配、Monaco服务重复/缺失与Resource Timing的失败仍在`interceptor-ui-item-20260914-compact-preview{,-verified,-final}.log`，不是新的产品Green。
-- 9月15日WS正文、队列、全屏各自通过；把`min-height:auto`误断言为0的失败与最终记录位于`interceptor-ui-acceptance-20260915-{websocket-body,websocket-queue,websocket-queue-green,body-fullscreen}`。以上全部属于旧版本，不替换上文第4项最新resizable、预览或验收结论。

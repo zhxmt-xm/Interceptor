@@ -29,14 +29,6 @@ Agent 是全局右侧栏，不是 Workspace 或 overlay；fresh profile 只显�
 
 `440px` 是 `1600×900` 基线宽度。窗口缩小时 Grid 优先为 main 保留 `440px`，Agent 在同一右侧 track 内响应式收缩，不切换成 overlay；Close 始终可达。
 
-### 证据
-
-- 实现前 Red 依次锁定真实产品仍为 `1280×800`、Windows frameless content 高度多 `2px`，以及 `agent.panel.toggle` 缺失；Red 均来自预期产品缺口，失败后仍完整销毁。
-- 当前同一 workflow `1/1` Green：Renderer content 为精确 `1600×900`；Capture、Settings Agent、Rules、Composer、Diagnostics、Capture 与重新进入 Settings 七个节点均为 `panelWidth=440`、`mainRight=panelLeft=1160`、`provider=unconfigured`。
-- Main PID `11272`、Core PID `10928`、listener `8888`，`gracefulDestroyVerified=true`；Renderer page error 为 0。
-- light/dark 的 Panel 与 Settings Agent 四个 parity view 合计 `30/30 matched / 0 missing / 0 flagged`，最大几何差 `0.7px`。
-- `880×560` Renderer 响应式探针在展开 Sidebar + Settings Agent 下由修复前 `main=220 / panel=440 / settings=0` 收敛为 `main=440 / panel=220 / settings=162`，main 与 Panel 边界严格相接。
-
 <a id="agent-settings-model-configuration"></a>
 ## `agent.settings.model-configuration`
 
@@ -59,13 +51,6 @@ Agent 是全局右侧栏，不是 Workspace 或 overlay；fresh profile 只显�
 ### 预期效果
 
 Settings > Agent 是 Provider/模型配置的唯一入口；Test connection 返回的 verification 是 Save 的前置，字段变化后必须重测；`Default` 是状态，`Set default` 才是命令；Provider顺序、default和脱敏凭据安全持久化并跨重启恢复。本 workflow 不验证当前 Chat 模型或 Session。
-
-### Evidence
-
-- 实现前有效Red精确停止在缺少 `agent.models.list`，不是selector、构建或环境失败；当前同一workflow `1/1` Green。
-- lab共观察5次真实Chat Completions Test：`keyed-model`、`keyed-model-v2`与第一次`keyed-model-edited`均有Authorization，`keyless-model`及显式移除已存Key后的第二次`keyed-model-edited`无Authorization；evidence只保存presence与body hash，重启自动请求数为0。
-- 第一代与第二代Provider ID顺序完全一致；第二行default跨重启恢复，依次删除default与最后一项后确定性回退并返回未配置态。
-- 第一代Main/Core PID为`16136/30948`，第二代为`18864/44704`；两代均为`gracefulDestroyVerified=true`，listener `8888`释放。三段trace与两代Main/Renderer日志均通过运行期随机测试Key全文扫描。
 
 <a id="agent-chat-streaming-context"></a>
 ## `agent.chat.streaming-context`
@@ -90,12 +75,6 @@ Settings > Agent 是 Provider/模型配置的唯一入口；Test connection 返�
 
 真实 HTTP Streaming 逐段进入 Transcript；多轮 Context、reasoning continuation、Context Window Usage、Session Usage、Stop 与 Retry 均由同一持久 Session 驱动，不重复用户消息或已完成调用。
 
-### Evidence
-
-- 当前workflow `1/1` Green；事件sequence从`0`严格递增到`23`，五次真实Model请求中第四次在可见delta后被Stop并由lab观测为aborted，第五次Retry复用同一request body hash且完成。
-- 多轮请求message count按`1 → 3 → 5`增长；Retry仍为`5`，没有重复user item。reasoning与assistant正文分离展示，Usage只记录Provider已报告的逐Call事实。
-- Main/Core PID为`36412/7948`，`gracefulDestroyVerified=true`，listener `8888`释放；trace分段、Main/Renderer日志及脱敏lab evidence均通过敏感文本扫描。
-
 <a id="agent-chat-restart-recovery"></a>
 ## `agent.chat.restart-recovery`
 
@@ -118,12 +97,6 @@ Settings > Agent 是 Provider/模型配置的唯一入口；Test connection 返�
 ### 预期效果
 
 Provider配置、默认模型、Session列表、当前Session、Transcript、outcome与Usage跨正常重启恢复；恢复不会重放网络请求；Rename/Delete/New Chat只影响目标Session。
-
-### Evidence
-
-- 当前workflow `1/1` Green；第一代完成3次Model请求，第二代启动新增请求为0，切回Chat A发送follow-up后总数为4。
-- 两个Session ID与重启前后Transcript hash稳定恢复；Chat A/B选择、独立历史、Rename、Delete与新建空Chat C均只影响目标Session。
-- 第一代Main/Core PID为`19804/15832`，第二代为`31668/27112`；两代均`gracefulDestroyVerified=true`并释放8888，分段trace与日志通过敏感文本扫描。
 
 <a id="agent-tools-settings-capabilities"></a>
 ## `agent.tools.settings-capabilities`
@@ -154,18 +127,6 @@ MCP执行链路由`mcp.desktop.streamable-http`覆盖。
 24行Tool名称必须全部符合`<feature>_<verb>[_<object>]`，且前缀只来自`capture/rules/composer/breakpoints/diagnostics`；
 旧无前缀名称不得出现在行、Switch automation ID或持久化恢复结果中。五个Capability ID、Settings分组与前缀一致。
 
-### Evidence
-
-- 实现前真实Electron精确Red于`agent.tools.capabilities`不存在；实现后同一workflow `1/1` Green。
-- fresh profile显示Capture、Rules、Composer、Breakpoints、Diagnostics五组24行和48个默认开启Switch；
-	`capture_get_proxy_status`仅关闭Agent列，`rules_replace_tree`仅关闭MCP列；
-	搜索、Settings往返不改变状态。第一代业务状态前后均为`recording=true / rules revision=0 / system proxy=owned`。
-- 第一代关闭两项，第二代同profile恢复后重新开启，第三代再次启动时48项全开，证明空关闭集不依赖持久文件。
-- 三代Main/Core PID分别为`31716/32188`、`13204/27660`、`29192/30064`；每代
-	`gracefulDestroyVerified=true`，最终8888释放。
-- feature命名切换后同一workflow再次`1/1` Green：24行严格按五组顺序出现，组automation ID分别为
-  `capture/rules/composer/breakpoints/diagnostics`，48个开关与两次重启恢复保持；旧无前缀名称零行。
-
 <a id="agent-tools-capture-discovery"></a>
 ## `agent.tools.capture-discovery`
 
@@ -195,16 +156,6 @@ MCP执行链路由`mcp.desktop.streamable-http`覆盖。
 
 Agent通过共享Capability Index渐进发现已开启Tool，并查询同一真实Core中的Traffic与Capture storage；Settings关闭项
 既不可发现也不可调用。四个query Tool直接执行，不出现change问询；Tool协议轨迹持久化后可跨重启重建Provider history。
-
-### TDD证据
-
-- Red：实现前同一workflow的真实Provider、Capture与Agent链路运行成功，`call-storage`公开状态精确为`failed`；
-	metadata仍记录Main/Core优雅销毁，证明失败来自Agent未注册`capture_get_storage_status`。
-- Green：同一workflow `1/1`通过，最终一次真实`capture.status`返回`1 session / 3 exchanges / 1 body / 92 B`；六个字段
-	完整进入Provider history，Transcript公开摘要属性与结果一致，query未出现审批。
-- 重启后Model请求增量为0；关闭`capture_get_storage_status`后discovery/schema移除该Tool，猜测调用返回`unknown_tool`，
-	重新开启后恢复。两代Main/Core PID为`20596/42100`与`44412/12224`，均
-	`gracefulDestroyVerified=true`；Renderer page error为0，最终8888释放且系统代理恢复。
 
 <a id="agent-tools-body-messages"></a>
 ## `agent.tools.body-messages`
@@ -240,7 +191,7 @@ Agent通过共享Capability Index渐进发现已开启Tool，并查询同一真�
 和gRPC按各自方向/side稳定分页。Settings关闭立即从discovery/schema移除并阻止执行，重启不重放任何调用。
 本workflow只为三个Tool自产代表性输入，不等同于后续Capture对Playground 39项场景的完整收敛。
 
-### TDD证据要求
+### 验收要求
 
 - Unit Red：owning executor测试先精确失败于WebSocket/gRPC成功命令映射缺失，Agent adapter测试失败于三项Tool
 	未发现/未披露/不可执行；Renderer测试失败于三类结构化摘要缺失。
@@ -248,28 +199,6 @@ Agent通过共享Capability Index渐进发现已开启Tool，并查询同一真�
 	Agent未注册而失败；不得把selector、TLS、UAC、build或fixture错误当作Red。
 - Green：同一workflow完成三项真实Tool能力调用（正文含两段range）、Provider history与Transcript断言、关闭/恢复、跨重启零重放，
 	并验证CA、源站例外、系统代理、Main/Core、8888和Playground端口完整恢复。
-
-### TDD证据
-
-- Unit Red：Agent discovery/执行与Renderer摘要共4项精确失败；实现后Desktop聚焦12/12 Green。Tools owning
-	新增WebSocket/gRPC成功命令映射并为13/13 Green；15语言Agent资源10/10 Green。
-- E2E Red：业务实现前正式Playground先成功产生`body-json`与`ws-bidirectional`，随后Agent discovery精确只返回
-	旧5项，缺少三项新Tool；Main/Core优雅销毁且8888释放，是有效行为Red。
-- 接线后正文range与WebSocket全部/单方向真实Tool Call先成功；gRPC输入前置的正式H2链路在Electron
-	UtilityProcess中失败，Core记录secure h2 exchange为aborted、response 0 B。
-- 根因证据：临时关闭`simulateConnectionErrors`后，同一真实链路返回502；再由Agent `capture_get_exchange_body`读取到
-	`OPENSSL_internal:INVALID_COMMAND`。Mockttp对`ignoreHostHttpsErrors`追加OpenSSL专用`@SECLEVEL=0`，Electron
-	TLS运行时不支持。诊断探针已撤回，产品透明连接错误语义、CA、系统代理、进程和8888均恢复。
-- Developer于2026-09-02明确批准扩展`patches/mockttp+4.5.0.patch`；最终补丁只在Electron运行时省略
-	`@SECLEVEL=0`，Node/OpenSSL路径保持，源站例外仍为`rejectUnauthorized: false`。补丁Unit 2/2、H2 integration
-	6/6与干净npm包patch apply检查均Green。
-- 最终同一workflow`1/1` Green：正文30 B、WebSocket 3条、gRPC request/response各1条；三项关闭后均返回
-	`unknown_tool`，重启Model请求增量0。干净Mockttp 4.5.0只应用仓库patch后同一E2E仍Green；最终两代Main/Core为
-	`22044/2088`与`38676/35912`，均`gracefulDestroyVerified=true`。完整Prompt/回答在两代trace与进程日志中均为
-	0命中；CA、localhost例外、MITM、系统代理、8888与Playground端口全部恢复。
-- 提交前复审新增Red：Core解码路径忽略明文range、非gRPC结果误显示为0条完成、Parity参数不满足schema、
-	失败代可能在审计前截图或因单步异常跳过后续清理。修复后Proxy聚焦27/27、Agent聚焦22/22和同一E2E Green；
-	正文由10 B第一页（`end=false`）与20 B末页（`end=true`）重组为完整30 B，失败代不截图并聚合执行全部审计/销毁步骤。
 
 <a id="agent-tools-execution-modes"></a>
 ## `agent.tools.execution-modes`
@@ -299,16 +228,6 @@ Agent通过共享Capability Index渐进发现已开启Tool，并查询同一真�
 Tool启用状态与执行模式正交：关闭永远不可调用；开启的query直接执行；开启的change在`ask`时由用户裁决，
 在`auto`时直接复用正式产品意图。模式切换不处置已有pending，Allow前再次检查开关；模式和开关都不能绕过
 产品校验或改变无关状态。
-
-### Evidence
-
-- 实现前Runtime/Session聚焦测试5项精确Red于默认mode、authorization gate、pending状态和公开方法缺失；Desktop
-	聚焦测试3项精确Red于`capture_stop_recording`接线与Renderer intent缺失。真实workflow再精确Red于Session根没有默认Ask。
-- 当前同一workflow`1/1` Green：新Chat固定Ask；pending切Auto、跨Rules/Capture与Chat切换均不自动裁决；Deny返回
-	`tool_denied`且Recording不变，Allow与Auto分别经正式`proxy.setRecording(false)`暂停Recording；关闭项返回
-	`unknown_tool`且不改变Recording。
-- 同一profile重启后原Session Auto与Tool关闭项恢复，启动Model/Tool请求增量为0；最终两代Main/Core PID为
-	`42872/36244`与`28784/8940`，均`gracefulDestroyVerified=true`，最终8888释放。
 
 <a id="agent-tools-traffic-control"></a>
 ## `agent.tools.traffic-control`
@@ -340,25 +259,6 @@ Tool启用状态与执行模式正交：关闭永远不可调用；开启的quer
 `capture_clear`的影响来自审批时的真实usage，成功后所有入口都由同一个`capture:reset { clearedBefore }`事件收敛
 Renderer镜像，且不丢失清理开始后到达的新流量。
 
-### Evidence
-
-- Runtime动态effect先Red于`describeEffect`调用0次；Desktop Agent先有3项Red于discovery缺项/Tool不存在，MCP
-	reset先Red于回调0次，Renderer先Red于共享reset入口不存在。最终Runtime`121/121`、Desktop`397/397`、
-	全workspace typecheck Green；Proxy Core仍仅父提交已登记的chunked framing 2项失败，其余319项通过。
-- 同一workflow字节级放入父提交`4da20a1e`的detached worktree后，Session在`capture_start_recording`后直接`completed`、
-	未进入预期审批，取得有效行为Red；失败代Main/Core `34956/20616`优雅销毁，8888释放且敏感证据审计通过。
-- 当前同一workflow`1/1` Green：start与clear各自Ask Deny/Allow和Auto通过；最终动态effect metadata显示
-	19个Exchange/1个Body并与同Turn storage精确一致，重启后原值恢复；Allow后的proxy/storage typed摘要通过。
-	两次Deny均为`tool_denied`，两项关闭后均为`unknown_tool`。
-- Clear后rows、Inspector、method facet与Rule hit原始DOM同步为`0/0/0/0`，随后真实GET继续进入Capture；cutoff后的
-	现有流量保留与乱序旧reset幂等由Capture Store unit锁定。产品按钮既有`capture.clear-facets`也`1/1` Green。
-	重启Model请求增量0；最终两代Main/Core为
-	`17868/32476`与`41868/39536`，均`gracefulDestroyVerified=true`并释放8888、恢复系统代理。
-- 结果行design interaction`67/67`；完整parity为`200 views / 1,374 targets / 1,342 matched / 32既有missing /
-	303既有flagged`，本轮结果行明暗`12/12`与Traffic/body四视图`38/38`均0 missing、0 flagged。Windows package与
-	artifact audit（1,294 files / 392,792,364 bytes）、production audit 0漏洞和
-	packaged smoke`1/1`通过。
-
 <a id="agent-tools-rules"></a>
 ## `agent.tools.rules`
 
@@ -388,34 +288,6 @@ Model只能提交严格递归且符合正式Rule联合的完整树；query直接
 Settings。Deny、invalid tree、stale revision和关闭项均不改Rule；Allow/Auto只经正式replace推进revision，真实代理
 effect与查询结果一致。
 
-### Evidence
-
-- 2026-09-06 Rules Export扩展后，同一workflow按四项目录、全组撤权与重启恢复复跑`1/1` Green；Main/Core
-	`2432/16356`、`4960/28640`均正常销毁、释放8888并恢复宿主。证据归档于TEMP下
-	`interceptor-rules-export-existing-agent-rules-green`；新导出自身的Agent/MCP实操见`rules.tools.export`。
-- 同日Rules Import扩展后，五项目录、全组撤权和恢复再通过`1/1`，Main/Core `44740/14364`、`26496/28060`
-	均正常销毁；证据保留于`interceptor-rules-import-combined-first-run`，该归档中的后续Export焦点失败不属于此workflow。
-- Owner Red精确失败于schema无`$defs`且7类非法树先触达`rules.get`；Agent Red为Rules discovery空数组与
-	`rules_replace_tree`不存在，摘要Red退化为原始JSON；Rules revision回调与Renderer同步分别Red于0次/入口不存在；
-	复审再Red于stale revision仍生成审批摘要及设计结果态使用错误DOM属性。
-- 父提交`1234ea9a`在源码、workspace链接和npm依赖均隔离的detached worktree运行同一workflow，第二次Model request
-	只有`discover_tools`而缺三项Rules schema，取得有效行为Red；失败代Main/Core `37404/8912`优雅销毁并释放8888。
-- 当前同一workflow`1/1` Green：真实UI创建folder/rule，完整matcher/action/priority由`rules_get_tree`返回；初始hit为1，
-	Deny保持初始effect，Allow/Auto令revision `1→2→3`并由真实origin header验证，stale返回`invalid_arguments`；
-	三项关闭后discovery为空且均返回`unknown_tool`，重启恢复Rule、审批metadata、Auto/开关且Model请求增量0。
-- `mcp.desktop.streamable-http`补充同一共享入口的外部同步证明：父提交`1234ea9a`中MCP替换已成功但Renderer仍为
-	revision 1，取得有效Red；当前官方Client Auto `rules_get_tree → rules_replace_tree`令Renderer与origin同步到revision 2，
-	重启恢复同一Rule并再次验证真实origin effect。两代Main/Core为`38740/43808`与`26768/39376`，均完整销毁且
-	Renderer pageerror为0。
-- Map Local真实路径由owner测试证明不会离开Core，任意路径、新建占位或借占位修改matcher/enabled/priority/action
-	均无法触达replace；只有未变Rule可连同路径跨folder移动。Rules Store `30/30`覆盖保存期间编辑、普通/外部load乱序、
-	dirty/saving冲突、最高revision及显式Reload不得回退已观察revision且必须结束loading。最终Tools`43/43`、Desktop`410/410`、
-	Runtime`121/121`、MCP`30/30`、design interaction`68/68`与全workspace typecheck Green。
-- 最终Agent两代Main/Core为`31464/7148`与`11940/44028`，均`gracefulDestroyVerified=true`，Renderer pageerror为0且
-	8888/系统代理恢复。完整parity为`204 views / 1,404 targets / 1,370 matched / 34既有missing / 304既有flagged`；
-	Rules新增query/result明暗4 views合计`30/30 matched / 0 missing / 0 flagged / 0px`。Windows package、artifact audit
-	（1,294 files / 392,804,000 bytes）、production audit 0漏洞与packaged smoke`1/1`通过。
-
 <a id="agent-tools-breakpoints"></a>
 ## `agent.tools.breakpoints`
 
@@ -440,19 +312,6 @@ effect与查询结果一致。
 
 Agent只能处理真实产品pending；query不问询，七项change遵守Ask/Auto。Deny、stale和关闭项零副作用，Allow/Auto
 只影响指定ID；HTTP与WebSocket真实对端结果和Capture状态一致。
-
-### Evidence
-
-- 最终workflow在修复前提交`32f2889a`的detached worktree精确Red：真实Agent discovery对`breakpoints`返回`[]`，
-	与预期八项不符；不是selector、fixture、构建或环境失败。
-- 当前同一workflow`1/1` Green：HTTP Ask Deny/Allow、stale、method/body编辑、Auto Drop与启停均由真实客户端/origin
-	验证；WebSocket覆盖连接隔离、Continue、文本编辑、Drop和Disable；八项关闭后均为`unknown_tool`。
-- 重启在ready后与关闭前两次确认Model、HTTP origin与WebSocket消息增量均为0；提示词、HTTP/WebSocket正文和动态
-	Rule/Breakpoint/exchange ID均通过trace与进程日志脱敏审计；最终两代Main/Core为`31388/16116`与
-	`29116/20280`，均
-	`gracefulDestroyVerified=true`，Renderer pageerror为0且8888、journal和系统代理恢复。
-- Breakpoints Agent明暗设计场景合计`22/22 matched / 0 missing / 0 flagged / 0px`；既有44张Agent设计图逐像素
-	不变。完整Parity为`206 views / 1,426 targets / 1,396 matched / 30既有missing / 304既有flagged`。
 
 <a id="agent-tools-composer"></a>
 ## `agent.tools.composer`
@@ -479,19 +338,7 @@ Agent只能处理真实产品pending；query不问询，七项change遵守Ask/Au
 Agent只通过正式Core命令产生显式获批的外部网络动作。Composer请求保持直连且不污染Capture，TLS probe只握手；
 Stop真实终止socket。Deny、关闭项与重启均不产生网络副作用，响应凭据与测试正文不进入trace或进程日志。
 
-### Evidence
-
-- Agent实现前，同一最终workflow启动真实Electron后精确Red于Composer discovery返回`[]`；修复前owner integration
-	进一步精确Red于H1与TLS在Abort后仍等到timeout。当前H1/H2/TLS真实网络integration `8/8`、TLS预取消零
-	`tls.connect` unit `1/1` Green。
-- 当前`agent.tools.composer` `1/1` Green：Ask Deny/Allow、method/query/header/body真实origin事实、响应header/query
-	脱敏、Capture零新增、TLS成功/失败、Stop关闭真实socket、两项`unknown_tool`与重启零网络全部通过。
-- 业务证据`directRequestVerified/tlsProbeVerified/cancelledSocketVerified=true`、`restartNetworkRequestCount=0`；
-	两代Main/Core为`11120/16796`与`29936/34788`，均`gracefulDestroyVerified=true`，8888、journal和系统代理恢复。
-- 提示词、请求/响应正文、凭据header/query与URL均经截图前可见DOM/输入、trace与进程日志敏感审计；final screenshot
-	只在审计通过后attach，evidence只保存布尔、计数和Provider request hash。明暗Requests parity合计
-	`20/20 matched / 0 missing / 0 flagged / 0px`，既有46张Agent设计图逐像素
-	不变。完整Parity为`208 views / 1,446 targets / 1,412 matched / 34既有missing / 305既有flagged`。
+提示词、请求/响应正文、凭据header/query与URL必须在截图前审计可见DOM/输入、trace与进程日志；final screenshot只在审计通过后attach，evidence只保存布尔、计数和Provider request hash。
 
 <a id="agent-tools-diagnostics"></a>
 ## `agent.tools.diagnostics`
@@ -526,14 +373,3 @@ npm run test:e2e:workflow --workspace @interceptor/desktop -- diagnostics.workfl
 
 Agent通过共享只读Tool查询真实Diagnostics存储，不建立旁路数据源。过滤与顺序由Core权威实现；查询自身不污染日志，
 Composer敏感输入不进入Model结果。Ask、Settings撤权、恢复和重启均保持既有Agent语义。
-
-### Evidence
-
-- Unit Red：Agent discovery返回空matches，Renderer摘要返回原始JSON；共享executor正向测试基线Green。
-- E2E Red：Agent接线前精确失败于第二次Model request没有`diagnostics_query`；最终修订workflow又在父提交
-	`401af972`的detached worktree得到同一行为Red，Main/Core `11540/18252`优雅销毁且释放8888。
-- 当前字节相同workflow `1/1` Green：四条action/command记录按sequence严格递减并归属两个trace，敏感URL/query
-	不进入Model结果；Ask无审批，关闭后`unknown_tool`，重新开启恢复discovery。重启Model与origin请求增量均为0。
-- 两代Main/Core `11444/35300`、`42312/18808`均`gracefulDestroyVerified=true`，Worker随Core退出，8888释放，
-	宿主guard恢复系统副作用。`agent-tool-diagnostics.json`、trace、截图与进程日志通过完整敏感文本审计后再attach。
-- 设计与产品明暗parity为`18/18 matched / 0 missing / 0 flagged / 0px`，不替代上述真实Electron证据。

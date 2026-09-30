@@ -30,30 +30,6 @@
 已有语义不改；空trace、有界参数、预取消/迟到选择与原子任务错误由对应unit/integration覆盖。Evidence仅保存
 记录身份、计数、文件hash与协议结论，不保存原始秘密。人工与macOS验收继续独立，不以Windows结果代替。
 
-2026-09-06：28项executor因缺失Tool取得Red，真实discovery Red代际`30472/44700`正常销毁；
-随后executor28/28、Main原生导出6/6 Green。当前快照与异步导出摘要另外取得7项unit及真实页面
-`diagnosticsSnapshot`预期为`value`的Red，补齐typed摘要后35/35 Green；15语言区分记录计数、任务状态和取消。
-
-暂停前首轮原生Cancel未取得焦点，Main/Core `29852/29444`正常销毁，证据保留于TEMP下
-`interceptor-diagnostics-tools-pre-pause-failure`；该环境失败不算产品Red。清理本会话设计测试服务后，
-同一流程1/1（38.4秒）与两代`13272/34096`、`18264/364`通过。最终带摘要断言的流程1/1（36.0秒），
-两代`3244/23680`、`14016/25676`均`gracefulDestroyVerified=true`，归档为
-`interceptor-diagnostics-summary-e2e-green`；摘要Red独立保留于`interceptor-diagnostics-summary-e2e-red`。
-
-真实Composer产生4条命令/action记录，指定trace返回2条；Recent保持当前Core代际的记录顺序，查询不自污染。
-Agent/MCP静默查询、Deny、原生Cancel、Ask/Auto真实Save、四个原子JSONL文件的过滤/脱敏、48项目录的独立撤权、
-重启Model/origin/文件操作零重放通过。导出结果只提供公开任务字段，页面明确显示running，不将started当作完成。
-
-旧Diagnostics、全局授权、MCP Browser/Desktop关联4/4（1.6分钟），八代分别为`28680/6380`、`42760/21408`、
-`13136/16336`、`42948/44204`、`43068/39472`、`39400/6800`、`24632/1240`、`43360/8372`；
-全部正常销毁、8888释放及完整WinINet/journal/进程树恢复，证据在`interceptor-diagnostics-related-e2e-green`。
-
-最终门禁：全workspace类型通过，Desktop592/592、Tools243/243、MCP32/32、Runtime122/122、Protocol25/25、
-Playground67/67及design interaction82/82；Core仅保留既有framing两项。完整parity286视图1,964目标，本组62/62
-最大0.5px，其他30 missing/304 flagged未冒充通过。最终标准Forge package、artifact audit
-（1,294 files / 392,896,554 bytes）、production audit0漏洞与packaged smoke1/1（41.8秒）通过。
-状态优先显示的摘要文字顺序由聚焦设计Red→Green及最终完整parity验证，不把任务启动改成同步导出完成。
-
 <a id="diagnostics-list-detail"></a>
 ## `diagnostics.list-detail`
 

@@ -4,7 +4,7 @@
 
 ## `breakpoints.body-preview`
 
-macOS最终大小File、完整Text与原生Save/Open均通过；2MiB预览不影响3MiB文件和Text发送。短File另覆盖展开前置Original后的高度重算，Windows原生窗口未验。普通文件用Content-Length请求；继承chunked的编辑framing仍属于第10项，不以本流程Green代替。
+2MiB预览不得影响3MiB文件和Text发送。短File另覆盖展开前置Original后的高度重算，Windows原生窗口待验。普通文件用Content-Length请求；继承chunked的编辑framing仍属于第10项，不以本流程通过代替。
 
 1. fresh profile启动真实Electron，保存宿主基线，通过UI开始Recording；使用现有HTTP origin产生完整且超过2 MiB的UTF-8正文，通过产品Save body导出本轮文件，不自行写入替换文件。
 2. 通过Rules UI创建request breakpoint并Apply，向测试origin发送含长正文请求；从实际Capture行打开断点，Original预览最多2 MiB并显示截断，禁止Format；正文限高且右下角可拖，滚轮/键盘可达预览末尾。
@@ -48,29 +48,6 @@ Red必须发生于三条Tool缺失或正式业务效果缺口，不能来自sele
 返回0是产品正式语义，不要求虚构stale错误。业务证据只保存目标身份、计数、内容哈希与协议结论；审批和Model
 结果不包含敏感URL/Header/正文。unit/integration与同一真实workflow分别按Red→Green闭环，不能用既有
 UI批量命令workflow替代本组Agent/MCP调用。
-
-2026-09-06：executor23项因三条Tool缺失Red，既有Core队列基线17/17；同一真实workflow在discovery缺失
-三项而Red，Main/Core `26832/37224`正常销毁。接入后23/23 Green；摘要unit随后从`value`精确Red，
-真实页面也在`data-summary-kind=value`取得Red，再实现本地化状态/数量摘要后28/28 Green。
-Red产物分别在TEMP下`interceptor-breakpoint-batch-e2e-red`、`interceptor-breakpoint-batch-summary-e2e-red`。
-
-最终本workflow1/1（35.3秒），Main/Core两代`42592/42636`、`25756/42356`均正常销毁；通过真实UI创建的
-两条Rule、多条HTTP请求与两条WebSocket连接验证Rule/queue隔离、原始body保留、未发送草稿不被使用、
-Deny/Allow/Auto、空目标返回0、Ask/Auto摘要、Agent/MCP独立撤权及重启零重放。origin最终6次请求、
-WebSocket4条已转发文本；归档只有计数、哈希和布尔结论，文件为`breakpoint-batch.json`。
-
-关联旧Agent断点流程1/1（43.4秒），两代`15836/27864`、`11372/12132`；全局授权、原UI queue命令、
-MCP Browser/Desktop四条4/4（1.6分钟），七代`9880/41232`、`27880/35316`、`23808/33460`、
-`16740/41760`、`3732/37300`、`14992/28452`、`27684/39564`。六条流程共11个代际均
-`gracefulDestroyVerified=true`，8888释放、完整WinINet/journal/进程树恢复；归档分别为
-`interceptor-breakpoint-batch-final-e2e-green`、`interceptor-breakpoint-batch-existing-agent-green`与
-`interceptor-breakpoint-batch-remaining-e2e-green`。
-
-中间测试前提修正不计为产品Red：先进入Capture再Recording；公开PendingBreakpoint是扁平DTO；WebSocket
-方向内串行所以两条连接各产生一个pending；已选Capture行不能重复点击关闭详情。原始失败证据均独立保留。
-旧Agent关联首轮将11项撤权塞进同一Turn导致失败，并在失败清理中遇到敏感可见内容审计；Main/Core
-`40148/16460`正常销毁不代表整条验收通过，证据在`interceptor-breakpoint-batch-related-first-run`。
-改为discovery与每项撤权独立Turn后同一流程Green，未提升产品步数上限、未删除任何撤权断言。
 
 <a id="breakpoints-toggle"></a>
 ## `breakpoints.toggle`
@@ -138,18 +115,16 @@ MCP Browser/Desktop四条4/4（1.6分钟），七代`9880/41232`、`27880/35316`
 
 HTTP pending按最新snapshot推进；中间abort不删除Capture行。只有用户仍查看已解决队首时自动推进，查看普通流量时不抢焦点。
 
-### TDD证据要求
+### 验收要求
 
-- 产品实现前，同一workflow必须因`queueKey`/队列位置/Queued Detail/推进语义缺失而Red；selector、fixture、授权、构建或环境失败不算Red。
-- 产品实现后，A/B/C、B/C abort、最新snapshot推进、普通行不抢焦点与完整销毁必须在同一workflow Green。
+- 必须检查`queueKey`、队列位置、Queued Detail和推进语义；selector、fixture、授权、构建或环境失败不算产品故障。
+- A/B/C、B/C abort、最新snapshot推进、普通行不抢焦点与完整销毁必须由同一workflow验证。
 
 <a id="breakpoints-queue-isolation"></a>
 ## `breakpoints.queue-isolation`
 
 **状态**：passed
 **策略**：privileged UI
-
-2026-09-15复验1/1（18.0s）：Original容器与内部正文均97.3333px，原HTTP/WS队列、草稿、Continue和真实数据面通过。Main/Core `47500/33884`正常退出，trace与宿主guard齐全；证据TEMP `interceptor-ui-acceptance-20260915-websocket-queue-green`。首轮新增断言误将CSS默认min-height的auto写成0px，实际额外高度已为0；该测试失败与`26036/46656`正常退出记录保留，不计产品Red。
 
 ### Steps
 
@@ -167,10 +142,10 @@ HTTP pending按最新snapshot推进；中间abort不删除Capture行。只有用
 HTTP与WebSocket逻辑队列互不阻塞；同一WebSocket连接的双向帧按Capture sequence稳定排序，方向筛选同时
 作用于历史与pending。草稿互不覆盖，批量Continue不应用草稿，调用开始后产生的未来项不被吸收。
 
-### TDD证据要求
+### 验收要求
 
-- 产品实现前，同一workflow必须因多`queueKey`或非队首语义缺失而Red。
-- 产品实现后，HTTP/WS隔离、同连接顺序、Queued、独立草稿、调用开始快照、真实socket结果与完整销毁必须Green。
+- 同时检查多`queueKey`及非队首语义。
+- HTTP/WS隔离、同连接顺序、Queued、独立草稿、调用开始快照、真实socket结果与完整销毁均须通过。
 
 <a id="breakpoints-queue-commands"></a>
 ## `breakpoints.queue-commands`
@@ -191,11 +166,10 @@ HTTP与WebSocket逻辑队列互不阻塞；同一WebSocket连接的双向帧按C
 
 `Continue all`、`Drop all`和`Continue all from this rule`分别走独立意图链路。Rule与Queue作用域不串线，批量Continue不应用草稿，Core返回实际`resolvedCount`。
 
-### TDD证据要求
+### 验收要求
 
-- 产品实现前，同一workflow必须因三条公开批量命令入口缺失而Red。
-- 产品实现后，queue/rule作用域、草稿忽略、队列推进、客户端/origin结果和完整销毁必须Green；调用开始快照、stale目标与`resolvedCount`由Queue/CoreApplication单测锁定。
-- 2026-09-13 Manager还原：布局变化前先执行同组队列/摘要/Button行为基线，再以该流程记录自然行高与7px图文gap的真实Red；修改后复跑同组与本流程。保留原三项批量操作和退出恢复断言，不以布局通过替代业务验证。
+- 三条公开批量命令入口均须实际操作。
+- queue/rule作用域、草稿忽略、队列推进、客户端/origin结果和完整销毁均须通过；调用开始快照、stale目标与`resolvedCount`由Queue/CoreApplication单测锁定。
 
 ### Automation Contract
 
@@ -234,33 +208,10 @@ HTTP与WebSocket均没有产品timeout。pending无隐藏数量上限，只由�
 异常断开或Core生命周期关闭释放；异常断开只清理所属逻辑队列，`closeAll()`统一结算全部pending为
 `aborted`并清空Renderer临时状态。
 
-### TDD证据要求
+### 验收要求
 
-- 删除timeout实现前，同一workflow必须因旧Timeout控件仍存在而Red。
-- 删除后，无自动释放、WebSocket异常断开精确清理、`aborted`结果、Core关闭与完整销毁必须Green；无控件与协议字段由unit/typecheck/design验证。
-
-### 逻辑队列阶段TDD证据
-
-- Retrospective Red：最终四条workflow源码在`d854588`旧产品运行；`queue-stepping`与`queue-commands`
-	已经通过真实Rules UI形成paused请求但Capture行无`data-queue-*`，`queue-isolation`的HTTP已pending但无
-	`queueKey`，`lifecycle-release`在真实WebSocket setup仍找到1个timeout控件。Main/Core PID依次为
-	`34028/1940`、`32556/29092`、`31380/12648`、`14964/31472`，四组
-	`gracefulDestroyVerified=true`。
-- Green：当前`queue-stepping`、`queue-commands`、`queue-isolation`、`lifecycle-release`合并`4/4`
-	通过（26.9秒），Main/Core PID依次为`24768/21248`、`30096/30308`、`18196/12256`、
-	`36720/2084`；四组`gracefulDestroyVerified=true`，8888释放且系统代理恢复。
-- 无上限补充Green：`queue-stepping`通过真实Rules UI创建规则并依次发送11条真实HTTP请求；11条均带
-	`queueKey=http`与位置1至11，badge为11且origin零到达。随后真实客户端abort释放这些项，原有
-	中间abort、最新snapshot推进与不抢焦点流程继续Green。
-- 提交后复审Red：`queue-isolation`在pending应用帧后收到一条未挂起反向历史帧，DOM顺序断言为false，
-	证明pending被错误追加到列表末尾；`lifecycle-release`异常destroy WebSocket客户端后15秒仍保留1条
-	pending。对应Core unit / integration同时Red于timeline函数缺失、`abortQueue`缺失、非法action被结算为
-	`dropped`、capture reset越过阻塞frame写入和暂停Recording waiter未settle。
-- 提交后复审Green：同一`queue-isolation`锁定pending在原sequence替代历史行，Sent / Received同时筛选
-	history与pending；同一`lifecycle-release`锁定1006只清所属WebSocket队列，再由Core关闭清理第二条
-	连接与HTTP。逻辑队列四条workflow合并`4/4`、graceful close编辑`1/1`通过，均保留完整销毁证据。
-- 视觉证据独立于业务E2E：HTTP queue head/Queued/menu、WebSocket setup/head/Queued、Rules action明暗
-	14 views均`0 missing / 0 flagged`，最大0.8px；业务workflow不包含像素或几何断言。
+- 产品不显示Timeout控件，也不按超时自动释放pending。
+- WebSocket异常断开精确清理、`aborted`结果、Core关闭与完整销毁均须通过；控件和协议字段同时由unit/typecheck/design验证。
 
 <a id="breakpoints-continue-unmodified"></a>
 ## `breakpoints.continue-unmodified`
@@ -316,17 +267,12 @@ Breakpoint 快照先包含所有普通 Rule 的最终改写，用户草稿不会
 body-only按继承headers构造新body；header+body按用户最终headers构造新body。三段都经过真实UI/Main/Core/
 Mockttp/origin，Core state=edited，Capture反映实际转发结果。
 
-### TDD证据要求
+### 验收要求
 
-- 修复前提交运行同一workflow：暂停快照缺少priority更晚的rewrite header/marker；Forward edited后Capture缺少绑定breakpoint rule的effect。
-- 当前提交运行同一workflow：最终state、暂停marker、origin wire与Capture effect全部Green，并具备代理恢复、进程销毁和8888释放证据。selector、UAC、构建或fixture失败不算Red。
+- 暂停快照包含priority更晚的rewrite header/marker；Forward edited后Capture保留绑定breakpoint rule的effect。
+- 最终state、暂停marker、origin wire与Capture effect均须通过，并确认代理恢复、进程销毁和8888释放。selector、UAC、构建或fixture失败不算产品故障。
 
-### TDD证据（final state / header effect）
-
-- Retrospective Red：最终workflow源码在`89d8dda`仅回植后续公开automation ID、Rules字段探针与driver helper后，暂停快照中`x-e2e-before-breakpoint`为`null`；Forward edited后`capture.rule-effect.<breakpointRuleId>.set.x-edit-stage`不存在。
-- Green：当前同一workflow`1/1`通过，暂停快照包含`rule-value`与`data-effect=set`，Capture显示绑定breakpoint ruleId的`set x-edit-stage` marker，三段真实origin断言同时通过；owning unit `28/28` Green。
-- 销毁：Red/Green Main/Core PID分别为`31404/3812`与`46424/29380`，两边`gracefulDestroyVerified=true`，8888释放且系统代理恢复。
-- 本节只验收final Rule state与header effect；本workflow整体仍因HTTP framing矩阵未Green保持`planned`。
+HTTP framing矩阵仍未通过，本workflow整体保持`planned`；final Rule state与header effect不能替代线上字节验收。
 
 ### Automation Contract
 
@@ -397,18 +343,10 @@ Drop真实中止目标数据面；请求不继续转发；pending badge、client
 
 closeCode与body是正交编辑；没有body replacement时仍必须转发用户编辑后的close code，同时保留原始reason bytes。
 
-### TDD证据要求
+### 验收要求
 
-- 修复前提交运行同一workflow：origin收到1000而非1001。
-- 当前提交运行同一workflow：origin收到1001，且完整销毁/恢复证据Green。fixture或selector失败不算Red。
-
-2026-09-07统一客户端重构前后，关闭码编辑、queue isolation和Playground Capture同组三条真实E2E均3/3。
-最终关闭码workflow Main/Core为`11808/44180`，trace齐全、`gracefulDestroyVerified=true`；证据在TEMP下
-`interceptor-websocket-client-green-20260907`。关闭码仍由用户在真实UI修改，不通过客户端改造绕过产品流程。
-
-2026-09-11消息断点入口样式修复：真实边框Red Main/Core `31368/37908`，最终1/1 Green（8.3s）`26524/29720`，两代正常销毁与host guard恢复；最终仍验证origin收到1001，并检查armed hover保持。相关unit26/26、Desktop类型和14场景42目标通过。首次150%缩放断言误报保留、不算产品Red，详见[消息断点入口](../../../../../architecture/features/breakpoints.md#43-websocket-帧断点)。
-
-2026-09-12 Replacement标题先取得38/36px真实Red（`30236/30268`）和xs组件Red，修复后unit32/32、Desktop类型及首轮真实1/1（20.3s，`24084/43976`）。扩充历史消息/滚轮/折叠断言后最终1/1（11.5s，`6428/19436`），38px行、126px列表、13px折叠控件、36px标题与Off保持均通过，origin仍收到1001。三代均`gracefulDestroyVerified=true`，完整宿主恢复；证据在TEMP `interceptor-ws-heading-20260912-e2e-{red,green,scroll}`及同名log。暂停期phase/列表/分隔的历史前置缺口不由标题Red代替。
+- origin必须收到用户编辑后的1001，而不是入站1000。
+- 完整销毁和系统恢复均须通过；fixture或selector失败不算产品故障。
 
 <a id="breakpoints-resize"></a>
 ## `breakpoints.resize`

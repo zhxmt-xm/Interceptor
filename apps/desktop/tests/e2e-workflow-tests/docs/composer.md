@@ -35,29 +35,7 @@ Red必须来自新Tool缺失或外部替换UI未同步，不能来自selector、
 	- UI保存通过IPC返回值确认快照，不因自己的变更通知重新加载正在编辑的内容。
 	- Tool保存完成后由同一Main方法通知Renderer；不在Tool分派中另写广播步骤。
 
-- 2026-09-07保存/导出方法整理：Collection同步相关测试前后15/15，两项树导出现有11/11、补充覆盖后19/19。
-	- `composer.tools.collection`基线1/1，`composer.tools.transfer`与Rules Export联合基线2/2；最终同一构建四条受影响真实流程4/4。
-	- 本workflow两代Main/Core为`21292/3120`、`41164/30620`；Collection Transfer为`39056/18028`、`3880/5804`，均`gracefulDestroyVerified=true`。
-	- trace/evidence位于TEMP下`interceptor-main-shared-actions-green-20260907-191814`；完整宿主恢复及打包验收见[Main方法整理验收](../../../../../architecture/features/tool-capabilities.md#shared-main-actions-acceptance)。
-
-2026-09-06证据：`8598b406`实现前代码上discovery缺少两项Collection Tool，先unit11项Red再真实Electron Red。
-随后编辑器快速输入/切换触发`Model is disposed!`，wrapper生命周期unit与同workflow分别Red，移除提前重复
-销毁隐式Model后Green；初次集合查询在Core业务初始化前失败，加入现有启动完成边界后载入/自动保存恢复。
-所有测试均等待公开保存状态，不用固定时间掩盖未保存或吞掉Renderer错误。
-
-最终七条关联真实workflow `7/7`：Collection本身、原集合树交互、原UI导入、原Composer网络Tool、Settings授权、
-MCP Browser和MCP Desktop。共12代Main/Core全部`gracefulDestroyVerified=true`，本workflow为
-`32292/40736`、`44792/3792`；持久化身份、正文、Auth/Header/Query凭据往返、Ask Deny/Allow/Auto、
-stale revision、已挂载UI同步、两列撤权、重启Model/origin增量0均通过。完整证据保留于TEMP下
-`interceptor-composer-collection-related-e2e-green`，Red见`interceptor-composer-collection-e2e-red`与
-`interceptor-composer-editor-e2e-red`。不得把旧Composer仅关闭两项的目录断言失败算成新产品Red。
-
-Collection executor20/20、同步/就绪11/11、编辑器生命周期1/1、摘要24/24；全workspace typecheck、
-Desktop538/538、Tools174/174后新增八项安全覆盖Green、MCP32/32、Runtime122/122、Protocol25/25、
-Playground67/67、design interaction74/74通过。Windows package、产物审计（1,294 files / 392,872,268 bytes）、
-production audit0漏洞、smoke1/1通过；新增事件`onCollectionChanged`是唯一增加的Preload允许项。
-最终完整parity为256 views / 1,776 targets / 1,746 matched / 30既有missing / 304既有flagged；本组六视图
-40/40无缺失和差异、最大0.5px。该视觉结果不替代上面的真实Agent/MCP与正常销毁证据。
+- 所有测试均等待公开保存状态，不用固定时间掩盖未保存或吞掉Renderer错误。
 
 <a id="composer-tools-transfer"></a>
 ## `composer.tools.transfer`
@@ -85,30 +63,6 @@ production audit0漏洞、smoke1/1通过；新增事件`onCollectionChanged`是�
 
 Red必须来自两项Tool尚未实现，不能使用原生Dialog定位失败作为产品Red。业务输入全部经同workflow产品UI
 产生；文件级非法输入与取消/保存竞态的内部边界由unit覆盖。所有结果与证据不包含路径、正文、Auth或Token。
-
-2026-09-06：在`7834e648`实现前代码上，executor 10项因缺失Tool Red，同一真实workflow在discovery中
-找不到两项而Red（expected true / received false），不是原生Dialog或selector失败。实现后executor10/10、
-Main导出与请求生命周期16/16、Renderer导入流程14/14、自动保存协调4/4、摘要28/28通过。
-
-最终八条关联真实workflow `8/8`（3.1分钟）：本workflow、Collection查询/替换、原UI导入、集合树操作、
-Composer网络Tool、全局授权、MCP Browser与MCP Desktop。14个Main/Core代际均
-`gracefulDestroyVerified=true`，8888释放、完整WinINet/journal与进程树恢复；本workflow两代为
-`40224/19272`、`24620/11012`。证据已归档于TEMP下`interceptor-composer-transfer-related-e2e-green`，
-Red在`interceptor-composer-transfer-e2e-red`，首轮与增强Green分别保留在
-`interceptor-composer-transfer-e2e-first-green`和`interceptor-composer-transfer-e2e-green`。
-
-原集合revision 1，三次实际导入后revision 4；四份树内容去除身份后完全相同，全部node及Header/Query/Form
-行ID唯一。JSON正文、Form、Query、Bearer Auth与敏感Header/URL逐值保留；原生Cancel、预览Cancel、
-Agent/MCP Ask/Auto、两列撤权、重启Model/文件操作零重放均通过，MCP Auto仍保留真实Open与确认。
-脱敏业务证据`composer-tools-transfer.json`只保留哈希、revision和布尔结论。目录断言同步为42项/84个开关，
-旧目录数量错误不计为产品Red。
-
-Windows package与artifact audit（1,294 files / 392,885,889 bytes）、production audit0漏洞、packaged smoke1/1
-（44.4秒）通过；安全快照仅增加四个正式集合导入Preload API。设计交互76/76，新增12视图72目标及原有
-导入/导出弹窗六视图20目标共92/92，0 missing/flagged、最大0.5px；这些结果不替代真实Electron销毁证据。
-最终完整parity为268 views / 1,848 targets / 1,814 matched / 34 missing / 305 flagged、平均2.27%，
-本次92个目标仍全匹配；缺失与flagged仅在既有视图，旧TLS passthrough与DeepSeek深色Dialog的波动单独保留。
-完整报告与Renderer产物位于TEMP下`interceptor-composer-transfer-full-parity`及同名`.md`，没有把旧债务算作通过。
 
 <a id="composer-request-edit"></a>
 ## `composer.request-edit`
@@ -150,20 +104,11 @@ Composer的method、URL、protocol、headers、query、body和auth均从默认�
 6. 拖动`composer.collection-splitter`，确认Collection宽度线性变化且当前request/目录树保持可用。
 7. 核对首层嵌套目录缩进30px、再下一层增加26px；方法标签在40x16px框内以flex双轴center居中文字，标签框与标题中心对齐，文字上下/左右留白差均不超过一个设备像素。附加目录ID、缩进、菜单disabled、remount persistence、selection、URL、splitter与标签文字几何；正常Close并验证Main/Core/Renderer退出、8888释放和profile删除。
 
-### TDD证据要求
+### 验收要求
 
 - 新增或修复交互行为时先取得同一workflow的有效Red；行为与数据格式不变且现有覆盖足够时，确认基线Green后再修改并复跑，不回滚或制造历史Red。
 - 有效Red必须来自selection、rename、三级约束、menu或splitter业务缺口；selector、构建、listener或fixture失败不算Red。
 - Green必须覆盖同一组UI操作、evidence与完整销毁。
-
-### TDD证据
-
-- Red：rename提交后立即切到Rules再返回Composer，越过两倍600ms保存窗口后Core回载得到`count=0 / name=null / url=null`，证明feature卸载取消了节流保存并让旧快照清空整棵树。
-- Green：将`useCollection`同步owner提升到常驻App；同一workflow `1/1`，remount恢复同一request ID、rename与URL；三级目录x坐标`92 / 118 / 144`，第三级New subfolder disabled，目录选择/空白取消不关闭文档，splitter `320→399.5px`。
-- 销毁：Main/Core退出、8888释放，`gracefulDestroyVerified=true`。
-- 2026-09-11请求行字号还原：行为与数据格式不变，同一workflow前后1/1（11.5s/17.2s），Main/Core 35828/27528、28932/36364正常销毁并通过宿主guard。unit前后12/12，字号差由现有parity先定位再验证，明暗18/18；本workflow与业务断言没有改写。证据见[Collection请求行parity](../../../../../architecture/features/composer.md#collection请求行parity)。
-- 2026-09-11目录缩进还原：首层30px断言在原产品上得到26px的有效Red，修复后同一workflow 1/1（17.8s）；后续层26px、原选择/rename/持久化/splitter断言保持。Main/Core Red25204/33300、Green13080/42900均正常销毁并通过宿主guard；[完整证据](../../../../../architecture/features/composer.md#collection目录选中与缩进)。方法标签内部对齐未由本workflow验证，另行保留差异。
-- 2026-09-11最终方法标签flex：旧继承行高11.07px取得真实Red（29008/20324正常销毁）后，最终断言改为用户要求的双轴flex、40x16px框、框与名称中心、文字四侧留白。与Capture同一构建联合2/2（31.3s）；本workflow Main/Core19136/14604正常销毁并恢复宿主，DPR1.5实测上下2/2px、左右11.4896/11.5px，两个外框中心差0px。此项补足上一阶段未覆盖的标签内部对齐，原树交互断言保持；[最终证据](../../../../../architecture/features/composer.md#方法标签样式差异)。
 
 ### 预期效果
 
@@ -207,11 +152,6 @@ Composer通过真实Core直接出站；sending和终态准确；四个response�
 4. 依次折叠两段，再重新展开Response Headers；确认同一`aria-controls`正文恢复，每次只切换目标正文的`hidden`与对应按钮的`aria-expanded`，另一段状态保持不变。
 5. 保存截图、trace、日志与metadata；正常Close并验证Main/Core/Renderer退出、8888释放和profile删除。
 
-### TDD证据
-
-- Red：静态标题可定位，但没有`aria-expanded`，点击也不具备折叠契约。
-- Green：独立折叠与ARIA关系全部通过，workflow `1/1`并保留销毁证据。
-
 ### 预期效果
 
 Response Headers、Request Headers、Cookies、Timing与Connection沿用同一可折叠section语义；折叠不销毁正文内部状态，也不依赖当前语言文本定位。
@@ -232,17 +172,11 @@ Response Headers、Request Headers、Cookies、Timing与Connection沿用同一�
 6. 不再点击Format，切回此前CSS request；Copy必须仍返回该response的4行格式化视图，证明格式化副本按文档隔离且未改写原始body。
 7. 附加四段正文摘要、CSS恢复摘要与Renderer错误增量；正常Close并验证Main/Core/Renderer退出、8888释放和profile删除。
 
-### TDD证据要求
+### 验收要求
 
-- Unit Red必须证明formatter异常当前会向调用方抛出，而不是恢复原文。
-- Electron Red必须来自真实正文格式化缺口或未处理Renderer error；selector、fixture、构建或listener失败不算Red。
-- Green需同时覆盖HTML/JavaScript自动格式化、CSS手动格式化、跨文档恢复、XML失败回退以及完整销毁证据。
-
-### TDD证据
-
-- Unit Red：Monaco formatter与malformed XML分别向调用方抛出，聚焦测试`2 failed / 3 passed`；实现后formatter聚焦`6/6`、BodyViewer/formatter合计`17/17`。
-- Electron Red：真实小HTML响应在15秒后仍为单行；补language后流程继续暴露trimmed editor contribution每次创建CodeViewer产生5个`UNKNOWN service` page errors。
-- Electron Green：HTML从1行自动格式化为5行；JavaScript补齐函数、赋值与对象空格；2,097,169 B CSS点击Format后从1行变4行，切到其他request再返回仍为同一4行视图；7字节malformed XML逐字节保留；Renderer pageerror增量为0，workflow`1/1`且销毁证据完整。
+- unit必须验证formatter异常返回原文，不向调用方泄漏异常。
+- 真实Electron不得出现格式化内容错误或未处理Renderer error；selector、fixture、构建或listener失败不算产品故障。
+- 同时覆盖HTML/JavaScript自动格式化、CSS手动格式化、跨文档恢复、XML失败回退以及完整销毁。
 
 ### 预期效果
 
@@ -340,14 +274,8 @@ Composer splitter遵守两侧最小宽度；请求/响应控件在极限宽度�
 
 Collection导入与Rules同构：纯新增、节点与字段行`id`全部重新生成、保持文件内层级并追加到根末尾，不覆盖或合并任何本地节点。请求内容逐字段还原，其中`ComposerFieldRow.enabled`作为请求内容原样保留。确认Dialog在写入之前报告计数，取消后集合零变化，确认后经`collection.replace`原子持久化；导入不改变当前打开文档与新建落点。文件读写与确认写入期间均有不可关闭遮罩。因为请求只在用户点Send时执行，导入不产生任何自动网络行为。
 
-### TDD证据要求
+### 验收要求
 
-- 实现前提交运行同一workflow，必须精确失败于`composer.collection.import`入口不存在。
-- 当前提交全部Green，涵盖取消零变化、id不复用、层级保持、字段还原、打开文档不受影响与Core回载，并完成trace/evidence与销毁验证。
+- 必须通过`composer.collection.import`真实入口执行。
+- 覆盖取消零变化、id不复用、层级保持、字段还原、打开文档不受影响与Core回载，并完成trace/evidence与销毁验证。
 - 导入输入文件必须由本workflow的真实Export产生；出现测试自建输入文件即视为该条Green无效。
-
-### TDD证据
-
-- Retrospective Red：最终workflow源码在`884dcc4`精确失败于`composer.collection.import`不存在，非selector、构建、listener或fixture失败。
-- Green：当前`1/1`通过。真实Save Dialog导出两条带query/header的request与一层目录，真实Open Dialog覆盖取消和确认；新增节点与全部字段行id不复用，method/url/query/header、层级、当前打开文档与目录落点保持，remount后由Core恢复。
-- 销毁：Main PID `38140`、Core PID `23300`均退出，`gracefulDestroyVerified=true`，8888释放，系统代理恢复原值。

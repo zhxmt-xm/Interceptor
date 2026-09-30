@@ -20,8 +20,6 @@
 4. 使用另一个fresh profile重启，用户正常确认同一CA授信；正式Settings显示同一指纹和可Uninstall，MITM仍关闭。只授权一次，不重放先前拒绝的Quit。
 5. 经产品Uninstall/Delete清理专项生成的CA，保存两代trace、取消与复用证据，正常Close；全部进程退出、8888、完整代理和Root/admin trust恢复。测试端的延后ready仅控制driver等待时机，不给产品增加参数或后门。
 
-2026-09-24当前行为验收：签名包首次生成/授权/两代复用1/1在`/tmp/interceptor-item3-20260924-first-ca-startup.json`；本取消专项最终1/1在`/tmp/interceptor-item3-20260924-startup-cancel-final.json`。`startup-cancel-host.json`确认首代Main55783未启动Core，次代Main55936/Core56024使用同一CA正常启动，全部正常退出、Root集合恢复、材料清理、8888释放，两个trace保留。前两次失败是窗口索引与原生错误提示未关闭，恢复记录分别为`startup-cancel-recovery.json`、`startup-cancel-fixed-recovery.json`（同前缀），不算产品Red。新增用例验证既有行为，不能补造原启动实现之前缺失的真实E2E证据。
-
 helper部署前只读检查失败时，启动保留原错误，不产生授权、CA或Core写入，也不保留修改占用阻止Quit。`system-proxy.read-effective`收到完整回复但value格式错误时，typed client须标明completed及只读operation，不误记为未知写入。非法原生回复与不可用组件的组合由所属module测试覆盖；真实E2E不篡改安装资源制造输入。已发送写入后的超时/断线仍必须保守保护，普通status成功不能证明该写入结束。
 
 第4项失联写入验收：传输/原生集成负责丢失终态回复、原ID/操作匹配、缺记录、记录淘汰/重启和查询失败，确认期间仍有原操作占用，失败命令绝不重放；只有精确匹配的结束记录才进入原业务回读/回滚。已确认import失败只撤回安装前不存在的精确公开CA，未确认或已有CA保持。真实UI流程继续覆盖Install/Uninstall/Delete、取消、跨入口状态通知、Quit及宿主恢复，不用fake Preload或篡改安装资源制造故障，也不将正常UI Green冒充断线分支已在E2E触发。
@@ -30,9 +28,9 @@ helper部署前只读检查失败时，启动保留原错误，不产生授权�
 
 证书生命周期、取消及证书/TLS Tools专项使用`certificateLifecycleTest`：启动前只读确认共享目录没有三份材料，保留系统Root基线；经产品清理本轮启动自动生成的CA后再执行原有手工操作断言。已有共享材料时必须在启动App前拒绝，不能删除开发者CA以凑测试前提。普通协议、导航、Reveal和packaged smoke复用已初始化CA，入口先检查就绪；这是测试范围，不是产品隐藏参数。证书Tools保留未信任CA重启时，新契约要求启动补授信但不重放Agent请求。
 
-## `settings.certificates.helper-trust`（macOS，删除自动分支待复验）
+## `settings.certificates.helper-trust`（macOS）
 
-2026-09-21目标：删除自动修改授权规则和后台trust/untrust；直接由普通用户前台helper调用Security API，请用户在系统窗口确认。保存Main实际路径日志，操作前后读取`com.apple.trust-settings.admin`并比较包含`created/modified`的完整规则；不能出现自动尝试或回退日志。不增加产品测试参数，Windows原流程不变。旧Green不覆盖此次删除后的产物。
+普通用户前台helper调用Security API，请用户在系统窗口确认；不自动修改授权规则或执行后台trust/untrust。保存Main实际路径日志，操作前后读取`com.apple.trust-settings.admin`并比较包含`created/modified`的完整规则；不能出现自动尝试或回退日志。不增加产品测试参数，Windows原流程不变。
 
 1. 创建独立profile、trace及系统Root/admin trust基线，启动真实Electron并确认helper/listener就绪，记录helper PID及公开能力；既有CA不作为输入或清理目标。
 2. 经Settings Certificates真实Generate创建本轮CA，读取公开指纹并确认基线不存在；点击Install，要求系统信任由已部署helper的前台入口完成。若macOS要求确认，验证Main子进程为固定helper的`certificate.trust`，用户在系统窗口亲自确认；成功后产品显示可Uninstall，不修改Preload/Main、原生返回值或授权策略。
@@ -42,34 +40,20 @@ helper部署前只读检查失败时，启动保留原错误，不产生授权�
 
 本轮目标是macOS权限写入和确认归helper，不承诺绕过系统要求的用户认证，不改变Windows原流程；缺前置Red、最终Green或系统恢复证据不得标passed。API拒绝时的已有CA保护及撤销失败不删除由产品unit/native integration覆盖；不得为制造取消场景添加产品测试后门。
 
-2026-09-24续验：用户明确批准通过产品删除原日常CA后，当前签名包的cancel-trust与helper-trust两条2/2通过，记录在`/tmp/interceptor-item4-20260924-certificate-lifecycle.json`及同名trace目录。Main56784/Core56864、Main57319/Core57407均正常退出，两个不同测试CA经产品生成/信任/撤销/删除，常驻helper保持，其他System Root/admin trust恢复、材料与journal清理、8888释放；独立复核为`/tmp/interceptor-items2-7-20260924-pause.json`。此结果不覆盖真正未知写入的可靠解除，也不覆盖Windows实机。
-
-历史前台方案：开发成功/取消各1/1；同一生产产物成功授信/撤销及取消2/2，Main/Core、前台helper、8888、代理与证书恢复已验。证据为`/tmp/interceptor-macos-helper-trust-20260920-production/`及同前缀`-results.json`。后续自动方案已放弃，该旧Green不代表本轮新产物通过；产物范围见[Handover](../../../../../architecture/HANDOVER.md#verification)。
-
-## `settings.certificates.cancel-trust`（macOS，直接前台授权待复验）
+## `settings.certificates.cancel-trust`（macOS）
 
 当前前置/最终验证：Install直接请求前台helper；真实取消归属本轮的系统窗口，产品先清除本轮CA，再断言恰有一次直接授权日志、没有自动尝试/回退日志，完整授权规则和Root/admin trust均保持基线。窗口或环境失败不计产品Red。
-
-2026-09-21前置Red：`/tmp/interceptor-remove-automatic-trust-20260921-e2e-red/`在真实取消、CA清理和完整规则不变之后，精确失败于直接授权日志为0；旧自动回退日志存在。Main54482/Core54495正常退出，宿主guard通过。新产物已构建/audit，组件更新需用户系统确认，暂不在场；最终取消与成功workflow未运行，不复用历史Green。
-
-2026-09-20前置Red：`/tmp/interceptor-macos-automatic-trust-20260920-e2e-red/`在原生取消、CA清理及规则恢复后，精确失败于自动回退日志为0而非1；Main64346/Core64357正常退出。新版组件尚未核准，production smoke在Renderer前等待超时，最终Green待用户在场；不复用下方旧前台路径结果。
 
 1. 创建独立profile、trace和系统Root/admin trust基线，启动真实Electron并确认常驻helper/listener就绪；通过Settings Generate创建本轮CA并记录公开指纹。
 2. 点击Install，macOS fixture只认本轮Main的固定helper子进程及`certificate.trust`参数，核验Main/helper/SecurityAgent的进程代际和唯一授权窗口；不再以Main的`security`子进程冒充helper。
 3. 对该窗口真实发送Escape，不读取或输入密码；等待产品Install恢复可操作，MITM仍关闭，新增CA由产品撤回，系统Root集合精确等于基线。
 4. 经产品Delete删除本轮本地材料，保存前台helper身份、公开指纹、集合哈希和取消结果；正常Close，由宿主guard确认Main/Core/Worker、8888、完整代理和admin trust恢复。
 
-系统没有实际显示可归属的确认窗口时不能伪造取消结果，也不修改授权缓存或系统策略强迫出现窗口。以下保留各阶段历史结果，不替代此次直接授权路径的最终验证。
-
-以下为旧`settings.certificates.cancel-trust`流程的历史证据，不代表新的helper trust流程通过：
-
-2026-09-18产品unit6 Red后18/18；真实前置`/tmp/interceptor-macos-trust-cancel-20260918-e2e-red/`6.5秒失败于本轮新CA残留，取消和正常Close均真实执行，Red后的单独恢复不算Green。最终`/tmp/interceptor-macos-trust-cancel-20260918-e2e-green/`1/1（5.8秒），公开证书集前后SHA-256一致、本轮CA不存在，Main10805/Core10812的gracefulDestroyVerified=true，代理/admin trust与8888恢复。
-
-2026-09-19同步`8d153821`并排除暂停的弹窗动画后，`/tmp/interceptor-stage-sync-20260919-certificate-cancel/`相同流程1/1通过（6.7秒），产品撤回新增CA、正常退出和完整代理/admin trust恢复。当前package/artifact audit及`/tmp/interceptor-stage-sync-20260919-production-smoke/`1/1（2.5分钟）通过；相关产品回归227 passed、2 Windows native skipped及Desktop类型通过。只登记取消路径passed，成功授信、root卸载/rollback和Windows原生验收不由此替代。
+系统没有实际显示可归属的确认窗口时不能伪造取消结果，也不修改授权缓存或系统策略强迫出现窗口。
 
 macOS系统代理crash-recovery：App A接管并持久化用户级完整快照，测试精确终止A及子进程，全新profile启动App B，确认同一journal的首次original/owned不变，再正常Close恢复。macOS路径为`~/Library/Application Support/Interceptor Platform/system-proxy/journal.json`，独立于默认profile；crash前先确认实际journal不属于profile。Windows使用两个不同profile和用户级共享journal。两平台均保留真实进程/8888/完整代理恢复证据，helper常驻进程不是App子进程，不随App crash重新授权。
 
-## `settings.helper-startup`（macOS，双入口复用已验证）
+## `settings.helper-startup`（macOS）
 
 1. 保存launchd、代理、CA信任和组件原状态，创建独立profile；业务E2E由driver启动未打包的真实Electron和本项目production bundle，经Renderer CDP操作，与Forge共用开发授权。显式选择签名产物时仍走生产鉴权，Windows driver保持原路径，不使用产品测试参数或fake API。
 2. 首次启动由Main检查并部署本次构建的helper，用户仅在系统授权窗口亲自批准；App位置/所有权不变，不打开`.pkg`或系统Installer。开发配置为root保护的`development.json`（`protocolVersion / socketPath / clientUserId`）；出现真实App root前组件必须就绪，否则前置检查失败。
@@ -79,8 +63,6 @@ macOS系统代理crash-recovery：App A接管并持久化用户级完整快照�
 6. 另运行相同workflow的下一轮独立profile并比较helper PID、inode和开发配置哈希，确认开发/App重启与业务E2E复用同一组件；核验生产授权配置未被开发安装覆盖。签名产物的完整资源、运行时拒绝及packaged smoke独立通过，不能用开发宽松入口冒充生产安全验收。
 
 缺Main接入前置Red、最终Green或退出恢复证据不登记passed。签名App构建失败、原生授权不可用或driver连接失败不算产品Red，不通过伪造客户端、Store注入或直接业务API代替UI。
-
-2026-09-18开发入口前置日志：`/tmp/interceptor-development-helper-startup-20260918-red/`真实Main因生产包路径限制返回`invalid-request`，宿主代理未接管、8888释放。开发首次授权另遇authd拒绝Desktop代码路径，保留`/tmp/interceptor-dual-entry-development-e2e-20260918/`的失败，不计为用户取消；授权暂存修复后`/tmp/interceptor-dual-entry-development-e2e-20260918-staged/`两轮四代2/2通过，Main/Core全部gracefulDestroyVerified=true，helper PID7865与配置哈希跨workflow不变。此结果覆盖开发与业务E2E复用，不代替root卸载或生产安全；后者由同轮严格签名/资源原生检查、packaged smoke和实装双socket拒绝证据覆盖，见[Handover](../../../../../architecture/HANDOVER.md)。
 
 <a id="settings-tools-language"></a>
 ## `settings.tools.language`
@@ -101,9 +83,6 @@ macOS系统代理crash-recovery：App A接管并持久化用户级完整快照�
 
 - 本流程专门验证语言设置，不把切换语言当作其他业务workflow的定位手段；所有selector使用公共automation ID。
 - 15个合法ID、非法值、取消与Renderer退出由所属产品测试覆盖；不得通过localStorage/Store注入设置。
-- 前置Red在`5e4fbc31`构建上discovery缺失，证据`interceptor-settings-preferences-e2e-red-20260907-203104`，Main/Core `6352/27056`正常退出。
-- 最终Green与偏好流程联合2/2，证据`interceptor-preferences-persistence-green-20260907-211527`；本流程Main/Core `38236/34080`、`42568/18792`全部`gracefulDestroyVerified=true`，8888与完整WinINet/journal恢复。
-- 原UI/Agent/MCP改变语言、撤权、重启与恢复初始语言通过；类型、unit、parity和产物证据见[偏好验收](../../../../../architecture/features/settings.md#ui-preferences-acceptance)。
 
 <a id="settings-tools-preferences"></a>
 ## `settings.tools.preferences`
@@ -125,14 +104,11 @@ macOS系统代理crash-recovery：App A接管并持久化用户级完整快照�
 
 - Theme只允许四个既有ID；三个Privacy字段独立，Tool要求全量显式boolean。不修改Capture数据、证书或系统代理配置。
 - 新Main请求/Renderer应用的取消、失败和退出覆盖属于产品测试，不为workflow/helper新增测试的测试。
-- 前置Red在`5e4fbc31`构建上discovery缺失，证据`interceptor-settings-preferences-e2e-red-20260907-203104`，Main/Core `37204/20232`正常退出。
-- 最终Green与语言流程联合2/2，证据`interceptor-preferences-persistence-green-20260907-211527`；本流程Main/Core `20840/34860`、`25464/28872`全部`gracefulDestroyVerified=true`，8888与完整WinINet/journal恢复。
-- 连续Privacy字段、已开HAR遮罩草稿/下次默认值、原UI与Agent/MCP、撤权及重启持久化通过；详细证据见[偏好验收](../../../../../architecture/features/settings.md#ui-preferences-acceptance)。
 
 <a id="settings-tools-readonly"></a>
 ## `settings.tools.readonly`
 
-**状态**：passed；unit / integration 与真实 Electron Red/Green 已验证
+**状态**：passed
 **策略**：shared；Windows/macOS；host-safety-guard；两代真实 Electron
 
 ### Steps
@@ -167,29 +143,22 @@ Settings 的六项只读能力在 Agent 与 MCP 共享名称、schema、owner �
 
 平台只读证据由fixture分派：Windows保留原AppContainer helper的list命令与SID/exemption断言；macOS必须返回`supported=false`及空containers，不调用Windows原生能力或伪造成功。代理查询通过driver使用当前平台helper。六项Tool调用、UI配置、撤权与重启步骤共用，不以平台差异改变业务输入。
 
-### 证据
+### 验收要求
 
 - unit Red 必须精确体现六项 registry/executor/adapter 缺失；E2E Red 必须在真实产品启动且 lab
   正常后失败于 Settings discovery/调用缺口，构建、selector 或宿主清理错误不能冒充 Red。
 - Green 记录六项 Agent 与 MCP 实际调用、只读前后比较、双列撤权、重启零重放和脱敏审计结论。
 - 两代 metadata、trace 与宿主 guard 均须验证完整销毁；没有该证据不得把 Inventory 标为 passed。
-- 2026-09-05：实现前真实 Model 共8次请求后，discovery精确返回空数组而非六项；初代Main/Core
-	`14724/24236`正常销毁。摘要新增测试先Red于`value`，再由结构化摘要Green。
-- 最终同一workflow`1/1`（25.2秒）：Agent/MCP各执行6项；6项Agent旧披露返回`unknown_tool`，
-	6项MCP旧选择返回协议`-32602`，目录随后移除；系统代理/exemption逐项不变，TLS配置及双列撤权
-	跨重启保持，Model请求增量0，测试TLS配置经UI删除。
-- 最终两代Main/Core为`12888/21524`、`41644/22360`，均`gracefulDestroyVerified=true`、8888释放，
-	guard验证完整WinINet/journal恢复。证据已在运行package/smoke前独立归档。
 
 <a id="settings-tools-system-proxy"></a>
 ## `settings.tools.system-proxy`
 
 并发契约：同一真实App经UI创建Auto MCP Client后，同时调用两次`settings_enable_system_proxy`；只能一项成功，另一项立即返回`operation_in_progress`及`system-proxy.enable`并显示现有message提示。两项结束后original/owned保持，新显式重试可执行，之前拒绝的请求不得重放。用例名称`rejects overlapping Enable`；两端共用步骤，trace在读取产品MCP配置时暂停，退出仍由正常Quit和完整宿主guard验证。Core故障恢复是当前操作的必要收尾，不是排队保存用户请求。
 
-**状态**：passed；unit / integration 与真实 Electron Red/Green、销毁证据已验证
+**状态**：passed
 **策略**：os-side-effect；Windows；host-safety-guard；两代真实 Electron
 
-macOS续验复用以下相同步骤：系统配置读取使用被测入口配套的SystemConfiguration helper，默认未打包bundle读取Desktop `dist`，显式签名App使用其Resources；journal读取用户级`Interceptor Platform/system-proxy/journal.json`，Windows helper命令和LOCALAPPDATA路径不变。所有比较覆盖完整结构且只输出布尔结果/哈希；macOS仍需独立Green和恢复证据，不能沿用下方Windows记录。
+macOS复用以下相同步骤：系统配置读取使用被测入口配套的SystemConfiguration helper，默认未打包bundle读取Desktop `dist`，显式签名App使用其Resources；journal读取用户级`Interceptor Platform/system-proxy/journal.json`，Windows helper命令和LOCALAPPDATA路径不变。所有比较覆盖完整结构且只输出布尔结果/哈希；各平台分别验证恢复，不能互相代替。
 
 ### Steps
 
@@ -218,19 +187,13 @@ Green必须包含审批裁决、两项真实执行、重复Restore、撤权零�
 
 调用取消边界：Agent/MCP请求进入Main业务前可拒绝；平台API不接收AbortSignal。操作开始后，即使调用方停止等待，也必须完成native回读与Core同步后才释放模块占用。用户在helper准备、证书或代理操作期间点击Quit，应立即看到当前operation提示，App继续运行；操作结束后不自动退出，需重新点击Quit，再验证完整代理恢复和进程销毁。启动授权期间的Quit需要独立真实窗口证据，不能以unit busy检查代替。
 
-2026-09-05：unit13/13从缺失Tool精确Red转Green，真实workflow先Red于两项未披露；摘要随后Red于
-`value`再Green。最终与只读/权限workflow联合3/3通过，2次Deny、2次Allow、3次Auto、重复Restore
-`not-owned`、首次original哈希保持、两项撤权零写入、同profile冷启动自动接管且Model增量0均通过。
-两代Main/Core为`37532/43864`、`41620/2448`，均`gracefulDestroyVerified=true`，8888释放且WinINet/journal
-恢复；证据在package/smoke前归档。新增明暗8视图48/48、最大0.5px，Windows package/audit/smoke通过。
-
 <a id="settings-tools-tls"></a>
 ## `settings.tools.tls`
 
-**状态**：Windows历史passed；2026-09-26 macOS新签名包1/1，CA清理、双代销毁和宿主恢复通过
+**状态**：passed
 **策略**：privileged UI；Windows/macOS；host-safety-guard；两代Electron
 
-macOS只读信任查询使用平台fixture，Windows原certutil参数/输出判断保持。当前macOS证据为`/tmp/interceptor-item4-resume-20260925-certificates-positive.json`及同名目录：四项TLS Tool的Ask/Auto、挂载面板同步、revision冲突、未信任意图、实际解密、撤权和重启零重放均通过；最终经产品清理自产CA，完整Root/admin trust与代理恢复，全部进程退出且8888释放。
+macOS只读信任查询使用平台fixture，Windows原certutil参数/输出判断保持。
 
 ### Steps
 
@@ -251,46 +214,15 @@ macOS只读信任查询使用平台fixture，Windows原certutil参数/输出判�
 8. 保存脱敏证据与两代metadata，正常退出并验证测试CA信任已移除、所有进程与8888释放、完整宿主
 	状态恢复，最后删除profile。失败时必须保留profile并先经UI清理CA，不得留下系统信任副作用。
 
-### 证据
+### 验收要求
 
 Red必须精确指向四项缺失或行为缺口，Green记录审批、revision、同步状态、重启零重放与完整清理；
 证据不记录私钥、证书路径、完整系统代理配置或Model敏感文本。平台授权不可用时明确blocked及人工步骤。
 
-2026-09-08最终Green：同一workflow `1/1`通过（30.2s），CA生成、安装、卸载和删除均由正式UI自动完成。
-两代Main/Core为`11608/44884`、`34820/2212`，两份metadata均`gracefulDestroyVerified=true`；宿主guard
-验证完整WinINet/journal与注册进程恢复，8888释放、profile删除。测试前后LocalMachine Root指纹集合完全一致，
-没有新增或删除其他证书。trace、两代metadata与日志归档在TEMP下`interceptor-tls-final-e2e-20260908-160438.zip`。
-本机账户属于Administrators，但Runner token未提权；UAC策略为`EnableLUA=1 / ConsentPromptBehaviorAdmin=0 /
-PromptOnSecureDesktop=0`。产品仍经`TrustStoreService`的正式提权路径执行，未改策略或伪造授权结果。
-本轮初次运行停在discovery的路径脱敏断言：旧正则把schema URL中的`s:/`误判为Windows盘符。
-补充单词边界后同一workflow Green；原失败不算产品Red，证据已归档至TEMP下
-`interceptor-tls-discovery-failure-20260908-160436.zip`。
-
-以下保留历史阻塞与修复证据，不代表当前仍受阻。
-
-2026-09-05：四项发现缺失、摘要value与实际解密状态均已取得Red；executor24/24、刷新store18/18、
-摘要/i18n42/42 Green。最终业务断言通过，但面板重载期间清理跳过卸载，LocalMachine Root残留测试CA
-`8F5FD8BF6D49BE746862522F6AC616583ED152BB`。两代Main/Core `9740/1936`、`23384/33672`正常销毁，
-WinINet/journal恢复，profile因fixture失败识别缺陷被删除。该残留于2026-09-08由Developer在管理员PowerShell运行
-`certutil -delstore Root 8F5FD8BF6D49BE746862522F6AC616583ED152BB`清除，再由同一workflow取得上述完整Green；
-没有清除其他旧CA，也没有在恢复前重复创建测试CA。
-
-续作已修复清理等待和profile保留：按本轮证书指纹与真实信任状态等待卸载/删除；Playwright实际
-`failed/timedOut/interrupted`在fixture use未抛错时也保留特权profile，unit9/9通过。TLS审批错误脱敏和
-取消边界补8项Red后executor32/32 Green。当前Desktop485/485、Tools142/142、typecheck、设计交互71/71、
-TLS专项16 views / 96 targets / 0 missing / 0 flagged / 最大0.5px与package/audit/smoke通过。
-没有重新运行安装CA的workflow，新的清理等待与当前宿主恢复仍须真实复验；上述检查不替代E2E Green。
-
-2026-09-06恢复时已核对5条关联workflow（Settings只读、系统代理、权限持久化、MCP Browser、MCP Desktop）
-全部通过，十代Main/Core均`gracefulDestroyVerified=true`；证据归档在TEMP下
-`interceptor-tls-adjacent-e2e-20260906`。完整parity238 views / 1,664 targets / 1,630 matched /
-34 missing / 305 flagged；TLS专项96/96、0 missing/flagged、最大0.5px。以上不替代本条workflow的
-最终CA信任清理；该阶段保持blocked，直到2026-09-08恢复旧残留并取得上述最终Green。
-
 <a id="settings-tools-certificates"></a>
 ## `settings.tools.certificates`
 
-**状态**：Windows历史passed；2026-09-26 macOS新签名包六项Agent/MCP、Finder/Viewer真实关窗、双代清理及取消冲突通过；Manager管理员MMC原生专项按用户要求排除
+**状态**：passed；Manager管理员MMC原生专项排除
 **策略**：native-ui + privileged UI；Windows/macOS；host-safety-guard；两代Electron
 
 可能触发系统确认的Agent Install/Uninstall/Delete复用平台证书等待配置（macOS 120秒、Windows 30秒）；Deny与普通Tool仍使用15秒。finally先确认运行中的Agent进入终态，再关闭本轮窗口、清理CA；前一步不确定时保留材料并报告失败，不在授信仍进行时删除材料。该测试收尾顺序不证明产品多入口并发变更已受保护，也不替代MCP超时/取消的专项验证。
@@ -322,18 +254,9 @@ macOS定向用例同在`tools-certificates.workflow.ts`，名称含`rejects over
 9. 通过正式UI卸载仍存在的本轮信任、删除本轮CA并关闭本轮原生窗口；保存脱敏证据、trace和两代metadata。
 	正常退出并验证整个Root指纹集合、WinINet/journal、进程和8888恢复，最后删除profile；失败保留profile。
 
-### 证据
+### 验收要求
 
-- 2026-09-26 macOS：六项Agent/MCP、各六次Deny、受信任重生成拒绝、四次Finder/Viewer真实打开关闭、十二项入口撤权及重启零重放1/1，证据为`/tmp/interceptor-item4-resume-20260925-certificates-positive.json`及同名目录；两代均正常退出，测试CA清理，完整Root/admin trust与系统代理恢复、8888释放。
-- 同轮取消冲突1/1在`/tmp/interceptor-item4-resume-20260925-certificate-conflict-ordered.json`及同名目录：Quit/MCP Delete/UI Delete在授信未结束时拒绝，取消后不重放且材料保持，最终通过产品删除。此前三次因授权先于Quit断言结束而失败的结果保留，不冒充产品Red；首轮精确CA恢复为`/tmp/interceptor-item4-resume-20260925-conflict-recovery-daily-remove.json`，后两轮收尾均已清理。
-- 2026-09-09删除MMC原生专项后，本条复跑1/1 Green；两代Main/Core `14248/2888`、`39644/4212`均`gracefulDestroyVerified=true`，Root/CA/WinINet/journal恢复，8888释放、MMC无残留。最新归档为TEMP下`interceptor-certificates-keep-six-green-20260909-142011.zip`，SHA256 `C433C0B4A6A61821F3A437FF22740F6E3F30CDD3784ACBB41CD899A700BC3F7B`。
-- 2026-09-09最终Green：本条1/1（54.2s，Runner总计55.9s），两代Main/Core为`47704/19820`、`35384/17472`，均`gracefulDestroyVerified=true`。
-- 六项Agent/MCP、各六次Deny、受信任重生成拒绝、四次Explorer/Viewer打开关闭、十二项入口撤权及重启零重放通过；Root集合、WinINet/journal恢复、8888释放，成功profile删除。
-- 原关窗驱动在鼠标事件处理前立即释放置顶；改为等待句柄消失后释放，空目录三次连续关窗与真实流程均通过。一次性检查脚本已删除，未修改产品或Windows权限。
-- 前次完整证据在TEMP下`interceptor-certificates-six-e2e-green-20260909-002441.zip`；Manager管理员MMC原生要求现已由用户排除，不以本条通过冒充该专项通过。
-- 2026-09-08历史：原合并workflow在MMC关闭处被Win32权限拒绝，后面的MCP及重启当时尚未执行，随后拆分验收；原始Red和失败证据继续保留，当前边界以下方用户最新约定为准。
-- 原生窗口失败与CA清理已隔离，最新完整尝试Root指纹集合恢复、8888释放；此前一次CA残留通过保留profile及正式UI自动恢复1/1，证据在TEMP下`interceptor-certificates-profile-recovery-20260908.zip`。一次性辅助诊断/恢复流程已删除，不作为永久测试。
-- 原七项发现缺失的Red覆盖本六项；不能把selector、UAC、构建或环境失败算产品Red。
+- 不能把selector、UAC、构建或环境失败算产品Red。
 - Green记录六项Agent/MCP调用、公开身份、受信任重生成拒绝、面板同步、Explorer/Viewer及其关闭、撤权和重启零重放。
 - 保留两代`gracefulDestroyVerified=true`及Root指纹集合前后相同的证据；不记录私钥、Token、实际证书路径或完整代理配置。
 - 外部授权或原生窗口交互若确实不可用，记录具体失败和人工恢复方式，不把只读查询或单元测试当成完整验收。
@@ -347,31 +270,22 @@ macOS定向用例同在`tools-certificates.workflow.ts`，名称含`rejects over
 ### 逻辑验证
 
 - 单元/集成测试覆盖参数、Agent/MCP授权、Ask/Auto审批、撤权、取消、共用Main调用、启动错误和`{ requested: true }`返回值。
-- 当前相关回归为证书owner50/50、MCP专项及registry31/31、Agent适配器22/22、动态授权10/10、Session审批/Auto/取消与持久化integration36/36；Tools、MCP、Desktop typecheck通过。
 - 以上逻辑不要求逐分支打开真实MMC；通用Agent/MCP持久化、重启和零重放覆盖继续保留。
 - 本条不测MMC自身功能，不读写证书；生成、安装、卸载、删除证书的完整真实E2E不变。
 
 ### 排除边界
 
-- 2026-09-09用户明确：需要管理员权限的MMC就不做了，其他keep。不再安排一次或多次真实MMC打开、关闭和进程清理，也不要求管理员终端或人工等待。
+- 用户排除管理员MMC原生验收，不安排真实MMC打开、关闭和进程清理，也不要求管理员终端或人工等待。
 - `settings.tools.certificate-manager`原生workflow和专用MMC输入/进程辅助代码已删除；不使用`test.skip`冒充通过。
 - Manager Tool、Main/IPC/Agent/MCP调用、公开结果、UI摘要、语言、parity和recipe全部保留。
 - `settings.tools.certificates`六项真实Agent/MCP流程、Reveal/View原生窗口与完整退出恢复，以及通用授权/重启测试全部保留。
 
-### 证据
-
-- 原生MMC要求已明确排除，不登记新的原生Green；历史失败证据保留，但不再作为Manager交付门禁。
-- 逻辑日志在TEMP下`interceptor-manager-logic-20260909.log`、`interceptor-manager-focused-regression-20260909.log`及`interceptor-manager-session-approval-20260909.log`；不冒充新原生Green。
-- 原七项发现缺失的真实Red继续保留，不回滚或伪造新的Red；范围调整不改变产品API或Windows授权。
-- MMC的`WM_GETTITLEBARINFOEX`返回`messageError=5`、`enabled=true`、Close bounds全0，独立Manager诊断已复现。原trace和日志在TEMP下`interceptor-certificates-mmc-access-denied-20260908.zip`。
-- 2026-09-09实测Runner为Medium、MMC为High且Runner UIAccess=0；DWM可读取按钮区域，但不能据此绕过UIPI模拟输入限制。
-- 不修改UAC或token、不自动提权、不删除Tool；取消的是管理员MMC专项要求，不把其余六项Green冒充本条原生验收。
-- 不再提供或执行管理员MMC恢复命令；保留的六项入口为`npm.cmd run test:e2e:workflow --workspace @interceptor/desktop -- --grep "settings.tools.certificates "`。
+- 不修改UAC或token、不自动提权、不删除Tool；其余六项通过不代表本条原生验收通过。
 
 <a id="settings-tools-app-containers"></a>
 ## `settings.tools.app-containers`
 
-**状态**：passed；owner及真实discovery Red后Green，四项Agent/MCP、面板同步、摘要和双代精确恢复已完成
+**状态**：passed
 **策略**：privileged UI；Windows；host-safety-guard；两代Electron
 
 ### Steps
@@ -386,12 +300,8 @@ macOS定向用例同在`tools-certificates.workflow.ts`，名称含`rejects over
 8. 同profile启动第二代；四项Agent/MCP开关保持关闭，Model请求增量0，OS豁免集合仍为初始值，没有重放写入或UAC。
 9. 保存两代trace、metadata和仅含数量/hash的exemption证据；finally再次经真实UI恢复任何本轮变更，正常退出并验证宿主完全恢复，成功后删除profile。
 
-### 证据
+### 验收要求
 
-- 2026-09-08最终关联8/8 Green，共14代`gracefulDestroyVerified=true`；本条两代Main/Core为`49008/19980`、`16136/46764`。
-- Agent/MCP四项Ask Deny/Allow与Auto、单项/批量范围、独立撤权、挂载UI和typed摘要均通过；每轮Auto使用真实新Chat并重新发现，未修改产品上下文规则。
-- 完整exemption集合hash在finally恢复，枚举外SID不变；重启Model请求增量0、WinINet/journal及8888恢复，成功profile删除。证据归档在TEMP下`interceptor-settings-tools-final-e2e-20260908.zip`。
-- 这次2026-09-08关联运行使用69项registry、138个授权开关的worktree，记录不等于当时已提交数量；Manager管理员MMC专项随后由用户明确排除，不由本条或packaged smoke冒充通过。
 - Red只能来自四项Tool缺失或目标业务缺口；权限、selector或构建失败保持blocked，不算产品Red。
 - Green记录四项Agent/MCP调用、两列授权、挂载UI即时同步、单项/批量范围及两代正常销毁。
 - 初始与最终完整exemption集合hash必须相同，枚举外SID保持不变；不保存完整机器SID清单、helper路径、凭据或代理配置。
@@ -402,11 +312,9 @@ macOS定向用例同在`tools-certificates.workflow.ts`，名称含`rejects over
 **状态**：passed
 **策略**：shared
 
-macOS首轮验收仍待Green：保留九个section、键盘和跨workspace往返；App Containers按产品已有unsupported状态检查Search、Enable all、Disable all不出现并截图，不要求Windows专属控件。Windows原断言不变。macOS启动等待boot退出，产品Close后预留120秒供用户处理原生代理恢复授权；不自动批准、不输入密码，实际恢复与进程/8888/journal检查保持。
+macOS保留九个section、键盘和跨workspace往返；App Containers按产品已有unsupported状态检查Search、Enable all、Disable all不出现并截图，不要求Windows专属控件。Windows原断言不变。macOS启动等待boot退出，产品Close后预留120秒供用户处理原生代理恢复授权；不自动批准、不输入密码，实际恢复与进程/8888/journal检查保持。
 
-2026-09-14增加离线字体契约：进入默认Certificates后保存`settings-fonts.json/png`，确认`Inter`只注册设计的400/450/500/600/700、550字重请求实际加载非空FontFace，CSSOM中的字体URL均来自`interceptor://app/`。不切换应用语言，不要求英文显示文案；原九个section、键盘和往返步骤保持。旧注册的真实Red为Inter字重集合空且loadedFaces=0，Main/Core `28472/47860`正常退出/宿主恢复，证据TEMP `interceptor-inter-weights-20260914-e2e-red`；Resource Timing在自定义协议未列出字体，不能用它代替CSSOM与实际FontFace检查。
-
-首次最终运行已读到五个Inter字重、loadedFaces=1和35个本地Inter URL，但URL检查误包含其他字体的合法内嵌`data:`资源，不能算产品Red或整体Green。已将CSSOM筛选限定为Inter，不修改字体资源、CSP或预期本地协议。Main/Core `17424/12864`正常退出；TEMP `interceptor-inter-weights-20260914-e2e-green`保留失败证据，目录名不代表通过。2026-09-15恢复后同一workflow1/1（20.7s）及所有原导航步骤通过，Main/Core `10628/38856`正常退出、宿主guard/trace齐全；当前证据`interceptor-ui-acceptance-20260915-settings`。
+离线字体检查：进入默认Certificates后保存`settings-fonts.json/png`，确认`Inter`只注册设计的400/450/500/600/700、550字重请求实际加载非空FontFace，CSSOM中的Inter字体URL均来自`interceptor://app/`。不切换应用语言，不要求英文显示文案；Resource Timing不能代替CSSOM与实际FontFace检查，其他字体的内嵌`data:`资源不在此URL断言范围。
 
 ### Steps
 
@@ -426,20 +334,16 @@ macOS首轮验收仍待Green：保留九个section、键盘和跨workspace往返
 
 九个 section 通过 Settings rail 真实导航；`aria-current` 准确且唯一；跨 feature 普通返回时保留最后访问 section；Proxy/Certificates/Storage/Updates 使用真实后端，Agent 只呈现诚实未配置空态；Appearance 不伪造未实现功能；Header/Main/statusbar 一致。显式 TLS 跨 feature 跳转覆盖当前 section 的语义由独立 `capture.navigate-tls-passthrough` workflow 验收。
 
-### 证据
+### 验收要求
 
 - `section-navigation-state.json` 记录默认、逐项选择以及每次离开/返回后的 automation ID 与 `aria-current`，不记录翻译文案或 CSS class。
 - `trace.zip` 必须可见全部真实点击；`renderer-console.log` 不得包含 page error。
 - `metadata.json` 必须记录真实 Main/Core PID、listener `8888` 与 `gracefulDestroyVerified=true`。
-- 实现前 Red：真实 Electron 已打开默认 Certificates，视觉 active class 存在，但 `settings.section.certificates` 的 `aria-current` 为 `null`，workflow 精确失败于公共当前页面语义缺失。
-- 历史八项基线：`1/1` 通过；当时八个 section 均只有目标项为 `aria-current=page`，App Containers 经 Capture 往返保持，TLS passthrough 经 Rules、Composer、Diagnostics 三次往返保持；Main PID `12304`、Core PID `27200`。
-- 当前九项 Green：同一 workflow `1/1` 通过；Certificates 默认态和 Proxy、App Containers、TLS passthrough、Certificates、Appearance、Storage、Privacy、Agent、Updates 逐项选择时，只有目标 automation ID 为 `aria-current=page`。Agent section 先精确 Red 于 clickable `div` 没有 button role，改为原生 button 后通过焦点 + Enter 激活。App Containers 经 Capture 往返保持，TLS passthrough 经 Rules、Composer、Diagnostics 三次往返保持。
-- 当前 Main PID `44024`、Core PID `17732`、listener `8888`，`gracefulDestroyVerified=true`，Renderer page error 为 0。
 
 <a id="settings-app-containers-ordering"></a>
 ## `settings.app-containers.ordering`
 
-**状态**：原排序流程passed；2026-09-12列表行高代码完成，新增布局断言待E2E
+**状态**：排序流程passed；新增布局断言待E2E
 **策略**：shared；Windows
 
 ### Steps
@@ -447,7 +351,7 @@ macOS首轮验收仍待Green：保留九个section、键盘和跨workspace往返
 1. 由host-safety-guard保存宿主基线，创建独立空profile/evidence并启动真实Electron，等待Core、8888与冷启动系统代理自动接管；保持当前语言，不操作exemption或UAC。
 2. 进入 Settings → App Containers，等待真实 Windows helper 枚举完成；读取公共 SID 行 automation ID 和 `data-exempt`，不得用显示名、翻译文案或 CSS class 判断顺序。保存每行名称15px、包名14px行高；存在推荐标签时验证20px框、inline-flex center及与名称的中心差不超过1/devicePixelRatio。
 	列表头两段文字由父flex设置align-items:center，并继承该行自然行高，不继承Shell的压缩行高或给说明单独补px；保存列表头截图，再执行原只读排序与搜索流程。
-3. 确认所有 enabled 行连续位于 disabled 行之前；同一状态内保持 helper 的名称顺序。当前宿主必须同时存在 enabled 与 disabled 样本，才可作为 retrospective Red/Green 证据。
+3. 确认所有 enabled 行连续位于 disabled 行之前；同一状态内保持 helper 的名称顺序。宿主必须同时存在 enabled 与 disabled 样本，才能有效验证排序。
 4. 从真实行 SID 中选择一个能缩小结果集的搜索值，通过 `settings.app-containers.search` 输入；确认结果是过滤前列表的有序子序列，且仍满足 enabled-first。
 5. 清空搜索，确认完整 SID 顺序逐项恢复；全程不得点击单项 switch、Enable all 或确认按钮，不触发 UAC、不改 exemption。
 6. 附加 `app-container-ordering.json`，记录过滤前、过滤后和恢复后的SID/`exempt`状态及rowLayouts；确认Renderer page error为0。
@@ -457,15 +361,6 @@ macOS首轮验收仍待Green：保留九个section、键盘和跨workspace往返
 ### 预期效果
 
 真实 Windows AppContainer 列表稳定地将 enabled 项置顶，同组顺序不变；搜索只筛选已经排序的列表，清空后不产生重排；只读验收不造成系统副作用。
-
-### 证据
-
-- 2026-09-12布局断言仅预留，用户暂停后未运行前置/最终E2E；以下排序业务与产物证据为历史结果，不外推到新布局。
-- 实现前 Red：真实 Windows helper integration 返回 `141` 条记录但只有 `138` 个唯一 SID；同一 `settings.app-containers.ordering` workflow 进入面板后，Main 因 `AppContainer helper returned a duplicate SID` 拒绝快照，真实列表完全不可用。Red Main PID `21104`、Core PID `36468`，失败后仍为 `gracefulDestroyVerified=true`且 8888 释放。
-- 当前 Green：helper 在 native 枚举边界按 SID 去重，package 内 helper 为 `138 records / 138 unique SIDs`；Main 继续拒绝任何回归的重复 helper JSON。真实 workflow 为 `1/1` Green，初始 `138` 行（`1 enabled / 137 disabled`），enabled 行位于首位，真实 SID 搜索缩小为 `1` 行，清空后 `138` 行逐项恢复。Main PID `34512`、Core PID `33872`、listener `8888`、`gracefulDestroyVerified=true`，Renderer page error 为 0，未触发 UAC或修改 exemption。
-- Renderer ordering unit `2/2`、真实 helper integration `1/1`、Main service unit `10/10`，聚焦合计 `13/13`；Desktop 串行全量 `320/320` 与 typecheck 通过。
-- AppContainer light/dark parity 各 `13/13 matched / 0 missing / 5` 个既有 flagged，最大 `3.8px`；完整 parity 保持 `137 views / 995 targets / 961 matched / 34 missing / 304 flagged`。
-- Windows x64 package 与 artifact audit 通过（`1,294 files / 391,746,994 bytes`），production audit 为 0 漏洞，packaged smoke 最终 `1/1` Green。首次 smoke 的产品断言已通过但清理临时 profile 时遇到一次 Windows `EPERM`；当时无残留进程或 8888 listener，目录随后可删除，原样复跑通过。
 
 <a id="settings-app-containers-bulk-access"></a>
 ## `settings.app-containers.bulk-access`
@@ -490,17 +385,6 @@ macOS首轮验收仍待Green：保留九个section、键盘和跨workspace往返
 
 Enable all 与 Disable all 各自对应一条 Main 命令和一次 UAC；前者原子添加当前 SID，后者原子移除当前 SID，均保留枚举外 exemption。完整真实 flow 最终精确恢复测试前系统状态，不发生 Renderer 循环、隐式全量覆盖或不可逆批量启用。
 
-### 证据
-
-- 实现前 Red：Main service 新用例精确失败于 `disableAllLoopbackExemptions()` 缺失；真实 Electron 在加载实际 AppContainer 列表后、任何系统写入前精确失败于 `settings.app-containers.disable-all` 入口缺失，不是 selector、UAC、构建或 fixture 失败。
-- 当前 Green：同一真实 workflow `1/1` 通过。OS exemption 集合按 count/hash 记录为初始 `1 / 1a47…f773` → Enable all 后 `138 / 72bb…d992` → Disable all 后 `0 / e3b0…b855` → 通过正式单项 UI恢复为 `1 / 1a47…f773`；Cancel 前后初始集合不变，`finalRestoredExactly=true`。测试结束后独立 helper 读回仍为初始 hash。
-- Dialog 数量分别为 Enable `137`、Disable `138`；两个工具栏按钮均为 `89.333×28px`、`white-space: nowrap`、`scrollWidth 88 ≤ width`、`scrollHeight 27 ≤ height`，无换行或溢出。
-- Green metadata：Main PID `49296`、Core PID `43856`、listener `8888`、`gracefulDestroyVerified=true`、Renderer page error 为 0；结束后无 Interceptor/Electron 进程、无 8888 listener。
-- 本机真实提升策略为 `EnableLUA=1 / ConsentPromptBehaviorAdmin=0 / PromptOnSecureDesktop=0`：产品确实执行 `runas` elevated helper，但 Windows 按策略自动批准，因此本轮没有可见 UAC 弹窗，测试未注入或改写任何原生 Dialog 结果。
-- Main service/i18n 聚焦 `22/22`、Desktop 串行全量 `321/321`、全 workspace typecheck、design build 与 interaction `13/13` 通过。
-- Enable/Disable Dialog 明暗四个 parity view 均 `5/5 matched / 0 missing / 0 flagged`，最大 `0.9px`；AppContainer 主页面明暗各 `15/15 matched / 0 missing`，两个批量按钮均在 0.6px 内。完整 parity 为 `141 views / 1019 targets / 985 matched / 34 missing / 304 flagged`，既有 missing/flagged 未增加。
-- Windows x64 package、artifact audit（`1,294 files / 391,760,334 bytes`）、production audit 0 漏洞和 packaged smoke `1/1` 通过。
-
 <a id="settings-proxy-upstream"></a>
 ## `settings.proxy.upstream`（macOS，基础链式转发已验，外部改写待验）
 
@@ -512,7 +396,7 @@ Enable all 与 Disable all 各自对应一条 Main 命令和一次 UAC；前者�
 6. 通过Settings Restore恢复完整原配置；保存trace、metadata和只含端口/哈希/布尔结果的证据。
 7. 正常Close，host guard验证Main/Core/Worker、8888、完整代理与admin trust恢复；不停止或改写外部ClashX。
 
-基础链式转发已有前置Red及开发Green；既有产物smoke 1/1，产物包含本地暂停项，范围见[Handover](../../../../../architecture/HANDOVER.md#verification)。系统授权、外部网络或selector失败不算产品Red。
+当前待验事项见[Handover](../../../../../architecture/HANDOVER.md)；系统授权、外部网络或selector失败不算产品Red。
 
 外部改写场景使用独立App/profile：
 
@@ -522,7 +406,6 @@ Enable all 与 Disable all 各自对应一条 Main 命令和一次 UAC；前者�
 4. 通过ClashX原生菜单重新启用原代理，对照完整基线；宿主guard再核验进程、8888和证书恢复。
 5. 仅保存哈希与实际布尔结果；原生入口不可用或需授权时记blocked，不放宽恢复断言。
 
-外部改写当前`blocked`：三次运行未可靠切换ClashX原生菜单，未到业务保护断言；最后一轮完整基线恢复、Main/Core正常退出。证据见[Settings上游结果](../../../../../architecture/features/settings.md#macos-effective-upstream)，不在无人值守时继续尝试；基础链式转发的独立Green保留。
 
 <a id="settings-proxy-enable-restore"></a>
 ## `settings.proxy.enable-restore`
@@ -568,12 +451,10 @@ Enable只由用户UI发起；Main精确拥有和记录全部代理字段；Resto
 
 生产、开发和不同 E2E profile 共享唯一用户级 crash journal；产品只考虑顺序运行的单 App。异常退出不会丢失首次 `original`，下一次 App 直接加载快照，正常退出后完整恢复宿主；外部修改不得被覆盖。
 
-### 证据
+### 验收要求
 
 - Red 必须是修复前 App B 把遗留8888重记为 `original` 或无法加载首次快照的业务失败；selector、构建、Dialog或宿主清理失败不算 Red。
 - Green 必须同时包含A/B快照相同、首次original保持、完整WinINet恢复、共享journal清除、两代进程树销毁和8888释放。
-- 实现前 Red：同一 workflow 在 App B 启动后精确失败于首次 `original` 被改写为遗留 8888；外层宿主恢复成功，不是构建、selector 或 teardown 失败。
-- 当前 Green：单 App 三字段 journal 上同一 workflow `1/1`通过（16.2秒）。脱敏 evidence 的首次接管、A异常销毁、B加载相同`original/owned`、共享journal路径和B正常销毁六项均为`true`；A Main/Core PID为`30640/39876`，B为`8472/27844`。结束后完整WinINet等于启动前快照，`journal.json`、Electron进程和8888 listener均为0。
 
 <a id="settings-proxy-mitm-persistence"></a>
 ## `settings.proxy-mitm.persistence`
@@ -602,12 +483,6 @@ macOS接入已有平台driver：同profile journal、完整结构比较及Securi
 与当前 `owned`，不把旧 `owned` 值误当作新的 `original`，也不做一次无意义的恢复再接管。
 CA 身份、有效期、系统信任、MITM 用户意图、TLS passthrough 与源站例外均跨进程保持；
 本 workflow 不替代 `capture.protocols.with-mitm` 的数据面验收。
-
-### 证据
-
-- retrospective Red：修复前`c978915`第二代`settings.certificates.mitm-toggle`为`false`，而证书身份/有效期/信任、journal original与最终清理均已通过。
-- 当前Green：单 App 三字段 journal 上同一 workflow `1/1`通过（27.3秒）；第一代Main/Core PID `27820/16504`为`abruptDestroyVerified=true`，第二代`39564/21692`为`gracefulDestroyVerified=true`。
-- Green脱敏证据中journal保留、B加载同一journal、首次original/owned保持、证书同一性、有效期、系统信任、MITM意图、insecure host、passthrough host、最终代理恢复、journal清理与测试CA删除16项全部为`true`；结束后8888、Electron进程与本轮CA均为0，完整WinINet恢复到workflow启动前快照。
 
 <a id="settings-certificates-generate-delete"></a>
 ## `settings.certificates.generate-delete`
@@ -696,8 +571,6 @@ macOS只读子范围复用已有共享CA：经UI创建MCP Client并在Ask卡批�
 
 macOS View由普通用户前台helper的固定`certificate.view`显示`SFCertificatePanel`，禁止编辑信任；Main只传公开DER/SHA-256，不传路径或私钥。
 
-Reveal最终1/1（9.0秒）：精确路径、产品MCP审批、原生关窗、Root/admin trust及退出恢复通过，证据`/tmp/interceptor-macos-certificate-external-20260919-reveal-final/`。前两轮失败目录`/tmp/interceptor-macos-certificate-external-20260919{,-path}/`保留；未修改Windows原生driver或授信断言。
-
 ### Steps
 
 1. 创建profile/evidence，启动trace/Electron，等待App/Core/8888/readiness；点击 `capture.readiness.cancel`，确认System Proxy仍未owned。
@@ -718,7 +591,7 @@ Reveal最终1/1（9.0秒）：精确路径、产品MCP审批、原生关窗、Ro
 <a id="settings-storage-refresh-clear"></a>
 ## `settings.storage.refresh-clear`
 
-**状态**：passed；2026-09-16当前Renderer同一workflow 1/1（16.4s），Main/Core与宿主恢复通过
+**状态**：passed
 **策略**：os-side-effect
 
 ### Steps
@@ -736,12 +609,6 @@ Reveal最终1/1（9.0秒）：精确路径、产品MCP审批、原生关窗、Ro
 ### 预期效果
 
 Refresh只读取真实Core usage；统计口径为已提交正文总量，包含内存与临时文件，不是Core RSS或磁盘占用。Settings Clear二次确认、Cancel零副作用；两个入口共用`clearCapture()`并同步清理Capture行/正文/selection，不改变录制状态或导出文件，也不新增任务历史清理、预算配置或自动淘汰策略。
-
-### 验证记录
-
-- Renderer前置3 Red、i18n必需键1 Red，最终所属Settings/i18n84项及Desktop/design-vite类型通过。真实前置Refresh父元素DIV而非HEADER，Main/Core `50796/17116`正常退出；最终`17264/39820`正常退出、trace和宿主guard恢复完整，30x30刷新按钮与标题同排且右缘/中心差为0。
-- 当前结果中原正文135 B，Cancel保留；Settings Clear和Capture列表Clear都使Exchange/Body/bytes归零、Session保留1，录制保持paused，新请求仍可抓取。首次复验因Recording仍busy而点击无效，`35864/11428`正常退出；等待公共`aria-busy=false`后完整通过，再以最终CSS复跑，不修改产品录制逻辑。
-- 证据TEMP `interceptor-storage-delivery-20260915-e2e-{red,green,final,current}`及同名前缀日志，最终汇总`interceptor-storage-delivery-20260915-current-evidence.json`。八态parity与产品前后图见[Storage功能记录](../../../../../architecture/features/settings.md#storage简化)。本workflow不操纵RuleSet、Diagnostics或导出文件，不额外声称它覆盖这些模块；Clear共享命令与原文件任务互斥保持。
 
 <a id="settings-privacy-defaults"></a>
 ## `settings.privacy.defaults`
@@ -769,7 +636,7 @@ Privacy defaults即时持久并真实驱动HAR Export初始状态；风险组合
 <a id="settings-tls-compatibility"></a>
 ## `settings.tls-compatibility`
 
-**状态**：planned；2026-09-12最终真实1/1及恢复通过，保留暂停期行高前置E2E缺口
+**状态**：planned；行高修改缺前置E2E
 **策略**：真实TLS流量与产品UI；host-safety-guard；涉及CA时使用正式授权与清理路径
 
 ### Steps
@@ -779,10 +646,6 @@ Privacy defaults即时持久并真实驱动HAR Export初始状态；风险组合
 3. 使用`settings.tls-compatibility.host-list`及`AutomationIdFactory.tlsCompatibilityHost/Pattern`定位列表、host和候选；验证每个真实host对应一行，主host为11.5px自然行高。列表超过264px时可用滚轮和Home/End访问全部行，后续行不得因累计高度不足提前。候选项默认精确host勾选，父域wildcard不自动选中；保存使用`settings.tls-compatibility.add-selected`。
 4. 全部取消候选后主动作禁用；取消范围包括系统背景TLS失败带来的默认选中项，而不只是五个测试host。通过真实checkbox取消，不改Store；重新选择自产两个pattern并精确核对当前选中ID，经正常UI批量保存，Settings显示相同结果。另一次真实提示使用Not now退出，不增加持久化pattern。
 5. 保存host/行尺寸、选择状态、背景取消项ID、实际TLS证据和截图；清理本流程添加的pattern与profile内MITM设置，保留共享CA和信任，正常关闭产品，验证Main/Core/Worker退出、8888释放和完整系统代理/journal/Root恢复。
-
-2026-09-12首轮既有行为1/1（17.3s，13940/39212）和unit18/18之后，仅补公共automation ID，业务/视觉不变；ID版1/1（23.6s，3600/41668）。最终显式JSON归档版1/1（27.6s，14788/41168），六次真实`SELF_SIGNED_CERT_IN_CHAIN`、五host行尺寸、默认精确选择、wheel/Home/End、全部取消禁用、两项批量保存与Not now通过，origin应用字节0。三代均正常销毁，CA/Root及完整宿主恢复。
-
-最终TEMP `interceptor-tls-compatibility-20260912-evidence`及同名log包含`tls-compatibility.json`、选择截图、trace和metadata；unit18/18、Desktop类型、三场景parity24/24另存同前缀。暂停期行高修改缺少前置真实E2E，不能以公共ID变更前的Green代替，不回滚或另建worktree补造；Inventory保留planned。
 
 <a id="settings-updates-check"></a>
 ## `settings.updates.check`

@@ -48,8 +48,6 @@ Renderer瞬态导航反馈，不写workspace、不进入URL，也不由Main/Core
     - Deny与预取消无写入；未开始的请求被取消后不能迟到应用。已开始提交的设置完成原操作，不用取消回滚用户状态。
 - 三项均为独立Settings change，Agent/MCP各自授权并遵守Ask/Auto。
 
-历史前置测试、关联流程和产物范围见[偏好Tool验证记录](#settings-preferences-history)；当前契约不由旧阶段Tool数量限定。
-
 ## 2. 证书与 HTTPS MITM
 
 证书面板使用Renderer的Inter字体，按400/450/500/600/700离散字重注册已有本地资源，不增加外部字体请求；其余排版沿用[Renderer规范](../platform/renderer.md)和[设计系统](../../design-vite/design-system.md)。
@@ -175,6 +173,7 @@ macOS只将匹配的公开证书经stdin交给系统验证，不生成临时证�
 - 前台helper在登录用户GUI会话中调用`SecTrustSettingsSetTrustSettings`/`SecTrustSettingsRemoveTrustSettings`，只修改`.admin`并回读；系统确认由用户处理。这些API不接收`AuthorizationRef`，[系统实现](https://github.com/apple-oss-distributions/Security/blob/main/OSX/libsecurity_keychain/lib/TrustSettings.cpp)为信任写入单独创建授权，不能复用helper安装授权。
 - CertificateService先核对目标CA是否已存在，再经helper导入和授信。明确拒绝或取消只撤回此次新增的精确DER；已有CA与结果未知的CA保持，回滚失败同时报告。卸载先撤销信任，成功后才删除公开证书。
 - 不修改SIP、授权规则或用户信任域，不提供后台root自动授信、版本兼容或失败回退分支。
+- 不能假定root身份可以代替admin trust授权；不尝试修改`com.apple.trust-settings.admin`来绕过系统确认。
 
 #### CA与profile生命周期
 
@@ -199,7 +198,7 @@ macOS View：固定前台`certificate.view`只接公开DER与SHA-256，使用系
 - platform-capabilities中的证书、系统代理、AppContainer和helper部署模块分别管理自己的在途状态和互斥；Main只持有一个readonly平台对象，直接调用方法，处理error并转发通知，不实现平台步骤或保存组内busy状态。ApplicationActionGate只管理通用命令接收与退出收尾，不维护全量平台操作表；也不把该表原样搬到PlatformCapabilitiesService。
 - 证书材料与TrustStore属于同一证书模块；PlatformCapabilitiesService对外提供证书业务方法，内部唯一CertificateService完成生成/加密、安装、回滚、撤销、删除和Core同步。各module实例private，不暴露给Main；材料存在与系统受信任仍是独立事实，私钥不交helper。
 - helper只执行固定原生操作并回复结果，保留鉴权、参数校验、原子写入和回读，不增加业务队列。共享系统确认及维护资源只做必要的跨组协调，不重复存储各组状态。
-- macOS常驻helper同步服务Main的启动与系统操作，launchd使用`ProcessType=Interactive`，不能按无人等待的`Background`任务限制CPU和I/O；Unix socket不具备Adaptive所需的XPC activity。完整App资源、内嵌代码、全部架构和运行时校验及客户端30秒期限保持，不用缓存、跳过校验或延长期限替代调度修正。部署及生产验收证据见[Handover](../HANDOVER.md#verification)。
+- macOS常驻helper同步服务Main的启动与系统操作，launchd使用`ProcessType=Interactive`，不能按无人等待的`Background`任务限制CPU和I/O；Unix socket不具备Adaptive所需的XPC activity。完整App资源、内嵌代码、全部架构和运行时校验及客户端30秒期限保持，不用缓存、跳过校验或延长期限替代调度修正。
 - 部署发现与准入分开：`deployment-status`只比较组件部署、应用签名身份和主可执行文件，不是授权结论；正常启动仍必须通过常驻helper的完整资源/内嵌代码/全部架构及运行时检查才进入证书阶段。`inspect-application`、请求安装和root安装继续完整验证，不因部署发现结果而跳过验证；不得缓存历史信任结果。
 - 不排队。冲突立即返回`operation_in_progress`和当前操作标识；UI沿用现有提示并显示本地化操作名，Agent/MCP返回相同原因。被拒绝的请求不触发helper、写文件或Core变更，也不在当前操作结束后自动执行。
 - 证书组包括启动补齐、生成/重生成、安装/授信、撤销/卸载、删除、回滚、MITM启停和Core证书同步。操作开始前由模块占用，保护覆盖材料、系统信任、回读和Core同步；module使用注入的CoreRuntime，通知回调不承担业务步骤，内部调用不再次争抢同组。
@@ -217,78 +216,13 @@ macOS View：固定前台`certificate.view`只接公开DER与SHA-256，使用系
 - 原请求与确认请求分别遵守既有30秒传输期限；确认属于失败收尾，期间原业务保持占用。前台信任进程的异常结束不属于socket记录，不能凭无关记录或普通status解除。
 - 安装CA的import失联后若已确认结束，且安装前不存在该精确CA，在请求trust之前撤回本次可能新增的公开证书；已有CA、未发送或未确认的import不删。内部`requestSent`与`executionState`分别表达是否发出帧和是否结束，原错误与回滚错误都保留。
 
-#### 失联写入验收证据
-
-以下为2026-09-25恢复验收前的证据，前缀为`/tmp/interceptor-item4-20260925-`；新产物的最终结果见下方“第4项恢复验收”。故障帧与断连由真实Unix socket/native集成验证，模块回读、回滚及Quit占用由所属业务测试验证；不将这些结果冒充真实UI触发了故障。
-
-| 范围 | 结果 | 证据后缀 |
-| --- | --- | --- |
-| 实现前基线 | 原传输与证书/代理占用100/100；签名包正常helper复用和代理恢复2/2 | `completion-baseline.json`、`ui-baseline.json`及目录 |
-| 目标Red | 结束记录、原ID/操作关联、超时/断线及CA回滚23项Red；复核发现未发送import不应触发回滚，再取得1项目标Red | `completion-final-red.json`、`unsent-import-red.json` |
-| 当前代码回归 | 全平台312通过、2项Windows native跳过；包含原生实际断连、128条记录淘汰、重启/端点隔离、鉴权、30秒时钟边界、等待确认及未知结果不解锁。新CA/已有CA/未发送/未确认的行为分别覆盖 | `platform-verified.json`；Desktop及workspace类型检查通过 |
-| 新包静态与首次授权 | package、artifact audit与严格deep/strict/all-architectures签名通过；首次授权未完成后只取消所属窗口并正常恢复宿主，该次不算运行验收通过 | `component-current.json`、`artifact.json` |
-| 当前新包运行 | 正常App授权后实装helper与包内一致，生产入口ready；组件复用/共享CA/跨profile恢复3条、Agent/MCP代理入口2条真实E2E及smoke 1/1。九代App已退出（含1代预定crash），完整代理恢复，日常CA指纹、文件元数据与信任保持，无journal、8888释放 | `approval-current.json`、`production-lifecycle-final.json`、`tools-proxy.json`、`production-smoke.json`、`production-host.json`及对应目录 |
-| 窗口准备失败与修正 | 首次3条运行中共享CA通过，随后System Events未暴露新Main窗口，业务未开始；经真实Close恢复后，fixture只显示/前置该测试Main，再按原尺寸断言准备窗口。不改产品UI或尺寸，复跑3/3 | `production-lifecycle.json`、`window-recovery.json`、`production-lifecycle-final.json` |
-
-22:35暂停时该产物已执行部分证书专项，但当时未全部通过；这些历史失败不改写为Green：
-
-| 范围 | 结果及边界 | 证据后缀 |
-| --- | --- | --- |
-| 产品清理与直接生命周期 | 原日常CA经产品Uninstall/Delete清理，其余Root保持；cancel-trust 1/1与两张不同CA的helper-trust 1/1通过，取消/安装/撤销/删除走真实UI | `ca-reset.json`、`ca-e2e.json`（首条Green，第二条fixture竞态失败）、`helper-trust-final.json` |
-| 授权驱动 | 已修正helper退出与窗口/Renderer更新之间的采样竞态；首次初始化只在识别本轮helper及certificate阶段原生窗口后单独等待人工确认，Playwright独立fixture预算不扩大首窗/普通启动/产品请求期限 | helper-trust修正后Green；`startup-fixture-regression.json`非交互2/2，新增人工等待分支尚待实际运行 |
-| 证书Tools未通过 | 首例在120秒首次授信准备中超时，未进入业务正文，后一条未运行；授权晚于准备期限后App启动，恢复时只处理本轮自产CA | `tools-ca-final.json`、`ca-remaining.json`及目录；不得标为Tool功能Green |
-| 当前日常CA与宿主 | 已取消本轮未完成的撤销，将产品正常生成并已受信任的`B705FBDEF2397E85DAE3605550B916A0EA946ED6`保留为新日常CA；其他Root未变，App与helper子进程退出，完整代理恢复、无journal、8888释放 | `daily-ca-current.json`；旧`3C2E…`仅为历史基线 |
-| 真实失联收尾 | 后续非交互启动两次发生原生代理写请求30秒超时；第一次资源校验33.610秒，已确认服务实际为Interactive。typed client取得原请求完成证据，保留timeout并标completed，业务允许正常Close恢复；这不是普通启动Green，也不归因为人工授权 | `startup-wait-final.json`、`startup-wait-rerun.json`及Main日志/trace，`real-timeout-native.log`；资源验证尾延迟未解决 |
-
 #### 启动完整资源校验的进程隔离
 
-- 本轮恢复时同一已部署helper再次出现31.304秒完整资源校验；授权采样中主线程等待Security资源任务，资源线程主要停留在可执行文件扫描后的`free_medium → madvise`。新root进程同包校验2.29秒，连续六次完整验证2.2–2.9秒；用户级Interactive、QoS和串行对照未证明能解决常驻进程问题，不据此修改调度或验证内容。
-- 当前实现：常驻helper继续核验socket audit身份、固定App路径和运行时保护；每次需要完整资源校验时启动同一受保护helper的只读`verify-code-signature <absolute-code-path> <cdhash-requirement>`子进程。子进程只执行原Security API的身份、strict、nested、all-architectures及no-network检查，正常退出码0才可继续；失败或异常退出拒绝请求，不将CLI开放为socket命令。
-- 原请求保持占用，完成记录必须晚于校验子进程退出及真实系统写入收尾；30秒期限、128条结束记录边界、不重放、Windows与开发UID入口不变，不保存签名或信任缓存。此改动隔离已观测到的长期进程校验慢路径，不声称已证明macOS内存分配器的内部缺陷或覆盖所有长期负载。
-
-<a id="item4-resumed-acceptance"></a>
-#### 第4项恢复验收（2026-09-26）
-
-证据前缀为`/tmp/interceptor-item4-resume-20260925-`，日期保留首次恢复时的命名；JSON与同名目录中的trace、metadata及日志对应同一签名包，不与旧包数量相加。
-
-| 范围 | 结果及边界 | 证据后缀 |
-| --- | --- | --- |
-| 前置与失败定位 | 原生/证书/操作占用基线120/120；真实生产启动在完整校验31.304秒时超时，采样轮另有33.617秒。新只读入口与嵌套资源验证2项Red后才改native实现 | `native-baseline.json`、`startup-baseline.json`、`startup-sample.json`、`helper-active.sample.txt`、`sampled-native.log`、`signature-worker-red.json` |
-| 最终代码与类型 | 平台315通过、2项Windows native跳过；覆盖校验进程缺失/非零退出、错误身份、嵌套资源修改、结束记录及CA回滚。全workspace类型通过，最终fixture/测试改动后Desktop类型再通过 | `signature-worker-green.json`、`signature-failures-green.json`、`final-platform.json`、`typecheck.log` |
-| 新包与组件 | package、artifact audit（1487文件/339505825字节）、deep/strict/all-architectures签名通过；正常产品授权更新helper，包内与实装一致 | `package.log`、`artifact-audit.log`、`new-helper-startup.json`、`final-host.json` |
-| 生产共同路径 | helper复用1/1；共享CA、跨profile crash recovery、MCP代理冲突、Agent代理Ask/Auto/撤权/重启4/4；所有App代际退出，既有CA和完整系统代理保持 | `new-helper-startup.json`、`production-regression.json`及目录 |
-| 证书正向 | 两张不同CA直接Install/Uninstall/Delete、Agent/MCP六项证书操作与四次原生Reveal/View关窗、TLS意图/实际解密/撤权/重启3/3；首次人工授权及relaunch等待均实际执行 | `certificates-positive.json`及目录 |
-| 取消与占用 | 直接cancel-trust 1/1，首次启动取消/同CA重启1/1，并发Quit/MCP Delete/UI Delete拒绝且不重放1/1；每条均清理自产CA并恢复完整宿主 | `certificates-cancel-conflict.json`中的首条、`startup-cancel.json`、`certificate-conflict-ordered.json`及目录 |
-| 失败与恢复 | 原并发用例等待旧提示消失时Install已完成，Quit前提消失，不能记为产品busy Red。首轮留下的精确自产CA经产品恢复；后两轮前提断言失败但清理成功。调整为先验证Quit新提示，再验证两种Delete，保留原取消/材料/恢复断言 | `certificates-cancel-conflict.json`第二条、`certificate-conflict-final.json`、`certificate-conflict-confirmed.json`、`conflict-recovery-daily-remove.json` |
-| 校验耗时 | 同一新常驻helper保留约一小时期间，已保存并去重的60次生产完整校验837–1714ms，均低于原30秒期限；不是整个App启动耗时，也不把系统未保留的info日志当成已采集事件 | `observed-verification.log`、`final-host.json` |
-| 最终产物与宿主 | packaged smoke 1/1及已有截图矩阵通过；正常启动重建日常CA并授信，其他3张Root/admin trust保持，完整代理恢复、App/Core/Worker全退、仅常驻helper保留，无journal、8888释放 | `final-smoke.json`、`daily-restore.json`及trace、`final-host.json` |
-| 工具边界 | 尝试让人工确认等待300秒，但授权提前完成，该次实际为共享CA初始化/复用1/1；不能声称触发了driver的300秒超时自动取消catch分支。产品真实取消及回滚已由上面两条专项覆盖 | `startup-manual-timeout.json`及目录；该catch分支未覆盖 |
-
-最终日常CA为`D74D4BFB3C3708511A755AC6CD905840B464B255`；旧`B705…`与失败自产`54B224…`均已按精确身份经产品清理，不能继续作为当前日常CA。最终ASAR SHA-256为`359f44ea97cff9eee47cdf46eb8b23aa9eeafd7cb5e1e9021878c4d4e16ae6b4`；包内与实装helper SHA-256均为`21e129c9395239b52d647cd7d1c33531a790b08c02837ae58e1af3c2f73cc260`。
-
-该阶段以`d6debb2e`提交，保留已推送的`0033f9ab`，未amend；接手的6处修改随15文件一起审阅交付。[原报告](../../commit-changes/202609241020_main_ca_unknown-write-boundary.html)保留CA内容，后续正文继续使用同一文件。平台基线`218295b0`对应[平台报告](../../commit-changes/202609240135_main_shared-ca_startup.html)，工作区checkpoint对应[独立报告](../../commit-changes/202609240150_docs_workspace_progress.html)；GitHub候选四图仍在后者，不覆盖平台报告。
-
-CA证据持久根目录为`/Users/zhxmt/.copilot/session-state/df17625e-cb60-4ece-a735-8d703667fab6/files`。`item4-acceptance-summary.json`核对12次成功运行、11条不同workflow的trace和每代退出；`item4-acceptance-20260926.tar.gz`的SHA-256为`ba3f9ee81b6aae05a96d6bfdb69fba76fbe2ffff0cf46d87bd8c0e9e0d9937f8`，包含原始Red、失败、Green及恢复。历史`16CEB8D0990CCC29FA7313B7F85F1167B227C26C`、`3C2E5F2AC71BDB4E82AA47AA49E79276D3EACDD5`、`B705FBDEF2397E85DAE3605550B916A0EA946ED6`和`54B224ABC1D2C88BBDB2B43396A5EBC4DC8B023C`均不是当前清理目标。
-
-此前journal/launchd调度阶段的37.4秒完整校验超过30秒；只读对照为Background26.99秒、普通6.27秒，不反推旧14:09缺失的时序。实际launchd Red后改用Interactive并经用户部署，平台262通过/2 Windows native跳过、package/audit/严格签名、生产helper 1/1及smoke1/1通过。另有profile删除重建journal、service增删时Restore/跨代Recover零覆盖的37/37及Desktop类型通过；VPN/TUN、动态网络切换和ClashX未验，不能由这些结果代替。
+- 常驻helper核验socket audit身份、固定App路径和运行时保护；每次完整资源校验启动同一受保护helper的只读`verify-code-signature <absolute-code-path> <cdhash-requirement>`子进程，避免长期进程的校验慢路径。
+- 子进程执行原Security API的身份、strict、nested、all-architectures及no-network检查，正常退出码0才可继续；失败或异常退出拒绝请求，不将CLI开放为socket命令。
+- 原请求保持占用，完成记录晚于校验子进程退出及真实系统写入收尾；30秒期限、128条结束记录、不重放、Windows与开发UID入口不变，不保存签名或信任缓存。
 
 Certificate module组装的`CertificateInfo`含`path`与`mitmEnabled`，不含私钥；解密材料只经内部Core RPC发送。
-
-#### 部署发现性能验收
-
-第3项本轮证据前缀为`/tmp/interceptor-startup-performance-20260924-`；仅部署发现的耗时对照，不代表整个App启动耗时。
-
-| 范围 | 结果 | 证据后缀 |
-| --- | --- | --- |
-| native边界与回归 | 新目标1 Red/12 Green后，部署/安装、服务端资源与运行时校验及平台调用方共109/109；主可执行文件篡改仍拒绝，资源篡改仍阻止完整检查和请求安装 | `native-red.json`、`native-green.json` |
-| 同一签名App对照 | ASAR保持`78878acc97489b8c9234d7ea6e9173eadb5c43e5133bacb25ca478bd9e97fa2f`；三次检查的中位数2993ms→17ms，状态均为ready，没有替换实装服务或缓存信任 | `before.json`、`after.json` |
-| 新包静态检查 | Swift构建、Desktop类型、package、audit（1487文件/339493468字节）及严格deep/strict/all-architectures签名通过 | 本轮构建/audit命令输出 |
-| 部署前失败 | 当时新helper为`3b9005da50dd776414c9c3c725a7cc8ab6934efefc98e7b66f85d6e85fd50d61`、实装为旧`18590483b88049c8e1298bdc1f3e98418e8dafb9757ba17e2e73797f8035b86d`，production为outdated；E2E停在组件准备，未启动Core，1失败/1未运行。完整代理、CA和端口恢复；此历史失败不改为Green | `production-e2e.json`及目录、`deployment-blocker.json` |
-| 当前生产验收 | 新helper已通过正常App授权部署，包内与实装SHA-256相同，production为ready；生产helper复用/共享CA E2E 2/2、packaged smoke 1/1。四代Main/Core正常退出，CA指纹及三份材料元数据未变，完整代理恢复、无journal、8888释放 | `production-final.json`及目录、`smoke-final.json`及目录、`production-host.json` |
-
-本次新helper的生产结果已独立取得，不复用下文旧产物的Green。组件核准与正常关闭的记录在`/tmp/interceptor-component-resume-20260924-current.json`；未更改日常CA、安装权限、服务端完整准入或产品30秒期限。原启动实现的历史前置E2E缺口继续单独披露，不以本次结果补造。
-
-第3项本轮收尾范围为当前版本的启动顺序、CA准备/取消、组件发现性能、生产运行及退出恢复，上述证据覆盖该范围。原实现之前的E2E记录缺失作为历史实施过程缺口保留，不把当前Green标注成历史前置Red，也不将其混作当前版本尚未执行的测试。
 
 ## 3. 系统代理
 
@@ -706,8 +640,6 @@ flowchart LR
 - Settings与Capture列表共用`clearCapture()`，清理请求记录、正文和选中详情；Settings二次确认，Cancel不清理，已保存文件、当前Session及录制状态保持。文件任务互斥和系统代理恢复遵守Core/Main的同一业务规则。
 - Storage清理行可换行并显示第二行提示，适应不同语言的完整说明。
 
-历史布局、真实清理及产物验证边界见[Settings UI验证记录](#settings-ui-validation-history)。
-
 Capture没有全局内存/磁盘配额；小正文驻内存，未确认事件队列没有总容量上限，不以静默丢弃数据控制用量。
 
 ## 6. 语言与主题
@@ -819,8 +751,8 @@ passthrough额外要求`expectedRevision`；空数组仅表示清空该名单，
 
 - 职责仅为通过`openCertificateManager()`请求打开外部系统管理器；Windows为`certmgr.msc`，macOS为Keychain Access。`{ requested: true }`表示启动请求成功，不表示读写证书或窗口清理成功。
 - 生产保持`asInvoker`，不修改UAC或token、不自动提权；管理器中的后续操作由用户直接控制。
-- 用户于2026-09-09明确排除需要管理员权限的MMC原生打开、关闭和进程清理专项，不再要求管理员终端或“至少一次”实操。Tool、Main/IPC/Agent/MCP接线、逻辑测试、UI/parity与recipe保留；排除不是passed，也不再作为该专项的blocked门禁。
-- 其他六项证书真实E2E、Reveal/View原生关窗及通用授权、取消、持久化和重启检查不变。逻辑回归、UIPI失败及排除范围已由[Manager规格](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-tools-certificate-manager)承接。
+- 验收范围排除管理员MMC原生打开、关闭和进程清理专项；Tool、Main/IPC/Agent/MCP接线、逻辑、UI与recipe保留，排除不代表通过。
+- 其他证书操作、Reveal/View原生关窗及通用授权、取消、持久化和重启检查不变，见[Manager规格](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-tools-certificate-manager)。
 
 <a id="app-container-tool-acceptance"></a>
 ### 7.5 AppContainer Tool 契约
@@ -871,240 +803,3 @@ passthrough额外要求`expectedRevision`；空数组仅表示清空该名单，
 - 更新下载的 SHA-256 与 size 校验失败时不保留文件。
 - 15 种语言切换后无页面溢出，持久化生效。
 - 存在 PAC 或上游代理时 Enable 有明确提示而非静默断网。
-
-<a id="platform-verification-evidence"></a>
-## 11. 平台验收证据
-
-这里保存详细证据与历史失败边界；当前未完成任务只在[Handover](../HANDOVER.md)维护。不同产物、平台和测试层的结果不相加，不把旧Green或fixture失败当作新流程的前置证据。
-
-### 当前可复用结果
-
-| 范围 | 已验证事实 | 证据 |
-| --- | --- | --- |
-| CA服务归属 | Main仅持有readonly平台对象，材料/Trust Store、模块状态、Core同步、upstream和图标缓存归各module；相关类型、平台回归、真实E2E及产物检查覆盖已迁移调用方 | 下方平台前置与回归证据；原第1项已关闭，不包含独立package迁移或Windows实机 |
-| 共享CA与profile | 两代fresh profile复用同一CA，真实删除第二代profile后公开指纹、size/mtime、信任及Root集合保持；两代正常退出，8888与journal恢复 | `/tmp/interceptor-item2-20260924-unlocked-e2e.json`、`unlocked-host.json`及同名trace目录 |
-| 首次启动与取消 | 首次生成/授权/复用1/1；启动取消1/1，首代无Core、Quit即时拒绝、次代同CA正常授信且无冲突提示；两代trace与正常退出齐全 | `/tmp/interceptor-item3-20260924-first-ca-startup.json`、`startup-cancel-final.json`、`startup-cancel-host.json`；历史前置E2E缺口不补造 |
-| 显式CA生命周期 | 取消回滚与两轮不同CA安装/撤销/删除2/2；其他Root/admin trust恢复，测试材料清理，Main/Core退出及8888释放 | `/tmp/interceptor-item4-20260924-certificate-lifecycle.json`及目录；`/tmp/interceptor-items2-7-20260924-pause.json` |
-| helper与journal | helper跨启动复用、跨profile crash recovery 2/2；文件集成与service增减零覆盖37/37 | `/tmp/interceptor-item5-20260924-unlocked-e2e.json`、`baseline.json`（32/32）、`journal-green.json`、`journal-final.json`（37/37） |
-| 定向回归 | 第2项73/73，第3项45/45，第4项54通过/46条过滤；解锁后原生与占用同组100/100，原签名用例在15秒原期限内通过 | `/tmp/interceptor-item2-20260924-baseline.json`；`/tmp/interceptor-item3-20260924-startup-green.json`；`/tmp/interceptor-item4-20260924-{target-green,unlocked-native-read,unlocked-group}.json`；各组有重叠 |
-| 已验macOS基线 | 产品源码对应`b5101f5a`，这是部署发现优化前的包；package、audit与deep/strict/all-architectures签名通过，当时生产身份已获核准，实装helper为Interactive | `/tmp/interceptor-item7-20260924-artifact.json`；audit为1487文件、339493308字节。不覆盖第3项本轮新helper |
-| 已验smoke基线 | 同一旧包在文件日志修正后及最终版本均1/1，保留既有截图矩阵；日常CA保持、完整代理恢复、App全退、journal删除、8888释放 | `/tmp/interceptor-item7-20260924-{persistent-log-smoke,final-smoke,persistent-log-host}.json`；独立复核`/tmp/interceptor-resume-20260924-current.json`；新helper需重跑 |
-| 当前parity | 406/406无missing/flagged：402项源码未变结果复用，4个Tunnel场景重跑；32目标最大差0.8px，8份前后PNG字节一致。只修重复文案定位，产品/设计/阈值不变 | `/tmp/interceptor-item7-20260924-{tunnel-before,tunnel-after,parity-current}.json`；原80–80.75px差异不是HTTPS弹窗问题 |
-| 类型与相关UI | 8个workspace类型通过，HTTPS弹窗/退出单测9/9；最新fixture修改后Desktop typecheck通过 | `npm run typecheck`；`/tmp/interceptor-workspace-checkpoint-20260924-ui-unit.json` |
-| Updates候选 | 4张1600×900浅/深色前后图，Inter/JetBrains Mono实际字重已加载，检查/下载交互达到available/downloaded；未改正式shots或产品OAuth | `/tmp/interceptor-item6-20260924-design/evidence.json`；设计未确认，不算产品实现 |
-
-上表同一单元格中未写目录的文件与首个文件同前缀；带花括号的是各个独立文件，不是一次合并运行。以下是9月24日基线产物身份，不是第4项恢复后的最终包或当前日常CA；最新身份见“第4项恢复验收”：
-
-- ASAR SHA-256：`78878acc97489b8c9234d7ea6e9173eadb5c43e5133bacb25ca478bd9e97fa2f`。
-- helper SHA-256：`18590483b88049c8e1298bdc1f3e98418e8dafb9757ba17e2e73797f8035b86d`，包内与实装相同。
-- 日常CA：`3C2E5F2AC71BDB4E82AA47AA49E79276D3EACDD5`。原CA `16CEB8D0990CCC29FA7313B7F85F1167B227C26C`经用户明确授权，由产品Uninstall/Delete清理；其他3张System Root不变。空材料基线在`/tmp/interceptor-approved-ca-reset-20260924-current.json`，新CA正常生成、授信和退出保留在`/tmp/interceptor-daily-ca-20260924-current.json`。
-
-### 历史基线与前置证据
-
-以下是当时的范围，不代表当前仍存在同一阻塞，也不覆盖后续代码。
-
-| 范围 | 原始结果与边界 | 证据位置 |
-| --- | --- | --- |
-| 原整轮基线 | 当时E2E为73/87 Green，14条未执行：Windows AppContainer 3、Certificate/TLS 5、外部上游/ClashX 2、暂停Bilibili/HTTPS弹窗2、gRPC长正文/Execute edited 2。原parity只覆盖305/406；Body/Archive隔离复验通过，但首次偶发超时未根治 | `/tmp/interceptor-platform-final-20260923-`下`workflow-inventory.json`、`parity-combined.json`、`parity-batch-300.json`、`package.json` |
-| 原整轮代码检查 | macOS适用Desktop/Tools/MCP/Agent与类型通过；Core有2项framing失败，5个Windows文件窗口fixture在macOS失败并排除，2项Windows native跳过，均不算通过 | 同上前缀的`{desktop,desktop-macos,core,core-paths}.json` |
-| 平台前置检查 | module、完成状态、授权互斥、维护与布局的原Red保留；启动准备失败不等于产品目标Red | `/tmp/interceptor-platform-{modules,completion,authorization,maintenance,layout}-20260923-*`；`/tmp/interceptor-daily-ca-ready-20260923-MhBXIZ/` |
-| 工作区checkpoint | 全workspace类型与9项UI/退出单测通过；两次历史重写只调整报告和Handover，产品/测试/配置源码不变。12份保护文件与7份stash均保留 | `/tmp/interceptor-workspace-checkpoint-20260924-ui-unit.json`；`/tmp/interceptor-macos-resource-check-20260922-preserved.json`；`/tmp/interceptor-commit-rewrite-20260924.json` |
-
-以下文件共享前缀`/tmp/interceptor-platform-resume-20260923-`：
-
-这一组早期产物来自保留工作区，不等于独立item提交树；当时暂停的HTTPS弹窗修改尚未纳入对应提交。旧产物通过不能自动覆盖后续提交或新的授权专项。
-
-| 范围 | 原始结果与边界 | 文件后缀 |
-| --- | --- | --- |
-| 只读部署检查 | 8项目标Red，修正后262通过/2 Windows native跳过；共享CA/helper复用、原生View及跨profile journal四条Green，七代退出/端口/当时日常CA保留 | `inspection-red.json`、`inspection-green.json`、`platform-e2e-green.json`及目录、`host-check.json` |
-| 旧包授权与超时 | `package.json`是授权前快照；人工启动/Close核准和恢复不代替workflow。名称含green的生产重跑实际失败，完整资源校验37.4秒超出30秒；不反推缺耗时日志的历史14:09失败 | `package.json`、`approved-startup.*`、`approved-close.json`、`production-helper-green/`、`production-timeout.log` |
-| 调度修正 | 实际Background断言Red；同一签名API只读对照Background26.99秒、普通6.27秒，不算E2E。改Interactive后回归262/2 skip、生产helper 1/1、smoke 1/1，进程/代理/CA恢复 | `signature-{background,foreground}.jsonl`、`launchd-policy-red.json`、`qos-regression.json`、`qos-production-helper.json`、`qos-smoke-ui.json`、`qos-package.json`、`final-host-check.json` |
-| 生效代理解析 | null/array/string完整只读回复3项Red；串行265通过/2 Windows native跳过。并发首跑264通过/1失败/2跳过，失败为UpstreamProbe的10ms网络断言，未放宽期限 | `effective-read-payload-red.json`、`effective-read-serial-green.json`；名称含green的`effective-read-green.json`实际有失败 |
-| 原完整parity | 406场景已执行，当时402通过、4个Tunnel同文案目标错量；产品/设计未改，后续只修测量范围 | `parity-complete.json`；旧报告宽1600/480、图片/红框检查为`report-preview.json` |
-
-### 必须保留的失败与恢复边界
-
-| 范围 | 失败事实与恢复 | 证据 |
-| --- | --- | --- |
-| 显示与锁屏 | 旧1536×875不能满足真实1600×900；Main85537未启动Core/listener并已退出，但trace保存ENOENT。后续已解锁/调整显示，旧失败不改为Green | `/tmp/interceptor-platform-resume-20260923-window-probe-recovery.json`及原workflow输出 |
-| 共享CA窗口准备 | 锁屏时System Events没有测试窗口，未进入删除profile断言；经真实Close恢复完整代理、5个进程、journal、8888及当时CA。problems工具30分钟无响应，后用Desktop typecheck通过，不计产品失败 | `/tmp/interceptor-item2-20260924-{e2e,host-recovered}.json`及`e2e/`；原保留profile为`/var/folders/h5/jmc6085s1gb9cgqszq8qtc_00000gn/T/interceptor-e2e-workflow/21931-YQyyLi` |
-| 启动取消fixture | 两次失败分别是System Events窗口索引和原生错误提示未确认；后来改WindowServer只读窗口检查与精确Main原生Enter，原失败不算产品Red | `/tmp/interceptor-item3-20260924-{startup-cancel,startup-cancel-fixed,startup-cancel-recovery,startup-cancel-fixed-recovery}.json` |
-| 原生读取超时 | 原同组99通过/1失败；单独Node签名用例仍超15秒，afterEach超过10秒，无测试helper残留。解锁后原期限及同组复验通过，不能倒推前次失败原因 | `/tmp/interceptor-item4-20260924-{unknown-outcome-green,native-read-retry,unlocked-native-read,unlocked-group}.json` |
-| 锁屏前置 | 两个真实入口在spawn前分别180ms、48ms拒绝，未进入产品步骤，不算Green；未启动App或改代理/CA | `/tmp/interceptor-item7-20260924-{e2e-preflight,smoke-preflight,preflight-host}.json` |
-| smoke断管 | 原Core新PID/running的15秒断言先超时；runner结束后保留App的console.error遇EPIPE。仅在完整代理确认恢复后强制清理5个测试进程，不能记正常退出。后续macOS文件日志、错误合并和35秒等待修正，不改产品30秒/Windows15秒 | `/tmp/interceptor-item7-20260924-{resume-smoke,epipe-safe-cleanup,persistent-log-smoke,final-smoke,persistent-log-host}.json` |
-| 组件准备耗时 | 已有17次helper资源校验中位5335ms、最大13733ms；peer中位1ms。deployment-status也完整扫描，优化未实施，不用缓存、跳过校验或延长期限冒充解决 | `/tmp/interceptor-startup-verification-20260924.log` |
-
-Windows、特殊VPN/TUN、动态切网、ClashX、真实更新下载/打开安装器及未知写入解除仍按各自工作项处理。当前macOS包验收通过不等于正式tag release或这些范围通过；新代码/环境影响结果时，按[测试分层](../platform/testing.md)重验。
-
-### 压缩前历史证据的适用范围
-
-以下从`218295b0`恢复独有验证事实和证据标识，只描述记录当时的代码、产物与宿主。本轮没有重跑历史命令或重新校验旧归档；TEMP名称保留原平台口径，不能据目录名含green判断结果，也不能据旧CA指纹执行当前清理。现行共享CA、模块互斥、前台信任入口及第4项恢复证据保持上文较新契约。
-
-九section导航及语义Red、Windows AppContainer去重/排序与`1→138→0→1`批量恢复，已分别完整保留在[导航规格](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-navigation)、[排序规格](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-app-containers-ordering)、[批量规格](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-app-containers-bulk-access)，不另抄流程。Tool主线69/68历史范围与首批门禁在[能力目录验证记录](tool-capabilities.md#tool-validation-history)；Windows结果不代表本轮macOS或后续Windows实机复验。
-
-<a id="settings-preferences-history"></a>
-#### 偏好Tool（2026-09-07）
-
-原UI、Agent/MCP、连续单字段保存、HAR已开草稿隔离、重启零重放和最后两条真实流程的各代退出，已由[语言规格](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-tools-language)与[偏好规格](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-tools-preferences)承接。额外门禁如下：
-
-- executor21项缺失Tool Red；Main首次因Service模块不存在而没有执行用例，不能说成29项行为Red，之后生命周期29/29。Renderer旧Privacy未调用Main的Red与新Actions模块缺失分开记录；摘要3 Red后53/53、保存确认5 Red后应用10/10，与Privacy和Main合计41/41。
-    - TEMP日志：`interceptor-settings-preferences-executor-red-20260907.log`、`interceptor-ui-preferences-owner-red-20260907.log`、`interceptor-ui-preferences-renderer-red-20260907.log`、`interceptor-settings-preferences-summary-red-20260907.log`、`interceptor-preferences-persistence-red-20260907.log`。
-- 语言、偏好、双列授权、MCP Browser/Desktop关联5/5（2.0分钟），十代正常销毁、8888和完整WinINet/journal恢复；TEMP `interceptor-preferences-related-green-20260907-210510`。保存确认修正后目标2/2（52.3秒），`interceptor-preferences-persistence-green-20260907-211527`；不把两次重叠运行相加。
-- 全workspace类型、Desktop707/707、Tools347/347、MCP32/32；偏好72、TLS fixture96、Settings目录76共244/244 targets，0 missing/flagged、最大0.6px。TEMP `interceptor-preferences-final-parity-20260907-211811`、`interceptor-preferences-settings-parity-20260907-212106`；12张偏好审批/完成图新增，Settings两张目录图有实际变化。
-- Windows package、audit1,294文件/392,925,601字节、smoke1/1（41.5秒）；日志`interceptor-preferences-{package,artifact-audit}-20260907.log`，smoke `interceptor-preferences-smoke-20260907-211651`。7个窄Preload API进入白名单；请求/确认并非业务Tool。
-    - 依赖及锁文件未变，复用`interceptor-har-delivery-production-audit-20260907.json`的零漏洞结果，不算重新查询。该阶段代码58/73、完整54/73，Settings代码15/26、完整11/26，116个开关；不由此覆盖当时TLS清理、特权证书/AppContainer或macOS原生流程。
-
-#### Windows证书与AppContainer Tool（2026-09-08～09）
-
-六项证书真实调用/原生关窗、两次完整Green、Manager149项逻辑及UIPI边界、AppContainer八条关联流程/十四代恢复，分别由[证书规格](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-tools-certificates)、[Manager规格](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-tools-certificate-manager)、[AppContainer规格](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-tools-app-containers)承接；这里只补原规格未收录的门禁与归档身份。
-
-| 范围 | 独有历史事实 | TEMP证据 |
-| --- | --- | --- |
-| 证书七项 | owner50/50；摘要7 Red及窗口请求文案3 Red后覆盖15语言。与AppContainer合并后摘要64/64、Tools431/431、Desktop721/721、MCP32/32及全workspace类型通过；未新增Preload API | `interceptor-certificates-owner-red-20260908.log`、`interceptor-certificates-discovery-red-20260908.zip` |
-| 证书parity与归档 | 七项28 views/168 targets全匹配、最大0.5px，其中六项24 views/144 targets。六项54.2秒Green归档SHA-256为`B7939C70D90485DB94E61BB943BBD520C4E00CAF7393AE3E92A2DF9261F401EC`；不代表MMC原生Green | `interceptor-certificates-six-e2e-green-20260909-002441.zip`；后续keep-six归档及其hash已在规格保留 |
-| Manager历史权限 | Runner Medium=8192、MMC High=12288、UIAccess=0；窗口enabled但Close坐标全0、Win32 5。旧MMC PID26600随后退出，旧CA经正式UI恢复；不恢复被用户排除的专项 | `interceptor-certificates-mmc-inspection-20260908.log`、`interceptor-manager-integrity-evidence-20260909-132627.zip`；原access-denied归档在规格 |
-| AppContainer前置 | owner34项Red→34/34，摘要4 Red→64/64；Playground Browser5/5。四项真实discovery Red不是初次Auto Chat未完成的fixture失败；后者经真实新Chat/discovery重跑，未放宽产品上下文限制 | `interceptor-app-container-owner-red-20260908.log`、`interceptor-app-container-e2e-red-20260908.log`、`interceptor-app-container-discovery-red-20260908.zip` |
-| AppContainer产物 | 8/8关联归档SHA-256为`CA646E05D6C3C0D4F096E5C573331E0AEA21579C4286A538524BDDC6B2D0B7D7`。Windows audit1,294文件/392,939,357字节、production audit0、smoke1/1；`onAppContainersChanged`进入白名单 | `interceptor-settings-tools-final-e2e-20260908.zip` |
-| AppContainer视觉范围 | 新Tool16 views/96 targets最大0.5px、能力表/查询4 views/66 targets为0px；原面板明暗各5个flag、最大3.8px，批量弹窗无flag，不把旧字体/行高差记Green。16张新图已提交；当时两张含Manager的目录图仍在工作区，69项工作区验收不等于当时已提交69项 | `interceptor-app-container-parity-20260908`、`interceptor-settings-capability-parity-20260908` |
-
-TLS旧清理失败的trace和两代metadata另存TEMP `interceptor-tls-cleanup-failure-preserved`；2026-09-05旧profile被误删与9月8日精确清除残留CA、最终1/1的完整事实已在TLS规格，不恢复管理员清理命令为当前操作。
-
-<a id="settings-ui-validation-history"></a>
-#### Settings UI历史验证
-
-当前布局仍按正文契约和设计稿；历史字体、字形与矩形测量不再作为新的对齐目标，不恢复位移补偿。真实通知下载/打开安装器不能由下列fake Preload、parity或其他Button调用处的E2E代替。
-
-| 日期/位置 | 历史事实与未覆盖范围 | 证据位置 |
-| --- | --- | --- |
-| 2026-09-11 Certificates/Proxy | 只修验收侧expanded sidebar与重复端点定位，不改产品/设计/基准。Certificates明暗各10 matched、0 missing、2 flagged，像素约1.46%/1.45%；原缺失`light/shell-v2/settings.png`改用已有framed图。Proxy由浅色13目标12 flag到两主题各13/13、最大0.9px，像素1.25%/1.23% | TEMP `interceptor-settings-certificates-20260911*`、`interceptor-settings-proxy-20260911*`；[同一历史报告](../../commit-changes/202609111558_ui_parity_progress.html#settings-certificates) |
-| 2026-09-11～15 字体归因 | 旧标题宽90.375/89.40625px、Reveal按钮宽178.359375/177.734375px，两侧均已加载字体；不能据“静态/Variable”名称断言二进制不同。9月14日7份WOFF2与已装`@fontsource-variable/inter@5.2.8`逐份SHA-256相同，根因是离散400/450/500/600/700与连续100–900注册差别 | TEMP `interceptor-certificates-geometry-20260911.json`、`interceptor-inter-source-20260914/source.json`；真实字体Red、误含其他字体data URL的失败及9月15日1/1（20.7秒）已在导航规格 |
-| 2026-09-15 字体产物 | 398场景合并结果中Certificates/AppContainer字体目标无flag；package/audit与smoke1/1（36.7秒），ASAR复核35声明/7资源。17个无证书签名文件按规则标unsigned，不冒充Developer ID或正式发布 | TEMP `interceptor-ui-delivery-20260914-evidence/parity-current.json`、`interceptor-acceptance-20260915-*` |
-| 2026-09-12 AppContainer行 | 排序unit前后2/2、Desktop类型；六场景52 matched/0 missing/4 flagged，列表高度/底部说明与四弹窗20/20匹配。名称宽差0.953125px（171.96875/171.015625），不是字体未加载。浏览器搜索/清空/Cancel零exemption写入，不算原生UAC验收 | TEMP `interceptor-app-containers-20260912-{before,package,rows,final}.{md,json}`、`interceptor-app-containers-20260912-review/evidence.json`；平均像素1.06%非全页一致 |
-| 2026-09-12～13 AppContainer真实与表头 | 9月12日排序与正文/媒体/TLS同组4/4（52.7秒）、unit33/33；暂停期布局前置E2E缺口保留。9月13日表头真实Red为12.915px而非normal，修复后1/1（15.6秒）、列表32/32、类型通过，未改exemption。原0.953125px不应先舍入1再flag；四个批量弹窗另有8 flag，Continue宽差1.0625px、Cancel0.25px，不做宽度补偿 | TEMP `interceptor-e2e-resumed-20260912-body-settings`、`interceptor-ui-parity-20260913-appcontainer-head-*`、`interceptor-ui-parity-20260913-settings-border-synced.json`（10张设计末边框图）、`interceptor-ui-parity-20260913-app-container-button-metrics` |
-| 2026-09-12 TLS行与弹窗 | unit18/18、类型、七场景44/44最大0.9px、平均像素0.82%；两个Capture跳转无专属PNG，像素n/a。首轮42 matched/2 design missing来自跨场景DOM改动；重建设计页后同序列通过，未改产品或阈值。浏览器滚轮到94px、非法输入/Not now零保存仅为fake Preload结果 | TEMP `interceptor-tls-{rows,dialog}-20260912-{before,after}`、`interceptor-tls-layout-20260912-page-isolated.{md,json}`、`interceptor-tls-layout-20260912-review/evidence.json` |
-| 2026-09-12 TLS真实兼容性 | 六次真实`SELF_SIGNED_CERT_IN_CHAIN`、五host精确项、wildcard默认未选、264px列表wheel/Home/End及保存/Not now，origin应用字节0。原流程1/1（17.3秒），加公共ID后1/1（23.6秒），显式JSON文件最终1/1（27.6秒）；三代均正常退出并恢复CA/Root/代理/journal/8888。line reporter的内存attach无独立JSON，最终改UTF-8文件path附件；不补造暂停期行高前置Red | TEMP `interceptor-tls-compatibility-20260912-evidence`及同名log、早期`-first`/`-ids`；ID版unit18/18、parity24/24最大0.6px、平均像素0.62% |
-| 2026-09-11～12 通知Button | compact尺寸2 Red→10/10，四场景64/64最大0.9px；独立label2 Red→17/17，八场景100 matched/0 missing、仅旧HTTPS Cancel约1px flag。正文/TLS真实2/2（45.7秒）及继承行高版正文1/1（21.9秒）正常退出/恢复，但不是通知下载验收；继承版unit20/20 | TEMP `interceptor-update-notification-20260911-{unit-red.log,unit-green.log,typecheck.log,parity.md,parity.json,review/}`、`interceptor-update-button-centering-20260912*`、`interceptor-button-visible-center-20260912*` |
-| 2026-09-13 GitHub图标槽/下载末行 | GitHub图标原在label内，按钮窄约7.6px；调用2项unit Red，真实Red为直接icon槽0/1，首次blockification断言不是产品Red。修复后Renderer425/425、导航1/1（19.9秒）、五场景64/64及类型通过，未点击登录。设计下载末行多1px边框曾使changelog提前约1.1px（15 matched/2 flagged）；仅修设计末行后两主题30/30、最大0.859375px，未执行真实下载 | TEMP `interceptor-ui-parity-20260913-github-{icon-unit-red,icon-unit-final,slot-e2e-red,slot-e2e-green,slot-parity}*`、`interceptor-updates-row-20260911.{md,json}`、`interceptor-ui-parity-20260913-update-last-row.*`、`update-last-row-design-synced.json` |
-| 2026-09-15～16 Storage | 9月15日设计获确认；业务Red、84项Green、135 B/Session/Recording语义、busy点击失败和最终真实1/1（16.4秒）已由Storage规格承接。补充八态148/148最大0.859375px、像素0.7633%～0.8559%，共享Row邻页13/13；960×720英/中/德/俄按钮可达、无横向溢出、Cancel不改数据 | TEMP `interceptor-storage-delivery-20260915-parity/{pixels,neighbor,responsive,shots-synced,fonts}.json`；8张新增图、457张无关图hash保持。设计预览`interceptor-storage-simple-20260915/preview.json`、`interceptor-storage-simplified-20260915.json`不是产品验收 |
-
-上述UI历史报告的图片与红框均曾按1320/390宽度展开检查；原报告保留独立截图来源，不能把之后的布局替换成当时画面。Storage只改Renderer/文案/设计验收，未重复package/audit/smoke，不外推全workspace、GOAWAY或HTTP wire；当时字体下载失败仅在验证浏览器使用已有WOFF2，没有修改产品资源。原Button字形DPR实验已被用户的flex规则取代，不据其偏移数值继续改产品。
-
-Storage前置日志为TEMP `interceptor-storage-delivery-20260915-{unit-red,i18n-red,e2e-red}.log`；同前缀其他失败/Green和`current-evidence.json`仍按各次运行区分，不由最终CSS版结果覆盖。
-
-#### 上游与Windows恢复的历史边界
-
-- Windows崩溃后跨profile加载首次original/owned、Core重启与第二次故障/Close竞争已有真实Red/Green；完整步骤与退出在[crash-recovery](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-system-proxy-crash-recovery)、[MITM持久化](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-proxy-mitm-persistence)及[Application规格](../../apps/desktop/tests/e2e-workflow-tests/docs/application-shell.md#application-lifecycle-core-restart)。外部改写零写入、恢复失败留journal、启动失败恢复顺序属于owner测试，不是脚本改系统配置造出的E2E。
-- 2026-09-09 HTTP Basic本地集成22/22（新增10例）、Core typecheck：HTTP、HTTPS passthrough/MITM、WebSocket CONNECT、URL转义密码、错误/缺失凭据拒绝且origin零到达、noProxy直连不携带认证、源站/Capture无凭据泄漏。没有接公司网络、改WinINet或安装CA，真实Electron及浏览器运行均为0，不代表SSO或用户凭据配置流程。
-    - TEMP `interceptor-upstream-basic-local-green-20260909-230438.zip`，SHA-256 `61E4AC2244F12FB0ACC50555F9BB78198C160E53EE2E9CB78AAC8AA6FFC29F9E`；含三份日志、类型结果和四份源码hash。
-- 更早Windows转换函数14项unit与真实上游/源站集成覆盖直连、CONNECT、即时切换、noProxy、MITM关闭、不可达隧道收尾及WS握手。原文记单次稳态探测约90µs，未给独立基准方法/归档，不将其写成当前性能保证；PAC无单一端点，不纳入该探活。
-- 2026-08-07 Windows App现场：workspace revision8保存4个host，重启后Core `tls.reconfigured`记录`passthroughHosts: 4`，不再出现`www.wvd.microsoft.com` TLS错误；仅有`aadcdn.msauth.net`/`fonts.gstatic.com`低置信reset，不能继续归因于那4项未生效，也不证明RDP/gateway完整通过。
-- 旧TODO综合基线曾记录package/audit/smoke、337项unit及54个parity view通过；BYD参数对比与大唐EV首载/刷新为200、无`ERR_HTTP2_PROTOCOL_ERROR`。原文未给独立日期、产物身份或证据路径，保留为历史报告事实，不作当前复用结论，也不恢复旧1 MiB/CodeMirror 320px设计。
-
-<a id="macos-validation-history"></a>
-<a id="handover-verification-history"></a>
-#### macOS早期系统边界（2026-09-15～17）
-
-当前为同包helper双入口；旧一次性授权、整App `.pkg`和临时签名方案均只是历史。下表中的通过不等于Developer ID、公证、root卸载/失败rollback或Windows原生验收。
-
-| 范围 | 历史结果与风险 | 证据 |
-| --- | --- | --- |
-| Desktop路径与授权寿命 | 同SHA-256 helper在Desktop的`AuthorizationCreate`为-60008、`/tmp`为0，签名/detached未单独解决。非Desktop产物又复现`SystemConfiguration commit failed`；AuthorizationRef延续到commit/apply/回读后，导航最终1/1（17.1秒）。原Service/journal11/11，平台/guard66通过、1 Windows native skip | `/tmp/interceptor-macos-first-e2e-20260915-installed/`、`interceptor-macos-staged-e2e-20260915/`、`interceptor-macos-authorization-lifetime-20260915/`、`interceptor-macos-navigation-20260916-platform/`（后面三个同为`/tmp/`） |
-| 人工超时与恢复 | 授权寿命轮当时未完成退出；另一次setup300秒超时的graceful/abrupt均false。后续只读确认进程退出及current==journal.original后清journal，不把恢复补记为正常退出。retry曾误断言Windows专属Search，暂停后由获准恢复还原完整代理；不是产品Red | `/tmp/interceptor-macos-navigation-20260916/`、`/tmp/interceptor-macos-navigation-20260916-retry/`；原profiles `29421-hKNwfm`、`36231-0YHLuH` |
-| 网络权限边界 | `system.preferences`/`system.preferences.network`的shared成功不能替代真正写入right；`system.services.systemconfiguration.network`依赖`authenticate-admin-nonshared`（shared=false、timeout=30），新AuthorizationRef禁止交互返回-60007。未采用macOS手动接管来绕过统一流程 | `218295b0`本节原生查询记录；原文未提供独立日志路径，不补造 |
-| CA存在不等于信任 | 2026-09-16旧用例1 Red/8 Green，契约补齐3 Red/8 Green后11/11；真实系统可信根/新CA查询2/2。root授信失败时CA已经导入，新查询仍正确判未信任，H1/H2业务未执行；用户精确删除后证书集合恢复不消除该轮代理快照差异 | `/tmp/interceptor-macos-trust-20260916-unit{,-contract}-red.log`、`/tmp/interceptor-macos-tls-trust-20260916/` |
-| 两阶段历史安装/清理 | 普通用户直接导入失败于`SecCertificateAddToKeychain: Write permissions error`；提权导入/用户trust后TLS1/1（32.9秒）却遗留admin trust。追加先撤trust再删证书后真实27.7秒Red→29.3秒Green，证书24/24、相关101通过/1 native skip，完整CA/admin trust/代理/journal/8888恢复 | `/tmp/interceptor-macos-tls-trust-20260916-{native-authorization,two-phase}/`、TEMP `interceptor-trust-recovery-20260916-Mvwwr5`、`/tmp/interceptor-macos-trust-20260916-cleanup-{red,green}/`；这些不是当前Main写trust路径 |
-| ad-hoc启动与签名 | `Interceptor-2026-09-16-183244.ips`中Main18037在80ms内DYLD中止，deep/strict验签通过仍不能证明启动。旧关闭Hardened Runtime方案2 Red→6/6后smoke1/1（41.1秒），后来为写鉴权重新启用runtime，仅App使用JIT/disable-library-validation，不开放DYLD注入、调试或执行页保护例外 | `/tmp/interceptor-macos-packaged-smoke-20260916-listener/`；两次早期audit均1487文件/339207153字节，后续runtime产物339306648字节，flags=0x10002。配置1 Red→6/6、包内helper19/19：`/tmp/interceptor-macos-packaged-helper-20260916-green.json` |
-| 原生窗口未到达 | 改真实窗口尺寸后的smoke在代理授权处受阻，未进入尺寸断言；仅确认代理未接管后取消本轮helper35764/Main35750，进程/journal/8888及原CA/admin trust恢复。旧viewport smoke不能替代该版真实窗口Green | `/tmp/interceptor-macos-packaged-smoke-20260916-native-window/` |
-| 原生服务准入 | `serve`旧入口拒绝是有效Red，路径/Foundation归一错误不是。服务5/5→typed客户端8/8；代理协议2 Red；资源篡改、JSON布尔版本、残留socket、危险客户端先Red，快速断连SIGPIPE修复后native19/19、加journal30/30，调用方138通过/2 native skip。仅普通权限临时目录，不代表root写入或安装 | `/tmp/interceptor-macos-service-20260916-red-valid.log`、`/tmp/interceptor-macos-service-proxy-20260916-red.log`、`/tmp/interceptor-macos-helper-20260916-green.json`；其余原生Red仅有当时终端记录，没有独立文件 |
-| 已撤除整App安装 | 安装入口2 Red、卸载入口真实Red；2秒冷启动超时不算产品Red。相关148通过/2 native skip、包内安装4项+服务19项=23/23；旧`.pkg`展开4417条BOM，App audit1487文件/339348168字节。4安装测试只含3个普通权限拒绝及签名/篡改，未证明root安装/升级/rollback/卸载 | `/tmp/interceptor-macos-installation-20260917-red.json`、`/tmp/interceptor-macos-installer-20260917-green.json`、`/tmp/interceptor-macos-installer-packaged-helper-20260917-green.json`；旧`apps/desktop/out/installers/Interceptor-0.1.0-darwin-x64.pkg`及命令已撤除，不提供复用入口 |
-| `.pkg`宿主边界 | open Installer未取得成功；当时固定App、LaunchDaemon、链接、收据均不存在，完整代理/两张CA/admin trust保持。AppleDouble目录元数据误报修正不放宽真实payload或权限；不能把无安装副作用解释为后续helper未安装 | `/private/tmp/interceptor-installed-lifecycle-20260917-90Z69E/baseline.json` |
-| 首次helper部署 | 部署unit4 Red→6/6、helper-only4 Red→4/4、原位置App鉴权2 Red；Main/代理4 Red后相关48/48。真实missing→ready前置Red21.7秒；无ACL的ENOENT及umask077修正后实际部署root保护组件，App未移动。旧5秒握手超时加原生延迟Red后改30秒，最终两代复用1/1约4分钟 | `/tmp/interceptor-helper-startup-20260917-{red,green,retry,diagnostics,handshake}/`；前两次失败日志不足，不能倒推原因。最终helper25225、两代Main/Core正常退出且完整宿主恢复 |
-| CA接入/稳定复用 | 公开DER/SHA-256协议/typed/TrustStore4 Red后调用方162通过/2 native skip；TLS/helper两条2/2（2.5分钟）。旧每次代理只读全包扫描9–18秒导致复用300秒失败，不能记两条Green；改只读准入分层后磁盘签名native23/23、两轮四代复用2/2（2.2分钟） | `/tmp/interceptor-macos-cert-helper-20260917-{green.json,e2e/}`、`/tmp/interceptor-macos-helper-and-tls-20260917-baseline/`、`/tmp/interceptor-helper-reuse-20260917-disk-validation/`；写操作完整资源/运行时验证未取消 |
-| Recording与退出 | 真实Core故障暴露recording=true但代理未owned；2 Red→readiness7/7、Capture79/79，Core故障/App crash-relaunch2/2（58.2/53.4秒），旧/新journal及首次original保持。Main/Capture/guard469通过/2 native skip；最终TLS/helper2/2及同构建smoke1/1 | `/tmp/interceptor-helper-fault-recovery-20260917-ready/`、`/tmp/interceptor-helper-main-capture-20260917-green.json`、`/tmp/interceptor-helper-final-flows-20260917/`、`/tmp/interceptor-helper-final-smoke-20260917/`；audit1487文件/339420635字节 |
-| 首轮smoke/焦点 | 旧10秒窗口等待失败在业务前；macOS有限等待后smoke1/1（1.2分钟）。固定前台request-installation的11项检查通过，但焦点/TLS/helper组合2 passed/1 failed（第二代代理写超时），不是全Green | `/tmp/interceptor-helper-packaged-smoke-20260917{,-native-ready}/`、`/tmp/interceptor-macos-dialog-focus-20260917-green/`；旧prepare标准命令导航1/1（43.6秒）在`/tmp/interceptor-macos-prepare-entry-20260917/`，不恢复该旧打包启动方式 |
-
-#### macOS开发复用与整轮边界（2026-09-18～19）
-
-开发入口信任获准UID、生产入口严格验签的现行边界见§3.3。旧运行间有源码和产物变化，下面的小组Green不与65条整轮或9月23日73条相加。
-
-| 范围 | 历史结果与边界 | 证据 |
-| --- | --- | --- |
-| 双入口与签名 | 部署2 Red→9/9、Main分派1 Red→7/7、native开发准入5/部署4/缺生产App隔离1 Red后38/38，先196通过/2 skip；授权暂存2 Red后27/27，最终204通过/2 skip。Forge重签identifier/entitlements曾改变helper身份，2 Red→6/6后共用固定identifier/空entitlements；两socket不互相覆盖 | `/tmp/interceptor-development-platform-regression-20260918-green.json`、`/tmp/interceptor-dual-entry-regression-20260918-green.json`；真实开发invalid-request/路径失败/四代复用已在helper-startup规格 |
-| Forge/HMR/rs | 实际npm start、Main/Core inspector、HMR及rs均验证；HMR只触mtime、内容/timeOrigin不变。rs前先由Settings Restore，不声称SIGTERM期间零中断；清理脚本多行PID变NaN后独立确认全部App/端口/journal与完整宿主恢复 | `/private/tmp/interceptor-dual-entry-20260918-TUf3n3/{baseline,forge-first,forge-cleanup}.json`及两份trace；旧CA基线相等不证明历史残留已清理 |
-| 双入口生产 | 生产socket拒绝通用Node、开发socket接受获准UID，helper字节/inode复用；早期audit1487文件/339449696字节，最终339450136字节，production smoke1/1（1.3分钟）。开发授权已存在不放宽生产准入 | `/tmp/interceptor-dual-entry-production-smoke-20260918{,-final}/`、`final-dual-entry.json`；helper CDHash `e9a3a417458f59d294f9ccc34adcb3be03c6c95f`仅为当时身份 |
-| 65条整轮 | 79条发现清单中65/65（22.0分钟），0 unexpected/skipped/flaky；14未计入：9条成功授信相关、3条Windows AppContainer、Bilibili及暂停HTTPS弹窗各1。92份正常退出metadata、完整代理/CA/admin trust回到TUf3n3基线；不是macOS全套完成 | `/tmp/interceptor-macos-final-20260918/`、`/tmp/interceptor-macos-final-20260918-results.json`、`host-lifecycle-evidence.json` |
-| crash证据缺口 | 同profile第二代清理曾删掉第一代私有日志；crash时立即落证据后独立1/1（6.7秒），首代abrupt=true/graceful=false、次代相反。新证据不能补造原整轮缺失的首代metadata | `/tmp/interceptor-macos-final-crash-evidence-20260918/`；Main/Core `60452/60460`、`60486/60493` |
-| 日常无授权组 | Agent11/11（3.4分钟）、MCP/语言/偏好4/4（1.4分钟）、只读Settings1/1（24秒）、HTTP/encoding/Pause/Playground4/4（50.8秒）、Rules/helper2/2（22.6秒）、WS Close1/1（8.6秒）；只读Settings明确macOS AppContainer unsupported | `/tmp/interceptor-macos-{agent,mcp-preferences,settings-readonly,http-playground,rules-helper,websocket-close}-20260918/` |
-| 协议/窗口分派 | H2/gRPC2/2（4.8分钟/28.6秒）、系统代理Tool1/1（16.3秒）；Agent首窗1600×900与body-fill1600×800独立互斥项目2/2（14.7秒），不以整套800高度冒充Agent契约 | `/tmp/interceptor-macos-h2-grpc-20260918-development/`、`/tmp/interceptor-macos-tools-system-proxy-20260918/`、`/tmp/interceptor-macos-window-projects-20260918/`、`host-restoration.json` |
-| 分派回归 | 旧四份共同协议workflow保持原文，Windows超时/快照/恢复断言不变；最终导航1/1（7.8秒）、Core/App恢复及Proxy Tool3/3（30.2秒），既有Windows/guard25/25及类型通过。此前剩余Capture/Rules/Composer11/11（1.6分钟）是独立范围 | `/tmp/interceptor-macos-platform-fixtures-navigation-20260918-file-log/`、`/tmp/interceptor-macos-platform-fixtures-final-proxy-20260918/`、`final-host-and-workflow-check.json`、`/tmp/interceptor-macos-capture-rules-composer-20260918-remaining/` |
-| 原生文件通过组 | 媒体Save1/1（17.5秒）核对WAV/MP4字节；Collection Import1/1（42.7秒）、Body Export1/1（43秒）、Collection Transfer1/1（1.3分钟）、Rules传输3/3（2.9分钟）、Archive/HAR/Diagnostics3/3（3.1分钟）、Rules正文2/2（47秒）、大正文Save26.6秒 | `/tmp/interceptor-macos-native-media-save-20260918-process-click/`、`/tmp/interceptor-macos-native-collection-import-20260918-direct-fields/`、`/tmp/interceptor-macos-native-body-collection-20260918/`、`/tmp/interceptor-macos-native-collection-transfer-20260918-ready/`、`/tmp/interceptor-macos-native-rules-transfer-20260918/`、`/tmp/interceptor-macos-native-archive-har-diagnostics-20260918/`、`/tmp/interceptor-macos-native-rules-body-20260918/` |
-| 文件/模式失败边界 | 媒体四轮Save失败含名为green的目录，JXA坐标click -1700后按系统API改目标process才通过；Collection全列表遍历6.4分钟失败后真实Escape/Close恢复。批量MCP三轮超时在Auto尚未持久化时发出，等待公开mode/busy后同流程1/1（24.6秒），没有延长期限 | `/tmp/interceptor-macos-native-media-save-20260918{,-identifiers,-paste,-green}/`、`/tmp/interceptor-macos-native-collection-import-20260918-full-name/recovery.json`、`/tmp/interceptor-macos-breakpoints-mcp-20260918-{resumed,locations,callsite,mode-ready}/`；原批量失败亦在`/tmp/interceptor-macos-breakpoints-20260918/` |
-| 原生退出 | Command+W只关窗口导致fixture失败，Main40654经真实Command+Q恢复，未强杀listener。修正退出键后128 MiB导出running期间退出/取消/清理/重启零重放1/1（53.7秒） | `/tmp/interceptor-macos-native-jobs-body-rules-20260918/`、`/tmp/interceptor-macos-native-transfer-jobs-20260918-app-quit/` |
-| 超时不等于恢复 | 9月17日WS正文断言通过但收尾触120秒总预算，仍failed；macOS总预算对齐300秒后1/1（2分钟），Windows/单步期限未动。gRPC授信/清理及恢复拒绝轮failed，H2未执行；旧guard先杀App再请求一次性恢复会留下死代理，后改为恢复未确认时保留App/listener/profile | `/tmp/interceptor-macos-capture-protocols-20260917/`、`/tmp/interceptor-macos-websocket-20260917-green/`、`/tmp/interceptor-macos-h2-grpc-20260917/`；历史profile `32175-ssENu1`只读current==original和直连HTTPS200不算拒绝路径Green |
-| EPIPE应急恢复 | TLS等待授权后runner退出关闭日志pipe，Main反复EPIPE阻断Close；只在精确profile `52677-m1rki0`的current==owned且original==基线时经已部署helper条件恢复，精确撤回自产CA后终止所属进程。不是正常退出或E2E Green，随后改私有文件日志 | `/tmp/interceptor-macos-platform-fixtures-navigation-20260918/emergency-recovery.json`；旧自产CA `28BA18C641D072FEEB40067B1E82D9AAB9EF44CB`不是当前清理目标 |
-| 再次授权超时 | 最终TLS再跑5分钟仍未获确认；仅取消所属SecurityAgent79011，Main78898/Core78905自行退出，移除本轮已导入未信任CA后完整恢复，不算TLS Green | `/tmp/interceptor-macos-platform-fixtures-tls-20260918-resumed/{recovery-after-cancel,certificate-recovery}.json`；profile `78895-dcPAyX`、CA `6AB5ACBA1DD4691AF8E060D896A676050FC8E3CF`均仅历史身份 |
-| 9月19日准确树同步 | 基线`8d153821`，排除暂停动画/package骨架；227通过/2 native skip，相关六条真实6/6（58.1秒），取消专项1/1（6.7秒）。Capture/深色/not-ready三场景89/89最大0.5px，像素2.57%/2.56%/0.44%；不称同步后全65条复验 | `/tmp/interceptor-stage-sync-20260919-{regression.json,e2e/,certificate-cancel/,parity/}`、`/tmp/interceptor-stage-sync-20260919-{capture,capture-dark,proxy-not-ready}.{json,md}`；旧保护暂存`5baff56271c2cef02b0ad7646719c2013f49c899`只记录历史，不要求apply |
-| 同步生产/宿主 | audit1487文件/339450724字节、smoke1/1（2.5分钟）；用户新开启的代理是新基线，不能复用旧关闭态。完整代理保持开启、CA/admin trust不变、App/8888清理、helper inode/字节/开发授权保持；生产只更新App身份 | `/private/tmp/interceptor-stage-sync-20260919-os9ici/{baseline,final-host-state}.json`、`/tmp/interceptor-stage-sync-20260919-production-smoke/`、`/tmp/interceptor-stage-sync-20260919-report-{1320,390,product}.png`；规格Inventory131/132核对仅属于当时版本 |
-
-此前取消回滚的unit6 Red→18/18与真实Red/Green已在证书取消规格保存；其余调用方207通过/2 native skip及audit1487文件/339450638字节见`/tmp/interceptor-macos-trust-cancel-20260918-regression-green.json`。9月19日该包smoke先因System Events未暴露窗口失败（41秒），等待本轮窗口后1/1（53.3秒），分别为`/tmp/interceptor-macos-trust-cancel-production-smoke-20260919{,-window-ready}/`，不把首次失败记Green。Windows文件Dialog旧unit在macOS为1通过/5被平台保护拒绝，不代表Windows通过。
-
-#### macOS生效上游与外部兼容（2026-09-19～20）
-
-当前选择生效上游而非合并各service；只有Auto Detect无PAC时macOS拒绝接管、Windows直连的区别保持。下表的ClashX基础链式Green不消除动态切网、VPN/TUN或外部改写缺口。
-
-| 范围 | 历史结果 | 证据 |
-| --- | --- | --- |
-| 配置/持久化/防自环 | 接管/journal目标Red后25/25；journal无version兼容分支。地址规范化7 Red后32/32；native只读入口1 Red后37/37；Core平台隔离36/36覆盖HTTP/HTTPS/PAC/绕过/WS，Windows分支回归 | `/tmp/interceptor-macos-upstream-20260919-{matrix-red,journal-red,unversioned-red,platform-green,native-red,native-green,platform-isolation-red,platform-isolation-green}.json`；`/tmp/interceptor-macos-upstream-20260920-loopback-{red,green}.json` |
-| 基础真实链式 | 外部上游同流程直连Red→Green（5.6秒）；Core/App/helper恢复3/3（25.5秒），Main探活调度保持原条件后64/64及恢复3/3（23.1秒）。HTTP/WS/Proxy Tools/ClashX无授权调用方4/4（2.1分钟） | `/tmp/interceptor-macos-upstream-20260919-e2e-{red,green}/`、`/tmp/interceptor-macos-upstream-20260919-{recovery,current-recovery,no-auth}/`及同前缀`{recovery,current-recovery,no-auth}-results.json` |
-| 同期原生证书与View | 开发成功/撤销两CA1/1（20.3秒）、取消1/1（6.4秒）；Finder真实Generate→MCP Reveal→精确路径/关窗1/1（9秒）。旧View仅启动Keychain Access且无可归属窗口，不算Green，不等于当前SFCertificatePanel | `/tmp/interceptor-macos-helper-trust-20260919-{success-current,cancel-current}/`；`/tmp/interceptor-macos-certificate-external-20260919{,-path,-reveal-final}/`、`/tmp/interceptor-macos-certificate-external-20260919-final-host.json` |
-| 回归与生产 | Desktop235通过/2 native skip、Core107/107、两workspace类型；防自环版audit1487文件/339464010字节、smoke1/1（59.4秒）。同产物生产授信/撤销/取消2/2已由证书规格承接 | `/tmp/interceptor-macos-upstream-20260919-{desktop,proxy}-regression.json`、`/tmp/interceptor-macos-upstream-20260920-production-smoke/` |
-| 授信协议范围 | TLS/H2/gRPC3/3（6.7分钟），只占计划9条中的3条、0 skip/flaky。其余6条的旧Agent discovery清单失败不是产品Red；不能把三条外推为九条 | `/tmp/interceptor-macos-tls-protocols-20260920/`及`results.json`、`/tmp/interceptor-macos-upstream-20260919-tls-six/`及`tls-six-results.json` |
-| 宿主与外部菜单 | 原系统HTTP/HTTPS上游`:7890`且ClashX保持；完整配置/CA不变、App/前台helper为0、8888释放。外部菜单三轮-1728或开关未变，未进入产品保护断言；失败后恢复不算该场景Green | 私有`interceptor-macos-upstream-20260919-WBByJe/{proxy-baseline,final-host-readonly}.json`、`/tmp/interceptor-macos-upstream-20260919-final-host.json`、`/tmp/interceptor-macos-upstream-20260919-external-change{,-settled,-menu-ready}/`、`/tmp/interceptor-macos-upstream-20260919-external-change-final-host.json` |
-| 历史CA归属 | 当时仅清点到1张未信任CA，标准/保留profile未匹配，未删除；不将该旧归属缺口当作当前日常CA，也不授权按旧指纹清理 | `/tmp/interceptor-macos-upstream-20260919-certificate-{inventory,ownership}.json`；历史SHA-1 `36F31B09FEF8A85584EA063633C00B11964001EF` |
-
-#### 已放弃的macOS自动trust路径（2026-09-19～21）
-
-当前只保留普通用户前台helper的独立系统确认，不保留后台自动trust、临时授权规则或兼容回退。以下失败解释为什么不能承诺复用安装授权、静默授信或按macOS大版本推断权限；不是当前待实现方案。
-
-| 历史范围 | 事实与限制 | 证据 |
-| --- | --- | --- |
-| root API假设证伪 | Main改helper的unit1/native2/前台CLI2 Red及真实Main直调security Red后，首版后台50/50、调用方210通过/2 skip、audit1487文件/339451640字节、smoke1/1（1.3分钟）仍不能证明授信。真实/有效UID0的helper17625返回-60007，产品撤回新增CA，证书集相同；不关闭SIP、改trust域或授权库 | `/tmp/interceptor-macos-helper-trust-20260919-{unit-red,native-red,foreground-red}.json`、`/tmp/interceptor-macos-helper-trust-20260919-{e2e-red,production-smoke,e2e-production}/` |
-| 前台版本独立门禁 | 同组77/77、相关217通过/2 skip、类型/Swift及audit1487文件/339457604字节；foreground smoke在Renderer前120秒等核准超时，未到业务，不能复用后台版smoke。只读最终文件仅证明CA集合/App/端口，不冒充另一次完整代理/admin trust比较 | `/tmp/interceptor-macos-helper-trust-20260919-{foreground-green,final-regression,final-host-readonly}.json`、`/tmp/interceptor-macos-helper-trust-20260919-foreground-smoke/`；之后成功/取消结果按各自产物记录 |
-| 系统规则事实 | macOS15.8/SIP enabled，`com.apple.trust-settings.admin`要求entitlement或authenticate-admin（allow-root=false、timeout=0）；公开trust API不接AuthorizationRef。UID501同值回写-60005，规则不变；这次不是root实测 | `/tmp/interceptor-trust-rule-compatibility-20260920.json`、`/tmp/interceptor-trust-rule-probe-20260920{,-authd}.json` |
-| 源码核对边界 | Apple发行清单中的13.0/14.0未见后续硬编码保护；15.0在root判断前拒绝该right，26.0还读取内置规则。只是源码矩阵，不是13/14/15/26四平台实机结果或小版本保证 | [13.0](https://github.com/apple-oss-distributions/Security/blob/e4ea024c9bbd3bfda30ec6df270bfb4c7438d1a9/OSX/authd/server.c)、[14.0](https://github.com/apple-oss-distributions/Security/blob/ef677c3d667a44e1737c1b0245e9ed04d11c51c1/OSX/authd/server.c)、[15.0](https://github.com/apple-oss-distributions/Security/blob/3dab46a11f45f2ffdbd70e2127cc5a8ce4a1f222/OSX/authd/server.m)、[26.0](https://github.com/apple-oss-distributions/Security/blob/db15acbe6a7f257a859ad9a3bb86097bfe0679d9/OSX/authd/engine.m) |
-| 自动规则原测试 | client6 Red→6 Green、隔离恢复8 Red→14/14、不确定结果8 Red→8 Green；最终270通过/2 Windows native skip（native44、恢复15、trust27），安装/恢复入口25/25。真实前置只验证旧流程缺回退日志；单测不证明旧系统自动成功或真实异常恢复 | `/tmp/interceptor-macos-automatic-trust-20260920-{client,transaction,uncertain}-{red,green}.json`、`-desktop-final-green.json`；真实前置E2E在取消规格 |
-| 不同包不可混用 | 自动方案audit依次1487文件/339499075字节、未知结果防护后339499929字节；前者production smoke和后者resume均在Renderer前120秒核准等待失败，后者首次最终smoke未运行。准确22文件checkpoint排除19暂停项后audit339499911字节，未再跑新E2E/smoke | `/tmp/interceptor-macos-automatic-trust-20260920-{production-smoke,resume-KTYw7z}/`、`/tmp/interceptor-macos-auto-trust-checkpoint-20260920-aiEFuE/`；暂停项当时保存在`f2875e79`，不作为恢复指令 |
-| 获准a7b02a2c后的结果 | 两入口ready、包内/实装一致且smoke1/1；证书组1 passed/1 failed：取消回滚通过，成功首张CA已授信但Uninstall后15秒等待Install超时，清理遇页面关闭。最终完整代理/Root/admin trust/授权规则恢复，仍不是完整Green | `/tmp/interceptor-user-approval-20260920-yFRvez/{approved-host-restored,smoke-results,certificate-results,certificate-rule-attempts}.json` |
-| 真正root直连实验 | 不经Main/前台回退，UID0/PID876的AuthorizationRightSet仅调用一次即-60005，authd明确禁止修改right，trust回复authorization-required；不是成功修改再还原。原规则逐字节、admin trust及完整代理保持，精确测试公开CA已删、无恢复记录/窗口、8888释放 | `/tmp/interceptor-direct-root-trust-20260920-5GiIq0/{host-before,result,native-rule-denial}.json`；非E2E，不证明自动授信成功 |
-| 系统窗口观测纠正 | 两次smoke由System Events报visible/frontmost=false且120秒失败；AXRaise请求不证明显示成功。后续LaunchServices轮CGWindow为onscreen=true/alpha=1/layer=1000，AppKit active=true/hidden=false，而System Events仍false；采样停在AuthorizationCreate等待认证，不据此倒推前两次可见、锁屏或产品死锁 | `/tmp/interceptor-macos-authorization-window-20260920-VaMrUU/`、`/tmp/interceptor-launchservices-20260920-CAaJKz/`；仅取消本轮唯一窗口并正常恢复，诊断不是smoke/E2E Green |
-| 删除自动分支 | 3 Red→native37/37、trust26/26；准确排除19暂停项后247通过/2 Windows native skip、类型/Swift、workflow发现2项，package/audit1487文件/339464410字节。仅macOS撤销等待15→120秒，Windows与产品期限不变；当时新helper未获部署，最终E2E/smoke未运行 | `/tmp/interceptor-remove-automatic-trust-20260921-{red,green,desktop-green,artifact,preserved}.json`及`-e2e-red-results.json`；真实前置Red已由取消规格承接。新helper当时为`4499f58281efd3ac968f423f1885a1f83a56c9125217a6b0fd49ce1f2344d7f0`，不是当前实装身份 |
-
-自动规则历史方案虽曾保存root私有恢复记录、只排除created/modified比较语义并拒绝覆盖外部修改，仍存在全机并发窗口；结果不确定时不能盲删可能已信任的CA，也不能把规则恢复成功等同于证书写入成功。该方案及专用代码已删除，13/14自动成功未获实机证据，不重新列兼容目标。9月21日删除分支的验证改为比较包含created/modified的完整规则；更晚第4项结果不能替换上述任何失败。
-
-#### 平台归属整理的旧验证（2026-09-19）
-
-原39文件聚合前后各119通过/2 native skip，统一entry/平台trust/移除Electron依赖后122通过/2 skip，Main聚合回归357通过/2 skip；原生产物名/路径不变，构建与类型通过。随后证书实现、错误及9项integration迁入平台模块，迁移前后同组各70/70，证据为`/tmp/interceptor-platform-ownership-20260919-{baseline,relocation-check}.json`。这些只是当时无行为变更的调用方基线，不代表新原生授权或package门禁；macOS应用归属/图标未接入，不能据旧Core README宣称支持。
-
-<a id="settings-core-bundle-history"></a>
-#### Core依赖与Main启动的早期观测
-
-`218295b0`中的发布文档记载：内联`ws`时Core bundle约283 KB，首代Electron UtilityProcess在entry顶层前停于`starting`；external后约159 KB并正常ready/heartbeat。隔离随包`node_modules`中的`mockttp`加载后进入running，原记录的`npm audit --omit=dev`为0漏洞。
-
-同一历史说明还保留Main外部依赖顶层`require`会阻塞packaged Main/CDP、懒加载后CDP与Preload smoke正常的观察。原文未给这组独立日期、产物hash或归档路径，不能将数字作为当前大小/性能基线，也不能以静态打包成功代替真实启动。当前依赖和签名规则仍以[发布文档](../platform/release.md)为准。
-
-<a id="settings-shell-history"></a>
-#### Shell验收对象修正（2026-09-11）
-
-- 深色Settings/Diagnostics以正确侧栏状态、Certificates入口及DOM Range测量标题后10/10、最大0.9px。Diagnostics原2 missing、标题1253.9px误测消除；像素约1.27%/1.45%，不是业务区域或整套parity Green。证据前缀`interceptor-shell-scenes-20260911`。
-- 后续Composer/浅色Diagnostics两场景10/10最大0.9px；Rules按完整状态项与7px圆点测量后两场景6/6最大0.1px，原13px差属于测量对象不一致。证据`interceptor-parity-{shell-followup,rules-status}-20260911*`。
-- 未改产品Shell、全局样式、tokens或设计基准，旧Shell Rules缺PNG仍为像素n/a，不伪造通过。对应历史变化见[Shell报告](../../commit-changes/202609111558_ui_parity_progress.html#shell-scenes)，报告不是新验证。
-
-<a id="settings-ui-baseline-history"></a>
-#### 早期共享UI截图范围
-
-`218295b0`的Renderer文档记录六视图、双主题、900×600与四语言状态共42张截图，没有页面级溢出；原文未给独立日期、归档或逐图矩阵，不据总数推断所有组合均已验收。Agent阶段1的36 views/248 targets及其真实流程已在[Agent历史验证](agent.md#agent-stage1-history)承接，不与42张截图相加。
-
-<a id="settings-parity-batch-history"></a>
-#### 5-view分批的历史依据
-
-原测试文档记录：146-view完整运行使用10–20 view批次时出现过高内存峰值，后续page/context被浏览器关闭；改用每批5 view独立Edge进程控制峰值，不改变单场景状态、断言或像素算法。原文未给独立日期/报告路径，不将其泛化为所有机器固定容量或当前性能保证，也不扩充为测试工具自身的测试。

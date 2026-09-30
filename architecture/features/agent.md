@@ -1327,37 +1327,4 @@ Main的`AgentToolService`直接消费共享registry，不维护第二份接入�
 | Design/Parity | 1600×900 全局 Agent Side Panel、Settings > Agent、Provider Dialog、Model Select、长文本和错误状态 |
 | Package/Smoke | 触及 Main / Preload / IPC / safeStorage / SQLite 后完整运行 |
 
-<a id="agent-historical-evidence"></a>
-## 14. 历史验证与证据归属
-
-本节承接`218295b0`删除段中的已验证范围，不恢复阶段0～6实施清单、旧Tool数量或人工待办。第13节列出验证对象，不表示Compaction、Pin、History检索或持久Chat的Continue已实现；这些能力仍按前文候选与产品边界区分。历史基础层测试不能替代真实Session、Streaming及重启恢复，也不能作为当前构建Green。
-
-<a id="agent-stage1-history"></a>
-### 14.1 阶段1的产品覆盖
-
-原文记录四条真实Electron流程：`agent.panel.navigation-persistence`、`agent.settings.model-configuration`、`agent.chat.streaming-context`、`agent.chat.restart-recovery`。对应操作、原始Red/Green、各代PID与宿主恢复已在[Agent规格](../../apps/desktop/tests/e2e-workflow-tests/docs/agent.md)完整承接。
-
-独有的整组视觉范围为36 views/248 targets、0 missing/flagged；首层Panel/Settings四图30/30、最大0.7px另见[Panel规格](../../apps/desktop/tests/e2e-workflow-tests/docs/agent.md#agent-panel-navigation-persistence)。880×560时展开Sidebar仍给Main440px、Agent收缩至220px，不变成覆盖层。原文没有这组独立运行日期/归档路径，只能记为`218295b0`所载阶段1结果，不推断当前全量UI通过。
-
-<a id="agent-query-history"></a>
-### 14.2 首批正文与消息query
-
-原文记录三项query的明暗parity各10/10、0 missing/flagged、0px；这是首批Agent正文/消息查询阶段，不是后续Capture消息排版或当前第4项验收，原文未另列该parity运行日期。
-
-Desktop12/12、Tools13/13、语言10/10，三项discovery真实Red、30 B分段读取、WS3条、gRPC两方向、`INVALID_COMMAND`与获准的Electron专用修正、两代日志敏感扫描、重启零重放及清理，都已在[正文/消息规格](../../apps/desktop/tests/e2e-workflow-tests/docs/agent.md#agent-tools-body-messages)保留，不再复制。
-
-<a id="agent-evidence-index"></a>
-### 14.3 已有完整承接
-
-| 历史事实 | 完整承接位置 |
-| --- | --- |
-| Storage query从缺失调用Red到1 session/3 exchanges/1 body/92 B、两代恢复 | [Capture discovery](../../apps/desktop/tests/e2e-workflow-tests/docs/agent.md#agent-tools-capture-discovery) |
-| 默认Ask、pending切Auto不裁决、Deny/Allow/Auto与重启 | [Execution modes](../../apps/desktop/tests/e2e-workflow-tests/docs/agent.md#agent-tools-execution-modes) |
-| start/clear动态影响、reset、继续捕获与跨重启 | [Traffic control](../../apps/desktop/tests/e2e-workflow-tests/docs/agent.md#agent-tools-traffic-control) |
-| Rules严格树、Map Local、stale、外部revision同步与真实effect | [Rules](../../apps/desktop/tests/e2e-workflow-tests/docs/agent.md#agent-tools-rules) |
-| Breakpoints各phase、队列隔离与不重放 | [Breakpoints](../../apps/desktop/tests/e2e-workflow-tests/docs/agent.md#agent-tools-breakpoints) |
-| Composer HTTP/TLS与真实socket取消 | [Composer](../../apps/desktop/tests/e2e-workflow-tests/docs/agent.md#agent-tools-composer) |
-| Diagnostics静默查询、脱敏与重启 | [Diagnostics](../../apps/desktop/tests/e2e-workflow-tests/docs/agent.md#agent-tools-diagnostics) |
-| 24项首批、后续69项/68项真实E2E、Manager管理员MMC排除及产物/parity阶段 | [Tool能力历史](tool-capabilities.md#tool-validation-history) |
-
-旧文的“尚未接Core/MCP”“只有首批Tool”等阶段句不恢复为当前实现；研究中的sequence测试及尚未覆盖的命令回包竞态见[2026-08-31调研证据](../backlog/deepseek-harness-agent-analysis.md#deepseek-research-history)，不将研究风险冒充已复现故障。
+本表描述验收对象，不表示Compaction、Pin、History检索或持久Chat的Continue已实现；候选能力与当前产品边界仍按前文区分。

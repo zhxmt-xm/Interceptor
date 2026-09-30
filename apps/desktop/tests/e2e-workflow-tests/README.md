@@ -211,8 +211,8 @@ diagnostics.row.<traceKey>
 | `capture.navigate-tls-passthrough` | 从TLS tunnel跳到最具体的覆盖pattern并短暂高亮 | privileged UI | passed |
 | `capture.facets-clear-menu` | Facet顺序、Breakpoint菜单和Clear同步回归 | privileged UI | planned |
 | `capture.detail-body-fill` | Detail Response BodyViewer填满剩余高度 | privileged UI | passed |
-| `capture.messages.compact-layout` | 普通gRPC/WS短长消息限高、拖拽、内外滚动、窗口缩放、Copy/全屏及205条gRPC分页 | privileged UI | macOS 2026-09-27：两条前置Red、最终2/2 Green及宿主恢复；Windows待实机 |
-| `capture.body-preview-limits` | 2MiB预览、1–2MiB手动格式化与截断禁止 | os-side-effect | macOS 2026-09-28：前置Red与最终2/2；Windows待实机 |
+| `capture.messages.compact-layout` | 普通gRPC/WS短长消息限高、拖拽、内外滚动、窗口缩放、Copy/全屏及205条gRPC分页 | privileged UI | macOS passed；Windows待实机 |
+| `capture.body-preview-limits` | 2MiB预览、1–2MiB手动格式化与截断禁止 | os-side-effect | macOS passed；Windows待实机 |
 | `capture.body.fullscreen` | Request/Response全屏、真实Copy、关闭/再开、Raw/Hex模式保持 | os-side-effect | passed |
 | `capture.list.virtual-scroll` | 大列表虚拟滚动和状态保持 | shared | planned |
 | `capture.inspector.body-modes` | Auto/Text/JSON/Hex精确正文 | shared | planned |
@@ -231,7 +231,7 @@ diagnostics.row.<traceKey>
 | `capture.clear` | 清Exchange/Body并保留Session壳 | shared | planned |
 | `capture.transfer.har-roundtrip` | 真实Capture导出HAR、Clear、导回同一文件并验证有损映射/脱敏 | native-ui + os-side-effect | planned |
 | `capture.transfer.archive-roundtrip` | 真实Capture全保真保存、Clear、打开同一archive并验证恢复/拒绝损坏输入 | native-ui + privileged UI | planned |
-| `capture.tools.transfer-jobs` | 文件任务查询/取消、运行中Alt+F4清理、脱敏与双代销毁；新增退出步骤历史Red缺口见规格 | native-ui + os-side-effect | passed |
+| `capture.tools.transfer-jobs` | 文件任务查询/取消、运行中Alt+F4清理、脱敏与双代销毁 | native-ui + os-side-effect | passed；取消提交点竞态未验 |
 | `capture.tools.body-export` | Agent/MCP原生正文保存、编码字节完整性、撤权与双代销毁 | native-ui + os-side-effect | passed |
 | `capture.tools.har-transfer` | Agent/MCP原生HAR导出再导入、范围脱敏、追加与双代销毁 | native-ui + os-side-effect | passed |
 | `capture.tools.archive-transfer` | Agent/MCP/IPC原生Archive往返、HTTP正文/WS消息、追加与双代销毁 | native-ui + os-side-effect | passed |
@@ -293,8 +293,8 @@ diagnostics.row.<traceKey>
 | `breakpoints.execute-edited` | Header-only、Body-only、Header+Body三段真实HTTP编辑 | privileged UI | planned |
 | `breakpoints.drop` | Drop并终止数据面 | shared | planned |
 | `breakpoints.resize` | Capture列表/Inspector splitter | shared | planned |
-| `breakpoints.body-preview` | 产品导出File的有界预览、完整文件/Text发送及短File布局联动 | native-ui | macOS 2026-09-28：File前置Red、大小File两条Green；Windows待实机 |
-| `breakpoints.original-body` | Original限高、2MiB预览与完整原文放行 | os-side-effect | macOS前置resize Red、完整3MiB最终Green；Windows待实机 |
+| `breakpoints.body-preview` | 产品导出File的有界预览、完整文件/Text发送及短File布局联动 | native-ui | macOS passed；Windows待实机 |
+| `breakpoints.original-body` | Original限高、2MiB预览与完整原文放行 | os-side-effect | macOS passed；Windows待实机 |
 | `breakpoints.websocket-close` | WebSocket close-code-only编辑 | privileged UI | planned |
 
 详细步骤：[docs/breakpoints.md](docs/breakpoints.md)
@@ -319,8 +319,8 @@ diagnostics.row.<traceKey>
 | `settings.navigation` | 九个Settings section与跨workspace返回保持 | shared | passed |
 | `settings.tools.readonly` | Agent/MCP六项Settings只读查询、脱敏、撤权、双代零重放与完整宿主恢复 | shared | passed |
 | `settings.tools.system-proxy` | Agent审批/Auto启用与恢复系统代理、首次original保持、撤权和双代零重放 | os-side-effect | passed |
-| `settings.tools.tls` | TLS名单与解密意图/有效状态、即时UI同步、撤权、重启和测试CA清理 | privileged UI | Windows历史passed；2026-09-26 macOS签名包全流程与双代退出、Root/admin trust/代理恢复通过，见[规格](docs/settings-updates.md#settings-tools-tls) |
-| `settings.tools.certificates` | Agent/MCP六项证书生命周期与查看、授权、重启及完整CA清理 | native-ui + privileged UI | Windows历史passed；2026-09-26 macOS签名包六项、原生View/Finder、重启及取消冲突通过，见[规格](docs/settings-updates.md#settings-tools-certificates) |
+| `settings.tools.tls` | TLS名单与解密意图/有效状态、即时UI同步、撤权、重启和测试CA清理 | privileged UI | passed；当前Windows版本待实机复验 |
+| `settings.tools.certificates` | Agent/MCP六项证书生命周期与查看、授权、重启及完整CA清理 | native-ui + privileged UI | passed；当前Windows版本待实机复验 |
 | `settings.tools.app-containers` | Agent/MCP单项及批量exemption、挂载同步、撤权与双代恢复 | privileged UI | passed |
 | `settings.tools.language` | 原UI/Agent/MCP语言设置、独立授权、持久化与双代销毁 | shared | passed |
 | `settings.tools.preferences` | 原UI/Agent/MCP主题与Privacy默认值、HAR草稿隔离和双代销毁 | shared | passed |
@@ -331,14 +331,14 @@ diagnostics.row.<traceKey>
 | `settings.system-proxy.crash-recovery` | App A异常退出后由顺序启动的App B加载首次快照并完整恢复 | os-side-effect | passed |
 | `settings.proxy-mitm.persistence` | 异常退出后恢复系统代理并跨进程恢复MITM/TLS配置 | os-side-effect | passed |
 | `settings.certificates.generate-delete` | CA Generate/Regenerate/Delete | shared | planned |
-| `settings.certificates.shared-startup` | 自动准备共享CA，正常退出保留，跨fresh profile复用且不重写材料 | shared / os-side-effect | macOS签名包生成/复用及删除profile后保留已验；范围见[Handover](../../../../architecture/HANDOVER.md#verification) |
-| `settings.certificates.startup-cancel` | 首次原生授权时首窗可见、Quit即时拒绝、取消收尾及同CA正常重启 | macOS / os-side-effect | 当前签名包Green及两代退出已验；原启动实现的历史前置证据缺口见[规格](docs/settings-updates.md#certificate-startup-cancel) |
+| `settings.certificates.shared-startup` | 自动准备共享CA，正常退出保留，跨fresh profile复用且不重写材料 | shared / os-side-effect | macOS签名包生成/复用及删除profile后保留已验；契约见[Settings](../../../../architecture/features/settings.md#ca与profile生命周期) |
+| `settings.certificates.startup-cancel` | 首次原生授权时首窗可见、Quit即时拒绝、取消收尾及同CA正常重启 | macOS / os-side-effect | passed |
 | `settings.certificates.trust` | Install/Uninstall本机信任 | os-side-effect | planned |
-| `settings.certificates.helper-trust` | macOS两张不同CA直接经前台helper授信/撤销，复用同一常驻组件 | macOS / os-side-effect | 2026-09-26新签名包Green及Root/admin trust、进程、8888恢复已验；保留历史失败及前置范围说明 |
-| `settings.certificates.cancel-trust` | 取消helper前台入口的系统确认，由产品撤回新增CA | macOS / os-side-effect | passed：直接授权目标前置Red保留，2026-09-24签名包取消/清理与宿主恢复Green |
-| `settings.helper-startup` | macOS首次部署及开发/生产入口复用，不覆盖另一份授权 | macOS / os-side-effect | passed：见对应规格的分阶段证据 |
+| `settings.certificates.helper-trust` | macOS两张不同CA直接经前台helper授信/撤销，复用同一常驻组件 | macOS / os-side-effect | passed |
+| `settings.certificates.cancel-trust` | 取消helper前台入口的系统确认，由产品撤回新增CA | macOS / os-side-effect | passed |
+| `settings.helper-startup` | macOS首次部署及开发/生产入口复用，不覆盖另一份授权 | macOS / os-side-effect | passed |
 | `settings.certificates.https` | MITM switch和host例外 | os-side-effect | planned |
-| `settings.certificates.external-actions` | Reveal/View；不包含用户排除的管理员MMC原生验收 | native-ui | planned：macOS Reveal 1/1；View未通过，不计整体完成 |
+| `settings.certificates.external-actions` | Reveal/View；不包含用户排除的管理员MMC原生验收 | native-ui | planned |
 | `settings.tls-compatibility` | 真实TLS失败提示、精确host/wildcard选择、滚动、保存与Not now；最终Green，保留样式前置缺口 | privileged UI | planned |
 | `settings.storage.refresh-clear` | 单项正文用量、右上Refresh及两处Clear同步、取消和录制状态保持 | os-side-effect | passed |
 | `settings.privacy.defaults` | Export隐私默认值与持久化 | os-side-effect | planned |
@@ -372,7 +372,7 @@ diagnostics.row.<traceKey>
 
 | Workflow ID | 用户目标 | 策略 | 状态 |
 | --- | --- | --- | --- |
-| `mcp.desktop.streamable-http` | 外部Host经loopback HTTP接入、授权Tool、同步Rules并跨重启保持状态 | shared | passed |
+| `mcp.desktop.streamable-http` | 官方Client经loopback HTTP接入、授权Tool、同步Rules并跨重启保持状态 | shared | passed；不代表第三方Host实机验收 |
 | `mcp.browser-playground-cors` | Browser以Bearer跨Origin连接最新MCP并完成query/change调用 | shared | passed |
 | `mcp.tools.breakpoints` | 官方MCP Client处理真实HTTP/WebSocket pending | privileged UI | passed |
 

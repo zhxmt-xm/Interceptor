@@ -1,6 +1,6 @@
 # Main Platform Capabilities
 
-Desktop Main 的平台能力模块。先在 Main 内聚合现有代码和测试，再继续开发 macOS helper；独立 package 的搬迁仍后置，当前本地骨架不属于本阶段提交，见 [Handover](../../../../../architecture/HANDOVER.md)。
+Desktop Main的平台能力模块，负责系统代理、证书、AppContainer、客户端应用和原生helper；独立package的迁移范围见[Handover](../../../../../architecture/HANDOVER.md)。
 
 ## 当前入口
 
@@ -111,7 +111,7 @@ platform-capabilities/
 
 - CA原profile材料不迁移、不回退读取。共享材料残缺、损坏、过期、指纹或密钥不匹配时保留并报错；只在全部材料不存在时生成，信任就绪后不写文件或重复授信。
 - macOS尚不支持`client-app`，即本机连接归属与应用图标；AppContainer仅适用于Windows，不为macOS提供伪实现。
-- macOS证书View原实现只启动Keychain Access而未显示目标证书，已取得真实Red并改用只读系统面板；参数边界/材料/Windows查看契约及原native安全共63项通过，完整App流程和新产物仍以Handover为准。Finder识别兼容系统返回的已知路径引号，不依赖列表模式，复用窗口不关闭用户已有窗口。
+- macOS证书View使用只读系统面板显示目标证书；Finder识别系统返回的已知路径引号，不依赖列表模式，复用窗口不关闭用户已有窗口。
 - WinINet与SystemConfiguration、UAC与macOS系统确认、DPAPI与Keychain是必要原生差异。macOS保存完整service快照和接管前生效上游，按HTTP/HTTPS分别下发；Windows保留原单一上游结构及journal版本，不为形式一致改Windows。
 - 仅Auto Detect的上游行为仍不同：Windows现行直连，macOS无显式代理/PAC时拒绝接管，不能宣称WPAD双端一致或已验。
 
@@ -161,7 +161,7 @@ INTERCEPTOR_NATIVE_SERVICE_HELPER_PATH="$PWD/apps/desktop/out/Interceptor-darwin
 - launchd使用`ProcessType=Interactive`：Main同步等待这个服务的启动检查和系统操作，Background的CPU/I/O限流会使完整资源验证超出30秒客户端期限；Unix socket不能触发Adaptive的XPC调度提升。空闲时仍等待socket，不增加业务轮询或信任缓存。
 - 生产`status`写资格与所有写命令另外验证完整App资源、内嵌代码、全部架构和Hardened Runtime，拒绝可调试或可注入进程；普通公开代理读取不重复扫描整包资源。开发允许获准用户的本地代码调用固定能力，不保证隔离同用户恶意程序。App可以由用户拥有，不要求root拥有或移动整个App。
 - 严格校验字段、版本和256KiB单帧边界。代理条件写在同一SystemConfiguration事务中比对完整expected，冲突不覆盖外部修改；journal和退出恢复归Main进程的SystemProxyService。
-- 生效代理读取与恢复快照分开；macOS journal只存`original/owned/effectiveProxies`，无版本或兼容读取。Core接收HTTP/HTTPS路由和原绕过规则；ClashX基础转发与开发入口恢复已有E2E Green，特殊网络及上游异常仍待联调。
+- 生效代理读取与恢复快照分开；macOS journal只存`original/owned/effectiveProxies`，无版本或兼容读取。Core接收HTTP/HTTPS路由和原绕过规则；外部网络验收范围见Handover。
 - 常驻服务只操作固定System.keychain，精确匹配公开DER，不接收CA私钥；Keychain读写禁止弹交互窗口。CertificateService负责CA生成/safeStorage及安装/回滚编排，导入不等于受信任。
 - 服务正常结束清除自己的socket；崩溃重启只清理归属正确、ECONNREFUSED且inode未变的残留端点，快速断连不会以SIGPIPE终止服务。
 - 开发与生产使用同一套命令/参数校验/条件写入，授权不同不增加通用执行或任意文件访问能力。普通用户原生集成验证两入口的准入、拒绝和非root写入失败，不替代真实App、系统授权和恢复验收，最新结果见[Handover](../../../../../architecture/HANDOVER.md)。
@@ -186,7 +186,7 @@ Certificate模块通过`MacosHelperServiceClient.trustCertificate()`/`untrustCer
 - import失联确认结束但尚未请求trust时，只撤回安装前不存在的精确公开CA；已有CA、未知import和已经拒绝的授权不清理。回滚失败同时保留原错误，不能假装操作成功或安全恢复。
 - `requestSent`独立记录是否已向服务socket提交帧；连接前失败虽然已结束，但没有发出import，不请求回滚删除。该标记不进入native协议，也不用于判断前台授权进程的完成状态。
 
-不能把安装helper的授权等同于修改admin trust的授权。本机SIP开启时root授信返回`-60007`，真实root修改授权规则另返回`-60005`。已按用户要求删除临时规则写入、恢复记录、启动/卸载恢复以及后台trust/untrust；不为旧macOS保留兼容分支，不关闭SIP、使用私有entitlement或改成user trust。历史实验与本轮验证范围见[验证记录](../../../../../architecture/HANDOVER.md#verification)。
+不能把安装helper的授权等同于修改admin trust的授权，也不能假定root可绕过系统确认。不提供临时授权规则写入、后台trust/untrust或旧macOS兼容分支，不关闭SIP、使用私有entitlement或改成user trust；当前权限与收尾契约见[Settings](../../../../../architecture/features/settings.md#24-窄-api)。
 
 ## 首次启动部署
 

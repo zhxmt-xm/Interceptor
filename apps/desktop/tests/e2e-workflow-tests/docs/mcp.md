@@ -26,12 +26,10 @@ Main测试后门或绕过Renderer操作。Token只在暂停trace期间从产品�
 Origin与Host都不作为身份。任意Browser origin只有持有产品创建的有效Bearer才能调用；无Token仍不可读取Tool或
 业务数据。listener继续只绑定loopback，错误path仍由路由返回404；Bearer通过后的旧协议由官方SDK拒绝。
 
-### Evidence
+### 验收要求
 
-- 实现前真实系统Edge在`server/discover`的preflight后以`TypeError: Failed to fetch`取得有效Red；当前同一workflow Green；
-- integration锁定CORS preflight与实际response headers；初始真实Browser基线锁定最新协议、24项Tool、query、Deny/Allow及Recording前后态；
-- Token只保存hash，trace、截图与日志不含明文；
-- Main/Core PID、MCP/8888释放、系统代理恢复与`gracefulDestroyVerified=true`。
+- Token只保存hash，trace、截图与日志不含明文。
+- 必须确认Main/Core退出、MCP/8888释放、系统代理恢复与`gracefulDestroyVerified=true`。
 
 <a id="mcp-desktop-streamable-http"></a>
 ## `mcp.desktop.streamable-http`
@@ -81,42 +79,18 @@ Origin与Host都不作为身份。任意Browser origin只有持有产品创建�
 `tools/list`只披露按feature命名的53项：`capture_*`、`rules_*`、`composer_*`、`breakpoints_*`、
 `diagnostics_*`与`settings_*`。所有旧无前缀名称都必须不存在，逐项调用旧名由协议层拒绝且Core零命令；不提供alias或迁移期双目录。
 
-本workflow保留原生Host链路；Browser CORS由`mcp.browser-playground-cors`独立覆盖。SSE响应形态由独立transport
+本workflow覆盖官方Client链路；Browser CORS由`mcp.browser-playground-cors`独立覆盖。SSE响应形态由独立transport
 integration test覆盖进度/多消息分帧，本workflow至少验证一个等待审批的在途HTTP调用能够在用户裁决后返回最终结果。
 
 测试侧使用官方`@modelcontextprotocol/client` runtime并固定当前`2026-07-28`协议，角色等同于VS Code等
 Host内部的MCP Client模块。它不启动或模拟第三方Host UI；否则测试结果会依赖VS Code/Claude自身界面与配置
 生命周期，而不能精确证明Interceptor的HTTP、认证、Tool与Core链路。
 
-### Evidence
+### 验收要求
 
-- 原MCP Server实现前取得公开控制缺口Red。Rules同步补强在父提交`1234ea9a`的隔离worktree运行同一扩展workflow：
-   官方Client的`rules_replace_tree`成功且目标revision为2，但Rules Renderer保持`data-revision=1`，精确取得外部同步缺口Red；
-   失败代Main/Core为`37156/46644`，`gracefulDestroyVerified=true`且8888释放。
-- 当前同一workflow`1/1` Green：真实Rules UI自产revision 1的初始Rule，官方Client读取完整树并在Auto下替换为
-   revision 2且返回同一revision，无审批弹层；Renderer name/revision重载，真实origin header由`initial`变为`updated`，
-   第二代恢复同一Rule/revision并再次产生`updated` origin header。旧token在轮换后返回401，协议为`2026-07-28`，
-   evidence只保存前后不同的token SHA-256。
-- 最终两代Main/Core为`38740/43808`与`26768/39376`，均`gracefulDestroyVerified=true`、Renderer pageerror为0，
-   MCP端口/8888释放且系统代理恢复。
 - trace、截图、日志与metadata不得包含Bearer token、加密Client记录、Capture敏感正文或Host配置绝对路径。
-
-2026-09-07 Capture任务Tool关联回归：Browser/Desktop两条workflow均由旧48项目录更新为50项，并显式验证
-Get/Cancel两个Tool可发现；联合`2/2`（1.0分钟）。Main/Core `18380/31780`、`25100/19176`、`27328/7696`
-均`gracefulDestroyVerified=true`，宿主guard完成进程树、8888、WinINet与共享journal恢复检查。
-trace/evidence在TEMP下`interceptor-transfer-delivery-mcp-20260907-130205`。
-
-同日Body导出关联回归将目录更新为51项并明确包含`capture_export_body`，Browser/Desktop两条均通过；
-Main/Core `5000/35248`、`29228/44320`、`8700/36904`全部正常销毁，MCP端口/8888、WinINet与journal恢复。
-证据在TEMP下`interceptor-body-export-adjacent-e2e-20260907-142551`；Body原生Save/Cancel及数据完整性由
-独立的[`capture.tools.body-export`](capture.md#capture-tools-body-export)验证，不以discovery代替执行覆盖。
-
-### HAR关联回归
-
-- 2026-09-07 Browser/Desktop两条均通过，确认53项目录，包含两项HAR Tool。
-- Main/Core `36540/7992`、`22048/34376`、`28280/14724`全部正常退出，MCP/8888、WinINet与journal恢复。
-- 证据在TEMP下`interceptor-har-adjacent-rerun-20260907-182534`。
-- HAR实际Save/Open与文件结果由[`capture.tools.har-transfer`](capture.md#capture-tools-har-transfer)覆盖，不用发现目录代替执行验证。
+- Body原生Save/Cancel及数据完整性由[`capture.tools.body-export`](capture.md#capture-tools-body-export)验证；HAR实际Save/Open与文件结果由[`capture.tools.har-transfer`](capture.md#capture-tools-har-transfer)验证，不以discovery代替执行覆盖。
+- 真实VS Code/Copilot、Claude Desktop的Host互操作须独立验收，当前限制见[Handover](../../../../../architecture/HANDOVER.md)。
 
 <a id="mcp-tools-breakpoints"></a>
 ## `mcp.tools.breakpoints`
@@ -141,15 +115,7 @@ Main/Core `5000/35248`、`29228/44320`、`8700/36904`全部正常销毁，MCP端
 MCP Client与内置Agent共享同一Breakpoints schema、Ask/Auto和Core conflict语义；transport、认证或Client生命周期
 不会建立第二套queue，也不会在取消调用时替用户解决pending。
 
-### Evidence
+### 验收要求
 
-- 最终扩展workflow在修复前提交`32f2889a`的detached worktree精确Red：stale Breakpoint错误进入MCP审批，
-   `settleWithoutApproval`立即报告`Stale Breakpoint requested MCP approval instead of returning an error.`。
-- 当前同一`streamable-http.workflow.ts` `1/1` Green：`tools/list`严格披露八项；HTTP覆盖Ask Deny/Allow、stale、
-   method/URL/body编辑、Auto Drop和启停；WebSocket覆盖真实pending、Continue与Disable；关闭八项后协议层全部拒绝。
-- 两代App验证Client断开与credential轮换均不解除同一pending，新Token继续同一动态ID后origin才收到请求；协议
-   `2026-07-28`、旧Token为401、Rule最终revision 4，业务证据`breakpointToolCount=8`且数据面完成。
 - HTTP/WebSocket正文、编辑目标URL与动态Rule/Breakpoint/exchange ID全部登记为敏感值；业务操作段暂停trace，
    两代关闭时连同前后Bearer Token一起审计trace和进程日志，evidence只保留Token hash、计数与布尔事实。
-- 最终两代Main/Core为`10760/20752`与`36460/9580`，均`gracefulDestroyVerified=true`，Renderer pageerror为0，
-   MCP端口、8888、journal与系统代理恢复；Token只保留SHA-256。

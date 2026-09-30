@@ -527,26 +527,9 @@ flowchart TD
 - Bridge到Main的IPC必须有OS访问控制或握手凭据，不得把stdio父子进程边界误当成整条链路的认证。
 - 新transport必须复用同一认证身份、Tool过滤、`ask`/`auto`、审计与Core bridge，不建立分支行为。
 
-<a id="mcp-historical-evidence"></a>
-## 10. 历史互操作与验证边界
-
-以下从`218295b0`承接，不把旧Host版本、旧目录数量或规范能力当作当前实机结果。当前产品仍只提供前文的`2026-07-28`协议，不恢复legacy执行路径、stdio实现或旧Tool alias。
-
 <a id="mcp-host-protocol-history"></a>
-### 10.1 VS Code协议核对
+## 10. 兼容性与验收限制
 
-| 日期与方式 | 原始事实 | 边界 |
-| --- | --- | --- |
-| 2026-09-01，真实VS Code/Copilot Host | VS Code1.135.0、commit `08d4889f9e`固定`LATEST_PROTOCOL_VERSION="2025-11-25"`；首个HTTP请求400，回退legacy SSE后405，未进入`tools/list` | 不是Tool执行失败或当前协议Green；没有增加legacy兼容 |
-| 2026-09-13，只读安装包/workbench bundle核对 | VS Code1.137.0的基础MCP协议仍为`2025-11-25`；另一个`2026-01-26`常量属于`ui/open-link`扩展 | 不代表基础协议升级；未改配置/凭据、未再次运行Host canary |
-
-原文未附两次核对的独立归档路径，不补造。后续实际Host支持与复验由[Handover](../HANDOVER.md)跟踪，本节不依据旧版本推断当前安装包行为。
-
-<a id="mcp-transport-evidence-history"></a>
-### 10.2 官方Client与真实Host不同
-
-[Browser CORS](../../apps/desktop/tests/e2e-workflow-tests/docs/mcp.md#mcp-browser-playground-cors)及[Desktop Streamable HTTP](../../apps/desktop/tests/e2e-workflow-tests/docs/mcp.md#mcp-desktop-streamable-http)保留真实Electron、官方Client、query/change、审批、重启、端口和系统恢复。Client显示名为`VS Code E2E`不等于实际VS Code Host已支持协议。
-
-早期Breakpoints八项的`32f2889a` stale审批Red、同一pending在断连/凭据轮换后仍等待、Agent/MCP真实调用及各代恢复，已由[Breakpoints Tool规格](../../apps/desktop/tests/e2e-workflow-tests/docs/mcp.md)与[能力目录历史](tool-capabilities.md#tool-validation-history)承接；不另复制进度列表。
-
-`218295b0`仍明确缺少VS Code与Claude同时读取同一Capture、以及正式Tool中间进度SSE的真实flow。第9节相应条目是验收目标，不表示已执行；普通最终JSON响应或官方Client通过都不能替代这两项证据。本轮仅承接记录，没有补验或标为passed。
+- 产品只提供`2026-07-28`协议；使用`2025-11-25`等旧协议的Host不能连接，不增加legacy、stdio或旧Tool alias回退。
+- 官方Client和真实VS Code/Copilot、Claude Desktop是不同验收对象。Client显示名为`VS Code E2E`不能证明真实Host兼容；Host更新后必须重新核对。
+- 双Host同时读取同一Capture、正式Tool中间进度SSE仍待真实Host验收；普通JSON响应或Client测试不能替代。当前宿主条件与待办由[Handover](../HANDOVER.md)跟踪。

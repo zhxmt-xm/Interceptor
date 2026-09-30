@@ -51,11 +51,10 @@ Rules页面通过真实Core读取权威RuleSet；搜索只作用于视图；选�
 
 Rules根级高频命令始终在Collection toolbar可见；新建落点与现有selection语义一致，根右键菜单仍是辅助入口；空tree不能导出，出现节点后Export恢复可用。
 
-### TDD证据要求
+### 验收要求
 
-- 修复前提交运行同一workflow，必须失败在首个`rules.toolbar.*`控件不存在；selector、fixture、语言、构建或环境失败不算Red。
-- 当前提交运行同一workflow，三个toolbar命令及创建状态全部Green，并完成trace/evidence与销毁验证。
-- 2026-08-17：实现前Red精确失败于`rules.toolbar.create`不可见；实现后`1/1` Green，rule editor、folder inline rename、Export disabled/enabled状态均通过，`gracefulDestroyVerified=true`且8888释放。
+- 三个`rules.toolbar.*`命令及创建状态必须由真实UI验证；selector、fixture、语言、构建或环境失败不算产品故障。
+- 同一workflow完成trace/evidence与销毁验证。
 
 <a id="rules-hierarchy-menus-status"></a>
 ## `rules.hierarchy-menus-status`
@@ -75,18 +74,11 @@ Rules根级高频命令始终在Collection toolbar可见；新建落点与现有
 8. 测试客户端显式经8888发送匹配GET；等待动态hit count变1。rule右键Show matching requests从disabled变enabled，点击后导航Capture；展开Rule facet并确认目标rule option `aria-pressed=true`。
 9. 附加目录/rule ID、status状态、revision、hit count与导航证据；正常Close，由Main恢复系统代理，并验证Main/Core/Renderer退出、8888释放和profile删除。
 
-### TDD证据要求
+### 验收要求
 
-- Unit Red：含未填写项的RuleSet调用`applyRules()`时，当前实现仍调用`replaceRules`；修复后命令不发出。
-- Electron Red：新建不完整rule时status=invalid，但Apply仍enabled；selector、构建、listener、UAC或fixture失败不算Red。
-- Green必须覆盖同一三级树/menu/selection/status/Apply/reload/hit/navigation flow及完整销毁。
-
-### TDD证据
-
-- Unit Red：不完整RuleSet调用`applyRules()`返回true并实际调用`replaceRules`；修复后Rules Store `19/19` Green，命令未发出且saving保持false。
-- Electron Red：status已是`invalid`且issue count=2，但Apply仍enabled。
-- Electron Green：三级目录x坐标`98 / 124 / 150`，第三级New subfolder disabled；invalid→dirty→applied状态一致，Apply后revision=1，Renderer reload从Core恢复相同rule ID/name/enabled；真实GET让origin收到`x-rules-e2e: active`并令hit count=1，Show matching requests导航到Capture且目标Rule facet为pressed。
-- 销毁：Main/Core退出、8888释放、系统代理由Main恢复，`gracefulDestroyVerified=true`。
+- unit验证含未填写项的RuleSet调用`applyRules()`时不发出`replaceRules`。
+- 真实Electron中新建不完整rule时status=invalid且Apply禁用；selector、构建、listener、UAC或fixture失败不算产品故障。
+- 同时覆盖三级树/menu/selection/status/Apply/reload/hit/navigation流程及完整销毁。
 
 ### 预期效果
 
@@ -112,21 +104,11 @@ Rules根级高频命令始终在Collection toolbar可见；新建落点与现有
 
 Rule row始终为名称、命中数和树缩进保留空间；超过两个action时只收起视觉标签，不丢失完整有序信息，鼠标与键盘都能访问且不触发其他行命令。
 
-### TDD证据要求
+### 验收要求
 
-- Unit Red先锁定四个派生chip只返回前两个内联项且保留完整有序列表；实现后同一测试Green。
-- 真实Electron Red必须失败于省略入口缺失或仍渲染超过两个内联chip，不能由selector、fixture、构建或环境失败代替。
-- Green必须覆盖hover/focus Tooltip、三级目录窄宽度、selection/editor不变与完整销毁。
-
-### TDD证据
-
-- Design Red：四action设计场景等待`Show all 4 actions`失败于元素不存在；实现后hover/focus与完整顺序交互`1/1` Green，design全量interaction `15/15`通过。
-- Unit Red：两条测试都精确失败于`deriveRuleRowChips is not a function`；实现后`2/2` Green，Desktop全量`315/315`通过。
-- Electron Red：真实UI完成三级目录与四action后等待动态`rules.action-overflow.<ruleId>`15秒仍不存在；Red Main/Core PID为`16704/14708`，`gracefulDestroyVerified=true`。
-- Electron Green：同一workflow `1/1`通过，行`clientWidth/scrollWidth=416/416`，Ellipsis `22×22px`且位于hit count之前；行内顺序`map/rewrite`，Tooltip顺序`map/rewrite/flow/brk`，keyboard激活后`folderSelected=true / ruleSelected=false / editorName`与enabled不变。Green Main/Core PID为`10760/28336`，`gracefulDestroyVerified=true`且8888释放；相邻`rules.hierarchy-menus-status`同轮`1/1` Green。
-- Height regression Red：初版设计与产品共同使用flex默认stretch。Design测试精确Red为正常tag高17px、overflow行tag高22px；最终workflow移植到修复前`1be6920`后，真实Electron精确Red于`tag height 22 < button height 22`不成立。Red Main/Core PID为`41388/21460`，`gracefulDestroyVerified=true`。
-- Height regression Green：产品两枚tag均高`16.2917px`，Ellipsis高`22px`，三者border-box中心均为`215px`；Green Main/Core PID为`3680/24848`，`gracefulDestroyVerified=true`且8888释放。
-- Parity：light/dark各9个target，合计`18/18 matched / 0 missing / 0 flagged`、最大字体栅格差`0.3px`；完整报告为`142 views / 992 targets / 958 matched / 34 missing / 306 flagged / 平均2.52%`，本项未新增missing或flagged。
+- unit验证四个派生chip只返回前两个内联项且保留完整有序列表。
+- 真实Electron显示省略入口且内联chip不超过两个；selector、fixture、构建或环境失败不能代替业务结果。
+- 同时覆盖hover/focus Tooltip、三级目录窄宽度、selection/editor不变与完整销毁。
 
 <a id="rules-create-edit-delete"></a>
 ## `rules.create-edit-delete`
@@ -319,22 +301,11 @@ Rule不仅能编辑和保存，也真实作用于Proxy数据面；匹配/不匹�
 
 Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original与Final，Response明确Original unavailable；Text/File、request/response、最终写入者与Rules导航一致，不泄漏本地文件路径。
 
-### TDD证据要求
+### 验收要求
 
 - 实现前同一workflow必须因`requestBodyEffect/responseBodyEffect`与Inspector marker/version controls不存在而Red，不能用selector、fixture、原生Dialog或构建失败代替。
 - unit/integration Red先于产品实现，分别锁定RuleService最终写入者、Breakpoint Text/File、Capture存储、Native Archive与HAR边界；当前实现后同一矩阵与真实Electron workflow全部Green并完成销毁证据。
-- Header布局只改变显示，现有断点编辑/Store unit基线19/19 Green；新增真实UI几何断言必须在修改产品CSS前因旧布局而Red，再以同一用例取得Green，不把selector或环境失败算Red。
-
-### TDD证据
-
-- Red：RuleService unit中转发state已是最终正文但`bodyEffect=undefined`；真实Capture integration中主Request ref仍指向Original且双向effect均缺失；Native Archive导入丢失effect；真实Electron在Text replacement已到达origin后等待`capture.body-rule-effect.<ruleId>`15秒仍不存在。Red Main/Core PID为`10656/24836`，`gracefulDestroyVerified=true`。
-- Green：RuleService `27/27`、Body effect三态`2/2`、Breakpoint File相关`2/2`、Archive/HAR`9/9`通过；真实Electron同一workflow`1/1`通过上述Text/File/request/response/final-writer/负例矩阵。
-- 视觉：Request/Response × Text/File × light/dark 8个view均`0 missing / 0 flagged / 0px`；design interaction `13/13`。
-- 销毁：Green Main/Core PID为`45548/23816`，`gracefulDestroyVerified=true`；产品Save生成的临时文件已删除，8888无listener、无Interceptor/Electron残留，WinINet恢复`127.0.0.1:7890`。
-- 2026-09-09空文件布局修复后，同一真实workflow复跑1/1（26.2s）通过，Main/Core `31924/17444`正常销毁并恢复8888、WinINet/journal；断点unit19/19和Desktop typecheck通过。四个空文件明暗parity的12个区域目标全部匹配、最大0.6px，其他标题/页脚仍有旧偏差；详细Red/Green见[文件区域验证](../../../../../architecture/features/breakpoints.md#72-文件替换空态视觉修复)，最终归档`interceptor-breakpoint-file-final-green-20260909-211705.zip`。
-- 2026-09-10原生文件输入修复：WScript粘贴后文件名字段为空，helper改用Win32 `SendInput`真实Ctrl+A/Ctrl+V，核对焦点字段HWND，在输入期间保持置顶，路径读回后恢复剪贴板，finally释放置顶；不直接设置字段值或改写Dialog返回值。最终Save/Open、Text/File与Final writer同一workflow1/1（27.2s总运行），unit19/19及Desktop typecheck通过，Main/Core `24060/48540`正常销毁且host guard恢复。TEMP归档`interceptor-breakpoint-chrome-native-green-20260910-001235.zip`，SHA256 `130C9FF733352048E1363069450FC0AD862677D30E3D2431C008997E06708A76`。该记录只确认原生输入与数据面验证，不代表其他未提交的UI布局已验收。
-- 标题/页脚随后完成有效静态字体下的22视图复核：240 matched、0 flagged、最大0.8px，2个Response空Text标签missing当时独立待确认；产品源码hash与上述真实E2E一致，未重跑无变化的文件流程。新增22张此前缺失的设计PNG，旧362张hash不变；最终parity归档及范围见[标题与页脚](../../../../../architecture/features/breakpoints.md#73-标题与页脚还原)。2026-09-16核对后的[空Text现有语义](../../../../../architecture/features/breakpoints.md#空text替换语义)保持产品行为，不再推进新增标签，历史missing结果不改写。
-- 2026-09-10 Header effect下置：旧CSS真实Red记录输入框宽差、右侧marker与9.5px/18px旧尺寸；最终本文件2/2 Green（38.0s），含request set、response append、等宽输入、2px下置/右对齐/9px文字、编辑增删和正常放行。两代Main/Core `5928/30284`、`27632/35448`退出且宿主guard恢复；unit19/19、Desktop/design typecheck通过。26视图296 matched、0 flagged，2个旧空Text标签missing保留；完整证据见[Header effect布局](../../../../../architecture/features/breakpoints.md#74-header-effect下置布局)。
+- Header布局只改变显示；修改产品CSS前先确认断点编辑/Store基线，再以真实UI几何断言验证目标差异，不把selector或环境失败算Red。
 
 <a id="rules-tools-export"></a>
 ## `rules.tools.export`
@@ -367,16 +338,6 @@ Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original
 导出不修改Core规则或UI草稿；取消、拒绝、撤权均不写文件。Red必须精确来自新Tool未披露/未实现，
 不是Dialog、selector或环境错误。Green保留文件结构比较、审批裁决、脱敏、重启零重放与完整销毁证据。
 
-2026-09-06：executor 10项缺失Tool Red→Green；Main导出6项、原生Dialog 4项与摘要21项Green。
-真实Red在`0206d12c`产品代码上发生于`export-discovery`缺少`rules_export`，Main/Core `35164/44980`
-仍正常销毁。最终Agent/MCP workflow `1/1` Green（39.6秒），两代Main/Core为`19112/8936`、
-`37364/40196`，metadata均`gracefulDestroyVerified=true`，释放8888并由host-safety-guard恢复完整系统状态。
-证据分别归档于TEMP下`interceptor-rules-export-e2e-red`和`interceptor-rules-export-agent-mcp-green`；
-后者`rules-tools-export.json`保留业务结论与产品文件哈希，不含文件正文或MCP Token。
-旧`rules.import-tree`、全局授权、MCP Browser/Desktop四条关联E2E `4/4`，旧Agent Rules流程`1/1`也通过；
-全部七代及两代销毁证据分别归档为`interceptor-rules-export-adjacent-e2e-green`和
-`interceptor-rules-export-existing-agent-rules-green`。
-
 <a id="rules-tools-import"></a>
 ## `rules.tools.import`
 
@@ -405,25 +366,6 @@ Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original
 真实Red必须来自`rules_import`缺失而不是selector或fixture错误。UI和Tool使用同一导入流程与确认Dialog，
 取消不写、确认即原子持久化；现有草稿与规则不丢失，Model与证据不包含文件正文、本机路径或MCP Token。
 
-2026-09-06：executor 10项Red→Green；真实Red在`4ce5acaa`实现前代码上缺少`rules_import`，Main/Core
-`20092/17548`正常销毁，归档为TEMP下`interceptor-rules-import-e2e-red`。首次Import Agent/MCP Green为47.7秒，
-两代`2880/25960`、`3692/40240`销毁通过，归档`interceptor-rules-import-agent-mcp-green`。
-
-七条关联回归首轮5条通过、Export原生Cancel焦点失败、Import未执行；失败代`43084/34304`不能标为graceful。
-宿主guard紧急恢复后journal不存在、8888释放、WinINet不再指向Interceptor，首轮完整产物保留在
-`interceptor-rules-import-combined-first-run`。原生Cancel异常分支补owner限定的Dialog关闭回归，1 Red→5/5 Green；
-原生文件Dialog测试不再与设计浏览器并行争夺前台。Main未知响应的7项非法结构Red后15/15 Green。
-
-最终Export/Import独占前台联合2/2 Green（1.3分钟），四代Main/Core `17384/14908`、`24684/26240`、
-`12772/38364`、`23956/43500`全部`gracefulDestroyVerified=true`；trace与`rules-tools-import.json`归档于
-`interceptor-rules-import-export-final-e2e`。前五条关联workflow的九代销毁证据仍保留，不用紧急清理冒充正常退出。
-Main15/15、Renderer流程13/13、摘要23/23、原生Dialog5/5通过；Desktop全量516/516、Tools162/162、
-MCP32/32、Runtime122/122、Protocol25/25、Playground67/67和全workspace typecheck通过，随后边界补测独立Green。
-Windows package、artifact audit（1,294 files / 392,861,936 bytes）、production audit0漏洞与packaged smoke1/1通过；
-smoke仅同步四个新窄API允许清单，其余Renderer隔离、CSP及销毁断言保持不变。
-最终完整parity250 views / 1,736 targets / 1,704 matched / 32既有missing / 303既有flagged，Import相关
-10视图56/56匹配、0 missing/flagged、最大0.5px。该视觉证据不替代上面的真实Electron Red/Green与销毁证据。
-
 <a id="rules-import-tree"></a>
 ## `rules.import-tree`
 
@@ -449,14 +391,8 @@ smoke仅同步四个新窄API允许清单，其余Renderer隔离、CSP及销毁�
 
 结构非法的文件、节点字段错误与越界层级由共享tree parser及Renderer owning parser的unit测试覆盖：产品UI无法导出这类文件，在E2E里制造它们只能靠测试写文件，属于禁止的seed行为。
 
-### TDD证据要求
+### 验收要求
 
-- 实现前提交运行同一workflow，必须精确失败于`rules.toolbar.import`入口不存在；selector笔误、fixture、语言、构建或环境失败不算Red。
-- 当前提交运行同一workflow全部Green，涵盖取消零变化、id不复用、enabled沿用、层级保持、追加位置、重复导入累加与Core持久化，并完成trace/evidence与销毁验证。
+- 必须通过`rules.toolbar.import`真实入口执行；selector笔误、fixture、语言、构建或环境失败不算产品故障。
+- 覆盖取消零变化、id不复用、enabled沿用、层级保持、追加位置、重复导入累加与Core持久化，并完成trace/evidence与销毁验证。
 - 导入输入文件必须由本workflow的真实Export产生；出现测试自建输入文件即视为该条Green无效。
-
-### TDD证据
-
-- Retrospective Red：最终workflow源码在`884dcc4`精确失败于`rules.toolbar.import`不存在；同环境`rules.root-toolbar`为Green，排除构建、listener与fixture失败。
-- Green：最终`1/1`通过（21.8秒）。真实Save Dialog生成`rules-roundtrip.json`，三次真实Open Dialog覆盖取消、确认和重复确认；两条rule与一层目录依次扩展为4/2、6/3个节点，新增id不复用，enabled保持true/false，revision为`1→2→3`。
-- 销毁：Main PID `17228`、Core PID `11560`均退出，`gracefulDestroyVerified=true`；8888、crash journal与Electron均为0，完整WinINet恢复到workflow启动快照。

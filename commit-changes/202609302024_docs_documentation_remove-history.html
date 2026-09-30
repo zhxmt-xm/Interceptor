@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>文档清理：删除历史执行流水</title>
+  <style>
+    :root { color-scheme: light; --ink: #20262b; --muted: #5b646b; --line: #d8dee3; --accent: #176957; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f5f7f8; color: var(--ink); font: 15px/1.7 "PingFang SC", "Microsoft YaHei", sans-serif; letter-spacing: 0; }
+    main { max-width: 1120px; margin: 0 auto; padding: 36px 28px 56px; }
+    header { border-top: 4px solid var(--accent); padding: 22px 0; }
+    h1 { margin: 4px 0 8px; font-size: 28px; line-height: 1.4; }
+    h2 { margin: 0 0 14px; font-size: 19px; }
+    p { margin: 0 0 12px; }
+    .category { color: var(--accent); font-weight: 600; }
+    .time { color: var(--muted); font-size: 13px; }
+    section { padding: 24px 0; border-top: 1px solid var(--line); }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { padding: 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+    th { background: #e9edef; font-weight: 600; }
+    th:first-child { width: 26%; }
+    code { font: 12px/1.7 "SFMono-Regular", Consolas, monospace; overflow-wrap: anywhere; }
+    footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 18px; }
+    @media (max-width: 700px) {
+      main { padding: 22px 18px 36px; }
+      h1 { font-size: 24px; }
+      table, tbody, tr, td { display: block; width: 100%; }
+      thead { display: none; }
+      tr { padding: 12px 0; border-bottom: 1px solid var(--line); }
+      td { padding: 7px 0; border: 0; }
+      td::before { content: attr(data-label); display: block; color: var(--muted); font-size: 12px; font-weight: 600; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="category">工程与文档</p>
+      <h1>删除历史执行流水</h1>
+      <p class="time">2026-09-30 20:24 +0800</p>
+    </header>
+    <section>
+      <h2>摘要</h2>
+      <p>架构说明和验收规格保留现行契约、操作步骤与当前限制，删除历轮 TDD、PID、耗时和临时产物清单；删除 DeepSeek harness 研究文档。</p>
+    </section>
+    <section>
+      <h2>改动</h2>
+      <table>
+        <thead><tr><th>位置</th><th>改前</th><th>改后</th><th>原因与影响</th></tr></thead>
+        <tbody>
+          <tr>
+            <td data-label="位置"><code>architecture/HANDOVER.md</code></td>
+            <td data-label="改前">任务说明混有多轮执行过程，另设 Verification 长篇记录。</td>
+            <td data-label="改后">删除 Verification，仅保留未完成任务、当前限制和运行入口。</td>
+            <td data-label="原因与影响">交接内容直接说明当前要处理什么，不再重复历史运行过程。</td>
+          </tr>
+          <tr>
+            <td data-label="位置"><code>architecture/features/</code><br><code>architecture/platform/</code></td>
+            <td data-label="改前">功能与平台契约后附测试轮次、产物统计、提交和修复过程。</td>
+            <td data-label="改后">逐段删除历史叙述，保留数据格式、状态与权限边界、已知限制。</td>
+            <td data-label="原因与影响">历史结果不再与现行实现混写；有效引用指向实际契约章节。</td>
+          </tr>
+          <tr>
+            <td data-label="位置"><code>apps/desktop/tests/e2e-workflow-tests/</code><br><code>apps/desktop/src/main/platform-capabilities/README.md</code></td>
+            <td data-label="改前">规格和状态表反复列出 TDD 结果、PID、耗时、临时目录与旧失败。</td>
+            <td data-label="改后">保留输入、真实操作、断言、清理要求和当前未验范围；删除旧运行记录。</td>
+            <td data-label="原因与影响">规格用于说明如何验收；官方 MCP Client 与第三方 Host 实机范围分开表述。</td>
+          </tr>
+          <tr>
+            <td data-label="位置"><code>architecture/backlog/deepseek-harness-agent-analysis.md</code></td>
+            <td data-label="改前">保留独立的 DeepSeek harness 研究文档。</td>
+            <td data-label="改后">删除整个文档，不转存到其他文档。</td>
+            <td data-label="原因与影响">按本次要求移除该研究内容，不改变产品 Agent 或模型功能。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+    <footer>本项只调整文档。原始 trace、日志、截图和历史提交报告保持不变；不包含其他工作项的产品代码。</footer>
+  </main>
+</body>
+</html>

@@ -159,7 +159,7 @@ macOS 使用`~/Library/Application Support/Interceptor Platform/system-proxy/jou
 通过Action Gate拒绝新IPC、排空已接受命令，再调用平台stop恢复代理。完整参与者、当场比较表、正常启动、崩溃重启、正常退出、启动失败与
 Core 故障时序见 [../features/settings.md](../features/settings.md) §3.2。
 
-macOS Main在窗口显示后调用`PlatformCapabilitiesService.prepare()`，内部顺序执行helper准备、代理恢复和共享CA准备；按真实`app.isPackaged`选择生产或开发socket。首次部署/新增授权由同包helper请求系统确认，只部署helper、root配置和launchd；App不搬迁。开发按核准UID复用，生产保持App身份/资源/运行时检查，不失败回退。证书导入/删除走常驻服务；trust/untrust直接启动同一helper的普通用户前台入口，由系统确认，不存在后台trust命令、规则修改或授权规则journal。CA私钥不交给helper。验证范围见[Handover](../HANDOVER.md#verification)，协议见[平台模块](../../apps/desktop/src/main/platform-capabilities/README.md)。
+macOS Main在窗口显示后调用`PlatformCapabilitiesService.prepare()`，内部顺序执行helper准备、代理恢复和共享CA准备；按真实`app.isPackaged`选择生产或开发socket。首次部署/新增授权由同包helper请求系统确认，只部署helper、root配置和launchd；App不搬迁。开发按核准UID复用，生产保持App身份/资源/运行时检查，不失败回退。证书导入/删除走常驻服务；trust/untrust直接启动同一helper的普通用户前台入口，由系统确认，不存在后台trust命令、规则修改或授权规则journal。CA私钥不交给helper。协议见[平台模块](../../apps/desktop/src/main/platform-capabilities/README.md)。
 
 生产完整资源校验使用同一受保护helper的短生命周期只读`verify-code-signature`子进程，避免常驻服务内已观测到的Security扫描/内存回收尾延迟。常驻服务仍核验socket调用者和运行时保护，等待子进程完整验证成功后才执行系统写入并记录结束；子进程失败拒绝原请求。未减少strict/nested/all-architectures检查，未缓存信任或延长30秒期限，该CLI不开放给socket调用方。
 
