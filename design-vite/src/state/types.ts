@@ -197,8 +197,6 @@ export interface DesignState {
   readonly storageOperation: 'idle' | 'refresh' | 'clear';
   readonly storageStatus: 'ready' | 'unavailable';
   readonly update: string;
-  readonly githubAuth: string;
-  readonly updatesWithoutSignIn: boolean;
   readonly appContainers: string;
   readonly tlsPassthrough: string;
   readonly tlsPatterns: readonly string[] | null;

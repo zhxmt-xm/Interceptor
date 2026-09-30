@@ -792,14 +792,6 @@ export const fakeInterceptorFixture = {
     revision: 1,
     hosts: ['*.wvd.microsoft.com'],
   },
-  githubAuth: {
-    state: 'signed-out',
-    login: null,
-    userCode: null,
-    verificationUri: null,
-    expiresAt: null,
-    message: null,
-  },
   agent: {
     toolSettings: {
       groups: [
@@ -1079,7 +1071,6 @@ export function installFakeInterceptor({
   breakpointManagerRules = false,
   mitmActive = true,
   updateState = 'unsupported',
-  githubAuthState = 'signed-in',
   agentModels = 'empty',
   agentSessionState = 'completed',
   agentMessage = null,
@@ -3125,33 +3116,6 @@ export function installFakeInterceptor({
       tlsCompatibilityListeners.forEach((listener) => listener(event));
     });
   };
-  let githubAuthStatus = githubAuthState === 'signed-in'
-    ? {
-        ...fixture.githubAuth,
-        state: 'signed-in',
-        login: 'zhxmt-xm',
-        message: 'GitHub authorization is stored securely on this device.',
-      }
-    : githubAuthState === 'authorizing'
-      ? {
-          ...fixture.githubAuth,
-          state: 'authorizing',
-          userCode: 'F7D2-9A4C',
-          verificationUri: 'https://github.com/login/device',
-          expiresAt: '2026-08-07T00:15:00.000Z',
-          message: 'Enter the one-time code in GitHub to authorize this device.',
-        }
-      : githubAuthState === 'failed'
-        ? {
-            ...fixture.githubAuth,
-            state: 'failed',
-            message: 'The GitHub authorization code expired. Try again.',
-          }
-        : { ...fixture.githubAuth };
-  const githubAuthListeners = new Set();
-  const publishGitHubAuthStatus = () => {
-    for (const listener of githubAuthListeners) listener({ ...githubAuthStatus });
-  };
   let storage = storageUsage ?? fixture.storage;
   let transferJob = null;
   let updateStatus = updateState === 'unsupported'
@@ -3166,15 +3130,6 @@ export function installFakeInterceptor({
         releaseNotes: null,
         message: 'Release checks run only in packaged Windows and macOS builds.',
       }
-    : updateState === 'authentication-required'
-      ? {
-          ...fixture.update,
-          state: 'authentication-required',
-          latestVersion: null,
-          totalBytes: null,
-          releaseNotes: null,
-          message: 'Sign in with GitHub to access private releases.',
-        }
     : updateState === 'checking'
       ? {
           ...fixture.update,
@@ -3182,7 +3137,7 @@ export function installFakeInterceptor({
           latestVersion: null,
           totalBytes: null,
           releaseNotes: null,
-          message: 'Checking private GitHub Releases…',
+          message: 'Checking GitHub Releases…',
         }
       : updateState === 'up-to-date'
         ? {
@@ -3588,29 +3543,6 @@ export function installFakeInterceptor({
       tlsCompatibilityListeners.add(listener);
       tlsCompatibilityEvents.forEach((event) => queueMicrotask(() => listener(event)));
       return () => tlsCompatibilityListeners.delete(listener);
-    },
-    getGitHubAuthStatus: async () => githubAuthStatus,
-    signInWithGitHub: async () => {
-      githubAuthStatus = {
-        ...fixture.githubAuth,
-        state: 'authorizing',
-        userCode: 'F7D2-9A4C',
-        verificationUri: 'https://github.com/login/device',
-        expiresAt: '2026-08-07T00:15:00.000Z',
-        message: 'Enter the one-time code in GitHub to authorize this device.',
-      };
-      publishGitHubAuthStatus();
-      return githubAuthStatus;
-    },
-    openGitHubAuthorization: async () => undefined,
-    signOutFromGitHub: async () => {
-      githubAuthStatus = { ...fixture.githubAuth };
-      publishGitHubAuthStatus();
-      return githubAuthStatus;
-    },
-    onGitHubAuthStatusChange: (listener) => {
-      githubAuthListeners.add(listener);
-      return () => githubAuthListeners.delete(listener);
     },
     queryDiagnostics: async (request = {}) => {
       const filtered = fixture.diagnostics.records.filter((record) =>

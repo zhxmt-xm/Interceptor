@@ -43,7 +43,6 @@ import {
   useRulesData,
 } from '../features/rules';
 import {
-  GitHubAuthActions,
   McpSettingsActions,
   McpToolApprovalDialog,
   SettingsMain,
@@ -150,7 +149,6 @@ export function App(): React.JSX.Element {
 
   useEffect(() => UpdateActions.subscribe(), []);
   useEffect(() => new UiPreferencesActions(setThemeMode).subscribe(), []);
-  useEffect(() => GitHubAuthActions.subscribe(), []);
   useEffect(() => TlsCompatibilityActions.subscribe(), []);
   useEffect(() => McpSettingsActions.subscribe(), []);
   useEffect(() => {

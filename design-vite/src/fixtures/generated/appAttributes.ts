@@ -11,7 +11,6 @@ export const appAttributes: Readonly<Record<string, string>> = {
   "data-copy": "hidden",
   "data-settings": "certificates",
   "data-update": "up-to-date",
-  "data-github-auth": "signed-in",
   "data-app-containers": "ready",
   "data-tls-passthrough": "ready",
   "data-body-kind": "json",

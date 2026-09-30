@@ -33,6 +33,25 @@ describe('i18n catalogs', () => {
     expect(LANGUAGE_IDS).toEqual(DESKTOP_UI_LANGUAGES);
   });
 
+  it('uses the approved anonymous update copy without claiming repository visibility', () => {
+    expect(resources.en.translation).toMatchObject({
+      'settings.updateDescription': 'Stable releases from GitHub. Downloads start only when you choose.',
+      'settings.latestReleaseHint': 'Newest stable release',
+      'settings.stableChannelHint': 'Stable release channel',
+    });
+  });
+
+  it.each(LANGUAGE_IDS)('removes GitHub account messages from %s', (language) => {
+    for (const key of [
+      'settings.githubAccess',
+      'settings.signInWithGitHub',
+      'settings.update.authenticationRequired',
+      'settings.private',
+    ]) {
+      expect(resources[language].translation).not.toHaveProperty(key);
+    }
+  });
+
   it('keeps every locale aligned with the English catalog', () => {
     const englishKeys = Object.keys(englishCatalog).sort();
 

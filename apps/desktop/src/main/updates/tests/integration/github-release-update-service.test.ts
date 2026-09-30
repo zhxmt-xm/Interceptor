@@ -47,9 +47,9 @@ describe('GitHubReleaseUpdateService', () => {
     expect(states).toContain('downloading');
     expect(states.at(-1)).toBe('downloaded');
     expect(fixture.requestFor('/releases/latest')?.headers.get('authorization'))
-      .toBe('Bearer ghu_test_token');
+      .toBeNull();
     const assetRequest = fixture.requestFor('/releases/assets/42');
-    expect(assetRequest?.headers.get('authorization')).toBe('Bearer ghu_test_token');
+    expect(assetRequest?.headers.get('authorization')).toBeNull();
     expect(assetRequest?.headers.get('accept')).toBe('application/octet-stream');
   });
 
@@ -83,41 +83,95 @@ describe('GitHubReleaseUpdateService', () => {
     await expect(fixture.gitHubReleaseUpdateService.openDownloaded()).rejects.toThrow('No downloaded');
   });
 
-  it('reports missing or unauthorized private repositories', async () => {
-    const fixture = await GitHubReleaseFixture.create(roots, { status: 404 });
+  it.each([401, 403, 404, 429, 500])('reports HTTP %s without requiring authorization', async (status) => {
+    const fixture = await GitHubReleaseFixture.create(roots, { status });
 
     expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
       state: 'failed',
       latestVersion: null,
-      message: 'The private release repository was not found or is not authorized.',
+      message: `GitHub returned HTTP ${status}.`,
     });
+    expect(fixture.fetcher).toHaveBeenCalledOnce();
   });
 
-  it('requires GitHub authorization before reading private releases', async () => {
-    const fixture = await GitHubReleaseFixture.create(roots, { accessToken: null });
+  it('checks releases without GitHub authorization', async () => {
+    const fixture = await GitHubReleaseFixture.create(roots);
 
     expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
-      state: 'authentication-required',
-      latestVersion: null,
+      state: 'available',
+      latestVersion: '0.1.1',
     });
-    expect(fixture.fetcher).not.toHaveBeenCalled();
+    expect(fixture.fetcher).toHaveBeenCalledWith(
+      'https://api.github.com/repos/zhxmt-xm/Interceptor/releases/latest',
+      expect.objectContaining({ credentials: 'omit', redirect: 'error' }),
+    );
   });
 
-  it('ignores a release response started under an older authorization', async () => {
+  it('reports a network failure and allows an explicit anonymous retry', async () => {
+    const fixture = await GitHubReleaseFixture.create(roots);
+    fixture.fetcher.mockRejectedValueOnce(new TypeError('fetch failed'));
+
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
+      state: 'failed',
+      message: 'fetch failed',
+    });
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
+      state: 'available',
+      latestVersion: '0.1.1',
+    });
+  });
+
+  it('ignores a release response received after shutdown', async () => {
     const fixture = await GitHubReleaseFixture.create(roots);
     const releaseMetadata = fixture.pauseMetadata();
 
     const check = fixture.gitHubReleaseUpdateService.check();
     await vi.waitFor(() => expect(fixture.metadataRequests()).toBe(1));
-    fixture.gitHubReleaseUpdateService.authorizationChanged(false);
-    fixture.gitHubReleaseUpdateService.authorizationChanged(true);
+    fixture.gitHubReleaseUpdateService.stop();
     releaseMetadata();
 
-    expect(await check).toMatchObject({ state: 'idle', latestVersion: null });
+    expect(await check).toMatchObject({ state: 'checking', latestVersion: null });
     expect(fixture.gitHubReleaseUpdateService.status()).toMatchObject({
-      state: 'idle',
+      state: 'checking',
       latestVersion: null,
     });
+  });
+
+  it.each([404, 500])('reports asset HTTP %s without opening an installer', async (status) => {
+    const fixture = await GitHubReleaseFixture.create(roots);
+    await fixture.gitHubReleaseUpdateService.check();
+    fixture.fetcher.mockResolvedValueOnce(new Response('request failed', { status }));
+
+    expect(await fixture.gitHubReleaseUpdateService.download()).toMatchObject({
+      state: 'failed',
+      progress: null,
+      message: `GitHub asset returned HTTP ${status}.`,
+    });
+    await expect(fixture.gitHubReleaseUpdateService.openDownloaded()).rejects.toThrow('No downloaded');
+    expect(fixture.openPath).not.toHaveBeenCalled();
+  });
+
+  it('does not retain an installer response received after shutdown', async () => {
+    const fixture = await GitHubReleaseFixture.create(roots);
+    await fixture.gitHubReleaseUpdateService.check();
+    let releaseAsset = (): void => undefined;
+    const assetGate = new Promise<void>((resolve) => { releaseAsset = resolve; });
+    fixture.fetcher.mockImplementationOnce(async () => {
+      await assetGate;
+      return new Response(new Uint8Array(fixture.installer), {
+        headers: { 'content-length': String(fixture.installer.length) },
+      });
+    });
+
+    const download = fixture.gitHubReleaseUpdateService.download();
+    await vi.waitFor(() => expect(fixture.fetcher).toHaveBeenCalledTimes(2));
+    fixture.gitHubReleaseUpdateService.stop();
+    releaseAsset();
+
+    expect(await download).toMatchObject({ state: 'downloading', downloadedBytes: 0 });
+    await expect(fixture.gitHubReleaseUpdateService.openDownloaded()).rejects.toThrow('No downloaded');
+    await expect(access(path.join(fixture.root, 'updates/downloads/Interceptor.msi')))
+      .rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it('removes an installer left by a previous application process', async () => {
@@ -219,7 +273,6 @@ interface GitHubReleaseFixtureOptions {
   readonly downloadBody?: Buffer;
   readonly platform?: NodeJS.Platform;
   readonly architecture?: NodeJS.Architecture;
-  readonly accessToken?: string | null;
 }
 
 /** Isolated fake GitHub API and installer source for update service tests. */
@@ -252,8 +305,8 @@ class GitHubReleaseFixture {
     const digest = options.digest === undefined
       ? `sha256:${createHash('sha256').update(this.installer).digest('hex')}`
       : options.digest;
-    const metadata = options.status === 404
-      ? new Response('missing', { status: 404 })
+    const metadata = options.status !== undefined
+      ? new Response('request failed', { status: options.status })
       : Response.json({
           tag_name: tagName,
           draft: false,
@@ -290,9 +343,6 @@ class GitHubReleaseFixture {
       currentVersion: '0.1.0',
       dataDirectory: root,
       diagnostics: { info: vi.fn(), error: vi.fn() },
-      getAccessToken: async () => options.accessToken === undefined
-        ? 'ghu_test_token'
-        : options.accessToken,
       fetcher: this.fetcher as unknown as typeof fetch,
       openPath: this.openPath,
       now: () => new Date('2026-07-18T00:00:00.000Z'),

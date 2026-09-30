@@ -15,7 +15,6 @@ import type {
   CoreProcessStatus,
   UpdateStatus,
 } from '../../shared/desktop-api';
-import type { SecureStore } from '../platform-capabilities/interfaces';
 
 // ─── core：CoreRuntime / CoreProcess 生命周期 ───
 
@@ -93,26 +92,6 @@ export interface MainDiagnosticsTransport {
   ingestDiagnostic(payload: DiagnosticIngestPayload): Promise<void>;
 }
 
-/** Main-only GitHub user authorization encrypted at rest. */
-export interface GitHubAuthCredentials {
-  readonly accessToken: string;
-  readonly accessTokenExpiresAt: string | null;
-  readonly refreshToken: string | null;
-  readonly refreshTokenExpiresAt: string | null;
-  readonly login: string;
-}
-
-/** GitHubAuthService construction boundary. */
-export interface GitHubAuthServiceOptions {
-  readonly clientId: string;
-  readonly dataDirectory: string;
-  readonly secureStore: SecureStore;
-  readonly openExternal: (url: string) => Promise<void>;
-  readonly fetcher?: typeof fetch;
-  readonly now?: () => Date;
-  readonly wait?: (milliseconds: number, signal: AbortSignal) => Promise<void>;
-}
-
 // ─── updates ───
 
 /** 用户触发的安装器下载器契约（GitHub Releases 检查/下载/打开）。 */
@@ -122,7 +101,6 @@ export interface UpdateService {
   check(): Promise<UpdateStatus> | UpdateStatus;
   download(): Promise<UpdateStatus>;
   openDownloaded(): Promise<void>;
-  authorizationChanged(authenticated: boolean): void;
   onStatusChange(listener: (status: UpdateStatus) => void): () => void;
   stop(): void;
 }
@@ -147,7 +125,6 @@ export interface GitHubReleaseUpdateServiceOptions {
   readonly currentVersion: string;
   readonly dataDirectory: string;
   readonly diagnostics: GitHubReleaseUpdateDiagnostics;
-  readonly getAccessToken: () => Promise<string | null>;
   readonly fetcher?: typeof fetch;
   readonly openPath: (filePath: string) => Promise<string>;
   readonly now?: () => Date;

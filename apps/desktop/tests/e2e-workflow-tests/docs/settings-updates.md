@@ -413,7 +413,7 @@ macOS首轮验收仍待Green：保留九个section、键盘和跨workspace往返
 1. 创建profile/evidence，启动trace/Electron，等待App/Core/8888/readiness；点击 `capture.readiness.cancel`，确认System Proxy仍未owned且系统设置未修改。
 2. 点击 `shell.workspace.settings`；检查 Settings rail 九个 section 可用，且只有 `settings.section.certificates` 具有 `aria-current=page`。
 3. 依次点击 Proxy、App Containers、TLS passthrough、Certificates、Appearance、Storage、Privacy、Agent、Updates；每次确认目标项成为唯一 `aria-current=page`，并等待目标面板稳定。Agent section 额外通过键盘聚焦并按 Enter 激活，确认 rail item 使用原生 button 语义。
-	Updates的`settings.updates.github-sign-in`保持未登录可见态；按钮使用flex、align-items:center和7px gap，GitHub图标在Button独立icon槽，文字label不再包含图标。Button源码的inline-flex作为flex子项时计算为flex，按计算值检查。保存按钮截图；不点击登录，不打开外部浏览器，不把该检查作为真实GitHub授权或通知下载验收。
+	Updates通过`settings.updates.status`公开实际更新状态；标题使用flex和align-items:center，页面不再出现GitHub登录控件。保存状态标题截图，不打开外部授权浏览器；匿名检查、失败重试及重启由Updates专属workflow验证，导航不能替代真实下载或通知验收。
 4. 再次选择 App Containers，点击 `shell.workspace.capture` 离开 Settings，确认 Capture 成为当前 workspace。
 5. 通过普通 `shell.workspace.settings` 返回，确认 App Containers 仍是唯一 `aria-current=page`，没有回到默认 Certificates。
 6. 选择 TLS passthrough，依次切到 Rules、Composer、Diagnostics 并从每个 workspace 返回 Settings；每次确认 TLS passthrough 仍为当前 section。
@@ -787,36 +787,38 @@ Privacy defaults即时持久并真实驱动HAR Export初始状态；风险组合
 <a id="settings-updates-check"></a>
 ## `settings.updates.check`
 
-**状态**：planned
-**策略**：native-ui（local断言unsupported；packaged通过真实 GitHub Device Flow 检查私有 Release）
+**状态**：passed（macOS packaged匿名失败重试/重启与退出恢复；Windows、真实下载/Open成功链路未验）
+**策略**：native-ui（local断言unsupported；packaged匿名请求固定Release来源）
+
+实现入口为[updates-check.workflow.ts](../workflows/settings/updates-check.workflow.ts)。HTTP 404或请求失败按失败处理，不以公开仓库或有效Release作为删除登录的前提。
 
 ### Steps
 
-1. 创建profile/evidence，启动local或packaged App的trace/driver，等待App/Core/8888/readiness；点击 `capture.readiness.cancel`，确认System Proxy仍未owned。
+1. 只读保存完整系统代理、Root/admin trust和已就绪日常CA基线；创建profile/evidence，启动local或packaged App的trace/driver，等待App/Core/8888/readiness。冷启动按产品原流程接管系统代理，不伪造取消或强制改变路由，正常Close后由host guard核对恢复。
 2. 点击 `shell.workspace.settings`→`settings.section.updates`。
 3. 在local未打包目标确认真实unsupported/development状态，不伪造available。
-4. packaged fresh profile 确认Sign in required；点击 `settings.updates.github-sign-in`，读取但不记录 `settings.updates.device-code`，确认系统浏览器打开GitHub Device Flow。
-5. 用户在GitHub完成授权；等待Connected，确认Renderer/DOM/trace中没有access/refresh token或绝对凭据路径。
-6. 点击 `settings.updates.check`，发起固定私有GitHub stable release检查；等待Checking终态为Up-to-date、Available或Failed。
-7. 检查current/latest version、private release source、policy、lastCheckedAt和纯文本release notes。
-8. 重启同一profile，确认启动时refresh成功且无需再次Device Flow；在可控短过期fixture中确认access到期前只刷新一次并按新过期时间重排，Close后不再请求；点击 `settings.updates.github-sign-out` 后确认密文删除并回到Sign in required。
-9. 确认远端body没有HTML执行或资源加载；保存evidence并Close。
-10. 验证销毁并删除profile。
+4. packaged fresh profile无需登录即可检查；Updates不再显示GitHub access、设备码、登录/退出或Private文案，不打开GitHub授权浏览器。
+5. 点击 `settings.updates.check`，匿名请求固定`zhxmt-xm/Interceptor`的stable Release；不改变远端可见性、来源或个人Git/CI凭据，不注入响应或更新状态。
+6. 等待Checking结束：成功响应按实际版本进入Up-to-date或Available；HTTP 404、其他非成功HTTP响应或请求失败必须进入Failed，不回到Sign in required，也不把失败显示为无更新。失败后再次真实点击Check，验证仍可重试且不触发登录。
+7. 检查current/latest version、固定release source、policy、lastCheckedAt和纯文本release notes；只记录实际返回的数据。保存终态、失败提示、截图和trace，明确本次覆盖的是成功还是失败分支。
+8. 正常退出并确认宿主恢复后，重启同一profile；仍无需账号或Device Flow即可检查，退出取消本轮更新请求和timer。确认不生成产品GitHub凭据或发起token刷新。
+9. 确认公开Preload API不再含GitHub账号操作、Renderer无运行时错误；保存两代状态、lastCheckedAt、截图与trace并Close。有真实release notes时确认纯文本，不把404路径算作远端body渲染已验。
+10. 验证两代Main/Core/Worker销毁、8888释放及完整系统代理/journal/Root恢复，再删除profile；保留已有日常CA和信任。
 
 ### 预期效果
 
-Local诚实显示unsupported；packaged只用当前GitHub身份读取固定私有仓库。token与过期时间只在Main密文中，启动时刷新，并在access到期前5分钟用单timer刷新；非退出刷新失败即清空登录，Close取消timer；状态机和纯文本changelog准确，无远程代码执行。
+Local诚实显示unsupported；packaged匿名请求固定仓库，HTTP 404或请求失败诚实显示Failed，不要求登录、不伪装成无更新。Close取消timer与活动请求，状态机和纯文本changelog准确，无远程代码执行。产品unit/integration覆盖匿名请求不带Authorization、各HTTP/网络失败及有效Release处理；真实404只证明失败路径，不替代下载、打开安装器或通知成功路径的E2E。
 
 <a id="settings-updates-download-open"></a>
 ## `settings.updates.download-open`
 
 **状态**：planned
-**策略**：native-ui；仅packaged且存在真实新release时可执行
+**策略**：native-ui；第6项目标为匿名更新，仅packaged且存在真实可匿名访问的新release时可执行
 
 ### Steps
 
-1. 创建profile/evidence，启动packaged App的trace/CDP driver，等待App/Core/8888/readiness；点击 `capture.readiness.cancel`，确认System Proxy仍未owned且更新直连不要求接管系统代理。
-2. 进入Updates并完成或恢复GitHub授权；点击 `settings.updates.check`，等待真实Available和目标Asset API metadata。
+1. 保存完整宿主与已就绪日常CA基线，创建profile/evidence，启动packaged App的trace/CDP driver，等待App/Core/8888/readiness；系统代理遵循产品正常启动/退出流程，下载不另行修改系统路由。
+2. 无需GitHub授权，进入Updates点击 `settings.updates.check`，等待真实Available和目标Asset API metadata；若实际返回404或请求失败，记录本workflow前提不满足，不把检查失败路径算作下载/打开通过。
 3. 点击 `settings.updates.download`。
 4. 观察state=downloading、bytes与progress单调增长，UI不允许重复下载。
 5. 等待size和SHA-256校验、fsync和原子rename完成，状态为Downloaded；确认无`.part`残留。
@@ -828,7 +830,7 @@ Local诚实显示unsupported；packaged只用当前GitHub身份读取固定私�
 
 ### 预期效果
 
-下载只由用户点击触发；固定Asset API/size/hash/架构安全边界生效；Bearer不进入Renderer或安装文件；失败清理临时文件；Open不能提交任意path。
+下载只由用户点击触发且不携带产品GitHub凭据；固定Asset API/size/hash/架构安全边界生效；404或请求失败进入Failed并清理临时文件，不转入登录；Open不能提交任意path。
 
 <a id="settings-update-notification"></a>
 ## `settings.update-notification`
@@ -836,7 +838,7 @@ Local诚实显示unsupported；packaged只用当前GitHub身份读取固定私�
 **状态**：planned
 **策略**：shared（有效available/downloaded仅packaged真实检查）
 
-2026-09-11通知compact尺寸代码完成，unit10/10、四场景parity64/64及浏览器外框/Dismiss检查通过；2026-09-12补真实Button文字子项的2项Red及17/17 Green、Download/Open组合居中。用户已恢复E2E，共享Button在真实正文/HTTPS流程2/2通过，但不是本workflow的通过证据。当前没有通知专属可执行workflow和公共automation ID；仍需真实packaged新release及GitHub授权，不注入Update store或伪造状态。暂停期前置Red与通知最终Green均缺失，详见[更新通知按钮](../../../../../architecture/features/settings.md#更新通知按钮)。
+当前缺通知专属真实workflow；执行时需要packaged App和可匿名访问的新release。不注入Update store或伪造状态，也不把404失败检查作为通知下载通过。布局契约见[更新通知按钮](../../../../../architecture/features/settings.md#更新通知按钮)。
 
 ### Steps
 

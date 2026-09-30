@@ -15,7 +15,6 @@ flowchart LR
   subgraph DESKTOP["Electron Desktop"]
     PRELOAD["3 preload.ts<br/>contextBridge"]
     MAIN["4 DesktopApplication<br/>Window · Security · Renderer IPC"]
-    AUTH["GitHubAuthService<br/>Device Flow · Expiry Timer · safeStorage"]
     UPDATE["GitHubReleaseUpdateService<br/>Check · Changelog · Manual Download"]
     AGENT["AgentRuntime<br/>Provider · Session · Streaming · Usage"]
     AGENT_TOOLS["AgentToolService<br/>Capability Index · Discovery · Query execution"]
@@ -29,7 +28,7 @@ flowchart LR
   end
 
   PROTOCOL["7 @interceptor/core-protocol<br/>Typed RPC · Envelope Validation"]
-  GITHUB["Private GitHub Releases<br/>OAuth · Metadata · MSI · DMG · ZIP"]
+  GITHUB["GitHub Releases<br/>Anonymous Metadata · MSI · DMG · ZIP"]
   MODEL_API["DeepSeek / OpenAI-compatible API<br/>Streaming Chat Completions"]
   MCP_HOST["External MCP Host<br/>Native Host · Browser Playground"]
 
@@ -45,7 +44,6 @@ flowchart LR
   end
 
   UI_APP --> UI_API --> PRELOAD --> MAIN
-  MAIN --> AUTH --> GITHUB
   MAIN --> UPDATE --> GITHUB
   MAIN --> AGENT
   AGENT --> AGENT_STORE
@@ -253,8 +251,7 @@ Main 创建 frameless `BrowserWindow` 时以 `useContentSize: true` 配置 `1600
 | 18 | CoreProcess restart | OS/CoreProcess → `CoreRuntime` | `exit(code)` → backoff → new fork/port | `core-runtime.ts` | 新 PID、新 MessagePort，后续 RPC 正常 | 旧 port 上 pending Promise 被内部 `CoreRpcClient` 拒绝 |
 | 19 | graceful shutdown | Renderer/Electron → DesktopApplication → 平台/Core | `app:quit`、`before-quit`、`shutdown`、`stopped` | `main.ts`、`lifecycle/application-shutdown.ts`、`core-runtime.ts`、`core-application.ts` | 平台空闲后由action gate拒绝新IPC并收尾已接受命令/Agent Turn；平台恢复首次original、验证并清journal，再停止服务/Core | 平台忙时拒绝本次Quit且不重放；外部修改零系统写入；恢复失败保留journal并恢复命令、Agent和窗口 |
 | 20 | build/package/runtime | npm → esbuild → Forge → package/maker | 0-map Core + native helper → ASAR/extraResource → strict Fuses → sign → MSI/DMG/ZIP | root scripts、`proxy-core/build.mjs`、`forge.config.ts`、installer tests | package audit + packaged workflow smoke + platform installer smoke | 缺 tool/凭据、资源泄漏、Fuse 漂移、安装/升级失败均使门禁失败 |
-| 21 | GitHub Device Flow 与 token 刷新 | Renderer → Preload → Main → GitHub OAuth | get/signIn/open/signOut + auth status；启动 refresh；access 到期前 5 分钟 refresh | `desktop-api.ts`、`preload.ts`、`main.ts`、`updates/github-auth-service.ts`、Settings Updates | token/过期时间经 safeStorage 加密；每次成功轮换整组 token 并重排单 timer；Renderer 只见公开账号和设备码状态 | refresh token 缺失、过期或非退出刷新失败即删本地登录；退出取消 timer；无 client secret/private key |
-| 22 | 检查并手动下载私有更新 | Renderer → Preload → Main → GitHub Releases | get/check/download/openDownloaded + status event | `desktop-api.ts`、`preload.ts`、`main.ts`、`updates/github-release-update-service.ts`、Settings Updates | Bearer 读取固定仓库；app 内 changelog/进度；完整安装包原子落盘后由系统打开 | 非 stable、外域/Asset API/架构/size/hash 错误拒绝；失败清 `.part` 且当前应用不变 |
+| 22 | 匿名检查并手动下载更新 | Renderer → Preload → Main → GitHub Releases | get/check/download/openDownloaded + status event | `desktop-api.ts`、`preload.ts`、`main.ts`、`updates/github-release-update-service.ts`、Settings Updates | 不带账号凭据读取固定仓库；app内changelog/进度；完整安装包原子落盘后由系统打开 | HTTP/网络错误为failed，不转登录；非stable、外域/Asset API/架构/size/hash错误拒绝；退出取消请求，失败清`.part`且当前应用不变 |
 | 23 | TLS compatibility 全局处理 | Core → Main → App shell → Core | ACK event batch → `tls:compatibility` → global list dialog → get/replace settings | `proxy/entry.ts`、`core-rpc-server.ts`、`main.ts`、`tlsCompatibilityStore.ts`、`TlsCompatibilityDialog.tsx` | 任意工作区按 host 累积去重事件；每个 host 列出精确值与逐级父域 wildcard，选中项一次 revision replace 后导航 TLS Settings，已挂载面板由 change sequence 立即刷新 | wildcard 已覆盖的 host 不重复写；保存失败保留 dialog；保存旧批次期间到达的新事件不被旧完成路径清除；异步旧 load 不覆盖新名单 |
 | 24 | Agent Provider 与持久化 Chat | Renderer → Preload → Main → `AgentRuntime` → Model API | Provider Test/Save/Remove/default；Session Create/Select/Rename/Delete；Send/Stop/Retry；Streaming event | `desktop-api.ts`、`preload.ts`、`main.ts`、`packages/agent-runtime/`、Renderer `features/agent/` | Provider 与API Key整体加密，Session/Turn/Item/chunk/Usage写入`agent.sqlite`；Renderer按sequence合并Streaming，重启恢复且不重放请求 | Agent错误只结束目标Turn；退出先拒绝新IPC、排空已接受命令并取消Turn；Provider/Store启动失败走Desktop逐项清理，不跳过系统代理恢复 |
 | 25 | Agent Capture Tool | `AgentRuntime` → `AgentToolService` → `CoreRuntime` | Capability Index、`discover_tools`与registry中的Capture Tool | `packages/agent-runtime/src/agent/entry.ts`、`sessions/entry.ts`、`main/agent/entry.ts` | query直接执行；change按Session的`ask/auto`等待裁决或执行，Tool Result按call ID持久化；recording与reset事实广播Renderer | 未披露/已关闭Tool返回`unknown_tool`；Deny返回`tool_denied`；Core取消沿AbortSignal传递并补失败Result；reset保持单调cutoff |
@@ -265,7 +262,7 @@ Main 创建 frameless `BrowserWindow` 时以 `useContentSize: true` 配置 `1600
 | 数据 | 定义位置 | 用途 |
 | --- | --- | --- |
 | `CoreProcessStatus` | `apps/desktop/src/shared/desktop-api.ts` | Renderer可见的Core进程生命周期；`running`不保证listener或其他业务健康 |
-| `GitHubAuthStatus` | `apps/desktop/src/shared/desktop-api.ts` | Renderer 可见的无凭据授权状态；token 与绝对过期时间只在 Main 密文中 |
+| `UpdateStatus` | `apps/desktop/src/shared/desktop-api.ts` | Renderer可见的版本、下载进度、纯文本说明与失败状态；不含凭据、URL或安装器路径 |
 | `CoreCommand` | `packages/core-protocol/src/messages.ts` | Main → Core 的 typed command union |
 | `CoreResultForCommand<T>` | `packages/core-protocol/src/messages.ts` | 编译期保证 command/result 配对 |
 | `CoreRequest` / Response / Cancel | `packages/core-protocol/src/messages.ts` | MessagePort RPC envelope |

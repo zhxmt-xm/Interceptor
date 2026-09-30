@@ -19,7 +19,7 @@ Tool名称固定使用`<feature>_<verb>[_<object>]`，前缀等于拥有该业�
 
 不保留旧Tool alias、旧Capability ID、Settings迁移或双写；持久设置中的未知名称丢弃，历史Transcript只读展示原始调用。Agent discovery、MCP `tools/list`、Settings与Playground使用同一registry名称。
 
-GitHub Auth与Updates属于产品控制面，不注册为业务Tool。
+Updates属于产品控制面，不注册为业务Tool。
 
 历史69项实现、68项真实E2E及Manager管理员MMC排除范围见[验证记录](#tool-validation-history)，不把历史完成数当作当前构建的回归结果。
 
@@ -181,7 +181,7 @@ Manager保留Tool、Main/IPC/Agent/MCP接线、逻辑测试、UI/parity和recipe
 | Tool 能力设置 | Agent/MCP Tool 开关、`ask` / `auto` 模式 | 这是 Tool 的授权来源，不能由被授权 Tool 自行修改 |
 | MCP 接入控制 | MCP Server 开关、Client 新增/撤销、Host 配置 | 这是外部调用方的认证与接入边界 |
 | App Shell | `closeApplication`、`minimizeWindow`、`toggleMaximizeWindow`、Workspace/Tab/Settings导航 | 只改变本地UI，不是业务能力 |
-| 事件订阅 | `onAgentSessionEvent`、`onBreakpointsChange`、`onCaptureEvents`、`onCaptureStatusChange`、`onClientAppIcons`、`onCoreProcessStatusChange`、`onGitHubAuthStatusChange`、`onSystemProxyStatusChange`、`onTlsCompatibilityChange`、`onUpdateStatusChange` | 由Host订阅，不是Model发起的命令 |
+| 事件订阅 | `onAgentSessionEvent`、`onBreakpointsChange`、`onCaptureEvents`、`onCaptureStatusChange`、`onClientAppIcons`、`onCoreProcessStatusChange`、`onSystemProxyStatusChange`、`onTlsCompatibilityChange`、`onUpdateStatusChange` | 由Host订阅，不是Model发起的命令 |
 | Renderer诊断 | `reportRendererDiagnostic` | 内部错误汇入通道，不是用户查询或操作 |
 | 文件选择子步骤 | `pickBreakpointBodyFile` | 只服务`breakpoints_forward_edited`的File模式，不是独立业务意图 |
 | 内部编排 | `echoCore`、`diagnostics.ingest`、`proxy.setUpstream`、`tls.useCertificate`、TLS preference同步 | 不是用户意图，只服务进程协作 |

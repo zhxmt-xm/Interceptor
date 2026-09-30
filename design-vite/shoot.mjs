@@ -542,11 +542,8 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'settings', theme, variant: 'tls-passthrough', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'tls-passthrough', tlsPassthrough: 'ready', tlsCompatibility: '' } });
   shots.push({ feature: 'settings', theme, variant: 'tls-passthrough-invalid', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'tls-passthrough', tlsPassthrough: 'invalid', tlsCompatibility: '', tlsHostInput: 'not a host' } });
   shots.push({ feature: 'settings', theme, variant: 'tls-passthrough-empty', state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'tls-passthrough', tlsPassthrough: 'empty', tlsCompatibility: '' } });
-  for (const githubAuth of ['signed-out', 'authorizing', 'failed']) {
-    shots.push({ feature: 'settings', theme, variant: `updates-auth-${githubAuth}`, state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'updates', update: 'authentication-required', githubAuth } });
-  }
   for (const update of ['checking', 'available', 'downloading', 'downloaded', 'up-to-date', 'failed', 'unsupported']) {
-    shots.push({ feature: 'settings', theme, variant: `updates-${update}`, state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'updates', update, githubAuth: 'signed-in' } });
+    shots.push({ feature: 'settings', theme, variant: `updates-${update}`, state: { view: 'settings', theme: TOKEN[theme], sidebar: 'expanded', overlay: '', settings: 'updates', update } });
   }
 }
 for (const theme of ['light', 'dark']) {
@@ -871,7 +868,6 @@ async function shoot(list) {
       fileMenu: '',
       settings: 'certificates',
       update: 'up-to-date',
-      githubAuth: 'signed-in',
       appContainers: 'ready',
       tlsPassthrough: 'ready',
       tlsPassthroughTargetHost: '',

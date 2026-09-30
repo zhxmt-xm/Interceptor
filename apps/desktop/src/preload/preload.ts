@@ -9,7 +9,6 @@ import {
   type AgentRuntimeEvent,
   type CaptureReset,
   type CaptureStatus,
-  type GitHubAuthStatus,
   InterceptorDesktopApi,
   type McpApprovalRequest,
   type McpDesktopStatus,
@@ -205,26 +204,6 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.on(DESKTOP_IPC_CHANNELS.agentSessionEvent, handler);
     return () => {
       ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.agentSessionEvent, handler);
-    };
-  },
-  getGitHubAuthStatus: () =>
-    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.githubAuthGetStatus),
-  signInWithGitHub: () =>
-    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.githubAuthSignIn),
-  openGitHubAuthorization: () =>
-    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.githubAuthOpenAuthorization),
-  signOutFromGitHub: () =>
-    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.githubAuthSignOut),
-  onGitHubAuthStatusChange: (listener) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      status: GitHubAuthStatus,
-    ) => {
-      listener(status);
-    };
-    ipcRenderer.on(DESKTOP_IPC_CHANNELS.githubAuthStatus, handler);
-    return () => {
-      ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.githubAuthStatus, handler);
     };
   },
   getUpdateStatus: () =>

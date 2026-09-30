@@ -12,7 +12,7 @@ import type {
   UpdateService,
 } from '../interfaces';
 
-/** Checks and manually downloads installers from one authenticated GitHub repository. */
+/** Checks and manually downloads installers anonymously from one fixed GitHub repository. */
 export class GitHubReleaseUpdateService implements UpdateService {
   /** Fixed repository API endpoint; no Renderer-controlled URL is accepted. */
   private static readonly latestReleaseApi =
@@ -23,8 +23,6 @@ export class GitHubReleaseUpdateService implements UpdateService {
   private readonly listeners = new Set<(status: UpdateStatus) => void>();
   /** Structured diagnostics sink without release-note content. */
   private readonly diagnostics: GitHubReleaseUpdateDiagnostics;
-  /** Main-only provider for a current GitHub user access token. */
-  private readonly getAccessToken: () => Promise<string | null>;
   /** Injectable fetch implementation for deterministic tests. */
   private readonly fetcher: typeof fetch;
   /** Opens one downloaded installer through the operating system. */
@@ -49,15 +47,12 @@ export class GitHubReleaseUpdateService implements UpdateService {
   private checkTimer: ReturnType<typeof setInterval> | null = null;
   /** Active download cancellation owned by application shutdown. */
   private downloadAbortController: AbortController | null = null;
-  /** Active release-check cancellation owned by authorization and shutdown. */
+  /** Active release-check cancellation owned by application shutdown. */
   private checkAbortController: AbortController | null = null;
-  /** Identifies results started under an older GitHub authorization. */
-  private authorizationRevision = 0;
 
   /** Bind the checker to immutable package metadata and trusted Main callbacks. */
   constructor(options: GitHubReleaseUpdateServiceOptions) {
     this.diagnostics = options.diagnostics;
-    this.getAccessToken = options.getAccessToken;
     this.fetcher = options.fetcher ?? fetch;
     this.openPath = options.openPath;
     this.downloadDirectory = path.join(options.dataDirectory, 'updates/downloads');
@@ -103,7 +98,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
     return { ...this.statusValue };
   }
 
-  /** Check the latest stable private GitHub Release. */
+  /** Check the latest stable GitHub Release without account credentials. */
   check(): Promise<UpdateStatus> {
     if (!this.supportedValue) {
       return Promise.resolve(this.status());
@@ -111,7 +106,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
     if (this.operation) {
       return this.operation;
     }
-    this.operation = this.checkInternal(this.authorizationRevision).finally(() => {
+    this.operation = this.checkInternal().finally(() => {
       this.operation = null;
     });
     return this.operation;
@@ -130,7 +125,6 @@ export class GitHubReleaseUpdateService implements UpdateService {
     this.operation = this.downloadInternal(
       this.availableAsset,
       this.statusValue.latestVersion,
-      this.authorizationRevision,
     ).finally(() => {
       this.operation = null;
     });
@@ -146,26 +140,6 @@ export class GitHubReleaseUpdateService implements UpdateService {
     if (error) {
       throw new Error(error);
     }
-  }
-
-  /** Reset sensitive release state when GitHub authorization changes. */
-  authorizationChanged(authenticated: boolean): void {
-    this.authorizationRevision += 1;
-    this.checkAbortController?.abort();
-    this.downloadAbortController?.abort();
-    this.availableAsset = null;
-    this.downloadedInstallerPath = null;
-    this.transition({
-      state: authenticated ? 'idle' : 'authentication-required',
-      latestVersion: null,
-      progress: null,
-      downloadedBytes: null,
-      totalBytes: null,
-      releaseNotes: null,
-      message: authenticated
-        ? 'Downloads start only when you choose.'
-        : 'Sign in with GitHub to access private releases.',
-    });
   }
 
   /** Subscribe to status changes and return an explicit unsubscribe function. */
@@ -187,8 +161,8 @@ export class GitHubReleaseUpdateService implements UpdateService {
     this.listeners.clear();
   }
 
-  /** Fetch, validate and compare one private release without downloading it. */
-  private async checkInternal(authorizationRevision: number): Promise<UpdateStatus> {
+  /** Fetch, validate and compare one release without downloading it. */
+  private async checkInternal(): Promise<UpdateStatus> {
     this.availableAsset = null;
     this.downloadedInstallerPath = null;
     this.transition({
@@ -198,56 +172,35 @@ export class GitHubReleaseUpdateService implements UpdateService {
       downloadedBytes: null,
       totalBytes: null,
       releaseNotes: null,
-      message: 'Checking private GitHub Releases…',
+      message: 'Checking GitHub Releases…',
       lastCheckedAt: this.now().toISOString(),
     });
-    this.checkAbortController = new AbortController();
+    const abortController = new AbortController();
+    this.checkAbortController = abortController;
     try {
       await rm(this.downloadDirectory, { recursive: true, force: true });
-      const accessToken = await this.getAccessToken();
-      if (authorizationRevision !== this.authorizationRevision) {
-        return this.status();
-      }
-      if (!accessToken) {
-        this.transition({
-          state: 'authentication-required',
-          message: 'Sign in with GitHub to access private releases.',
-        });
-        return this.status();
-      }
+      abortController.signal.throwIfAborted();
       const response = await this.fetcher(
         GitHubReleaseUpdateService.latestReleaseApi,
         {
           method: 'GET',
           headers: {
             accept: 'application/vnd.github+json',
-            authorization: `Bearer ${accessToken}`,
             'x-github-api-version': '2026-03-10',
           },
           redirect: 'error',
           cache: 'no-store',
           credentials: 'omit',
           referrerPolicy: 'no-referrer',
-          signal: this.checkAbortController.signal,
+          signal: abortController.signal,
         },
       );
-      if (authorizationRevision !== this.authorizationRevision) {
-        return this.status();
-      }
-      if (response.status === 404) {
-        this.transition({
-          state: 'failed',
-          message: 'The private release repository was not found or is not authorized.',
-        });
-        return this.status();
-      }
+      abortController.signal.throwIfAborted();
       if (!response.ok) {
         throw new Error(`GitHub returned HTTP ${response.status}.`);
       }
       const bytes = new Uint8Array(await response.arrayBuffer());
-      if (authorizationRevision !== this.authorizationRevision) {
-        return this.status();
-      }
+      abortController.signal.throwIfAborted();
       const release = this.parseRelease(new TextDecoder().decode(bytes));
       const currentVersion = this.statusValue.currentVersion;
       if (semver.gt(release.version, currentVersion)) {
@@ -271,7 +224,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
       });
       return this.status();
     } catch (error) {
-      if (authorizationRevision !== this.authorizationRevision) {
+      if (abortController.signal.aborted) {
         return this.status();
       }
       this.diagnostics.error('main.update.github.check.failed', {
@@ -297,7 +250,6 @@ export class GitHubReleaseUpdateService implements UpdateService {
   private async downloadInternal(
     asset: GitHubReleaseAsset,
     version: string,
-    authorizationRevision: number,
   ): Promise<UpdateStatus> {
     this.transition({
       state: 'downloading',
@@ -311,39 +263,25 @@ export class GitHubReleaseUpdateService implements UpdateService {
       `.${asset.name}.${randomUUID()}.part`,
     );
     const finalPath = path.join(this.downloadDirectory, asset.name);
-    this.downloadAbortController = new AbortController();
+    const abortController = new AbortController();
+    this.downloadAbortController = abortController;
     try {
       await rm(this.downloadDirectory, { recursive: true, force: true });
       await mkdir(this.downloadDirectory, { recursive: true });
-      const accessToken = await this.getAccessToken();
-      if (authorizationRevision !== this.authorizationRevision) {
-        return this.status();
-      }
-      if (!accessToken) {
-        this.transition({
-          state: 'authentication-required',
-          progress: null,
-          downloadedBytes: null,
-          message: 'Sign in with GitHub to access private releases.',
-        });
-        return this.status();
-      }
+      abortController.signal.throwIfAborted();
       const response = await this.fetcher(asset.url, {
         method: 'GET',
         headers: {
           accept: 'application/octet-stream',
-          authorization: `Bearer ${accessToken}`,
           'x-github-api-version': '2026-03-10',
         },
         redirect: 'follow',
         cache: 'no-store',
         credentials: 'omit',
         referrerPolicy: 'no-referrer',
-        signal: this.downloadAbortController.signal,
+        signal: abortController.signal,
       });
-      if (authorizationRevision !== this.authorizationRevision) {
-        return this.status();
-      }
+      abortController.signal.throwIfAborted();
       if (!response.ok || !response.body) {
         throw new Error(`GitHub asset returned HTTP ${response.status}.`);
       }
@@ -359,11 +297,9 @@ export class GitHubReleaseUpdateService implements UpdateService {
       try {
         while (true) {
           const { done, value } = await reader.read();
+          abortController.signal.throwIfAborted();
           if (done) {
             break;
-          }
-          if (authorizationRevision !== this.authorizationRevision) {
-            throw new DOMException('GitHub authorization changed.', 'AbortError');
           }
           received += value.byteLength;
           if (received > asset.size) {
@@ -382,6 +318,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
             }
             offset += bytesWritten;
           }
+          abortController.signal.throwIfAborted();
           const progress = received / asset.size;
           if (progress - lastProgress >= 0.01 || received === asset.size) {
             lastProgress = progress;
@@ -399,11 +336,9 @@ export class GitHubReleaseUpdateService implements UpdateService {
       if (digest.digest('hex') !== asset.sha256) {
         throw new Error('GitHub installer SHA-256 does not match release metadata.');
       }
-      if (authorizationRevision !== this.authorizationRevision) {
-        return this.status();
-      }
+      abortController.signal.throwIfAborted();
       await rename(temporaryPath, finalPath);
-      if (authorizationRevision !== this.authorizationRevision) {
+      if (abortController.signal.aborted) {
         await rm(finalPath, { force: true });
         return this.status();
       }
@@ -417,7 +352,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
       return this.status();
     } catch (error) {
       await rm(temporaryPath, { force: true }).catch(() => undefined);
-      if (authorizationRevision !== this.authorizationRevision) {
+      if (abortController.signal.aborted) {
         return this.status();
       }
       this.diagnostics.error('main.update.github.download.failed', {

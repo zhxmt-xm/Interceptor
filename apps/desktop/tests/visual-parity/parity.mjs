@@ -464,7 +464,6 @@ for (const view of views) {
     breakpointManagerRules: view.breakpointManagerRules === true,
     mitmActive: view.mitmActive !== false,
     updateState: view.updateState ?? 'unsupported',
-    githubAuthState: view.githubAuthState ?? 'signed-in',
     agentModels: view.agentModels ?? 'empty',
     agentSessionState: view.agentSessionState ?? 'completed',
     agentMessage: view.agentMessage ?? null,

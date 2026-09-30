@@ -182,6 +182,7 @@
 - **状态栏**:录制红点 · 代理地址(mono)· System Proxy 绿点 · 计数 · 右侧速率(mono)。
 
 - **Settings / Storage（2026-09-15用户确认）**：标题同行最右侧放`30px` Refresh图标按钮和Tooltip，操作期间阻止重复点击；标题不重复显示容量badge，Maintenance不再有Refresh usage行。Usage仅一行`Captured body data`，说明包含内存和临时文件中的正文，不显示Capture database、Response bodies或Total on disk；Contents保留Session/Exchange/正文数量。Clear capture旁明确它与Capture列表清空是同一操作、记录和正文一起删除、导出文件和录制状态保持，原位置提供Cancel/Confirm clear。沿用现有Settings分组与行，清理行允许自然换行，不新增Memory/Disk/Retention配置或自动轮询。读取失败显示Unavailable而非0 B，默认Storage页与正常/确认/清空/不可用八张明暗图一一对应。
+- **Settings / Updates（2026-09-30用户确认）**：删除顶部GitHub access整组、账号/Device Flow/登录退出和Private标记，Version与Delivery按原自然流上移。说明分别为`Stable releases from GitHub. Downloads start only when you choose.`、`Newest stable release`、`Stable release channel`；固定来源名称不变，不宣称仓库公开。Check、Download、Open installer、进度、失败重试与通知沿用原控件、字号、间距和主题；404或请求失败显示Failed，不要求登录。正式设计不保留登录场景或候选开关。
 
 ## 交互状态
 

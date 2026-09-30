@@ -99,14 +99,12 @@ test('settings.navigation keeps the active section across workspace navigation',
       await verifyAppContainerControls(page, testInfo);
     }
     if (sectionId === AUTOMATION_IDS.settings.section.updates) {
-      const signIn = getByAutomationId(page, AUTOMATION_IDS.settings.updates.githubSignIn);
-      await expect(signIn).toBeVisible();
-      await expect(signIn).toHaveCSS('display', 'flex');
-      await expect(signIn).toHaveCSS('align-items', 'center');
-      await expect(signIn).toHaveCSS('gap', '7px');
-      await signIn.screenshot({ path: testInfo.outputPath('github-sign-in-button.png') });
-      await expect(signIn.locator(':scope > span[role="img"] > svg')).toHaveCount(1);
-      await expect(signIn.locator(':scope > span:last-child > svg, :scope > span:last-child span[role="img"]')).toHaveCount(0);
+      const updateStatus = getByAutomationId(page, AUTOMATION_IDS.settings.updates.status);
+      await expect(updateStatus).toBeVisible();
+      await expect(updateStatus).toHaveCSS('display', 'flex');
+      await expect(updateStatus).toHaveCSS('align-items', 'center');
+      await expect(page.locator('[data-automation-id^="settings.updates.github-"]')).toHaveCount(0);
+      await updateStatus.screenshot({ path: testInfo.outputPath('updates-status.png') });
     }
     const violations = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>('body *')]
       .filter(element => element.checkVisibility())

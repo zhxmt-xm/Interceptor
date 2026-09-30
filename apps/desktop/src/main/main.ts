@@ -42,7 +42,6 @@ import {
   type CertificateInfo,
   type CaptureStatus,
   type CoreProcessStatus,
-  type GitHubAuthStatus,
   type McpDesktopStatus,
   type RulesChanged,
   type SystemProxyStatus as DesktopSystemProxyStatus,
@@ -78,7 +77,6 @@ import { exportRules, exportSavedRules } from './rules/export-rules';
 import { RulesImportService } from './rules/import-service';
 import { UiPreferencesService } from './settings/ui-preferences-service';
 import type { UiPreferenceAppliedChange } from '../shared/ui-preferences';
-import { GitHubAuthService } from './updates/github-auth-service';
 import { GitHubReleaseUpdateService } from './updates/github-release-update-service';
 import {
   readErrorMessage,
@@ -141,8 +139,6 @@ class DesktopApplication {
     localAppDataDirectory: process.env.LOCALAPPDATA,
     applicationPath: process.platform === 'darwin' && app.isPackaged ? path.resolve(process.execPath, '../../..') : undefined,
   });
-  /** GitHub user authorization owner; credentials remain encrypted inside Main. */
-  private gitHubAuthService: GitHubAuthService | null = null;
   /** Agent domain composition root; Provider credentials remain encrypted inside Runtime. */
   private agentRuntime: AgentRuntime | null = null;
   /** Adapts enabled shared Tools to AgentRuntime without exposing Core transport. */
@@ -153,7 +149,7 @@ class DesktopApplication {
   private mcpDesktopService: McpDesktopService | null = null;
   /** Stops Runtime Session event broadcasts before Agent shutdown. */
   private agentRuntimeUnsubscribe: (() => void) | null = null;
-  /** Private GitHub release checker; downloads always remain user-controlled. */
+  /** Anonymous GitHub release checker; downloads always remain user-controlled. */
   private updateService: UpdateService | null = null;
   /** Latest Workspace-backed TLS passthrough document. */
   private tlsPassthroughSettings: TlsPassthroughSettings | null = null;
@@ -213,16 +209,6 @@ class DesktopApplication {
     if (this.quitting) return;
     await this.platformCapabilitiesService.prepare();
     if (this.quitting) return;
-    this.gitHubAuthService = new GitHubAuthService({
-      clientId: GitHubAuthService.clientId,
-      dataDirectory: path.join(app.getPath('userData'), 'updates'),
-      secureStore: safeStorage,
-      openExternal: async (url) => {
-        await shell.openExternal(url);
-      },
-    });
-    await this.gitHubAuthService.start();
-    if (this.quitting) return;
     this.toolCapabilitySettingsService = new ToolCapabilitySettingsService(
       path.join(app.getPath('userData'), 'tool-capabilities', 'settings.json'),
     );
@@ -271,20 +257,6 @@ class DesktopApplication {
     const updateService = this.requireUpdateService();
     updateService.onStatusChange((status) => {
       this.broadcastUpdateStatus(status);
-    });
-    let updateAuthenticated = this.gitHubAuthService.status().state === 'signed-in';
-    updateService.authorizationChanged(updateAuthenticated);
-    this.gitHubAuthService.onStatusChange((status) => {
-      this.broadcastGitHubAuthStatus(status);
-      const authenticated = status.state === 'signed-in';
-      if (authenticated === updateAuthenticated) {
-        return;
-      }
-      updateAuthenticated = authenticated;
-      updateService.authorizationChanged(authenticated);
-      if (authenticated) {
-        void this.checkForUpdatesAfterAuthorization(updateService);
-      }
     });
     this.coreRuntime.onCoreProcessStatusChange((status) => {
       if (status.state !== this.lastCoreProcessState) {
@@ -426,7 +398,6 @@ class DesktopApplication {
           },
         },
         { name: 'update-service', stop: () => this.updateService?.stop() },
-        { name: 'github-auth', stop: () => this.gitHubAuthService?.stop() },
         { name: 'mcp-desktop', stop: () => this.mcpDesktopService?.stop() },
         { name: 'agent-runtime', stop: () => this.agentRuntime?.stop() },
         { name: 'core-runtime', stop: () => this.coreRuntime.stop() },
@@ -481,7 +452,6 @@ class DesktopApplication {
       restoreSystemProxy: () => this.platformCapabilitiesService.stop(),
       tasks: [
         { name: 'update-service', stop: () => this.updateService?.stop() },
-        { name: 'github-auth', stop: () => this.gitHubAuthService?.stop() },
         { name: 'mcp-desktop', stop: () => this.mcpDesktopService?.stop() },
         { name: 'agent-runtime', stop: () => this.agentRuntime?.stop() },
         { name: 'core-runtime', stop: () => this.coreRuntime.stop() },
@@ -1333,29 +1303,6 @@ class DesktopApplication {
         this.requireAgentRuntime().denyToolCall(approvalId));
     });
 
-    ipcMain.handle(DESKTOP_IPC_CHANNELS.githubAuthGetStatus, (event) => {
-      this.assertTrustedSender(event.senderFrame?.url);
-      return this.requireGitHubAuthService().status();
-    });
-
-    ipcMain.handle(DESKTOP_IPC_CHANNELS.githubAuthSignIn, (event) => {
-      this.assertTrustedSender(event.senderFrame?.url);
-      return this.runMainAction('main.github-auth.sign-in', () =>
-        this.requireGitHubAuthService().signIn());
-    });
-
-    ipcMain.handle(DESKTOP_IPC_CHANNELS.githubAuthOpenAuthorization, async (event) => {
-      this.assertTrustedSender(event.senderFrame?.url);
-      await this.runMainAction('main.github-auth.open-authorization', () =>
-        this.requireGitHubAuthService().openAuthorizationPage());
-    });
-
-    ipcMain.handle(DESKTOP_IPC_CHANNELS.githubAuthSignOut, (event) => {
-      this.assertTrustedSender(event.senderFrame?.url);
-      return this.runMainAction('main.github-auth.sign-out', () =>
-        this.requireGitHubAuthService().signOut());
-    });
-
     ipcMain.handle(DESKTOP_IPC_CHANNELS.updateGetStatus, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       return this.requireUpdateService().status();
@@ -2076,15 +2023,6 @@ class DesktopApplication {
     }
   }
 
-  /** Broadcast one credential-free GitHub authorization snapshot. */
-  private broadcastGitHubAuthStatus(status: GitHubAuthStatus): void {
-    for (const window of BrowserWindow.getAllWindows()) {
-      if (!window.isDestroyed()) {
-        window.webContents.send(DESKTOP_IPC_CHANNELS.githubAuthStatus, status);
-      }
-    }
-  }
-
   /** Broadcast one bounded update-state snapshot to every trusted Renderer. */
   private broadcastUpdateStatus(status: UpdateStatus): void {
     for (const window of BrowserWindow.getAllWindows()) {
@@ -2241,14 +2179,6 @@ class DesktopApplication {
     }
   }
 
-  /** Return the initialized GitHub authorization owner. */
-  private requireGitHubAuthService(): GitHubAuthService {
-    if (!this.gitHubAuthService) {
-      throw new Error('GitHubAuthService is not initialized');
-    }
-    return this.gitHubAuthService;
-  }
-
   /** Return the initialized Agent domain composition root. */
   private requireAgentRuntime(): AgentRuntime {
     if (!this.agentRuntime) {
@@ -2288,22 +2218,8 @@ class DesktopApplication {
       currentVersion: app.getVersion(),
       dataDirectory: app.getPath('userData'),
       diagnostics: this.diagnostics,
-      getAccessToken: () => this.requireGitHubAuthService().getAccessToken(),
       openPath: (filePath) => shell.openPath(filePath),
     });
-  }
-
-  /** Check after sign-in, retrying once if an aborted older operation was still settling. */
-  private async checkForUpdatesAfterAuthorization(
-    updateService: UpdateService,
-  ): Promise<void> {
-    await Promise.resolve(updateService.check());
-    if (
-      this.gitHubAuthService?.status().state === 'signed-in' &&
-      updateService.status().state === 'idle'
-    ) {
-      await Promise.resolve(updateService.check());
-    }
   }
 
   private reportPlatformError(operation: PlatformOperation, error: unknown): void {

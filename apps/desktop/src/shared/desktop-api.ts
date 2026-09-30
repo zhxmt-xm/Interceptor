@@ -606,11 +606,6 @@ export const DESKTOP_IPC_CHANNELS = {
   agentToolCallAllow: 'agent-tool-call:allow',
   agentToolCallDeny: 'agent-tool-call:deny',
   agentSessionEvent: 'agent-session:event',
-  githubAuthGetStatus: 'github-auth:get-status',
-  githubAuthSignIn: 'github-auth:sign-in',
-  githubAuthOpenAuthorization: 'github-auth:open-authorization',
-  githubAuthSignOut: 'github-auth:sign-out',
-  githubAuthStatus: 'github-auth:status',
   updateGetStatus: 'update:get-status',
   updateCheck: 'update:check',
   updateDownload: 'update:download',
@@ -760,11 +755,6 @@ export interface InterceptorDesktopApi {
   allowAgentToolCall(approvalId: string): Promise<AgentSessionSnapshot>;
   denyAgentToolCall(approvalId: string): Promise<AgentSessionSnapshot>;
   onAgentSessionEvent(listener: (event: AgentRuntimeEvent) => void): () => void;
-  getGitHubAuthStatus(): Promise<GitHubAuthStatus>;
-  signInWithGitHub(): Promise<GitHubAuthStatus>;
-  openGitHubAuthorization(): Promise<void>;
-  signOutFromGitHub(): Promise<GitHubAuthStatus>;
-  onGitHubAuthStatusChange(listener: (status: GitHubAuthStatus) => void): () => void;
   getUpdateStatus(): Promise<UpdateStatus>;
   checkForUpdates(): Promise<UpdateStatus>;
   downloadUpdate(): Promise<UpdateStatus>;
@@ -895,25 +885,8 @@ export interface InterceptorDesktopApi {
   cancelTransferJob(jobId: string): Promise<TransferJobSnapshot | null>;
 }
 
-export type GitHubAuthState =
-  | 'signed-out'
-  | 'authorizing'
-  | 'signed-in'
-  | 'failed';
-
-/** Renderer-visible GitHub authorization state; credentials never cross Preload. */
-export interface GitHubAuthStatus {
-  state: GitHubAuthState;
-  login: string | null;
-  userCode: string | null;
-  verificationUri: string | null;
-  expiresAt: string | null;
-  message: string | null;
-}
-
 export type UpdateState =
   | 'unsupported'
-  | 'authentication-required'
   | 'idle'
   | 'checking'
   | 'available'

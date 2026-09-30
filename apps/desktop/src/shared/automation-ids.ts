@@ -533,11 +533,7 @@ export const AUTOMATION_IDS = {
       warnUnmasked: 'settings.privacy.warn-unmasked',
     },
     updates: {
-      githubSignIn: 'settings.updates.github-sign-in',
-      deviceCode: 'settings.updates.device-code',
-      openGitHub: 'settings.updates.open-github',
-      githubSignOut: 'settings.updates.github-sign-out',
-      githubRetry: 'settings.updates.github-retry',
+      status: 'settings.updates.status',
       check: 'settings.updates.check',
       download: 'settings.updates.download',
       openInstaller: 'settings.updates.open-installer',

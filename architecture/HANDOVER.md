@@ -1,8 +1,8 @@
 # Interceptor Handover
 
-> Tracked commit: `e2c75270`
+> Tracked commit: `1662ad38`
 > Branch: `main`
-> 最后更新：2026-09-29
+> 最后更新：2026-09-30
 
 ## Task List
 
@@ -11,12 +11,6 @@
   - 范围：macOS全部活动network service的完整`original/owned/current`快照、用户级journal及原生效上游；不能只比较仍存在的service，或把不同网络服务的代理配置合并。
   - 已有：跨profile恢复、profile删除重建及service增删37/37通过；helper部署与正常退出已验，[已有证据](features/settings.md#item4-resumed-acceptance)仍有效。
   - 剩余/下一步：在VPN/TUN、动态切网和ClashX环境补接管、外部改写、退出及崩溃重启场景，核对完整代理和journal恢复。缺对应环境，普通loopback结果不能代替。
-
-- **6. 删除产品 GitHub 登录 · 待确认**
-  - 目标：去掉产品自身的GitHub登录及更新登录门槛，保留匿名检查版本、用户手动下载和打开安装器，不是删除更新功能。
-  - 范围：Settings > Updates的GitHub access整组、Private/账号文案，以及Main的OAuth/Token和相关Preload接线；不动个人Git/CI凭据、固定更新来源或远端仓库可见性。
-  - 已有：只有[浅深色前后图](../commit-changes/202609241039_ui_updates_remove-signin-preview.html)；产品仍使用GitHubAuthService和`authentication-required`状态，正式设计未变，见[当前契约](features/settings.md#4-更新)。
-  - 剩余/下一步：先确认具体设计及匿名可访问的Release条件，再实施并验证检查/下载/打开与错误状态。通知中的真实下载、打开安装器仍缺专属E2E，需要可用Release和签名包。
 
 - **8. Windows 实机验收 · 待验收**
   - 目标：确认已实现的跨平台功能在真实Windows上成立，尤其是UAC、原生窗口、WinINet和AppContainer，不能用macOS通过或native skip替代。

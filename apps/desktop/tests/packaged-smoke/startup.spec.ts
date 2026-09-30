@@ -588,7 +588,6 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'getCoreProcessStatus',
         'getCoreTrace',
         'getExchangeDetail',
-        'getGitHubAuthStatus',
         'getInsecureHosts',
         'getMcpStatus',
         'getRecentDiagnostics',
@@ -619,7 +618,6 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'onCollectionImportCanceled',
         'onCollectionImportRequested',
         'onCoreProcessStatusChange',
-        'onGitHubAuthStatusChange',
         'onMcpApprovalRequest',
         'onMcpApprovalSettled',
         'onMcpStatusChange',
@@ -636,7 +634,6 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'onUpdateStatusChange',
         'openCertificateManager',
         'openDownloadedUpdate',
-        'openGitHubAuthorization',
         'pickBreakpointBodyFile',
         'probeTls',
         'queryDiagnostics',
@@ -673,8 +670,6 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'setInsecureHosts',
         'setUiLanguage',
         'setUiTheme',
-        'signInWithGitHub',
-        'signOutFromGitHub',
         'startArchiveExport',
         'startArchiveImport',
         'startBodyExport',
@@ -695,6 +690,18 @@ test('packaged app starts with an isolated renderer and running core', async ({
     expect(securitySnapshot.csp).toContain("frame-src 'none'");
     expect(securitySnapshot.csp).not.toContain('frame-ancestors');
 
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
+    await getByAutomationId(page, AUTOMATION_IDS.settings.section.updates).click();
+    await expect(page.locator('[data-automation-id^="settings.updates.github-"]')).toHaveCount(0);
+    const updateStatus = getByAutomationId(page, AUTOMATION_IDS.settings.updates.status);
+    await expect(updateStatus).toHaveAttribute('data-supported', 'true');
+    await expect(updateStatus).toHaveAttribute('data-state', /^(available|up-to-date|failed)$/, { timeout: 90_000 });
+    if (await updateStatus.getAttribute('data-state') !== 'available') {
+      const lastCheckedAt = await updateStatus.getAttribute('data-last-checked-at');
+      await getByAutomationId(page, AUTOMATION_IDS.settings.updates.check).click();
+      await expect.poll(() => updateStatus.getAttribute('data-last-checked-at')).not.toBe(lastCheckedAt);
+      await expect(updateStatus).toHaveAttribute('data-state', /^(available|up-to-date|failed)$/, { timeout: 90_000 });
+    }
     const updateSnapshot = await page.evaluate(() =>
       window.interceptor.getUpdateStatus());
     expect(updateSnapshot).toMatchObject({
@@ -704,29 +711,11 @@ test('packaged app starts with an isolated renderer and running core', async ({
       downloadedBytes: null,
     });
     expect([
-      'idle',
-      'authentication-required',
-      'checking',
       'available',
       'up-to-date',
       'failed',
     ]).toContain(updateSnapshot.state);
-
-    const githubAuthSnapshot = await page.evaluate(() =>
-      window.interceptor.getGitHubAuthStatus());
-    expect(Object.keys(githubAuthSnapshot).sort()).toEqual([
-      'expiresAt',
-      'login',
-      'message',
-      'state',
-      'userCode',
-      'verificationUri',
-    ]);
-    expect(githubAuthSnapshot).toMatchObject({
-      state: 'signed-out',
-      login: null,
-      userCode: null,
-    });
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
 
     const systemProxy = await page.evaluate(() =>
       window.interceptor.getSystemProxyStatus(),

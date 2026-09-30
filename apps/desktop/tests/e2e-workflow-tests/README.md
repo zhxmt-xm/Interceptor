@@ -342,7 +342,7 @@ diagnostics.row.<traceKey>
 | `settings.tls-compatibility` | 真实TLS失败提示、精确host/wildcard选择、滚动、保存与Not now；最终Green，保留样式前置缺口 | privileged UI | planned |
 | `settings.storage.refresh-clear` | 单项正文用量、右上Refresh及两处Clear同步、取消和录制状态保持 | os-side-effect | passed |
 | `settings.privacy.defaults` | Export隐私默认值与持久化 | os-side-effect | planned |
-| `settings.updates.check` | Local unsupported；packaged GitHub Device Flow、启动刷新与私有Release检查 | native-ui | planned |
+| `settings.updates.check` | 匿名检查、请求失败重试和同profile重启；无账号API/控件，退出恢复 | native-ui | passed（macOS packaged失败路径；Windows待复验，不含下载/Open成功链路） |
 | `settings.updates.download-open` | 真实下载、校验和打开安装器 | native-ui | planned |
 | `settings.update-notification` | Header通知与Settings状态同步 | shared | planned |
 

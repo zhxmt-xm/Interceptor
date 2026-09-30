@@ -53,7 +53,7 @@ Published builds and their compatibility notes are listed in [GitHub Releases](h
 
 Availability is determined by the assets actually attached to each release. For a platform without a published build, see the [source build guide (Chinese)](architecture/development.md).
 
-Application updates also come from GitHub Releases. You review the release notes, choose when to download, and open the installer when ready; downloads do not start automatically. Access to a private release repository requires GitHub authorization.
+Application updates also come from GitHub Releases. You review the release notes, choose when to download, and open the installer when ready; downloads do not start automatically. Checks and downloads are anonymous. An unavailable release or failed request is shown as a failure, without a sign-in prompt.
 
 ## Quick Start
 

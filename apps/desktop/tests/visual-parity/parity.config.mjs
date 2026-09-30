@@ -4115,7 +4115,6 @@ export const views = [
       id: `settings-updates-${updateState}${theme === 'dark' ? '-dark' : ''}`,
       theme,
       updateState,
-      githubAuthState: 'signed-in',
       rendererNav: 'Settings',
       designState: {
         view: 'settings',
@@ -4123,7 +4122,6 @@ export const views = [
         sidebar: 'expanded',
         settings: 'updates',
         update: updateState,
-        githubAuth: 'signed-in',
       },
       designShot: `${theme}/settings/updates-${updateState}.png`,
       rendererActions: [
@@ -4131,11 +4129,9 @@ export const views = [
         { type: 'clickText', text: 'Updates' },
       ],
       targets: [
-        'Uses your GitHub identity to check and download signed installers from the private release channel. Downloads start only when you choose.',
-        'GitHub access',
-        '@zhxmt-xm',
-        'Connected',
-        'Contents · read-only',
+        'Stable releases from GitHub. Downloads start only when you choose.',
+        'Version',
+        'Delivery',
         'Current application',
         '0.1.0',
         {
@@ -4193,42 +4189,6 @@ export const views = [
         ...(updateState === 'up-to-date' ? ['Up to date', 'Current', 'Update action'] : []),
         ...(updateState === 'failed' ? ['Failed', 'Last update action', 'Retry available'] : []),
         ...(updateState === 'unsupported' ? ['Unavailable', 'Release checks unavailable', 'Development'] : []),
-      ],
-    }))),
-  ...['signed-out', 'authorizing', 'failed'].flatMap((githubAuthState) =>
-    ['light', 'dark'].map((theme) => ({
-      id: `settings-updates-auth-${githubAuthState}${theme === 'dark' ? '-dark' : ''}`,
-      theme,
-      updateState: 'authentication-required',
-      githubAuthState,
-      rendererNav: 'Settings',
-      designState: {
-        view: 'settings',
-        theme,
-        sidebar: 'expanded',
-        settings: 'updates',
-        update: 'authentication-required',
-        githubAuth: githubAuthState,
-      },
-      designShot: `${theme}/settings/updates-auth-${githubAuthState}.png`,
-      rendererActions: [
-        { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
-        { type: 'clickText', text: 'Updates' },
-      ],
-      targets: [
-        'Sign in required',
-        'GitHub access',
-        'Repository access',
-        'Contents · read-only',
-        ...(githubAuthState === 'signed-out'
-          ? ['Signed out', 'Sign in with GitHub']
-          : []),
-        ...(githubAuthState === 'authorizing'
-          ? ['Authorize this device', 'F7D2-9A4C', 'Open GitHub']
-          : []),
-        ...(githubAuthState === 'failed'
-          ? ['GitHub authorization failed', 'Not connected', 'Try again']
-          : []),
       ],
     }))),
   {

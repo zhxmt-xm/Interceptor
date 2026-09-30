@@ -187,7 +187,6 @@ export class UpdateFormat {
   ): string {
     switch (status.state) {
       case 'unsupported': return translate('settings.update.unavailable');
-      case 'authentication-required': return translate('settings.update.authenticationRequired');
       case 'idle': return translate('settings.update.ready');
       case 'checking': return translate('settings.update.checking');
       case 'available': return translate('settings.update.available');
@@ -206,9 +205,6 @@ export class UpdateFormat {
       return 'red';
     }
     if (status.state === 'unsupported') {
-      return 'yellow';
-    }
-    if (status.state === 'authentication-required') {
       return 'yellow';
     }
     if (

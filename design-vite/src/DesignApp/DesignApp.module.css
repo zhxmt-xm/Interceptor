@@ -1183,16 +1183,7 @@ button.break-section-head { border: 0; background: transparent; cursor: pointer;
 .settings-identity code { overflow-wrap: anywhere; color: var(--text); font-family: var(--font-mono); font-size: 10.5px; line-height: 1.5; }
 .settings-identity b { color: var(--text); font-size: 12px; font-weight: 600; }
 .settings-identity small { color: var(--text-3); font-size: 11px; line-height: 1.45; }
-.github-auth-row { display: none; }
-.app[data-github-auth="signed-out"] .github-auth-signed-out,
-.app[data-github-auth="authorizing"] .github-auth-authorizing,
-.app[data-github-auth="signed-in"] .github-auth-signed-in,
-.app[data-github-auth="failed"] .github-auth-failed { display: flex; }
-.github-device-code { height: 32px; display: inline-flex; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid color-mix(in srgb,var(--accent) 35%,var(--border)); border-radius: 7px; background: var(--accent-soft); color: var(--accent); font: 600 12px var(--font-mono); letter-spacing: .08em; cursor: pointer; }
-.github-device-code svg, .github-login svg { width: 14px; height: 14px; flex: 0 0 auto; }
-.github-login { display: inline-flex; align-items: center; gap: 6px; color: var(--text); font: 500 11.5px var(--font-mono); }
 .update-state,.update-version,.update-whole-tag,.update-current-tag,.update-check-row,.update-progress-row,.update-failed-row,.update-unsupported-row,.update-download,.update-open,.update-notice-downloaded,.update-notice-open { display: none; }
-.app[data-update="authentication-required"] .update-auth-required,.app[data-update="authentication-required"] .update-version-unknown { display: flex; }
 .app[data-update="checking"] .update-checking,.app[data-update="checking"] .update-version-checking,.app[data-update="checking"] .update-check-row { display: flex; }
 .app[data-update="available"] .update-available,.app[data-update="available"] .update-version-new,.app[data-update="available"] .update-whole-tag,.app[data-update="available"] .update-download { display: flex; }
 .app[data-update="downloading"] .update-downloading,.app[data-update="downloading"] .update-version-new,.app[data-update="downloading"] .update-whole-tag,.app[data-update="downloading"] .update-progress-row { display: flex; }
@@ -1201,7 +1192,7 @@ button.break-section-head { border: 0; background: transparent; cursor: pointer;
 .app[data-update="up-to-date"] .update-current,.app[data-update="up-to-date"] .update-version-current,.app[data-update="up-to-date"] .update-current-tag { display: flex; }
 .app[data-update="failed"] .update-failed,.app[data-update="failed"] .update-version-unknown,.app[data-update="failed"] .update-failed-row { display: flex; }
 .app[data-update="unsupported"] .update-unsupported,.app[data-update="unsupported"] .update-version-unknown,.app[data-update="unsupported"] .update-unsupported-row { display: flex; }
-.app[data-update="available"] .update-check,.app[data-update="downloading"] .update-action-row,.app[data-update="downloaded"] .update-check,.app[data-update="checking"] .update-action-row,.app[data-update="authentication-required"] .update-action-row,.app[data-update="unsupported"] .update-action-row { display: none; }
+.app[data-update="available"] .update-check,.app[data-update="downloading"] .update-action-row,.app[data-update="downloaded"] .update-check,.app[data-update="checking"] .update-action-row,.app[data-update="unsupported"] .update-action-row { display: none; }
 .update-progress-row { border-bottom: 0; }
 .update-release-notes { display: none; }
 .progressctl { min-width: 250px; }

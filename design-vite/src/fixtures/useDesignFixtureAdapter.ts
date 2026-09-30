@@ -324,10 +324,6 @@ export function useDesignFixtureAdapter(
         window.setTimeout(() => patch({ update: publicUpdateAction === 'check' ? 'available' : 'downloaded' }), 500);
         return;
       }
-      const authAction = closest(event.target, '[data-github-auth-action]')?.dataset.githubAuthAction;
-      if (authAction === 'sign-in' || authAction === 'retry') return patch({ githubAuth: 'authorizing', update: 'authentication-required' });
-      if (authAction === 'open') return patch({ githubAuth: 'signed-in', update: 'up-to-date' });
-      if (authAction === 'sign-out') return patch({ githubAuth: 'signed-out', update: 'authentication-required' });
       if (closest(event.target, '[data-app-container-refresh]')) {
         patch({ appContainers: 'refreshing' });
         window.setTimeout(() => patch({ appContainers: 'ready' }), 900);

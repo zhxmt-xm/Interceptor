@@ -40,6 +40,6 @@ external模块在顶层`require`可能阻塞packaged Main与CDP初始化，因�
 
 GitHub Actions Windows/macOS 原生 job，所有 actions 固定 commit SHA；签名材料只从 Secrets 进入临时文件/keychain。tag 构建验收后发布 MSI/DMG/ZIP 到同一 GitHub Release 并用 `--generate-notes` 生成 changelog；测试诊断使用独立 artifact，**绝不混入 Release assets**。
 
-客户端更新鉴权与Release CI相互独立。Device Flow Client ID可以随包，client secret、private key和PAT不得进入源码或产物；客户端授权与下载规则见[Settings](../features/settings.md#4-更新)。
+客户端匿名更新与Release CI相互独立。产品不包含GitHub登录或token，不发送Authorization；CI签名与发布凭据继续只在Secrets中使用，不进入源码或产物。固定来源的404或请求失败正常显示failed，不自动改源或公开仓库；下载规则见[Settings](../features/settings.md#4-更新)。
 
 历史观测与产物适用范围见[Core依赖/Main启动证据](../features/settings.md#settings-core-bundle-history)及[macOS平台历史](../features/settings.md#macos-validation-history)；旧体积、ad-hoc或smoke结果不替代当前产物验收。

@@ -112,6 +112,7 @@ window.__setState({
 
 ## 相关
 
+- Updates已按2026-09-30确认稿移除GitHub access、Private和账号文案，正式fixture直接保留Version、Delivery和原更新状态，不再使用`updatesWithoutSignIn`候选或`githubAuth`设计态。`updates-checking/available/downloading/downloaded/up-to-date/failed/unsupported`覆盖现有浅深色更新场景。
 - 生成/迭代设计稿的完整流程与陷阱见 `ui-design-mockup` skill（`.github/skills/ui-design-mockup/`）。
 - React 实现与设计稿的几何/像素一致性验证见 `apps/desktop/tests/visual-parity/`，它直接驱动本 SPA 的 preview server。
 - SPA 内含的 feature 视图（均有 light/dark，截图存于 `shots/`）：

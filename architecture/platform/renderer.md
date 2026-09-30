@@ -43,7 +43,7 @@ HTTP breakpoint 仍使用整面板 `BreakpointInspector`，两条路径只共享
 - `IconButton`可按调用点提供`--icon-button-hover-background`与`--icon-button-hover-color`，未提供仍使用`--hover`/`--text`。WebSocket消息断点用它保持armed黄色和Ant默认text按钮反馈，不改变共享默认主题；禁用态仍不响应hover。
 - `IconButton`统一padding为0、内部Lucide图标不收缩；`inline`档为18px按钮/14px图标/5px圆角，`Kv`只选择档位并控制行hover显隐，不能由调用方缩小按钮后留下浏览器默认padding。
 - `Button`由组件控制图标和独立label的`inline-flex`及`align-items: center`，button再用`justify-content: center`居中内容组。md/compact/sm继续分别为34/32/28px，不在通知等调用方覆盖位置；检查实际父布局规则、内容范围和正常gap，不以字形像素边界或自算矩形中心定义对齐，也不添加独立位移、裁字或行高补偿。
-- `Button.icon`接收现有Lucide或Ant Design图标组件，由共享icon槽提供尺寸与7px图文gap；调用方不再把图标混进文字children。图标与loading spinner属于装饰，使用`aria-hidden`，按钮名称来自文字或显式`ariaLabel`；UpdatesPanel保留原GitHub图标和登录动作。
+- `Button.icon`接收现有Lucide或Ant Design图标组件，由共享icon槽提供尺寸与7px图文gap；调用方不再把图标混进文字children。图标与loading spinner属于装饰，使用`aria-hidden`，按钮名称来自文字或显式`ariaLabel`；UpdatesPanel只保留匿名更新的Check/Download/Open动作。
 
 ## 6. 共享树交互
 
@@ -102,6 +102,8 @@ Capture 请求菜单包在稳定的 RequestList 上，而不是虚拟化 Request
 `apps/desktop/src/shared/automation-ids.ts` 是稳定 `data-automation-id` 的唯一来源，集中定义静态 ID、Core-owned 动态行前缀与 `AutomationIdFactory`。共享 Button/Input/Select/Switch/Tabs/Segmented/Splitter 等组件只透传可选 automation ID，不包含测试状态；Shell、Agent Panel、Settings Agent、Capture、Rules 目录树与 Composer Collection 已接线到同一公共契约。
 
 Storage现有Refresh按钮使用`automationId`传入公共ID；Exchange/Body引用数分别通过`settings.storage.exchange-count`、`settings.storage.body-count`及`data-count`暴露原始计数，正文占用通过`settings.storage.blob-bytes`及`data-bytes`暴露原始字节数。属性只在读取成功时存在，显示文本仍按当前语言格式化；不增加业务入口，也不允许以零代替加载失败。真实Pause/Resume workflow使用这些属性验证未录制连接不产生孤立正文。
+
+Updates标题通过`settings.updates.status`及`data-state/data-supported/data-last-checked-at`暴露实际更新状态；Check、Download和Open沿用原automation ID。属性只读，不支持状态注入；GitHub账号与设备码控件及其ID已删除。
 
 **禁止在 Renderer 增加 E2E-only setter、隐藏 IPC 或直接业务调用入口。**
 

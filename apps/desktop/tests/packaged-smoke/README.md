@@ -204,6 +204,10 @@ macOS截图矩阵通过真实Main PID和启动时间校验后，使用System Eve
 
 精确断言可以发现意外暴露的通用 IPC、Node 原语或敏感能力。
 
+### 匿名更新
+
+API白名单不再包含GitHub登录、退出、授权页或账号状态接口。smoke通过真实UI进入Settings Updates，确认没有登录控件，等待匿名检查结束；失败或已是最新版本时再次点击Check并等待新终态。固定来源的404或请求失败应显示`failed`，不要求登录、不改源、不把失败计为下载或打开安装器成功。两代失败重试与重启的完整流程由[Updates workflow](../e2e-workflow-tests/workflows/settings/updates-check.workflow.ts)负责；真实下载/打开仍需要可匿名访问的有效Release。
+
 ### Proxy Core 生命周期
 
 - Core 状态最终进入 `running`；

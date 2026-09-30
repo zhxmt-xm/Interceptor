@@ -3385,29 +3385,6 @@ export const settingsFixture: FixtureNode = {
                   "type": "element",
                   "tag": "span",
                   "attributes": {
-                    "class": "sbadge update-state update-auth-required",
-                    "style": "color:var(--yellow);background:color-mix(in srgb,var(--yellow) 13%,transparent)"
-                  },
-                  "children": [
-                    {
-                      "type": "element",
-                      "tag": "span",
-                      "attributes": {
-                        "class": "d",
-                        "style": "background:var(--yellow)"
-                      },
-                      "children": []
-                    },
-                    {
-                      "type": "text",
-                      "value": "Sign in required"
-                    }
-                  ]
-                },
-                {
-                  "type": "element",
-                  "tag": "span",
-                  "attributes": {
                     "class": "sbadge update-state update-checking"
                   },
                   "children": [
@@ -3570,584 +3547,13 @@ export const settingsFixture: FixtureNode = {
               "children": [
                 {
                   "type": "text",
-                  "value": "Uses your GitHub identity to check and download signed installers from the private release channel. Downloads start only when you choose."
+                  "value": "Stable releases from GitHub. Downloads start only when you choose."
                 }
               ]
             },
             {
               "type": "text",
               "value": "\n              "
-            },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "class": "sgroup"
-              },
-              "children": [
-                {
-                  "type": "text",
-                  "value": "\n                "
-                },
-                {
-                  "type": "element",
-                  "tag": "div",
-                  "attributes": {
-                    "class": "gh"
-                  },
-                  "children": [
-                    {
-                      "type": "text",
-                      "value": "GitHub access"
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "value": "\n                "
-                },
-                {
-                  "type": "element",
-                  "tag": "div",
-                  "attributes": {
-                    "class": "srow github-auth-row github-auth-signed-out"
-                  },
-                  "children": [
-                    {
-                      "type": "element",
-                      "tag": "div",
-                      "attributes": {
-                        "class": "scap"
-                      },
-                      "children": [
-                        {
-                          "type": "element",
-                          "tag": "b",
-                          "attributes": {},
-                          "children": [
-                            {
-                              "type": "text",
-                              "value": "GitHub account"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "element",
-                          "tag": "span",
-                          "attributes": {},
-                          "children": [
-                            {
-                              "type": "text",
-                              "value": "Sign in in your browser to access private releases"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "element",
-                      "tag": "div",
-                      "attributes": {
-                        "class": "sctl"
-                      },
-                      "children": [
-                        {
-                          "type": "element",
-                          "tag": "span",
-                          "attributes": {
-                            "class": "sbadge",
-                            "style": "color:var(--yellow);background:color-mix(in srgb,var(--yellow) 13%,transparent)"
-                          },
-                          "children": [
-                            {
-                              "type": "element",
-                              "tag": "span",
-                              "attributes": {
-                                "class": "d",
-                                "style": "background:var(--yellow)"
-                              },
-                              "children": []
-                            },
-                            {
-                              "type": "text",
-                              "value": "Signed out"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "element",
-                          "tag": "button",
-                          "attributes": {
-                            "class": "btn pri",
-                            "data-github-auth-action": "sign-in"
-                          },
-                          "children": [
-                            {
-                              "type": "element",
-                              "tag": "svg",
-                              "attributes": {},
-                              "children": [
-                                {
-                                  "type": "element",
-                                  "tag": "use",
-                                  "attributes": {
-                                    "href": "#i-github"
-                                  },
-                                  "children": []
-                                }
-                              ]
-                            },
-                            {
-                              "type": "text",
-                              "value": "Sign in with GitHub"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "value": "\n                "
-                },
-                {
-                  "type": "element",
-                  "tag": "div",
-                  "attributes": {
-                    "class": "srow github-auth-row github-auth-authorizing"
-                  },
-                  "children": [
-                    {
-                      "type": "element",
-                      "tag": "div",
-                      "attributes": {
-                        "class": "scap"
-                      },
-                      "children": [
-                        {
-                          "type": "element",
-                          "tag": "b",
-                          "attributes": {},
-                          "children": [
-                            {
-                              "type": "text",
-                              "value": "Authorize this device"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "element",
-                          "tag": "span",
-                          "attributes": {},
-                          "children": [
-                            {
-                              "type": "text",
-                              "value": "Enter this one-time code at github.com/login/device · expires in 15 minutes"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "element",
-                      "tag": "div",
-                      "attributes": {
-                        "class": "sctl"
-                      },
-                      "children": [
-                        {
-                          "type": "element",
-                          "tag": "button",
-                          "attributes": {
-                            "class": "github-device-code",
-                            "aria-label": "Copy device code"
-                          },
-                          "children": [
-                            {
-                              "type": "element",
-                              "tag": "svg",
-                              "attributes": {},
-                              "children": [
-                                {
-                                  "type": "element",
-                                  "tag": "use",
-                                  "attributes": {
-                                    "href": "#i-copy"
-                                  },
-                                  "children": []
-                                }
-                              ]
-                            },
-                            {
-                              "type": "text",
-                              "value": "F7D2-9A4C"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "element",
-                          "tag": "button",
-                          "attributes": {
-                            "class": "btn pri",
-                            "data-github-auth-action": "open"
-                          },
-                          "children": [
-                            {
-                              "type": "element",
-                              "tag": "svg",
-                              "attributes": {},
-                              "children": [
-                                {
-                                  "type": "element",
-                                  "tag": "use",
-                                  "attributes": {
-                                    "href": "#i-external"
-                                  },
-                                  "children": []
-                                }
-                              ]
-                            },
-                            {
-                              "type": "text",
-                              "value": "Open GitHub"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "value": "\n                "
-                },
-                {
-                  "type": "element",
-                  "tag": "div",
-                  "attributes": {
-                    "class": "srow github-auth-row github-auth-signed-in"
-                  },
-                  "children": [
-                    {
-                      "type": "element",
-                      "tag": "div",
-                      "attributes": {
-                        "class": "scap"
-                      },
-                      "children": [
-                        {
-                          "type": "element",
-                          "tag": "b",
-                          "attributes": {},
-                          "children": [
-                            {
-                              "type": "text",
-                              "value": "GitHub account"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "element",
-                          "tag": "span",
-                          "attributes": {},
-                          "children": [
-                            {
-                              "type": "text",
-                              "value": "Authorization is encrypted for this operating-system user"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "element",
-                      "tag": "div",
-                      "attributes": {
-                        "class": "sctl"
-                      },
-                      "children": [
-                        {
-                          "type": "element",
-                          "tag": "span",
-                          "attributes": {
-                            "class": "github-login"
-                          },
-                          "children": [
-                            {
-                              "type": "element",
-                              "tag": "svg",
-                              "attributes": {},
-                              "children": [
-                                {
-                                  "type": "element",
-                                  "tag": "use",
-                                  "attributes": {
-                                    "href": "#i-github"
-                                  },
-                                  "children": []
-                                }
-                              ]
-                            },
-                            {
-                              "type": "text",
-                              "value": "@zhxmt-xm"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "element",
-                          "tag": "span",
-                          "attributes": {
-                            "class": "sbadge",
-                            "style": "color:var(--green);background:color-mix(in srgb,var(--green) 13%,transparent)"
-                          },
-                          "children": [
-                            {
-                              "type": "element",
-                              "tag": "span",
-                              "attributes": {
-                                "class": "d",
-                                "style": "background:var(--green)"
-                              },
-                              "children": []
-                            },
-                            {
-                              "type": "text",
-                              "value": "Connected"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "element",
-                          "tag": "button",
-                          "attributes": {
-                            "class": "btn",
-                            "data-github-auth-action": "sign-out"
-                          },
-                          "children": [
-                            {
-                              "type": "text",
-                              "value": "Sign out"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "value": "\n                "
-                },
-                {
-                  "type": "element",
-                  "tag": "div",
-                  "attributes": {
-                    "class": "srow github-auth-row github-auth-failed"
-                  },
-                  "children": [
-                    {
-                      "type": "element",
-                      "tag": "div",
-                      "attributes": {
-                        "class": "scap"
-                      },
-                      "children": [
-                        {
-                          "type": "element",
-                          "tag": "b",
-                          "attributes": {},
-                          "children": [
-                            {
-                              "type": "text",
-                              "value": "GitHub authorization failed"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "element",
-                          "tag": "span",
-                          "attributes": {},
-                          "children": [
-                            {
-                              "type": "text",
-                              "value": "The code expired or authorization was declined. No credentials were saved."
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "element",
-                      "tag": "div",
-                      "attributes": {
-                        "class": "sctl"
-                      },
-                      "children": [
-                        {
-                          "type": "element",
-                          "tag": "span",
-                          "attributes": {
-                            "class": "sbadge",
-                            "style": "color:var(--red);background:color-mix(in srgb,var(--red) 13%,transparent)"
-                          },
-                          "children": [
-                            {
-                              "type": "element",
-                              "tag": "span",
-                              "attributes": {
-                                "class": "d",
-                                "style": "background:var(--red)"
-                              },
-                              "children": []
-                            },
-                            {
-                              "type": "text",
-                              "value": "Not connected"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "element",
-                          "tag": "button",
-                          "attributes": {
-                            "class": "btn",
-                            "data-github-auth-action": "retry"
-                          },
-                          "children": [
-                            {
-                              "type": "element",
-                              "tag": "svg",
-                              "attributes": {},
-                              "children": [
-                                {
-                                  "type": "element",
-                                  "tag": "use",
-                                  "attributes": {
-                                    "href": "#i-refresh"
-                                  },
-                                  "children": []
-                                }
-                              ]
-                            },
-                            {
-                              "type": "text",
-                              "value": "Try again"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "value": "\n                "
-                },
-                {
-                  "type": "element",
-                  "tag": "div",
-                  "attributes": {
-                    "class": "srow"
-                  },
-                  "children": [
-                    {
-                      "type": "element",
-                      "tag": "div",
-                      "attributes": {
-                        "class": "scap"
-                      },
-                      "children": [
-                        {
-                          "type": "element",
-                          "tag": "b",
-                          "attributes": {},
-                          "children": [
-                            {
-                              "type": "text",
-                              "value": "Repository access"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "element",
-                          "tag": "span",
-                          "attributes": {},
-                          "children": [
-                            {
-                              "type": "text",
-                              "value": "Granted by the Interceptor GitHub App installation"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "type": "element",
-                      "tag": "div",
-                      "attributes": {
-                        "class": "sctl"
-                      },
-                      "children": [
-                        {
-                          "type": "element",
-                          "tag": "span",
-                          "attributes": {
-                            "class": "mono2"
-                          },
-                          "children": [
-                            {
-                              "type": "text",
-                              "value": "zhxmt-xm/Interceptor"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "element",
-                          "tag": "span",
-                          "attributes": {
-                            "class": "sbadge",
-                            "style": "color:var(--yellow);background:color-mix(in srgb,var(--yellow) 13%,transparent)"
-                          },
-                          "children": [
-                            {
-                              "type": "element",
-                              "tag": "span",
-                              "attributes": {
-                                "class": "d",
-                                "style": "background:var(--yellow)"
-                              },
-                              "children": []
-                            },
-                            {
-                              "type": "text",
-                              "value": "Private"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "element",
-                          "tag": "span",
-                          "attributes": {
-                            "class": "sbadge"
-                          },
-                          "children": [
-                            {
-                              "type": "text",
-                              "value": "Contents · read-only"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "value": "\n              "
-                }
-              ]
             },
             {
               "type": "text",
@@ -4300,7 +3706,7 @@ export const settingsFixture: FixtureNode = {
                           "children": [
                             {
                               "type": "text",
-                              "value": "Newest private stable release available to this account"
+                              "value": "Newest stable release"
                             }
                           ]
                         }
@@ -4506,29 +3912,6 @@ export const settingsFixture: FixtureNode = {
                             {
                               "type": "text",
                               "value": "zhxmt-xm/Interceptor"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "element",
-                          "tag": "span",
-                          "attributes": {
-                            "class": "sbadge",
-                            "style": "color:var(--yellow);background:color-mix(in srgb,var(--yellow) 13%,transparent)"
-                          },
-                          "children": [
-                            {
-                              "type": "element",
-                              "tag": "span",
-                              "attributes": {
-                                "class": "d",
-                                "style": "background:var(--yellow)"
-                              },
-                              "children": []
-                            },
-                            {
-                              "type": "text",
-                              "value": "Private"
                             }
                           ]
                         }
@@ -5047,7 +4430,7 @@ export const settingsFixture: FixtureNode = {
                           "children": [
                             {
                               "type": "text",
-                              "value": "Private stable channel · authorized with your GitHub account"
+                              "value": "Stable release channel"
                             }
                           ]
                         }
@@ -5064,7 +4447,8 @@ export const settingsFixture: FixtureNode = {
                           "type": "element",
                           "tag": "button",
                           "attributes": {
-                            "class": "btn update-check"
+                            "class": "btn update-check",
+                            "data-public-update-action": "check"
                           },
                           "children": [
                             {
@@ -5092,7 +4476,8 @@ export const settingsFixture: FixtureNode = {
                           "type": "element",
                           "tag": "button",
                           "attributes": {
-                            "class": "btn pri update-download"
+                            "class": "btn pri update-download",
+                            "data-public-update-action": "download"
                           },
                           "children": [
                             {
@@ -5120,7 +4505,8 @@ export const settingsFixture: FixtureNode = {
                           "type": "element",
                           "tag": "button",
                           "attributes": {
-                            "class": "btn pri update-open"
+                            "class": "btn pri update-open",
+                            "data-public-update-action": "open"
                           },
                           "children": [
                             {
