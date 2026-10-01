@@ -24,7 +24,16 @@ export async function registerTlsCompatibilityDismissal(page: Page): Promise<voi
     : dismiss;
   await page.addLocatorHandler(trigger, async () => {
     if (process.platform === 'darwin') {
-      await dismiss.press('Enter', { timeout: 5_000 });
+      const [button] = await dismiss.elementHandles();
+      if (!button) return;
+      try {
+        // Keep this prompt's button; a locator would wait for a replacement after it closes.
+        await button.press('Enter', { timeout: 5_000 });
+      } catch (error) {
+        if (!(error instanceof Error) || !error.message.includes('Element is not attached to the DOM')) throw error;
+      } finally {
+        await button.dispose();
+      }
     } else {
       await dismiss.click();
     }

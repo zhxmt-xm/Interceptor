@@ -1,5 +1,7 @@
 # Rules Workflows
 
+macOS原生文件选择沿用共享fixture：先回读完整GoTo路径，再真实双击唯一匹配的自产文件/目录建议项，使用原生Save/Open或Cancel按钮收尾；不发送关闭GoTo的Return，不更改系统输入法或应用语言。实际导出文件、导入预览、取消零写入和退出恢复仍由每条workflow独立核验。
+
 本文件定义 Rules 工作区的完整 E2E 流程。每条 workflow 都独立启动 Electron、独占 profile/trace，并通过真实 Rules UI、Preload、Core RuleStore 与 Proxy data plane 验证。
 
 内置Agent的`rules_get_tree`、`rules_get_hits`与`rules_replace_tree`纵向流程由

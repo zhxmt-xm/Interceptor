@@ -2,6 +2,8 @@
 
 本文件定义 Composer 工作区的完整 E2E 流程。每条 workflow 独立启动 Electron、独占 profile/trace，并使用真实 Composer UI 和本地 origin。
 
+macOS原生文件选择由共享fixture读取完整GoTo路径、真实双击唯一目标建议项，再用原生Save/Open或Cancel按钮完成；不以窗口消失代替文件结果。完整产品输出、预览确认/取消、重启和宿主恢复断言保持，当前输入法与应用语言不切换。
+
 Composer 由 Core 直接出站，不依赖系统代理路由。因此这些 workflow 只验证 Proxy readiness 的相关默认态（listener=8888、System Proxy未owned、UI Paused），随后点击 `capture.readiness.cancel`，并确认未修改系统设置。它们不重复检查无关的 Capture rows、Rules、Breakpoints、Privacy、CA 或 Updates 状态。
 
 <a id="composer-tools-collection"></a>
@@ -254,7 +256,7 @@ Composer splitter遵守两侧最小宽度；请求/响应控件在极限宽度�
 <a id="composer-collection-import"></a>
 ## `composer.collection.import`
 
-**状态**：planned
+**状态**：passed（macOS；Windows实机复验归Handover第8项）
 **策略**：native-ui
 
 ### Steps

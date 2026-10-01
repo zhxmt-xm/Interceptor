@@ -279,6 +279,8 @@ stateDiagram-v2
 
 #### HTTPS设置连接示意
 
+普通定位验收使用已经受信任的共享CA和fresh业务profile：HTTPS Setup不显示Generate/Install按钮，Start decrypting可用但不执行。打开、截图和Cancel不得改变共享CA、MITM或系统信任；逐帧居中和退出恢复要求见[定位规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md#capture-https-setup-position)。
+
 - `HttpsConnectionChain`位于说明段落前，展示Client apps、Interceptor、Internet、流向箭头及TLS锁，示意高71px、下方间距16px。
 - 锁颜色和图标取自弹窗读取的有效MITM状态；图标复用Lucide，节点、标签和图标分别由Grid/Flex居中，不使用基线或位移补偿。
 

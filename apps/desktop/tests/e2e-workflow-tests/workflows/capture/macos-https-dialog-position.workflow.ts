@@ -38,7 +38,9 @@ test('capture.https-setup keeps the dialog centered while opening and taking evi
   await getByAutomationId(page, AUTOMATION_IDS.capture.enableMitm).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  await expect(getByAutomationId(page, AUTOMATION_IDS.capture.httpsSetup.generate)).toBeEnabled();
+  await expect(getByAutomationId(page, AUTOMATION_IDS.capture.httpsSetup.generate)).toHaveCount(0);
+  await expect(getByAutomationId(page, AUTOMATION_IDS.capture.httpsSetup.install)).toHaveCount(0);
+  await expect(getByAutomationId(page, AUTOMATION_IDS.capture.httpsSetup.startDecrypting)).toBeEnabled();
   await dialog.screenshot({ path: testInfo.outputPath('https-setup-position.png') });
   const frames = await measurements;
   await writeFile(testInfo.outputPath('https-setup-position.json'), JSON.stringify(frames, null, 2), 'utf8');

@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `13b22ec7`
+> Tracked commit: `57198b74`
 > Branch: `main`
 > 最后更新：2026-10-01
 
@@ -52,13 +52,6 @@
   - 已有/缺口：已有HTTP增量、trailer、abort及TLS/client-error等业务事件，但不等于原始H2帧；原始帧采集和可靠请求关联尚缺，Mockttp/patch采集暂缓。
   - 下一步：先确定真实采集点并取得必要的第三方修改授权，再验证事件关联、查询和脱敏导出。不能用测试origin回调、会缓冲全正文的completed事件或补0字段冒充生产数据，见[采集边界](features/diagnostics.md#h2事件采集范围)。
 
-- **16. 共享改动全量复验 · blocked（macOS原生Save）**
-  - 目标：确认共享代码和fixture改动没有只修好某个弹窗、却破坏其他调用方；这是跨功能交付检查，不是新feature，也不重新打开已完成的第4项。
-  - 范围：Main/Preload/Renderer启动、每代Page handler、HTTPS fixture、公共HTTP转发、导入取消及其调用方；检查真实流程与退出恢复，不能仅靠fake Preload parity。
-  - Windows移交：Windows实机、已登录Edge的Bilibili及对应退出恢复统一归第8项，不作为本项提交blocker，也不视为已通过。
-  - 当前阻塞：macOS原生Save/GoTo尚未取得完整导出导入Green；本项fixture修正、定位及复验记录仍在工作区，未混入第11项提交。
-  - 下一步：完成macOS原生窗口及剩余Rules/Composer调用方验收，保留真实文件、trace与宿主恢复证据，再提交本项。
-
 ## 运行约束
 
 - 第5项原生验收和第6项E2E/smoke已获授权；其他暂停项不随之恢复。ClashX菜单必须真实操作，额外系统授权由用户处理，不放宽宿主恢复断言。
@@ -93,6 +86,34 @@
 ```sh
 npm run test:smoke --workspace @interceptor/desktop
 INTERCEPTOR_E2E_MACOS_APP_PATH="$PWD/apps/desktop/out/Interceptor-darwin-x64/Interceptor.app" npm exec --workspace @interceptor/desktop playwright test -- --config tests/e2e-workflow-tests/playwright.config.ts workflows/settings/helper-startup.workflow.ts workflows/settings/certificate-startup.workflow.ts workflows/settings/system-proxy-crash-recovery.workflow.ts workflows/settings/tools-readonly.workflow.ts --project macos
+```
+
+## 第16项验证与恢复
+
+第16项按已授权边界完成，Windows实机与已登录Edge的Bilibili统一留在第8项；本项没有修改产品UI、Main/Core业务、第三方依赖或系统服务。
+
+- HTTPS定位沿用已受信任的共享CA，断言Generate/Install不存在、Start decrypting可用但不执行，不因fresh profile重新生成或授信。
+- 每代Page的TLS handler只操作本次取得的按钮节点并释放；节点消失不等待替代按钮，超时/页面错误仍抛出。原Windows click路径不变。
+- 系统crash report确认原生GoTo的Return关闭路径在SCIM中触发`NSConcreteTextStorage ... Range or index out of bounds`，导致Open/Save XPC服务SIGILL退出；不是控件迟到。driver改为回读完整路径后真实双击原生建议表中唯一精确目标名，再点击原生OK/Cancel按钮，单/双击计数明确。
+- 不切换应用语言或输入法，不写Accessibility值、不改dialog返回值、不预造导入文件；不宣称修复macOS系统服务。临时观察代码、递归控件扫描及失败方案均已移除。
+
+证据根目录沿用上节session files，原失败与恢复记录保持：
+
+| 范围 | 结果与证据 |
+| --- | --- |
+| 原生根因 | `item16-native-panel-crash-summary.json`关联Main 85032与XPC 85178及SCIM线程；`item16-native-{observation,focus-probe,output-probe,expanded,window-owner}.*`记录诊断失败，不作为产品Red |
+| 失败补救 | 定向键盘及早期按钮函数试验失败由`item16-targeted-native-recovery.json`、`item16-mouse-native-recovery.json`证明真实Cancel后产品Quit完成，进程/8888/代理/journal/CA/Root恢复；不把补救改成E2E通过 |
+| Rules/Composer | `item16-import-final/`：4条真实UI/Agent/MCP导入、导出、原生及预览取消、权限、重启零重放全部Green |
+| 共享native调用方 | 14个调用文件、16个场景全部取得最终Green。先在`item16-native-consumers-final/`取得7条Green，文件任务一次窗口定位失败保留；该场景在`item16-transfer-panel-scope/`及`item16-transfer-repeat/`复验并连续3轮Green。其余Diagnostics/Rules 4场景见`item16-native-remaining/`，没有降低断言或延长测试期限 |
+| 协议及Page生命周期 | 本轮HTTP/H2/gRPC/WebSocket/TLS导航5条既有Green仍适用；`item16-final-lifecycle/`最终再跑HTTPS定位、TLS/Edge系统信任、helper跨代复用及Settings只读4条Green |
+| 类型与覆盖汇总 | `item16-workspace-typecheck.log`全workspace通过；`item16-final-verification.json`记录20个最终场景均passed、native调用方逐文件覆盖和每代metadata。仅改测试设施，未新增工具自身unit/integration，产品UI未改，parity不适用 |
+| 最终宿主 | `item16-final-verification.json`：37代应用均按预期退出，74个记录PID均不存在，8888可bind，完整代理、journal、共享CA与Root恢复；获准常驻helper保留 |
+| 改动说明 | [第16项HTML](../commit-changes/202610011120_docs_workflow_shared-fixture-validation.html)复用同一文件，1280/390px已打开核对，无外链资源、折叠内容或横向溢出 |
+
+第10项已有framing故障、Windows-only fixture在macOS的失败和原有间接依赖审计告警仍按上节保留，不能以本项E2E Green将其改写为通过。复验原生导入入口：
+
+```sh
+npm exec --workspace @interceptor/desktop playwright test -- --config tests/e2e-workflow-tests/playwright.config.ts workflows/composer/collection-import.workflow.ts workflows/composer/tools-transfer.workflow.ts workflows/rules/import-tree.workflow.ts workflows/rules/tools-import.workflow.ts --project macos
 ```
 
 ## 复验入口

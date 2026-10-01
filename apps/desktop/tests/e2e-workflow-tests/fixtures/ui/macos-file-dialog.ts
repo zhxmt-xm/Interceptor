@@ -47,7 +47,20 @@ async function navigateMacosFileDialog(owner: WorkflowProcessIdentity, targetPat
   await expect.poll(async () => (await readMacosFileDialog(owner)).navigationPath, {
     message: 'The macOS Go to Folder path was not entered completely',
   }).toBe(navigationPath);
-  await sendMacosFileDialogKeys(owner, 'pressKey(36);');
+  // Return can crash the native panel's Chinese input-method context while GoTo closes.
+  await sendMacosFileDialogKeys(owner, `
+if (identifier(target) !== "GoToWindow") throw new Error("The owned Go to Folder sheet is unavailable");
+const requestedName = ${JSON.stringify(path.basename(navigationPath))};
+const matches = target.scrollAreas().flatMap(area => area.tables())
+  .flatMap(table => table.rows())
+  .flatMap(row => row.uiElements.whose({ role: "AXCell" })())
+  .flatMap(cell => cell.uiElements.whose({ role: "AXList" })())
+  .flatMap(list => list.staticTexts())
+  .filter(label => label.value() === requestedName);
+if (matches.length !== 1) throw new Error("The macOS Go to Folder suggestion is not unique: " + matches.length);
+const position = matches[0].position(), size = matches[0].size();
+clickAt([position[0] + size[0] / 2, position[1] + size[1] / 2], 2);
+`);
   await expect.poll(async () => (await readMacosFileDialog(owner)).goToVisible, {
     message: 'The macOS Go to Folder sheet did not finish navigating',
   }).toBe(false);
@@ -68,7 +81,7 @@ pressKey(123, $.kCGEventFlagMaskCommand | $.kCGEventFlagMaskShift);
       message: 'The macOS Save file name was not entered completely',
     }).toBe(path.basename(targetPath));
   }
-  await sendMacosFileDialogKeys(owner, 'pressKey(36);');
+  await sendMacosFileDialogKeys(owner, 'clickNativeButton("OKButton");');
   await expect.poll(async () => (await readMacosFileDialog(owner)).visible, {
     message: 'The macOS file dialog did not accept the selected path',
   }).toBe(false);
@@ -79,10 +92,10 @@ export async function cancelMacosFileDialog(owner: WorkflowProcessIdentity): Pro
     message: 'The workflow-owned macOS file dialog did not appear', timeout: 15_000,
   }).toBe(true);
   if ((await readMacosFileDialog(owner)).goToVisible) {
-    await sendMacosFileDialogKeys(owner, 'pressKey(53);');
+    await sendMacosFileDialogKeys(owner, 'clickNativeButton("CloseButton");');
     await expect.poll(async () => (await readMacosFileDialog(owner)).goToVisible).toBe(false);
   }
-  await sendMacosFileDialogKeys(owner, 'pressKey(53);');
+  await sendMacosFileDialogKeys(owner, 'clickNativeButton("CancelButton");');
   await expect.poll(async () => (await readMacosFileDialog(owner)).visible).toBe(false);
 }
 
@@ -98,13 +111,14 @@ const panel = panels[0];
 if (!panel) {
   JSON.stringify({ visible: false, save: false, goToVisible: false, navigationPath: null, nameFieldValue: null, nameFieldSelection: null, nameFieldCenter: null });
 } else {
-  const nameField = attribute(panel, "AXIdentifier") === "save-panel"
+  const save = attribute(panel, "AXIdentifier") === "save-panel";
+  const nameField = save
     ? panel.textFields().find(element => attribute(element, "AXIdentifier") === "saveAsNameTextField") : null;
   const position = nameField ? nameField.position() : null;
   const size = nameField ? nameField.size() : null;
   const navigationSheet = panel.sheets().find(sheet => attribute(sheet, "AXIdentifier") === "GoToWindow");
   const pathField = navigationSheet ? navigationSheet.textFields().find(element => attribute(element, "AXIdentifier") === "PathTextField") : null;
-  JSON.stringify({ visible: true, save: Boolean(nameField), goToVisible: Boolean(navigationSheet),
+  JSON.stringify({ visible: true, save: save, goToVisible: Boolean(navigationSheet),
     navigationPath: pathField ? pathField.value() : null, nameFieldValue: nameField ? nameField.value() : null,
     nameFieldSelection: nameField ? attribute(nameField, "AXSelectedText") : null,
     nameFieldCenter: position && size ? [Math.round(position[0] + size[0] / 2), Math.round(position[1] + size[1] / 2)] : null });
@@ -121,7 +135,9 @@ function identifier(element) {
 }
 const panels = ownedApp.windows().flatMap(window => [window, ...window.sheets()])
   .filter(panel => ["save-panel", "open-panel"].includes(identifier(panel)));
-if (panels.length !== 1) throw new Error("The owned file dialog is unavailable");
+if (panels.length !== 1) throw new Error("Expected one owned file dialog, found " + panels.length + ": " +
+  JSON.stringify(panels.map(panel => ({ identifier: identifier(panel), role: panel.role(),
+    position: panel.position(), size: panel.size() }))));
 const target = panels[0].sheets().find(sheet => identifier(sheet) === "GoToWindow") ?? panels[0];
 ownedApp.frontmost = true;
 const raise = target.actions.whose({ name: "AXRaise" })();
@@ -137,11 +153,23 @@ function pressKey(code, flags = 0) {
     delay(0.05);
   }
 }
-function clickAt(coordinates) {
+function clickAt(coordinates, clicks = 1) {
   const point = $.CGPointMake(coordinates[0], coordinates[1]);
-  $.CGEventPost($.kCGHIDEventTap, $.CGEventCreateMouseEvent(null, $.kCGEventLeftMouseDown, point, $.kCGMouseButtonLeft));
-  $.CGEventPost($.kCGHIDEventTap, $.CGEventCreateMouseEvent(null, $.kCGEventLeftMouseUp, point, $.kCGMouseButtonLeft));
-  delay(0.1);
+  for (let click = 1; click <= clicks; click += 1) {
+    for (const type of [$.kCGEventLeftMouseDown, $.kCGEventLeftMouseUp]) {
+      const event = $.CGEventCreateMouseEvent(null, type, point, $.kCGMouseButtonLeft);
+      $.CGEventSetFlags(event, 0);
+      $.CGEventSetIntegerValueField(event, $.kCGMouseEventClickState, click);
+      $.CGEventPost($.kCGHIDEventTap, event);
+      delay(0.05);
+    }
+  }
+}
+function clickNativeButton(buttonId) {
+  const button = target.buttons().find(element => identifier(element) === buttonId);
+  if (!button || !button.enabled()) throw new Error("The owned file dialog button is unavailable: " + buttonId);
+  const position = button.position(), size = button.size();
+  clickAt([position[0] + size[0] / 2, position[1] + size[1] / 2]);
 }
 ${script}`);
 }

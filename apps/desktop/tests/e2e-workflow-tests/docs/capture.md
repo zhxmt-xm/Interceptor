@@ -9,6 +9,15 @@
 
 本文件定义 Capture 工作区的完整 E2E 流程。每条 workflow 都独立启动 Electron、独占 profile、trace 和 loopback fixture，并从 fresh App 写到 Close/destroy。
 
+<a id="capture-https-setup-position"></a>
+## `capture.https-setup-position`（macOS）
+
+1. 普通fixture先只读确认共享CA材料齐全且已受信任，保存完整代理、Root/admin trust基线；独立fresh profile启动真实Electron、trace、Main/Core和8888，不Generate、Install或Delete日常CA。
+2. 从Capture的公共`capture.enable-mitm`入口打开HTTPS Setup；通过公共automation ID确认Generate/Install控件不存在，`capture.https-setup.start-decrypting`可用但不点击。fresh profile不代表共享CA为空。
+3. 在打开和截图期间逐帧只读测量唯一弹窗；至少取得三帧有效矩形，每帧相对Renderer中心的水平/垂直误差不超过1px，主窗口screenX/screenY保持不变。不注入Store、修改样式或切换语言。
+4. 保存`https-setup-position.json`逐帧原值与`https-setup-position.png`，真实点击Cancel，确认弹窗关闭。
+5. 保存trace/metadata，通过产品Close退出；fixture验证Main/Core/Worker全退、8888释放、完整代理与共享CA/系统信任恢复，再删除本workflow的profile。
+
 <a id="capture-body-fullscreen"></a>
 ## `capture.body.fullscreen`
 
@@ -119,7 +128,7 @@ UTF-8场景使预览边界落在2/3/4字节字符内，分别检查普通文本�
 <a id="capture-scenarios-body-media"></a>
 ## `capture.scenarios.body-media`
 
-**状态**：媒体业务passed；新增布局断言待E2E
+**状态**：passed（macOS包含媒体布局与真实Save；Windows实机复验归Handover第8项）
 **策略**：真实Capture UI；Windows原生Save Dialog；现有流量库
 
 ### Steps
@@ -197,7 +206,7 @@ Compact正文尺寸：在真实binary JSON消息默认Pretty档、切Tree之前�
 1. fresh profile通过Certificates UI确认共享CA就绪、添加localhost源站例外并启用MITM；经UI启用Recording，不重复生成/安装CA。
 	- 新增streaming步骤先运行：复用`TlsTrafficRunner`与受控响应流，经真实8888/TLS/H2发送JSON gRPC。仅到达3-byte header时消息为0；收齐第一条envelope后，响应未结束时消息为1且真实Copy正确；第二条payload未收齐时仍为1，补齐后为2且Copy正确。最后结束流并核对实际grpc-status 0；全过程不调用业务API替代UI。
 	- 进行中失败必须先保存`grpc-streaming.png`与`grpc-streaming.json`，记录客户端是否结束、源站输入流是否结束及实际消息数，再结束流和恢复CA/Root，不能用流结束后出现消息的截图冒充前置状态。
-	- 系统背景流量触发TLS compatibility时，共享driver用公共automation ID定位Not now控件真实激活，不自动添加host或修改MITM策略；handler保持至Page关闭，清理不重复注册或点击。弹窗挡点击的失败不算目标Red。
+	- 系统背景流量触发TLS compatibility时，共享driver用公共automation ID定位Not now控件真实激活，不自动添加host或修改MITM策略；handler保持至Page关闭，清理不重复注册或点击。macOS异步handler只操作本次取得的按钮节点；旧节点不存在或detach时不等待替代按钮，新提示继续由actionability处理，其他操作错误不得吞掉。弹窗挡点击的失败不算目标Red。
 	- Pause/Resume与Clear分别创建新H2 stream：第一条消息出现后真实点击Recording暂停或Clear，再发送第二条。暂停时第二条仍可查看和Copy，完整结束后恢复Recording；Clear后旧行与消息保持消失，真实两条消息及trailers仍完整到达client，后续五个原场景仍可产生新Capture记录。保存各自进行中和最终状态JSON，不把Clear当作断开网络。
 	- 双向streaming同时保持Request/Response未结束，各先发送一条完整JSON消息，再发送第二条缺两字节的payload；逐侧核对第一条可Copy、半条不生成消息，补齐后第二条出现且Copy正确。每次Copy时两侧均未结束，最后共同结束并核对实际请求/响应字节与trailers；保存`grpc-bidirectional-streaming.json/png`。
 2. 逐个运行Unary proto、Unary JSON、Trailers error、Compressed及Malformed场景，确认实际H2/200和grpc-status为0/13；不将HTTP 200当gRPC业务成功。
@@ -865,7 +874,7 @@ AbortSignal并清理I/O，而不是仅将界面改为cancelled。保存各阶段
 <a id="capture-tools-har-transfer"></a>
 ## `capture.tools.har-transfer`
 
-**状态**：共享IPC/Agent/MCP流程已有历史Green；新增HAR警示样式检查待E2E，用户暂停期间不执行
+**状态**：passed（macOS包含HAR警示、真实Save/Open及双代恢复；Windows实机复验归Handover第8项）
 **策略**：native-ui；Windows；两代真实Electron；host-safety-guard
 
 ### Steps

@@ -82,7 +82,7 @@ npm exec --workspace @interceptor/desktop playwright test -- --config tests/e2e-
 
 每条workflow仍独立profile/trace，系统授权由本机用户处理；常驻helper跨workflow保留，Main/Core/Worker、前台helper子进程和8888仍必须退出恢复。macOS失败清理先确认完整代理已恢复，否则保留App、listener和profile，不再让测试侧重复弹旧代理授权后强杀。证书admin trust由同一已部署helper的前台固定入口执行，仍有独立系统权限；不以Main的security写命令代替。组件卸载不等于业务恢复，整轮结束按已确认的保留/卸载范围处理。新trust成功/取消workflow的实机状态见Inventory，不复用旧Main路径的Green。
 
-macOS业务窗口由driver按项目配置准备：常规场景保持真实1600x900，只有body-fill滚轮边界场景使用1600x800，Windows项目/窗口逻辑不变。macOS admin trust前后检查统一在宿主guard；TLS/gRPC/H2保持相同业务步骤。macOS HTTPS弹窗动画及定位workflow仍按用户要求暂停，仅保留在本地未提交工作中，不纳入本阶段代码或Green。
+macOS业务窗口由driver按项目配置准备：常规场景保持真实1600x900，只有body-fill滚轮边界场景使用1600x800，Windows项目/窗口逻辑不变。macOS admin trust前后检查统一在宿主guard；TLS/gRPC/H2保持相同业务步骤。HTTPS弹窗定位已按共享CA前提通过真实验收；共享native文件窗口的14个调用文件、16个场景均完成macOS复验，逐条结果和历史失败见Handover。GoTo使用唯一原生建议项的真实双击，Save/Open及取消真实点击原生按钮，不改输入法、语言或dialog返回值；Windows实机仍归第8项。
 
 ### Windows 复验
 
