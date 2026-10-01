@@ -1,14 +1,16 @@
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { once } from 'node:events';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
 import tls from 'node:tls';
-import { promisify } from 'node:util';
+import { isDeepStrictEqual, promisify } from 'node:util';
 
+import type { TestInfo } from '@playwright/test';
+import type { SystemProxyJournalRecord } from '../../../../src/main/platform-capabilities/system-proxy/interfaces';
 import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES } from '../../../../src/shared/automation-ids';
-import { expect, test as workflowTest } from '../../fixtures/runtime/local-electron-driver';
+import { expect, type LocalElectronApplicationDriver, test as workflowTest } from '../../fixtures/runtime/local-electron-driver';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { disableClashxSystemProxy, enableClashxSystemProxy, requireReadyClashx } from '../../fixtures/ui/macos-clashx';
 
@@ -19,6 +21,7 @@ interface ExternalUpstream {
   readonly authority: string;
   readonly port: number;
   readonly original: unknown;
+  readonly helperPath: string;
 }
 
 const test = workflowTest.extend<{ externalUpstream: ExternalUpstream }>({
@@ -35,7 +38,7 @@ const test = workflowTest.extend<{ externalUpstream: ExternalUpstream }>({
       throw new Error('This workflow requires a running external loopback HTTP proxy configured for both HTTP and HTTPS, such as ClashX system proxy mode.');
     }
     const original: unknown = JSON.parse((await execute(helperPath, ['get'], { encoding: 'utf8' })).stdout);
-    await use({ authority: `127.0.0.1:${effective.HTTPPort}`, port: effective.HTTPPort, original });
+    await use({ authority: `127.0.0.1:${effective.HTTPPort}`, port: effective.HTTPPort, original, helperPath });
   }, { auto: true }],
 });
 
@@ -124,7 +127,7 @@ test('settings.proxy.upstream preserves external ClashX changes when Interceptor
   test.setTimeout(120_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.proxy.upstream' });
   desktopApp.preserveUserDataOnFailure();
-  const clashx = await requireReadyClashx();
+  const clashx = await requireReadyClashx(externalUpstream.port);
   let externalChangePreserved = false;
   let baselineRestored = false;
   let externalSnapshot: unknown;
@@ -135,9 +138,7 @@ test('settings.proxy.upstream preserves external ClashX changes when Interceptor
   // 准备：外部代理仍运行，通过ClashX原生菜单重新接管系统设置。
   // Arrange: the external proxy remains running; use ClashX's native menu to reapply its system settings.
   try {
-    await disableClashxSystemProxy(clashx);
-    completedActions.push('initial-disable');
-    await enableClashxSystemProxy(clashx);
+    await enableClashxSystemProxy(clashx, externalUpstream.port);
     completedActions.push('initial-enable');
     await expect.poll(async () => desktopApp.matchesSystemProxyEvidence(
       await desktopApp.readSystemProxySettings(), externalUpstream.original,
@@ -145,7 +146,7 @@ test('settings.proxy.upstream preserves external ClashX changes when Interceptor
 
     // 用户操作：在ClashX中停用系统代理，保持ClashX监听进程和Interceptor均运行。
     // User actions: disable the system proxy in ClashX while both proxy processes remain running.
-    await disableClashxSystemProxy(clashx);
+    await disableClashxSystemProxy(clashx, externalUpstream.port);
     completedActions.push('external-disable');
     await expect.poll(async () => {
       externalSnapshot = await desktopApp.readSystemProxySettings();
@@ -165,7 +166,7 @@ test('settings.proxy.upstream preserves external ClashX changes when Interceptor
     // 清理与证据：通过ClashX原生菜单恢复本轮基线，不直接调用产品或helper写设置。
     // Cleanup and evidence: restore this run's baseline through ClashX's native menu, never through a direct product or helper write.
     try {
-      await enableClashxSystemProxy(clashx);
+      await enableClashxSystemProxy(clashx, externalUpstream.port);
       await expect.poll(async () => desktopApp.matchesSystemProxyEvidence(
         await desktopApp.readSystemProxySettings(), externalUpstream.original,
       )).toBe(true);
@@ -181,3 +182,129 @@ test('settings.proxy.upstream preserves external ClashX changes when Interceptor
   if (cleanupErrors.length) throw new AggregateError(cleanupErrors, 'External proxy restoration failed.');
   desktopApp.releasePreservedUserData();
 });
+
+test('settings.proxy.upstream preserves external ClashX changes after a crash and a fresh profile', async ({
+  desktopApp, externalUpstream,
+}, testInfo) => {
+  test.setTimeout(180_000);
+  testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.proxy.upstream' });
+  desktopApp.preserveUserDataOnFailure();
+  const clashx = await requireReadyClashx(externalUpstream.port);
+  let secondGeneration: LocalElectronApplicationDriver | null = null;
+  let secondGenerationClosed = false;
+  let workflowError: unknown;
+  const cleanupErrors: unknown[] = [];
+  const evidence = {
+    externalSnapshotChanged: false,
+    firstGenerationDestroyed: false,
+    firstJournalRetained: false,
+    secondGenerationOriginalMatchesExternal: false,
+    secondGenerationUpstreamMatchesExternal: false,
+    secondGenerationDestroyed: false,
+    externalChangePreserved: false,
+    baselineRestored: false,
+    originalSha256: createHash('sha256').update(JSON.stringify(externalUpstream.original)).digest('hex'),
+    externalSha256: '',
+  };
+
+  try {
+    // 准备：A已接管ClashX上游，只读确认用户级journal和完整owned快照。
+    // Arrange: A owns the ClashX upstream; inspect its user-level journal and complete owned snapshot.
+    const firstJournal = await readExternalProxyJournal(desktopApp);
+    expect(desktopApp.matchesSystemProxyEvidence(firstJournal.original, externalUpstream.original)).toBe(true);
+    expect(desktopApp.matchesSystemProxyEvidence(firstJournal.owned, await desktopApp.readSystemProxySettings())).toBe(true);
+
+    // 用户操作：通过ClashX原生菜单重新接管后停用，再精确终止A及其Core。
+    // User actions: reclaim and disable the system proxy through ClashX, then crash A and its Core.
+    await enableClashxSystemProxy(clashx, externalUpstream.port);
+    await disableClashxSystemProxy(clashx, externalUpstream.port);
+    const externalSnapshot = await desktopApp.readSystemProxySettings();
+    const externalEffectiveProxies: unknown = JSON.parse((await execute(
+      externalUpstream.helperPath, ['get-effective-proxies'], { encoding: 'utf8' },
+    )).stdout);
+    evidence.externalSnapshotChanged = !desktopApp.matchesSystemProxyEvidence(externalSnapshot, firstJournal.original)
+      && !desktopApp.matchesSystemProxyEvidence(externalSnapshot, firstJournal.owned);
+    expect(evidence.externalSnapshotChanged).toBe(true);
+    expect(isDeepStrictEqual(externalEffectiveProxies, firstJournal.effectiveProxies)).toBe(false);
+    evidence.externalSha256 = createHash('sha256').update(JSON.stringify(externalSnapshot)).digest('hex');
+    await desktopApp.captureFinalScreenshot(testInfo);
+    await desktopApp.crashAbruptly(testInfo);
+    evidence.firstGenerationDestroyed = true;
+    evidence.firstJournalRetained = isDeepStrictEqual(await readExternalProxyJournal(desktopApp), firstJournal);
+    expect(evidence.firstJournalRetained).toBe(true);
+    expect(desktopApp.matchesSystemProxyEvidence(await desktopApp.readSystemProxySettings(), externalSnapshot)).toBe(true);
+
+    // 业务断言：新profile B只能把外部新配置作为original和生效上游，不能复用A的旧上游。
+    // Business assertions: fresh-profile B must adopt the external snapshot and effective upstream, not A's old upstream.
+    secondGeneration = await desktopApp.relaunchAfterCrash(testInfo, 'external-relaunch');
+    secondGeneration.preserveUserDataOnFailure();
+    await secondGeneration.waitUntilReady();
+    const secondJournal = await readExternalProxyJournal(secondGeneration);
+    expect(secondGeneration.systemProxyJournalPath()).toBe(desktopApp.systemProxyJournalPath());
+    evidence.secondGenerationOriginalMatchesExternal = secondGeneration.matchesSystemProxyEvidence(secondJournal.original, externalSnapshot);
+    evidence.secondGenerationUpstreamMatchesExternal = isDeepStrictEqual(secondJournal.effectiveProxies, externalEffectiveProxies);
+    expect(evidence.secondGenerationOriginalMatchesExternal).toBe(true);
+    expect(evidence.secondGenerationUpstreamMatchesExternal).toBe(true);
+    expect(secondGeneration.matchesSystemProxyEvidence(secondJournal.owned, await secondGeneration.readSystemProxySettings())).toBe(true);
+    expect(secondGeneration.rendererPageErrors()).toEqual([]);
+
+    // 退出与证据：正常Close B后完整外部配置仍保持，分别保存两代trace和metadata。
+    // Exit and evidence: close B normally, preserve the full external snapshot, and retain both generations' traces and metadata.
+    await closeExternalProxyGeneration(secondGeneration, testInfo);
+    secondGenerationClosed = true;
+    evidence.secondGenerationDestroyed = true;
+    evidence.externalChangePreserved = secondGeneration.matchesSystemProxyEvidence(
+      await secondGeneration.readSystemProxySettings(), externalSnapshot,
+    );
+    expect(evidence.externalChangePreserved).toBe(true);
+  } catch (error) {
+    workflowError = error;
+  } finally {
+    // 清理：先结束测试App，再由ClashX真实菜单恢复workflow基线；失败时保留profile及所有错误。
+    // Cleanup: close owned Apps before restoring the workflow baseline through ClashX; retain profiles and every failure.
+    if (!evidence.firstGenerationDestroyed) {
+      try { await closeExternalProxyGeneration(desktopApp, testInfo); }
+      catch (error) { cleanupErrors.push(error); }
+    }
+    if (secondGeneration && !secondGenerationClosed) {
+      try {
+        await closeExternalProxyGeneration(secondGeneration, testInfo);
+        secondGenerationClosed = true;
+      } catch (error) { cleanupErrors.push(error); }
+    }
+    try {
+      expect(await desktopApp.listLiveRegisteredProcessIds()).toEqual([]);
+      await enableClashxSystemProxy(clashx, externalUpstream.port);
+      await expect.poll(async () => desktopApp.matchesSystemProxyEvidence(
+        await desktopApp.readSystemProxySettings(), externalUpstream.original,
+      )).toBe(true);
+      if (secondGeneration && secondGenerationClosed) await secondGeneration.forceCleanup();
+      evidence.baselineRestored = true;
+    } catch (error) { cleanupErrors.push(error); }
+    await writeFile(testInfo.outputPath('external-change-crash-recovery.json'), JSON.stringify(evidence, null, 2), 'utf8');
+    if (secondGeneration) {
+      if (!workflowError && cleanupErrors.length === 0 && secondGenerationClosed) {
+        await secondGeneration.removeUserData();
+      } else {
+        testInfo.annotations.push({ type: 'preserved-user-data', description: secondGeneration.userDataDirectory });
+      }
+    }
+  }
+  if (workflowError && cleanupErrors.length) throw new AggregateError([workflowError, ...cleanupErrors], 'External crash workflow and restoration failed.');
+  if (workflowError) throw workflowError;
+  if (cleanupErrors.length) throw new AggregateError(cleanupErrors, 'External crash restoration failed.');
+  desktopApp.releasePreservedUserData();
+});
+
+async function readExternalProxyJournal(driver: LocalElectronApplicationDriver): Promise<SystemProxyJournalRecord> {
+  const record: SystemProxyJournalRecord = JSON.parse(await readFile(driver.systemProxyJournalPath(), 'utf8'));
+  driver.assertSystemProxyJournalFields(record);
+  return record;
+}
+
+async function closeExternalProxyGeneration(driver: LocalElectronApplicationDriver, testInfo: TestInfo): Promise<void> {
+  await driver.captureFinalScreenshot(testInfo);
+  await driver.stopTrace(testInfo);
+  await driver.closeGracefully();
+  await driver.writeEvidence(testInfo);
+}

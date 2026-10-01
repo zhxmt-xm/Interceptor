@@ -247,7 +247,7 @@ Certificate module组装的`CertificateInfo`含`path`与`mitmEnabled`，不含�
 | `current` | 每次恢复判定时 | Main 通过平台 helper 当场读取的操作系统实际配置 |
 
 文档中的 `current == owned`、`current == original` 都表示完整快照逐字段相等，不表示 PID、进程或文件的所有权。
-network service的增加或删除也属于完整快照的外部变化；恢复与跨代journal加载都不得只比较仍存在的service或覆盖新配置。状态机测试不等于VPN/TUN、ClashX或真实切网验收。
+network service的增加或删除也属于完整快照的外部变化；恢复与跨代journal加载都不得只比较仍存在的service或覆盖新配置。ClashX系统代理的真实改写、App退出及跨profile恢复由独立用户流程验收，不以状态机测试代替。
 
 Windows journal 固定为 `%LOCALAPPDATA%/Interceptor/system-proxy/journal.json`，不随 Electron
 `userData`、开发模式、packaged App 或 E2E `--user-data-dir` 改变；macOS journal 为
@@ -403,7 +403,7 @@ Main通过同包helper执行macOS代理和System Keychain公开证书操作。
 
 ### 3.4 上游代理链式转发
 
-接管系统代理后所有流量都进 Interceptor，若仍直连源站，必须经公司 PAC、VPN 或认证代理才能出网的环境会在接管期间**完全断网**。因此接管前读到的配置会原样接到上游。
+接管后，遵循系统代理的应用将请求交给Interceptor。原有HTTP/SOCKS代理或PAC需要继续作为上游，否则可能绕过指定代理或导致访问失败。Main读取接管前的生效代理配置并交给Core使用；系统路由不由该配置转换过程修改。
 
 ```mermaid
 sequenceDiagram

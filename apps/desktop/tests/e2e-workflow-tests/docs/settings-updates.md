@@ -386,9 +386,9 @@ macOS保留九个section、键盘和跨workspace往返；App Containers按产品
 Enable all 与 Disable all 各自对应一条 Main 命令和一次 UAC；前者原子添加当前 SID，后者原子移除当前 SID，均保留枚举外 exemption。完整真实 flow 最终精确恢复测试前系统状态，不发生 Renderer 循环、隐式全量覆盖或不可逆批量启用。
 
 <a id="settings-proxy-upstream"></a>
-## `settings.proxy.upstream`（macOS，基础链式转发已验，外部改写待验）
+## `settings.proxy.upstream`（macOS，ClashX链式转发与外部改写已验）
 
-1. 外部ClashX等HTTP代理保持运行，系统HTTP/HTTPS均指向同一loopback端口；不使用TUN替代。无此环境算前置阻塞，不计产品Red。
+1. 外部ClashX等HTTP代理保持运行，系统HTTP/HTTPS均指向同一loopback端口。无此环境算前置阻塞，不计产品Red。
 2. 自动fixture在App启动前只读保存生效上游及完整service快照；独立profile/trace及host guard随后启动真实Electron。
 3. 经公共Capture入口核对状态栏仍显示原上游，不把Interceptor的8888当作上游；前置Red应精确失败在此业务断言。
 4. 测试客户端经真实8888向`example.com:443`建立CONNECT/TLS，开启正常证书校验，不生成CA、不调用产品API设置上游。
@@ -406,6 +406,28 @@ Enable all 与 Disable all 各自对应一条 Main 命令和一次 UAC；前者�
 4. 通过ClashX原生菜单重新启用原代理，对照完整基线；宿主guard再核验进程、8888和证书恢复。
 5. 仅保存哈希与实际布尔结果；原生入口不可用或需授权时记blocked，不放宽恢复断言。
 
+<a id="item5-external-network-preparation"></a>
+### 外部代理验收准备
+
+用户已允许本项启动/关闭App及开启/关闭代理测试。ClashX保持运行，执行前读取本轮真实系统代理状态，不将旧的开启或关闭状态作为当前基线。恢复执行时：
+
+1. 在任何ClashX操作前只读保存完整network service快照、证书信任基线、journal和8888状态；原始代理数据只在私有证据中保留，报告只写哈希和布尔结果。
+2. 确认外部端口实际由该代ClashX进程监听，再通过ClashX真实菜单开启系统代理；回读全部service及原生效上游，HTTP/HTTPS端口必须等于本轮ClashX端口，不能只判断“不是8888”。菜单无法可靠操作或出现额外系统授权时停止，不调用helper写设置代替UI。
+   - Interceptor接管后ClashX菜单仍可能保持勾选；该勾选不证明ClashX当前持有系统代理。先按真实service配置判断是否需要重新启用ClashX，再执行停用，不在Interceptor持有8888时先要求ClashX停用。
+3. 复用既有签名App，串行运行上述两条上游workflow、下述外部改写后crash用例及`settings.system-proxy.crash-recovery`，共四条；分别保留trace、metadata、真实上游连接、完整代理/journal和每代进程退出证据，不重建或改写产物。
+4. 各workflow恢复其ClashX开启基线后，再通过ClashX真实菜单恢复步骤1的实际初始状态；最终完整快照与证书信任必须匹配最初基线，8888可重新bind、journal不存在，ClashX及获准helper保持运行。
+5. 本项验证App自身的系统代理、上游、完整快照和journal处理。外部改写来源不改变ownership判定；不以菜单勾选代替系统配置，也不直接调用原生写接口代替用户操作。
+
+外部改写后的崩溃重启补验复用`settings.proxy.upstream`，只补现有行为覆盖，不修改产品：
+
+1. ClashX及其helper保持运行，系统HTTP/HTTPS指向同一外部loopback端口。保存完整基线，新profile A启动真实App、trace和Core/8888，确认A的journal含首次`original/owned/effectiveProxies`且`owned`等于当前系统配置。
+2. 经ClashX真实菜单重新接管后停用系统代理；保存新的完整service快照和原生效代理字典，确认它们不同于A的原上游及owned配置。
+3. 精确终止A的真实进程树，不执行Restore；确认A和Core退出、8888释放，旧journal仍是A的快照，外部配置未改变。
+4. 用不同profile B顺序启动App并记录新trace，等待真实Core/8888及Capture。B的journal必须以外部改写后的配置作为新`original/effectiveProxies`，不能重新使用A的ClashX上游；`owned`必须匹配B接管后的当前系统配置。
+5. 通过产品正常Close关闭B，确认完整代理回到外部改写后的配置；记录两代metadata、trace和只含哈希/布尔值的证据。
+6. 通过ClashX真实菜单恢复该workflow的上游基线，外层host guard验证两代Main/Core/Worker、8888、journal和证书信任，再删除profile。整轮结束还须恢复准备前的最初完整代理状态。
+
+ClashX三条属于`settings.proxy.upstream`，另一条为既有跨profile crash；四条均须保留实际数据流、完整代理和退出恢复证据，现行字段与恢复约定见[macOS生效上游](../../../../../architecture/features/settings.md#macos生效上游)。
 
 <a id="settings-proxy-enable-restore"></a>
 ## `settings.proxy.enable-restore`

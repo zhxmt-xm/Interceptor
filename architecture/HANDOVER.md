@@ -1,16 +1,10 @@
 # Interceptor Handover
 
-> Tracked commit: `8cd75b68`
+> Tracked commit: `677d8c60`
 > Branch: `main`
-> 最后更新：2026-09-30
+> 最后更新：2026-10-01
 
 ## Task List
-
-- **5. macOS journal：外部网络下的代理恢复 · blocked（缺验收环境）**
-  - 目标：切换profile或App异常退出后，SystemProxyService仍能恢复接管前的系统代理；用户或VPN已改过配置时，不覆盖外部修改。
-  - 范围：macOS全部活动network service的完整`original/owned/current`快照、用户级journal及原生效上游；不能只比较仍存在的service，或把不同网络服务的代理配置合并。
-  - 已有：跨profile恢复、profile删除重建、service增删、helper部署与正常退出已有覆盖。
-  - 剩余/下一步：在VPN/TUN、动态切网和ClashX环境补接管、外部改写、退出及崩溃重启场景，核对完整代理和journal恢复。缺对应环境，普通loopback结果不能代替。
 
 - **8. Windows 实机验收 · 待验收**
   - 目标：确认已实现的跨平台功能在真实Windows上成立，尤其是UAC、原生窗口、WinINet和AppContainer，不能用macOS通过或native skip替代。
@@ -77,11 +71,11 @@
 
 ## 复验入口
 
-以下命令仅备查，当前不执行。恢复授权后使用当前最终包串行复验，不重复prepare或改写产物：
+第5项恢复授权有效。先保存完整宿主基线，经ClashX真实菜单开启系统代理；结束后再经ClashX菜单恢复最初状态，核对完整代理/信任、进程、8888和journal。使用当前既有App，不重复prepare或改写产物：
 
 ```sh
-INTERCEPTOR_E2E_MACOS_APP_PATH="$PWD/apps/desktop/out/Interceptor-darwin-x64/Interceptor.app" npm exec --workspace @interceptor/desktop playwright test -- --config tests/e2e-workflow-tests/playwright.config.ts workflows/settings/helper-startup.workflow.ts --project macos
-npm run test:smoke --workspace @interceptor/desktop
+EVIDENCE_DIR="$(mktemp -d /tmp/interceptor-item5-XXXXXX)"
+INTERCEPTOR_E2E_MACOS_APP_PATH="$PWD/apps/desktop/out/Interceptor-darwin-x64/Interceptor.app" PLAYWRIGHT_JSON_OUTPUT_FILE="$EVIDENCE_DIR/results.json" npm exec --workspace @interceptor/desktop playwright test -- --config tests/e2e-workflow-tests/playwright.config.ts workflows/settings/macos-upstream-proxy.workflow.ts workflows/settings/system-proxy-crash-recovery.workflow.ts --project macos --reporter=list,json --output="$EVIDENCE_DIR/traces"
 ```
 
 [测试分层](platform/testing.md) · [功能与平台索引](README.md) · [协作与提交规则](../AGENTS.md)。push直连失败可用`git -c http.proxy=http://127.0.0.1:7890 push origin HEAD`，不修改全局Git或系统代理。
