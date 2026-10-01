@@ -21,7 +21,7 @@ import type { CaptureExchangeEvent } from '@interceptor/core-protocol';
 import type { ClientAppIdentity } from '@interceptor/core-protocol';
 
 import type { CoreProcessStatus } from '../../shared/desktop-api';
-import { resolveClientAppHelperPath } from '../platform-capabilities/entry';
+import { resolveClientAppHelperPath } from '@interceptor/platform-capabilities';
 import type {
   CoreProcessHandle,
   CoreProcessLifecycleMessage,
@@ -298,7 +298,7 @@ export class CoreRuntime {
    */
   protected launchCoreProcess(): CoreProcessHandle {
     const clientAppHelper = resolveClientAppHelperPath(
-      app.isPackaged ? process.resourcesPath : path.join(app.getAppPath(), 'dist'),
+      app.isPackaged ? process.resourcesPath : path.join(app.getAppPath(), '../../packages/platform-capabilities/dist'),
     );
     const launchedCoreProcess = utilityProcess.fork(
       this.resolveCoreProcessEntry(),

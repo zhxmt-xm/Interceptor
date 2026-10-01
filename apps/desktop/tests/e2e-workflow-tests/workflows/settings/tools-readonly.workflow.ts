@@ -3,7 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium, type Browser, type Page, type TestInfo } from '@playwright/test';
 
-import type { CaMeta } from '../../../../src/main/platform-capabilities/certificates/interfaces';
+import type { CaMeta } from '@interceptor/platform-capabilities/certificates/interfaces/index';
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { sharedCertificateDirectory } from '../../fixtures/ui/https-capture';

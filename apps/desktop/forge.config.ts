@@ -26,15 +26,15 @@ const appIconIco = path.join(desktopDirectory, 'assets/interceptor-icon.ico');
 const appIconIcns = path.join(desktopDirectory, 'assets/interceptor-icon.icns');
 const systemProxyResources = path.join(
   desktopDirectory,
-  'dist/system-proxy',
+  '../../packages/platform-capabilities/dist/system-proxy',
 );
 const appContainerResources = path.join(
   desktopDirectory,
-  'dist/app-container',
+  '../../packages/platform-capabilities/dist/app-container',
 );
 const clientAppResources = path.join(
   desktopDirectory,
-  'dist/client-app',
+  '../../packages/platform-capabilities/dist/client-app',
 );
 const windowsCertificateFile = process.env.WINDOWS_CERTIFICATE_FILE;
 const windowsCertificatePassword = process.env.WINDOWS_CERTIFICATE_PASSWORD;
@@ -145,7 +145,7 @@ const config: ForgeConfig = {
               hardenedRuntime: true,
               ...(path.basename(filePath) === 'macos-proxy-helper'
                 ? {
-                    entitlements: path.join(desktopDirectory, 'assets/macos-native-helper-entitlements.plist'),
+                    entitlements: path.join(desktopDirectory, '../../packages/platform-capabilities/assets/macos-native-helper-entitlements.plist'),
                     additionalArguments: ['--identifier', 'com.zhxmt.interceptor.platform-capabilities'],
                     ...(appleSignIdentity === undefined ? { timestamp: 'none' } : {}),
                   }

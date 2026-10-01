@@ -14,6 +14,8 @@
 
 各层职责独立，不能互相替代。
 
+Windows实机验收统一跟踪于[Handover第8项](../HANDOVER.md)及[Windows矩阵](../../apps/desktop/tests/e2e-workflow-tests/README.md#windows-复验)。按用户确认，该项的待验不作为其他item的提交blocker；其他item仍须完成自身可执行验收，Windows未执行、skip和失败不能改写为通过，发布产物门禁不因此取消。
+
 ## 2. Local E2E driver
 
 - **平台启动driver**：Windows继续用`_electron.launch()`启动未打包production bundle，prepare复用Forge Vite配置；macOS默认spawn同一项目的未打包Electron，以Renderer CDP驱动相同workflow。两者都由测试拥有进程，不附着人工Forge实例；协议/Core/native按正式构建顺序准备，业务E2E不要求每次package。
@@ -49,6 +51,7 @@ macOS常驻helper独立于每条workflow的Main/Core，不作为它们的子进�
 
 ```powershell
 npm run typecheck
+npm run test --workspace @interceptor/platform-capabilities -- --no-file-parallelism
 npm run test --workspace @interceptor/desktop
 npm run test --workspace @interceptor/proxy-core -- --no-file-parallelism
 npm run test --workspace @interceptor/core-protocol

@@ -21,4 +21,4 @@ Core 持有 id / 名称 / 可执行文件路径三元组。**`path` 只交给 Ma
 
 ## 依赖
 
-无跨模块依赖。被 `proxy/` 依赖。
+通过`@interceptor/platform-capabilities/client-app`执行原生helper查询并解析TSV，公共身份仍使用`@interceptor/core-protocol`。快照、失败退避、Capture关联及投递状态继续由本module负责；只读loopback判断留在本module的`utils/`。被`proxy/`依赖。

@@ -50,7 +50,7 @@ export async function disableClashxSystemProxy(owner: WorkflowProcessIdentity, c
 async function matchesSystemProxyState(enabled: boolean, clashxPort: number): Promise<boolean> {
   const reader = process.env.INTERCEPTOR_E2E_MACOS_APP_PATH
     ? path.join(process.env.INTERCEPTOR_E2E_MACOS_APP_PATH, 'Contents/Resources/system-proxy/macos-proxy-helper')
-    : path.resolve('dist/system-proxy/macos-proxy-helper');
+    : path.resolve('../../packages/platform-capabilities/dist/system-proxy/macos-proxy-helper');
   const { stdout } = await execute(reader, ['get'], { encoding: 'utf8' });
   const snapshot = JSON.parse(stdout) as { services: Array<{ settings: Record<string, unknown> }> };
   return snapshot.services.length > 0 && snapshot.services.every(({ settings }) => enabled

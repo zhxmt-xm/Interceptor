@@ -84,7 +84,7 @@ export class WindowsWorkflowHostSafetyOperations implements WorkflowHostSafetyOp
   constructor(options: WindowsWorkflowHostSafetyOperationsOptions) {
     this.helperPath = options.helperPath ?? path.join(
       options.desktopDirectory,
-      'dist',
+      '../../packages/platform-capabilities/dist',
       'system-proxy',
       'wininet-proxy-helper.exe',
     );

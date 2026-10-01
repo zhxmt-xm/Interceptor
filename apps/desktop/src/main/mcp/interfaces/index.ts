@@ -2,7 +2,7 @@ import type { McpClientRegistration, McpToolExecutionMode } from '@interceptor/m
 import type { McpApprovalRequest, McpAuditEvent } from '@interceptor/mcp-server';
 import type { InterceptorToolHost } from '@interceptor/tools';
 
-import type { SecureStore } from '../../platform-capabilities/interfaces';
+import type { SecureStore } from '@interceptor/platform-capabilities/interfaces/index';
 import type { CaptureReset, CaptureStatus, RulesChanged } from '../../../shared/desktop-api';
 import type { CoreRuntime } from '../../core/core-runtime';
 import type { ToolCapabilitySettingsService } from '../../tool-capabilities/entry';

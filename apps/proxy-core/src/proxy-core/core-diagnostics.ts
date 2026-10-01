@@ -4,35 +4,21 @@ import process from 'node:process';
 import type {
   CoreCommand,
   DiagnosticAttribute,
+  DiagnosticFields,
   DiagnosticIngestPayload,
   DiagnosticLevel,
   DiagnosticLogRecord,
   DiagnosticOutcome,
   DiagnosticProcess,
+  DiagnosticsRecorder,
 } from '@interceptor/core-protocol';
+
+export type { DiagnosticFields, DiagnosticsRecorder } from '@interceptor/core-protocol';
 
 interface DiagnosticContext {
   traceId: string;
   requestId: string;
   command: CoreCommand['type'];
-}
-
-export interface DiagnosticFields {
-  action?: string;
-  durationMs?: number;
-  outcome?: DiagnosticOutcome;
-  errorCode?: string;
-  attributes?: Record<string, DiagnosticAttribute>;
-}
-
-/**
- * 结构化诊断记录器：Core 各组件（RpcServer/Application/Proxy/Capture）用它记录
- * initialize、action、生命周期与 error 关键节点。CoreDiagnostics 是唯一实现。
- */
-export interface DiagnosticsRecorder {
-  info(phase: string, fields?: DiagnosticFields): void;
-  warn(phase: string, fields?: DiagnosticFields): void;
-  error(phase: string, fields?: DiagnosticFields): void;
 }
 
 /**

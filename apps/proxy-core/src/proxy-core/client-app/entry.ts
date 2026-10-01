@@ -6,13 +6,13 @@
  */
 
 import type { DiagnosticsRecorder } from '../core-diagnostics';
+import { clientAppLookupRunner, parseAppsByPort } from '@interceptor/platform-capabilities/client-app';
 import { CLIENT_APP_SNAPSHOT_TTL_MS } from './internal/constants';
 import type {
   ClientAppIdentity,
   ClientAppLookupRunner,
   ClientAppServiceOptions,
 } from './interfaces';
-import * as ClientAppUtils from './utils';
 
 export class ClientAppService {
   /** 本机进程反查 helper 路径；null 表示当前平台不支持。 */
@@ -38,7 +38,7 @@ export class ClientAppService {
 
   constructor(options: ClientAppServiceOptions = {}) {
     this.helperPath = options.helperPath ?? null;
-    this.runner = options.runner ?? ClientAppUtils.clientAppLookupRunner;
+    this.runner = options.runner ?? clientAppLookupRunner;
   }
 
   /** 当前平台是否具备本机进程反查能力。 */
@@ -141,7 +141,7 @@ export class ClientAppService {
     const startedAt = Date.now();
     try {
       const output = await this.runner(this.helperPath, [String(this.proxyPort)]);
-      const appByPort = ClientAppUtils.parseAppsByPort(output);
+      const appByPort = parseAppsByPort(output);
       this.appByPort = appByPort;
       this.snapshotStartedAt = startedAt;
       this.snapshotFailedAt = 0;

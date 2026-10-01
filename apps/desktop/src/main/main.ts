@@ -48,7 +48,7 @@ import {
   type SystemProxyRestoreResult,
   type UpdateStatus,
 } from '../shared/desktop-api';
-import { PlatformCapabilitiesService } from './platform-capabilities/entry';
+import { PlatformCapabilitiesService, readErrorMessage, readErrorName } from '@interceptor/platform-capabilities';
 import {
   IMPORT_FILE_MAX_BYTES,
 } from './constants';
@@ -79,8 +79,6 @@ import { UiPreferencesService } from './settings/ui-preferences-service';
 import type { UiPreferenceAppliedChange } from '../shared/ui-preferences';
 import { GitHubReleaseUpdateService } from './updates/github-release-update-service';
 import {
-  readErrorMessage,
-  readErrorName,
   isJsonImportPath,
   toBodyDecodeOptions,
   toBodyExportRequest,
@@ -125,7 +123,8 @@ class DesktopApplication {
   private packagedRendererProtocol: PackagedRendererProtocol | null = null;
   private readonly platformCapabilitiesService = new PlatformCapabilitiesService({
     secureStore: safeStorage,
-    coreRuntime: this.coreRuntime,
+    requestCore: (command) => this.coreRuntime.request(command),
+    getCoreProcessState: () => this.coreRuntime.getCoreProcessStatus().state,
     diagnostics: this.diagnostics,
     onCertificateChanged: () => this.broadcastTlsSettingsChanged(),
     onAppContainersChanged: () => this.broadcastAppContainersChanged(),
@@ -134,7 +133,7 @@ class DesktopApplication {
     onStartupStageChanged: (stage) => this.publishStartupStage(stage),
     onError: (operation, error) => this.reportPlatformError(operation, error),
     applicationEnvironment: app.isPackaged ? 'production' : 'development',
-    nativeDirectory: app.isPackaged ? process.resourcesPath : path.join(app.getAppPath(), 'dist'),
+    nativeDirectory: app.isPackaged ? process.resourcesPath : path.join(app.getAppPath(), '../../packages/platform-capabilities/dist'),
     userDataDirectory: app.getPath('userData'),
     localAppDataDirectory: process.env.LOCALAPPDATA,
     applicationPath: process.platform === 'darwin' && app.isPackaged ? path.resolve(process.execPath, '../../..') : undefined,

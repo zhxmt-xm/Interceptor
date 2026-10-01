@@ -158,7 +158,7 @@ Settings 的六项只读能力在 Agent 与 MCP 共享名称、schema、owner �
 **状态**：passed
 **策略**：os-side-effect；Windows；host-safety-guard；两代真实 Electron
 
-macOS复用以下相同步骤：系统配置读取使用被测入口配套的SystemConfiguration helper，默认未打包bundle读取Desktop `dist`，显式签名App使用其Resources；journal读取用户级`Interceptor Platform/system-proxy/journal.json`，Windows helper命令和LOCALAPPDATA路径不变。所有比较覆盖完整结构且只输出布尔结果/哈希；各平台分别验证恢复，不能互相代替。
+macOS复用以下相同步骤：系统配置读取使用被测入口配套的SystemConfiguration helper，默认未打包bundle读取`packages/platform-capabilities/dist`，显式签名App使用其Resources；journal读取用户级`Interceptor Platform/system-proxy/journal.json`，Windows helper命令和LOCALAPPDATA路径不变。所有比较覆盖完整结构且只输出布尔结果/哈希；各平台分别验证恢复，不能互相代替。
 
 ### Steps
 

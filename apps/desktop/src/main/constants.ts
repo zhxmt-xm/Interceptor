@@ -11,12 +11,6 @@ export const DIAGNOSTIC_LEVELS = ['debug', 'info', 'warn', 'error'] as const;
 /** 导入文件读取上限：规则树与集合都是几十到几百条，超过它的输入必定不是本产品导出的。 */
 export const IMPORT_FILE_MAX_BYTES = 8 * 1024 * 1024;
 
-/** 上游探活周期；回环 TCP 单次约 0.1ms，每秒一次开销可忽略。 */
-export const UPSTREAM_PROBE_INTERVAL_MS = 1000;
-
-/** 单次探活超时；必须小于周期，否则探测会相互重叠。 */
-export const UPSTREAM_PROBE_TIMEOUT_MS = 500;
-
 /** 诊断来源进程枚举；供 Renderer 诊断过滤输入的白名单校验。 */
 export const DIAGNOSTIC_PROCESSES = ['core', 'main', 'renderer'] as const;
 

@@ -23,7 +23,7 @@ import {
 import extract from 'extract-zip';
 
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
-import { resolveMacosSystemProxyJournalPath } from '../../../../src/main/platform-capabilities/system-proxy/macos/journal';
+import { resolveMacosSystemProxyJournalPath } from '@interceptor/platform-capabilities/system-proxy/macos/journal';
 import { getByAutomationId } from '../ui/automation';
 import { registerTlsCompatibilityDismissal, requireSharedCertificateReady } from '../ui/https-capture';
 import { waitForMacosStartupCertificateAuthorization } from '../ui/macos-certificate-authorization';
@@ -586,7 +586,7 @@ end tell
       const applicationPath = process.env.INTERCEPTOR_E2E_MACOS_APP_PATH ? resolveMacosApplicationPath() : null;
       const helperPath = applicationPath
         ? path.join(applicationPath, 'Contents/Resources/system-proxy/macos-proxy-helper')
-        : path.join(this.desktopDirectory, 'dist/system-proxy/macos-proxy-helper');
+        : path.join(this.desktopDirectory, '../../packages/platform-capabilities/dist/system-proxy/macos-proxy-helper');
       const { stdout } = await execFileAsync(helperPath, applicationPath
         ? ['deployment-status', applicationPath, String(process.getuid!())]
         : ['development-deployment-status', String(process.getuid!())], { encoding: 'utf8' });

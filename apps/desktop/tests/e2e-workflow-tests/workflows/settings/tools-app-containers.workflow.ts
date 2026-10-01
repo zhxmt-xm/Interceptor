@@ -24,7 +24,7 @@ interface SystemSnapshot {
 }
 
 async function readSystemSnapshot(desktopDirectory: string): Promise<SystemSnapshot> {
-  const { stdout } = await execFileAsync(path.join(desktopDirectory, 'dist', 'app-container', 'app-container-helper.exe'), ['list'], {
+  const { stdout } = await execFileAsync(path.join(desktopDirectory, '../../packages/platform-capabilities/dist', 'app-container', 'app-container-helper.exe'), ['list'], {
     encoding: 'utf8', windowsHide: true,
   });
   return JSON.parse(stdout) as SystemSnapshot;

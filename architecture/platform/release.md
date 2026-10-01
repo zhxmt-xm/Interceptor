@@ -26,8 +26,8 @@ external模块在顶层`require`可能阻塞packaged Main与CDP初始化，因�
 - **稳定身份/版本**：Desktop `0.1.0`，`com.zhxmt.interceptor` 作为 Bundle ID / AppUserModelId；Windows executable 为 `asInvoker`。MSI 固定 UpgradeCode，x64、per-user，不把 auto-update feature 耦合进安装器。
 - **Windows maker**：Forge WiX maker + 固定校验的 portable WiX 3.14.1；`make` 产出 MSI。可选 `WINDOWS_CERTIFICATE_FILE/PASSWORD` 同时签 app 与 MSI。生命周期 smoke 构建两版，验证 install → launch → major-upgrade → launch → uninstall。
 - **macOS maker**：无身份时使用ad-hoc签名并启用Hardened Runtime；`optionsForFile`仅对App bundles应用[本地entitlements](../../apps/desktop/assets/macos-local-app-entitlements.plist)，允许JIT和无Team ID内嵌库加载，不开放DYLD注入、get-task-allow或关闭执行页保护。原生helper不使用该override。有`APPLE_SIGN_IDENTITY`时使用默认Hardened Runtime、entitlements和身份校验；公证凭据齐全才提交并staple。两种构建共用Fuses、sandbox与CSP，不改Gatekeeper或授权数据库；ad-hoc不等于Developer ID或公证。
-- **原生helper**：Windows使用系统.NET Framework的`csc.exe`，macOS使用`xcrun swiftc`；Forge将`dist/system-proxy`复制到`resources/system-proxy`。macOS helper使用固定identifier、Hardened Runtime和独立空entitlements，不继承Electron的JIT/设备权限。构建按源码、工具链、签名参数和产物hash缓存，缓存不进入App资源。
-- **macOS首次启动组件**：helper随App交付，Main检查部署并按需请求本机管理员授权，仅安装helper、root保护配置和launchd，不移动App或要求独立`.pkg`。生产按App配套签名身份核准；开发/业务E2E使用独立UID授权，不绑定每次App构建。两个socket共用服务，helper不独立下载或升级。[部署规则](../../apps/desktop/src/main/platform-capabilities/README.md#首次启动部署)。
+- **原生helper**：`@interceptor/platform-capabilities`拥有原生源码和构建；Windows使用系统.NET Framework的`csc.exe`，macOS使用`xcrun swiftc`。Desktop调用package的`build:native`，Forge将`packages/platform-capabilities/dist`内的`system-proxy`、`app-container`、`client-app`复制到原有同名resources目录。macOS helper使用package内固定identifier、Hardened Runtime和独立空entitlements，不继承Electron的JIT/设备权限。构建按源码、工具链、签名参数和产物hash缓存，缓存不进入App资源。
+- **macOS首次启动组件**：helper随App交付，Main检查部署并按需请求本机管理员授权，仅安装helper、root保护配置和launchd，不移动App或要求独立`.pkg`。生产按App配套签名身份核准；开发/业务E2E使用独立UID授权，不绑定每次App构建。两个socket共用服务，helper不独立下载或升级。[部署规则](../../packages/platform-capabilities/README.md#首次启动部署)。
 - **完整资源校验**：常驻服务复用同一受保护helper二进制启动只读`verify-code-signature`子进程，包内无需新增可执行资源；校验仍包含签名身份、strict/nested/all-architectures及no-network，失败不能授权系统写入。该入口变化随原helper构建、签名、部署和产物验收一起交付。
 
 ## 4. 产物安全

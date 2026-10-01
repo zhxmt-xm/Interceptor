@@ -8,7 +8,7 @@ import tls from 'node:tls';
 import { isDeepStrictEqual, promisify } from 'node:util';
 
 import type { TestInfo } from '@playwright/test';
-import type { SystemProxyJournalRecord } from '../../../../src/main/platform-capabilities/system-proxy/interfaces';
+import type { SystemProxyJournalRecord } from '@interceptor/platform-capabilities/system-proxy/interfaces/index';
 import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES } from '../../../../src/shared/automation-ids';
 import { expect, type LocalElectronApplicationDriver, test as workflowTest } from '../../fixtures/runtime/local-electron-driver';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
@@ -28,7 +28,7 @@ const test = workflowTest.extend<{ externalUpstream: ExternalUpstream }>({
   externalUpstream: [async ({}, use) => {
     const helperPath = process.env.INTERCEPTOR_E2E_MACOS_APP_PATH
       ? path.join(process.env.INTERCEPTOR_E2E_MACOS_APP_PATH, 'Contents/Resources/system-proxy/macos-proxy-helper')
-      : path.resolve('dist/system-proxy/macos-proxy-helper');
+      : path.resolve('../../packages/platform-capabilities/dist/system-proxy/macos-proxy-helper');
     const effective = JSON.parse((await execute(helperPath, ['get-effective-proxies'], { encoding: 'utf8' })).stdout) as Record<string, unknown>;
     if (effective.HTTPEnable !== 1 || effective.HTTPSEnable !== 1
       || effective.HTTPProxy !== '127.0.0.1' || effective.HTTPSProxy !== effective.HTTPProxy

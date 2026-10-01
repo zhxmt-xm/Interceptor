@@ -86,7 +86,7 @@ macOS业务窗口由driver按项目配置准备：常规场景保持真实1600x9
 
 ### Windows 复验
 
-以下是Handover第8项的实机验收范围，macOS结果或native skip不能替代。Manager管理员MMC原生专项已由用户排除，Manager功能、逻辑与UI仍保留。路径相对[workflows/](workflows/)，`{a,b}`代表两份文件，详细步骤见[规格索引](docs/README.md)。
+以下是Handover第8项统一跟踪的Windows实机验收范围。按用户确认，Windows待验不作为其他item的提交blocker；原生/E2E的未执行、skip及失败仍分别保留，macOS结果不能替代，也不免除发布产物的门禁。Manager管理员MMC原生专项已由用户排除，Manager功能、逻辑与UI仍保留。路径相对[workflows/](workflows/)，`{a,b}`代表两份文件，详细步骤见[规格索引](docs/README.md)。
 
 | 分组 | 用例 | 重点 |
 | --- | --- | --- |
@@ -94,8 +94,10 @@ macOS业务窗口由driver按项目配置准备：常规场景保持真实1600x9
 | 代理/AppContainer | `settings/{tools-system-proxy,system-proxy-crash-recovery,app-container-bulk-access,tools-app-containers,app-container-ordering}.workflow.ts` | 单项/批量UAC、冲突/Quit立即拒绝、无重放、完整WinINet/exemption恢复 |
 | 协议/交互 | `capture/{tls-scenarios,http2-scenarios,grpc-scenarios,navigate-tls-passthrough}.workflow.ts`；`settings/{tls-compatibility,proxy-mitm-persistence}.workflow.ts`；`agent/body-messages.workflow.ts` | 首请求源站例外、Edge证书校验、Raw/Copy长度及hash、每代Page；取消背景host默认选择，Capture discovery精确17项 |
 | 导入/只读 | `composer/{collection-import,tools-transfer}.workflow.ts`；`rules/{import-tree,tools-import}.workflow.ts`；`settings/tools-readonly.workflow.ts` | 真实signal、原生/预览Cancel与Confirm、退出取消、重启零重放；六项无审批查询及CA不变 |
-| 构建/路径 | `build:native`及平台所属测试；[Client App](../../../proxy-core/src/proxy-core/client-app/tests/unit/service.test.ts)、[Transfer](../../../proxy-core/src/proxy-core/transfer/tests/unit/job-manager.test.ts)、[Windows文件窗口fixture](fixtures/ui/tests/unit/windows-file-dialog.test.ts) | 共用runner、8 MiB枚举、certutil/UAC、Windows路径解析；不使用macOS skip替代 |
-| 产物/全量 | 全部适用workflow及[packaged smoke](../packaged-smoke/startup.spec.ts) | ready门禁、精确Preload白名单、Core重启、截图矩阵、系统设置/进程恢复 |
+| 构建/路径（含原第11项） | `npm run build:native --workspace @interceptor/platform-capabilities`及该package所属测试；[Client App](../../../proxy-core/src/proxy-core/client-app/tests/unit/service.test.ts)、[Transfer](../../../proxy-core/src/proxy-core/transfer/tests/unit/job-manager.test.ts)、[Windows文件窗口fixture](fixtures/ui/tests/unit/windows-file-dialog.test.ts) | package开发资源与App同包路径、共用runner、8 MiB枚举、certutil/UAC、Windows路径解析、互斥拒绝与无重放；不使用macOS skip替代 |
+| 已登录浏览器（原第16项） | `capture/bilibili-login-probe.workflow.ts`；[登录回归规格](docs/capture.md#capture-bilibili-login-regression) | 真实Windows Edge Default profile及既有登录态、UIA完整页面刷新、Cookie名称与H2流量；不注入Cookie、不记录凭据、不使用macOS替代 |
+| 纯Auto Detect/WPAD | [上游契约](../../../../architecture/features/settings.md#34-上游代理链式转发)；真实网络人工验收，尚无可运行workflow | 无PAC URL及显式代理；接管前后实际出网路径、错误与完整退出恢复，不以手填PAC替代 |
+| 产物/全量 | 全部适用workflow、[packaged smoke](../packaged-smoke/startup.spec.ts)及[Windows安装器smoke](../installer/windows-installer-smoke.mjs) | ready门禁、精确Preload白名单、Core重启、截图矩阵、签名/资源、安装升级卸载、系统设置/进程恢复 |
 
 ## 目录结构
 

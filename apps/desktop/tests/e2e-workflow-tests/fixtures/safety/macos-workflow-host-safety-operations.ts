@@ -5,8 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { isDeepStrictEqual, promisify } from 'node:util';
 
-import type { MacosSystemProxySnapshot } from '../../../../src/main/platform-capabilities/system-proxy/interfaces';
-import { MacosSystemProxyJournal, resolveMacosSystemProxyJournalPath } from '../../../../src/main/platform-capabilities/system-proxy/macos/journal';
+import type { MacosSystemProxySnapshot } from '@interceptor/platform-capabilities/system-proxy/interfaces/index';
+import { MacosSystemProxyJournal, resolveMacosSystemProxyJournalPath } from '@interceptor/platform-capabilities/system-proxy/macos/journal';
 import type {
   WorkflowHostSafetyOperations,
   WorkflowProcessIdentity,
@@ -31,7 +31,7 @@ implements WorkflowHostSafetyOperations<MacosSystemProxySnapshot> {
   /** Bind recovery to the same helper used by the application under test. */
   constructor(
     desktopDirectory: string,
-    helperPath = path.join(desktopDirectory, 'dist/system-proxy/macos-proxy-helper'),
+    helperPath = path.join(desktopDirectory, '../../packages/platform-capabilities/dist/system-proxy/macos-proxy-helper'),
   ) {
     this.helperPath = helperPath;
   }

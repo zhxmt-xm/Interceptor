@@ -7,7 +7,7 @@
   "description": "Interceptor Electron desktop application",
   "main": ".vite/build/main.js",
   "scripts": {
-    "build:native": "node src/main/platform-capabilities/system-proxy/windows/build-helper.mjs && node src/main/platform-capabilities/app-container/windows/build-windows-helper.mjs && node src/main/platform-capabilities/helper/macos/native/build-helper.mjs && node src/main/platform-capabilities/client-app/windows/build-client-app-helper.mjs",
+    "build:native": "npm run build:native --workspace @interceptor/platform-capabilities",
     "e2e:prepare-local": "npm run build --workspace @interceptor/core-protocol && npm run build --workspace @interceptor/proxy-core && npm run build:native && node tests/e2e-workflow-tests/prepare-local.mjs",
     "package": "npm run build:native && electron-forge package",
     "make": "npm run build:native && electron-forge make",
@@ -31,6 +31,7 @@
     "@interceptor/agent-runtime": "0.0.0",
     "@interceptor/core-protocol": "0.0.0",
     "@interceptor/mcp-server": "0.0.0",
+    "@interceptor/platform-capabilities": "0.0.0",
     "@interceptor/tools": "0.0.0",
     "@modelcontextprotocol/node": "2.0.0",
     "@peculiar/x509": "2.0.0",

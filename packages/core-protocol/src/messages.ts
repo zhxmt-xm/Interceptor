@@ -9,6 +9,14 @@ import type {
 
 export const CORE_PROTOCOL_VERSION = 1 as const;
 
+export type CoreProcessState =
+  | 'stopped'
+  | 'starting'
+  | 'running'
+  | 'unresponsive'
+  | 'restarting'
+  | 'stopping';
+
 /** Renderer Inspector 单个正文预览的最大字节数；Core 仍完整保留正文。
  *  超出部分只影响预览，用户仍可经 Save body 导出完整内容。 */
 export const BODY_PREVIEW_MAX_BYTES = 2 * 1024 * 1024;
@@ -895,6 +903,21 @@ export interface DiagnosticIngestPayload {
   outcome?: DiagnosticOutcome;
   errorCode?: string;
   attributes?: Record<string, DiagnosticAttribute>;
+}
+
+export interface DiagnosticFields {
+  action?: string;
+  durationMs?: number;
+  outcome?: DiagnosticOutcome;
+  errorCode?: string;
+  attributes?: Record<string, DiagnosticAttribute>;
+}
+
+/** Structured records shared by the Main and Core diagnostics implementations. */
+export interface DiagnosticsRecorder {
+  info(phase: string, fields?: DiagnosticFields): void;
+  warn(phase: string, fields?: DiagnosticFields): void;
+  error(phase: string, fields?: DiagnosticFields): void;
 }
 
 export interface DiagnosticLogRecord {

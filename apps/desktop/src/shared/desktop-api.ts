@@ -12,6 +12,7 @@ import type {
   CollectionNode,
   ComposerTiming,
   ComposerTlsInfo,
+  CoreProcessState,
   TlsCertificate,
   TlsCompatibilityEvent,
   DiagnosticProcess,
@@ -42,6 +43,24 @@ import type {
   WebSocketFrameDirection,
   WebSocketFrameSummary,
 } from '@interceptor/core-protocol';
+import type {
+  AppContainerAccessSnapshot,
+  CertificateInfo,
+  ClientAppIcon,
+  SystemProxyStatus,
+  SystemProxyRestoreResult,
+} from '@interceptor/platform-capabilities';
+
+export type { CoreProcessState } from '@interceptor/core-protocol';
+export type {
+  AppContainerAccessInfo,
+  AppContainerAccessSnapshot,
+  CertificateInfo,
+  ClientAppIcon,
+  SystemProxyStatus,
+  SystemProxyRestoreResult,
+} from '@interceptor/platform-capabilities';
+
 import type {
   AgentModelSummary,
   AgentModelsSnapshot,
@@ -148,13 +167,6 @@ export interface McpDesktopStatus {
 /** App-level change Tool approval request; contains no credential. */
 export type McpApprovalRequest = McpServerApprovalRequest;
 
-export type CoreProcessState =
-  | 'stopped'
-  | 'starting'
-  | 'running'
-  | 'unresponsive'
-  | 'restarting'
-  | 'stopping';
 export interface CoreProcessStatus {
   state: CoreProcessState;
   pid: number | null;
@@ -213,44 +225,6 @@ export interface DiagnosticsQueryRequest {
 export interface CoreDiagnosticPage extends CoreDiagnosticSnapshot {
   nextCursor?: string;
   hasMore: boolean;
-}
-
-/** 当前用户系统代理的公开状态；不暴露 helper 路径或原始 snapshot。 */
-export interface SystemProxyStatus {
-  supported: boolean;
-  enabled: boolean;
-  owned: boolean;
-  ownershipLost: boolean;
-  proxyServer: string | null;
-  bypassList: string | null;
-  pacUrl: string | null;
-  autoDetect: boolean;
-  /** Core 实际在用的上游代理 host:port；null 表示直连源站。已去掉认证信息。 */
-  upstreamProxy: string | null;
-  /** 上游是否可达；false 表示已临时降级为直连，探活恢复后会自动升级。 */
-  upstreamReachable: boolean;
-}
-
-export interface SystemProxyRestoreResult {
-  restored: boolean;
-  reason?: 'not-owned' | 'externally-modified';
-  status: SystemProxyStatus;
-}
-
-/** Renderer-visible AppContainer identity; local paths and capability SIDs stay in Main. */
-export interface AppContainerAccessInfo {
-  appContainerSid: string;
-  packageFamilyName: string | null;
-  displayName: string | null;
-  description: string | null;
-  packageFullName: string | null;
-  exempt: boolean;
-}
-
-/** Current Windows AppContainer candidates and loopback access state. */
-export interface AppContainerAccessSnapshot {
-  supported: boolean;
-  containers: AppContainerAccessInfo[];
 }
 
 /** 诊断 JSONL 导出的可选筛选（按 level / outcome）。 */
@@ -370,21 +344,6 @@ export interface BodyExportRequest {
   suggestedName: string;
 }
 
-/** 面向 Renderer 的 Root CA 状态；只含公开元数据，绝不含私钥。 */
-export interface CertificateInfo {  /** CA 是否已生成。 */
-  present: boolean;
-  /** CA 是否已在当前用户信任库（信任后才启用 MITM）。 */
-  trusted: boolean;
-  /** 当前平台是否支持信任库安装（Windows/macOS）。 */
-  supported: boolean;  /** HTTPS 解密(MITM)开关；与 trusted 解耦，仅当 trusted && mitmEnabled 才实际解密。 */
-  mitmEnabled: boolean;  fingerprint: string | null;
-  subject: string | null;
-  createdAt: string | null;
-  expiresAt: string | null;
-  /** Root CA 证书 PEM 文件路径；未生成时为 null。仅公开证书路径，不含私钥。 */
-  path: string | null;
-}
-
 /** 规则集替换结果：成功返回新 revision；失败带原因（conflict 表示他处已改需重载）。 */
 export type RuleReplaceResult =
   | { ok: true; revision: number }
@@ -485,12 +444,6 @@ export interface TlsProbe {
   authorized: boolean;
   authorizationError?: string;
   certificates: TlsCertificate[];
-}
-
-/** 单个本机应用的图标推送；icon 为 PNG data URL，不可读时为 null。 */
-export interface ClientAppIcon {
-  clientAppId: string;
-  icon: string | null;
 }
 
 export type HarExportScope =

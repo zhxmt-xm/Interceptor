@@ -77,6 +77,8 @@ flowchart LR
   AGENT -->|"ordered persisted Session events"| MAIN
 ```
 
+`PlatformCapabilitiesService`来自内部`@interceptor/platform-capabilities`，系统代理、证书与helper业务仍在Main进程执行。Main只注入资源目录、safeStorage、typed `requestCore`与`getCoreProcessState`、DiagnosticsRecorder及通知；package不导入Main、Core应用入口或Electron。Core仅通过独立client-app子入口读取原生应用归属，缓存和Capture关联不搬迁。平台DTO在Desktop API中仅作type导出，Renderer不加载平台运行时代码。
+
 `AgentRuntime` 是 Main 内长期存活的 Agent domain 组合根，拥有 Provider registry、Credential、Session、Turn、
 History、Context、Usage、Streaming 请求与有序事件。Main 只注册可信 Renderer intent、注入 `userData`、
 `safeStorage`、`fetch`与动态`AgentToolSource`，并把已持久化的 Session event 广播给 Renderer。
@@ -159,7 +161,7 @@ macOS 使用`~/Library/Application Support/Interceptor Platform/system-proxy/jou
 通过Action Gate拒绝新IPC、排空已接受命令，再调用平台stop恢复代理。完整参与者、当场比较表、正常启动、崩溃重启、正常退出、启动失败与
 Core 故障时序见 [../features/settings.md](../features/settings.md) §3.2。
 
-macOS Main在窗口显示后调用`PlatformCapabilitiesService.prepare()`，内部顺序执行helper准备、代理恢复和共享CA准备；按真实`app.isPackaged`选择生产或开发socket。首次部署/新增授权由同包helper请求系统确认，只部署helper、root配置和launchd；App不搬迁。开发按核准UID复用，生产保持App身份/资源/运行时检查，不失败回退。证书导入/删除走常驻服务；trust/untrust直接启动同一helper的普通用户前台入口，由系统确认，不存在后台trust命令、规则修改或授权规则journal。CA私钥不交给helper。协议见[平台模块](../../apps/desktop/src/main/platform-capabilities/README.md)。
+macOS Main在窗口显示后调用`PlatformCapabilitiesService.prepare()`，内部顺序执行helper准备、代理恢复和共享CA准备；按真实`app.isPackaged`选择生产或开发socket。首次部署/新增授权由同包helper请求系统确认，只部署helper、root配置和launchd；App不搬迁。开发按核准UID复用，生产保持App身份/资源/运行时检查，不失败回退。证书导入/删除走常驻服务；trust/untrust直接启动同一helper的普通用户前台入口，由系统确认，不存在后台trust命令、规则修改或授权规则journal。CA私钥不交给helper。协议见[平台模块](../../packages/platform-capabilities/README.md)。
 
 生产完整资源校验使用同一受保护helper的短生命周期只读`verify-code-signature`子进程，避免常驻服务内已观测到的Security扫描/内存回收尾延迟。常驻服务仍核验socket调用者和运行时保护，等待子进程完整验证成功后才执行系统写入并记录结束；子进程失败拒绝原请求。未减少strict/nested/all-architectures检查，未缓存信任或延长30秒期限，该CLI不开放给socket调用方。
 
@@ -173,7 +175,7 @@ journal、测试进程树和8888 listener。宿主恢复检查与功能行为验
 - profile外：OS代理配置、系统公开CA和系统信任；macOS安装的helper/launchd/授权配置；两端随App交付的native资源。Windows恢复journal另在用户级固定目录。
 - 两端profile内：Workspace规则/集合/TLS名单/MITM意图，Agent/MCP配置与凭据，Tool授权、Renderer偏好和诊断数据。Capture属于当前Core代际，不跨profile共享。
 - CA材料保存在用户级共享目录，Main先显示启动页，再由平台prepare完成原生组件/代理恢复、材料校验与按需授信；Core重启只同步材料/MITM意图，普通退出不删除。
-- 两端具体路径、能力和原生差异见[平台归属](../../apps/desktop/src/main/platform-capabilities/README.md#业务边界)。
+- 两端具体路径、能力和原生差异见[平台归属](../../packages/platform-capabilities/README.md#业务边界)。
 
 ## 2. 两条独立通道
 

@@ -66,7 +66,7 @@ sequenceDiagram
 
 ### 4.1 DiagnosticsRecorder
 
-各组件通过注入的 `DiagnosticsRecorder` 记录关键节点，`CoreDiagnostics` 是唯一实现：
+各组件通过注入的`DiagnosticsRecorder`记录关键节点，契约位于`@interceptor/core-protocol`。Core由`CoreDiagnostics`实现，运行于Main的平台package由`MainDiagnostics`实现，不反向导入Main类：
 
 ```ts
 interface DiagnosticsRecorder {

@@ -22,7 +22,7 @@ export function readAppContainerSystemState(desktopDirectory: string): Promise<A
 
 async function readWindowsAppContainerSystemState(desktopDirectory: string): Promise<AppContainerSystemState> {
   try {
-    const { stdout } = await execFileAsync(path.join(desktopDirectory, 'dist/app-container/app-container-helper.exe'), ['list'], {
+    const { stdout } = await execFileAsync(path.join(desktopDirectory, '../../packages/platform-capabilities/dist/app-container/app-container-helper.exe'), ['list'], {
       encoding: 'utf8', windowsHide: true,
     });
     return { ...JSON.parse(stdout), supported: true } as AppContainerSystemState;

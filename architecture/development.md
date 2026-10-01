@@ -38,7 +38,8 @@ npm install
 
 | 部分 | 位置 | 职责 |
 | --- | --- | --- |
-| Desktop | `apps/desktop/` | Electron Main、Preload、React Renderer、原生 helper 与桌面测试 |
+| Desktop | `apps/desktop/` | Electron Main、Preload、React Renderer、App打包与桌面测试 |
+| Platform Capabilities | `packages/platform-capabilities/` | 系统代理、证书、AppContainer、客户端应用原生查询与同包helper |
 | Proxy Core | `apps/proxy-core/` | 代理、录制、规则、断点、正文与存储，运行在独立 UtilityProcess |
 | Core Protocol | `packages/core-protocol/` | Main/Core 的类型契约与消息校验 |
 | Agent Runtime | `packages/agent-runtime/` | 内置 Agent 的会话与 Tool Calling 执行 |

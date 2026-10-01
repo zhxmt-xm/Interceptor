@@ -1205,7 +1205,7 @@ Capture 在创建 Exchange 时同时记录**发起这条请求的本机应用**�
 | 进程 → 应用 | 见 8.2 | 容器进程需沿进程树上溯 |
 | 应用 → 图标 | `IShellItemImageFactory` | 与资源管理器同源。**不能**用 `SHGetFileInfo` / `app.getFileIcon`：MSIX/UWP 应用的 exe 只是 stub，图标在包的 Assets 里，后者只能拿到通用图标 |
 
-全部经`client-app-helper`（Windows C#单文件，属于`apps/desktop/src/main/platform-capabilities/client-app/`）完成，Main在fork Core时以`--client-app-helper`注入路径。其他平台`ClientAppService.supported`为false，列表不显示图标。只有loopback客户端才反查；远程设备不存在对应的本机进程。
+全部经`client-app-helper`（Windows C#单文件，属于`packages/platform-capabilities/src/client-app/`）完成，Main在fork Core时以`--client-app-helper`注入路径。Core从`@interceptor/platform-capabilities/client-app`使用原生查询和TSV解析，缓存、Capture关联及增量事件继续由Core的ClientAppService负责。其他平台`ClientAppService.supported`为false，列表不显示图标。只有loopback客户端才反查；远程设备不存在对应的本机进程。
 
 helper四个子命令：`<proxyPort>`输出TSV `sourcePort/PID/displayName/identity`（捕获路径用），`--icon <path>`输出base64 PNG，`--resolve <pid>`与`--apps`用于排查。Main通过平台对象的Client App模块复用同一个exe读取并缓存图标。
 

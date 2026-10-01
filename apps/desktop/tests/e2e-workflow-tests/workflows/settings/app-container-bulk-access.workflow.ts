@@ -62,7 +62,7 @@ async function readSystemSnapshot(
 ): Promise<AppContainerHelperSnapshot> {
   const helperPath = path.join(
     desktopDirectory,
-    'dist',
+    '../../packages/platform-capabilities/dist',
     'app-container',
     'app-container-helper.exe',
   );

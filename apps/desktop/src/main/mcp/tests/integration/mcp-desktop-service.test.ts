@@ -12,7 +12,7 @@ import { buildInterceptorToolSettingsGroups } from '@interceptor/tools';
 import type { ToolCapabilitySettingsSnapshot } from '../../../../shared/desktop-api';
 import { CoreRuntime } from '../../../core/core-runtime';
 import type { CoreRequestOptions } from '../../../interfaces';
-import type { SecureStore } from '../../../platform-capabilities/interfaces';
+import type { SecureStore } from '@interceptor/platform-capabilities/interfaces/index';
 import { ToolCapabilitySettingsService } from '../../../tool-capabilities/entry';
 import { McpDesktopService } from '../../entry';
 import { McpSettingsStore } from '../../internal/settings-store';
