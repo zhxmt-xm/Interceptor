@@ -29,6 +29,7 @@ import { DiagnosticsService } from './diagnostics/entry';
 import type { DiagnosticsPage } from './diagnostics/interfaces';
 import { GrpcService } from './grpc/entry';
 import { HarService } from './har/entry';
+import { Http2ClientService } from './http2-client/entry';
 import { ArchiveService } from './archive/entry';
 import { TransferService } from './transfer/entry';
 import { ProxyService } from './proxy/entry';
@@ -94,6 +95,8 @@ export class CoreApplication implements CoreRpcHost {
   private readonly breakpointQueue: BreakpointQueue | null;
   private readonly ruleService: RuleService | null;
   private readonly composerService = new ComposerService();
+  /** Keep this Core generation's outgoing TLS/H2 responses intact through transport EOF. */
+  private readonly http2ClientService: Http2ClientService;
   /** 按需执行只握手 TLS 探测。 */
   private readonly tlsProbe = new TlsProbeService();
   /** 把客户端源端口反查成发起流量的本机应用。 */
@@ -190,6 +193,7 @@ export class CoreApplication implements CoreRpcHost {
     this.coreDiagnostics = new CoreDiagnostics(
       this.diagnosticsService ?? undefined,
     );
+    this.http2ClientService = new Http2ClientService(this.coreDiagnostics);
     this.proxyService?.attachDiagnostics(this.coreDiagnostics);
     this.captureService?.attachDiagnostics(this.coreDiagnostics);
     this.ruleService?.attachDiagnostics(this.coreDiagnostics);
@@ -212,6 +216,7 @@ export class CoreApplication implements CoreRpcHost {
       return;
     }
     this.started = true;
+    this.http2ClientService.start();
 
     const startedAt = this.timestamp();
     this.parentPort.on('message', (event) => this.handleParentMessage(event));
@@ -1196,6 +1201,7 @@ export class CoreApplication implements CoreRpcHost {
     await Promise.allSettled([
       this.transferService.cancelAll(),
       this.proxyService?.stop(),
+      this.http2ClientService.stop(),
     ]);
     await Promise.allSettled([
       this.captureService?.dispose(),
@@ -1222,6 +1228,7 @@ export class CoreApplication implements CoreRpcHost {
     this.clearHeartbeat();
     this.clearEventFlush();
     this.breakpointQueue?.closeAll();
+    void this.http2ClientService.stop();
     process.off('SIGINT', this.handleSignal);
     process.off('SIGTERM', this.handleSignal);
     setImmediate(() => process.exit(code));

@@ -25,6 +25,20 @@ export async function createRequestBreakpointRule(
   name: string,
   method?: string,
 ): Promise<string> {
+  return createHttpBreakpointRule(page, name, '127.0.0.1', 'request', method);
+}
+
+export async function createResponseBreakpointRule(page: Page, name: string, pathMatch: string): Promise<string> {
+  return createHttpBreakpointRule(page, name, pathMatch, 'response');
+}
+
+async function createHttpBreakpointRule(
+  page: Page,
+  name: string,
+  matchValue: string,
+  phase: 'request' | 'response',
+  method?: string,
+): Promise<string> {
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.rules).click();
   await getByAutomationId(page, AUTOMATION_IDS.rules.rootMenuSurface).click({ button: 'right' });
   await getByAutomationId(page, AUTOMATION_IDS.rules.create).click();
@@ -34,10 +48,15 @@ export async function createRequestBreakpointRule(
   const ruleId = await dynamicId(ruleRow, AUTOMATION_ID_PREFIXES.ruleRow);
 
   await getByAutomationId(page, AUTOMATION_IDS.rules.editorName).fill(name);
+  if (phase === 'response') {
+    await getByAutomationId(page, AutomationIdFactory.ruleMatcherField(ruleId, 0, 'remove')).click();
+    await getByAutomationId(page, AUTOMATION_IDS.rules.addCondition).click();
+    await getByAutomationId(page, AUTOMATION_IDS.rules.conditionOption.path).click();
+  }
   await getByAutomationId(
     page,
     AutomationIdFactory.ruleMatcherField(ruleId, 0, 'value'),
-  ).fill('127.0.0.1');
+  ).fill(matchValue);
   if (method) {
     await getByAutomationId(page, AUTOMATION_IDS.rules.addCondition).click();
     await getByAutomationId(page, AUTOMATION_IDS.rules.conditionOption.method).click();
@@ -52,6 +71,10 @@ export async function createRequestBreakpointRule(
   ).click();
   await getByAutomationId(page, AUTOMATION_IDS.rules.addAction).click();
   await getByAutomationId(page, AUTOMATION_IDS.rules.actionOption.breakpoint).click();
+  if (phase === 'response') {
+    await getByAutomationId(page, AutomationIdFactory.ruleActionField(ruleId, 0, 'phase')).click();
+    await getByAutomationId(page, AutomationIdFactory.ruleActionField(ruleId, 0, 'phase-option.response')).click();
+  }
   await getByAutomationId(page, AutomationIdFactory.ruleToggle(ruleId)).click();
   await getByAutomationId(page, AUTOMATION_IDS.rules.apply).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.rules.apply)).toBeDisabled();

@@ -9,11 +9,12 @@ import path from 'node:path';
 import tls from 'node:tls';
 import zlib from 'node:zlib';
 import { createHash, randomBytes } from 'node:crypto';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { generateCACertificate } from 'mockttp';
 
 import { CaptureService } from '../../../capture/entry';
+import { CoreApplication, type CoreLifecycleMessage, type CoreParentPort } from '../../../core-application';
 import { initializeRuntime } from '../../../constants';
 import { RuleService } from '../../../rules/entry';
 import { BreakpointQueue } from '../../../rules/internal/breakpoint-queue';
@@ -380,6 +381,156 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     clientSession = null;
     temporaryDirectory = '';
   });
+
+  it.each(['trailers', 'data-end', 'large', 'incomplete'] as const)(
+    'finishes paused upstream TLS/H2 responses through Core lifecycle: %s', async (ending) => {
+      temporaryDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'interceptor-h2-core-close-'));
+      initializeRuntime([`--data-dir=${temporaryDirectory}`]);
+      const activeCaptureService = new CaptureService();
+      captureService = activeCaptureService;
+      await activeCaptureService.initialize();
+      const breakpointQueue = new BreakpointQueue();
+      const ruleService = new RuleService(breakpointQueue);
+      const captureEventQueue = new CaptureEventQueue();
+      const requestPath = `/core-origin-goaway/${ending}`;
+      const nextPath = `/core-after-goaway/${ending}`;
+      const bodySize = ending === 'large' ? 4 * 1024 * 1024 : 384 * 1024;
+      const prefixSize = 256 * 1024;
+      const body = Buffer.concat([Buffer.alloc(prefixSize, 0x61), Buffer.alloc(bodySize - prefixSize, 0x62)]);
+      const expectedHash = createHash('sha256').update(body).digest('hex');
+      const ca = await generateCACertificate();
+      const originCertificate = await generateCACertificate();
+      const server = http2.createSecureServer({ cert: originCertificate.cert, key: originCertificate.key });
+      const sourceSessions = new Set<http2.ServerHttp2Session>();
+      const sourceSessionsByPath = new Map<string, http2.Http2Session>();
+      const requestCounts = new Map<string, number>();
+      let sourceStream: http2.ServerHttp2Stream | undefined;
+      let sourceSocket: tls.TLSSocket | undefined;
+      let sourceClosed = false;
+      const sourceErrors: string[] = [];
+      server.on('secureConnection', (socket) => { sourceSocket = socket; });
+      server.on('session', (session) => {
+        sourceSessions.add(session);
+        session.on('error', (error) => sourceErrors.push(error.message));
+      });
+      server.on('stream', (stream, headers) => {
+        const currentPath = String(headers[':path']);
+        requestCounts.set(currentPath, (requestCounts.get(currentPath) ?? 0) + 1);
+        sourceSessionsByPath.set(currentPath, stream.session!);
+        stream.on('error', (error) => sourceErrors.push(error.message));
+        stream.resume();
+        if (currentPath !== requestPath) {
+          stream.respond({ ':status': 200 });
+          stream.end('new-session');
+          return;
+        }
+        sourceStream = stream;
+        stream.on('close', () => { sourceClosed = true; });
+        const withTrailers = ending !== 'data-end' && ending !== 'incomplete';
+        if (withTrailers) stream.on('wantTrailers', () => stream.sendTrailers({ 'x-complete': expectedHash }));
+        stream.respond({ ':status': 200, 'content-type': 'application/octet-stream', 'content-length': body.length },
+          { waitForTrailers: withTrailers });
+        stream.write(body.subarray(0, prefixSize));
+      });
+      server.listen(0, '127.0.0.1');
+      await once(server, 'listening');
+      origin = {
+        port: (server.address() as AddressInfo).port,
+        close: async () => {
+          for (const session of sourceSessions) session.destroy();
+          await new Promise<void>((resolve) => server.close(() => resolve()));
+        },
+      };
+      ruleService.setRuleSet({ revision: 1, nodes: [{
+        kind: 'rule', id: 'pause-origin-response', name: 'Pause origin response', enabled: true, priority: 100,
+        matchers: [{ type: 'path', mode: 'exact', value: requestPath }],
+        actions: [{ type: 'breakpoint', phase: 'response' }],
+      }] });
+      const activeProxyService = new ProxyService(activeCaptureService, captureEventQueue, ruleService);
+      proxyService = activeProxyService;
+      await decryptWithCertificate(activeProxyService, ca, ['localhost', '127.0.0.1']);
+      const lifecycleMessages: CoreLifecycleMessage[] = [];
+      const parentPort: CoreParentPort = {
+        on: () => undefined,
+        postMessage: (message) => { lifecycleMessages.push(message); },
+      };
+      const exitProcess = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+      const coreApplication = new CoreApplication(parentPort, {
+        captureService: activeCaptureService, proxyService: activeProxyService,
+        captureEventQueue, breakpointQueue, ruleService,
+      });
+      coreApplication.start();
+      try {
+        const address = await activeProxyService.start({ port: 0 });
+        clientSession = await connectH2ViaProxy(address.port, 'localhost', origin.port, ca.cert);
+        const stream = clientSession.request({ ':method': 'POST', ':path': requestPath });
+        const received = { bytes: 0, ended: false, closed: false, hash: createHash('sha256'),
+          trailers: {} as http2.IncomingHttpHeaders, errors: [] as string[] };
+        stream.on('data', (chunk: Buffer) => { received.bytes += chunk.byteLength; received.hash.update(chunk); });
+        stream.on('trailers', (trailers) => { received.trailers = trailers; });
+        stream.on('end', () => { received.ended = true; });
+        stream.on('close', () => { received.closed = true; });
+        stream.on('error', (error) => received.errors.push(error.message));
+        stream.end('single-post');
+        await expect.poll(() => breakpointQueue.size).toBe(1);
+        expect(received.bytes).toBe(0);
+        const originalSession = sourceSessionsByPath.get(requestPath)!;
+        originalSession.close();
+        if (ending === 'incomplete') {
+          expect(sourceSocket).toBeDefined();
+          const finished = once(sourceSocket!, 'finish');
+          sourceSocket!.end();
+          await finished;
+        } else {
+          sourceStream!.end(body.subarray(prefixSize));
+          await expect.poll(() => sourceClosed).toBe(true);
+        }
+        const pending = breakpointQueue.list()[0]!;
+        expect(breakpointQueue.resolve(pending.id, 'continue')).toBe('continued');
+        if (ending === 'incomplete') {
+          await expect.poll(() => received.closed).toBe(true);
+          expect(received.ended).toBe(false);
+          expect(received.errors.length).toBeGreaterThan(0);
+        } else {
+          await expect.poll(() => received.bytes).toBe(body.length);
+          await expect.poll(() => received.ended).toBe(true);
+          expect(received.hash.digest('hex')).toBe(expectedHash);
+          expect(received.errors).toEqual([]);
+          if (ending !== 'data-end') expect(received.trailers['x-complete']).toBe(expectedHash);
+        }
+        await expect.poll(async () => {
+          const page = await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} });
+          return page.items.find((exchange) => exchange.path === requestPath)?.state;
+        }).toBe(ending === 'incomplete' ? 'aborted' : 'completed');
+        const captured = await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} });
+        const capturedId = captured.items.find((exchange) => exchange.path === requestPath)!.id;
+        const detail = await activeCaptureService.getExchangeDetail(capturedId);
+        if (ending !== 'incomplete') {
+          expect(detail?.responseBody).toMatchObject({ encodedSize: body.length, bodyHash: expectedHash, truncated: false });
+          await expect(activeCaptureService.readExchangeBodyRange(capturedId, 'response', body.length - 32, 32))
+            .resolves.toEqual(body.subarray(-32));
+        }
+        const next = clientSession.request({ ':method': 'POST', ':path': nextPath });
+        const nextEnded = once(next, 'end');
+        next.resume();
+        next.end('new-post');
+        await nextEnded;
+        expect(sourceSessionsByPath.get(nextPath) === originalSession).toBe(false);
+        expect([...requestCounts.entries()]).toEqual([[requestPath, 1], [nextPath, 1]]);
+        if (ending !== 'incomplete') expect(sourceErrors).toEqual([]);
+      } finally {
+        breakpointQueue.closeAll();
+        clientSession?.destroy();
+        clientSession = null;
+        coreApplication.stop();
+        await expect.poll(() => exitProcess.mock.calls.length).toBe(1);
+        expect(lifecycleMessages.at(-1)?.type).toBe('stopped');
+        exitProcess.mockRestore();
+        proxyService = null;
+        captureService = null;
+      }
+    }, 20_000,
+  );
 
   it.each(['complete', 'clear', 'cancel', 'settings', 'goaway'] as const)('streams concurrent H2 ranges through response rules and %s', async (ending) => {
     temporaryDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'interceptor-h2-ranges-'));

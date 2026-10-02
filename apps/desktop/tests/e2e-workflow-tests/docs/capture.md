@@ -18,6 +18,20 @@
 4. 保存`https-setup-position.json`逐帧原值与`https-setup-position.png`，真实点击Cancel，确认弹窗关闭。
 5. 保存trace/metadata，通过产品Close退出；fixture验证Main/Core/Worker全退、8888释放、完整代理与共享CA/系统信任恢复，再删除本workflow的profile。
 
+<a id="capture-http2-origin-goaway"></a>
+## `capture.http2-origin-goaway`
+
+**状态**：macOS passed；Windows实机归第8项。
+
+1. 独立profile、trace和宿主基线启动真实Electron/Core/8888，复用共享受信任CA；经Certificates UI只添加测试localhost例外并开启MITM，经Capture UI开启Recording。
+2. 通过Rules UI创建只匹配本轮自产路径的响应断点并Apply。使用TrafficLab的真实TLS/H2 origin，POST正文固定且只发送一次；响应为4MiB、Content-Length精确匹配，并带自产校验trailer。Core integration另覆盖384KiB边界。
+3. 等待真实Capture暂停行与Continue unmodified按钮。源站在该响应未放行时发送正常GOAWAY并结束全部正文/trailer；不通过Preload或Store解除断点。
+4. 真实点击Continue unmodified。客户端须收到全部字节、独立SHA-256、trailer及正常end；Capture同一行须保留h2/200、完整正文和trailer，进度不再显示进行中。
+5. 在同一下游连接上发送另一个自产路径的新请求；源站须使用新的上游session，两个POST各只出现一次，不重放原请求、不换下游连接掩盖旧请求失败。
+6. 保存wire字节/hash、源站次数/session、Capture身份、截图、trace及每代metadata；真实删除本轮规则、关闭MITM并移除localhost例外，产品Close后验证Main/Core/Worker全退、8888与完整代理/CA/Root恢复，再删除profile。
+
+此流程的前置Red必须是正文、trailer或终态不满足，不以构建、选择器、授权或清理失败代替。DATA.END_STREAM、真正提前EOF、并发和生命周期边界由Core integration交叉覆盖；Windows实机归第8项。
+
 <a id="capture-body-fullscreen"></a>
 ## `capture.body.fullscreen`
 

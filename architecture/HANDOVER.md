@@ -1,8 +1,8 @@
 # Interceptor Handover
 
-> Tracked commit: `57198b74`
+> Tracked commit: `f4eb97ec`
 > Branch: `main`
-> 最后更新：2026-10-01
+> 最后更新：2026-10-02
 
 ## Task List
 
@@ -12,6 +12,7 @@
   - 提交边界：用户于2026-10-01明确要求所有Windows实机验收统一归本项，不再作为其他item的提交blocker；其他item完成自身代码和可执行验收后可提交。Windows未执行、skip或失败仍如实保留，不改写为passed，也不免除发布产物本身的门禁。
   - 平台package迁移补验（原第11项）：在Windows从`@interceptor/platform-capabilities`构建WinINet、AppContainer和client-app helper，验证新开发资源路径与原随包路径、certutil/UAC、journal、互斥拒绝及无重放；执行所属native测试、Main/Core调用方、相关真实workflow及Windows package/audit/smoke。
   - 共享改动补验（原第16项）：Main/Preload/Renderer启动、每代Page handler、HTTPS fixture、公共HTTP转发、Rules/Composer原生导入取消与调用方均按Windows矩阵复验。已登录Edge的Bilibili完整刷新流程使用真实Windows UIA及现有登录状态，禁止注入Cookie或用macOS结果代替。
+  - H2补验（原第14项）：在Windows执行源站正常GOAWAY响应断点、4 MiB正文/hash/trailer、新上游session与无重放，以及H2/gRPC/TLS、Core退出和最终产物恢复；macOS的公开API修复与验收已完成，不代替Windows实机结果。
   - 外部网络与产物：Windows纯Auto Detect/WPAD的流量路径及退出恢复归本项，没有PAC URL或显式代理的真实环境才算有效；第12项继续跟踪macOS兼容性。Windows最终安装产物的启动/签名/资源/安装升级卸载与恢复在实际产物就绪后验收，不以本机macOS包替代。
   - 已有/缺口：macOS结果已保存，Windows实机部分未执行。用户只排除了Manager管理员MMC原生打开/关闭专项，Manager功能、逻辑及UI没有排除。
   - 下一步：具备Windows环境并恢复验收授权后，按矩阵逐组保存真实UI、协议流量、trace及进程/系统设置恢复证据，再更新对应状态。
@@ -39,12 +40,6 @@
   - 范围：版本/tag、CI构建、Windows签名与MSI、macOS Developer ID/公证与DMG/ZIP、artifact audit/产物smoke及Release assets；诊断文件不进入发布资产。
   - 已有/缺口：Forge makers、签名配置和发布CI已有实现；当前macOS本地包及smoke通过不等于Developer ID、公证或首个真实tag发布通过。
   - 下一步：具备签名/公证凭据并确认发布tag后，按[发布说明](platform/release.md)验收产物与安装/退出，再发布；发布CI凭据与第6项产品GitHub登录删除相互独立。
-
-- **14. H2源站正常GOAWAY · blocked（第三方生命周期修复待授权）**
-  - 目标：源站发送`GOAWAY(NO_ERROR)`后，旧session的在途stream完整收尾，新请求改用新上游连接，Capture仍保留正确正文、trailer与终态。
-  - 范围：源站正常GOAWAY，不是已验证的客户端GOAWAY或非零错误GOAWAY；新连接成功不能掩盖旧请求丢尾段，也不能重放旧请求。
-  - 当前缺陷：旧stream正文被截断且缺少end/trailer，后续新session正常；诊断指向暂停缓冲未排空就销毁，见[已知限制](features/capture.md#normal-goaway-gap)。
-  - 下一步：取得第三方修改授权后，在原有[h2.test.ts](../apps/proxy-core/src/proxy-core/proxy/tests/integration/h2.test.ts)补正式回归，并验证完整字节、trailer、Capture终态和无重放；不假补EOF或改全量缓冲。
 
 - **15. H2事件诊断 · 待实现/待验证**
   - 目标：在Diagnostics中看到真实H2协议事件并关联到请求，能判断哪一侧、哪个session/stream触发SETTINGS、RST_STREAM或GOAWAY；不是仅增加一条错误文案。
@@ -114,6 +109,32 @@ INTERCEPTOR_E2E_MACOS_APP_PATH="$PWD/apps/desktop/out/Interceptor-darwin-x64/Int
 
 ```sh
 npm exec --workspace @interceptor/desktop playwright test -- --config tests/e2e-workflow-tests/playwright.config.ts workflows/composer/collection-import.workflow.ts workflows/composer/tools-transfer.workflow.ts workflows/rules/import-tree.workflow.ts workflows/rules/tools-import.workflow.ts --project macos
+```
+
+## 第14项验证与恢复
+
+第14项已完成代码与本机可执行验收。[Http2ClientService](../apps/proxy-core/src/proxy-core/http2-client/README.md)
+由CoreApplication唯一启停，通过Node公开channel、`allowHalfOpen`和TLS/stream事件保留响应缓冲，
+覆盖Proxy与Composer；不消费或复制完整正文、不重放请求、不改依赖或内部方法。真正提前EOF以
+`ERR_H2_UPSTREAM_INCOMPLETE`失败，Core退出时注销订阅、取消检查并等待session关闭。
+Windows实机部分按用户授权归第8项，不伪称已通过。功能边界与复现解释见
+[Capture](features/capture.md#normal-goaway-gap)，单一[改动报告](../commit-changes/202610020950_core_http2_graceful-response-drain.html)只描述change。
+
+| 范围 | 结果与证据 |
+| --- | --- |
+| 根因与边界 | `normal-goaway-probe.ts`、`item14-normal-goaway-matrix.json`与`item14-public-observation.json`确认已收到393216字节及END_STREAM trailer，销毁时327680字节未排空，客户端仅65536。Node24.21及Electron43.1/Node24.18均复现；无观测/只读观测结果一致，纯明文H2对照正常。普通不暂停、无GOAWAY暂停对照通过，384 KiB真实UI也曾通过，不推断每次GOAWAY必丢或真实站点发生率 |
+| 正式前置Red | `item14-integration-red-final.json`为trailer、DATA.END、4 MiB、提前EOF四项Red；`item14-lifecycle-red-final.json`为无headers/部分正文EOF、并发和Core代际9项Red/7项对照Green。`item14-e2e-large-baseline/`保存真实UI仅65536/4194304字节、无end的Red及正常退出证据；Host matcher、Apply、锁屏或夹具类型失败不算产品Red |
+| Core最终Green | `item14-final-63-tests.{json,log}`：H2、Composer、CoreApplication与TLS/H2生命周期63 passed、0 failed、0 skipped，含32 MiB正文/128 KiB窗口真实背压、取消、无headers EOF和跨代注销；Core/Desktop typecheck通过。早期socket proxy解绑访问的17个未处理错误保留，已预先保存公开解绑方法修正，非零退出不算Green |
+| 本地真实E2E | `item14-e2e-green-resumed/`与`item14-e2e-related{,-resumed}/`最终覆盖正常GOAWAY、H2 Range/SETTINGS/双向错误GOAWAY、gRPC、TLS及断点退出5条；Main/Preload/Renderer/Core、真实origin/storage和退出恢复均经过实际流程 |
+| 最终产物 | `item14-package.log`、`item14-package-audit.log`通过；`item14-packaged-smoke.{json,log}`为1 passed、0 skipped/errors，包含Core真实重启、安全/资源、既有16张截图与恢复。`item14-packaged-h2/`在最终签名App上再次通过同一4 MiB正常GOAWAY流程；客户端全量/hash/trailer/end、新上游session及两个POST各一次，未降低门禁 |
+| 历史环境失败与恢复 | `item14-e2e-green.log`为第9项持有journal时的启动前拒绝，本项未启动App。首次相关H2在锁屏时退出failed，后续TLS未运行；解锁后通过Main78437真实原生Quit恢复，5个记录PID/完整代理/journal复核见`item14-h2-unlock-recovery.json`，原failed metadata不改写；H2/TLS随后独立复跑Green |
+| 最终清理与提交边界 | `item14-final-verification.json`汇总6次最终workflow Green（5本地+1签名App）、25个历史/本轮记录PID全退，8888可bind、完整代理匹配此前不变基线、journal不存在；各workflow及smoke完成CA/Root恢复检查。dependency manifests与patches未改；不混入第9项或第15项调查。报告以既有Edge离线检查1280/390px，无外链资源、折叠或横向溢出；没有产品UI设计变更，parity不适用 |
+
+复验同一产物不重新prepare；产物或相关代码变化后重新执行受影响的构建与门禁：
+
+```sh
+npm run test --workspace @interceptor/proxy-core -- src/proxy-core/http2-client/tests/integration/transport-lifecycle.test.ts src/proxy-core/proxy/tests/integration/h2.test.ts src/proxy-core/composer/tests/integration/send.test.ts src/proxy-core/tests/unit/core-application.test.ts --no-file-parallelism
+INTERCEPTOR_E2E_MACOS_APP_PATH="$PWD/apps/desktop/out/Interceptor-darwin-x64/Interceptor.app" npm exec --workspace @interceptor/desktop playwright test -- --config tests/e2e-workflow-tests/playwright.config.ts workflows/capture/http2-origin-goaway.workflow.ts --project macos
 ```
 
 ## 复验入口

@@ -239,11 +239,33 @@ stateDiagram-v2
 - SETTINGS以真实ACK确认生效；session的`closed`与`destroyed`不同，正常GOAWAY后的在途stream仍需独立收尾，不能仅凭session关闭标记判定正文完成。
 
 <a id="normal-goaway-gap"></a>
-##### 源站正常GOAWAY的实现缺口
+##### 源站正常GOAWAY与TLS EOF
 
-源站正常GOAWAY后，旧响应可能仅到达262144/393216字节，没有end/trailer，Capture停在`response-streaming`；源站stream正常finish/close且rstCode=0。后续请求转入新上游session并完整捕获，不能据此把旧请求记为成功。
+修复前的记录中，源站正常GOAWAY后旧响应曾仅到达262144/393216字节，没有end/trailer，Capture停在`response-streaming`；源站stream正常finish/close且rstCode=0。后续请求转入新上游session并完整捕获，不能据此把旧请求记为成功。
 
-诊断指向暂停的上游stream尚有缓冲时被Node的`socketOnClose → closeSession`销毁，`readableEnded=false`；http2-wrapper等不到end，Mockttp无法转发trailer。修复需要第三方生命周期修改授权；不得在close时假补EOF、强制全量缓冲或把Capture改成completed。
+根因是暂停的上游stream尚有缓冲时被Node的`socketOnClose → closeSession`销毁，`readableEnded=false`；
+http2-wrapper等不到end，Mockttp无法转发trailer。公开只读观测确认393216字节及带END_STREAM的trailer已到达
+Core，销毁时仍留327680字节未被消费者读完。修复不需要修改第三方，也不得在close时假补EOF、强制全量缓冲
+或把Capture改成completed。
+
+修复前的可控边界：不暂停的普通流式响应可以完整通过正常GOAWAY；“一次普通请求成功”不能覆盖暂停缓冲。
+真实response breakpoint挂起headers后，384 KiB Core样本与4 MiB真实UI样本均曾只到65536字节、无end/trailer，
+Capture仍为`response-streaming`；下一请求使用不同上游session成功，两次POST在源站各出现一次。
+无GOAWAY的相同暂停对照完整通过；384 KiB真实UI样本也曾通过，触发与缓冲和时序有关，不代表每次GOAWAY必失败。
+
+`CoreApplication`唯一拥有[Http2ClientService](../../apps/proxy-core/src/proxy-core/http2-client/README.md)，
+通过Node公开的`http2.client.stream.created`、`session.socket.allowHalfOpen`和生命周期事件管理本进程的
+Proxy/Composer出站TLS/H2；明文H2、入站session和TLS探测保持原路径，不修改依赖、重放请求或全量复制正文。
+收到TLS EOF后拒绝新stream，保留已经收到但暂停消费的缓冲；不立即把`closed=false`判为截断。
+消费者排空后仍未正常结束，或EOF发生在最终响应头之前，以`ERR_H2_UPSTREAM_INCOMPLETE`显式失败。
+完整响应须保持字节/hash、trailer、completed及新请求使用新连接；真实截断不得长期streaming或伪装成功。
+Core停止时注销订阅、取消排空检查并等待session关闭，不影响其他进程或留下跨代监听。
+
+验收范围：Core回归覆盖trailer、DATA.END_STREAM、无响应头/部分正文提前EOF、取消、并发、
+32 MiB正文与128 KiB窗口背压、Composer及Core代际释放。macOS真实UI与最终签名App均验证同一暂停响应
+完整收到4 MiB/hash/trailer/end、后续请求使用新上游session且两个POST各只出现一次，Capture保留原身份与完整正文。
+H2/gRPC/TLS及断点退出也取得真实Green；Windows实机独立归第8项，不由macOS结果代替。
+正式Red、Green、最终产物与历史失败恢复证据见[Handover](../HANDOVER.md#第14项验证与恢复)。
 
 #### H2错误GOAWAY
 

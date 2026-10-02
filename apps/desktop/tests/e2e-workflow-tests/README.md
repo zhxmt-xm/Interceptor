@@ -92,7 +92,7 @@ macOS业务窗口由driver按项目配置准备：常规场景保持真实1600x9
 | --- | --- | --- |
 | CA/启动/View | `settings/{certificate-startup,tools-certificates,tools-tls}.workflow.ts` | 首窗先于UAC、取消、跨profile/safeStorage复用、坏材料保留、卸载/删除及真实View关窗；就绪120秒、证书操作30秒、普通操作15秒，先终态后清理 |
 | 代理/AppContainer | `settings/{tools-system-proxy,system-proxy-crash-recovery,app-container-bulk-access,tools-app-containers,app-container-ordering}.workflow.ts` | 单项/批量UAC、冲突/Quit立即拒绝、无重放、完整WinINet/exemption恢复 |
-| 协议/交互 | `capture/{tls-scenarios,http2-scenarios,grpc-scenarios,navigate-tls-passthrough}.workflow.ts`；`settings/{tls-compatibility,proxy-mitm-persistence}.workflow.ts`；`agent/body-messages.workflow.ts` | 首请求源站例外、Edge证书校验、Raw/Copy长度及hash、每代Page；取消背景host默认选择，Capture discovery精确17项 |
+| 协议/交互 | `capture/{tls-scenarios,http2-scenarios,http2-origin-goaway,grpc-scenarios,navigate-tls-passthrough}.workflow.ts`；`settings/{tls-compatibility,proxy-mitm-persistence}.workflow.ts`；`agent/body-messages.workflow.ts` | 首请求源站例外、暂停响应正常GOAWAY完整排空、Edge证书校验、Raw/Copy长度及hash、每代Page；取消背景host默认选择，Capture discovery精确17项 |
 | 导入/只读 | `composer/{collection-import,tools-transfer}.workflow.ts`；`rules/{import-tree,tools-import}.workflow.ts`；`settings/tools-readonly.workflow.ts` | 真实signal、原生/预览Cancel与Confirm、退出取消、重启零重放；六项无审批查询及CA不变 |
 | 构建/路径（含原第11项） | `npm run build:native --workspace @interceptor/platform-capabilities`及该package所属测试；[Client App](../../../proxy-core/src/proxy-core/client-app/tests/unit/service.test.ts)、[Transfer](../../../proxy-core/src/proxy-core/transfer/tests/unit/job-manager.test.ts)、[Windows文件窗口fixture](fixtures/ui/tests/unit/windows-file-dialog.test.ts) | package开发资源与App同包路径、共用runner、8 MiB枚举、certutil/UAC、Windows路径解析、互斥拒绝与无重放；不使用macOS skip替代 |
 | 已登录浏览器（原第16项） | `capture/bilibili-login-probe.workflow.ts`；[登录回归规格](docs/capture.md#capture-bilibili-login-regression) | 真实Windows Edge Default profile及既有登录态、UIA完整页面刷新、Cookie名称与H2流量；不注入Cookie、不记录凭据、不使用macOS替代 |
@@ -223,6 +223,7 @@ diagnostics.row.<traceKey>
 | `capture.playground-traffic` | Playground UI自产H1与WebSocket流量进入真实Capture | os-side-effect | passed |
 | `capture.scenarios.http` | H1 JSON/上传/流式/early response/中断及413完整响应收尾，不改Mockttp | os-side-effect | passed |
 | `capture.scenarios.http2` | H2 Headers/trailer/正文、Range及双向错误GOAWAY与CA恢复 | privileged UI | passed |
+| `capture.http2-origin-goaway` | 源站正常GOAWAY后放行4 MiB响应，完整hash/trailer/end、新上游session与无重放 | privileged UI | macOS passed；Windows待实机 |
 | `capture.scenarios.bodies` | 十一种正文的实际模式、Raw保真及安全展示 | os-side-effect | passed |
 | `capture.scenarios.body-media` | PNG/二进制/音视频原生导出 | native-ui | passed |
 | `capture.scenarios.encoding` | 三种正常压缩和损坏gzip/图片 | os-side-effect | passed |

@@ -19,6 +19,12 @@
 
 调用方提供`AbortSignal`时，HTTP/1.1主动销毁`ClientRequest`，HTTP/2主动销毁stream与session，并返回稳定的
 `Composer request was cancelled.`失败结果；不能只忽略晚到响应而让网络请求继续运行。
+
+运行于Core时，出站TLS/H2使用`CoreApplication`统一拥有的
+[Http2ClientService](../http2-client/README.md)。正常响应排空后收尾；TLS在响应完成前结束时以
+`ERR_H2_UPSTREAM_INCOMPLETE`进入既有失败结果，不把缺响应头或缺END_STREAM当成成功。
+取消、显式timeout与每次请求独立session的行为不变，Composer不重复注册进程级观察者。
+
 ## 依赖
 
 无跨模块依赖。Composer 请求集合的持久化在 [`workspace/`](../workspace/README.md)（`collection_tree` 文档表）。

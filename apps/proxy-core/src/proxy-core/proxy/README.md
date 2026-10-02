@@ -27,6 +27,13 @@ Capture **只订阅 initiated / body-data 类事件，绝不订阅 completed 的
 - Main负责接管前配置和生命周期下发；Core只按当前配置转发，旧代际缓存随连接关闭清理。
 - 源站证书例外改变时通过Mockttp公开`setRequestRules()`整体替换HTTP转发规则，使未预热的首笔请求也使用最新例外；保留Windows单规则/macOS分协议规则及头部流式hooks，不重启listener或替换WebSocket规则。
 
+## 出站 TLS/H2 生命周期
+
+`CoreApplication`统一拥有[Http2ClientService](../http2-client/README.md)，通过Node公开API保留TLS EOF后
+尚未被Mockttp消费者排空的H2响应。源站正常GOAWAY不丢失暂停正文或trailer；旧stream不重放，新请求使用
+新上游session。真正提前EOF按显式stream错误进入现有Mockttp/Capture中断路径，不伪造end或completed。
+Proxy不重复注册进程订阅，不额外缓存响应，也不修改第三方转发方法。
+
 ## ExchangeTracker 的顺序前提
 
 Mockttp 的 `request-initiated`、`*-body-data`、`*-trailers` 都经 `setImmediate` 异步发出，而规则钩子走独立 Promise 链，**两者顺序不保证**。因此所有入口都是幂等 upsert；规则结果若先于 `request-initiated` 到达，先存进孤儿表，待 Exchange 建立后合并。
