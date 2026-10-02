@@ -2,7 +2,7 @@ import { once } from 'node:events';
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { mkdir, mkdtemp, open, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, open, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import { createRequire } from 'node:module';
 import os from 'node:os';
@@ -57,6 +57,10 @@ interface LocalWorkflowFixtures {
   allowSharedCertificateInitialization: boolean;
   dismissTlsCompatibilityDialogs: boolean;
   waitForStartupReady: boolean;
+  /** Existing test-owned profile for an interactive workflow's next phase. */
+  desktopAppUserDataDirectory: string | undefined;
+  /** Retain a successfully prepared profile while the external Host is configured. */
+  preserveDesktopAppUserData: boolean;
   /** Test-owned unpackaged Electron application and its real Renderer page. */
   desktopApp: LocalElectronApplicationDriver;
   trafficLab: TrafficLab;
@@ -1301,7 +1305,20 @@ export const test = base.extend<LocalWorkflowFixtures>({
   allowSharedCertificateInitialization: [false, { option: true }],
   dismissTlsCompatibilityDialogs: [true, { option: true }],
   waitForStartupReady: [true, { option: true }],
-  desktopApp: [async ({ allowSharedCertificateInitialization, dismissTlsCompatibilityDialogs, waitForStartupReady }, use, testInfo) => {
+  desktopAppUserDataDirectory: [undefined, { option: true }],
+  preserveDesktopAppUserData: [false, { option: true }],
+  desktopApp: [async ({
+    allowSharedCertificateInitialization, dismissTlsCompatibilityDialogs, waitForStartupReady,
+    desktopAppUserDataDirectory, preserveDesktopAppUserData,
+  }, use, testInfo) => {
+    let userDataDirectory: string | undefined;
+    if (desktopAppUserDataDirectory !== undefined) {
+      const root = await realpath(path.join(os.tmpdir(), 'interceptor-e2e-workflow'));
+      userDataDirectory = await realpath(desktopAppUserDataDirectory);
+      if (path.dirname(userDataDirectory) !== root || !(await stat(userDataDirectory)).isDirectory()) {
+        throw new Error('An interactive workflow can only resume an existing profile directly inside the E2E temporary root.');
+      }
+    }
     if (!allowSharedCertificateInitialization) await requireSharedCertificateReady();
     const workflowHostSafetyGuard = await createWorkflowHostSafetyGuard();
     if (workflowHostSafetyGuard) {
@@ -1314,7 +1331,9 @@ export const test = base.extend<LocalWorkflowFixtures>({
     let hostSafetyError: unknown;
     dismissTlsCompatibilityByTestInfo.set(testInfo, dismissTlsCompatibilityDialogs);
     try {
-      driver = await LocalElectronApplicationDriver.launch(testInfo);
+      driver = await LocalElectronApplicationDriver.launch(testInfo, {
+        ...(userDataDirectory === undefined ? {} : { userDataDirectory }),
+      });
       if (waitForStartupReady) await driver.waitUntilReady();
       await use(driver);
       if (process.platform !== 'darwin' || testInfo.status !== 'timedOut') {
@@ -1355,7 +1374,7 @@ export const test = base.extend<LocalWorkflowFixtures>({
         }
       }
       if (driver) {
-        const preserveUserData = shouldPreserveWorkflowProfile({
+        const preserveUserData = preserveDesktopAppUserData || shouldPreserveWorkflowProfile({
           testStatus: testInfo.status,
           preserveOnFailure: driver.shouldPreserveUserDataOnFailure(),
           workflowError,

@@ -96,6 +96,14 @@ export function McpServerSettings(): React.JSX.Element {
           />
         </header>
 
+        <p
+          className={styles.mcpProtocolSupport}
+          data-automation-id={AUTOMATION_IDS.mcp.server.protocolSupport}
+          data-parity="mcp-protocol-support"
+        >
+          {t('settings.mcp.protocolSupport')}
+        </p>
+
         <div className={styles.mcpEndpointRow}>
           <div
             className={styles.mcpEndpointCopy}

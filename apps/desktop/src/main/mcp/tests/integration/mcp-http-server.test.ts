@@ -12,6 +12,8 @@ import {
 
 import { McpHttpServer } from '../../internal/http-server';
 
+const MCP_PROTOCOL_VERSIONS = ['2025-06-18', '2025-11-25', '2026-07-28'] as const;
+
 /** Minimal MCP host for transport integration tests. */
 class FakeMcpHostBridge implements McpHostBridge {
   /** Commands reached through an authenticated Tool call. */
@@ -42,7 +44,7 @@ class FakeMcpHostBridge implements McpHostBridge {
   record(_event: McpAuditEvent): void {}
 }
 
-describe('McpHttpServer', () => {
+describe.each(MCP_PROTOCOL_VERSIONS)('McpHttpServer (%s)', (protocolVersion) => {
   /** Servers and Clients closed after every test. */
   const servers: McpHttpServer[] = [];
   const clients: Client[] = [];
@@ -54,20 +56,45 @@ describe('McpHttpServer', () => {
 
   it('binds a random loopback port and serves the official MCP Client', async () => {
     const fixture = await startServer(servers);
+    let toolResponseContentType: string | null = null;
     const client = new Client(
       { name: 'http-test', version: '1.0.0' },
-      { versionNegotiation: { mode: { pin: '2026-07-28' } } },
+      {
+        supportedProtocolVersions: [protocolVersion],
+        versionNegotiation: {
+          mode: protocolVersion === '2026-07-28' ? { pin: protocolVersion } : 'legacy',
+        },
+      },
     );
     clients.push(client);
     await client.connect(new StreamableHTTPClientTransport(new URL(fixture.endpoint), {
+      fetch: async (input, init) => {
+        const response = await fetch(input, init);
+        if (typeof init?.body === 'string') {
+          const request: unknown = JSON.parse(init.body);
+          if (request !== null
+            && typeof request === 'object'
+            && 'method' in request
+            && request.method === 'tools/call') {
+            toolResponseContentType = response.headers.get('content-type')?.split(';')[0] ?? null;
+          }
+        }
+        return response;
+      },
       requestInit: { headers: { Authorization: `Bearer ${fixture.token}` } },
     }));
 
     const tools = await client.listTools();
 
+    expect(client.getNegotiatedProtocolVersion()).toBe(protocolVersion);
     expect(new URL(fixture.endpoint).hostname).toBe('127.0.0.1');
     expect(new URL(fixture.endpoint).port).not.toBe('8888');
     expect(tools.tools.map((tool) => tool.name)).toContain('capture_get_proxy_status');
+    const result = await client.callTool({ name: 'capture_get_proxy_status', arguments: {} });
+    expect(result.isError).not.toBe(true);
+    expect(toolResponseContentType).toBe(
+      protocolVersion === '2026-07-28' ? 'application/json' : 'text/event-stream',
+    );
   });
 
   it('serves browser CORS while authenticating every actual MCP request', async () => {
@@ -114,7 +141,12 @@ describe('McpHttpServer', () => {
     });
     const browserClient = new Client(
       { name: 'browser-playground', version: '1.0.0' },
-      { versionNegotiation: { mode: { pin: '2026-07-28' } } },
+      {
+        supportedProtocolVersions: [protocolVersion],
+        versionNegotiation: {
+          mode: protocolVersion === '2026-07-28' ? { pin: protocolVersion } : 'legacy',
+        },
+      },
     );
     clients.push(browserClient);
     await browserClient.connect(new StreamableHTTPClientTransport(new URL(fixture.endpoint), {

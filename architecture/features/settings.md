@@ -666,6 +666,9 @@ Remove与新Chat默认Model；Provider registry和API Key由Main内`AgentRuntime
     默认全部开启，关闭后只停止向对应入口注册；
 - `Execution mode`：Agent按Session、MCP按Client选择`ask`或`auto`，默认`ask`。query Tool开启后直接执行，
     change Tool才读取该模式。
+- `MCP Server`标题与Endpoint之间提供只读版本说明：支持`2026-07-28`并兼容`2025-11-25`、
+    `2025-06-18`，由Client与SDK自动处理协议，不提供手动版本开关。Server关闭、运行和端口冲突时均显示；
+    文案按当前语言显示，窄窗口自然换行，不改变Client凭据或Ask/Auto。
 
 页面只显示可执行registry中的Tool。完整名称与契约见
 [tool-capabilities.md](tool-capabilities.md)；Provider/Session/Tool Loop所有权见[agent.md](agent.md)，MCP接入见

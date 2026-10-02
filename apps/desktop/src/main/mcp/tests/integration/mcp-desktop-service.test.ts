@@ -17,6 +17,9 @@ import { ToolCapabilitySettingsService } from '../../../tool-capabilities/entry'
 import { McpDesktopService } from '../../entry';
 import { McpSettingsStore } from '../../internal/settings-store';
 
+const MCP_PROTOCOL_VERSIONS = ['2025-06-18', '2025-11-25', '2026-07-28'] as const;
+type McpProtocolVersion = typeof MCP_PROTOCOL_VERSIONS[number];
+
 /** Reversible encryption fake for the persisted Client record. */
 class FakeSecureStore implements SecureStore {
   /** Secure storage remains available for these integration tests. */
@@ -106,7 +109,7 @@ class FakeToolCapabilitySettingsService extends ToolCapabilitySettingsService {
   }
 }
 
-describe('McpDesktopService', () => {
+describe.each(MCP_PROTOCOL_VERSIONS)('McpDesktopService (%s)', (protocolVersion) => {
   /** Temporary profiles removed after each test. */
   const roots: string[] = [];
   /** Services stopped after each test. */
@@ -174,7 +177,7 @@ describe('McpDesktopService', () => {
     const client = await fixture.mcpDesktopService.createClient('VS Code');
     await fixture.mcpDesktopService.copyClientConfiguration(client.clientId);
     const firstConfiguration = readVsCodeConfiguration(fixture.copiedText());
-    const firstClient = await connectClient(firstConfiguration);
+    const firstClient = await connectClient(firstConfiguration, protocolVersion);
     clients.push(firstClient);
 
     expect(fixture.mcpDesktopService.status()).toMatchObject({
@@ -186,7 +189,7 @@ describe('McpDesktopService', () => {
       .toContain('capture_get_proxy_status');
 
     fixture.toolCapabilitySettingsService.mcpDisabledToolNames = ['capture_get_proxy_status'];
-    const secondClient = await connectClient(firstConfiguration);
+    const secondClient = await connectClient(firstConfiguration, protocolVersion);
     clients.push(secondClient);
     expect((await secondClient.listTools()).tools.map((tool) => tool.name))
       .not.toContain('capture_get_proxy_status');
@@ -197,7 +200,7 @@ describe('McpDesktopService', () => {
     await fixture.mcpDesktopService.enableServer();
     const registration = await fixture.mcpDesktopService.createClient('Settings queries');
     await fixture.mcpDesktopService.copyClientConfiguration(registration.clientId);
-    const client = await connectClient(readVsCodeConfiguration(fixture.copiedText()));
+    const client = await connectClient(readVsCodeConfiguration(fixture.copiedText()), protocolVersion);
     clients.push(client);
     const names = [
       'settings_get_core_process_status', 'settings_get_system_proxy_status',
@@ -225,7 +228,7 @@ describe('McpDesktopService', () => {
     await fixture.mcpDesktopService.enableServer();
     const registration = await fixture.mcpDesktopService.createClient('VS Code');
     await fixture.mcpDesktopService.copyClientConfiguration(registration.clientId);
-    const client = await connectClient(readVsCodeConfiguration(fixture.copiedText()));
+    const client = await connectClient(readVsCodeConfiguration(fixture.copiedText()), protocolVersion);
     clients.push(client);
 
     const deniedCall = client.callTool({ name: 'capture_stop_recording', arguments: {} });
@@ -267,6 +270,50 @@ describe('McpDesktopService', () => {
     expect(fixture.closedApprovalIds).toEqual([approval.approvalId]);
   });
 
+  it('closes an in-flight approval when the HTTP Client disconnects', async () => {
+    const fixture = await createFixture(roots, services);
+    await fixture.mcpDesktopService.enableServer();
+    const registration = await fixture.mcpDesktopService.createClient('Disconnect test');
+    await fixture.mcpDesktopService.copyClientConfiguration(registration.clientId);
+    const client = await connectClient(readVsCodeConfiguration(fixture.copiedText()), protocolVersion);
+    clients.push(client);
+
+    const call = client.callTool({ name: 'capture_stop_recording', arguments: {} });
+    const cancelledCall = expect(call).rejects.toThrow();
+    await vi.waitFor(() => expect(fixture.approvals).toHaveLength(1));
+    const approvalId = fixture.approvals[0]!.approvalId;
+
+    await client.close();
+    await cancelledCall;
+    await vi.waitFor(() => expect(fixture.closedApprovalIds).toContain(approvalId));
+    expect(fixture.coreRuntime.commands.map((command) => command.type))
+      .not.toContain('proxy.setRecording');
+  });
+
+  it('closes an in-flight approval when the Client cancels its Tool call', async () => {
+    const fixture = await createFixture(roots, services);
+    await fixture.mcpDesktopService.enableServer();
+    const registration = await fixture.mcpDesktopService.createClient('Call cancellation test');
+    await fixture.mcpDesktopService.copyClientConfiguration(registration.clientId);
+    const client = await connectClient(readVsCodeConfiguration(fixture.copiedText()), protocolVersion);
+    clients.push(client);
+    const abortController = new AbortController();
+
+    const call = client.callTool(
+      { name: 'capture_stop_recording', arguments: {} },
+      { signal: abortController.signal },
+    );
+    const cancelledCall = expect(call).rejects.toThrow();
+    await vi.waitFor(() => expect(fixture.approvals).toHaveLength(1));
+    const approvalId = fixture.approvals[0]!.approvalId;
+
+    abortController.abort(new Error('The Client cancelled this Tool call.'));
+    await cancelledCall;
+    await vi.waitFor(() => expect(fixture.closedApprovalIds).toContain(approvalId));
+    expect(fixture.coreRuntime.commands.map((command) => command.type))
+      .not.toContain('proxy.setRecording');
+  });
+
   it('reuses the same URL and token after app restart until the user regenerates it', async () => {
     const first = await createFixture(roots, services);
     await first.mcpDesktopService.enableServer();
@@ -281,7 +328,7 @@ describe('McpDesktopService', () => {
       state: 'running',
       endpoint: original.url,
     });
-    const restoredClient = await connectClient(original);
+    const restoredClient = await connectClient(original, protocolVersion);
     clients.push(restoredClient);
     await expect(restoredClient.listTools()).resolves.toMatchObject({ tools: expect.any(Array) });
 
@@ -301,7 +348,7 @@ describe('McpDesktopService', () => {
     const regenerated = readVsCodeConfiguration(second.copiedText());
     expect(regenerated.url).toBe(original.url);
     expect(regenerated.token).not.toBe(original.token);
-    const regeneratedClient = await connectClient(regenerated);
+    const regeneratedClient = await connectClient(regenerated, protocolVersion);
     clients.push(regeneratedClient);
     await expect(regeneratedClient.listTools()).resolves.toMatchObject({ tools: expect.any(Array) });
   });
@@ -427,10 +474,18 @@ function readVsCodeConfiguration(value: string): { token: string; url: string } 
   };
 }
 
-async function connectClient(configuration: { token: string; url: string }): Promise<Client> {
+async function connectClient(
+  configuration: { token: string; url: string },
+  protocolVersion: McpProtocolVersion,
+): Promise<Client> {
   const client = new Client(
     { name: 'desktop-service-test', version: '1.0.0' },
-    { versionNegotiation: { mode: { pin: '2026-07-28' } } },
+    {
+      supportedProtocolVersions: [protocolVersion],
+      versionNegotiation: {
+        mode: protocolVersion === '2026-07-28' ? { pin: protocolVersion } : 'legacy',
+      },
+    },
   );
   await client.connect(new StreamableHTTPClientTransport(new URL(configuration.url), {
     requestInit: { headers: { Authorization: `Bearer ${configuration.token}` } },

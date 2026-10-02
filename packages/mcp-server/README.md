@@ -41,10 +41,17 @@ VS Code / Claude Desktop / Cursor
 McpServer → @interceptor/tools → CoreRuntime → Proxy Core
 ```
 
-一次Client发起的MCP call由一个HTTP`POST`承载。立即完成时，该POST直接返回JSON；产生中间消息时，同一个
-HTTP response使用SSE并在最终结果后结束。首期采用官方SDK v2的`createMcpHandler`按请求无状态模型，固定
-当前`2026-07-28`协议并显式配置`legacy: 'reject'`。该选项只拒绝旧请求，不提供旧协议执行、迁移或降级路径；
-Main也不自行维护`Mcp-Session-Id`。
+一次Client发起的MCP call由一个HTTP`POST`承载。2026协议立即完成时，该POST直接返回JSON；产生中间消息时，同一个
+HTTP response使用SSE并在最终结果后结束。采用官方SDK v2的`createMcpHandler`按请求无状态模型，显式配置
+`legacy: 'stateless'`。`2026-07-28`继续使用discovery/请求envelope与JSON/SSE自动选择；`2025-06-18`、
+`2025-11-25`通过同一factory完成initialize和Tool调用，正常结果由SDK的旧协议路径返回SSE。
+三版共用认证、Tool、审批和取消；不增加版本选择器、自写协议适配、旧式HTTP+SSE endpoint或
+`Mcp-Session-Id`状态。普通结果采用SSE不代表产生了中间进度消息。
+
+2025的`notifications/cancelled`经SDK公开通知handler接入现有业务AbortSignal；在途调用以认证Client、
+协议版本和精确JSON-RPC ID区分，数字ID与字符串ID不同。同一Client/协议的重复活跃ID显式拒绝并审计，
+不覆盖原调用；各Host使用独立Client凭据。HTTP响应取消关联保持到正文结束/失败/取消，避免SSE headers
+先返回导致凭据撤销或断连失效。没有手写协议解析、全量响应缓存或第三方补丁。
 
 选择该方案的原因不是HTTP性能更高，而是它对本产品拥有更短的责任链：真正的Tool状态位于已运行的Desktop
 Main和Proxy Core中，Host即使能启动stdio Server，也无法在Desktop未运行时提供有效Tool。Main直接监听

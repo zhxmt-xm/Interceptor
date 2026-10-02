@@ -9,6 +9,14 @@
 | `safety/` | 宿主进程代际、系统代理与 journal 恢复保护 | [workflow-host-safety-guard.ts](safety/workflow-host-safety-guard.ts) |
 | `agent/` | 可控的 OpenAI-compatible 流式回复、Tool Call 与模型请求证据 | [openai-compatible-lab.ts](agent/openai-compatible-lab.ts) |
 
+MCP的确定性workflow与当前开发Host workflow复用[UI助手](ui/mcp-workflow.ts)完成Settings导航、
+产品Copy config及恢复录制；不复制业务调用或读取加密Store。`current-host.workflow.ts`只准备真实App、
+流量与UI断言，MCP调用由当前Agent的真实Host发起，不添加模型配置或另建Runtime。
+该流程的`prepare`正常退出App并保留隔离profile；`verify`通过fixture的`desktopAppUserDataDirectory`
+恢复相同Client和endpoint。fixture只接受E2E临时根目录的直接子目录，普通workflow默认仍新建并清理
+profile。`preserveDesktopAppUserData`仅保留已准备的数据，不保留进程或放宽宿主恢复；验收失败使用既有
+profile保留策略，完整成功后删除测试profile。准备通过不等于Host调用通过。
+
 已有辅助单测随所属目录放在 `tests/unit/`，验证驱动自身的安全和状态判断，不替代真实 Electron workflow。
 
 ## 平台分派

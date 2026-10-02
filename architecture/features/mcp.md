@@ -295,17 +295,20 @@ flowchart LR
 
 ### 6.2 单一endpoint与消息映射
 
-所有MCP HTTP消息使用同一个`/mcp` endpoint。固定MCP `2026-07-28`协议，以`server/discover`
-开始，不使用`initialize`或`Mcp-Session-Id`。官方SDK handler显式配置`legacy: 'reject'`；这个选项只负责
-拒绝旧请求，不提供任何旧协议执行路径、迁移或降级。
+所有MCP HTTP消息使用同一个`/mcp` endpoint。官方SDK handler显式配置`legacy: 'stateless'`：
+`2026-07-28`使用`server/discover`与请求envelope，`2025-06-18`和`2025-11-25`使用`initialize`。
+由Client与SDK处理协议，不增加全局或per-client版本开关；三版复用同一factory与业务链路，不自写降级
+或迁移层，不维护`Mcp-Session-Id`，也不增加stdio或旧式HTTP+SSE endpoint。
 
 | HTTP交互 | MCP语义 | 响应 |
 | --- | --- | --- |
-| `POST /mcp`携带协议request | `server/discover`、`tools/list`、`tools/call`等 | 立即完成时返回`application/json`；产生中间消息时由SDK返回`text/event-stream` |
+| `POST /mcp`携带2026协议request | `server/discover`、`tools/list`、`tools/call`等 | 立即完成时返回`application/json`；产生中间消息时由SDK返回`text/event-stream` |
+| `POST /mcp`携带2025协议request | `initialize`、`tools/list`、`tools/call`等 | 由SDK stateless Streamable HTTP路径返回`text/event-stream` |
 | `POST /mcp`携带JSON-RPC notification/response | Client通知或对Server request的响应 | `202 Accepted`，无业务响应体 |
 
-一次客户端发起的MCP call由一个`POST`承载。普通结果在同一HTTP response中一次性返回JSON；流式结果
-仍是同一个response，只是服务器暂不结束它并按SSE格式分段写入，最终结果发送后结束。SSE期间若Client还要
+一次客户端发起的MCP call由一个`POST`承载。2026普通结果在同一HTTP response中一次性返回JSON；2025
+普通结果及2026流式结果仍是同一个response，只是服务器按SSE格式分段写入，最终结果发送后结束。
+普通结果采用SSE不代表发生了中间进度消息。SSE期间若Client还要
 发送消息，会再发一个`POST`，不会在SSE下行响应里反向写入。
 
 `createMcpHandler`每个请求创建一个轻量SDK Server实例，Tool registry、CoreRuntime与Client配置仍由Main长期
@@ -511,7 +514,7 @@ flowchart TD
 - token使用`crypto.timingSafeEqual`比较，经safeStorage加密持久化，不进入Renderer、日志、Diagnostics或工作区。
 - VS Code 与 Claude Desktop 同时接入，看到的是**同一份**抓包数据。
 - app重启后endpoint与token保持有效，同一配置无需修改即可继续工作；app未运行或MCP未开启时只表现为连接失败。
-- 官方Client固定当前`2026-07-28`协议连接，旧协议请求被拒绝，普通call返回JSON。
+- 官方Client分别验证`2025-06-18`、`2025-11-25`和`2026-07-28`；2025普通call返回SSE，2026普通call返回JSON。
 - 需要中间消息时，同一个`POST`返回SSE。
 - ask问询弹层可Allow/Deny；Host断开、超时或Server关闭会移除旧Modal；auto不创建问询。
 - 撤销或重新生成某个Client凭据后，其旧token立即失效且该Client在途调用取消，其他Client不受影响。
@@ -530,6 +533,47 @@ flowchart TD
 <a id="mcp-host-protocol-history"></a>
 ## 10. 兼容性与验收限制
 
-- 产品只提供`2026-07-28`协议；使用`2025-11-25`等旧协议的Host不能连接，不增加legacy、stdio或旧Tool alias回退。
+- 产品通过官方SDK的stateless入口处理三版协议；不另建stdio、旧式HTTP+SSE或旧Tool alias回退。
+  协议支持与具体Host验收分开记录，不因官方Client通过就宣称所有Host可用。
+- 2025的单次Tool取消通过官方SDK公开`setNotificationHandler('notifications/cancelled', ...)`解析通知，
+  再按经Bearer认证的Client、SDK校验的HTTP协议版本和原始JSON-RPC ID关联在途Tool。数字与字符串ID
+  不混淆，不同Client/协议的调用相互隔离；未知或已结束ID不影响其他调用。同一Client、同一协议重复使用
+  活跃ID会返回明确协议错误并审计，不覆盖原调用。每个独立Host应使用自己通过App UI创建的Client凭据，
+  不共享一份凭据和同协议的request ID空间。
+- 单次取消只转发AbortSignal至现有Main/Core业务；HTTP断开、凭据撤销及App关闭仍通过同一链路收尾。
+  不新增Session、协议解析器或对Client整连接的强制关闭。响应的取消关联保持到流结束/取消，不在SSE
+  headers返回时提前移除，也不为了收尾缓冲全量响应。
 - 官方Client和真实VS Code/Copilot、Claude Desktop是不同验收对象。Client显示名为`VS Code E2E`不能证明真实Host兼容；Host更新后必须重新核对。
-- 双Host同时读取同一Capture、正式Tool中间进度SSE仍待真实Host验收；普通JSON响应或Client测试不能替代。当前宿主条件与待办由[Handover](../HANDOVER.md)跟踪。
+- 当前VS Code Copilot CLI/SDK Host已通过官方AHP配置、注册/重连与公开`mcp://`的`serverTools`通道验收。
+  由当前Agent选取实际目录中的Tool，调用仍经真实Host SDK、Bearer与同一Main/Core链路；App的
+  Deny/Allow/Auto、自产正文、真实POST和退出有独立断言。不另起Agent或把直连产品的官方Client冒充Host。
+  此结论不包含聊天工具搜索热刷新、Host自身审批UI、其他Host，也不表示全部69项Tool都在Host逐项验收。
+- 双Host同时读取同一Capture、正式Tool中间进度SSE仍待真实Host验收；普通JSON响应或Client测试不能替代。
+  当前开发Agent的识别、配置、Tool清单与恢复步骤见[真实Host workflow](../../apps/desktop/tests/e2e-workflow-tests/docs/mcp.md#当前开发agent的真实host验收)；
+  当前宿主条件与待办由[Handover](../HANDOVER.md)跟踪。
+
+### 10.1 三版协议兼容与本轮验收边界
+
+产品按以下契约实现；各平台与真实Host的验收状态仍以Handover为准：
+
+- 采用官方SDK的`legacy: 'stateless'`，不自写协议降级、迁移或转发层，不修改第三方依赖。
+- 同一`/mcp` endpoint支持`2025-06-18`、`2025-11-25`和`2026-07-28`，由Client与SDK按请求协议处理；
+  不增加全局或per-client版本选择器，也不把任意未知版本改写成已支持版本。
+- 2025使用`initialize`，正常Tool结果由SDK的stateless Streamable HTTP路径返回SSE；2026继续使用
+  discovery/请求envelope及`responseMode: 'auto'`。普通SSE结果不等于产生了中间进度消息。
+- 三版复用同一Bearer认证、在线Tool目录、Ask/Auto、参数校验、结果脱敏和Main/Core业务。停用、撤权、
+  凭据轮换、HTTP断开和App退出都必须终止所属在途调用与审批；重启保持endpoint和Client凭据。
+- Settings > Agent > MCP Server已增加静态版本支持说明，列明三版协议及自动适配；位于Header与Endpoint
+  之间，不改变Server开关、endpoint、Client执行模式或凭据命令。已提供前后预览，用户要求提交后集中复审。
+- SDK/Main测试和真实Electron workflow按三版分别验证，保留当前2026回归。真实VS Code/Copilot、
+  Codex、Claude Code与Claude Desktop仍是不同Host，官方Client不能冒充其中任何一个。
+- 当前VS Code `1.140.0`/Copilot `0.68.0`以`2025-11-25`发起initialize；Codex CLI `0.159.3`默认首选
+  `2025-06-18`、2026实验开关默认关闭；Claude Code `2.1.274+`官方记录确认直连HTTP默认协商2026。
+  这些是本机源码或官方记录核对，不是真实Host Green。
+- Claude Desktop的远程connector由Anthropic云端发起，不能直接访问本机loopback；本地MCPB走stdio。
+  本轮不新增stdio bridge、旧式HTTP+SSE endpoint或有状态Session，Desktop接入方案仍需单独确认。
+
+Playground保留现有人工MCP入口，不新增模型配置、Agent Runtime或另一套MCP E2E。用户已明确本轮
+真实Host workflow由当前开发Agent执行：确认Host身份与配置入口，通过产品UI生成MCP配置，由真实
+Host发现、调用Tool，测试代码核对业务状态、协议事实和退出恢复。模型配置留在当前Host，不读取IDE
+私有凭据，也不以模型总结代替断言。三版SDK/Main与真实Electron回归分别保存，不能冒充当前Host证据。

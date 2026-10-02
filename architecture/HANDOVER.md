@@ -1,6 +1,6 @@
 # Interceptor Handover
 
-> Tracked commit: `f4eb97ec`
+> Tracked commit: `a8115845`
 > Branch: `main`
 > 最后更新：2026-10-02
 
@@ -16,12 +16,6 @@
   - 外部网络与产物：Windows纯Auto Detect/WPAD的流量路径及退出恢复归本项，没有PAC URL或显式代理的真实环境才算有效；第12项继续跟踪macOS兼容性。Windows最终安装产物的启动/签名/资源/安装升级卸载与恢复在实际产物就绪后验收，不以本机macOS包替代。
   - 已有/缺口：macOS结果已保存，Windows实机部分未执行。用户只排除了Manager管理员MMC原生打开/关闭专项，Manager功能、逻辑及UI没有排除。
   - 下一步：具备Windows环境并恢复验收授权后，按矩阵逐组保存真实UI、协议流量、trace及进程/系统设置恢复证据，再更新对应状态。
-
-- **9. VS Code/Copilot MCP互操作 · blocked（Host协议）**
-  - 目标：真实VS Code/Copilot、Claude Desktop能够连接Desktop MCP并查询/调用Tool，不把名称为“VS Code E2E”的测试Client当成真实Host。
-  - 范围：Host连接与协议协商、Tool目录/调用和审批、断连/重启；还须验证双Host读取同一Capture，以及实际需要中间消息的Tool通过同一POST返回SSE。
-  - 当前阻塞：已安装VS Code `1.139.0`及Copilot Chat `0.67.0`仍使用MCP `2025-11-25`，与产品`2026-07-28`不兼容；Claude Desktop未安装。官方Client结果不能替代真实Host，双Host与中间进度仍未验。
-  - 下一步：需要支持产品协议的真实Host，再按[MCP验收范围](features/mcp.md#9-验收要点)建立真实连接；不加legacy兼容，不把普通JSON响应或伪造进度算SSE通过。
 
 - **10. HTTP编辑正文framing · blocked（第三方补丁待授权）**
   - 目标：HTTP断点Execute edited从UI到Core再到线上字节都遵守用户修改意图；用户显式header优先，只改header时不得改body。
@@ -49,13 +43,79 @@
 
 ## 运行约束
 
-- 第5项原生验收和第6项E2E/smoke已获授权；其他暂停项不随之恢复。ClashX菜单必须真实操作，额外系统授权由用户处理，不放宽宿主恢复断言。
+- 第5项原生验收和第6项E2E/smoke已获授权；第9项于2026-10-01恢复本轮官方SDK兼容与Settings说明的实现、验证，其他暂停项不随之恢复。ClashX菜单必须真实操作，额外系统授权由用户处理，不放宽宿主恢复断言。
 - 保留日常CA `D74D4BFB3C3708511A755AC6CD905840B464B255`、其他Root及获准常驻helper；不凭历史指纹清理，不卸载ClashX或helper。
 - Electron/E2E/smoke共用`8888`和系统代理，必须串行；结束核对Main/Core/Worker、端口、journal及系统设置恢复。
 - 保留已有7份stash和12份受保护文件，不重复apply/drop；清单为`/tmp/interceptor-macos-resource-check-20260922-preserved.json`。
 - 第三方修改仍须明确授权；不恢复临时诊断patch或未完成测试。
 - Windows实机验收统一在第8项保留，不阻塞其他已满足自身门禁的item提交；本次据此收尾第11项。其他item的macOS失败、第三方授权、真实网络条件及发布凭据不因这一边界调整而解除。
 - 未操作stash；旧的受保护文件清单在当前`/tmp`已不存在，未据此推测、恢复或清理任何文件。
+
+## 第9项兼容验证与恢复
+
+证据根目录：[本轮MCP session files](../../../.copilot/session-state/c53a7e2a-5f79-4e41-ba80-45c7b02c018a/files/item9-mcp-compat/)。
+本节区分已通过、真实失败和环境阻塞；文件名包含`green`不代表其中结果一定通过，以JSON实际状态为准。
+
+本轮交付按用户最终确认的范围收尾：官方SDK的`legacy: 'stateless'`兼容`2025-06-18`、`2025-11-25`，
+保留`2026-07-28`；不加用户版本开关。HTTP响应的取消关联保持到流真正结束，2025取消通知通过SDK公开
+handler按认证Client/协议/精确ID关联原业务，重复活跃ID显式拒绝并审计。Settings增加15语言说明，
+同步34张设计图，四主题32场景/258目标parity无missing/flagged，新增说明14次测量几何/样式差异均0。
+没有新增Playground模型配置、Agent Runtime、第三方patch或依赖。
+
+当前开发Host是VS Code内Copilot CLI/SDK `1.0.73`。通过官方`code agent endpoints`、AHP
+`root/configChanged`与Server启动动作自动完成配置/连接，真实Host公布`ready`和`mcp:// serverTools`。
+当前Agent经该公开通道列出69项Tool，实际调用20种Tool共22次；六类业务代表查询、113字节自产正文/hash、
+Cookie脱敏、App Deny/Allow/Auto、Composer自产POST仅一次、Clear及退出全部有实际断言。
+`host-staged/verify-1241.json`为1 passed；Main18120/Core18172正常退出，8888/59821和journal恢复，
+准备profile已删除，临时AHP Server停止并移除，原GitHub MCP保持ready。
+
+验收边界不扩大：本轮不是69项Tool逐项真实Host验收；聊天工具搜索热刷新、Host自身审批UI、
+其他Host、双Host并发与正式Tool中间进度SSE未验。单次取消、断连、凭据轮换和重启由三版
+unit/integration及真实Electron/签名App workflow分别验证，不与本轮公开通道证据混写。
+Windows实机继续归第8项。用户已授权本item通过后commit/push，Settings UI按用户要求提交后集中复审，
+不写成人工已经确认。仅一份[改动说明](../commit-changes/202610020516_agent-mcp_protocol_stateless-compatibility.html)，
+原始产品前后图内嵌、红框仅在报告层，1280/390px已打开检查。
+
+| 范围 | 实际结果与证据 |
+| --- | --- |
+| 协议与说明前置 | `sdk-final-red.json`为7项协议拒绝、2026组5项Green；`main-protocol-red.json`为14项旧协议拒绝；`ui-copy-red.json`为说明缺失；`e2e-red.json`及同名目录保存3条真实Red及正常退出 |
+| SSE headers取消关联 | `cancellation-red.json`保存2项凭据取消Red；`e2e-cancellation-red.json`保存真实Client断开后审批残留；`sdk-lifecycle-green.json`、`main-lifecycle-green.json`及后续真实E2E验证该问题已修复 |
+| 历史产品测试 | `mcp-all-green.json`为56 passed；`desktop-mcp-final-green.json`为57 passed / 2 failed，作为单次取消修复前的失败保留；最终结果见下方10-02行 |
+| 真实Electron已验部分 | `e2e-green.json`及同名目录为5条Green（说明、Browser CORS、三协议），8代metadata全部`gracefulDestroyVerified=true`；原流程包含断连、审批、Rules/HTTP/WebSocket数据面、凭据及重启，不包含后补单次取消步骤 |
+| UI与类型 | `parity-complete.json`汇总四主题32场景/258目标、0 missing/flagged，14次说明测量几何和样式差异均0；全图平均pixel diff 2.1581%含设计画布边框及既有fixture文本差异。`workspace-typecheck.log`全workspace通过，`desktop-final-typecheck.log`包含新增取消测试/流程 |
+| 设计与HTML | `design-preview/`保留实际改前/候选及完整展开图；`design-baseline/`为原28张Settings图，`design-green/`为34张同步图；新增warm/ember六张无旧基准，未伪造改前。`change-report-validation.json`及1280/390截图确认两张内嵌产品图、红框在图内、全部展开且无横向溢出 |
+| 失败与重跑 | `sdk-red.json`、`main-red.json`是夹具错误，不计产品Red；早期parity的MCP/Tool状态残留已修复，页面加载/点击超时保留。最终分批32场景通过，不改阈值或基准来隐藏产品差异 |
+| 产物与锁屏 | `package.log`、`package-audit.log`通过；`packaged-smoke.json/log`在macOS锁屏前置检查处失败，App未启动，不是产品smoke Green，也未修改系统设置 |
+| 最终进程 | `final-process-restoration.json`记录12代测试App的24个Main/Core PID均不存在、8888可bind；逐代宿主代理/journal/证书恢复由原真实workflow guard验证 |
+| 10-02取消前置 | `resume-20261002/main-single-cancel-red.json`、`e2e-single-cancel-red.json`分别为两版真实取消Red；`cancel-isolation-red.json`、`duplicate-id-red.json`及`cancel-protocol-isolation-red.json`保留隔离/重复ID回归失败 |
+| 10-02代码与Electron Green | `resume-20261002/mcp-isolation-green.json`为60 passed、`main-isolation-green.json`为59 passed；`e2e-cancel-green.json`为5条Green/8代正常退出，包含新增单次取消。MCP/Desktop最终typecheck通过 |
+| 当前Host尝试 | `resume-20261002/current-host/`第一轮停在等待真实Tool调用，VS Code重启后runner未生成最终JSON，metadata仍非graceful；保留profile `/var/folders/h5/jmc6085s1gb9cgqszq8qtc_00000gn/T/interceptor-e2e-workflow/60542-bvqAew`。`current-host-retry.json`明确为interrupted，metadata已graceful；两次均未调用真实Host Tool，不算通过 |
+| Host配置清理 | `resume-20261002/host-config-cleanup.json`与`copilot-host-config-cleanup.json`确认仅移除本轮临时条目、恢复原配置存在性，不保留Token；不覆盖其他配置或修改Host私有RPC |
+| 10-02产物与补验 | `resume-20261002/package-final.log`、`package-audit-final.log`和`packaged-smoke-final.json`均通过。`production-mcp-green.json`为4 passed / 1 failed，失败在2026第二代的原生Quit；`production-quit-recovery.json`证实通过产品Close后5个PID/原代理/journal/8888恢复，原失败保留。`production-modern-retry.json`第一代已正常退出，第二代因锁屏未启动 |
+| HTML最终复查 | `resume-20261002/report-final-validation.json`及两张截图确认补充取消与Host流程说明后，1280/390px仍无溢出、图片内嵌且全部展开 |
+| 10-02最终清理 | `resume-20261002/final-restoration.json`记录本轮20代metadata中的40个Main/Core PID均不存在，原失败metadata未改写；生产Quit失败代另有完整恢复证据。临时VS Code/Copilot配置均移除。通知资源释放后，另一会话重新占用8888，最终只读检查确认新PID不属于本item；不终止他方进程或覆盖其当前系统代理 |
+| 10:00共享journal复核 | 第14项报告host guard拒绝后，第9项只读确认Main `78437`/Core `78475`仍存活并监听8888，profile为`77659-GFXRHQ`，不在第9项40个PID记录中；journal于09:57:10写入，当前代理等于`owned`而非`original`。`resume-20261002/journal-ownership-check-20261002.json`保存无敏感值摘要；未删除journal、未改代理、未终止App，已向所属协作会话核对profile归属 |
+| `a8115845`后最终产物 | `final-a8115845/production-mcp.json`及同名目录保存三版协议/说明/Browser CORS的5条最终Green。`production-restoration.json`核对8代签名App正常退出、16个Main/Core PID均不存在、8888可用、journal不存在；逐代host guard全部通过。此次复用第14项完成的最新产物，不重建或替换Core。历史原生Quit及锁屏失败不改写 |
+| 10:32当前Host等待 | `host-1032/results.json`明确为等待真实Host Tool调用10分钟超时，未执行MCP业务验收；`restoration.json`确认本次测试App正常退出、Main6243/Core6284不再存在、8888/57801释放、journal及临时凭据清除。`host-config-cleanup.json`确认只移除匹配的本轮Server并恢复原配置存在性；用户需配合下一次全新Host接入，不再复用已清理条目 |
+| 官方AHP与SDK执行轮 | `host-ahp/ahp-configuration-result.json`及`host-idle-boundary/ahp-configuration-result.json`证明公开Host配置写入并回读成功，未取得新Tool；两次`results.json`均为等待真实Host调用超时。各自`ahp-cleanup.json`确认移除匹配条目；`host-idle-boundary/restoration.json`确认Main10989/Core11030正常退出、端口/journal/凭据清理。不把配置接受或执行轮解释当作真实互操作Green |
+| 准备/执行拆分 | `host-staged/prepare.json`为实际prepare及默认fixture说明流程2条Green；`prepare-restoration.json`确认准备App退出、端口/journal恢复、隔离配置0600，明确准备当时`hostCallsVerified=false`。`host-staged/ahp-configuration-result.json`为正式Host配置回读；后续verify的真实结果单独记录，不能仅凭prepare提升状态 |
+| 当前Host最终调用 | `host-staged/verify-1241.json`为1 passed；同名目录包含trace、Main/Renderer日志、原生恢复metadata和实际origin。`host-tools-list.json`及`host-<Tool>-<timestamp>.json`均经当前Host公开通道产生；`verification-summary.json`确认69项目录、20种Tool/22次调用、113字节正文/hash、Cookie脱敏、Composer POST一次、App裁决、Clear与正常退出，明确原生聊天工具搜索未验 |
+| 最终测试与类型 | `host-staged/final-mcp-tests.json`为60 passed，`final-desktop-tests.json`为59 passed；`final-workspace-typecheck.log`为全workspace Green，包含prepare/verify driver及其调用方。工具/环境失败不计入这些Green |
+
+复验入口与历史恢复说明：
+
+- 用户解锁macOS并保持桌面可交互；不关闭或绕过锁屏检查，不代输密码。
+- 单次取消的Red与最终Green、最新产物smoke、三协议签名App及当前Host公开通道最终Green均已取得，
+  不需要假补故障。`host-staged`准备profile和Host条目在verify成功后已清理，历史URL/凭据不可复用。
+- 后续复验重新运行prepare，取得新的隔离profile；当前Agent通过公开Host状态确认注册，再启动该profile
+  并用公开Server启动/重连能力加载。配置、连接、目录、调用和聊天工具搜索分别判定，不调用SDK私有RPC、
+  伪造用户消息或另起自制Agent冒充。
+- 第14项已由`a8115845`独立提交；第9项只提交自己的兼容、UI、验收和文档，不混入第10/15项未提交记录。
+
+```sh
+INTERCEPTOR_E2E_MACOS_APP_PATH="$PWD/apps/desktop/out/Interceptor-darwin-x64/Interceptor.app" INTERCEPTOR_E2E_MCP_HOST=copilot-cli INTERCEPTOR_E2E_MCP_HOST_VERSION=1.0.73 INTERCEPTOR_E2E_MCP_PHASE=prepare npm exec --workspace @interceptor/desktop playwright test -- --config tests/e2e-workflow-tests/playwright.config.ts workflows/mcp/current-host.workflow.ts --project macos
+INTERCEPTOR_E2E_MACOS_APP_PATH="$PWD/apps/desktop/out/Interceptor-darwin-x64/Interceptor.app" npm exec --workspace @interceptor/desktop playwright test -- --config tests/e2e-workflow-tests/playwright.config.ts workflows/mcp/streamable-http.workflow.ts --project macos --grep '2026-07-28'
+```
 
 ## 第11项验证与恢复
 

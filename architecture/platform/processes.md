@@ -48,7 +48,7 @@ flowchart LR
   MAIN --> AGENT
   AGENT --> AGENT_STORE
   AGENT --> MODEL_API
-  MCP_HOST -->|"127.0.0.1:&lt;port&gt;/mcp<br/>Bearer · MCP 2026-07-28"| MCP
+  MCP_HOST -->|"127.0.0.1:&lt;port&gt;/mcp<br/>Bearer · MCP 2025/2026"| MCP
   MAIN --> MCP --> MCP_STORE
   MAIN --> TOOL_SETTINGS --> TOOL_SETTINGS_STORE
   AGENT --> AGENT_TOOLS
@@ -142,8 +142,10 @@ clean Rules Store按最新revision重载，dirty/saving Store保留草稿并进�
 Streamable HTTP listener，不复用代理端口`8888`。每个Client的Bearer token、label与`ask` / `auto`经
 `safeStorage`整体加密；启停和app重启不轮换Token，只有用户手动重新生成或撤销才失效。Main逐请求认证、
 对Browser提供标准CORS；Origin与Host都不参与身份判断。Main只处理`/mcp`路由、无凭据preflight与Bearer，
-认证成功后原样交给`@interceptor/mcp-server`官方SDK handler与共享Tool registry；旧MCP协议请求被拒绝，
-不保留兼容路径。`apps/playground`是独立Web人工验收工具，不进入Desktop包；Browser直接访问MCP，Node
+认证成功后原样交给`@interceptor/mcp-server`官方SDK handler与共享Tool registry；`legacy: 'stateless'`
+复用同一factory处理2025与2026协议，不新增业务实现或Session。2025单次取消由SDK公开通知handler解析，
+按认证Client/协议/request ID转交原有AbortSignal；HTTP取消关联保留到响应流结束。`apps/playground`
+是独立Web人工验收工具，不进入Desktop包；Browser直接访问MCP，Node
 Traffic Lab使用显式`127.0.0.1:8888`产生可观测H1场景。
 
 ### 1.1 系统代理进程边界

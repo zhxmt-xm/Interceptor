@@ -701,6 +701,24 @@ for (const theme of ['light', 'dark']) {
   }
 }
 
+for (const theme of ['warm', 'ember']) {
+  for (const mcpServerState of ['disabled', 'running', 'conflict']) {
+    shots.push({
+      feature: 'agent-models',
+      theme,
+      variant: mcpServerState === 'disabled' ? 'settings-agent' : `settings-mcp-${mcpServerState}`,
+      appSize: { width: 1600, height: 900 },
+      state: {
+        view: 'settings', theme, sidebar: 'expanded', overlay: '', settings: 'agent',
+        agentProvider: 'configured', mcpServerState,
+        mcpEndpointAssigned: mcpServerState !== 'disabled',
+        mcpClientLabel: mcpServerState === 'disabled' ? '' : 'VS Code',
+        mcpClientExecutionMode: 'ask',
+      },
+    });
+  }
+}
+
 const STABILIZE = '*{caret-color:transparent!important}body:not(.menu-interaction-shot) *{transition:none!important;animation:none!important}.monaco-editor .cursors-layer{display:none!important}body.menu-interaction-shot{padding:0!important;align-items:flex-start!important;justify-content:flex-start!important}';
 const FULL_CSS = `
 .app{height:auto!important;min-height:900px!important}

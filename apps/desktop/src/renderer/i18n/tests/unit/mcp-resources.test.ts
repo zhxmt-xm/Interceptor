@@ -22,4 +22,13 @@ describe('MCP messages', () => {
       .toContain('应用重启绝不会自动轮换');
     expect(mcpMessages['zh-CN']['mcp.approval.allow']).toBe('允许 Tool 调用');
   });
+
+  it('lists all three MCP revisions in every localized protocol notice', () => {
+    for (const language of LANGUAGE_IDS) {
+      const message: unknown = Reflect.get(mcpMessages[language], 'settings.mcp.protocolSupport');
+      for (const version of ['2025-06-18', '2025-11-25', '2026-07-28']) {
+        expect(message, `${language}: ${version}`).toEqual(expect.stringContaining(version));
+      }
+    }
+  });
 });

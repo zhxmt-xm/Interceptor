@@ -11,10 +11,10 @@
 | Breakpoints | [breakpoints.md](breakpoints.md) | 14 |
 | Diagnostics | [diagnostics.md](diagnostics.md) | 6 |
 | Agent | [agent.md](agent.md) | 13 |
-| MCP | [mcp.md](mcp.md) | 3 |
+| MCP | [mcp.md](mcp.md) | 5 |
 | Settings 与 Updates | [settings-updates.md](settings-updates.md) | 29 |
 
-总计：141 条 workflow 契约（含共享CA启动、普通消息高度、正文阈值及Original/File预览；部分契约含多个协议或大小测试）。管理员MMC原生专项另保留排除说明，不计入workflow数量。
+总计：143 条 workflow 契约（含共享CA启动、普通消息高度、正文阈值及Original/File预览；部分契约含多个协议或大小测试）。管理员MMC原生专项另保留排除说明，不计入workflow数量。
 
 ## 文档约定
 

@@ -101,6 +101,10 @@ Tunnel详情的`HTTPS content is encrypted`与请求列表行文案重复；该�
 
 DeepSeek弹窗的`Endpoint`标签显式限定在双方dialog内，避免使用页面级同名文本配对。
 
+Settings协议说明覆盖四主题的Off/Running/Port unavailable，明暗场景继续覆盖Provider与Client弹窗。
+复用设计页时先清理MCP Server/Client/弹窗、Tool搜索与独立开关，再应用当前场景；不能让上一场景的
+Client、筛选或确认遮罩改变下一场景的高度和点击目标。只运行实际parity，不新增截图工具自身的测试。
+
 普通消息高度场景位于`capture-message-*`：四主题gRPC长Text的初始/真实拖矮状态与WebSocket短Pretty；`resizeVertical`通过鼠标拖拽右下角，不改DOM高度。fake Preload的`grpcMessageSource`只替换该fixture的消息字节和相邻envelope偏移，设计source采用文本前缀加JSON，避免合法JSON被产品正常探测为Pretty而与Text设计不一致。不修改产品探测、预览上限或copy语义。已批准默认gRPC Hex/Tree/全屏及Composer继续使用原设计，HTTP正文见下段。
 
 HTTP正文新增`breakpoint-readonly-*`六场景×浅/深：长Original/File/Text、手动格式化、截断、图片超限。`readonlyData: { sample, notice }`经`design-vite/src/fixtures/readonlyBodyData.ts`转为可序列化字节描述，fake Preload在内存构造实际数据，再按正常`readBody`/`pickBreakpointBodyFile`契约返回Uint8Array。总大小、预览长度和truncated由同一真实字节源派生；不以几KiB正文配假MiB长度，不设置产品Store或新增产品参数。Original仍为JSON高亮，File仍plaintext；通过真实点击Original折叠、Text/File、Choose file和受控输入建立状态。`pressLabel`/`typeLabel`仅驱动已有输入控件；`freshDesign`为这些独立流程重建已加载字体的设计页，避免上一场景的折叠状态泄漏。

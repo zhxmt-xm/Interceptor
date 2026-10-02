@@ -375,7 +375,9 @@ diagnostics.row.<traceKey>
 
 | Workflow ID | 用户目标 | 策略 | 状态 |
 | --- | --- | --- | --- |
-| `mcp.desktop.streamable-http` | 官方Client经loopback HTTP接入、授权Tool、同步Rules并跨重启保持状态 | shared | passed；不代表第三方Host实机验收 |
+| `mcp.desktop.streamable-http` | 三版官方Client经loopback HTTP接入、单次取消、授权Tool、同步Rules并跨重启保持状态 | shared | macOS三协议Green；不代表当前开发Host验收 |
+| `mcp.settings.protocol-support` | Server关闭/运行时均显示三版协议说明，不提供版本切换器 | shared | macOS passed；Windows实机归Handover第8项 |
+| `mcp.current-host` | 当前开发Agent通过真实Host公开MCP通道调用Tool，fixture核对App裁决与退出 | current-agent interactive | Copilot CLI/SDK公开通道passed；原生工具搜索热刷新/其他Host未验，未提供Host时明确skip |
 | `mcp.browser-playground-cors` | Browser以Bearer跨Origin连接最新MCP并完成query/change调用 | shared | passed |
 | `mcp.tools.breakpoints` | 官方MCP Client处理真实HTTP/WebSocket pending | privileged UI | passed |
 

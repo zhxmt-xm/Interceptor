@@ -3,6 +3,7 @@ import type { LanguageId } from './languages';
 export const mcpEnglishMessages = {
   'settings.mcp.title': 'MCP server',
   'settings.mcp.description': 'Connect external AI hosts to the same Interceptor tools and capture state.',
+  'settings.mcp.protocolSupport': 'MCP 2026-07-28. Compatible with 2025-11-25 and 2025-06-18. Automatically matched to each client.',
   'settings.mcp.statusOff': 'Off',
   'settings.mcp.statusRunning': 'Running',
   'settings.mcp.statusConflict': 'Port unavailable',
@@ -52,6 +53,7 @@ export const mcpMessages = {
   'zh-CN': catalog({
     'settings.mcp.title': 'MCP Server',
     'settings.mcp.description': '让外部 AI Host 使用同一套 Interceptor Tool 和抓包状态。',
+    'settings.mcp.protocolSupport': '支持 MCP 2026-07-28，兼容 2025-11-25 和 2025-06-18。自动适配每个 Client 的协议。',
     'settings.mcp.statusOff': '已关闭',
     'settings.mcp.statusRunning': '运行中',
     'settings.mcp.statusConflict': '端口不可用',
@@ -93,6 +95,7 @@ export const mcpMessages = {
   'zh-TW': catalog({
     'settings.mcp.title': 'MCP Server',
     'settings.mcp.description': '讓外部 AI Host 使用同一套 Interceptor Tool 與擷取狀態。',
+    'settings.mcp.protocolSupport': '支援 MCP 2026-07-28，相容於 2025-11-25 和 2025-06-18。自動配合各 Client 的協定。',
     'settings.mcp.statusOff': '已關閉',
     'settings.mcp.statusRunning': '執行中',
     'settings.mcp.statusConflict': '連接埠不可用',
@@ -134,6 +137,7 @@ export const mcpMessages = {
   ja: catalog({
     'settings.mcp.title': 'MCP Server',
     'settings.mcp.description': '外部 AI Host を同じ Interceptor Tool とキャプチャ状態に接続します。',
+    'settings.mcp.protocolSupport': 'MCP 2026-07-28。2025-11-25 と 2025-06-18 に対応。各 Client のプロトコルに自動で合わせます。',
     'settings.mcp.statusOff': 'オフ',
     'settings.mcp.statusRunning': '実行中',
     'settings.mcp.statusConflict': 'ポートを使用できません',
@@ -175,6 +179,7 @@ export const mcpMessages = {
   ko: catalog({
     'settings.mcp.title': 'MCP Server',
     'settings.mcp.description': '외부 AI Host를 동일한 Interceptor Tool 및 캡처 상태에 연결합니다.',
+    'settings.mcp.protocolSupport': 'MCP 2026-07-28. 2025-11-25 및 2025-06-18과 호환됩니다. 각 Client의 프로토콜에 자동으로 맞춥니다.',
     'settings.mcp.statusOff': '꺼짐',
     'settings.mcp.statusRunning': '실행 중',
     'settings.mcp.statusConflict': '포트를 사용할 수 없음',
@@ -216,6 +221,7 @@ export const mcpMessages = {
   de: catalog({
     'settings.mcp.title': 'MCP-Server',
     'settings.mcp.description': 'Externe AI-Hosts mit denselben Interceptor-Tools und Capture-Daten verbinden.',
+    'settings.mcp.protocolSupport': 'MCP 2026-07-28. Kompatibel mit 2025-11-25 und 2025-06-18. Automatische Anpassung an jeden Client.',
     'settings.mcp.statusOff': 'Aus',
     'settings.mcp.statusRunning': 'Aktiv',
     'settings.mcp.statusConflict': 'Port nicht verfügbar',
@@ -257,6 +263,7 @@ export const mcpMessages = {
   fr: catalog({
     'settings.mcp.title': 'Serveur MCP',
     'settings.mcp.description': 'Connectez des hôtes IA externes aux mêmes Tools et données de capture Interceptor.',
+    'settings.mcp.protocolSupport': 'MCP 2026-07-28. Compatible avec 2025-11-25 et 2025-06-18. Adaptation automatique à chaque Client.',
     'settings.mcp.statusOff': 'Désactivé',
     'settings.mcp.statusRunning': 'Actif',
     'settings.mcp.statusConflict': 'Port indisponible',
@@ -298,6 +305,7 @@ export const mcpMessages = {
   es: catalog({
     'settings.mcp.title': 'Servidor MCP',
     'settings.mcp.description': 'Conecta hosts de IA externos con los mismos Tools y datos de captura de Interceptor.',
+    'settings.mcp.protocolSupport': 'MCP 2026-07-28. Compatible con 2025-11-25 y 2025-06-18. Adaptación automática a cada Client.',
     'settings.mcp.statusOff': 'Desactivado',
     'settings.mcp.statusRunning': 'En ejecución',
     'settings.mcp.statusConflict': 'Puerto no disponible',
@@ -339,6 +347,7 @@ export const mcpMessages = {
   it: catalog({
     'settings.mcp.title': 'Server MCP',
     'settings.mcp.description': 'Collega host IA esterni agli stessi Tool e dati di acquisizione di Interceptor.',
+    'settings.mcp.protocolSupport': 'MCP 2026-07-28. Compatibile con 2025-11-25 e 2025-06-18. Adattamento automatico a ogni Client.',
     'settings.mcp.statusOff': 'Disattivato',
     'settings.mcp.statusRunning': 'In esecuzione',
     'settings.mcp.statusConflict': 'Porta non disponibile',
@@ -380,6 +389,7 @@ export const mcpMessages = {
   'pt-BR': catalog({
     'settings.mcp.title': 'Servidor MCP',
     'settings.mcp.description': 'Conecte hosts de IA externos aos mesmos Tools e dados de captura do Interceptor.',
+    'settings.mcp.protocolSupport': 'MCP 2026-07-28. Compatível com 2025-11-25 e 2025-06-18. Ajuste automático para cada Client.',
     'settings.mcp.statusOff': 'Desativado',
     'settings.mcp.statusRunning': 'Em execução',
     'settings.mcp.statusConflict': 'Porta indisponível',
@@ -421,6 +431,7 @@ export const mcpMessages = {
   ru: catalog({
     'settings.mcp.title': 'Сервер MCP',
     'settings.mcp.description': 'Подключайте внешние AI Host к тем же Tool и данным перехвата Interceptor.',
+    'settings.mcp.protocolSupport': 'MCP 2026-07-28. Совместимость с 2025-11-25 и 2025-06-18. Протокол автоматически подбирается для каждого клиента.',
     'settings.mcp.statusOff': 'Выключен',
     'settings.mcp.statusRunning': 'Работает',
     'settings.mcp.statusConflict': 'Порт недоступен',
@@ -462,6 +473,7 @@ export const mcpMessages = {
   nl: catalog({
     'settings.mcp.title': 'MCP-server',
     'settings.mcp.description': 'Verbind externe AI-hosts met dezelfde Interceptor-Tools en vastgelegde gegevens.',
+    'settings.mcp.protocolSupport': 'MCP 2026-07-28. Compatibel met 2025-11-25 en 2025-06-18. Automatisch afgestemd op elke Client.',
     'settings.mcp.statusOff': 'Uit',
     'settings.mcp.statusRunning': 'Actief',
     'settings.mcp.statusConflict': 'Poort niet beschikbaar',
@@ -503,6 +515,7 @@ export const mcpMessages = {
   pl: catalog({
     'settings.mcp.title': 'Serwer MCP',
     'settings.mcp.description': 'Połącz zewnętrzne hosty AI z tymi samymi Tool i danymi przechwytywania Interceptor.',
+    'settings.mcp.protocolSupport': 'MCP 2026-07-28. Zgodność z 2025-11-25 i 2025-06-18. Protokół jest automatycznie dobierany do każdego klienta.',
     'settings.mcp.statusOff': 'Wyłączony',
     'settings.mcp.statusRunning': 'Działa',
     'settings.mcp.statusConflict': 'Port niedostępny',
@@ -544,6 +557,7 @@ export const mcpMessages = {
   tr: catalog({
     'settings.mcp.title': 'MCP Server',
     'settings.mcp.description': 'Harici AI Hostlarını aynı Interceptor Tool ve yakalama verilerine bağlayın.',
+    'settings.mcp.protocolSupport': 'MCP 2026-07-28. 2025-11-25 ve 2025-06-18 ile uyumludur. Protokol her Client için otomatik seçilir.',
     'settings.mcp.statusOff': 'Kapalı',
     'settings.mcp.statusRunning': 'Çalışıyor',
     'settings.mcp.statusConflict': 'Port kullanılamıyor',
@@ -585,6 +599,7 @@ export const mcpMessages = {
   uk: catalog({
     'settings.mcp.title': 'MCP Server',
     'settings.mcp.description': 'Підключайте зовнішні AI Host до тих самих Tool і даних перехоплення Interceptor.',
+    'settings.mcp.protocolSupport': 'MCP 2026-07-28. Сумісність із 2025-11-25 і 2025-06-18. Протокол автоматично добирається для кожного клієнта.',
     'settings.mcp.statusOff': 'Вимкнено',
     'settings.mcp.statusRunning': 'Працює',
     'settings.mcp.statusConflict': 'Порт недоступний',

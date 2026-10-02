@@ -448,6 +448,7 @@ export const AUTOMATION_IDS = {
     server: {
       root: 'mcp.server.root',
       enable: 'mcp.server.enable',
+      protocolSupport: 'mcp.server.protocol-support',
       endpoint: 'mcp.server.endpoint',
       changeEndpoint: 'mcp.server.change-endpoint',
     },

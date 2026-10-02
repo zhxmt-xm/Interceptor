@@ -46,6 +46,10 @@ export function McpServerSettings(): React.JSX.Element {
         />
       </header>
 
+      <p className={styles.mcpProtocolSupport} data-parity="mcp-protocol-support">
+        MCP 2026-07-28. Compatible with 2025-11-25 and 2025-06-18. Automatically matched to each client.
+      </p>
+
       <div className={styles.mcpEndpointRow}>
         <div className={styles.mcpEndpointCopy}>
           <span>Endpoint</span>

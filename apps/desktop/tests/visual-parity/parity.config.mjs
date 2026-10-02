@@ -617,6 +617,40 @@ const BREAKPOINT_QUEUE_VIEWS = ['light', 'dark'].flatMap((theme) => {
 });
 
 export const views = [
+  ...['warm', 'ember'].flatMap((theme) =>
+    ['disabled', 'running', 'endpoint-conflict'].map((mcpState) => {
+      const designState = mcpState === 'endpoint-conflict' ? 'conflict' : mcpState;
+      const variant = mcpState === 'disabled' ? 'settings-agent' : `settings-mcp-${designState}`;
+      return {
+        id: `settings-mcp-${designState}-${theme}`,
+        theme,
+        rendererNav: 'Settings',
+        agentModels: 'configured',
+        mcpState,
+        mcpClientConfigured: mcpState !== 'disabled',
+        designState: {
+          view: 'settings', theme, sidebar: 'expanded', settings: 'agent',
+          agentProvider: 'configured', mcpServerState: designState,
+          mcpEndpointAssigned: mcpState !== 'disabled',
+          mcpClientLabel: mcpState === 'disabled' ? '' : 'VS Code',
+          mcpClientExecutionMode: 'ask',
+        },
+        designShot: `${theme}/agent-models/${variant}.png`,
+        rendererActions: [
+          { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+          { type: 'clickText', text: 'Agent' },
+        ],
+        targets: [
+          { name: 'MCP server', parity: 'mcp-server-settings' },
+          { name: 'MCP protocol support', parity: 'mcp-protocol-support' },
+          {
+            name: 'MCP endpoint row',
+            designSelector: '.mcpEndpointCopy',
+            appSelector: '[data-automation-id="mcp.server.endpoint"]',
+          },
+        ],
+      };
+    })),
   ...['light', 'dark', 'warm', 'ember'].flatMap(theme => [
     ...[false, true].map(resized => ({
       id: `capture-message-grpc-${theme}${resized ? '-resized' : ''}`,
@@ -1713,6 +1747,7 @@ export const views = [
           { name: 'Agent settings empty state', parity: 'agent-settings-empty' },
           { name: 'Agent settings empty icon', parity: 'agent-settings-empty-icon' },
           { name: 'Agent settings empty copy', parity: 'agent-settings-empty-copy' },
+          { name: 'MCP protocol support', parity: 'mcp-protocol-support' },
           'Configure model providers and defaults used by Agent.',
           'No models configured',
           'Add a hosted provider or connect an OpenAI-compatible local model to start a chat.',
@@ -1778,6 +1813,7 @@ export const views = [
         ],
         targets: [
           { name: 'Agent settings', parity: 'agent-model-settings' },
+          { name: 'MCP protocol support', parity: 'mcp-protocol-support' },
           {
             name: 'Configured models section',
             designSelector: '.modelSettingsSection',
@@ -1915,6 +1951,7 @@ export const views = [
         ],
         targets: [
           { name: 'MCP server', parity: 'mcp-server-settings' },
+          { name: 'MCP protocol support', parity: 'mcp-protocol-support' },
           {
             name: 'MCP server header',
             designSelector: '.mcpServerHeader',
@@ -1958,6 +1995,7 @@ export const views = [
         ],
         targets: [
           { name: 'MCP server', parity: 'mcp-server-settings' },
+          { name: 'MCP protocol support', parity: 'mcp-protocol-support' },
           {
             name: 'MCP conflict',
             designSelector: '.mcpEndpointConflict',

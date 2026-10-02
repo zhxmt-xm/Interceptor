@@ -103,6 +103,15 @@
   background: var(--red);
 }
 
+.mcpProtocolSupport {
+  margin: 0;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 10.5px;
+  line-height: 16px;
+}
+
 .mcpEndpointRow {
   display: flex;
   min-height: 50px;
