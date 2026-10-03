@@ -95,9 +95,11 @@ interface DiagnosticsRecorder {
 
 ### H2事件采集范围
 
-- H2协议事件复用常规Diagnostics列表、筛选和详情，不增加独立页面或事件表格。方向、session、stream和协议字段必须来自真实采集；未采集字段不补0或伪造事件。
+- 当前Diagnostics不提供完整H2协议帧及逐请求关联；这不是另一项已确认的H2转发故障，不影响既有H2转发和HTTP层捕获。本节只说明当前能力边界，不承诺新增采集功能。
 - `ProxyService`的HTTP增量、trailer、abort及TLS/client-error不等同于完整SETTINGS、RST_STREAM或GOAWAY帧。测试源站的`onOriginStream`不能作为生产来源，也不能用会缓冲完整正文的completed事件替代。
-- 原始帧必须有可靠的请求关联。NO_ERROR不等于全部stream成功，CANCEL不能自动归因为用户操作。
+- Node公开API可以读取连接当前状态和参数，无需补丁；`remoteSettings`与`goaway`能观察真实接收事件，`localSettings`表示SETTINGS已获确认。从首个stream才订阅session可能错过初始SETTINGS；`close`及`rstCode`不能还原完整RST_STREAM事件或推定收发方向。NO_ERROR不等于全部stream成功，CANCEL不能自动归因为用户操作。
+- Mockttp的公开请求订阅和`rule-event`未提供H2 session/stream与request id绑定，Node stream channel也不提供Mockttp request id。不能按URL、headers内容或时间为并发请求猜配关系。
+- `toRendererDiagnosticRecord()`采用白名单，现有`attributes`并不自动进入Renderer；Core写入任意属性不代表用户能在Diagnostics中看到它。
 
 ## 5. 查询流程
 

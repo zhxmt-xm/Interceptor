@@ -166,4 +166,4 @@ Body替换与framing正确性正交：`CaptureBodyRuleEffect`记录最终写入�
 
 继承chunked的body替换仍有framing缺陷：请求被补Content-Length并删除chunked，响应同时出现Content-Length与Transfer-Encoding，被Node以`Content-Length can't be present with Transfer-Encoding`拒绝。
 
-根因位于`patches/mockttp+4.5.0.patch`的两处headers-stage body override，无条件写Content-Length，Core返回的`editedHeaderNames`未阻止覆盖。修复需要第三方修改授权，并须覆盖请求/响应、H1/H2与四类header的wire矩阵；标准Content-Length下完整File/Text发送或UI effect正确不代表此矩阵正确。
+根因位于`patches/mockttp+4.5.0.patch`的两处headers-stage body override，无条件写Content-Length，Core返回的`editedHeaderNames`未阻止覆盖。当前没有已验证的无补丁修复方案，依赖实现与现有补丁保持不变；候选方案仍须覆盖请求/响应、H1/H2与四类header的wire矩阵。标准Content-Length下完整File/Text发送或UI effect正确不代表此矩阵正确。
