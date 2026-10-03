@@ -222,7 +222,6 @@ async function mcpNativeCall(desktopApp: LocalElectronApplicationDriver, client:
       else await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), filePath);
     }),
   ]);
-  await desktopApp.page.bringToFront();
   return mcpValue(result);
 }
 
@@ -284,7 +283,6 @@ test('capture.tools.archive-transfer exports and imports native archives through
       expect(await finishAgentCall(page, openAiCompatibleLab, `deny-${name}`)).toMatchObject({ ok: false, error: { code: 'tool_denied' } });
       await beginAgentCall(page, openAiCompatibleLab, `cancel-${name}`, name, {}, 'allow');
       await cancelFileDialog(desktopApp.nativeFileDialogOwner());
-      await page.bringToFront();
       expect(await finishAgentCall(page, openAiCompatibleLab, `cancel-${name}`)).toEqual({ ok: true, value: { started: false } });
       await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult(`cancel-${name}`)))
         .toHaveAttribute('data-summary-kind', name === TOOL_NAMES[0] ? 'exportCanceled' : 'importCanceled');
@@ -293,7 +291,6 @@ test('capture.tools.archive-transfer exports and imports native archives through
     const completeFile = path.join(directory, 'complete.iarchive');
     await beginAgentCall(page, openAiCompatibleLab, 'archive-export-allow', TOOL_NAMES[0], {}, 'allow');
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completeFile);
-    await page.bringToFront();
     const fullJobId = startedJob((await finishAgentCall(page, openAiCompatibleLab, 'archive-export-allow')).value, 'archive-export');
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('archive-export-allow'))).toHaveAttribute('data-summary-kind', 'transferJob');
     await waitForCompletedJob(client, fullJobId);
@@ -302,7 +299,6 @@ test('capture.tools.archive-transfer exports and imports native archives through
     const agentAutoFile = path.join(directory, 'agent-auto.iarchive');
     await beginAgentCall(page, openAiCompatibleLab, 'archive-export-auto', TOOL_NAMES[0], {});
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), agentAutoFile);
-    await page.bringToFront();
     await waitForCompletedJob(client, startedJob((await finishAgentCall(page, openAiCompatibleLab, 'archive-export-auto')).value, 'archive-export'));
     await readArchiveHash(agentAutoFile);
 
@@ -315,7 +311,6 @@ test('capture.tools.archive-transfer exports and imports native archives through
     await getByAutomationId(page, AUTOMATION_IDS.agent.executionMode.ask).click();
     await beginAgentCall(page, openAiCompatibleLab, 'archive-import-allow', TOOL_NAMES[1], {}, 'allow');
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completeFile);
-    await page.bringToFront();
     await waitForCompletedJob(client, startedJob((await finishAgentCall(page, openAiCompatibleLab, 'archive-import-allow')).value, 'archive-import'));
     await expect.poll(async () => (await captureItems(client!)).length).toBe(2);
     const firstImported = await captureItems(client);
@@ -326,7 +321,6 @@ test('capture.tools.archive-transfer exports and imports native archives through
     await getByAutomationId(page, AUTOMATION_IDS.agent.executionMode.auto).click();
     await beginAgentCall(page, openAiCompatibleLab, 'archive-import-auto', TOOL_NAMES[1], {});
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completeFile);
-    await page.bringToFront();
     await waitForCompletedJob(client, startedJob((await finishAgentCall(page, openAiCompatibleLab, 'archive-import-auto')).value, 'archive-import'));
     await expect.poll(async () => (await captureItems(client!)).length).toBe(4);
 
@@ -411,7 +405,6 @@ test('capture.tools.archive-transfer exports and imports native archives through
     await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start).click();
     const uiFile = path.join(directory, 'ui.iarchive');
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), uiFile);
-    await page.bringToFront();
     await expect(getByAutomationId(page, AUTOMATION_IDS.capture.transfer.headerClose)).toBeHidden();
     await readArchiveHash(uiFile);
     await getByAutomationId(page, AUTOMATION_IDS.capture.importMenu).click();
@@ -428,7 +421,6 @@ test('capture.tools.archive-transfer exports and imports native archives through
     await archiveDialog.screenshot({ path: testInfo.outputPath('archive-import-warning.png') });
     await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start).click();
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completeFile);
-    await page.bringToFront();
     await expect.poll(async () => (await captureItems(client!)).length).toBe(10);
     await expect(getByAutomationId(page, AUTOMATION_IDS.capture.transfer.headerClose)).toBeHidden();
     const finalItems = await captureItems(client);

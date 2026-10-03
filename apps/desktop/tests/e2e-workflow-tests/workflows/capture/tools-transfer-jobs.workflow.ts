@@ -146,7 +146,6 @@ async function startArchiveFromUi(desktopApp: LocalElectronApplicationDriver, de
   await getByAutomationId(page, AUTOMATION_IDS.capture.saveArchive).click();
   await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start).click();
   await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), destination);
-  await page.bringToFront();
   const progress = getByAutomationId(page, 'capture.transfer.progress');
   await expect(progress).toHaveAttribute('data-transfer-job-state', 'running');
   const jobId = await progress.getAttribute('data-transfer-job-id');
@@ -217,7 +216,6 @@ test('capture.tools.transfer-jobs queries and cancels real file jobs without exp
     await getByAutomationId(page, AUTOMATION_IDS.mcp.approval.allow).click();
     const completedFile = path.join(directory, 'completed.jsonl');
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completedFile);
-    await page.bringToFront();
     const exportResult = mcpValue(await exporting);
     if (!isRecord(exportResult) || !isRecord(exportResult.job) || typeof exportResult.job.id !== 'string') throw new Error('Diagnostics export omitted its job identity.');
     const completedJobId = exportResult.job.id;

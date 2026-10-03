@@ -96,7 +96,6 @@ async function exportFromUi(desktopApp: LocalElectronApplicationDriver, filePath
   await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.collection)).toHaveAttribute('data-save-state', 'saved');
   await getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.exportCollection).click();
   await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), filePath);
-  await desktopApp.page.bringToFront();
   await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.exportBusy)).toHaveCount(0);
   return readTree(filePath);
 }
@@ -155,7 +154,6 @@ async function finishCall(page: Page): Promise<void> {
 
 async function selectImport(desktopApp: LocalElectronApplicationDriver, inputPath: string): Promise<void> {
   await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), inputPath);
-  await desktopApp.page.bringToFront();
   await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.dialog)).toBeVisible();
   await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.requestCount)).toHaveText('2');
   await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.folderCount)).toHaveText('1');
@@ -252,7 +250,6 @@ test('composer.tools.transfer exports and imports Collections through native dia
       expect(resultForCall(openAiCompatibleLab, `deny-${index}`)).toMatchObject({ ok: false, error: { code: 'tool_denied' } });
       await beginCall(desktopApp.page, openAiCompatibleLab, `native-cancel-${index}`, name, 'allow');
       await cancelFileDialog(desktopApp.nativeFileDialogOwner());
-      await desktopApp.page.bringToFront();
       await finishCall(desktopApp.page);
       expect(resultForCall(openAiCompatibleLab, `native-cancel-${index}`)).toEqual({ ok: true, value: index === 0 ? { exported: false } : { imported: false } });
     }
@@ -263,7 +260,6 @@ test('composer.tools.transfer exports and imports Collections through native dia
     const exportedPath = path.join(directory, 'tool-export.json');
     await beginCall(desktopApp.page, openAiCompatibleLab, 'export-allow', EXPORT_TOOL, 'allow');
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), exportedPath);
-    await desktopApp.page.bringToFront();
     await finishCall(desktopApp.page);
     expect(await readTree(exportedPath)).toEqual(original);
     expect(resultForCall(openAiCompatibleLab, 'export-allow')).toEqual({ ok: true, value: { exported: true } });
@@ -293,7 +289,6 @@ test('composer.tools.transfer exports and imports Collections through native dia
     await beginCall(desktopApp.page, openAiCompatibleLab, 'export-auto', EXPORT_TOOL);
     const autoPath = path.join(directory, 'after-auto.json');
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), autoPath);
-    await desktopApp.page.bringToFront();
     await finishCall(desktopApp.page);
     verifyCopies(original, await readTree(autoPath), 3);
 
@@ -334,7 +329,6 @@ test('composer.tools.transfer exports and imports Collections through native dia
     const exported = client.callTool({ name: EXPORT_TOOL, arguments: {} });
     const mcpPath = path.join(directory, 'mcp-export.json');
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), mcpPath);
-    await desktopApp.page.bringToFront();
     expect(mcpValue(await exported)).toEqual({ exported: true });
     const finalTree = await readTree(mcpPath);
     verifyCopies(original, finalTree, 4);

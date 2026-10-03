@@ -43,7 +43,7 @@ Windows使用官方`_electron.launch()`启动未打包production bundle；macOS�
 5. 从初始 UI 开始执行该 workflow 的连续操作；
 6. 保存 `trace.zip`、`final.png`、Main/Renderer 日志和 `metadata.json`；
 7. 通过真实Settings/UI恢复该workflow产生的CA/Trust、MITM等持久副作用；普通workflow不手动Restore系统代理；
-8. 点击 `shell.window.close`，由Main退出流程恢复仍由Interceptor持有的系统代理；
+8. 两平台都点击 `shell.window.close`，不打开macOS菜单Quit或主动前置App，由Main退出流程恢复仍由Interceptor持有的系统代理；
 9. 验证 Main、Renderer、Core、Worker 全退，8888 释放；
 10. 删除 profile 和 fixture。
 

@@ -283,14 +283,12 @@ test('capture.tools.body-export saves captured bytes through native Agent and MC
     expect(await readdir(directory)).toEqual([]);
     await beginAgentCall(page, openAiCompatibleLab, 'body-native-cancel', TOOL_NAME, responseArgs, 'allow');
     await cancelFileDialog(desktopApp.nativeFileDialogOwner());
-    await page.bringToFront();
     expect(await finishAgentCall(page, openAiCompatibleLab, 'body-native-cancel')).toEqual({ ok: true, value: { started: false } });
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('body-native-cancel'))).toHaveAttribute('data-summary-kind', 'exportCanceled');
     expect(await readdir(directory)).toEqual([]);
     const agentResponseFile = path.join(directory, 'agent-response.bin');
     await beginAgentCall(page, openAiCompatibleLab, 'body-allow', TOOL_NAME, responseArgs, 'allow');
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), agentResponseFile);
-    await page.bringToFront();
     const responseJobId = startedJob((await finishAgentCall(page, openAiCompatibleLab, 'body-allow')).value);
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('body-allow'))).toHaveAttribute('data-summary-kind', 'transferJob');
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('body-allow'))).toHaveAttribute('data-transfer-job-id', responseJobId);
@@ -302,7 +300,6 @@ test('capture.tools.body-export saves captured bytes through native Agent and MC
     const agentRequestFile = path.join(directory, 'agent-request.bin');
     await beginAgentCall(page, openAiCompatibleLab, 'body-auto', TOOL_NAME, requestArgs);
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), agentRequestFile);
-    await page.bringToFront();
     const requestJobId = startedJob((await finishAgentCall(page, openAiCompatibleLab, 'body-auto')).value);
     await verifyExport(client, requestJobId, agentRequestFile, source.request);
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolApproval('body-auto'))).toHaveCount(0);
@@ -326,14 +323,12 @@ test('capture.tools.body-export saves captured bytes through native Agent and MC
       client.callTool({ name: TOOL_NAME, arguments: otherArgs }),
       cancelFileDialog(desktopApp.nativeFileDialogOwner()),
     ]);
-    await page.bringToFront();
     expect(mcpValue(canceled)).toEqual({ started: false });
     const mcpFile = path.join(directory, 'mcp-response.bin');
     const [exporting] = await Promise.all([
       client.callTool({ name: TOOL_NAME, arguments: otherArgs }),
       submitFileDialogPath(desktopApp.nativeFileDialogOwner(), mcpFile),
     ]);
-    await page.bringToFront();
     const mcpJobId = startedJob(mcpValue(exporting));
     await verifyExport(client, mcpJobId, mcpFile, otherSource.response);
     await expect(getByAutomationId(page, AUTOMATION_IDS.mcp.approval.root)).toHaveCount(0);
@@ -346,7 +341,6 @@ test('capture.tools.body-export saves captured bytes through native Agent and MC
     const uiFile = path.join(directory, 'ui-response.bin');
     await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.save).click();
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), uiFile);
-    await page.bringToFront();
     await expect.poll(async () => {
       try { return createHash('sha256').update(await readFile(uiFile)).digest('hex'); } catch { return null; }
     }).toBe(source.response.hash);

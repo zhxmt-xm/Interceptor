@@ -450,7 +450,6 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
       AUTOMATION_IDS.capture.inspector.bodyAction.save,
     ).click();
     await submitFileDialogPath(mainProcessOwner, generatedFile);
-    await page.bringToFront();
     await expect.poll(async () => readFile(generatedFile).catch(() => null))
       .toEqual(responseFileBytes);
 
@@ -500,7 +499,6 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
     });
     await chooseFile.click();
     await submitFileDialogPath(mainProcessOwner, generatedFile);
-    await page.bringToFront();
     const selectedFile = getByAutomationId(
       page,
       AUTOMATION_IDS.breakpoints.selectedFile,

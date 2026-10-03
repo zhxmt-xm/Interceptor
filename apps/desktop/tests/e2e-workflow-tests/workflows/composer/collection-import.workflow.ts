@@ -96,11 +96,9 @@ async function chooseFile(
   busyAutomationId: string,
   filePath: string,
 ): Promise<void> {
-  await page.bringToFront();
   await trigger.click();
   await expect(getByPublicAutomationId(page, busyAutomationId)).toBeVisible();
   await submitFileDialogPath(mainProcessOwner, filePath);
-  await page.bringToFront();
   await expect(getByPublicAutomationId(page, busyAutomationId)).toHaveCount(0);
 }
 

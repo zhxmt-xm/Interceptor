@@ -21,7 +21,8 @@ profile保留策略，完整成功后删除测试profile。准备通过不等于
 
 ## 平台分派
 
-- macOS窗口准备仅操作已核对PID/启动时间的测试Main：所属App隐藏时显示，System Events尚无窗口时前置该Main，再继续原有窗口等待与尺寸断言，不改变产品或模拟viewport。
+- macOS窗口准备仅操作已核对PID/启动时间的测试Main：只等待System Events暴露真实窗口，再调整并断言尺寸，不显示隐藏App或用前置促使窗口出现，不改变产品或模拟viewport。
+- 普通收尾在Windows/macOS都点击`shell.window.close`，不打开macOS菜单Quit；Renderer DOM操作及原生文件面板关闭后的页面断言不调用`bringToFront()`。只有真实原生键鼠和最小化恢复专项取得焦点，原生driver继续核对目标窗口和进程代际。
 - 业务workflow共用UI操作、真实流量输入和业务结果，不为macOS增加query、替换输入或改Windows超时。原生差异只放driver/fixture的明确Windows/Macos方法，不复制两套业务流程。
 - `LocalElectronApplicationDriver`提供代理只读证据与journal路径；Windows继续读取WinINet和`LOCALAPPDATA`共享journal，macOS读取SystemConfiguration和用户级Interceptor Platform journal，两端crash恢复均用fresh profile。
 - 普通workflow在启动前只读检查共享CA已就绪，运行中只恢复profile内TLS配置，不Generate/Install/Uninstall/Delete。首次初始化使用certificate-startup workflow；破坏性证书专项使用`certificate-lifecycle-driver.ts`，要求启动前共享材料为空，基线包含完整系统Root/admin trust，只能清理本轮CA，不使用产品隐藏参数。
@@ -40,7 +41,7 @@ profile保留策略，完整成功后删除测试profile。准备通过不等于
 - macOS GoTo读取完整输入路径后，从其原生建议表中精确匹配测试自产文件/目录名，要求唯一命中并真实双击；只查询GoTo的`AXScrollArea → AXTable → AXRow → AXCell → AXList → AXStaticText`，不递归遍历文件浏览区。Save/Open类型取面板AXIdentifier，不能由文件名控件是否已出现暗示。
 - GoTo、Save/Open分别通过实际`CloseButton`、`OKButton`、`CancelButton`位置发送鼠标按下/抬起，明确清除修饰键并设置单击/双击计数。避免在关闭GoTo时按Return触发本机SCIM的text-storage越界、使系统Open/Save XPC服务崩溃；不修改输入法、应用语言、系统服务或dialog返回值。此处只改验收操作，不宣称修复了macOS系统服务。
 - 运行中传输的原生退出在driver分派：Windows保留原Alt+F4及前台窗口校验，macOS对精确Main进程发送Command+Q。Command+W仅关闭macOS窗口，不能作为App/Main/Core/Worker退出证明。两平台仍验证文件取消清理、宿主恢复和重启不重放。
-- `closeGracefully()`在macOS通过精确Main PID/启动时间激活所属App，等待其原生菜单可见后，以公开`AXMenuItemCmdChar=Q`定位Quit，避免后台App的空菜单索引和卡住的Renderer阻塞退出；未取得该App的可用Quit菜单时明确失败，不点击其他App。Windows仍使用原窗口按钮。macOS测试已超时时跳过最终截图，先Quit再核验宿主，记录`trace-unavailable`，不把缺失trace或失败流程算通过；正常轮次仍先保存trace再退出。
+- `closeGracefully()`在两平台都通过产品Close进入Main guarded shutdown，不激活App或操作系统菜单。macOS测试已超时时跳过最终截图，先尝试Close再核验宿主，记录`trace-unavailable`，不把缺失trace或失败流程算通过；Renderer已不可操作时明确报告关闭失败，由宿主guard保留尚未恢复代理的App/profile，不以菜单退出或强杀冒充成功。正常轮次仍先保存trace再退出。
 
 修改fixture后直接跑受影响的已有真实workflow，现有Windows安全测试可以回归但不能代替Windows原生E2E。不新增测试设施自身的unit/integration；原生授权不可用时记录blocked和恢复结果，不用mock或应急清理冒充Green。
 

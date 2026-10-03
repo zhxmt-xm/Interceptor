@@ -345,8 +345,6 @@ export class LocalElectronApplicationDriver {
       const { stdout } = await execFileAsync('/usr/bin/osascript', ['-e', `
 tell application "System Events"
   tell first application process whose unix id is ${owner.processId}
-    if not visible then set visible to true
-    if (count of windows) is 0 then set frontmost to true
     return count of windows
   end tell
 end tell
@@ -792,7 +790,6 @@ if ($windowHandle -eq [IntPtr]::Zero -or $foregroundProcessId -ne $owner.process
     const owner = this.macosApplication!.owner;
     const current = await MacosWorkflowHostSafetyOperations.readProcessIdentity(owner.processId);
     if (current.processStartedAt !== owner.processStartedAt) throw new Error('Test Main process generation changed.');
-    await this.page.bringToFront();
     const closed = this.waitForApplicationClose();
     void closed.catch(() => undefined);
     this.shutdownKind = 'graceful';
@@ -931,56 +928,13 @@ events.keyCode(12, { using: ["command down"] });
   /** Request normal application shutdown and prove Main, Core and listener cleanup. */
   async closeGracefully(): Promise<void> {
     if (!this.applicationClosed && !this.page.isClosed()) {
-      if (this.macosApplication) {
-        await this.closeMacosFromNativeMenu();
-      } else {
-        await this.closeFromWindowButton();
-      }
+      await this.closeFromWindowButton();
     }
 
     await this.verifyProcessesAndListenerReleased();
     if (this.shutdownKind === 'graceful') {
       this.gracefulDestroyVerified = true;
     }
-  }
-
-  private async closeMacosFromNativeMenu(): Promise<void> {
-    const owner = this.macosApplication!.owner;
-    const current = await MacosWorkflowHostSafetyOperations.readProcessIdentity(owner.processId);
-    if (current.processStartedAt !== owner.processStartedAt) throw new Error('Test Main process generation changed.');
-    const closed = this.waitForApplicationClose();
-    void closed.catch(() => undefined);
-    this.shutdownKind = 'graceful';
-    await execFileAsync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', `
-const events = Application("System Events");
-const owners = events.applicationProcesses.whose({ unixId: ${owner.processId} })();
-if (owners.length !== 1) throw new Error("Test Main is unavailable");
-const ownedApp = owners[0];
-ownedApp.frontmost = true;
-const deadline = Date.now() + 5000;
-let appMenu;
-let quitItem;
-while (Date.now() < deadline) {
-  const menuBars = ownedApp.menuBars();
-  const menuBarItems = menuBars.length === 1 ? menuBars[0].menuBarItems() : [];
-  if (ownedApp.frontmost() && menuBarItems.length > 1) {
-    appMenu = menuBarItems[1];
-    const menus = appMenu.menus();
-    if (menus.length === 1) {
-      quitItem = menus[0].menuItems().find(item =>
-        item.attributes.whose({ name: "AXMenuItemCmdChar" })().some(attribute => attribute.value() === "Q"));
-      if (quitItem && quitItem.enabled()) break;
-    }
-  }
-  delay(0.05);
-}
-if (!ownedApp.frontmost() || !appMenu || !quitItem || !quitItem.enabled()) {
-  throw new Error("Test Main native Quit menu is unavailable; no menu was clicked");
-}
-appMenu.click();
-quitItem.click();
-`], { encoding: 'utf8', timeout: 15_000 });
-    await closed;
   }
 
   /** Persist process logs and metadata after the workflow and destroy assertions finish. */

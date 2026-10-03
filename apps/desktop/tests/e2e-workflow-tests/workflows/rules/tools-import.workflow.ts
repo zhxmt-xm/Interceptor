@@ -91,7 +91,6 @@ async function createOriginalTree(page: Page): Promise<void> {
 async function exportTree(desktopApp: LocalElectronApplicationDriver, filePath: string): Promise<RuleNode[]> {
   await getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.toolbar.exportRules).click();
   await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), filePath);
-  await desktopApp.page.bringToFront();
   await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.exportBusy)).toHaveCount(0);
   return (JSON.parse(await readFile(filePath, 'utf8')) as { nodes: RuleNode[] }).nodes;
 }
@@ -126,7 +125,6 @@ async function beginImport(page: Page, openAiCompatibleLab: OpenAiCompatibleLab,
 
 async function selectImport(desktopApp: LocalElectronApplicationDriver, inputPath: string): Promise<void> {
   await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), inputPath);
-  await desktopApp.page.bringToFront();
   await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.import.dialog)).toBeVisible();
   await expect(getByAutomationId(desktopApp.page, 'rules.import.rule-count')).toHaveText('2');
   await expect(getByAutomationId(desktopApp.page, 'rules.import.folder-count')).toHaveText('1');
@@ -223,7 +221,6 @@ test('rules.tools.import appends product-exported Rules through the shared confi
     expect(toolResult(openAiCompatibleLab, 'import-deny')).toMatchObject({ ok: false, error: { code: 'tool_denied' } });
     await beginImport(desktopApp.page, openAiCompatibleLab, 'import-open-cancel', 'allow');
     await cancelFileDialog(desktopApp.nativeFileDialogOwner());
-    await desktopApp.page.bringToFront();
     await waitForTurn(desktopApp.page);
     expect(toolResult(openAiCompatibleLab, 'import-open-cancel')).toEqual({ ok: true, value: { imported: false } });
     await beginImport(desktopApp.page, openAiCompatibleLab, 'import-preview-cancel', 'allow');

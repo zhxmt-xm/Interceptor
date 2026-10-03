@@ -243,14 +243,12 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     expect(await finishAgentCall(page, openAiCompatibleLab, 'har-export-deny')).toMatchObject({ ok: false, error: { code: 'tool_denied' } });
     await beginAgentCall(page, openAiCompatibleLab, 'har-export-cancel', TOOL_NAMES[0], exportArgs, 'allow');
     await cancelFileDialog(desktopApp.nativeFileDialogOwner());
-    await page.bringToFront();
     expect(await finishAgentCall(page, openAiCompatibleLab, 'har-export-cancel')).toEqual({ ok: true, value: { started: false } });
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('har-export-cancel'))).toHaveAttribute('data-summary-kind', 'exportCanceled');
     expect(await readdir(directory)).toEqual([]);
     const completeFile = path.join(directory, 'complete.har');
     await beginAgentCall(page, openAiCompatibleLab, 'har-export-full', TOOL_NAMES[0], exportArgs, 'allow');
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completeFile);
-    await page.bringToFront();
     const fullJobId = startedJob((await finishAgentCall(page, openAiCompatibleLab, 'har-export-full')).value, 'har-export');
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('har-export-full'))).toHaveAttribute('data-summary-kind', 'transferJob');
     await waitForCompletedJob(client, fullJobId);
@@ -263,7 +261,6 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
       redaction: { authorization: true, cookies: true, bodies: true },
     });
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), redactedFile);
-    await page.bringToFront();
     await waitForCompletedJob(client, startedJob((await finishAgentCall(page, openAiCompatibleLab, 'har-export-filtered')).value, 'har-export'));
     const redactedHar = await readHar(redactedFile);
     expect(redactedHar.entries).toHaveLength(1);
@@ -281,7 +278,6 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     expect(await finishAgentCall(page, openAiCompatibleLab, 'har-import-deny')).toMatchObject({ ok: false, error: { code: 'tool_denied' } });
     await beginAgentCall(page, openAiCompatibleLab, 'har-import-cancel', TOOL_NAMES[1], {}, 'allow');
     await cancelFileDialog(desktopApp.nativeFileDialogOwner());
-    await page.bringToFront();
     expect(await finishAgentCall(page, openAiCompatibleLab, 'har-import-cancel')).toEqual({ ok: true, value: { started: false } });
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('har-import-cancel'))).toHaveAttribute('data-summary-kind', 'importCanceled');
     expect((await captureItems(client)).map((entry) => String(entry.id)).sort()).toEqual([...originalIds].sort());
@@ -296,7 +292,6 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     expect(await captureItems(client)).toEqual([]);
     await beginAgentCall(page, openAiCompatibleLab, 'har-import-allow', TOOL_NAMES[1], {}, 'allow');
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completeFile);
-    await page.bringToFront();
     await waitForCompletedJob(client, startedJob((await finishAgentCall(page, openAiCompatibleLab, 'har-import-allow')).value, 'har-import'));
     await expect.poll(async () => (await captureItems(client!)).length).toBe(2);
     const importedIds = (await captureItems(client)).map((entry) => String(entry.id));
@@ -323,14 +318,12 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
       client.callTool({ name: TOOL_NAMES[0], arguments: { scope: { kind: 'all' }, redaction: FULL_REDACTION } }),
       submitFileDialogPath(desktopApp.nativeFileDialogOwner(), mcpFile),
     ]);
-    await page.bringToFront();
     await waitForCompletedJob(client, startedJob(mcpValue(mcpExport), 'har-export'));
     verifyFullHar((await readHar(mcpFile)).entries);
     const [mcpImport] = await Promise.all([
       client.callTool({ name: TOOL_NAMES[1], arguments: {} }),
       submitFileDialogPath(desktopApp.nativeFileDialogOwner(), mcpFile),
     ]);
-    await page.bringToFront();
     await waitForCompletedJob(client, startedJob(mcpValue(mcpImport), 'har-import'));
     await expect.poll(async () => (await captureItems(client!)).length).toBe(4);
     await expect(getByAutomationId(page, AUTOMATION_IDS.mcp.approval.root)).toHaveCount(0);
@@ -355,7 +348,6 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start).click();
     const uiFile = path.join(directory, 'ui.har');
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), uiFile);
-    await page.bringToFront();
     await expect(getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start)).toBeHidden();
     await expect.poll(async () => {
       try { return (await readHar(uiFile)).entries.length; } catch { return 0; }
@@ -366,7 +358,6 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     await getByAutomationId(page, AUTOMATION_IDS.capture.importHar).click();
     await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start).click();
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completeFile);
-    await page.bringToFront();
     await expect.poll(async () => (await captureItems(client!)).length).toBe(6);
     const uiImported = (await captureItems(client)).find((entry) => !beforeUiImportIds.includes(String(entry.id)));
     if (uiImported === undefined) throw new Error('IPC import did not create new Capture identities.');
