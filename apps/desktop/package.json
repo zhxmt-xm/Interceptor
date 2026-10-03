@@ -3,6 +3,7 @@
   "productName": "Interceptor",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
   "author": "zhxmt-xm",
   "description": "Interceptor Electron desktop application",
   "main": ".vite/build/main.js",

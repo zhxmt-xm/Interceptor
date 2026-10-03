@@ -1,0 +1,96 @@
+{
+  "@graphql-tools/merge@9.2.0": {
+    "license": "MIT",
+    "notices": [
+      {
+        "file": "graphql-tools.txt",
+        "source": "https://github.com/ardatan/graphql-tools/blob/76b54daadb92cc8128179101370cbcd63953885c/LICENSE"
+      }
+    ]
+  },
+  "@graphql-tools/schema@10.0.36": {
+    "license": "MIT",
+    "notices": [
+      {
+        "file": "graphql-tools.txt",
+        "source": "https://github.com/ardatan/graphql-tools/blob/76b54daadb92cc8128179101370cbcd63953885c/LICENSE"
+      }
+    ]
+  },
+  "@graphql-tools/utils@11.2.0": {
+    "license": "MIT",
+    "notices": [
+      {
+        "file": "graphql-tools.txt",
+        "source": "https://github.com/ardatan/graphql-tools/blob/76b54daadb92cc8128179101370cbcd63953885c/LICENSE"
+      }
+    ]
+  },
+  "cross-inspect@1.0.1": {
+    "license": "MIT",
+    "notices": [
+      {
+        "file": "graphql-tools.txt",
+        "source": "https://github.com/ardatan/graphql-tools/blob/76b54daadb92cc8128179101370cbcd63953885c/LICENSE"
+      }
+    ]
+  },
+  "@whatwg-node/promise-helpers@1.3.2": {
+    "license": "MIT",
+    "notices": [
+      {
+        "file": "whatwg-node.txt",
+        "source": "https://github.com/ardatan/whatwg-node/blob/65780bcc552693d0f770186984a35115e6f29e8a/LICENSE"
+      }
+    ]
+  },
+  "backo2@1.0.2": {
+    "license": "MIT",
+    "notices": [
+      {
+        "file": "backo2.txt",
+        "source": "https://github.com/mokesmokes/backo/blob/280597dede9a7c97ff47a3fa01f3b412c1d94438/LICENSE"
+      }
+    ]
+  },
+  "degenerator@5.0.1": {
+    "license": "MIT",
+    "notices": [
+      {
+        "file": "degenerator.txt",
+        "source": "https://registry.npmjs.org/degenerator/-/degenerator-5.0.1.tgz (README.md, License section)"
+      }
+    ]
+  },
+  "isarray@1.0.0": {
+    "license": "MIT",
+    "notices": [
+      {
+        "file": "isarray.txt",
+        "source": "https://registry.npmjs.org/isarray/-/isarray-1.0.0.tgz (README.md, License section)"
+      }
+    ]
+  },
+  "parse-multipart-data@1.5.0": {
+    "license": "MIT",
+    "notices": [
+      {
+        "file": "parse-multipart.txt",
+        "source": "https://github.com/freesoftwarefactory/parse-multipart/blob/cbc86a883e2cfff0bfcfbfaf4ab30d0b2624e571/LICENSE (upstream identified by parse-multipart-data README.md)"
+      }
+    ]
+  },
+  "zstd-codec@0.1.5": {
+    "license": "MIT",
+    "notices": [
+      {
+        "file": "zstd-codec.txt",
+        "source": "https://github.com/yoshihitoh/zstd-codec/blob/5b5849296017bdf365f2f60d6fc4cf4ba7d55b57/LICENSE"
+      },
+      {
+        "file": "zstd.txt",
+        "source": "https://github.com/facebook/zstd/blob/4fa456d7f12f8b27bd3b2f5dfd4f46898cb31c24/LICENSE (cpp/zstd submodule)"
+      }
+    ]
+  }
+}

@@ -2,6 +2,7 @@
   "name": "@interceptor/tools",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Transport-neutral Interceptor tool catalog and policies",
   "type": "commonjs",
   "main": "src/index.ts",

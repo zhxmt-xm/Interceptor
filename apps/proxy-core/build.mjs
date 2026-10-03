@@ -15,7 +15,8 @@ class ProxyCoreBuilder {
   /** Rebuild all Core and Worker entries, then ship the traced runtime closure. */
   static async run() {
     await rm(this.outputRoot, { recursive: true, force: true });
-    await build({
+    const result = await build({
+      absWorkingDir: this.workspaceRoot,
       entryPoints: [
         path.join(this.sourceRoot, 'proxy-core/entry.cts'),
         path.join(this.sourceRoot, 'proxy-core/archive/worker/entry.ts'),
@@ -30,8 +31,13 @@ class ProxyCoreBuilder {
       outExtension: { '.js': '.cjs' },
       external: ['mockttp', 'ws'],
       sourcemap: process.env.INTERCEPTOR_SOURCEMAPS === '1',
+      metafile: true,
     });
-    await import('../../scripts/ship-core-deps.mjs');
+    const { shipCoreDependencies } = await import('../../scripts/ship-core-deps.mjs');
+    await shipCoreDependencies(
+      Object.keys(result.metafile.inputs).map((input) =>
+        path.resolve(this.workspaceRoot, input)),
+    );
   }
 }
 

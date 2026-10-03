@@ -9,6 +9,7 @@
 | 文档 | 内容 |
 | --- | --- |
 | [development.md](development.md) | 初始化、模块分工、开发调试、验证、打包发布与常见问题 |
+| [release-guide.md](release-guide.md) | 交互发版命令、版本递增、平台/架构/包类型选择、GitHub逐步点击与失败恢复 |
 | [HANDOVER.md](HANDOVER.md) | 当前任务、进度、下一步、阻塞与必要验收结论 |
 | `platform/` | 跨feature的进程、Renderer、存储、打包和测试架构 |
 | `features/` | 功能职责、调用流程、数据契约、交互和限制 |

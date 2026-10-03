@@ -41,6 +41,7 @@ class PackageArtifactAuditor {
     ]);
 
     await this.auditAsar(asarPath);
+    await this.auditLicenses(resourcesPath);
     const packageFiles = await this.collectFiles(this.packageRoot);
     const packageBytes = packageFiles.reduce((total, file) => total + file.size, 0);
 
@@ -75,10 +76,40 @@ class PackageArtifactAuditor {
     if (packageJson.version !== expectedVersion) {
       throw new Error(`Unexpected packaged version: ${String(packageJson.version)}.`);
     }
+    if (packageJson.license !== 'Apache-2.0') {
+      throw new Error(`Unexpected packaged license: ${String(packageJson.license)}.`);
+    }
     const forbidden = listPackage(asarPath, { isPack: false })
       .filter((entry) => this.forbiddenPattern.test(entry));
     if (forbidden.length > 0) {
       throw new Error(`Forbidden ASAR entries:\n${forbidden.join('\n')}`);
+    }
+    for (const licensePath of [
+      '.vite/build/main-licenses.txt',
+      '.vite/build/preload-licenses.txt',
+      '.vite/renderer/main_window/renderer-licenses.txt',
+    ]) {
+      if (!extractFile(asarPath, licensePath).toString('utf8').trim()) {
+        throw new Error(`Empty bundled dependency license file: ${licensePath}.`);
+      }
+    }
+  }
+
+  /** Verify the Apache license and attribution are unchanged and dependency notices are present. */
+  static async auditLicenses(resourcesPath) {
+    for (const name of ['LICENSE', 'NOTICE']) {
+      const expected = await readFile(path.join(this.desktopRoot, '../..', name));
+      const packaged = await readFile(path.join(resourcesPath, name));
+      if (!packaged.equals(expected)) {
+        throw new Error(`Packaged ${name} differs from the repository license.`);
+      }
+    }
+    const coreLicenses = await readFile(
+      path.join(resourcesPath, 'proxy-core/THIRD-PARTY-LICENSES.txt'),
+      'utf8',
+    );
+    if (!coreLicenses.includes('mockttp@') || !coreLicenses.includes('tls-impersonate@')) {
+      throw new Error('Core dependency license notices are incomplete.');
     }
   }
 

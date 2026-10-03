@@ -100,6 +100,14 @@ macOS启动App前先只读检查登录桌面可用且未锁定；锁屏时明确
 
 macOS Main的stdout/stderr继承测试profile内0600日志文件，父runner在spawn后关闭自己的句柄；失败保留App时不依赖runner的pipe，避免runner退出后Main写日志触发EPIPE。结果只附加最后8000个字符，完整日志随失败profile保留；Windows继续原pipe和进程清理路径。原业务断言错误与清理错误同时保留，不能被finally中的恢复失败覆盖。
 
+### macOS直接分发验收
+
+- macOS tag发行使用ad-hoc签名，不要求Developer ID或Apple公证。`codesign --verify --deep --strict`验证包与内嵌代码完整性，不代表Gatekeeper会直接放行。
+- 托管Release CI按所选原生目标执行构建、helper读取、CPU架构/签名完整性、许可/资源审计和安装包检查，不执行本套件所需的原生授权流程。tag只创建draft Release，本套件的真实结果和安装证据齐全后才能手动Publish；所选包类型数量必须与本轮结果一致，不能扫描旧make输出冒充新包。
+- 从GitHub实际下载DMG/ZIP，将App复制到Applications，再按系统正常流程核对首次启动、单个可信应用放行、helper和CA授权。禁止删除quarantine属性或全局关闭Gatekeeper来制造通过结果；开发helper授权不能替代生产入口。
+- 保存下载来源、版本、架构、SHA-256、系统提示及正常退出证据。确认Main/Core/Worker退出、8888释放、系统代理和证书状态符合基线；常驻helper的保留/卸载遵守现有独立授权范围。
+- 默认配置不含Windows；向导选择Windows后仍须完成Windows smoke和安装器生命周期，未运行不能记为通过。具体配置和手动CI步骤见[发版指南](../../../../architecture/release-guide.md)。
+
 ## 推荐运行方式
 
 从仓库根目录构建真实 package：

@@ -1,7 +1,13 @@
 name: Release artifacts
+run-name: Release ${{ github.event_name == 'workflow_dispatch' && inputs.request_id || github.ref_name }}
 
 on:
   workflow_dispatch:
+    inputs:
+      request_id:
+        description: 'Optional tracking ID; leave empty when running from this page'
+        required: false
+        type: string
   push:
     tags:
       - 'v*'
@@ -10,12 +16,16 @@ permissions:
   contents: read
 
 jobs:
-  windows:
-    name: Windows x64 MSI
-    runs-on: windows-2025
-    env:
-      WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
-      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+  plan:
+    name: Validate release configuration
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.config.outputs.matrix }}
+      version: ${{ steps.config.outputs.version }}
+      prerelease: ${{ steps.config.outputs.prerelease }}
+      asset_count: ${{ steps.config.outputs.asset_count }}
+      package_counts: ${{ steps.config.outputs.package_counts }}
+      summary: ${{ steps.config.outputs.summary }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
@@ -23,128 +33,64 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: Resolve tagged application version
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: pwsh
-        run: |
-          $version = $env:GITHUB_REF_NAME.Substring(1)
-          node -e "if (!require('semver').valid(process.argv[1])) process.exit(1)" $version
-          if ($LASTEXITCODE -ne 0) { throw "Invalid release tag: $env:GITHUB_REF_NAME" }
-          "INTERCEPTOR_BUILD_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Resolve version and native build matrix
+        id: config
+        run: node scripts/release-config.mjs
+
+  build:
+    name: Build ${{ matrix.id }}
+    needs: [plan]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    env:
+      INTERCEPTOR_BUILD_VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .nvmrc
+          architecture: ${{ matrix.arch }}
+          cache: npm
+      - run: npm ci
       - name: Prepare WiX 3.14.1
+        if: matrix.platform == 'win32'
         shell: pwsh
         run: ./scripts/prepare-wix.ps1 -Destination "$env:RUNNER_TEMP/wix314"
-      - name: Restore Windows signing certificate
-        if: env.WINDOWS_CERTIFICATE_BASE64 != ''
-        shell: pwsh
-        run: |
-          $certificatePath = Join-Path $env:RUNNER_TEMP 'interceptor-signing.pfx'
-          [IO.File]::WriteAllBytes(
-            $certificatePath,
-            [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_BASE64)
-          )
-          "WINDOWS_CERTIFICATE_FILE=$certificatePath" | Out-File -FilePath $env:GITHUB_ENV -Append
-      - name: Require signing for a public release
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: pwsh
-        run: |
-          if (-not $env:WINDOWS_CERTIFICATE_FILE) {
-            throw 'WINDOWS_CERTIFICATE_BASE64 is required for tag releases.'
-          }
       - run: npm run build:core
+      - run: npm run build:native --workspace @interceptor/desktop
       - run: npm run typecheck
-      - run: npm run test:unit
-      - run: npm run make
-      - run: npm run test:package-audit
-      - run: npm run test:smoke --workspace @interceptor/desktop
-      - run: npm run test:installer:windows
+      - run: npm run test --workspaces --if-present -- --no-file-parallelism
+      - run: npm run release:build -- --target "${{ matrix.id }}"
       - run: npm audit --omit=dev
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: interceptor-release-windows-x64
-          path: apps/desktop/out/make/**/*.msi
+          name: interceptor-release-${{ matrix.id }}
+          path: apps/desktop/out/release/${{ matrix.id }}/Interceptor-${{ needs.plan.outputs.version }}-${{ matrix.id }}.*
           if-no-files-found: error
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: interceptor-diagnostics-windows-x64
+          name: interceptor-diagnostics-${{ matrix.id }}
           path: apps/desktop/test-results/**/*
           if-no-files-found: ignore
-
-  macos:
-    name: macOS DMG and ZIP
-    runs-on: macos-15
-    env:
-      APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
-      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
-      - name: Resolve tagged application version
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: bash
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          node -e "if (!require('semver').valid(process.argv[1])) process.exit(1)" "$VERSION"
-          echo "INTERCEPTOR_BUILD_VERSION=$VERSION" >> "$GITHUB_ENV"
-      - name: Require signing and notarization for a public release
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: bash
-        run: |
-          test -n "$APPLE_CERTIFICATE_BASE64"
-          test -n "$APPLE_CERTIFICATE_PASSWORD"
-          test -n "$APPLE_ID"
-          test -n "$APPLE_ID_PASSWORD"
-          test -n "$APPLE_TEAM_ID"
-      - name: Restore Developer ID certificate
-        if: env.APPLE_CERTIFICATE_BASE64 != ''
-        shell: bash
-        run: |
-          CERTIFICATE_PATH="$RUNNER_TEMP/interceptor-signing.p12"
-          KEYCHAIN_PATH="$RUNNER_TEMP/interceptor-signing.keychain-db"
-          KEYCHAIN_PASSWORD="temporary-actions-keychain"
-          echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security import "$CERTIFICATE_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security list-keychains -d user -s "$KEYCHAIN_PATH"
-          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | sed -n 's/.*"\(Developer ID Application:[^"]*\)".*/\1/p' | head -n 1)
-          test -n "$IDENTITY"
-          echo "APPLE_SIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
-      - run: npm run build:core
-      - run: npm run typecheck
-      - run: npm run test:unit
-      - run: npm run test:release:macos
-      - run: npm run test:package-audit
-      - run: npm run test:smoke --workspace @interceptor/desktop
-      - run: npm audit --omit=dev
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: interceptor-release-macos-${{ runner.arch }}
-          path: |
-            apps/desktop/out/make/**/*.dmg
-            apps/desktop/out/make/**/*.zip
-          if-no-files-found: error
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - name: Record remaining release acceptance
         if: always()
-        with:
-          name: interceptor-diagnostics-macos-${{ runner.arch }}
-          path: apps/desktop/test-results/**/*
-          if-no-files-found: ignore
+        shell: bash
+        run: |
+          {
+            echo "## Remaining release acceptance"
+            echo "Only the configured native target and package types were built."
+            echo "macOS uses ad-hoc signing without Apple notarization; Windows installers are unsigned."
+            echo "Packaged smoke, browser-download installation, native authorization, installer lifecycle and exit restoration require the corresponding real platform before publishing."
+            echo "Those manual checks are not reported as passed by this workflow."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   release:
-    name: Publish GitHub Release
+    name: Prepare draft Release
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: [windows, macos]
+    needs: [plan, build]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -154,33 +100,70 @@ jobs:
           pattern: interceptor-release-*
           path: release-assets
           merge-multiple: true
-      - name: Publish verified release artifacts
+      - name: Attach verified artifacts to a draft
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TARGET_SUMMARY: ${{ needs.plan.outputs.summary }}
+          EXPECTED_ASSET_COUNT: ${{ needs.plan.outputs.asset_count }}
+          EXPECTED_PACKAGE_COUNTS: ${{ needs.plan.outputs.package_counts }}
+          PRERELEASE: ${{ needs.plan.outputs.prerelease }}
         run: |
-          mapfile -d '' ASSETS < <(find release-assets -type f \( \
-            -name '*.msi' -o -name '*.dmg' -o -name '*.zip' \
-          \) -print0)
-          test "${#ASSETS[@]}" -eq 3
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" "${ASSETS[@]}" --clobber
-          else
+          mapfile -d '' ASSETS < <(find release-assets -type f -print0)
+          test "${#ASSETS[@]}" -eq "$EXPECTED_ASSET_COUNT"
+          for TYPE in dmg zip msi; do
+            EXPECTED=$(jq -r --arg type "$TYPE" '.[$type]' <<< "$EXPECTED_PACKAGE_COUNTS")
+            test "$(find release-assets -type f -name "*.$TYPE" | wc -l)" -eq "$EXPECTED"
+          done
+          for ASSET in "${ASSETS[@]}"; do
+            DIGEST="sha256:$(sha256sum "$ASSET" | cut -d ' ' -f 1)"
+            jq -n --arg name "$(basename "$ASSET")" --arg digest "$DIGEST" \
+              --argjson size "$(stat -c %s "$ASSET")" \
+              '{key: $name, value: {digest: $digest, size: $size}}'
+          done | jq -s 'from_entries' > expected-assets.json
+
+          EXISTING=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" |
+            jq -sc --arg tag "$GITHUB_REF_NAME" '[.[][] | select(.tag_name == $tag)]')
+          if jq -e 'length == 0' <<< "$EXISTING" >/dev/null; then
+            FLAGS=()
+            if test "$PRERELEASE" = true; then FLAGS+=(--prerelease); fi
             gh release create "$GITHUB_REF_NAME" "${ASSETS[@]}" \
+              "${FLAGS[@]}" \
+              --draft \
               --verify-tag \
               --generate-notes \
+              --notes "Targets: $TARGET_SUMMARY. macOS is ad-hoc signed and not notarized; Windows installers are unsigned. macOS built-in updates require a DMG for the matching architecture; ZIP-only builds are for manual download. Verify the download source and integrity before using per-app approval; do not disable system-wide security. Helper and CA permissions are separate. Complete real installation, packaged smoke, authorization, installer lifecycle and exit-restoration acceptance on every included platform before publishing this draft." \
               --title "Interceptor ${GITHUB_REF_NAME#v}"
+          elif jq -e 'length == 1 and .[0].draft == true' <<< "$EXISTING" >/dev/null; then
+            gh release upload "$GITHUB_REF_NAME" "${ASSETS[@]}" --clobber
+          else
+            echo "Refusing to overwrite an already published Release. Use a new version tag." >&2
+            exit 1
           fi
-          read -r TOTAL VALID < <(
-            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
-              --jq '[
-                (.assets | length),
-                ([.assets[] | select(
+
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases" |
+            jq -es --arg tag "$GITHUB_REF_NAME" \
+              --argjson count "$EXPECTED_ASSET_COUNT" \
+              --argjson prerelease "$PRERELEASE" \
+              --slurpfile expected expected-assets.json '
+              [.[][] | select(.tag_name == $tag)] |
+              length == 1 and
+              (.[0] |
+                .draft == true and
+                .prerelease == $prerelease and
+                (.assets | length == $count) and
+                all(.assets[];
+                  . as $asset |
                   .state == "uploaded" and
                   .size > 0 and
-                  ((.digest // "") | test("^sha256:[a-f0-9]{64}$"))
-                )] | length)
-              ] | @tsv'
-          )
-          test "$TOTAL" -eq 3
-          test "$VALID" -eq 3
+                  (.digest | type == "string") and
+                  .digest == $expected[0][$asset.name].digest and
+                  .size == $expected[0][$asset.name].size
+                )
+              )'
+          {
+            echo "## Draft Release prepared"
+            echo "The configured artifacts are staged, not published."
+            echo "Complete installation and restoration acceptance on every included platform, then publish the draft manually."
+          } >> "$GITHUB_STEP_SUMMARY"

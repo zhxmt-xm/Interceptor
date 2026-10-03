@@ -1,0 +1,12 @@
+{
+  "targets": [
+    {
+      "platform": "darwin",
+      "arch": "x64",
+      "packages": [
+        "dmg",
+        "zip"
+      ]
+    }
+  ]
+}

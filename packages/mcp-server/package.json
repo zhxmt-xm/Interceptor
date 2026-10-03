@@ -2,6 +2,7 @@
   "name": "@interceptor/mcp-server",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Authenticated MCP HTTP adapter exposing Interceptor tools to external AI hosts",
   "type": "commonjs",
   "main": "src/index.ts",

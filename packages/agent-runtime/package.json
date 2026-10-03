@@ -2,6 +2,7 @@
   "name": "@interceptor/agent-runtime",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Provider-neutral agent loop and model adapters for Interceptor",
   "type": "commonjs",
   "main": "src/index.ts",

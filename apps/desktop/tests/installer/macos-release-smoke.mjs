@@ -2,9 +2,10 @@ import { spawn } from 'node:child_process';
 import { access, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
 /** macOS package, helper, nested signature, DMG/ZIP and notarization validation. */
-class MacosReleaseSmoke {
+export class MacosReleaseSmoke {
   /** Repository root whose make command builds Core before Desktop. */
   static repoRoot = path.resolve(import.meta.dirname, '../../../..');
   /** Desktop workspace containing Forge output. */
@@ -25,6 +26,16 @@ class MacosReleaseSmoke {
     }
 
     await this.runCommand('npm', ['run', 'make'], { cwd: this.repoRoot });
+    const makeDirectory = path.join(this.desktopRoot, 'out/make');
+    const artifacts = [
+      ...await this.findFiles(makeDirectory, '.dmg'),
+      ...await this.findFiles(makeDirectory, '.zip'),
+    ];
+    await this.verifyArtifacts(artifacts, ['dmg', 'zip']);
+  }
+
+  /** Verify the selected artifacts and native architecture without rebuilding the app. */
+  static async verifyArtifacts(artifacts, packageTypes) {
     await access(this.appPath);
     const helperPath = path.join(
       this.appPath,
@@ -35,17 +46,22 @@ class MacosReleaseSmoke {
       throw new Error('Packaged macOS system-proxy helper is not executable.');
     }
     await this.runCommand(helperPath, ['get']);
+    const architecture = process.arch === 'x64' ? 'x86_64' : process.arch;
+    for (const executable of [
+      path.join(this.appPath, 'Contents/MacOS/Interceptor'),
+      helperPath,
+    ]) {
+      await this.runCommand('lipo', [executable, '-verify_arch', architecture]);
+    }
     await this.runCommand(
       'codesign',
       ['--verify', '--deep', '--strict', '--verbose=2', this.appPath],
     );
 
-    const makeDirectory = path.join(this.desktopRoot, 'out/make');
-    const dmgs = await this.findFiles(makeDirectory, '.dmg');
-    const zips = await this.findFiles(makeDirectory, '.zip');
-    if (dmgs.length !== 1 || zips.length !== 1) {
+    if (artifacts.length !== packageTypes.length ||
+        packageTypes.some((type) => artifacts.filter((file) => path.extname(file) === `.${type}`).length !== 1)) {
       throw new Error(
-        `Expected one DMG and one ZIP, found ${dmgs.length} DMG / ${zips.length} ZIP.`,
+        `Expected one artifact for each selected package type: ${packageTypes.join(', ')}.`,
       );
     }
 
@@ -54,6 +70,8 @@ class MacosReleaseSmoke {
         'spctl',
         ['--assess', '--type', 'execute', '--verbose=4', this.appPath],
       );
+    } else {
+      console.log('[macos-release-smoke] ad-hoc signature integrity verified; Developer ID assessment not applicable');
     }
     if (
       process.env.APPLE_ID &&
@@ -64,8 +82,10 @@ class MacosReleaseSmoke {
         'xcrun',
         ['stapler', 'validate', '-v', this.appPath],
       );
+    } else {
+      console.log('[macos-release-smoke] Apple notarization not configured; browser-download Gatekeeper acceptance remains manual');
     }
-    console.log('[macos-release-smoke] package, helper, signatures, DMG and ZIP passed');
+    console.log(`[macos-release-smoke] package, helper, native architecture, signatures and ${packageTypes.join('/')} passed`);
   }
 
   /** Recursively discover release artifacts with one extension. */
@@ -103,4 +123,6 @@ class MacosReleaseSmoke {
   }
 }
 
-await MacosReleaseSmoke.run();
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await MacosReleaseSmoke.run();
+}

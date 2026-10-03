@@ -31,6 +31,9 @@ const developmentCsp = [
 
 export default defineConfig(({ command }) => ({
   plugins: [react(), contentSecurityPolicy(command === 'serve')],
+  build: {
+    license: { fileName: 'renderer-licenses.txt' },
+  },
 }));
 
 function contentSecurityPolicy(development: boolean): Plugin {

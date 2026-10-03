@@ -20,7 +20,8 @@ const repoRoot = path.resolve(scriptDir, '..');
 const coreDist = path.join(repoRoot, 'apps/proxy-core/dist/proxy-core');
 const entryFile = path.join(coreDist, 'entry.cjs');
 
-async function main() {
+/** Copy the runtime closure and retain licenses for external and bundled dependencies. */
+export async function shipCoreDependencies(bundledInputs) {
   await fs.access(entryFile).catch(() => {
     throw new Error(`Missing ${entryFile}; run esbuild build first.`);
   });
@@ -28,6 +29,7 @@ async function main() {
   const { fileList } = await nodeFileTrace([entryFile], { base: repoRoot });
 
   const shippedPackages = new Set();
+  const licensePackageRoots = new Set();
   let copied = 0;
   let bytes = 0;
 
@@ -47,6 +49,10 @@ async function main() {
     if (root) {
       shippedPackages.add(root);
     }
+    const licenseRoot = packageRootOf(normalized);
+    if (licenseRoot) {
+      licensePackageRoots.add(licenseRoot);
+    }
   }
 
   // 补拷 nft 漏掉的原生二进制（node-gyp-build prebuilds / build 产物）。
@@ -57,6 +63,14 @@ async function main() {
       path.join(coreDist, root),
     );
   }
+
+  for (const input of bundledInputs) {
+    const root = packageRootOf(path.relative(repoRoot, input));
+    if (root) {
+      licensePackageRoots.add(root);
+    }
+  }
+  await writeDependencyLicenses(licensePackageRoots);
 
   const [nodeAddons, wasmAssets] = await countBinaries(
     path.join(coreDist, 'node_modules'),
@@ -82,14 +96,63 @@ function sliceFromNodeModules(normalized) {
   return index < 0 ? null : parts.slice(index).join(path.sep);
 }
 
-/** 从 `node_modules/...` 子路径解析包根（含 @scope）。 */
+/** 从 `node_modules/...` 子路径解析实际包根，保留嵌套依赖及 @scope。 */
 function packageRootOf(fromNodeModules) {
-  const parts = fromNodeModules.split(path.sep); // ['node_modules', name, ...]
-  if (parts.length < 2) {
+  const parts = fromNodeModules.split(path.sep);
+  const index = parts.lastIndexOf('node_modules');
+  if (index < 0 || parts.length <= index + 1) {
     return null;
   }
-  const scoped = parts[1].startsWith('@');
-  return parts.slice(0, scoped ? 3 : 2).join(path.sep);
+  const scoped = parts[index + 1].startsWith('@');
+  return parts.slice(0, index + (scoped ? 3 : 2)).join(path.sep);
+}
+
+/** Preserve dependency license texts and attribution without relicensing third-party code. */
+async function writeDependencyLicenses(packageRoots) {
+  const noticesDirectory = path.join(repoRoot, 'third-party-licenses');
+  const supplements = JSON.parse(await fs.readFile(
+    path.join(noticesDirectory, 'sources.json'),
+    'utf8',
+  ));
+  const sections = [];
+  for (const root of [...packageRoots].sort()) {
+    const packageDirectory = path.join(repoRoot, root);
+    const metadata = JSON.parse(await fs.readFile(
+      path.join(packageDirectory, 'package.json'),
+      'utf8',
+    ));
+    const entries = await fs.readdir(packageDirectory, { withFileTypes: true });
+    const noticeNames = entries
+      .filter((entry) => entry.isFile() &&
+        /^(?:licen[sc]e|copying|copyright(?:notice)?|notice|ofl)(?:$|[._-])/i.test(entry.name))
+      .map((entry) => entry.name)
+      .sort();
+    const license = metadata.license ?? metadata.licenses;
+    if (!metadata.name || !metadata.version || !license) {
+      throw new Error(`Missing dependency license metadata: ${root}.`);
+    }
+    const notices = await Promise.all(noticeNames.map(async (name) =>
+      `${name}\n\n${await fs.readFile(path.join(packageDirectory, name), 'utf8')}`));
+    if (!noticeNames.some((name) => /^(?:licen[sc]e|copying|ofl)(?:$|[._-])/i.test(name))) {
+      const supplement = supplements[`${metadata.name}@${metadata.version}`];
+      if (!supplement || supplement.license !== license) {
+        throw new Error(`Missing reviewed dependency license text: ${root}.`);
+      }
+      for (const notice of supplement.notices) {
+        const text = await fs.readFile(path.join(noticesDirectory, notice.file), 'utf8');
+        notices.push(`Source: ${notice.source}\n\n${text}`);
+      }
+    }
+    sections.push(
+      `${metadata.name}@${metadata.version}\nLicense: ${JSON.stringify(license)}\n\n${notices.join('\n\n')}`,
+    );
+  }
+  await fs.writeFile(
+    path.join(coreDist, 'THIRD-PARTY-LICENSES.txt'),
+    sections.join(`\n\n${'='.repeat(72)}\n\n`),
+    'utf8',
+  );
+  process.stdout.write(`[ship-core-deps] retained licenses for ${packageRoots.size} dependencies\n`);
 }
 
 async function copyFile(source, dest) {
@@ -153,8 +216,3 @@ async function exists(target) {
     () => false,
   );
 }
-
-main().catch((error) => {
-  process.stderr.write(`[ship-core-deps] ${error.message}\n`);
-  process.exitCode = 1;
-});

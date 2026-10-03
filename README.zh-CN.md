@@ -48,10 +48,11 @@ Interceptor 将流量检查、请求重放、响应模拟和 AI 辅助调试整�
 
 | 平台 | 安装包 | 安装方式 |
 | --- | --- | --- |
-| Windows x64 | MSI | 运行面向当前用户的安装器。 |
-| macOS | DMG / ZIP | 选择适合当前 Mac 的产物，并按该版本说明安装。 |
+| macOS | DMG / ZIP | 选择适合当前 Mac 的产物，先将App复制到Applications，再打开应用。 |
 
 只以 Release 实际附带的产物为下载依据。没有对应平台安装包时，可参考 [中文开发指南](architecture/development.md) 从源码构建。
+
+macOS安装包采用ad-hoc签名，未经过Apple公证，首次启动可能被Gatekeeper阻止。确认下载来源可信且文件完整后，可按系统提供的“系统设置 → 隐私与安全性 → 仍要打开”流程放行该应用；受管理设备可能不提供此选项。不要全局关闭系统安全保护。Interceptor安装helper及信任CA时请求的系统授权是另外的权限步骤。
 
 应用更新同样来自 GitHub Releases。查看更新说明后，由你决定何时下载，下载完成后再打开安装器，不会自动开始下载。检查和下载均匿名进行；Release 不可访问或请求失败时显示失败，不要求登录。
 
@@ -97,4 +98,4 @@ Interceptor 基于 [Electron](https://www.electronjs.org/)、[Mockttp](https://g
 
 ## 许可证
 
-当前仓库尚未声明许可证。复用或分发源码前请向维护者确认授权；能够访问源码不代表已经获得开源许可证授权。
+Interceptor自有代码采用[Apache-2.0](LICENSE)，版权归属见[NOTICE](NOTICE)。第三方组件保留各自的许可证和归属声明，应用安装包同时携带自有许可及依赖声明。使用软件不以赞助为前提。

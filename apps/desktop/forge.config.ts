@@ -116,6 +116,8 @@ const config: ForgeConfig = {
       checksums: electronChecksums,
     },
     extraResource: [
+      path.resolve(desktopDirectory, '../../LICENSE'),
+      path.resolve(desktopDirectory, '../../NOTICE'),
       proxyCoreDirectory,
       appIconPng,
       ...(process.platform === 'win32' || process.platform === 'darwin'

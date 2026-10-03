@@ -48,10 +48,11 @@ Published builds and their compatibility notes are listed in [GitHub Releases](h
 
 | Platform | Package | Installation |
 | --- | --- | --- |
-| Windows x64 | MSI | Run the per-user installer. |
-| macOS | DMG / ZIP | Use the build matching your Mac and follow its release notes. |
+| macOS | DMG / ZIP | Use the build matching your Mac and copy the app to Applications before opening it. |
 
 Availability is determined by the assets actually attached to each release. For a platform without a published build, see the [source build guide (Chinese)](architecture/development.md).
+
+The macOS installers use ad-hoc signing and are not notarized by Apple. Gatekeeper may block the first launch. Only after verifying the source and integrity of the download, follow macOS **System Settings → Privacy & Security → Open Anyway** if that option is available. Managed devices may prohibit this; do not disable system-wide security protections. Helper installation and CA trust are separate permissions requested by Interceptor through normal system dialogs.
 
 Application updates also come from GitHub Releases. You review the release notes, choose when to download, and open the installer when ready; downloads do not start automatically. Checks and downloads are anonymous. An unavailable release or failed request is shown as a failure, without a sign-in prompt.
 
@@ -97,4 +98,4 @@ Interceptor builds on [Electron](https://www.electronjs.org/), [Mockttp](https:/
 
 ## License
 
-This repository does not currently declare a license. Confirm licensing with the maintainer before reusing or redistributing the source; public access alone does not grant an open-source license.
+Interceptor's original code is licensed under [Apache-2.0](LICENSE), with attribution in [NOTICE](NOTICE). Third-party components retain their own licenses and notices; the application includes its license and dependency notices. Using the software does not require sponsorship.

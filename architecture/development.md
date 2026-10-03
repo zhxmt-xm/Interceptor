@@ -422,7 +422,7 @@ npm run make
 # Windows：安装、启动、升级与卸载
 npm run test:installer:windows
 
-# macOS：helper、签名、DMG/ZIP，以及按凭据进行的公证检查
+# macOS：构建DMG/ZIP，验证helper和ad-hoc签名完整性
 npm run test:release:macos
 ```
 
@@ -432,20 +432,25 @@ npm run test:release:macos
 
 ### 正式发布
 
-`v<semver>` tag 触发 [release-artifacts.yml](../.github/workflows/release-artifacts.yml)，在 Windows / macOS runner 构建、验证并发布 MSI、DMG、ZIP。GitHub Release notes 同时作为应用内更新说明。
+统一入口：
 
-| 用途 | 环境变量 |
-| --- | --- |
-| Windows 签名 | `WINDOWS_CERTIFICATE_FILE`、`WINDOWS_CERTIFICATE_PASSWORD` |
-| macOS 签名 | `APPLE_SIGN_IDENTITY` |
-| macOS 公证 | `APPLE_ID`、`APPLE_ID_PASSWORD`、`APPLE_TEAM_ID` |
+```bash
+npm run release
+```
 
-**发布要求**
+一次运行中依次选择版本更新方式、平台/架构和包类型，确认后自动保存配置、执行本地检查、仅提交生成的版本/配置文件并push、运行CI演练、创建tag及draft，最后等待实机验收确认后Publish。没有阶段选择菜单，不需要反复退出重跑。
 
-- 正式 CI 要求签名材料，不能把本地未签名包当作正式发布结果。
-- 密钥、密码、证书私钥仅通过本地环境或 CI Secrets 提供，不能提交到仓库。
-- Main / Preload / IPC、进程安全、runtime dependency、native helper 或打包路径变化时，执行完整的打包、产物审计和 packaged smoke。
-- 正式版本交付还需全 workspace 检查。
+版本只递增一次，唯一来源为Desktop package.json；目标归[release-config.json](../.github/release-config.json)，默认macOS x64 DMG/ZIP，也可选macOS arm64或Windows x64 MSI。所有签名、许可、资源和实机验收要求保留，macOS采用ad-hoc，Windows不要求付费签名。
+
+开始执行前要求业务代码已提交、工作区干净且gh已登录；不会自动夹带原有修改、创建分支、公开仓库或删除历史。总确认前可以取消安全查看配置，最终Publish必须经过实机验收确认。完整单线流程、一次性环境准备和CI排障点击步骤见[发版完整操作指南](release-guide.md)。
+
+**访问与历史**
+
+- private仓库也能创建draft和Release，但用户匿名下载与当前固定更新源需要public可读的发布源。仓库可见性必须单独确认，脚本不会自动更改；不因产品没有GitHub登录而将CI token写入产品。
+- 删除Release不会自动删除Git tag、commit或已经下载的副本。已发布版本修正使用新tag；启用immutable releases时，即使删除Release，也不能复用原tag名称。不要把删除当成首次发布的回滚保证。
+- 未选择Windows时，其实机验收不阻塞macOS-only发行；选择Windows不代表验收完成，不能省略该平台发布门禁。
+
+本机已有签名资质时，Forge仍可使用`WINDOWS_CERTIFICATE_FILE/PASSWORD`或`APPLE_SIGN_IDENTITY`；Apple公证还需`APPLE_ID`、`APPLE_ID_PASSWORD`和`APPLE_TEAM_ID`。它们不是当前macOS CI前提。密钥、密码和证书私钥不得进入仓库或产物。
 
 依赖随包、Fuses、CSP、签名与 CI 细节见 [发布架构](platform/release.md)，更新行为见 [Settings](features/settings.md)。
 
