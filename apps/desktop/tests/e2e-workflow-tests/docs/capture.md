@@ -477,14 +477,14 @@ option选择与分组展开是正交状态；选择或取消option只更新筛�
 3. 显式proxy客户端先发送`GET /e2e/facet-order/get-first`，再发送`POST /e2e/facet-order/post-first`；两次都必须从真实origin取得200，并等待两条公开`capture.request-row.<exchangeId>`进入Renderer。
 4. 点击`capture.filter.toggle.method`展开Method；按原始DOM顺序读取组内`capture.filter.option.method.*`，必须是GET、POST。
 5. 显式proxy客户端再发送`POST /e2e/facet-order/post-second`；等待POST count变成2后，不使用排序后的测试侧副本，再次读取原始DOM顺序，仍必须是GET、POST。
-6. 点击`capture.recording.toggle`停止Recording并确认`aria-pressed=false`。
-7. 附加`facet-stable-order.json`、最终截图、trace、Main/Renderer日志和metadata。
+6. 点击`capture.recording.toggle`停止Recording并确认`aria-pressed=false`。Method组头与All的计数必须相同且不少于3；用同一次只读DOM快照比较，不能把GET/POST两个选项当作两条request，也不假设系统背景流量不存在。
+7. 附加`facet-stable-order.json`、`facet-request-counts`、最终截图、trace、Main/Renderer日志和metadata。
 8. 通过`shell.window.close`正常关闭应用，由Main退出流程恢复仍由Interceptor持有的系统代理。
 9. 验证Main、Renderer、Core与Worker退出、8888可重新bind，然后删除profile和loopback fixture。
 
 ### 预期效果
 
-动态facet按当前Capture中的首次出现顺序挂载。后出现值的count反超时只更新数字，不移动既有option DOM。
+动态facet按当前Capture中的首次出现顺序挂载。后出现值的count反超时只更新数字，不移动既有option DOM。组头和各取值的计数均使用request单位；Method中的每条request只归入一个方法，组头因此与All一致。
 
 <a id="capture-clear-facets"></a>
 ## `capture.clear-facets`
@@ -498,7 +498,7 @@ option选择与分组展开是正交状态；选择或取消option只更新筛�
 2. 展开Method facet，经8888发送一条测试自产GET；通过Recording按钮暂停新录制，保留已有行。等待自产Capture行、GET option与非零计数可见，点击该行建立selection。系统代理可能捕获其他应用的CONNECT/GET，不假设全局Method或GET计数恰好为1；保存清空前实际计数。
 3. 核对清空筛选按钮disabled且opacity为0.35；真实点击GET option后按钮enabled且opacity为1。点击清空筛选，GET恢复`aria-pressed=false`、按钮重新disabled且opacity为0.35；自产请求和Inspector仍可见，不把清空筛选实现为清空记录。
 4. 在facet快照完成更新后点击`capture.clear`，等待Capture行数量变为0。
-5. 不使用Playwright auto-retry，直接在同一断言点读取Method group count、GET option数量与当前选中行数量；必须同时为`0 / 0 / 0`。
+5. 不使用Playwright auto-retry，直接在同一断言点读取全部facet组头计数、GET option数量与当前选中行数量；必须全部为0。Application、Status、Content type仍保留Pending 0入口，但组头不能因此显示1。
 6. 保存Clear前后原始DOM快照、trace、日志与metadata；正常Close并验证Main/Core退出、8888释放、系统代理恢复和profile删除。
 
 ### 预期效果

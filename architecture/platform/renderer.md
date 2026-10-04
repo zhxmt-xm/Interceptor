@@ -105,6 +105,8 @@ Storage现有Refresh按钮使用`automationId`传入公共ID；Exchange/Body引�
 
 Updates标题通过`settings.updates.status`及`data-state/data-supported/data-last-checked-at`暴露实际更新状态；Check、Download和Open沿用原automation ID。属性只读，不支持状态注入；GitHub账号与设备码控件及其ID已删除。
 
+Capture通过`capture.filter.group-count.<facet>`、`capture.filter.all-count.<facet>`及`capture.filter.option-count.<facet>.<value>`暴露组头、All与选项的request计数。组头不是选项数量；Rule组按request去重。ID由`AutomationIdFactory`生成，仅标识界面已经显示的数字，不提供数据注入或业务入口。
+
 **禁止在 Renderer 增加 E2E-only setter、隐藏 IPC 或直接业务调用入口。**
 
 ## 8. 主题与语言

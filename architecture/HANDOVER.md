@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `47a241a6`
+> Tracked commit: `56b90cc1`
 
 - **8. Windows 实机验收 · 待验收**
   - 范围：按[Windows矩阵](../apps/desktop/tests/e2e-workflow-tests/README.md#windows-复验)验证CA/UAC、系统代理/AppContainer、TLS/H2/gRPC、原生导入导出、平台helper、最终产物与退出恢复；包含已登录Edge的Bilibili流程和纯Auto Detect/WPAD环境。
@@ -30,6 +30,13 @@
   - 发布条件：2026-10-03只读确认仓库仍为private，尚无Release workflow运行记录；private允许draft/Release，但产品匿名更新仍会404。公开仓库、发布准备commit/push及最终tag按用户授权执行，不自动更改可见性；操作见[开发指南](development.md#正式发布)。
 
 ## 验证证据
+
+- **Capture筛选request计数（第16项，2026-10-04）**
+  - 同一次facet遍历生成选项及`requestCount`；组头统计该维度覆盖的request，Rule多命中只计一次。All和选项计数、零值Pending、筛选及排序保持原行为；Clear后全部组头归零。[功能契约](features/capture.md#101-结构化筛选分栏)、[改动说明](../commit-changes/202610041121_ui_capture_request-counts.html)、[本机会话证据](/Users/zhxmt/.copilot/session-state/57ea4adc-4bab-4df2-a2fb-1c155cdd2946/files/capture-request-count-evidence/)。
+  - 前置：Capture unit为4 failed / 25 passed；[真实E2E Red](../apps/desktop/test-results/capture-request-count-red/)两项按目标失败，分别为4条request显示成3，以及Clear后Application/Status/Type仍为1。VS Code未发现测试后使用仓库Vitest，不将发现失败记为产品Red。
+  - 最终：同文件29项unit、Desktop typecheck及[两条真实E2E Green](../apps/desktop/test-results/capture-request-count-green/)通过。验证暂停前后的单项数量、Method与All总数一致、全部组头清空及多规则去重；Main/Core/Worker、8888和宿主代理/证书恢复由既有driver/host guard核对，两条metadata均为`gracefulDestroyVerified=true`。
+  - Capture明暗与Rule筛选/空态共4个parity视图：90 targets、0 missing、0 flagged，最大几何差0.5px；明暗主视图的原有设计像素差仍为2.57%/2.56%，没有改设计基准掩盖数据差异。同18条fixture的Dark两版Renderer仅1044个像素变化，全部位于六处组头计数；Rule示例数字1没有变化。
+  - 单文件改动说明内嵌同主题、同状态的Renderer局部截图和红框，已核对1280/390排版、图片加载与标注位置；原截图不变。未修改Core、IPC、第三方行为或产品样式；临时报告生成脚本已清理。
 
 - **统一开发命令入口（第14项，2026-10-03）**
   - 入口为`npm start`，一级菜单`Development / Test / Build`；Desktop与Design不再询问启动模式，构建准备自动完成。摘要分栏、提示逐条显示，确认默认Yes但等待Enter；低频工具保留原命令，`release`和`release:build`未接入或修改。[使用说明](development.md#统一命令入口)、[改动说明](../commit-changes/202610031952_docs_commands_interactive-entry.html)、[本轮证据](/Users/zhxmt/.copilot/session-state/57ea4adc-4bab-4df2-a2fb-1c155cdd2946/files/command-wizard-refinement-evidence/)。

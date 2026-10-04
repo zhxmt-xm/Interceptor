@@ -16,7 +16,7 @@ import { useThrottledRows } from './useThrottledRows';
 /** Capture 左侧筛选分栏：facet 顺序严格跟随列表表头，点击即生效。 */
 export function CaptureFilterPanel(): React.JSX.Element {
   const rows = useThrottledRows(FACET_REFRESH_MS);
-  const options = useMemo(() => allFacetOptions(rows), [rows]);
+  const facets = useMemo(() => allFacetOptions(rows), [rows]);
   const [expandedGroups, setExpandedGroups] = useState<CaptureFacetId[]>([]);
 
   const showAllOf = (facet: CaptureFacetId): void =>
@@ -29,7 +29,8 @@ export function CaptureFilterPanel(): React.JSX.Element {
           <FacetGroup
             key={facet}
             facet={facet}
-            options={options[facet]}
+            options={facets[facet].options}
+            requestCount={facets[facet].requestCount}
             total={rows.length}
             showAll={expandedGroups.includes(facet)}
             onShowAll={() => showAllOf(facet)}

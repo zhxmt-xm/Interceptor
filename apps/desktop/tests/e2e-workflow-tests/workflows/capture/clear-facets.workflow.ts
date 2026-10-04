@@ -5,6 +5,7 @@ import {
   AUTOMATION_IDS,
   AutomationIdFactory,
 } from '../../../../src/shared/automation-ids';
+import { CAPTURE_FACET_IDS } from '../../../../src/renderer/features/capture/constants';
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
@@ -103,12 +104,17 @@ test('capture.clear-facets clears rows, selection and facets in one visible tran
     ).count(),
     methodGroupCount: (await methodGroupCount.textContent())?.trim() ?? null,
     getOptions: await getOption.count(),
+    groupCounts: Object.fromEntries(await Promise.all(CAPTURE_FACET_IDS.map(async (facet) => [
+      facet,
+      (await getByAutomationId(page, AutomationIdFactory.captureFacetGroupCount(facet)).textContent())?.trim(),
+    ]))),
   };
   expect(immediateState).toEqual({
     rows: 0,
     inspector: 0,
     methodGroupCount: '0',
     getOptions: 0,
+    groupCounts: Object.fromEntries(CAPTURE_FACET_IDS.map((facet) => [facet, '0'])),
   });
 
   // 保存同帧归零证据；fixture随后正常Close并验证Main/Core、8888与系统代理恢复。

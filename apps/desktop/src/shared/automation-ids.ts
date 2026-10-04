@@ -587,9 +587,14 @@ export class AutomationIdFactory {
     return `capture.filter.toggle.${facet}`;
   }
 
-  /** Identify the option-count summary owned by one Capture facet group. */
+  /** Identify the request-count summary owned by one Capture facet group. */
   static captureFacetGroupCount(facet: string): string {
     return `capture.filter.group-count.${facet}`;
+  }
+
+  /** Identify the full Capture request count displayed by a facet's All option. */
+  static captureFacetAllCount(facet: string): string {
+    return `capture.filter.all-count.${facet}`;
   }
 
   /** Identify one value option within a Capture facet group. */

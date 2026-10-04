@@ -100,11 +100,40 @@ test('capture facets keep first-seen order when a later count overtakes', async 
   const recording = getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle);
   await recording.click();
   await expect(recording).toHaveAttribute('aria-pressed', 'false');
+
+  // 组头与All在同一次DOM读取中核对request总数，不把方法种类数当作请求数。
+  // Compare the group and All request totals in one DOM read, not the number of methods.
+  await expect(getByAutomationId(
+    page,
+    AutomationIdFactory.captureFacetAllCount('method'),
+  )).toBeVisible();
+  const requestCounts = await methodGroup.evaluate((group, ids) => {
+    const count = (id: string): number => {
+      const element = group.querySelector(`[data-automation-id="${id}"]`);
+      if (!element) throw new Error(`Missing Capture counter: ${id}`);
+      return Number(element.textContent);
+    };
+    return {
+      group: count(ids.group),
+      all: count(ids.all),
+    };
+  }, {
+    group: AutomationIdFactory.captureFacetGroupCount('method'),
+    all: AutomationIdFactory.captureFacetAllCount('method'),
+  });
+  await testInfo.attach('facet-request-counts', {
+    body: Buffer.from(JSON.stringify(requestCounts, null, 2)),
+    contentType: 'application/json',
+  });
+  expect(requestCounts.all).toBeGreaterThanOrEqual(3);
+  expect(requestCounts.group).toBe(requestCounts.all);
+
   await testInfo.attach('facet-stable-order', {
     body: Buffer.from(JSON.stringify({
       expectedOrder,
       orderAfterCountOvertake,
       postCount: 2,
+      requestCounts,
     }, null, 2)),
     contentType: 'application/json',
   });

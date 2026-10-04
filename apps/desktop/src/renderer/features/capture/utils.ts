@@ -26,6 +26,7 @@ import {
 import {
   CAPTURE_FACET_FIELDS,
   type CaptureFacetId,
+  type CaptureFacetOptions,
   type CaptureFilter,
   type DirectionFilter,
   type ExportScopeKind,
@@ -390,27 +391,35 @@ export function matchesCoreFilter(
   return true;
 }
 
-/** 一次遍历派生全部 facet 的可选值与计数；实时流量下每条摘要只扫一遍。 */
+/** 一次遍历派生分组 request 数与选项计数；多规则命中不重复增加分组总数。 */
 export function allFacetOptions(
   rows: readonly CaptureExchangeSummary[],
-): Record<CaptureFacetId, FilterValueOption[]> {
+): Record<CaptureFacetId, CaptureFacetOptions> {
   const buckets = Object.fromEntries(
     CAPTURE_FACET_IDS.map((facet) => [facet, new Map<string, number>()]),
   ) as Record<CaptureFacetId, Map<string, number>>;
+  const requestCounts = Object.fromEntries(
+    CAPTURE_FACET_IDS.map((facet) => [facet, 0]),
+  ) as Record<CaptureFacetId, number>;
   buckets.application.set(PENDING_FACET_VALUE, 0);
   buckets.status.set(PENDING_FACET_VALUE, 0);
   buckets.type.set(PENDING_FACET_VALUE, 0);
   for (const row of rows) {
     for (const facet of CAPTURE_FACET_IDS) {
       const bucket = buckets[facet];
-      for (const value of facetValuesOf(row, facet)) {
+      const values = facetValuesOf(row, facet);
+      if (values.length > 0) requestCounts[facet] += 1;
+      for (const value of values) {
         bucket.set(value, (bucket.get(value) ?? 0) + 1);
       }
     }
   }
   return Object.fromEntries(
-    CAPTURE_FACET_IDS.map((facet) => [facet, sortFacetOptions(facet, buckets[facet])]),
-  ) as Record<CaptureFacetId, FilterValueOption[]>;
+    CAPTURE_FACET_IDS.map((facet) => [facet, {
+      options: sortFacetOptions(facet, buckets[facet]),
+      requestCount: requestCounts[facet],
+    }]),
+  ) as Record<CaptureFacetId, CaptureFacetOptions>;
 }
 
 /** Status 按状态码升序、Protocol 按版本高低排；其余 facet 保持首次出现顺序。 */

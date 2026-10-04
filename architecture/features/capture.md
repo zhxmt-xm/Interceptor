@@ -1521,6 +1521,11 @@ flowchart LR
     当前 Capture 中的首次出现顺序，计数变化只更新数字，不再按 count 动态换位；Status / Protocol
     继续使用各自的固定语义顺序。
 - Application / Status / Content type 的 Pending option在count=0时也始终渲染并可选择；新进入加载态的request会自动命中已选bucket。请求完成后count回0但option不增删，避免facet高度与DOM抖动。Method / Host / Protocol在request headers阶段已确定，不提供虚假的loading项；Rule当前没有独立“计算中”字段，也不编码无法区分的状态。
+- **计数徽标统一使用request单位，不显示选项或类别数量**：
+  - 组头读取同一次facet遍历派生的`requestCount`，统计能归入该组任一取值的request；同一request在同组只计一次。
+  - All显示当前录制完整快照的request总数；选项显示命中该取值的request数量。统计源仍为完整`rows`，不随搜索或其他facet选择改变，不等同于筛选后的可见行数。
+  - Rule组只计有规则命中的request；一条request同时命中多条规则时不能把各选项count相加作为组总数。All仍包含无规则命中的request。
+  - 零值Pending入口不贡献request数，Clear后所有组头归零。选项保留、首次出现顺序、折叠与筛选行为不变。
 - Clear 成功把 `rows` 置空时，facet snapshot 必须立即同步为空；节流只约束非空实时更新，不能让列表
     已显示 `0 of 0` 时分栏仍短暂保留旧 app id、选项与计数。
 - 产品按钮、Agent和MCP的Clear都在Main取得清理开始时间，并只在`capture.cleanup{all}`成功后广播

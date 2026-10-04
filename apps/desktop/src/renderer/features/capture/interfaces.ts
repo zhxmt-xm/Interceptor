@@ -101,10 +101,16 @@ export const CAPTURE_FACET_FIELDS = {
   rule: 'ruleIds',
 } as const satisfies Record<CaptureFacetId, keyof Omit<CaptureFilter, 'search'>>;
 
-/** facet 的单个可选值及其在当前列表中的出现次数。 */
+/** facet 的单个可选值及其在当前录制中匹配的 request 数量。 */
 export interface FilterValueOption {
   readonly value: string;
   readonly count: number;
+}
+
+/** 一个 facet 的选项，以及归入该组任一取值的 request 数量。 */
+export interface CaptureFacetOptions {
+  readonly options: FilterValueOption[];
+  readonly requestCount: number;
 }
 
 /** 底栏展示的抓包链路状态；只包含别处拿不到的全局事实。 */

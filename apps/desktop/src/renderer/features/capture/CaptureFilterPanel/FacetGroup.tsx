@@ -17,6 +17,7 @@ import styles from './FacetGroup.module.css';
 export interface FacetGroupProps {
   facet: CaptureFacetId;
   options: FilterValueOption[];
+  requestCount: number;
   total: number;
   showAll: boolean;
   onShowAll(): void;
@@ -26,6 +27,7 @@ export interface FacetGroupProps {
 export function FacetGroup({
   facet,
   options,
+  requestCount,
   total,
   showAll,
   onShowAll,
@@ -61,7 +63,7 @@ export function FacetGroup({
           className={cx(styles.groupCount, applied && styles.groupCountApplied)}
           data-automation-id={AutomationIdFactory.captureFacetGroupCount(facet)}
         >
-          {options.length}
+          {requestCount}
         </span>
         {applied ? (
           <button
@@ -88,7 +90,12 @@ export function FacetGroup({
                 data-parity="capture-filter-item-all"
               >
                 <span className={styles.itemName}>{t('capture.all')}</span>
-                <span className={styles.itemCount}>{total}</span>
+                <span
+                  className={styles.itemCount}
+                  data-automation-id={AutomationIdFactory.captureFacetAllCount(facet)}
+                >
+                  {total}
+                </span>
               </button>
               {visible.map((option) => (
                 <button

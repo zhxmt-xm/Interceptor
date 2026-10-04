@@ -9,9 +9,11 @@ import { useCaptureStore } from '../../data/captureStore';
 import { resetCaptureData } from '../../data/useCaptureData';
 import { useRulesStore } from '../../../rules/data/rulesStore';
 import {
+  CAPTURE_FACET_IDS,
   EMPTY_FILTER,
   FAILED_FACET_VALUE,
   PENDING_FACET_VALUE,
+  UNKNOWN_FACET_VALUE,
 } from '../../constants';
 import type { CaptureFilter } from '../../interfaces';
 import {
@@ -116,7 +118,7 @@ describe('captureStore clear timeline', () => {
     expect(cleared.rows).toEqual([]);
     expect(cleared.selectedId).toBeNull();
     expect(cleared.clearedBefore).toBe(100);
-    expect(allFacetOptions(cleared.rows).method).toEqual([]);
+    expect(allFacetOptions(cleared.rows).method.options).toEqual([]);
     expect(useRulesStore.getState().hits).toEqual({});
 
     cleared.applyEvents([
@@ -294,10 +296,89 @@ describe('captureStore facet filters', () => {
       summary('one-one', { protocol: 'http/1.1' }),
       summary('one-zero', { protocol: 'http/1.0' }),
     ];
-    expect(allFacetOptions(versioned).protocol).toEqual([
+    expect(allFacetOptions(versioned).protocol.options).toEqual([
       { value: 'HTTP/1.1', count: 1 },
       { value: 'HTTP/1.0', count: 1 },
     ]);
+  });
+
+  it('counts requests rather than choices and counts multi-rule coverage once', () => {
+    const options = allFacetOptions([
+      summary('first', { responseMime: 'application/json', ruleIds: ['rule-a', 'rule-b', 'rule-a'] }),
+      summary('second', { responseMime: 'application/json', ruleIds: ['rule-a'] }),
+      summary('third', { responseMime: 'application/json' }),
+    ]);
+
+    expect(options).toMatchObject({
+      application: {
+        requestCount: 3,
+        options: [
+          { value: UNKNOWN_FACET_VALUE, count: 3 },
+          { value: PENDING_FACET_VALUE, count: 0 },
+        ],
+      },
+      method: { requestCount: 3, options: [{ value: 'GET', count: 3 }] },
+      host: { requestCount: 3, options: [{ value: 'example.test', count: 3 }] },
+      status: { requestCount: 3 },
+      protocol: { requestCount: 3 },
+      type: { requestCount: 3 },
+      rule: {
+        requestCount: 2,
+        options: [
+          { value: 'rule-a', count: 2 },
+          { value: 'rule-b', count: 1 },
+        ],
+      },
+    });
+  });
+
+  it('reports zero requests for empty facets while keeping zero-count Pending options', () => {
+    expect(allFacetOptions([])).toEqual(Object.fromEntries(
+      CAPTURE_FACET_IDS.map((facet) => [facet, {
+        requestCount: 0,
+        options: ['application', 'status', 'type'].includes(facet)
+          ? [{ value: PENDING_FACET_VALUE, count: 0 }]
+          : [],
+      }]),
+    ));
+  });
+
+  it('counts one request rather than two options when it matches two rules', () => {
+    expect(allFacetOptions([
+      summary('multi-rule', { ruleIds: ['rule-a', 'rule-b', 'rule-a'] }),
+    ])).toMatchObject({
+      rule: {
+        requestCount: 1,
+        options: [
+          { value: 'rule-a', count: 1 },
+          { value: 'rule-b', count: 1 },
+        ],
+      },
+    });
+  });
+
+  it('keeps request totals stable when Pending values resolve', () => {
+    const loading = summary('loading', {
+      appPending: true,
+      statusCode: undefined,
+      state: 'pending',
+      responseMime: undefined,
+    });
+    const completed = summary('loading', {
+      appId: 'client',
+      responseMime: 'application/json',
+    });
+    for (const row of [loading, completed]) {
+      expect(allFacetOptions([row])).toMatchObject({
+        application: { requestCount: 1 },
+        method: { requestCount: 1 },
+        host: { requestCount: 1 },
+        status: { requestCount: 1 },
+        protocol: { requestCount: 1 },
+        type: { requestCount: 1 },
+        rule: { requestCount: 0 },
+      });
+    }
   });
 
   it('lists methods in first-seen order and status ascending with a failed bucket', () => {
@@ -305,11 +386,11 @@ describe('captureStore facet filters', () => {
       ...rows,
       summary('failed', { statusCode: undefined, state: 'failed' }),
     ]);
-    expect(options.method).toEqual([
+    expect(options.method.options).toEqual([
       { value: 'GET', count: 3 },
       { value: 'POST', count: 2 },
     ]);
-    expect(options.status).toEqual([
+    expect(options.status.options).toEqual([
       { value: '200', count: 2 },
       { value: '404', count: 1 },
       { value: FAILED_FACET_VALUE, count: 1 },
@@ -319,13 +400,13 @@ describe('captureStore facet filters', () => {
 
   it('always exposes filterable loading buckets at the end of their facets', () => {
     const emptyOptions = allFacetOptions([]);
-    expect(emptyOptions.application).toEqual([
+    expect(emptyOptions.application.options).toEqual([
       { value: PENDING_FACET_VALUE, count: 0 },
     ]);
-    expect(emptyOptions.status).toEqual([
+    expect(emptyOptions.status.options).toEqual([
       { value: PENDING_FACET_VALUE, count: 0 },
     ]);
-    expect(emptyOptions.type).toEqual([
+    expect(emptyOptions.type.options).toEqual([
       { value: PENDING_FACET_VALUE, count: 0 },
     ]);
 
@@ -336,9 +417,9 @@ describe('captureStore facet filters', () => {
       responseMime: undefined,
     });
     const options = allFacetOptions([loading]);
-    expect(options.application.at(-1)).toEqual({ value: PENDING_FACET_VALUE, count: 1 });
-    expect(options.status.at(-1)).toEqual({ value: PENDING_FACET_VALUE, count: 1 });
-    expect(options.type.at(-1)).toEqual({ value: PENDING_FACET_VALUE, count: 1 });
+    expect(options.application.options.at(-1)).toEqual({ value: PENDING_FACET_VALUE, count: 1 });
+    expect(options.status.options.at(-1)).toEqual({ value: PENDING_FACET_VALUE, count: 1 });
+    expect(options.type.options.at(-1)).toEqual({ value: PENDING_FACET_VALUE, count: 1 });
     expect(visibleCaptureRows([loading], {
       ...baseFilter,
       apps: [PENDING_FACET_VALUE],
@@ -375,44 +456,44 @@ describe('captureStore facet filters', () => {
       }),
     ]);
 
-    expect(options.application.map(({ value }) => value)).toEqual([
+    expect(options.application.options.map(({ value }) => value)).toEqual([
       'first-app',
       'second-app',
       PENDING_FACET_VALUE,
     ]);
-    expect(options.method).toEqual([
+    expect(options.method.options).toEqual([
       { value: 'GET', count: 1 },
       { value: 'POST', count: 2 },
     ]);
-    expect(options.host.map(({ value }) => value)).toEqual(['first.test', 'second.test']);
-    expect(options.type.map(({ value }) => value)).toEqual([
+    expect(options.host.options.map(({ value }) => value)).toEqual(['first.test', 'second.test']);
+    expect(options.type.options.map(({ value }) => value)).toEqual([
       'plain',
       'json',
       PENDING_FACET_VALUE,
     ]);
-    expect(options.rule.map(({ value }) => value)).toEqual(['first-rule', 'second-rule']);
+    expect(options.rule.options.map(({ value }) => value)).toEqual(['first-rule', 'second-rule']);
   });
 
   it('counts each rule once per exchange while preserving first-seen order', () => {
     expect(allFacetOptions([
       ...rows,
       summary('duplicate', { ruleIds: ['rule-a', 'rule-a'] }),
-    ]).rule).toEqual([
+    ]).rule.options).toEqual([
       { value: 'rule-a', count: 3 },
       { value: 'rule-b', count: 2 },
     ]);
   });
 
   it('returns no Rule options until at least one captured exchange has a rule hit', () => {
-    expect(allFacetOptions(rows.filter((row) => !row.ruleIds)).rule).toEqual([]);
+    expect(allFacetOptions(rows.filter((row) => !row.ruleIds)).rule.options).toEqual([]);
   });
 
   it('counts application resolution in Pending instead of Unknown', () => {
     const resolving = summary('resolving', { appPending: true });
-    expect(allFacetOptions([resolving]).application).toEqual([
+    expect(allFacetOptions([resolving]).application.options).toEqual([
       { value: PENDING_FACET_VALUE, count: 1 },
     ]);
-    expect(allFacetOptions([summary('resolved', { appId: 'chrome', appName: 'Chrome' })]).application)
+    expect(allFacetOptions([summary('resolved', { appId: 'chrome', appName: 'Chrome' })]).application.options)
       .toEqual([
         { value: 'chrome', count: 1 },
         { value: PENDING_FACET_VALUE, count: 0 },
