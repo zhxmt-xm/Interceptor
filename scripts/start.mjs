@@ -1,0 +1,326 @@
+import { spawnSync } from 'node:child_process';
+import { glob, readFile, readdir } from 'node:fs/promises';
+import path from 'node:path';
+import { parseArgs, styleText } from 'node:util';
+
+import { confirm, select } from '@inquirer/prompts';
+import stringWidth from 'string-width';
+import wrapAnsi from 'wrap-ansi';
+
+const repositoryRoot = path.resolve(import.meta.dirname, '..');
+const back = Symbol('back');
+const all = Symbol('all');
+const desktopName = '@interceptor/desktop';
+const designName = '@interceptor/design-vite';
+const supportedPlatform = ['darwin', 'win32'].includes(process.platform);
+const platformRestriction = supportedPlatform ? false : '仅支持 macOS / Windows';
+const buildNotices = [
+  '自动准备所需构建文件，不需要手动选择构建模式。',
+  '请勿与其他构建、开发实例或集成测试并行。',
+];
+const appNotices = [
+  '运行前请关闭其他 Desktop 或 E2E 实例。',
+  '应用可能修改系统代理或证书信任，并请求系统授权。',
+  '结束时正常关闭应用，等待系统代理恢复。',
+];
+
+function choose(message, choices) {
+  return select({
+    message,
+    pageSize: 12,
+    choices: [...choices, { name: '返回上一级', value: back }],
+  });
+}
+
+function npmCommand(script, workspace, args = []) {
+  return {
+    kind: 'npm',
+    args: [
+      'run', script,
+      ...(workspace ? ['--workspace', workspace.name] : []),
+      ...(args.length ? ['--', ...args] : []),
+    ],
+  };
+}
+
+function nodeCommand(file, args = []) {
+  return { kind: 'node', args: [file, ...args] };
+}
+
+async function readWorkspaces() {
+  const metadata = JSON.parse(await readFile(path.join(repositoryRoot, 'package.json'), 'utf8'));
+  const workspaces = [];
+  for await (const file of glob(metadata.workspaces.map((pattern) => `${pattern}/package.json`), { cwd: repositoryRoot })) {
+    const workspace = JSON.parse(await readFile(path.join(repositoryRoot, file), 'utf8'));
+    workspaces.push({ name: workspace.name, directory: path.dirname(file), scripts: workspace.scripts });
+  }
+  return workspaces.sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function chooseWorkspace(workspaces, script, includeAll = false) {
+  return choose('选择 workspace', [
+    ...(includeAll ? [{ name: '全部 workspace', value: all }] : []),
+    ...workspaces.filter((workspace) => workspace.scripts?.[script]).map((workspace) => ({
+      name: `${workspace.name} (${workspace.directory})`,
+      value: workspace,
+    })),
+  ]);
+}
+
+async function chooseDevelopment(workspaces) {
+  const design = workspaces.find((workspace) => workspace.name === designName);
+  const target = await choose('Development：选择目标', [
+    { name: 'Desktop', value: 'desktop', disabled: platformRestriction },
+    { name: 'Playground', value: 'playground' },
+    { name: 'Design', value: 'design' },
+  ]);
+  if (target === back) return;
+  if (target === 'desktop') {
+    return { title: '启动 Desktop', commands: [npmCommand('dev')], notices: appNotices };
+  }
+  if (target === 'playground') {
+    return { title: '启动 Playground', commands: [npmCommand('playground')], notices: ['启动本地 Playground；Ctrl+C 结束服务。'] };
+  }
+  return {
+    title: '启动 Design',
+    commands: [npmCommand('dev', design)],
+    notices: ['启动设计稿预览，不运行 Desktop。', 'Ctrl+C 结束预览服务。'],
+  };
+}
+
+async function chooseVitest(workspaces) {
+  while (true) {
+    const workspace = await chooseWorkspace(workspaces, 'test', true);
+    if (workspace === back) return;
+    const methods = [{ name: '全部 Unit / Integration，运行一次', value: 'all' }];
+    if (workspace !== all) {
+      const layers = new Set();
+      for await (const file of glob('**/tests/{unit,integration}/**/*.test.{ts,tsx}', {
+        cwd: path.join(repositoryRoot, workspace.directory),
+        exclude: ['node_modules/**', 'dist/**', 'out/**', '.vite/**'],
+      })) {
+        layers.add(file.split(path.sep).includes('unit') ? 'unit' : 'integration');
+      }
+      for (const layer of ['unit', 'integration']) {
+        if (layers.has(layer)) methods.push({ name: `只运行 ${layer}`, value: layer });
+      }
+    }
+    const method = methods.length === 1 ? 'all' : await choose('选择测试范围', methods);
+    if (method === back) continue;
+    const testCommand = workspace === all
+      ? { kind: 'npm', args: ['run', 'test', '--workspaces', '--if-present', '--', '--no-file-parallelism'] }
+      : npmCommand('test', workspace, [
+          ...(method === 'unit' || method === 'integration' ? [`tests/${method}`] : []),
+          '--no-file-parallelism',
+        ]);
+    return {
+      title: `Vitest · ${workspace === all ? '全部 workspace' : workspace.name} · ${method}`,
+      commands: [npmCommand('build:core'), testCommand],
+      notices: [...buildNotices, '先准备测试所需文件，再运行所选测试；失败立即停止。'],
+    };
+  }
+}
+
+async function chooseWorkflow(workspaces) {
+  const desktop = workspaces.find((workspace) => workspace.name === desktopName);
+  const workflowRoot = path.join(repositoryRoot, desktop.directory, 'tests/e2e-workflow-tests/workflows');
+  const features = (await readdir(workflowRoot, { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+  while (true) {
+    const feature = await choose('E2E：选择功能', [
+      { name: '全部功能', value: all },
+      ...features.map((name) => ({ name, value: name })),
+    ]);
+    if (feature === back) return;
+    const workflows = feature === all ? [] : (await readdir(path.join(workflowRoot, feature)))
+      .filter((file) => file.endsWith('.workflow.ts')).sort();
+    const workflow = feature === all ? all : await choose(`${feature}：选择 workflow`, [
+      { name: '该功能的全部 workflow', value: all },
+      ...workflows.map((name) => ({ name, value: name })),
+    ]);
+    if (workflow === back) continue;
+    const filter = feature === all ? [] : [`workflows/${feature}/${workflow === all ? '' : workflow}`];
+    return {
+      title: `E2E · ${feature === all ? '全部功能' : feature}`,
+      commands: [npmCommand('test:e2e:workflow', desktop, filter)],
+      notices: ['自动准备测试环境后运行所选流程。', ...appNotices],
+    };
+  }
+}
+
+async function chooseParity() {
+  const { views } = await import('../apps/desktop/tests/visual-parity/parity.config.mjs');
+  const view = await choose('Parity：选择视图', [
+    { name: '全部视图', value: all },
+    ...views.map((entry) => ({ name: entry.id, value: entry.id })),
+  ]);
+  if (view === back) return;
+  return {
+    title: `Parity · ${view === all ? '全部视图' : view}`,
+    commands: [nodeCommand('apps/desktop/tests/visual-parity/parity.mjs', view === all ? [] : [`--view=${view}`])],
+    notices: ['使用已有场景、主题和尺寸，不修改设计基准。', '只验证视觉还原，不等同于真实 E2E。'],
+  };
+}
+
+async function chooseChecks(workspaces) {
+  while (true) {
+    const action = await choose('Test：选择项目', [
+      { name: 'Typecheck 类型检查', value: 'typecheck' },
+      { name: 'Unit / Integration 代码测试', value: 'vitest' },
+      { name: 'E2E 用户流程测试', value: 'e2e', disabled: platformRestriction },
+      { name: 'Parity 设计还原检查', value: 'parity' },
+      { name: 'Packaged smoke 打包后验收', value: 'smoke', disabled: platformRestriction },
+      { name: 'Artifact audit 打包资源检查', value: 'audit', disabled: platformRestriction },
+    ]);
+    if (action === back) return;
+    if (action === 'typecheck') {
+      const workspace = await chooseWorkspace(workspaces, 'typecheck', true);
+      if (workspace === back) continue;
+      return {
+        title: `Typecheck · ${workspace === all ? '全部 workspace' : workspace.name}`,
+        commands: [npmCommand('typecheck', workspace === all ? undefined : workspace)],
+        notices: ['只检查类型，不启动应用。'],
+      };
+    }
+    if (action === 'smoke') {
+      return {
+        title: 'Packaged smoke',
+        commands: [npmCommand('test:smoke')],
+        notices: ['自动打包，再启动应用执行验收。', ...appNotices],
+      };
+    }
+    if (action === 'audit') {
+      return {
+        title: 'Artifact audit',
+        commands: [npmCommand('package'), npmCommand('test:package-audit')],
+        notices: [...buildNotices, '打包后检查资源、许可和安全配置，不启动 Desktop。'],
+      };
+    }
+    const task = action === 'vitest' ? await chooseVitest(workspaces)
+      : action === 'e2e' ? await chooseWorkflow(workspaces)
+      : await chooseParity();
+    if (task) return task;
+  }
+}
+
+async function chooseBuild() {
+  const action = await choose('Build：选择产物', [
+    { name: process.platform === 'darwin' ? 'App 应用包 (.app)' : 'App 应用包', value: 'package', disabled: platformRestriction },
+    { name: process.platform === 'darwin' ? 'Installer 安装包 (.dmg / .zip)' : 'Installer 安装包 (.msi)', value: 'make', disabled: platformRestriction },
+  ]);
+  if (action === back) return;
+  return {
+    title: action === 'package' ? '构建 App' : '构建 Installer',
+    commands: [npmCommand(action)],
+    notices: [...buildNotices, `使用当前版本和本机架构 ${process.platform}/${process.arch}，不执行发版。`],
+  };
+}
+
+function formatCommand(command) {
+  return [command.kind === 'npm' ? 'npm' : 'node', ...command.args]
+    .map((argument) => /^[\w@./:=,-]+$/.test(argument) ? argument : JSON.stringify(argument)).join(' ');
+}
+
+function printColumns(rows) {
+  const columns = process.stdout.columns ?? 80;
+  const labelWidth = stringWidth('工作目录');
+  const prefixWidth = 2 + labelWidth + 3;
+  for (const [label, value] of rows) {
+    if (columns < prefixWidth + 12) {
+      console.log(label);
+      for (const line of wrapAnsi(value, Math.max(1, columns - 2), { hard: true, trim: false }).split('\n')) {
+        console.log(`  ${line}`);
+      }
+      continue;
+    }
+    const lines = wrapAnsi(value, columns - prefixWidth, { hard: true, trim: false }).split('\n');
+    for (const [index, line] of lines.entries()) {
+      const key = index === 0 ? label : '';
+      console.log(`  ${key}${' '.repeat(labelWidth - stringWidth(key))} ${styleText('gray', '│')} ${line}`);
+    }
+  }
+}
+
+function printTask(task) {
+  console.log(`\n${styleText('bold', '执行摘要')}`);
+  printColumns([['操作', task.title], ['工作目录', repositoryRoot]]);
+  console.log(`\n${styleText('bold', '执行步骤')}`);
+  printColumns([['步骤', '命令'], ...task.commands.map((command, index) => [String(index + 1), formatCommand(command)])]);
+  console.log(`\n${styleText('bold', '注意事项')}`);
+  printColumns(task.notices.map((notice) => ['•', notice]));
+  console.log();
+}
+
+async function runTask(task) {
+  printTask(task);
+  if (!await confirm({ message: '确认执行以上命令？', default: true })) {
+    console.log('未执行任何命令，返回主菜单。\n');
+    return true;
+  }
+  for (const [index, command] of task.commands.entries()) {
+    console.log(`\n[${index + 1}/${task.commands.length}] ${formatCommand(command)}`);
+    const args = command.kind === 'npm' ? [process.env.npm_execpath, ...command.args] : command.args;
+    const result = spawnSync(process.execPath, args, { cwd: repositoryRoot, stdio: 'inherit' });
+    if (result.error) throw result.error;
+    if (result.status !== 0) {
+      console.error(`命令未成功结束（${result.signal ?? result.status}），已停止后续步骤。请先检查上述输出，不会自动重试。`);
+      process.exitCode = result.status ?? (result.signal === 'SIGINT' ? 130 : 1);
+      return false;
+    }
+  }
+  console.log('\n命令执行完成，返回主菜单。\n');
+  return true;
+}
+
+async function main() {
+  const { values } = parseArgs({
+    options: { help: { type: 'boolean', short: 'h' } },
+    allowPositionals: false,
+  });
+  if (values.help) {
+    console.log('npm start');
+    console.log('Development / Test / Build → 目标或必要范围 → 确认执行');
+    console.log('Desktop / Design 选择后直接启动；构建准备自动完成，不询问缓存模式。');
+    console.log('执行摘要分列显示，确认默认 Yes，仍需按 Enter；输入 n 取消。');
+    console.log('低频工具保留原命令，release / release:build 暂不接入。');
+    console.log('↑/↓ 选择，Enter 确认；选择“返回上一级”返回，Ctrl+C 退出。');
+    console.log('CI 和非交互环境继续使用原始 npm 命令。说明：architecture/development.md');
+    return;
+  }
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    throw new Error('npm start 需要交互式终端；请在终端中运行，或使用 npm start -- --help 查看说明。CI 请使用原始命令。');
+  }
+  if (!process.env.npm_execpath) throw new Error('请通过 npm start 启动，以便使用当前 npm 执行已有命令。');
+  const workspaces = await readWorkspaces();
+  console.log(`\nInterceptor 开发工具 · ${process.platform}/${process.arch}`);
+  console.log('选择目标后自动准备；需要执行时按 Enter，取消时输入 n。');
+  console.log('release 正在重构，本入口暂不接入发版流程。\n');
+  while (true) {
+    const category = await select({
+      message: 'Select a category',
+      choices: [
+        { name: 'Development', value: 'development' },
+        { name: 'Test', value: 'test' },
+        { name: 'Build', value: 'build' },
+        { name: 'Exit', value: 'exit' },
+      ],
+    });
+    if (category === 'exit') return;
+    const task = category === 'development' ? await chooseDevelopment(workspaces)
+      : category === 'test' ? await chooseChecks(workspaces)
+      : await chooseBuild();
+    if (task && !await runTask(task)) return;
+  }
+}
+
+try {
+  await main();
+} catch (error) {
+  if (error instanceof Error && error.name === 'ExitPromptError') {
+    console.log('\n已取消；尚未开始的命令不会执行。');
+    process.exitCode = 130;
+  } else {
+    console.error(`[start] ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  }
+}

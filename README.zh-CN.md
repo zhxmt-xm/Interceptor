@@ -92,6 +92,8 @@ MCP 默认关闭。客户端是否兼容取决于其支持的 Streamable HTTP �
 
 欢迎代码、文档、翻译和具体的问题反馈。源码初始化、模块分工、调试、验证与打包统一见 [中文开发指南](architecture/development.md)；功能契约和平台说明见 [架构文档索引](architecture/README.md)。
 
+完成初始化后，运行`npm start`，选择`Development / Test / Build`。Desktop与Design不再询问构建模式；确认默认Yes，仍需按Enter执行。原始命令继续供直接调用和CI使用，发版操作保持独立。
+
 ## 致谢
 
 Interceptor 基于 [Electron](https://www.electronjs.org/)、[Mockttp](https://github.com/httptoolkit/mockttp)、[React](https://react.dev/)、[Monaco Editor](https://microsoft.github.io/monaco-editor/) 及仓库使用的其他库构建。

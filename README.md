@@ -92,6 +92,8 @@ Report reproducible problems or suggest improvements through [GitHub Issues](htt
 
 Code, documentation, translations and focused bug reports are welcome. Start with the [development guide (Chinese)](architecture/development.md) for setup, module responsibilities, debugging, validation and packaging. The [architecture index (Chinese)](architecture/README.md) links to feature contracts and platform documentation.
 
+After setup, run `npm start` and choose Development, Test or Build. Desktop and Design start without build-mode questions; confirmation defaults to Yes but still waits for Enter. Existing commands remain available for direct use and CI; release operations are separate.
+
 ## Acknowledgements
 
 Interceptor builds on [Electron](https://www.electronjs.org/), [Mockttp](https://github.com/httptoolkit/mockttp), [React](https://react.dev/) and [Monaco Editor](https://microsoft.github.io/monaco-editor/), alongside the other libraries used in this repository.

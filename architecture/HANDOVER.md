@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `4ea8bf65`
+> Tracked commit: `47a241a6`
 
 - **8. Windows 实机验收 · 待验收**
   - 范围：按[Windows矩阵](../apps/desktop/tests/e2e-workflow-tests/README.md#windows-复验)验证CA/UAC、系统代理/AppContainer、TLS/H2/gRPC、原生导入导出、平台helper、最终产物与退出恢复；包含已登录Edge的Bilibili流程和纯Auto Detect/WPAD环境。
@@ -28,3 +28,12 @@
   - 当前测试阻塞：全workspace Vitest为2321 passed / 8 failed / 2 skipped。Desktop的5项Windows文件面板fixture在macOS报平台限制；Playground的TLS H1场景`afterEach`超时，单独重跑仍失败；Core的2项chunked framing失败与第10项一致。本轮未改这些实现/测试，不删除或跳过它们来放行CI。`actionlint`与Go未安装，下载独立linter遇GitHub连接超时，不能将替代语法检查记为actionlint通过。
   - 剩余验证：本机尚未安装/登录gh，未运行真实CI派发/跟踪或tag草稿，也未做packaged smoke、实际下载安装授权及退出恢复。准备提交后仍须处理上述8项测试阻塞，按指南完成gh授权、同commit的CI演练及所选平台实机验收；缺证据时不Publish、不标完成，不以删除Release替代验收。
   - 发布条件：2026-10-03只读确认仓库仍为private，尚无Release workflow运行记录；private允许draft/Release，但产品匿名更新仍会404。公开仓库、发布准备commit/push及最终tag按用户授权执行，不自动更改可见性；操作见[开发指南](development.md#正式发布)。
+
+## 验证证据
+
+- **统一开发命令入口（第14项，2026-10-03）**
+  - 入口为`npm start`，一级菜单`Development / Test / Build`；Desktop与Design不再询问启动模式，构建准备自动完成。摘要分栏、提示逐条显示，确认默认Yes但等待Enter；低频工具保留原命令，`release`和`release:build`未接入或修改。[使用说明](development.md#统一命令入口)、[改动说明](../commit-changes/202610031952_docs_commands_interactive-entry.html)、[本轮证据](/Users/zhxmt/.copilot/session-state/57ea4adc-4bab-4df2-a2fb-1c155cdd2946/files/command-wizard-refinement-evidence/)。
+  - `node --check scripts/start.mjs`与帮助入口通过；本轮15项真实PTY场景通过，12份执行摘要在80/120列无溢出且中文对齐，长命令换行后可完整还原。Enter实际执行Core Protocol typecheck及Core构建→2个unit文件的25项测试；显式n、返回及Ctrl+C取消通过。
+  - Design通过默认Enter启动，HTTP 200；Ctrl+C后本次所属进程及监听均退出。只补充已安装wrap-ansi 6.2.0的直接开发依赖声明，其余1078个lockfile依赖条目不变。文档链接有效；同一份HTML经headless Edge验证1280/390排版，分栏对齐且无页面横向溢出或折叠。
+  - 历史：[初版18项PTY证据](/Users/zhxmt/.copilot/session-state/57ea4adc-4bab-4df2-a2fb-1c155cdd2946/files/command-wizard-evidence/)保留，不作为精简版菜单的通过结果。初版临时symlink fixture曾指向不存在目录，修正后复跑通过；集成浏览器句柄/截图异常已改用headless Edge完成检查，原日志保留。本轮报告的等宽字体回退偏差只修正排版示意，不改变实际终端输出。
+  - 未运行产品E2E、packaged smoke、Windows实机或系统设置操作；相关入口只验证路由、展示与取消，不计为对应套件通过。未修改设计基准、产品代码或发版实现；临时PTY driver与依赖基线副本已清理。

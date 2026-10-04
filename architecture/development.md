@@ -60,6 +60,37 @@ Renderer 内部按 `app/`、`features/`、`components/`、`theme/` 和 `styles/`
 
 ## 3. 日常开发
 
+### 统一命令入口
+
+完成初始化后，在仓库根目录运行：
+
+```powershell
+npm start
+```
+
+一级菜单为`Development / Test / Build`。只选择目标和必要范围，构建准备自动完成，不要求判断缓存或“已有构建”。执行摘要按列展示操作、目录和命令，注意事项逐条显示；确认默认Yes，仍需按Enter才执行，输入`n`取消。
+
+| 大类 | 逐步选择 |
+| --- | --- |
+| Development | Desktop / Playground / Design → 确认启动，不再选择启动模式 |
+| Test | Typecheck、Unit/Integration、E2E、Parity、Packaged smoke、Artifact audit → 必要的workspace、测试范围、workflow或视图 |
+| Build | App应用包 / Installer安装包 → 确认构建 |
+
+- 选择菜单中的“返回上一级”可以重新选择；最终确认输入`n`回到主菜单，不执行命令。`Ctrl+C`退出。
+- 命令顺序执行，任一步失败立即停止后续步骤并以非零状态退出，不自动重试或忽略失败。正常结束后回到主菜单。
+- Desktop使用`npm run dev`自动准备运行所需文件；Design直接启动开发预览。菜单不再提供“沿用已有Core”或不同预览模式。
+- Unit/Integration测试先构建Core，再以`--no-file-parallelism`运行所选范围；E2E自动prepare后运行所选功能或workflow，不再追问构建方式。
+- Packaged smoke自动打包后运行；Artifact audit先打包再审计资源，不启动Desktop。不要与其他构建、开发实例或依赖产物的测试并行。
+- Parity只选择现有视图，保留其主题、尺寸和阈值，不修改设计基准。Watch、Browser专项、截图/图片对比、报告查看、单独Core/native构建等低频操作继续使用下文原始命令，不占用常用菜单。
+- 原生启动和打包只在相应平台可选。启动App或真实验收前会提示系统代理、证书授权和正常退出要求；向导不替代系统授权或恢复检查。
+- 原始命令继续保留，CI与非交互环境直接调用它们。`release`和`release:build`正在独立重构，暂不接入此入口，也不与其脚本共享实现。
+
+查看入口说明：
+
+```powershell
+npm start -- --help
+```
+
 ### Desktop
 
 启动完整桌面开发环境：
