@@ -1,21 +1,46 @@
+import { execFileSync } from 'node:child_process';
 import { copyFile, mkdir, stat, unlink } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-
-import { api as forgeApi } from '@electron-forge/core';
+import { fileURLToPath } from 'node:url';
 
 import { MacosReleaseSmoke } from '../apps/desktop/tests/installer/macos-release-smoke.mjs';
-import { desktopDirectory, makersByPackageType, readReleasePlan } from './release-config.mjs';
-import { runNpm } from './release-commands.mjs';
+import { desktopDirectory, makersByPackageType, readReleaseRequest, repositoryRoot } from './release-config.mjs';
+
+const sourceRequire = createRequire(path.join(desktopDirectory, 'package.json'));
+const forgeApi = sourceRequire('@electron-forge/core').api;
+const { spawn } = createRequire(sourceRequire.resolve('@electron-forge/core'))('@malept/cross-spawn-promise');
+
+async function runNpm(args) {
+  await spawn('npm', args, { cwd: repositoryRoot, stdio: 'inherit' });
+}
+
+function assertSourceCheckout(sourceSha) {
+  const actual = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repositoryRoot, encoding: 'utf8' }).trim();
+  if (actual !== sourceSha) throw new Error(`CI源码检出错误：需要 ${sourceSha}，实际为 ${actual}。`);
+  try {
+    execFileSync('git', ['diff', '--quiet', 'HEAD', '--'], { cwd: repositoryRoot, stdio: 'pipe' });
+  } catch (error) {
+    if (error.status !== 1) throw error;
+    throw new Error('CI源码目录的tracked文件已改变，不能将其当作所选commit构建。', { cause: error });
+  }
+  const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+  });
+  if (untracked.trim()) throw new Error('CI源码目录存在未跟踪文件，不能将其混入所选commit的产物。');
+}
 
 async function main() {
   const { values } = parseArgs({
     options: { target: { type: 'string' } },
     allowPositionals: false,
   });
-  const plan = await readReleasePlan();
+  const plan = readReleaseRequest();
   const target = plan.targets.find((candidate) => candidate.id === values.target);
-  if (!target) throw new Error('请通过 --target 指定 release-config.json 中已选择的目标。');
+  if (!target) throw new Error('请通过 --target 指定本次CI请求中的目标。');
+  assertSourceCheckout(plan.sourceSha);
   if (process.platform !== target.platform || process.arch !== target.arch) {
     throw new Error(`${target.id} 必须在对应原生主机上构建；当前为 ${process.platform}/${process.arch}。`);
   }
@@ -26,10 +51,10 @@ async function main() {
     'WINDOWS_CERTIFICATE_FILE', 'WINDOWS_CERTIFICATE_PASSWORD',
   ]) delete process.env[key];
 
-  console.log(`[release-build 1/5] ${plan.version} · ${target.label} · ${target.packages.join('/')}`);
-  runNpm(['run', 'build:core']);
+  console.log(`[release-build 1/5] 源码 ${plan.sourceSha} · 版本 ${plan.version} · ${target.label} · ${target.packages.join('/')}`);
+  await runNpm(['run', 'build:core']);
   console.log('[release-build 2/5] 构建当前平台的 native helpers');
-  runNpm(['run', 'build:native', '--workspace', '@interceptor/desktop']);
+  await runNpm(['run', 'build:native', '--workspace', '@interceptor/desktop']);
   console.log('[release-build 3/5] 只运行所选 Forge makers');
   const previousDirectory = process.cwd();
   let results;
@@ -60,10 +85,13 @@ async function main() {
     if ((await stat(file)).size === 0) throw new Error(`安装包为空：${file}`);
   }
   console.log('[release-build 4/5] 检查实际产物与许可');
-  runNpm(['run', 'test:package-audit']);
+  await spawn(process.execPath, [
+    fileURLToPath(new URL('../apps/desktop/tests/installer/package-artifact-audit.mjs', import.meta.url)),
+  ], { cwd: repositoryRoot, stdio: 'inherit' });
   if (target.platform === 'darwin') {
     await MacosReleaseSmoke.verifyArtifacts(artifacts, target.packages);
   }
+  assertSourceCheckout(plan.sourceSha);
   console.log('[release-build 5/5] 归集本次安装包，不混入其他 make 输出');
   const outputDirectory = path.join(desktopDirectory, 'out/release', target.id);
   await mkdir(outputDirectory, { recursive: true });

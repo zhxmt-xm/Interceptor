@@ -1,19 +1,25 @@
 import { execFile } from 'node:child_process';
 import { access, readFile, readdir, stat } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import process from 'node:process';
+import { pathToFileURL } from 'node:url';
 
-import { extractFile, listPackage } from '@electron/asar';
-import {
+const desktopDirectory = process.env.INTERCEPTOR_RELEASE_SOURCE_ROOT
+  ? path.join(path.resolve(process.env.INTERCEPTOR_RELEASE_SOURCE_ROOT), 'apps/desktop')
+  : path.resolve(import.meta.dirname, '../..');
+const sourceRequire = createRequire(path.join(desktopDirectory, 'package.json'));
+const { extractFile, listPackage } = await import(pathToFileURL(sourceRequire.resolve('@electron/asar')).href);
+const {
   FuseState,
   FuseV1Options,
   getCurrentFuseWire,
-} from '@electron/fuses';
+} = await import(pathToFileURL(sourceRequire.resolve('@electron/fuses')).href);
 
 /** Release artifact audit for ASAR contents, extra resources, Fuses and signatures. */
 class PackageArtifactAuditor {
   /** Desktop workspace containing the Forge output. */
-  static desktopRoot = path.resolve(import.meta.dirname, '../..');
+  static desktopRoot = desktopDirectory;
   /** Package root for the current platform and architecture. */
   static packageRoot = path.join(
     this.desktopRoot,

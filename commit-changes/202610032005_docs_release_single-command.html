@@ -60,19 +60,19 @@
             <tr>
               <td><code>scripts/release.mjs</code>及配置、命令、构建辅助脚本</td>
               <td>版本、构建目标及GitHub动作主要由维护者分别操作。</td>
-              <td><code>npm run release</code>一次选择版本、平台/架构和包类型，连续执行检查、仅提交生成配置、push、CI、tag与draft，验收确认后Publish。</td>
-              <td>减少手工拼参数与重复操作；不夹带原有工作区修改，不创建分支或删除历史。</td>
+              <td><code>npm run release</code>先从最近10个commit或输入hash查询结果选择源码，再选择版本和包类型。CI固定检出该SHA，构建后生成同SHA的tag/draft，验收确认后Publish。</td>
+              <td>本地未提交修改不参与构建，不要求干净工作区，不改本地版本、index或HEAD，不commit/push/stash。</td>
             </tr>
             <tr>
-              <td><code>.github/release-config.json</code>、<code>.github/workflows/release-artifacts.yml</code></td>
+              <td><code>scripts/release-config.mjs</code>、<code>.github/workflows/release-artifacts.yml</code></td>
               <td>tag要求付费签名/公证凭据，并按固定平台与包数量发布。</td>
-              <td>按配置生成macOS x64/arm64、Windows x64原生矩阵；只构建所选maker。macOS采用ad-hoc，Windows为未签名包；tag先生成draft。</td>
-              <td>不再把购买证书作为当前发行前提；包类型、数量、大小和SHA-256按本轮产物校验。</td>
+              <td>通过输入传入完整源码SHA、版本和目标，生成原生矩阵；产品源码与workflow工具版本分别固定。只保留4个CI工具后，在同一目录检出所选源码；构建通过后创建tag与draft。</td>
+              <td>删除本地配置持久化和版本提交路径；不改用main源码，不复制产品仓库，不放宽包类型、数量、大小、SHA-256及许可检查。</td>
             </tr>
             <tr>
               <td>终端发版摘要与确认提示</td>
               <td>版本、目标、提交文件和说明混在长行中，确认提示较长。</td>
-              <td>基本信息与构建目标分列，文件逐行展示，使用显示宽度对齐中文；开始与最终Publish确认均默认Yes。</td>
+              <td>源码SHA、提交时间/说明、版本和构建目标清楚展示；最近10条可直接选，短hash可查询确认。Yes/No确认默认Yes。</td>
               <td>提高可读性；默认Yes仍等待输入，不跳过检查或实机验收确认。</td>
             </tr>
             <tr>
@@ -102,18 +102,18 @@
   版本       0.1.0
   tag        v0.1.0
   仓库       zhxmt-xm/Interceptor
-  分支       main
+  源码commit d274c2f8…（完整SHA）
+  工作流分支 main（只提供编排）
 
 构建目标
   平台    架构   安装包      CI runner
   macOS   x64    DMG / ZIP   macos-15-intel
 
-自动提交文件
-  apps/desktop/package.json
-  package-lock.json
-  .github/release-config.json
+执行方式
+  CI只构建选定源码SHA
+  本地文件和Git状态不变
 
-? 开始发版？ (Y/n)</pre>
+? 按此源码commit开始发版？ (Y/n)</pre>
         </div>
       </div>
     </section>
@@ -122,7 +122,7 @@
       <ul>
         <li>不修改代理业务、Renderer页面或产品GitHub登录行为。</li>
         <li>不会自动公开仓库、覆盖已发布版本、移动旧tag或绕过系统安全保护。</li>
-        <li>只有本次生成的版本与发版配置可以自动提交；其他业务修改须事先审阅提交。</li>
+        <li>不修改或提交本地版本和配置；所选commit必须存在于GitHub，未推送时明确拒绝，不自动上传其他工作。</li>
         <li>发布确认仍由维护者完成；默认Yes不是自动批准。</li>
       </ul>
     </section>

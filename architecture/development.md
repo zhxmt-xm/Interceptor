@@ -83,7 +83,7 @@ npm start
 - Packaged smoke自动打包后运行；Artifact audit先打包再审计资源，不启动Desktop。不要与其他构建、开发实例或依赖产物的测试并行。
 - Parity只选择现有视图，保留其主题、尺寸和阈值，不修改设计基准。Watch、Browser专项、截图/图片对比、报告查看、单独Core/native构建等低频操作继续使用下文原始命令，不占用常用菜单。
 - 原生启动和打包只在相应平台可选。启动App或真实验收前会提示系统代理、证书授权和正常退出要求；向导不替代系统授权或恢复检查。
-- 原始命令继续保留，CI与非交互环境直接调用它们。`release`和`release:build`正在独立重构，暂不接入此入口，也不与其脚本共享实现。
+- 原始命令继续保留，CI与非交互环境直接调用它们。发版使用独立的`npm run release`，不接入此入口，也不与其脚本共享实现。
 
 查看入口说明：
 
@@ -469,11 +469,11 @@ npm run test:release:macos
 npm run release
 ```
 
-一次运行中依次选择版本更新方式、平台/架构和包类型，确认后自动保存配置、执行本地检查、仅提交生成的版本/配置文件并push、运行CI演练、创建tag及draft，最后等待实机验收确认后Publish。没有阶段选择菜单，不需要反复退出重跑。
+先从当前分支最近10个commit选择源码，也可输入短/完整hash查询并确认。所选完整SHA必须存在于GitHub；随后选择版本、平台/架构和包类型，作为workflow输入交给CI。版本由CI构建时注入，tag固定指向所选源码SHA，本地不修改版本、配置、index或HEAD，不commit/push/stash，也不要求工作区干净。
 
-版本只递增一次，唯一来源为Desktop package.json；目标归[release-config.json](../.github/release-config.json)，默认macOS x64 DMG/ZIP，也可选macOS arm64或Windows x64 MSI。所有签名、许可、资源和实机验收要求保留，macOS采用ad-hoc，Windows不要求付费签名。
+默认macOS x64 DMG/ZIP，也可选macOS arm64或Windows x64 MSI。CI编排工具与产品源码分开记录：产品精确检出所选SHA，编排工具取自运行workflow的版本；不会偷偷改用main源码或跳过旧commit不满足的许可/安全/测试要求。
 
-开始执行前要求业务代码已提交、工作区干净且gh已登录；不会自动夹带原有修改、创建分支、公开仓库或删除历史。总确认前可以取消安全查看配置，最终Publish必须经过实机验收确认。完整单线流程、一次性环境准备和CI排障点击步骤见[发版完整操作指南](release-guide.md)。
+所有CI构建检查通过后生成tag及draft，再由用户实机验收确认后Publish。没有本地构建/版本commit或第二轮tag CI。完整选择、hash查询、工具部署前提和GitHub排障步骤见[发版完整操作指南](release-guide.md)。
 
 **访问与历史**
 

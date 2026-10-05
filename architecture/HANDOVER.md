@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `56b90cc1`
+> Tracked commit: `d274c2f8`
 
 - **8. Windows 实机验收 · 待验收**
   - 范围：按[Windows矩阵](../apps/desktop/tests/e2e-workflow-tests/README.md#windows-复验)验证CA/UAC、系统代理/AppContainer、TLS/H2/gRPC、原生导入导出、平台helper、最终产物与退出恢复；包含已登录Edge的Bilibili流程和纯Auto Detect/WPAD环境。
@@ -17,16 +17,20 @@
   - 当前：Windows无可用上游URL时按直连处理；macOS仅Auto Detect时在接管前拒绝。本机不具备纯WPAD条件，显式代理/PAC结果不能替代。
   - 下一步：取得macOS真实环境后验收；Windows归第8项。此项不代表已承诺新增WPAD发现实现，边界见[Settings](features/settings.md#macos-effective-upstream)。
 
-- **13. 交互发版与首个tag release · 代码完成 · 待CI/实机验收（全量测试blocked）**
-  - 范围：自有代码采用Apache-2.0；默认首发macOS x64 DMG/ZIP。按用户追加要求，实现`npm run release`交互选择版本递增方式、macOS x64/arm64或Windows x64及有效安装包类型，配置归`.github/release-config.json`，版本归Desktop package.json；不提供未实现的Linux、Windows arm64或universal。macOS使用ad-hoc，Windows不要求付费签名，保留全部产品安全及对应平台验收门禁。
-  - 当前步骤：一次`npm run release`选择配置、总确认后连续执行检查、仅提交生成的版本/配置并push、CI、tag和draft；同一终端等待实机验收，最终确认后Publish。原有业务修改必须先提交，不自动夹带、公开仓库或删除历史。[指南](release-guide.md)为单线流程，默认0.1.0、macOS x64、DMG+ZIP。用户已授权先保存第13项准备提交，不代表发布验收完成；未执行tag或Publish。[改动说明](../commit-changes/202610032005_docs_release_single-command.html)随本项提交。
-  - 终端摘要：基本信息与构建目标按显示列宽对齐，提交文件逐行列出，只显示所选平台的签名说明；复用已安装的string-width 5.1.2，不改变依赖路径/版本/integrity。开始和最终Publish两处确认按用户要求均默认Yes，仍等待Enter；真实PTY在80/120列验证中文对齐、无摘要溢出、`(Y/n)`、显式取消及Enter进入前置门禁，未触发版本修改或实际发布。
+- **13. 按commit发版与首个Release · 代码完成 · 待部署CI/实机验收**
+  - 范围：自有代码采用Apache-2.0；默认首发macOS x64 DMG/ZIP。按用户2026-10-04追加要求，`npm run release`先显示当前分支最近10个commit，并支持输入短/完整hash查询确认；选定源码SHA后，再选择版本增量及平台/架构/包类型。源码commit必须存在于GitHub，版本和目标作为CI输入，不修改本地版本或配置，不要求干净工作区，不自动commit/push/stash或清理本地文件。
+  - 当前步骤：最近10个commit、短/完整hash查询确认和固定SHA的CI请求已接通。删除本地版本/配置写入、自动commit/push、干净工作区门禁及旧配置文件；一次CI完成构建、tag和draft。CI保留4个编排/校验工具后在同一源码目录精确检出产品SHA，不复制产品仓库或另建worktree。2026-10-05用户已授权单独提交并推送本项新版工具/workflow，部署后只读核对输入，不自动启动CI、tag或Release；其他设计稿修改保留。旧准备commit `47a241a6`和同一份[改动说明](../commit-changes/202610032005_docs_release_single-command.html)保留。
+  - 部署前故障：用户选择`d274c2f8`后，GitHub返回HTTP 422 `Unexpected inputs provided: ["source_sha", "targets", "version"]`。只读确认远端main仍仅接受`request_id`，没有创建任何Release workflow运行。原因是本地新版与远端旧workflow不同步；本次部署补齐接口，不更换所选产品源码或删除输入规避。
+  - 本次提交检查（2026-10-05）：仅暂存本项17个文件和Handover第13项差异，保留其他设计稿；相关28项测试、Desktop typecheck、JS语法、4个dispatch输入、固定SHA引用、14段Bash和最近10条/hash解析检查通过。指南本地链接与同一HTML报告1280/390宽度检查通过；没有重跑全量测试或真实发版，不将此前8项失败改写为通过。
+  - 推送状态：此前连接`github.com:443`约75秒超时；2026-10-04已随后续commit `56b90cc1`成功推送至`main`，准备commit `47a241a6`现已在远端。此次推送未调整网络、代理或凭据，不代表CI/tag/发布验收已经完成。
+  - 终端摘要：先显示最近10个SHA/日期/说明，hash查询后显示完整提交信息并确认；汇总明确区分产品源码SHA与工作流分支，不再显示本地自动提交文件。hash确认、开始和最终Publish均默认Yes，仍等待用户输入。版本基准读取所选源码及GitHub已有版本tag，不读取本机未提交版本。
+  - Intel工具前提（2026-10-04）：本机为macOS 15.8、Intel i9/x86_64。按用户授权，通过macOS管理员授权将官方gh 2.102.0安装到`/usr/local/bin/gh`，所有者root:wheel、权限0755；PATH解析及`gh --version`通过，文件为Mach-O x86_64，安装前后可执行文件SHA-256均为`df615405bcf707c5855f22c8be477c62cd7f7af743de75c4805c2b375b3a479c`。官方ZIP校验通过并保留为会话安装备份，临时解压文件清理。未安装Homebrew、改网络/shell配置或自动登录/发版；指南保留Intel直接安装路线。
   - 提交检查：只暂存本项代码与共享文件中的本项差异，不包含WPAD或`npm start`工作；改动说明已用headless Edge检查1280/390宽度，无页面横向溢出或折叠，窄屏表格保留内部横向滚动。
   - 已验证：修改前Forge配置测试6 passed；最终全workspace typecheck通过，Forge配置及Updater相关测试28 passed，Core构建收集182个依赖许可。Apache正文与官方文件逐字节一致，8份补充声明与上游blob/npm README段落一致。现有Forge/Inquirer/SemVer仅增加直接dev依赖声明，所有依赖路径、版本及integrity保持原值。矩阵/版本/非法输入、workflow YAML和11段Bash语法通过，文档本地链接有效；VS Code未发现测试后改用仓库Vitest命令，未计为产品Red。
-  - 向导验证：连续入口改造后，真实PTY验证从版本/目标配置直接进入总确认，取消及脏工作区拒绝均不修改文件、HEAD或调用GitHub；阶段菜单已删除，语法、帮助和指南链接通过。版本与构建后端沿用此前已验证的Patch真实更新/恢复、空选择/非法目标拒绝、ZIP-only只归集一个ZIP及默认DMG+ZIP实际构建结果。自动commit/CI/tag/最终Publish的新连续编排尚未实跑，不宣称整条发布通过。
-  - 当前本机产物：共享构建后端已通过原生CPU、helper读取、strict/nested签名完整性及artifact audit（1490 files / 340004999 bytes）；本次只改入口编排，未重建产物。`apps/desktop/out/release/darwin-x64/Interceptor-0.1.0-darwin-x64.dmg`为130389144 bytes，SHA-256 `a879d848ed61ef6ddb20da242bcd2b9bf3dc84a493befb973235075c13703656`；同目录`Interceptor-0.1.0-darwin-x64.zip`为132010064 bytes，SHA-256 `2d05b56bc96d90927d7b7bdf906679c7b2f64744b351714569f2d33b3c5ab998`。这是本机ad-hoc结果，不是浏览器下载后的Gatekeeper或真实安装验收；macOS arm64/Windows矩阵尚未执行。
+  - 按SHA验证：真实PTY验证最近10条默认HEAD `d274c2f8`，以及输入短hash选择列表之外的`677d8c60`；两者都在脏工作区到达总确认并正常取消，文件、版本、index和HEAD不变。GitHub读取确认完整SHA及源码版本；非法hash被拒绝。CI请求/checkout引用及14段Bash语法通过；只复制4个工具进行加载验证，错误源码SHA和脏CI源码目录均在构建前拒绝，未复制产品仓库。全workspace typecheck和相关28项测试通过，指南链接及报告1280/390宽度检查通过；真实CI未执行。
+  - 既有本机产物（非本次按SHA的CI证据）：此前共享后端已通过原生CPU、签名完整性和artifact audit。`apps/desktop/out/release/darwin-x64/Interceptor-0.1.0-darwin-x64.dmg`为130389144 bytes，SHA-256 `a879d848ed61ef6ddb20da242bcd2b9bf3dc84a493befb973235075c13703656`；同目录ZIP为132010064 bytes，SHA-256 `2d05b56bc96d90927d7b7bdf906679c7b2f64744b351714569f2d33b3c5ab998`。不拿这些旧包证明新选定SHA、macOS arm64或Windows构建通过。
   - 当前测试阻塞：全workspace Vitest为2321 passed / 8 failed / 2 skipped。Desktop的5项Windows文件面板fixture在macOS报平台限制；Playground的TLS H1场景`afterEach`超时，单独重跑仍失败；Core的2项chunked framing失败与第10项一致。本轮未改这些实现/测试，不删除或跳过它们来放行CI。`actionlint`与Go未安装，下载独立linter遇GitHub连接超时，不能将替代语法检查记为actionlint通过。
-  - 剩余验证：本机尚未安装/登录gh，未运行真实CI派发/跟踪或tag草稿，也未做packaged smoke、实际下载安装授权及退出恢复。准备提交后仍须处理上述8项测试阻塞，按指南完成gh授权、同commit的CI演练及所选平台实机验收；缺证据时不Publish、不标完成，不以删除Release替代验收。
+  - 剩余验证：gh当前已登录zhxmt-xm，源码可从GitHub读取；须先将新版发版工具/workflow经授权提交并部署到默认分支，再按所选SHA运行真实CI、tag/draft及实机安装/授权/退出恢复。此前8项失败是当时源码结果，不替代所选SHA的CI结果；若所选版本仍有失败，不能跳过放行。发布前还需完成所有所选平台的实机门禁，不因本地查询成功而标完成。
   - 发布条件：2026-10-03只读确认仓库仍为private，尚无Release workflow运行记录；private允许draft/Release，但产品匿名更新仍会404。公开仓库、发布准备commit/push及最终tag按用户授权执行，不自动更改可见性；操作见[开发指南](development.md#正式发布)。
 
 ## 验证证据

@@ -282,7 +282,7 @@ async function main() {
     console.log('Development / Test / Build → 目标或必要范围 → 确认执行');
     console.log('Desktop / Design 选择后直接启动；构建准备自动完成，不询问缓存模式。');
     console.log('执行摘要分列显示，确认默认 Yes，仍需按 Enter；输入 n 取消。');
-    console.log('低频工具保留原命令，release / release:build 暂不接入。');
+    console.log('低频工具保留原命令，发版使用独立的 npm run release。');
     console.log('↑/↓ 选择，Enter 确认；选择“返回上一级”返回，Ctrl+C 退出。');
     console.log('CI 和非交互环境继续使用原始 npm 命令。说明：architecture/development.md');
     return;

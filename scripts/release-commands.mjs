@@ -30,21 +30,8 @@ function commandError(command, error) {
   return new Error(`${command} 执行失败（${error.signal ?? error.status ?? error.code ?? 'unknown'}）${detail ? `：\n${detail}` : '，请查看上面的错误输出。'}`, { cause: error });
 }
 
-export function runNpm(args) {
-  if (!process.env.npm_execpath) {
-    throw new Error('npm_execpath 不可用，请通过 npm run release 或 npm run release:build 启动。');
-  }
-  runCommand(process.execPath, [process.env.npm_execpath, ...args]);
-}
-
 export function readGit(args) {
   return captureCommand('git', args).trim();
-}
-
-export function requireCleanWorktree() {
-  if (readGit(['status', '--porcelain'])) {
-    throw new Error('工作区有未提交或未跟踪文件。请先审阅并提交业务代码；本流程只自动提交自己生成的版本/发版配置，不会夹带原有修改。');
-  }
 }
 
 export function readGitHubRepository() {
@@ -68,15 +55,4 @@ export function readGitHubRepository() {
     throw new Error('origin 必须指向 github.com 上的 owner/repository。');
   }
   return repository;
-}
-
-export function requirePushedCommit() {
-  requireCleanWorktree();
-  const branch = readGit(['symbolic-ref', '--short', 'HEAD']);
-  const commit = readGit(['rev-parse', 'HEAD']);
-  const remote = readGit(['ls-remote', '--heads', 'origin', `refs/heads/${branch}`]);
-  if (remote.split(/\s+/)[0] !== commit) {
-    throw new Error('当前 commit 尚未与远端分支一致。请确认并执行 git push origin HEAD；若被拒绝，先处理分支差异，不要 force push。');
-  }
-  return { branch, commit };
 }

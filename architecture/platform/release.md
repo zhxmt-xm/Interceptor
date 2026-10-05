@@ -45,12 +45,14 @@ external模块在顶层`require`可能阻塞packaged Main与CDP初始化，因�
 
 ## 6. 交互配置与发布 CI
 
-- `npm run release`只有一条连续流程：选择配置并总确认后，自动更新版本、检查、本机目标构建、提交生成配置并push、CI演练、tag和draft，最后等待实机验收确认再Publish。删除阶段菜单和单独预览入口，总确认前取消不会修改文件或访问GitHub。版本唯一来源为Desktop package.json，由npm联动lockfile；目标归`.github/release-config.json`，版本只递增一次。
-- `scripts/release-config.mjs`统一校验配置、生成原生矩阵及资产数量；macOS x64对应`macos-15-intel`，macOS arm64对应`macos-15`，Windows x64对应`windows-2025`。默认仅macOS x64 DMG/ZIP；不接受空选择、重复目标、错误包类型或未实现架构，不宣称universal。MSI拒绝预发布/build metadata及超出Windows Installer版本段范围的值。
-- `scripts/release-build.mjs`只在匹配平台/架构的原生主机调用Forge公开`api.make()`和所选makers，检查返回的版本、架构和包类型，再复用artifact audit及macOS签名检查。macOS还用`lipo -verify_arch`核对App与helper。归集目录为`out/release/<target-id>`，文件名包含版本、平台和架构；上传时只取本轮版本，不能混入旧make输出。
+- `npm run release`先展示当前分支最近10个commit，另提供短/完整hash查询确认；本地无对象时查询当前GitHub仓库，不接受分支名、歧义hash或非commit对象。选中后向GitHub核对完整SHA，未推送或不可访问时拒绝，不自动上传或改用main。
+- 版本基准结合所选源码的Desktop版本与已有GitHub版本tag，保留版本增量和目标选择。源码SHA、版本和目标作为workflow_dispatch输入；本地不修改版本/配置/index/HEAD，不commit、push、stash或清理文件，不要求干净工作区。
+- `scripts/release-config.mjs`统一校验本次请求、生成原生矩阵及资产数量，不读取工作区发版配置文件；macOS x64对应`macos-15-intel`，macOS arm64对应`macos-15`，Windows x64对应`windows-2025`。默认仅macOS x64 DMG/ZIP；不接受空选择、重复目标、错误包类型或未实现架构，不宣称universal。MSI拒绝预发布/build metadata及超出Windows Installer版本段范围的值。
+- 原生job先按workflow SHA取得编排/校验工具，仅保存4个工具文件到runner临时目录，再在同一源码目录检出所选产品SHA；不复制整个产品仓库或创建额外worktree。`INTERCEPTOR_RELEASE_SOURCE_ROOT`只指明CI源码目录，工具不进入App。构建前后核对源码SHA、tracked差异和未跟踪文件，防止后续步骤污染所选快照。
+- `scripts/release-build.mjs`从所选源码的已安装依赖加载Forge公开`api.make()`，使用`INTERCEPTOR_BUILD_VERSION`注入本次版本，只运行所选makers并复用当前artifact audit和macOS签名/架构检查。缺少构建、许可或安全条件的旧快照明确失败，不修改其业务代码或放宽门禁。归集目录仍为`out/release/<target-id>`，文件名包含版本、平台和架构。
 - 所有actions固定commit SHA。无付费签名Secrets要求；macOS保留ad-hoc与Hardened Runtime、strict/nested签名完整性，Windows为未签名安装器。原生helper、Fuses/CSP、ASAR与许可校验不因免证书而放宽。
-- 执行前要求工作区干净并使用维护者自己的gh认证。检查通过后，只提交本次生成的Desktop版本、lockfile和发版目标配置；检查期间出现其他文件、HEAD/分支/origin变化或生成文件被修改时停止，不覆盖或夹带。push后以新的固定commit连续运行CI演练和tag流程；workflow_dispatch用唯一request ID关联本轮运行，停止本地等待不代表取消远端。
-- 分支`workflow_dispatch`只生成Actions artifacts；`v<semver>` tag必须与提交中的Desktop版本一致，构建后只创建**draft Release**，预发布SemVer同步设置prerelease。发布job通过`GH_REPO`指定当前仓库，只允许更新未发布draft，不覆盖已发布版本。
+- workflow输入为`source_sha`（完整40位SHA）、`version`、`targets`（受支持目标JSON）和可选`request_id`。CLI从默认分支启动编排，用唯一request ID跟踪；GitHub运行的headSha代表工作流版本，不当作产品源码SHA，Summary同时记录两者。
+- 一次workflow完成检查和构建后，在GitHub创建直接指向`source_sha`的tag及**draft Release**，不再以本地推tag触发第二次CI。重跑时已有tag必须解析到同一SHA，已有Release必须仍是draft；不移动tag或覆盖已发布版本。预发布SemVer同步设置prerelease，CLI在最终Publish前再次核对tag指向及附件。
 - Release资产数量和类型从配置计算，不固定为2或3；逐项将GitHub返回的大小和SHA-256与本轮本地文件对比。诊断文件使用独立artifact，**绝不混入Release assets**。
 - 托管runner只证明构建与上述自动检查。需要已初始化共享CA、已登录桌面、原生系统授权的packaged smoke，以及浏览器下载后的Gatekeeper/SmartScreen、真实安装生命周期和退出恢复，在对应平台实机执行。它们不是托管CI的passed项目，证据未齐不得Publish draft；Windows产物仍须满足其独立门禁。
 - 命令给出draft链接并在同一终端等待维护者实机验收，确认后重新核对Release身份、附件名称/大小/digest/更新时间，再执行Publish并读取GitHub状态确认；未确认则保留draft。draft不提供匿名更新。失败保留Actions日志与诊断，重跑仅可更新draft；已发布版本修正使用新tag，不以删除Release或移动tag代替版本管理。

@@ -1,13 +1,14 @@
-import { appendFile, readFile } from 'node:fs/promises';
+import { appendFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import semver from 'semver';
-
-export const repositoryRoot = path.resolve(import.meta.dirname, '..');
+export const repositoryRoot = path.resolve(
+  process.env.INTERCEPTOR_RELEASE_SOURCE_ROOT ?? path.join(import.meta.dirname, '..'),
+);
 export const desktopDirectory = path.join(repositoryRoot, 'apps/desktop');
-export const releaseConfigPath = path.join(repositoryRoot, '.github/release-config.json');
 export const workflowName = 'release-artifacts.yml';
+const semver = createRequire(path.join(repositoryRoot, 'package.json'))('semver');
 
 export const releaseTargets = [
   {
@@ -60,7 +61,10 @@ export function incrementVersion(version, increment, identifier) {
   return nextVersion;
 }
 
-export function createReleasePlan(version, config) {
+export function createReleasePlan(version, config, sourceSha) {
+  if (typeof sourceSha !== 'string' || !/^[a-f0-9]{40}$/.test(sourceSha)) {
+    throw new Error('发版源码必须是完整的40位commit SHA，不能使用可变分支名。');
+  }
   validateVersion(version);
   requireObjectKeys(config, ['targets'], 'release-config');
   if (!Array.isArray(config.targets) || config.targets.length === 0) {
@@ -100,6 +104,7 @@ export function createReleasePlan(version, config) {
     };
   });
   return {
+    sourceSha,
     version,
     tag: `v${version}`,
     prerelease: semver.prerelease(version) !== null,
@@ -117,31 +122,26 @@ function requireObjectKeys(value, keys, label) {
   }
 }
 
-export async function readReleasePlan() {
-  const metadata = JSON.parse(await readFile(path.join(desktopDirectory, 'package.json'), 'utf8'));
-  const config = JSON.parse(await readFile(releaseConfigPath, 'utf8'));
-  return createReleasePlan(metadata.version, config);
-}
-
-export function toReleaseConfig(plan) {
-  return {
-    targets: plan.targets.map(({ platform, arch, packages }) => ({ platform, arch, packages })),
-  };
+export function readReleaseRequest() {
+  if (!process.env.RELEASE_TARGETS) throw new Error('缺少本次发版目标RELEASE_TARGETS。');
+  return createReleasePlan(
+    process.env.RELEASE_VERSION,
+    { targets: JSON.parse(process.env.RELEASE_TARGETS) },
+    process.env.RELEASE_SOURCE_SHA,
+  );
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    const plan = await readReleasePlan();
-    if (process.env.GITHUB_REF?.startsWith('refs/tags/') &&
-        process.env.GITHUB_REF !== `refs/tags/${plan.tag}`) {
-      throw new Error(`tag 与 Desktop 版本不一致：应为 ${plan.tag}。`);
-    }
+    const plan = readReleaseRequest();
     if (process.env.GITHUB_OUTPUT) {
       const matrix = {
         include: plan.targets.map(({ id, platform, arch, runner }) => ({ id, platform, arch, runner })),
       };
       await appendFile(process.env.GITHUB_OUTPUT, [
         `matrix=${JSON.stringify(matrix)}`,
+        `source_sha=${plan.sourceSha}`,
+        `targets=${JSON.stringify(plan.targets.map(({ platform, arch, packages }) => ({ platform, arch, packages })))}`,
         `version=${plan.version}`,
         `prerelease=${plan.prerelease}`,
         `asset_count=${plan.assetCount}`,

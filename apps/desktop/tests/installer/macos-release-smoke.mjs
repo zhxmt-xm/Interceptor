@@ -7,9 +7,11 @@ import { fileURLToPath } from 'node:url';
 /** macOS package, helper, nested signature, DMG/ZIP and notarization validation. */
 export class MacosReleaseSmoke {
   /** Repository root whose make command builds Core before Desktop. */
-  static repoRoot = path.resolve(import.meta.dirname, '../../../..');
+  static repoRoot = path.resolve(
+    process.env.INTERCEPTOR_RELEASE_SOURCE_ROOT ?? path.join(import.meta.dirname, '../../../..'),
+  );
   /** Desktop workspace containing Forge output. */
-  static desktopRoot = path.resolve(import.meta.dirname, '../..');
+  static desktopRoot = path.join(this.repoRoot, 'apps/desktop');
   /** Packaged app expected from the host architecture. */
   static appPath = path.join(
     this.desktopRoot,

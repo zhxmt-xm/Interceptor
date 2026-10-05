@@ -1,6 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { readFile, writeFile } from 'node:fs/promises';
-import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
 
@@ -8,28 +6,9 @@ import { checkbox, confirm, input, select } from '@inquirer/prompts';
 import semver from 'semver';
 import stringWidth from 'string-width';
 
-import {
-  createReleasePlan,
-  incrementVersion,
-  readReleasePlan,
-  releaseConfigPath,
-  releaseTargets,
-  repositoryRoot,
-  toReleaseConfig,
-  validateVersion,
-  workflowName,
-} from './release-config.mjs';
-import {
-  captureCommand,
-  readGit,
-  readGitHubRepository,
-  requireCleanWorktree,
-  requirePushedCommit,
-  runCommand,
-  runNpm,
-} from './release-commands.mjs';
-
-const releaseFiles = ['apps/desktop/package.json', 'package-lock.json', '.github/release-config.json'];
+import { createReleasePlan, incrementVersion, releaseTargets, validateVersion, workflowName } from './release-config.mjs';
+import { captureCommand, readGitHubRepository, runCommand } from './release-commands.mjs';
+import { findCommitByHash, readCommittedVersion, readRecentCommits, readRemoteCommit, readRemoteTags } from './release-commits.mjs';
 
 function printColumns(rows) {
   const widths = rows[0].map((_, index) => Math.max(...rows.map((row) => stringWidth(row[index]))));
@@ -39,54 +18,66 @@ function printColumns(rows) {
   }
 }
 
-function printPlan(plan, context) {
-  console.log('\n发版信息');
+function printCommit(commit) {
   printColumns([
-    ['版本', plan.version],
-    ['tag', plan.tag],
-    ['仓库', context.repository],
-    ['分支', context.branch],
-    ['起始提交', context.commit],
+    ['源码commit', commit.sha],
+    ['提交时间', commit.date],
+    ['提交说明', commit.subject || '（无标题）'],
   ]);
-  console.log(`\n构建目标 · ${plan.assetCount} 个安装包`);
-  printColumns([
-    ['平台', '架构', '安装包', 'CI runner'],
-    ...plan.targets.map((target) => [
-      target.platform === 'darwin' ? 'macOS' : 'Windows',
-      target.arch,
-      target.packages.join(' / ').toUpperCase(),
-      target.runner,
-    ]),
-  ]);
-  console.log('\n自动提交文件');
-  for (const file of releaseFiles) console.log(`  ${file}`);
-  console.log('\n自动执行');
-  console.log('  更新配置 → 检查/构建 → commit/push → CI → tag/draft');
-  console.log('  实机验收后，再确认 Publish。');
-  console.log('\n注意');
-  if (plan.prerelease) console.log('  预发布版本，不进入稳定版更新。');
-  if (plan.targets.some((target) => target.platform === 'darwin')) {
-    console.log('  macOS：ad-hoc 签名，未经过 Apple 公证。');
-  }
-  if (plan.targets.some((target) => target.platform === 'win32')) {
-    console.log('  Windows：安装包未签名。');
-  }
-  for (const target of plan.targets) {
-    if (target.platform === 'darwin' && !target.packages.includes('dmg')) {
-      console.log(`  macOS ${target.arch} 仅 ZIP：只供手动分发，内置更新需要 DMG。`);
-    }
-  }
-  console.log('  业务代码须已提交；不会夹带修改或公开仓库。\n');
 }
 
-async function choosePlan(current) {
+async function chooseCommit(repository) {
+  const recent = readRecentCommits();
+  if (recent.length === 0) throw new Error('当前分支没有可选择的commit。');
+  while (true) {
+    const value = await select({
+      message: `选择发版源码（当前分支最近${recent.length}个commit）`,
+      pageSize: 12,
+      choices: [
+        ...recent.map((commit) => ({
+          name: `${commit.sha.slice(0, 8)}  ${commit.date}  ${commit.subject || '（无标题）'}`,
+          value: commit.sha,
+        })),
+        { name: '输入hash查询并选择其他commit', value: 'hash' },
+      ],
+    });
+    if (value !== 'hash') {
+      const commit = recent.find((candidate) => candidate.sha === value);
+      printCommit(commit);
+      return commit;
+    }
+    const hash = await input({
+      message: '输入commit hash（短hash或完整SHA）',
+      validate: (text) => /^[a-f0-9]{4,40}$/i.test(text.trim()) || '请输入4至40位十六进制hash。',
+    });
+    let commit;
+    try {
+      commit = findCommitByHash(repository, hash);
+    } catch (error) {
+      console.error(`[release] 查询失败：${error instanceof Error ? error.message : String(error)}`);
+      continue;
+    }
+    console.log('\n查询结果');
+    printCommit(commit);
+    if (await confirm({ message: '使用这个commit发版？', default: true })) return commit;
+  }
+}
+
+function versionFromTag(tag) {
+  return semver.valid(tag.startsWith('v') ? tag.slice(1) : tag);
+}
+
+async function choosePlan(source, sourceVersion, existingTags) {
+  validateVersion(sourceVersion);
+  const existingVersions = new Set(existingTags.map(versionFromTag).filter(Boolean));
+  const base = semver.rsort([sourceVersion, ...existingVersions])[0];
   const increment = await select({
-    message: `选择版本更新方式（当前 ${current.version}）`,
+    message: `选择版本更新方式（基准 ${base}；源码内版本 ${sourceVersion}）`,
     choices: [
-      { name: `沿用当前版本：${current.version}（首次发布）`, value: 'current' },
-      { name: `Patch 补丁版本：${incrementVersion(current.version, 'patch')}`, value: 'patch' },
-      { name: `Minor 次版本：${incrementVersion(current.version, 'minor')}`, value: 'minor' },
-      { name: `Major 主版本：${incrementVersion(current.version, 'major')}`, value: 'major' },
+      { name: `使用基准版本 ${base}`, value: 'current', disabled: existingVersions.has(base) ? '该版本已有tag' : false },
+      { name: `Patch 补丁版本：${incrementVersion(base, 'patch')}`, value: 'patch' },
+      { name: `Minor 次版本：${incrementVersion(base, 'minor')}`, value: 'minor' },
+      { name: `Major 主版本：${incrementVersion(base, 'major')}`, value: 'major' },
       { name: '预发布版本：alpha / beta / rc（仅 macOS）', value: 'prerelease' },
       { name: '输入指定版本', value: 'custom' },
     ],
@@ -94,8 +85,9 @@ async function choosePlan(current) {
   let version;
   if (increment === 'custom') {
     version = await input({
-      message: '输入版本号，不带 v 前缀',
-      validate: (value) => semver.valid(value) === value || '请输入完整 SemVer，例如 0.2.0 或 0.2.0-beta.0。',
+      message: '输入版本号，不带v前缀',
+      validate: (value) => semver.valid(value) === value && !existingVersions.has(value) ||
+        '请输入完整且未使用的SemVer，例如0.2.0或0.2.0-beta.0。',
     });
   } else {
     const identifier = increment === 'prerelease'
@@ -104,173 +96,101 @@ async function choosePlan(current) {
           choices: ['beta', 'rc', 'alpha'].map((value) => ({ name: value, value })),
         })
       : undefined;
-    version = incrementVersion(current.version, increment, identifier);
+    version = incrementVersion(base, increment, identifier);
   }
-  validateVersion(version);
+  if (existingVersions.has(version)) throw new Error(`${version} 已有tag，不会删除或覆盖。`);
   const windowsVersion = semver.prerelease(version) === null && semver.parse(version).build.length === 0;
   const selectedIds = await checkbox({
-    message: '选择平台和 CPU 架构（Space 勾选，Enter 确认）',
+    message: '选择平台和CPU架构（Space勾选，Enter确认）',
     choices: releaseTargets.map((target) => ({
       name: target.label,
       value: target.id,
-      checked: current.targets.some((selected) => selected.id === target.id) &&
-        (target.platform !== 'win32' || windowsVersion),
-      disabled: target.platform === 'win32' && !windowsVersion ? 'MSI 当前只支持稳定版本' : false,
+      checked: target.id === 'darwin-x64',
+      disabled: target.platform === 'win32' && !windowsVersion ? 'MSI当前只支持稳定版本' : false,
     })),
     validate: (values) => values.length > 0 || '至少选择一个目标。',
   });
   const targets = [];
   for (const id of selectedIds) {
     const target = releaseTargets.find((candidate) => candidate.id === id);
-    const previous = current.targets.find((candidate) => candidate.id === id);
     const packages = target.platform === 'win32'
       ? ['msi']
       : await checkbox({
           message: `${target.label}：选择安装包类型`,
-          choices: target.packageTypes.map((type) => ({
-            name: type.toUpperCase(),
-            value: type,
-            checked: previous ? previous.packages.includes(type) : true,
-          })),
+          choices: target.packageTypes.map((type) => ({ name: type.toUpperCase(), value: type, checked: true })),
           validate: (values) => values.length > 0 || '至少选择一种安装包。',
         });
     targets.push({ platform: target.platform, arch: target.arch, packages });
   }
-  return createReleasePlan(version, { targets });
+  return createReleasePlan(version, { targets }, source.sha);
 }
 
-async function savePlan(current, plan) {
-  const latest = await readReleasePlan();
-  if (latest.version !== current.version ||
-      JSON.stringify(toReleaseConfig(latest)) !== JSON.stringify(toReleaseConfig(current))) {
-    throw new Error('选择期间版本或发版配置已被修改，请重新运行向导；未覆盖其他修改。');
-  }
-  if (current.version !== plan.version) {
-    runNpm(['version', plan.version, '--workspace', '@interceptor/desktop', '--no-git-tag-version', '--ignore-scripts']);
-  }
-  await writeFile(releaseConfigPath, `${JSON.stringify(toReleaseConfig(plan), null, 2)}\n`, 'utf8');
-  return new Map(await Promise.all(releaseFiles.map(async (file) =>
-    [file, await readFile(path.join(repositoryRoot, file))])));
-}
-
-function checkPrerequisites(plan, context) {
-  requireCleanWorktree();
-  captureCommand('gh', ['--version']);
-  captureCommand('gh', ['auth', 'status', '--hostname', 'github.com']);
-  requireUnchangedSource(context);
-  requireUnusedTag(plan.tag);
-}
-
-function requireUnchangedSource(context) {
-  if (readGit(['rev-parse', 'HEAD']) !== context.commit ||
-      readGit(['symbolic-ref', '--short', 'HEAD']) !== context.branch ||
-      readGitHubRepository() !== context.repository) {
-    throw new Error('发版期间分支、commit或origin已改变，停止操作，请先检查当前状态。');
-  }
-}
-
-function requireUnusedTag(tag) {
-  if (readGit(['tag', '--list', tag]) ||
-      readGit(['ls-remote', '--tags', 'origin', `refs/tags/${tag}`])) {
-    throw new Error(`${tag} 已存在，不会删除或覆盖。已启动的运行请从Actions恢复；新发行请选择新的版本号。`);
-  }
-}
-
-function verifyLocalBuild(plan) {
-  runNpm(['run', 'build:core']);
-  runNpm(['run', 'typecheck']);
-  runNpm(['run', 'test', '--workspaces', '--if-present', '--', '--no-file-parallelism']);
-  const nativeTarget = plan.targets.find((target) =>
-    target.platform === process.platform && target.arch === process.arch);
-  if (nativeTarget) {
-    runNpm(['run', 'release:build', '--', '--target', nativeTarget.id]);
-  } else {
-    console.log(`本机 ${process.platform}/${process.arch} 不在所选目标中；原生安装包由对应CI runner构建，不计为本机已验证。`);
-  }
-}
-
-async function commitAndPush(plan, context, snapshots) {
-  requireUnchangedSource(context);
-  const changed = captureCommand('git', ['diff', '--name-only', 'HEAD', '-z']).split('\0').filter(Boolean);
-  const untracked = captureCommand('git', ['ls-files', '--others', '--exclude-standard', '-z']).split('\0').filter(Boolean);
-  if (untracked.length || changed.some((file) => !releaseFiles.includes(file))) {
-    throw new Error('检查期间出现了其他工作区修改，停止提交；不会夹带或清理这些文件。');
-  }
-  for (const [file, expected] of snapshots) {
-    if (!(await readFile(path.join(repositoryRoot, file))).equals(expected)) {
-      throw new Error(`检查期间 ${file} 被修改，停止提交，不覆盖其他修改。`);
+function printPlan(plan, context, source) {
+  console.log('\n发版信息');
+  printColumns([
+    ['仓库', context.repository],
+    ['源码commit', plan.sourceSha],
+    ['源码日期', source.date],
+    ['发版版本', plan.version],
+    ['tag', plan.tag],
+    ['工作流分支', context.workflowRef],
+  ]);
+  console.log(`\n构建目标 · ${plan.assetCount} 个安装包`);
+  printColumns([
+    ['平台', '架构', '安装包', 'CI runner'],
+    ...plan.targets.map((target) => [
+      target.platform === 'darwin' ? 'macOS' : 'Windows',
+      target.arch, target.packages.join(' / ').toUpperCase(), target.runner,
+    ]),
+  ]);
+  console.log('\n执行方式');
+  console.log('  CI检出上面的源码SHA → 检查/构建 → tag/draft → 实机验收确认 → Publish');
+  console.log('  工作流分支只提供编排脚本，不是发版源码；本地未提交修改不会进入安装包。');
+  console.log('  不修改本地文件、版本、index或HEAD，不commit、push、stash或清理工作区。');
+  if (plan.prerelease) console.log('  此为预发布版本，不进入稳定版更新。');
+  for (const target of plan.targets) {
+    if (target.platform === 'darwin' && !target.packages.includes('dmg')) {
+      console.log(`  macOS ${target.arch} 仅ZIP：只供手动下载，内置更新需要同架构DMG。`);
     }
   }
-  if (changed.length > 0) {
-    runCommand('git', ['add', '--', ...releaseFiles]);
-    const staged = captureCommand('git', ['diff', '--cached', '--name-only', '-z']).split('\0').filter(Boolean);
-    if (staged.some((file) => !releaseFiles.includes(file))) {
-      throw new Error('暂存区出现了其他文件，停止commit；请检查Source Control。');
-    }
-    for (const file of staged) {
-      if (captureCommand('git', ['show', `:${file}`]) !== snapshots.get(file).toString('utf8')) {
-        throw new Error(`暂存的 ${file} 与本次生成内容不一致，停止commit。`);
-      }
-    }
-    runCommand('git', ['commit', '--only', '-m', `chore(release): prepare ${plan.tag}`, '--', ...releaseFiles]);
-  } else {
-    console.log('版本和配置没有变化，沿用当前commit。');
+  console.log('  macOS采用ad-hoc且未公证，Windows未签名；不会自动公开仓库。\n');
+}
+
+async function runCi(plan, context) {
+  const requestId = randomUUID();
+  try {
+    runCommand('gh', [
+      'workflow', 'run', workflowName, '--repo', context.repository, '--ref', context.workflowRef,
+      '-f', `source_sha=${plan.sourceSha}`, '-f', `version=${plan.version}`,
+      '-f', `targets=${JSON.stringify(plan.targets.map(({ platform, arch, packages }) => ({ platform, arch, packages })))}`,
+      '-f', `request_id=${requestId}`,
+    ]);
+  } catch (error) {
+    throw new Error(`未确认CI已启动。请检查Actions记录、默认分支是否已部署按SHA发版的新版workflow，以及权限/网络；不要盲目重复触发。\n${error.message}`, { cause: error });
   }
-  runCommand('git', ['push', 'origin', 'HEAD']);
-  return { repository: context.repository, ...requirePushedCommit() };
-}
-
-function listRuns(context, event) {
-  return JSON.parse(captureCommand('gh', [
-    'run', 'list', '--repo', context.repository, '--workflow', workflowName,
-    '--event', event, '--commit', context.commit, '--limit', '50',
-    '--json', 'databaseId,displayTitle,headSha,conclusion,url',
-  ]));
-}
-
-async function watchRun(context, event, title) {
   for (let attempt = 0; attempt < 20; attempt++) {
-    const run = listRuns(context, event).find((candidate) => candidate.displayTitle === title);
+    const runs = JSON.parse(captureCommand('gh', [
+      'run', 'list', '--repo', context.repository, '--workflow', workflowName,
+      '--event', 'workflow_dispatch', '--limit', '50', '--json', 'databaseId,displayTitle,url',
+    ]));
+    const run = runs.find((candidate) => candidate.displayTitle === `Release ${requestId}`);
     if (run) {
-      if (run.headSha !== context.commit) throw new Error('CI 的 commit 与确认的 commit 不一致。');
-      console.log(`CI 已启动：${run.url}`);
-      console.log('等待 CI 结果。停止本地等待不会取消远端运行，也不会撤销 tag。');
+      console.log(`CI运行：${run.url}`);
+      console.log(`发版源码固定为 ${plan.sourceSha}；CI页面的workflow commit是编排版本。`);
+      console.log('停止本地等待不会取消远端运行。');
       runCommand('gh', ['run', 'watch', String(run.databaseId), '--repo', context.repository, '--exit-status']);
       return;
     }
     await delay(3_000);
   }
-  throw new Error(`未能在一分钟内定位这次运行；不要重复触发，请先查看 https://github.com/${context.repository}/actions/workflows/${workflowName}`);
-}
-
-async function runCiPreview(context) {
-  const latest = requirePushedCommit();
-  if (latest.branch !== context.branch || latest.commit !== context.commit) {
-    throw new Error('确认期间分支或 commit 已改变，请重新运行向导。');
-  }
-  const requestId = randomUUID();
-  runCommand('gh', [
-    'workflow', 'run', workflowName, '--repo', context.repository,
-    '--ref', context.branch, '-f', `request_id=${requestId}`,
-  ]);
-  await watchRun(context, 'workflow_dispatch', `Release ${requestId}`);
-}
-
-async function createDraftRelease(plan, context) {
-  const successfulPreview = listRuns(context, 'workflow_dispatch')
-    .some((run) => run.headSha === context.commit && run.conclusion === 'success');
-  if (!successfulPreview) {
-    throw new Error('未确认同一个commit的CI演练成功，停止创建tag。');
-  }
-  requireCleanWorktree();
-  requireUnchangedSource(context);
-  requireUnusedTag(plan.tag);
-  runCommand('git', ['tag', '-a', plan.tag, '-m', `Interceptor ${plan.version}`, context.commit]);
-  runCommand('git', ['push', 'origin', `refs/tags/${plan.tag}`]);
-  await watchRun(context, 'push', `Release ${plan.tag}`);
+  throw new Error(`一分钟内未定位本轮CI，请先查看 https://github.com/${context.repository}/actions/workflows/${workflowName}，不要重复触发。`);
 }
 
 function readRelease(plan, context) {
+  const tagSource = captureCommand('gh', [
+    'api', `repos/${context.repository}/commits/${encodeURIComponent(plan.tag)}`, '--jq', '.sha',
+  ]).trim();
+  if (tagSource !== plan.sourceSha) throw new Error('远端tag没有指向选定源码SHA，停止发布。');
   const result = captureCommand('gh', [
     'api', '--paginate', `repos/${context.repository}/releases`,
     '--jq', `.[] | select(.tag_name == ${JSON.stringify(plan.tag)})`,
@@ -281,13 +201,11 @@ function readRelease(plan, context) {
     target.packages.map((type) => `Interceptor-${plan.version}-${target.id}.${type}`)).sort();
   if (release.tag_name !== plan.tag || release.prerelease !== plan.prerelease ||
       typeof release.draft !== 'boolean' || !Number.isSafeInteger(release.id) ||
-      typeof release.html_url !== 'string' ||
-      !Array.isArray(release.assets) ||
+      typeof release.html_url !== 'string' || !Array.isArray(release.assets) ||
       JSON.stringify(release.assets.map((asset) => asset.name).sort()) !== JSON.stringify(expectedNames) ||
-      release.assets.some((asset) =>
-        asset.state !== 'uploaded' || asset.size <= 0 ||
+      release.assets.some((asset) => asset.state !== 'uploaded' || asset.size <= 0 ||
         !/^sha256:[a-f0-9]{64}$/.test(asset.digest))) {
-    throw new Error('Release版本、附件类型或完整性元数据与本次配置不一致，停止发布。');
+    throw new Error('Release附件或完整性元数据与本次配置不一致，停止发布。');
   }
   return release;
 }
@@ -303,25 +221,21 @@ function artifactFingerprint(release) {
 async function publishAfterAcceptance(plan, context) {
   const draft = readRelease(plan, context);
   if (!draft.draft) throw new Error('该Release已不再是draft，停止自动操作，请检查GitHub状态。');
-  console.log(`\n[6/7] 等待实机验收：${draft.html_url}`);
-  console.log('保持此终端打开，从草稿下载，完成所有所选平台的安装、系统授权和退出恢复。');
-  if (!await confirm({
-    message: '实机验收全部通过，现在 Publish？',
-    default: true,
-  })) {
+  console.log(`\n[2/3] 等待实机验收：${draft.html_url}`);
+  console.log('保持终端打开，从草稿实际下载，完成所有所选平台的安装、系统授权和退出恢复。');
+  if (!await confirm({ message: '实机验收全部通过，现在Publish？', default: true })) {
     console.log(`保留草稿，未Publish：${draft.html_url}`);
     return;
   }
   const checked = readRelease(plan, context);
   if (!checked.draft || artifactFingerprint(checked) !== artifactFingerprint(draft)) {
-    throw new Error('验收期间草稿或附件发生变化，未Publish；请重新核对和验收。');
+    throw new Error('验收期间草稿或附件发生变化，未Publish，请重新核对和验收。');
   }
-  console.log('[7/7] Publish Release');
+  console.log('[3/3] Publish Release');
   runCommand('gh', ['release', 'edit', plan.tag, '--repo', context.repository, '--draft=false']);
   const published = readRelease(plan, context);
-  if (published.draft) throw new Error('GitHub尚未确认发布成功，请检查Release页面，不要重复发版。');
+  if (published.draft) throw new Error('GitHub尚未确认发布成功，请检查页面，不要重复发版。');
   console.log(`发布完成：${published.html_url}`);
-  console.log('仓库可见性没有更改；private仓库的已发布Release仍然是private。');
 }
 
 async function main() {
@@ -331,50 +245,51 @@ async function main() {
   });
   if (values.help) {
     console.log('npm run release');
-    console.log('选择版本/目标/包类型 → 确认执行 → 检查/提交/推送/CI/tag/草稿 → 实机验收确认 → Publish');
-    console.log('完整步骤：architecture/release-guide.md');
+    console.log('最近10个commit / 输入hash → 版本与目标 → 固定SHA的CI构建和草稿 → 实机验收确认 → Publish');
+    console.log('本地工作区可以保留未提交修改。完整步骤：architecture/release-guide.md');
     return;
   }
-  const current = await readReleasePlan();
-  console.log('\nInterceptor 连续发版流程');
-  console.log('↑/↓ 移动，Space 勾选，Enter 确认，Ctrl+C 退出。');
-  const plan = await choosePlan(current);
-  const context = {
-    repository: readGitHubRepository(),
-    branch: readGit(['symbolic-ref', '--short', 'HEAD']),
-    commit: readGit(['rev-parse', 'HEAD']),
-  };
-  printPlan(plan, context);
-  if (!await confirm({
-    message: '开始发版？',
-    default: true,
-  })) {
-    console.log('已取消，未修改文件，也未执行GitHub或发布操作。');
+  console.log('\nInterceptor 按commit发版');
+  console.log('↑/↓选择，Space勾选，Enter确认，Ctrl+C退出；本地文件和Git状态不会被修改。\n');
+  const repository = readGitHubRepository();
+  const selected = await chooseCommit(repository);
+  captureCommand('gh', ['--version']);
+  captureCommand('gh', ['auth', 'status', '--hostname', 'github.com']);
+  const repositoryInfo = JSON.parse(captureCommand('gh', [
+    'repo', 'view', repository, '--json', 'defaultBranchRef',
+  ]));
+  let source;
+  try {
+    source = readRemoteCommit(repository, selected.sha);
+  } catch (error) {
+    throw new Error(`无法从GitHub读取所选commit ${selected.sha}。请确认已推送及访问权限；不会自动push或改用main。\n${error.message}`, { cause: error });
+  }
+  if (source.sha !== selected.sha) throw new Error('GitHub返回的源码SHA与选择不一致。');
+  const tags = readRemoteTags(repository);
+  const plan = await choosePlan(source, readCommittedVersion(repository, source.sha), tags);
+  const context = { repository, workflowRef: repositoryInfo.defaultBranchRef.name };
+  printPlan(plan, context, source);
+  if (!await confirm({ message: '按此源码commit开始发版？', default: true })) {
+    console.log('已取消；仅查询了提交信息，没有修改本地文件或发起CI、tag、发布操作。');
     return;
   }
-  checkPrerequisites(plan, context);
-  console.log('[1/7] 更新版本和发版配置');
-  const snapshots = await savePlan(current, plan);
-  console.log('[2/7] 本地检查与对应目标构建');
-  verifyLocalBuild(plan);
-  console.log('[3/7] 提交发版配置并推送');
-  const pushed = await commitAndPush(plan, context, snapshots);
-  console.log('[4/7] 自动运行CI演练并等待结果');
-  await runCiPreview(pushed);
-  console.log('[5/7] 创建tag并等待CI生成草稿');
-  await createDraftRelease(plan, pushed);
-  await publishAfterAcceptance(plan, pushed);
+  if (readRemoteTags(repository).some((tag) => versionFromTag(tag) === plan.version)) {
+    throw new Error(`${plan.version} 已存在，请选择新版本；不会删除或覆盖tag。`);
+  }
+  console.log(`[1/3] 提交CI：源码 ${plan.sourceSha}`);
+  await runCi(plan, context);
+  await publishAfterAcceptance(plan, context);
 }
 
 try {
   await main();
 } catch (error) {
   if (error instanceof Error && error.name === 'ExitPromptError') {
-    console.log('\n已取消本地操作；已保存的文件或已启动的远端流程不会自动回滚。');
+    console.log('\n已取消本地操作；已启动的远端运行不会自动取消。');
     process.exitCode = 130;
   } else {
     console.error(`\n[release] ${error instanceof Error ? error.message : String(error)}`);
-    console.error('未自动回滚任何文件或 tag。恢复步骤见 architecture/release-guide.md。');
+    console.error('本地文件、index和HEAD未被发版命令修改。恢复步骤见architecture/release-guide.md。');
     process.exitCode = 1;
   }
 }

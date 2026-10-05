@@ -18,7 +18,6 @@
     "start": "node scripts/start.mjs",
     "postinstall": "patch-package",
     "release": "node scripts/release.mjs",
-    "release:build": "node scripts/release-build.mjs",
     "playground": "npm run dev --workspace @interceptor/playground",
     "build:core": "npm run build --workspace @interceptor/core-protocol && npm run build --workspace @interceptor/proxy-core",
     "dev": "npm run build:core && npm run start --workspace @interceptor/desktop",
