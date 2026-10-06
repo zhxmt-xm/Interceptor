@@ -50,7 +50,8 @@ external模块在顶层`require`可能阻塞packaged Main与CDP初始化，因�
 - `scripts/release-config.mjs`统一校验本次请求、生成原生矩阵及资产数量，不读取工作区发版配置文件；macOS x64对应`macos-15-intel`，macOS arm64对应`macos-15`，Windows x64对应`windows-2025`。默认仅macOS x64 DMG/ZIP；不接受空选择、重复目标、错误包类型或未实现架构，不宣称universal。MSI拒绝预发布/build metadata及超出Windows Installer版本段范围的值。
 - 原生job先按workflow SHA取得编排/校验工具，仅保存4个工具文件到runner临时目录，再在同一源码目录检出所选产品SHA；不复制整个产品仓库或创建额外worktree。`INTERCEPTOR_RELEASE_SOURCE_ROOT`只指明CI源码目录，工具不进入App。构建前后核对源码SHA、tracked差异和未跟踪文件，防止后续步骤污染所选快照。
 - `scripts/release-build.mjs`从所选源码的已安装依赖加载Forge公开`api.make()`，使用`INTERCEPTOR_BUILD_VERSION`注入本次版本，只运行所选makers并复用当前artifact audit和macOS签名/架构检查。缺少构建、许可或安全条件的旧快照明确失败，不修改其业务代码或放宽门禁。归集目录仍为`out/release/<target-id>`，文件名包含版本、平台和架构。
-- 所有actions固定commit SHA。无付费签名Secrets要求；macOS保留ad-hoc与Hardened Runtime、strict/nested签名完整性，Windows为未签名安装器。原生helper、Fuses/CSP、ASAR与许可校验不因免证书而放宽。
+- 所有actions固定commit SHA，并选用官方`runs.using: node24`版本：checkout v7.0.1、setup-node v7.0.0、upload-artifact v7.0.1、download-artifact v8.0.1。Action自身的Node运行时与项目`.nvmrc`分别管理，不用项目Node版本或强制兼容环境变量掩盖旧Action警告。工具准备的setup-node显式关闭自动npm缓存，保留原来只有安装依赖步骤启用缓存的行为；上传保持默认ZIP归档，下载保留合并目录与摘要不匹配时报错。
+- 无付费签名Secrets要求；macOS保留ad-hoc与Hardened Runtime、strict/nested签名完整性，Windows为未签名安装器。原生helper、Fuses/CSP、ASAR与许可校验不因免证书而放宽。
 - workflow输入为`source_sha`（完整40位SHA）、`version`、`targets`（受支持目标JSON）和可选`request_id`。CLI从默认分支启动编排，用唯一request ID跟踪；GitHub运行的headSha代表工作流版本，不当作产品源码SHA，Summary同时记录两者。
 - 一次workflow完成检查和构建后，在GitHub创建直接指向`source_sha`的tag及**draft Release**，不再以本地推tag触发第二次CI。重跑时已有tag必须解析到同一SHA，已有Release必须仍是draft；不移动tag或覆盖已发布版本。预发布SemVer同步设置prerelease，CLI在最终Publish前再次核对tag指向及附件。
 - Release资产数量和类型从配置计算，不固定为2或3；逐项将GitHub返回的大小和SHA-256与本轮本地文件对比。诊断文件使用独立artifact，**绝不混入Release assets**。

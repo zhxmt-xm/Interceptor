@@ -98,6 +98,8 @@ d274c2f8   2026-10-04    fix(capture): count requests in filter group badges
 
 ## 5. 后续仍是一条连续流程
 
+**本地不是先打包再上传。** 本地命令只查询并收集发版参数、派发CI、等待结果和最终发布确认；GitHub runner检出选定源码SHA，安装依赖、测试、构建安装包并上传。Release job从同次CI的artifact取得安装包，再创建tag和draft。本地`out/`里的已有安装包不会被上传。
+
 | 进度 | 程序行为 |
 | --- | --- |
 | `[1/3]` | 传入固定源码SHA、版本、目标，启动一次CI并等待 |

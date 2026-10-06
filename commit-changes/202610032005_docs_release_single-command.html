@@ -70,6 +70,12 @@
               <td>删除本地配置持久化和版本提交路径；不改用main源码，不复制产品仓库，不放宽包类型、数量、大小、SHA-256及许可检查。</td>
             </tr>
             <tr>
+              <td><code>.github/workflows/release-artifacts.yml</code>中的官方Actions</td>
+              <td>固定的旧Action声明Node.js 20，由GitHub强制使用Node.js 24并提示弃用。</td>
+              <td>更新checkout/setup-node/upload-artifact/download-artifact到声明Node.js 24的官方版本，仍固定完整SHA；工具准备阶段关闭新增的自动缓存。</td>
+              <td>迁移Action自身运行时，不修改产品Node版本、源码SHA或构建门禁；保留ZIP artifact传递及摘要校验。</td>
+            </tr>
+            <tr>
               <td>终端发版摘要与确认提示</td>
               <td>版本、目标、提交文件和说明混在长行中，确认提示较长。</td>
               <td>源码SHA、提交时间/说明、版本和构建目标清楚展示；最近10条可直接选，短hash可查询确认。Yes/No确认默认Yes。</td>
