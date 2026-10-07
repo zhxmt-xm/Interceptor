@@ -1,4 +1,3 @@
-import type { OutgoingHttpHeaders } from 'node:http';
 import type * as http2 from 'node:http2';
 import type { TLSSocket } from 'node:tls';
 
@@ -10,8 +9,8 @@ import type {
 /** 把用户 header 对合并为 Node 出站 header 对象，同名值合并为数组。 */
 export function buildOutgoingHeaders(
   pairs: readonly ComposerHeaderPair[],
-): OutgoingHttpHeaders {
-  const headers: OutgoingHttpHeaders = {};
+): Record<string, string | string[]> {
+  const headers: Record<string, string | string[]> = {};
   for (const pair of pairs) {
     const key = pair.name;
     if (!key) {
@@ -23,7 +22,7 @@ export function buildOutgoingHeaders(
     } else if (Array.isArray(existing)) {
       existing.push(pair.value);
     } else {
-      headers[key] = [String(existing), pair.value];
+      headers[key] = [existing, pair.value];
     }
   }
   return headers;

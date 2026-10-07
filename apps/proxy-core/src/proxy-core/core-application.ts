@@ -18,6 +18,7 @@ import {
 import { CoreDiagnostics } from './core-diagnostics';
 import { ClientAppService } from './client-app/entry';
 import { ComposerService } from './composer/entry';
+import { HttpMessageService } from './http-message/entry';
 import { TlsProbeService } from './tls-probe/entry';
 import {
   CoreCommandError,
@@ -70,6 +71,8 @@ export interface CoreApplicationOptions {
   clientAppService?: ClientAppService;
   /** HAR 文件任务门面；缺省时随 CaptureService 自动创建。 */
   harService?: HarService;
+  /** Breakpoint/Rule 与 Composer 共用的 HTTP replacement body 构造器。 */
+  httpMessageService?: HttpMessageService;
 }
 
 export type CoreLifecycleMessage =
@@ -94,7 +97,10 @@ export class CoreApplication implements CoreRpcHost {
   private readonly captureEventQueue: CaptureEventQueue | null;
   private readonly breakpointQueue: BreakpointQueue | null;
   private readonly ruleService: RuleService | null;
-  private readonly composerService = new ComposerService();
+  /** Breakpoint/Rule 与 Composer 共用的 HTTP replacement body 构造器。 */
+  private readonly httpMessageService: HttpMessageService;
+  /** 主动构造并发送 HTTP 请求。 */
+  private readonly composerService: ComposerService;
   /** Keep this Core generation's outgoing TLS/H2 responses intact through transport EOF. */
   private readonly http2ClientService: Http2ClientService;
   /** 按需执行只握手 TLS 探测。 */
@@ -139,6 +145,7 @@ export class CoreApplication implements CoreRpcHost {
         : undefined;
       const breakpointQueue = new BreakpointQueue();
       const ruleService = new RuleService(breakpointQueue);
+      const httpMessageService = new HttpMessageService();
       const clientAppService = new ClientAppService({
         helperPath: clientAppHelperPath ?? undefined,
       });
@@ -149,6 +156,7 @@ export class CoreApplication implements CoreRpcHost {
               captureEventQueue,
               ruleService,
               clientAppService,
+              httpMessageService,
             )
           : undefined;
       new CoreApplication(parentPort, {
@@ -160,6 +168,7 @@ export class CoreApplication implements CoreRpcHost {
         breakpointQueue,
         ruleService,
         clientAppService,
+        httpMessageService,
       }).start();
     } catch (error) {
       reportFatalStartup(parentPort, error);
@@ -181,6 +190,8 @@ export class CoreApplication implements CoreRpcHost {
     this.captureEventQueue = options.captureEventQueue ?? null;
     this.breakpointQueue = options.breakpointQueue ?? null;
     this.ruleService = options.ruleService ?? null;
+    this.httpMessageService = options.httpMessageService ?? new HttpMessageService();
+    this.composerService = new ComposerService(this.httpMessageService);
     this.clientAppService = options.clientAppService ?? new ClientAppService();
     this.grpcService = this.captureService ? new GrpcService(this.captureService) : null;
     this.harService = options.harService ??

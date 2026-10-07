@@ -101,7 +101,7 @@ index 92d0359..6830edd 100644
                  : [])
          ].join(':'),
 diff --git a/node_modules/mockttp/dist/rules/requests/request-step-definitions.d.ts b/node_modules/mockttp/dist/rules/requests/request-step-definitions.d.ts
-index 3f57894..3631162 100644
+index 3f57894..012e330 100644
 --- a/node_modules/mockttp/dist/rules/requests/request-step-definitions.d.ts
 +++ b/node_modules/mockttp/dist/rules/requests/request-step-definitions.d.ts
 @@ -1,7 +1,7 @@
@@ -113,7 +113,7 @@ index 3f57894..3631162 100644
  import { Replace } from '../../util/type-utils';
  import { MatchReplacePairs, SerializedMatchReplacePairs } from '../match-replace';
  import { Serializable, ClientServerChannel, SerializedProxyConfig } from "../../serialization/serialization";
-@@ -94,6 +94,62 @@ export interface CallbackRequestResult {
+@@ -94,6 +94,60 @@ export interface CallbackRequestResult {
      response?: CallbackResponseResult;
  }
  export type CallbackResponseResult = CallbackResponseMessageResult | 'close' | 'reset';
@@ -141,11 +141,10 @@ index 3f57894..3631162 100644
 +    url?: string;
 +    headers?: Headers;
 +    /**
-+     * Replaces the request body without waiting for the real one, so the request can
-+     * be sent upstream immediately.
++     * Replaces the request body with final content bytes without waiting for the real
++     * one. Headers and content coding are owned by the callback.
 +     */
-+    body?: string | Buffer | Uint8Array;
-+    json?: any;
++    rawBody?: Buffer | Uint8Array;
 +    response?: CallbackResponseResult;
 +}
 +/**
@@ -167,16 +166,15 @@ index 3f57894..3631162 100644
 +    statusMessage?: string;
 +    headers?: Headers;
 +    /**
-+     * Replaces the response body without waiting for the real one, so the response can
-+     * be sent downstream immediately.
++     * Replaces the response body with final content bytes without waiting for the real
++     * one. Headers and content coding are owned by the callback.
 +     */
-+    body?: string | Buffer | Uint8Array;
-+    json?: any;
++    rawBody?: Buffer | Uint8Array;
 +}
  /**
   * Can be returned from callbacks to define parts of a response, or
   * override parts when given an existing repsonse.
-@@ -289,6 +345,14 @@ export interface PassThroughStepOptions extends PassThroughStepConnectionOptions
+@@ -289,6 +343,14 @@ export interface PassThroughStepOptions extends PassThroughStepConnectionOptions
       * See {@link CallbackRequestResult} for the possible fields that can be set.
       */
      beforeRequest?: (req: CompletedRequest) => MaybePromise<CallbackRequestResult | void> | void;
@@ -191,7 +189,7 @@ index 3f57894..3631162 100644
      /**
       * A callback that will be passed the full response before it is passed through,
       * and which returns a value that defines how the the response content should
-@@ -305,6 +369,20 @@ export interface PassThroughStepOptions extends PassThroughStepConnectionOptions
+@@ -305,6 +367,20 @@ export interface PassThroughStepOptions extends PassThroughStepConnectionOptions
       * See {@link CallbackResponseMessageResult} for the possible fields that can be set.
       */
      beforeResponse?: (res: PassThroughResponse, req: CompletedRequest) => MaybePromise<CallbackResponseResult | void> | void;
@@ -230,10 +228,18 @@ index 8371f80..b8fa876 100644
          if (!Array.isArray(this.ignoreHostHttpsErrors) && typeof this.ignoreHostHttpsErrors !== 'boolean') {
              throw new Error("ignoreHostHttpsErrors must be an array or a boolean");
 diff --git a/node_modules/mockttp/dist/rules/requests/request-step-impls.js b/node_modules/mockttp/dist/rules/requests/request-step-impls.js
-index 8ba0d3d..b0b7a50 100644
+index 8ba0d3d..838410c 100644
 --- a/node_modules/mockttp/dist/rules/requests/request-step-impls.js
 +++ b/node_modules/mockttp/dist/rules/requests/request-step-impls.js
-@@ -425,6 +425,64 @@ class PassThroughStepImpl extends request_step_definitions_1.PassThroughStep {
+@@ -279,6 +279,7 @@ class PassThroughStepImpl extends request_step_definitions_1.PassThroughStep {
+         hostAddress = await (0, passthrough_handling_1.getClientRelativeHostname)(hostAddress, clientReq.remoteIpAddress, (0, passthrough_handling_1.getDnsLookupFunction)(this.lookupOptions));
+         // Override the request details, if a transform or callback is specified:
+         let reqBodyOverride;
++        let reqBodyOverrideUsesCallbackFraming = false;
+         if (this.transformRequest) {
+             const { replaceMethod, updateHeaders, replaceHeaders, replaceBody, replaceBodyFromFile, updateJsonBody, patchJsonBody, matchReplaceBody } = this.transformRequest;
+             const originalHostname = hostname;
+@@ -425,6 +426,60 @@ class PassThroughStepImpl extends request_step_definitions_1.PassThroughStep {
              }
              rawHeaders = (0, header_utils_1.objectHeadersToRaw)(headers);
          }
@@ -285,20 +291,16 @@ index 8ba0d3d..b0b7a50 100644
 +                validateCustomHeaders(headHeaders, modifiedHead?.headers, passthrough_handling_1.MODIFIABLE_PSEUDOHEADERS);
 +                rawHeaders = (0, header_utils_1.objectHeadersToRaw)(headers);
 +            }
-+            if (modifiedHead?.body !== undefined) {
-+                // Replaced without waiting for the real body, matching transformRequest semantics.
-+                reqBodyOverride = await (0, passthrough_handling_1.buildOverriddenBody)(modifiedHead, (0, header_utils_1.rawHeadersToObject)(rawHeaders));
-+                if (reqBodyOverride) {
-+                    rawHeaders = (0, header_utils_1.updateRawHeaders)(rawHeaders, {
-+                        'content-length': reqBodyOverride.byteLength.toString()
-+                    });
-+                }
++            if (modifiedHead?.rawBody !== undefined) {
++                // Final content bytes and headers are owned by the headers-stage callback.
++                reqBodyOverride = (0, buffer_utils_1.asBuffer)(modifiedHead.rawBody);
++                reqBodyOverrideUsesCallbackFraming = true;
 +            }
 +        }
          const effectivePort = (0, url_1.getEffectivePort)({ protocol, port });
          const trustedCAs = await this.trustedCACertificates();
          // We only do H2 upstream for HTTPS. Http2-wrapper doesn't support H2C, it's rarely used
-@@ -569,6 +627,53 @@ class PassThroughStepImpl extends request_step_definitions_1.PassThroughStep {
+@@ -569,6 +624,47 @@ class PassThroughStepImpl extends request_step_definitions_1.PassThroughStep {
                  if (isH2Downstream) {
                      serverRawHeaders = (0, header_utils_1.h1HeadersToH2)(serverRawHeaders);
                  }
@@ -338,20 +340,36 @@ index 8ba0d3d..b0b7a50 100644
 +                        validateCustomHeaders(headHeaders, modifiedHead.headers);
 +                        serverRawHeaders = (0, header_utils_1.objectHeadersToRaw)(modifiedHead.headers);
 +                    }
-+                    if (modifiedHead?.body !== undefined) {
-+                        // Replaced without waiting for the real body: the upstream stream is
-+                        // drained below rather than buffered.
-+                        resBodyOverride = await (0, passthrough_handling_1.buildOverriddenBody)(modifiedHead, (0, header_utils_1.rawHeadersToObject)(serverRawHeaders));
-+                        if (resBodyOverride) {
-+                            serverRawHeaders = (0, header_utils_1.updateRawHeaders)(serverRawHeaders, {
-+                                'content-length': resBodyOverride.byteLength.toString()
-+                            });
-+                        }
++                    if (modifiedHead?.rawBody !== undefined) {
++                        // Final content bytes and headers are owned by the headers-stage callback.
++                        resBodyOverride = (0, buffer_utils_1.asBuffer)(modifiedHead.rawBody);
 +                    }
 +                }
                  if (this.transformResponse) {
                      const { replaceStatus, updateHeaders, replaceHeaders, replaceBody, replaceBodyFromFile, updateJsonBody, patchJsonBody, matchReplaceBody } = this.transformResponse;
                      if (replaceStatus) {
+@@ -818,10 +914,18 @@ class PassThroughStepImpl extends request_step_definitions_1.PassThroughStep {
+             // Forward the request body to the upstream server:
+             if (reqBodyOverride) {
+                 clientReqBody.resume(); // Dump any remaining real request body
+-                if (reqBodyOverride.length > 0)
+-                    serverReq.end(reqBodyOverride);
+-                else
++                if (reqBodyOverride.length === 0) {
+                     serverReq.end(); // http2-wrapper fails given an empty buffer for methods that aren't allowed a body
++                }
++                else if (reqBodyOverrideUsesCallbackFraming) {
++                    // Avoid ClientRequest.end(buffer) auto-selecting Content-Length over the
++                    // callback's explicit framing headers.
++                    serverReq.write(reqBodyOverride);
++                    serverReq.end();
++                }
++                else {
++                    serverReq.end(reqBodyOverride);
++                }
+             }
+             else {
+                 // asStream includes all content, including the body before this call
 diff --git a/node_modules/mockttp/dist/server/http-combo-server.js b/node_modules/mockttp/dist/server/http-combo-server.js
 index 5f1598e..2332512 100644
 --- a/node_modules/mockttp/dist/server/http-combo-server.js

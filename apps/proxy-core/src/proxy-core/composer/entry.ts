@@ -4,6 +4,7 @@ import * as http2 from 'node:http2';
 import * as https from 'node:https';
 import type { TLSSocket } from 'node:tls';
 
+import { HttpMessageService } from '../http-message/entry';
 import { ResponseBody } from './internal/response-body';
 import { TimingRecorder } from './internal/timing-recorder';
 import type {
@@ -17,6 +18,14 @@ import * as ComposerUtils from './utils';
  * 执行 Renderer 主动构造的 HTTP/1.1 或 HTTP/2 请求，并返回完整正文、时序和 TLS 摘要。
  */
 export class ComposerService {
+  /** Composer 与代理规则共用的 replacement content bytes 构造器。 */
+  private readonly httpMessageService: HttpMessageService;
+
+  /** 使用生产共享实例；直接 new 的测试默认创建独立无状态实例。 */
+  constructor(httpMessageService = new HttpMessageService()) {
+    this.httpMessageService = httpMessageService;
+  }
+
   /** 执行一次出站请求；网络错误转换为 ok=false 结果供 UI 展示。 */
   async send(
     request: ComposerRequestInput,
@@ -34,9 +43,13 @@ export class ComposerService {
     const timeoutMs = request.timeoutMs;
     const useH2 = request.protocol === 'h2' && url.protocol === 'https:';
     try {
+      const headers = ComposerUtils.buildOutgoingHeaders(request.headers);
+      const body = request.body === undefined
+        ? undefined
+        : await this.httpMessageService.buildContent(request.body, 'text', headers);
       return useH2
-        ? await this.sendH2(url, request, timeoutMs, abortSignal)
-        : await this.sendH1(url, request, timeoutMs, abortSignal);
+        ? await this.sendH2(url, request, headers, body, timeoutMs, abortSignal)
+        : await this.sendH1(url, request, headers, body, timeoutMs, abortSignal);
     } catch (error) {
       return this.failure(
         error instanceof Error ? error.message : String(error),
@@ -70,6 +83,8 @@ export class ComposerService {
   private sendH1(
     url: URL,
     request: ComposerRequestInput,
+    headers: Record<string, string | string[]>,
+    body: Uint8Array | undefined,
     timeoutMs: number | undefined,
     abortSignal: AbortSignal | undefined,
   ): Promise<ComposerResponseOutput> {
@@ -94,7 +109,7 @@ export class ComposerService {
         url,
         {
           method: request.method,
-          headers: ComposerUtils.buildOutgoingHeaders(request.headers),
+          headers,
           agent: false,
           rejectUnauthorized: false,
         },
@@ -136,8 +151,8 @@ export class ComposerService {
           clientRequest.destroy(new Error('Composer request timed out.'));
         });
       }
-      if (request.body) {
-        clientRequest.write(Buffer.from(request.body, 'utf8'));
+      if (body !== undefined) {
+        clientRequest.write(Buffer.from(body));
       }
       clientRequest.end(() => timingRecorder.markRequestSent());
     });
@@ -147,6 +162,8 @@ export class ComposerService {
   private sendH2(
     url: URL,
     request: ComposerRequestInput,
+    headers: Record<string, string | string[]>,
+    body: Uint8Array | undefined,
     timeoutMs: number | undefined,
     abortSignal: AbortSignal | undefined,
   ): Promise<ComposerResponseOutput> {
@@ -180,7 +197,7 @@ export class ComposerService {
 
       client.on('error', (error) => finish(null, error));
       const requestHeaders: http2.OutgoingHttpHeaders = {
-        ...ComposerUtils.buildOutgoingHeaders(request.headers),
+        ...headers,
         ':method': request.method,
         ':path': `${url.pathname}${url.search}`,
         ':scheme': 'https',
@@ -227,8 +244,8 @@ export class ComposerService {
         removeAbortListener = () => abortSignal.removeEventListener('abort', cancel);
         if (abortSignal.aborted) cancel();
       }
-      if (request.body) {
-        stream.write(Buffer.from(request.body, 'utf8'));
+      if (body !== undefined) {
+        stream.write(Buffer.from(body));
       }
       stream.end(() => timingRecorder.markRequestSent());
     });

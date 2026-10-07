@@ -94,7 +94,7 @@ macOS业务窗口由driver按项目配置准备：常规场景保持真实1600x9
 | 代理/AppContainer | `settings/{tools-system-proxy,system-proxy-crash-recovery,app-container-bulk-access,tools-app-containers,app-container-ordering}.workflow.ts` | 单项/批量UAC、冲突/Quit立即拒绝、无重放、完整WinINet/exemption恢复 |
 | 协议/交互 | `capture/{tls-scenarios,http2-scenarios,http2-origin-goaway,grpc-scenarios,navigate-tls-passthrough}.workflow.ts`；`settings/{tls-compatibility,proxy-mitm-persistence}.workflow.ts`；`agent/body-messages.workflow.ts` | 首请求源站例外、暂停响应正常GOAWAY完整排空、Edge证书校验、Raw/Copy长度及hash、每代Page；取消背景host默认选择，Capture discovery精确17项 |
 | 导入/只读 | `composer/{collection-import,tools-transfer}.workflow.ts`；`rules/{import-tree,tools-import}.workflow.ts`；`settings/tools-readonly.workflow.ts` | 真实signal、原生/预览Cancel与Confirm、退出取消、重启零重放；六项无审批查询及CA不变 |
-| 构建/路径（含原第11项） | `npm run build:native --workspace @interceptor/platform-capabilities`及该package所属测试；[Client App](../../../proxy-core/src/proxy-core/client-app/tests/unit/service.test.ts)、[Transfer](../../../proxy-core/src/proxy-core/transfer/tests/unit/job-manager.test.ts)、[Windows文件窗口fixture](fixtures/ui/tests/unit/windows-file-dialog.test.ts) | package开发资源与App同包路径、共用runner、8 MiB枚举、certutil/UAC、Windows路径解析、互斥拒绝与无重放；不使用macOS skip替代 |
+| 构建/路径（含原第11项） | `npm run build:native --workspace @interceptor/platform-capabilities`及该package所属测试；[Client App](../../../proxy-core/src/proxy-core/client-app/tests/unit/service.test.ts)、[Transfer](../../../proxy-core/src/proxy-core/transfer/tests/unit/job-manager.test.ts)；Windows文件窗口通过上述原生导入/导出workflow验收 | package开发资源与App同包路径、共用runner、8 MiB枚举、certutil/UAC、Windows路径解析、互斥拒绝与无重放；不使用macOS skip或脚本文本断言替代真实原生操作 |
 | 已登录浏览器（原第16项） | `capture/bilibili-login-probe.workflow.ts`；[登录回归规格](docs/capture.md#capture-bilibili-login-regression) | 真实Windows Edge Default profile及既有登录态、UIA完整页面刷新、Cookie名称与H2流量；不注入Cookie、不记录凭据、不使用macOS替代 |
 | 纯Auto Detect/WPAD | [上游契约](../../../../architecture/features/settings.md#34-上游代理链式转发)；真实网络人工验收，尚无可运行workflow | 无PAC URL及显式代理；接管前后实际出网路径、错误与完整退出恢复，不以手填PAC替代 |
 | 产物/全量 | 全部适用workflow、[packaged smoke](../packaged-smoke/startup.spec.ts)及[Windows安装器smoke](../installer/windows-installer-smoke.mjs) | ready门禁、精确Preload白名单、Core重启、截图矩阵、签名/资源、安装升级卸载、系统设置/进程恢复 |
@@ -293,7 +293,7 @@ diagnostics.row.<traceKey>
 | `breakpoints.tools.batch` | Agent/MCP三条批量Tool、Rule/queue隔离、原样数据面与双代销毁 | shared | passed |
 | `breakpoints.lifecycle-release` | 无timeout等待与Core生命周期aborted释放 | privileged UI | passed |
 | `breakpoints.continue-unmodified` | 原样继续 | shared | planned |
-| `breakpoints.execute-edited` | Header-only、Body-only、Header+Body三段真实HTTP编辑 | privileged UI | planned |
+| `breakpoints.execute-edited` | Header-only、Body-only、Header+Body、继承chunked四段真实HTTP编辑 | privileged UI | passed |
 | `breakpoints.drop` | Drop并终止数据面 | shared | planned |
 | `breakpoints.resize` | Capture列表/Inspector splitter | shared | planned |
 | `breakpoints.body-preview` | 产品导出File的有界预览、完整文件/Text发送及短File布局联动 | native-ui | macOS passed；Windows待实机 |

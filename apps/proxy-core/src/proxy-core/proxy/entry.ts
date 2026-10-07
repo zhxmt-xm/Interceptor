@@ -22,6 +22,7 @@ import type {
 import { DEFAULT_PROXY_HOST, appVersion } from '../constants';
 import type { ClientAppService } from '../client-app/entry';
 import type { DiagnosticsRecorder } from '../core-diagnostics';
+import { HttpMessageService } from '../http-message/entry';
 import type {
   HeaderBag,
   MutableRequestState,
@@ -113,6 +114,7 @@ export class ProxyService {
     private readonly captureEventQueue: CaptureEventQueue,
     private readonly ruleService?: RuleService,
     private readonly clientAppService?: ClientAppService,
+    private readonly httpMessageService = new HttpMessageService(),
   ) {
     this.exchangeTracker = new ExchangeTracker(captureService, captureEventQueue, clientAppService);
   }
@@ -829,20 +831,29 @@ export class ProxyService {
     }
   }
 
-  /** 将RuleService的最终writer与实际state正文收敛为Tracker replacement。 */
-  private ruleBodyReplacement(
+  /** 构造最终 content bytes、维护继承 CL，并收敛为 Tracker replacement。 */
+  private async prepareRuleBodyReplacement(
     effect: RuleBodyEffect | undefined,
     body: string | Uint8Array | undefined,
-    headers: HeaderBag,
-  ): RuleBodyReplacement | undefined {
+    originalHeaders: HeaderBag,
+    state: MutableRequestState | MutableResponseState,
+  ): Promise<RuleBodyReplacement | undefined> {
     if (!effect || body === undefined) {
       return undefined;
     }
-    const mediaType = ProxyUtils.readHeader(headers, 'content-type');
-    const contentEncoding = ProxyUtils.readHeader(headers, 'content-encoding');
+    const prepared = await this.httpMessageService.prepareReplacement({
+      body,
+      source: effect.source,
+      originalHeaders,
+      headers: state.headers,
+      editedHeaderNames: state.editedHeaderNames ?? new Set(),
+    });
+    state.headers = prepared.headers;
+    const mediaType = ProxyUtils.readHeader(state.headers, 'content-type');
+    const contentEncoding = ProxyUtils.readHeader(state.headers, 'content-encoding');
     return {
       effect,
-      content: typeof body === 'string' ? Buffer.from(body) : body,
+      content: prepared.content,
       ...(mediaType ? { mediaType } : {}),
       ...(contentEncoding ? { contentEncoding } : {}),
     };
@@ -871,15 +882,17 @@ export class ProxyService {
         request.id,
         this.exchangeTracker.exchangeIdFor(request.id),
       );
+      const bodyReplacement = await this.prepareRuleBodyReplacement(
+        evaluation.bodyEffect,
+        state.body,
+        request.headers,
+        state,
+      );
       this.exchangeTracker.recordRuleOutcome(
         request.id,
         evaluation.hits,
         evaluation.headerEffects,
-        this.ruleBodyReplacement(
-          evaluation.bodyEffect,
-          state.body,
-          state.headers,
-        ),
+        bodyReplacement,
       );
       if (evaluation.kind === 'aborted') {
         return undefined;
@@ -898,12 +911,15 @@ export class ProxyService {
         url: state.url,
         headers: ProxyUtils.toMockttpHeaders(state.headers),
         editedHeaderNames: [...(state.editedHeaderNames ?? [])],
-        ...(state.body !== undefined ? { body: state.body } : {}),
+        ...(bodyReplacement ? { rawBody: bodyReplacement.content } : {}),
       };
     } catch (error) {
       this.diagnostics?.error('rules.request-failed', {
         errorCode: error instanceof Error ? error.name : 'unknown',
       });
+      if (this.httpMessageService.isEncodingError(error)) {
+        throw error;
+      }
       return undefined;
     }
   }
@@ -931,15 +947,17 @@ export class ProxyService {
         request.id,
         this.exchangeTracker.exchangeIdFor(request.id),
       );
+      const bodyReplacement = await this.prepareRuleBodyReplacement(
+        evaluation.bodyEffect,
+        state.body,
+        response.headers,
+        state,
+      );
       this.exchangeTracker.recordRuleOutcome(
         request.id,
         evaluation.hits,
         evaluation.headerEffects,
-        this.ruleBodyReplacement(
-          evaluation.bodyEffect,
-          state.body,
-          state.headers,
-        ),
+        bodyReplacement,
       );
       if (evaluation.kind === 'aborted') {
         return undefined;
@@ -954,12 +972,15 @@ export class ProxyService {
         statusCode: state.statusCode,
         headers: ProxyUtils.toMockttpHeaders(state.headers),
         editedHeaderNames: [...(state.editedHeaderNames ?? [])],
-        ...(state.body !== undefined ? { body: state.body } : {}),
+        ...(bodyReplacement ? { rawBody: bodyReplacement.content } : {}),
       };
     } catch (error) {
       this.diagnostics?.error('rules.response-failed', {
         errorCode: error instanceof Error ? error.name : 'unknown',
       });
+      if (this.httpMessageService.isEncodingError(error)) {
+        throw error;
+      }
       return undefined;
     }
   }

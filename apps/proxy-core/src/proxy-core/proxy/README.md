@@ -52,7 +52,11 @@ Mockttp 的 `request-initiated`、`*-body-data`、`*-trailers` 都经 `setImmedi
 origin正文并固定记`unavailable`。规则结果先到或body-data先到都经同一条`tail`收敛，不从Rule hit
 反推证据。
 
+正文replacement先由[`http-message/`](../http-message/README.md)按最终charset与`Content-Encoding`
+生成content bytes，并按编辑意图维护继承的`Content-Length`。Mockttp headers-stage hook只替换stream，
+不再编码正文或决定CL/TE；`Transfer-Encoding`与H1/H2 framing由Mockttp/Node发送层执行。
+
 ## 依赖
 
-- 依赖：`capture/`（写入抓包数据）、`rules/`（请求/响应评估）、`client-app/`（源端口反查应用）、`diagnostics/`
+- 依赖：`capture/`（写入抓包数据）、`rules/`（请求/响应评估）、`http-message/`（replacement content bytes）、`client-app/`（源端口反查应用）、`diagnostics/`
 - 被依赖：`har/`（复用正文解码工具）

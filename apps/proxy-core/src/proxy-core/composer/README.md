@@ -8,6 +8,7 @@
 ## 能力
 
 支持 HTTP/1.1 与 HTTP/2（含 `auto` 协商），返回完整正文、时序分解和 TLS 摘要。网络错误不抛异常，转换为 `ok: false` 的结果供 UI 展示。
+发送文本正文前复用`HttpMessageService`，按最终`Content-Type` charset和`Content-Encoding`生成content bytes；`Transfer-Encoding`与H1/H2 framing仍由Node发送层处理。
 
 ## 组成
 
@@ -27,4 +28,5 @@
 
 ## 依赖
 
-无跨模块依赖。Composer 请求集合的持久化在 [`workspace/`](../workspace/README.md)（`collection_tree` 文档表）。
+- 依赖：[`http-message/`](../http-message/README.md)（replacement content bytes）
+- Composer 请求集合的持久化在 [`workspace/`](../workspace/README.md)（`collection_tree` 文档表）。

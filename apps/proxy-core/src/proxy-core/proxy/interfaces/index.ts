@@ -195,6 +195,7 @@ export interface ProxyResponseMessageResult {
   headers?: Record<string, string | string[]>;
   editedHeaderNames?: string[];
   body?: string | Uint8Array;
+  rawBody?: Uint8Array;
 }
 
 export type ProxyResponseResult =
@@ -208,6 +209,7 @@ export interface ProxyRequestResult {
   headers?: Record<string, string | string[]>;
   editedHeaderNames?: string[];
   body?: string | Uint8Array;
+  rawBody?: Uint8Array;
   response?: ProxyResponseResult;
 }
 

@@ -303,6 +303,31 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
     String(headerAndBodyObservation.body.byteLength),
   );
 
+  const chunkedPath = '/e2e/body-only-chunked';
+  const chunkedOriginal = Buffer.from('chunked-original');
+  const chunkedReplacement = 'chunked-edited';
+  const chunkedRequest = loopbackLab.requestThroughProxy(
+    desktopApp.capturePort(),
+    chunkedPath,
+    {
+      method: 'POST',
+      body: chunkedOriginal,
+      headers: {
+        'content-type': 'text/plain',
+        'transfer-encoding': 'chunked',
+      },
+    },
+  );
+  await selectPausedRequest(page, chunkedPath);
+  await getByAutomationId(page, BREAKPOINT_REPLACEMENT_TEXT).click();
+  await getByAutomationId(page, AUTOMATION_IDS.breakpoints.body).fill(chunkedReplacement);
+  await getByAutomationId(page, AUTOMATION_IDS.breakpoints.executeEdited).click();
+  await expect(chunkedRequest).resolves.toMatchObject({ statusCode: 200 });
+  const chunkedObservation = await observe(loopbackLab, chunkedPath);
+  expect(chunkedObservation.body.toString('utf8')).toBe(chunkedReplacement);
+  expect(chunkedObservation.headers['transfer-encoding']).toBe('chunked');
+  expect(chunkedObservation.headers['content-length']).toBeUndefined();
+
   await attachOriginEvidence(loopbackLab, testInfo);
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.proxy).click();

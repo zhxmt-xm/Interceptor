@@ -4,7 +4,7 @@
 
 ## `breakpoints.body-preview`
 
-2MiB预览不得影响3MiB文件和Text发送。短File另覆盖展开前置Original后的高度重算，Windows原生窗口待验。普通文件用Content-Length请求；继承chunked的编辑framing仍属于第10项，不以本流程通过代替。
+2MiB预览不得影响3MiB文件和Text发送。短File另覆盖展开前置Original后的高度重算，Windows原生窗口待验。普通文件用Content-Length请求；继承chunked的编辑framing由`breakpoints.execute-edited`独立验收，不以本流程通过代替。
 
 1. fresh profile启动真实Electron，保存宿主基线，通过UI开始Recording；使用现有HTTP origin产生完整且超过2 MiB的UTF-8正文，通过产品Save body导出本轮文件，不自行写入替换文件。
 2. 通过Rules UI创建request breakpoint并Apply，向测试origin发送含长正文请求；从实际Capture行打开断点，Original预览最多2 MiB并显示截断，禁止Format；正文限高且右下角可拖，滚轮/键盘可达预览末尾。
@@ -52,7 +52,7 @@ UI批量命令workflow替代本组Agent/MCP调用。
 <a id="breakpoints-toggle"></a>
 ## `breakpoints.toggle`
 
-**状态**：planned
+**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -239,7 +239,7 @@ Continue unmodified只释放等待，不改字节；pending badge、Core、clien
 <a id="breakpoints-execute-edited"></a>
 ## `breakpoints.execute-edited`
 
-**状态**：planned
+**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -258,13 +258,15 @@ Continue unmodified只释放等待，不改字节；pending badge、Core、clien
 	其余headers保持，且body-only提交不制造任何header effect。
 7. **Header+Body**：客户端第三次发送匹配请求；选择Text replacement，同时把`Content-Encoding`改成`gzip`且不编辑原`Content-Length`，点击Execute edited。
 8. 验证origin收到`Content-Encoding: gzip`、可gunzip为用户新正文，继承的`Content-Length`更新为gzip后字节长度；Capture反映实际转发headers/body。
-9. 为每一段保存origin observation、客户端结果、最终Capture状态与截图/trace；进入Proxy点击Restore，确认non-owned并Close。
-10. 验证Main/Core退出、8888释放、系统代理恢复；关闭origin并删除profile。
+9. **Body-only inherited chunked**：客户端第四次发送不含`Content-Length`且使用`Transfer-Encoding: chunked`的匹配请求；不编辑header，选择Text replacement并点击Execute edited。
+10. 验证origin收到新正文和`Transfer-Encoding: chunked`，没有`Content-Length`；Core只生成content bytes，Mockttp/Node完成H1 chunk framing。
+11. 为每一段保存origin observation、客户端结果、最终Capture状态与截图/trace；进入Proxy点击Restore，确认non-owned并Close。
+12. 验证Main/Core退出、8888释放、系统代理恢复；关闭origin并删除profile。
 
 ### 预期效果
 
 Breakpoint 快照先包含所有普通 Rule 的最终改写，用户草稿不会再被后续 Rule 覆盖。Header-only不改变body；
-body-only按继承headers构造新body；header+body按用户最终headers构造新body。三段都经过真实UI/Main/Core/
+body-only按继承headers构造新body；header+body按用户最终headers构造新body。四段都经过真实UI/Main/Core/
 Mockttp/origin，Core state=edited，Capture反映实际转发结果。
 
 ### 验收要求

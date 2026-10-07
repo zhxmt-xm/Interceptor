@@ -18,6 +18,20 @@ Interceptor 不替用户决定 HTTP 消息应该是什么样。用户显式修�
 | `BODY KEEP` | header 后的线上 body 字节完全不变；不 encode/decode/chunk/dechunk |
 | `BODY UPDATE` | 使用用户提供的新正文，并按最终 headers 构造线上 body |
 
+正文替换时的职责边界固定为：
+
+```text
+Text/File
+→ Core 按 Content-Type charset 生成正文 bytes
+→ Core 按 Content-Encoding 生成最终 content bytes
+→ Core 按编辑意图维护 Content-Length
+→ Mockttp/Node 按 Transfer-Encoding 与 H1/H2 协议生成 wire framing
+```
+
+- Core 不执行 chunk/dechunk，也不因 `Transfer-Encoding` 调整用户 headers。
+- Mockttp patch 只接收 Core 已生成的最终 content bytes并替换原 stream，不再编码正文、计算 `Content-Length` 或修改 `Transfer-Encoding`。
+- H1 `chunked` 由 Node 发送层分块；H2 使用 DATA frame。非法或矛盾 header 的底层报错与实际 wire 结果原样记录。
+
 实现必须保留两个正交事实：
 
 ```ts
@@ -65,7 +79,7 @@ Header 均未被用户显式编辑。新 body 的构造顺序是：
 | `Content-Type` | `HEADER KEEP；BODY UPDATE`：只向明确的正文模式提供 charset/boundary 等参数，不用 media type 猜正文模式 |
 | `Content-Encoding` | `HEADER KEEP；BODY UPDATE`：存在则按声明顺序编码，缺失则不编码 |
 | `Content-Length` | 原本存在：`HEADER UPDATE；BODY UPDATE`，更新为 content coding 后、transfer coding 前的字节长度；原本缺失：`HEADER KEEP；BODY UPDATE`，不新增 |
-| `Transfer-Encoding` | `HEADER KEEP；BODY UPDATE`：存在则按声明执行，缺失则不新增 |
+| `Transfer-Encoding` | `HEADER KEEP；BODY UPDATE`：存在则交给发送层按协议执行，缺失则不新增；Core 不 chunk/dechunk |
 | `Content-Length` 与 `Transfer-Encoding` 同时存在 | `Content-Length` 仍按上条更新，`Transfer-Encoding` 保持并执行；不删除任一字段 |
 | `ETag`、`Digest`、`Content-Digest`、`Content-Range`、签名、`Last-Modified` | `HEADER KEEP；BODY UPDATE`：不重算、不删除 |
 | 其余普通 header | `HEADER KEEP；BODY UPDATE` |
@@ -85,9 +99,9 @@ Header 均未被用户显式编辑。新 body 的构造顺序是：
 | 用户设置 `Content-Length` | `HEADER UPDATE；BODY UPDATE`：保留用户最终值，不重算、不改变 body 以迎合该值 |
 | 用户删除 `Content-Length` | `HEADER UPDATE；BODY UPDATE`：保持缺失 |
 | `Content-Length` 未被用户编辑 | 原本存在：`HEADER UPDATE；BODY UPDATE`；原本缺失：`HEADER KEEP；BODY UPDATE` |
-| 用户设置 `Transfer-Encoding` | `HEADER UPDATE；BODY UPDATE`：按最终值处理新正文 |
-| 用户删除 `Transfer-Encoding` | `HEADER UPDATE；BODY UPDATE`：保持缺失，不执行 transfer coding |
-| `Transfer-Encoding` 未被用户编辑 | `HEADER KEEP；BODY UPDATE`：按继承值处理 |
+| 用户设置 `Transfer-Encoding` | `HEADER UPDATE；BODY UPDATE`：保留最终值，由发送层按协议处理 |
+| 用户删除 `Transfer-Encoding` | `HEADER UPDATE；BODY UPDATE`：保持缺失 |
+| `Transfer-Encoding` 未被用户编辑 | `HEADER KEEP；BODY UPDATE`：继承原值，由发送层按协议处理 |
 | ETag、Digest、Range、签名等 | 用户编辑则 `HEADER UPDATE`，未编辑则 `HEADER KEEP`；均为 `BODY UPDATE` |
 
 不支持的参数或编码原样进入当前发送链；底层产生的编码错误、协议错误或实际 wire 结果原样返回和记录，Interceptor 不选择替代参数或编码。
@@ -162,8 +176,14 @@ Body替换与framing正确性正交：`CaptureBodyRuleEffect`记录最终写入�
 
 `breakpoints.execute-edited` 必须从真实 App UI 创建规则、触发断点并通过公共 automation ID 编辑，loopback origin 断言实际 headers/body，Capture 断言实际转发结果。E2E 不替代 wire tests，只验证用户意图从 UI 到 Core 的完整传递。
 
-## 8. 与当前实现的差异
+## 8. 当前实现
 
-继承chunked的body替换仍有framing缺陷：请求被补Content-Length并删除chunked，响应同时出现Content-Length与Transfer-Encoding，被Node以`Content-Length can't be present with Transfer-Encoding`拒绝。
+`HttpMessageService`统一构造Breakpoint、Rule与Composer的replacement content bytes：Text按最终charset编码，
+Text/File再按最终`Content-Encoding`逐层编码；代理编辑只在原消息存在且用户未编辑`Content-Length`时更新长度。
 
-根因位于`patches/mockttp+4.5.0.patch`的两处headers-stage body override，无条件写Content-Length，Core返回的`editedHeaderNames`未阻止覆盖。当前没有已验证的无补丁修复方案，依赖实现与现有补丁保持不变；候选方案仍须覆盖请求/响应、H1/H2与四类header的wire矩阵。标准Content-Length下完整File/Text发送或UI effect正确不代表此矩阵正确。
+Mockttp headers-stage hook接收Core生成的`rawBody`，只替换stream并排空原正文。Request使用`write(rawBody)`后
+`end()`，避免`ClientRequest.end(buffer)`绕过最终framing headers自动选择`Content-Length`；Response直接写入
+已完成content coding的bytes。patch不再计算CL、执行CE或修改TE。
+
+用户显式删除CL且最终也没有TE的H1正文没有有效framing，或用户同时保留矛盾CL/TE时，Mockttp/Node/origin可以
+拒绝该消息；这是用户最终headers的真实发送结果，不由Interceptor补字段规避。

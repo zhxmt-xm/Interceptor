@@ -4,6 +4,7 @@ import {
   type ServerHttp2Session,
 } from 'node:http2';
 import type { AddressInfo } from 'node:net';
+import zlib from 'node:zlib';
 
 import { generateCACertificate } from 'mockttp';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -70,6 +71,87 @@ describe('ComposerService integration', () => {
     })).resolves.toMatchObject({ ok: true, status: 200 });
 
     await closed;
+  });
+
+  it('applies text charset and content-encoding layers before sending HTTP/1.1', async () => {
+    let receivedBody = Buffer.alloc(0);
+    let receivedHeaders: Readonly<Record<string, string | string[] | undefined>> = {};
+    const server = createServer((request, response) => {
+      const chunks: Buffer[] = [];
+      receivedHeaders = request.headers;
+      request.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+      request.on('end', () => {
+        receivedBody = Buffer.concat(chunks);
+        response.end('ok');
+      });
+    });
+    servers.push(server);
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', () => resolve());
+    });
+    const port = (server.address() as AddressInfo).port;
+
+    await expect(new ComposerService().send({
+      method: 'POST',
+      url: `http://127.0.0.1:${port}/encoded`,
+      headers: [
+        { name: 'content-type', value: 'text/plain; charset=windows-1252' },
+        { name: 'content-encoding', value: 'gzip, br' },
+      ],
+      body: '€',
+      protocol: 'http/1.1',
+    })).resolves.toMatchObject({ ok: true, status: 200 });
+
+    expect(zlib.gunzipSync(zlib.brotliDecompressSync(receivedBody))).toEqual(
+      Buffer.from([0x80]),
+    );
+    expect(receivedHeaders['content-encoding']).toBe('gzip, br');
+  });
+
+  it('sends the same encoded content bytes over HTTP/2', async () => {
+    const certificate = await generateCACertificate({
+      subject: { commonName: '127.0.0.1' },
+    });
+    let receivedBody = Buffer.alloc(0);
+    const server = createSecureServer({
+      cert: certificate.cert,
+      key: certificate.key,
+      allowHTTP1: false,
+    });
+    server.on('stream', (stream) => {
+      const chunks: Buffer[] = [];
+      stream.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+      stream.on('end', () => {
+        receivedBody = Buffer.concat(chunks);
+        stream.respond({ ':status': 200 });
+        stream.end('ok');
+      });
+    });
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', () => resolve());
+    });
+    const port = (server.address() as AddressInfo).port;
+
+    try {
+      await expect(new ComposerService().send({
+        method: 'POST',
+        url: `https://127.0.0.1:${port}/encoded-h2`,
+        headers: [
+          { name: 'content-type', value: 'text/plain; charset=windows-1252' },
+          { name: 'content-encoding', value: 'gzip, br' },
+        ],
+        body: '€',
+        protocol: 'h2',
+      })).resolves.toMatchObject({ ok: true, status: 200, httpVersion: 'h2' });
+
+      expect(zlib.gunzipSync(zlib.brotliDecompressSync(receivedBody))).toEqual(
+        Buffer.from([0x80]),
+      );
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
   });
 
   it.each(['auto', 'h2'] as const)(

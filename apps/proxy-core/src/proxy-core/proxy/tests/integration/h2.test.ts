@@ -152,7 +152,11 @@ function h2PostViaProxy(
   caCert: string,
   requestBody: Buffer,
   headers: Record<string, string>,
-): Promise<{ status: number | undefined; body: Buffer }> {
+): Promise<{
+  status: number | undefined;
+  headers: http2.IncomingHttpHeaders;
+  body: Buffer;
+}> {
   return new Promise((resolve, reject) => {
     const socket = net.connect(proxyPort, '127.0.0.1', () => {
       socket.write(
@@ -179,14 +183,20 @@ function h2PostViaProxy(
             ':method': 'POST',
           });
           let status: number | undefined;
+          let receivedHeaders: http2.IncomingHttpHeaders = {};
           const chunks: Buffer[] = [];
           req.on('response', (responseHeaders) => {
             status = responseHeaders[':status'];
+            receivedHeaders = responseHeaders;
           });
           req.on('data', (data: Buffer) => chunks.push(Buffer.from(data)));
           req.on('end', () => {
             client.close();
-            resolve({ status, body: Buffer.concat(chunks) });
+            resolve({
+              status,
+              headers: receivedHeaders,
+              body: Buffer.concat(chunks),
+            });
           });
           req.on('error', reject);
           req.end(requestBody);
@@ -922,6 +932,97 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
       recordingCaptureService.bodies.some((body) => body.equals(requestWire)),
     ).toBe(true);
   }, 20_000);
+
+  it('constructs request and response replacement content bytes before HTTP/2 framing', async () => {
+    const ca = await generateCACertificate();
+    const originCertificate = await generateCACertificate();
+    const ruleService = new RuleService(new BreakpointQueue());
+    ruleService.setRuleSet({
+      revision: 1,
+      nodes: [{
+        kind: 'rule',
+        id: 'h2-body-rule',
+        name: 'H2 body replacement',
+        enabled: true,
+        priority: 100,
+        matchers: [{ type: 'host', value: 'localhost', mode: 'exact' }],
+        actions: [
+          {
+            type: 'header',
+            phase: 'request',
+            op: 'set',
+            name: 'content-type',
+            value: 'text/plain; charset=windows-1252',
+          },
+          {
+            type: 'header',
+            phase: 'request',
+            op: 'set',
+            name: 'content-encoding',
+            value: 'gzip, br',
+          },
+          {
+            type: 'body',
+            phase: 'request',
+            format: 'text',
+            content: '€',
+          },
+          {
+            type: 'header',
+            phase: 'response',
+            op: 'set',
+            name: 'content-type',
+            value: 'text/plain; charset=windows-1252',
+          },
+          {
+            type: 'header',
+            phase: 'response',
+            op: 'set',
+            name: 'content-encoding',
+            value: 'gzip, br',
+          },
+          {
+            type: 'body',
+            phase: 'response',
+            format: 'text',
+            content: '€',
+          },
+        ],
+      }],
+    });
+    proxyService = new ProxyService(
+      new RecordingCaptureService(),
+      new CaptureEventQueue(),
+      ruleService,
+    );
+    await decryptWithCertificate(proxyService, ca, ['localhost']);
+    const address = await proxyService.start();
+    const compressedOrigin = await startCompressedH2Origin(
+      originCertificate.cert,
+      originCertificate.key,
+      zlib.gzipSync(Buffer.from('origin')),
+    );
+    origin = compressedOrigin;
+
+    const response = await h2PostViaProxy(
+      address.port,
+      'localhost',
+      compressedOrigin.port,
+      ca.cert,
+      Buffer.from('original'),
+      { 'content-type': 'text/plain' },
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-encoding']).toBe('gzip, br');
+    expect(response.headers['content-length']).toBeUndefined();
+    expect(
+      zlib.gunzipSync(zlib.brotliDecompressSync(compressedOrigin.received())),
+    ).toEqual(Buffer.from([0x80]));
+    expect(
+      zlib.gunzipSync(zlib.brotliDecompressSync(response.body)),
+    ).toEqual(Buffer.from([0x80]));
+  });
 
   it('matches an HTTP/2 URL written as host/path and applies a response action', async () => {
     const ca = await generateCACertificate();

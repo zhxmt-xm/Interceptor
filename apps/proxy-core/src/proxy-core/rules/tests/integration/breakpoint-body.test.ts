@@ -1,8 +1,9 @@
 import { promises as fs } from 'node:fs';
 import http from 'node:http';
-import { type AddressInfo } from 'node:net';
+import net, { type AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { RuleDefinition } from '@interceptor/core-protocol';
@@ -25,18 +26,22 @@ const UPLOAD_BODY = 'name=interceptor&kind=breakpoint';
 function startOrigin(): Promise<{
   port: number;
   received: string[];
+  receivedBodies: Buffer[];
   receivedHeaders: http.IncomingHttpHeaders[];
   close: () => Promise<void>;
 }> {
   const received: string[] = [];
+  const receivedBodies: Buffer[] = [];
   const receivedHeaders: http.IncomingHttpHeaders[] = [];
   const server = http.createServer((request, response) => {
-    let body = '';
+    const chunks: Buffer[] = [];
     request.on('data', (chunk: Buffer) => {
-      body += chunk.toString('utf8');
+      chunks.push(Buffer.from(chunk));
     });
     request.on('end', () => {
-      received.push(body);
+      const body = Buffer.concat(chunks);
+      received.push(body.toString('utf8'));
+      receivedBodies.push(body);
       receivedHeaders.push(request.headers);
       response.writeHead(200, { 'content-type': 'text/plain' });
       response.end('origin-body');
@@ -48,7 +53,52 @@ function startOrigin(): Promise<{
       resolve({
         port,
         received,
+        receivedBodies,
         receivedHeaders,
+        close: () => new Promise<void>((done) => server.close(() => done())),
+      });
+    });
+  });
+}
+
+function startRawOrigin(expectedBody: string): Promise<{
+  port: number;
+  received: Promise<Buffer>;
+  close: () => Promise<void>;
+}> {
+  let resolveReceived!: (value: Buffer) => void;
+  const received = new Promise<Buffer>((resolve) => {
+    resolveReceived = resolve;
+  });
+  const server = net.createServer((socket) => {
+    const chunks: Buffer[] = [];
+    let completed = false;
+    socket.on('data', (chunk: Buffer) => {
+      if (completed) {
+        return;
+      }
+      chunks.push(Buffer.from(chunk));
+      const request = Buffer.concat(chunks);
+      const headerEnd = request.indexOf('\r\n\r\n');
+      if (
+        headerEnd < 0
+        || !request.subarray(headerEnd + 4).includes(Buffer.from(expectedBody))
+      ) {
+        return;
+      }
+      completed = true;
+      resolveReceived(request);
+      socket.end(
+        'HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n',
+      );
+    });
+  });
+  return new Promise((resolve) => {
+    server.listen(0, '127.0.0.1', () => {
+      const { port } = server.address() as AddressInfo;
+      resolve({
+        port,
+        received,
         close: () => new Promise<void>((done) => server.close(() => done())),
       });
     });
@@ -67,7 +117,10 @@ function proxiedChunkedPost(
         port: proxy.port,
         method: 'POST',
         path: absoluteUrl,
-        headers: { 'content-type': 'text/plain' },
+        headers: {
+          'content-type': 'text/plain',
+          'transfer-encoding': 'chunked',
+        },
       },
       (response) => {
         response.resume();
@@ -75,7 +128,8 @@ function proxiedChunkedPost(
       },
     );
     request.on('error', reject);
-    request.end(body);
+    request.write(body);
+    request.end();
   });
 }
 
@@ -211,10 +265,17 @@ describe('Breakpoint snapshots (real proxy)', () => {
 
     // 只改 header 就放行（Renderer 在正文不可见时不带 body），原始上传正文必须完整到达源站。
     breakpointQueue.resolve(paused.id, 'continue', {
-      headers: [...paused.snapshot.headers, { name: 'x-reviewed', value: 'yes' }],
+      headers: [
+        ...paused.snapshot.headers,
+        { name: 'content-encoding', value: 'gzip' },
+        { name: 'x-reviewed', value: 'yes' },
+      ],
+      editedHeaderNames: ['content-encoding', 'x-reviewed'],
     });
     await expect(inFlight).resolves.toBe(200);
     expect(origin.received).toEqual([UPLOAD_BODY]);
+    expect(origin.receivedBodies).toEqual([Buffer.from(UPLOAD_BODY)]);
+    expect(origin.receivedHeaders[0]?.['content-encoding']).toBe('gzip');
   });
 
   it('groups concurrent HTTP breakpoints into one stable logical queue', async () => {
@@ -448,6 +509,139 @@ describe('Breakpoint snapshots (real proxy)', () => {
       contentLength: undefined,
       transferEncoding: 'chunked',
     });
+  });
+
+  it('keeps an explicitly deleted content-length absent when the body changes', async () => {
+    const replacement = 'edited without content length';
+    const rawOrigin = await startRawOrigin(replacement);
+    const ruleService = new RuleService(breakpointQueue);
+    ruleService.setRuleSet({ revision: 1, nodes: [breakpointRule('request')] });
+    proxyService = new ProxyService(
+      new RecordingCaptureService(),
+      new CaptureEventQueue(),
+      ruleService,
+    );
+    const address = await proxyService.start({ port: 0 });
+
+    try {
+      const inFlight = proxiedPost(
+        address,
+        `http://127.0.0.1:${rawOrigin.port}/upload`,
+        UPLOAD_BODY,
+      );
+      await expect.poll(() => breakpointQueue.size).toBe(1);
+      const [paused] = breakpointQueue.list();
+      breakpointQueue.resolve(paused!.id, 'continue', {
+        headers: paused!.snapshot.headers.filter(
+          (header) => header.name.toLowerCase() !== 'content-length',
+        ),
+        editedHeaderNames: ['content-length'],
+        body: replacement,
+      });
+
+      await expect(inFlight).resolves.toBe(200);
+      const wireRequest = await rawOrigin.received;
+      const headerEnd = wireRequest.indexOf('\r\n\r\n');
+      const wireHeaders = wireRequest.subarray(0, headerEnd).toString('latin1').toLowerCase();
+      expect(wireHeaders).not.toContain('content-length:');
+      expect(wireHeaders).not.toContain('transfer-encoding:');
+      expect(
+        wireRequest.subarray(headerEnd + 4).includes(Buffer.from(replacement)),
+      ).toBe(true);
+    } finally {
+      await rawOrigin.close();
+    }
+  });
+
+  it('keeps an explicitly set content-length unchanged when the body changes', async () => {
+    const replacement = 'edited with manual content length';
+    const rawOrigin = await startRawOrigin(replacement);
+    const ruleService = new RuleService(breakpointQueue);
+    ruleService.setRuleSet({ revision: 1, nodes: [breakpointRule('request')] });
+    proxyService = new ProxyService(
+      new RecordingCaptureService(),
+      new CaptureEventQueue(),
+      ruleService,
+    );
+    const address = await proxyService.start({ port: 0 });
+
+    try {
+      const inFlight = proxiedPost(
+        address,
+        `http://127.0.0.1:${rawOrigin.port}/upload`,
+        UPLOAD_BODY,
+      );
+      await expect.poll(() => breakpointQueue.size).toBe(1);
+      const [paused] = breakpointQueue.list();
+      const headers = paused!.snapshot.headers
+        .filter((header) => header.name.toLowerCase() !== 'content-length')
+        .concat({ name: 'Content-Length', value: '999' });
+      breakpointQueue.resolve(paused!.id, 'continue', {
+        headers,
+        editedHeaderNames: ['content-length'],
+        body: replacement,
+      });
+
+      await expect(inFlight).resolves.toBe(200);
+      const wireRequest = await rawOrigin.received;
+      const headerEnd = wireRequest.indexOf('\r\n\r\n');
+      const wireHeaders = wireRequest.subarray(0, headerEnd).toString('latin1').toLowerCase();
+      expect(wireHeaders).toContain('content-length: 999');
+      expect(
+        wireRequest.subarray(headerEnd + 4).includes(Buffer.from(replacement)),
+      ).toBe(true);
+    } finally {
+      await rawOrigin.close();
+    }
+  });
+
+  it('applies text charset and each content-encoding layer before updating content-length', async () => {
+    const replacement = '€';
+    const ruleService = new RuleService(breakpointQueue);
+    ruleService.setRuleSet({ revision: 1, nodes: [breakpointRule('request')] });
+    const captureService = new RecordingCaptureService();
+    proxyService = new ProxyService(
+      captureService,
+      new CaptureEventQueue(),
+      ruleService,
+    );
+    const address = await proxyService.start({ port: 0 });
+    origin = await startOrigin();
+
+    const inFlight = proxiedPost(
+      address,
+      `http://127.0.0.1:${origin.port}/upload`,
+      UPLOAD_BODY,
+    );
+    await expect.poll(() => breakpointQueue.size).toBe(1);
+    const [paused] = breakpointQueue.list();
+    const headers = paused!.snapshot.headers
+      .filter((header) => !['content-type', 'content-encoding'].includes(
+        header.name.toLowerCase(),
+      ))
+      .concat(
+        { name: 'content-type', value: 'text/plain; charset=windows-1252' },
+        { name: 'content-encoding', value: 'gzip, br' },
+      );
+    breakpointQueue.resolve(paused!.id, 'continue', {
+      headers,
+      editedHeaderNames: ['content-type', 'content-encoding'],
+      body: replacement,
+    });
+
+    await expect(inFlight).resolves.toBe(200);
+    const contentBytes = origin.receivedBodies[0]!;
+    expect(zlib.gunzipSync(zlib.brotliDecompressSync(contentBytes))).toEqual(
+      Buffer.from([0x80]),
+    );
+    expect(origin.receivedHeaders[0]?.['content-length']).toBe(
+      String(contentBytes.byteLength),
+    );
+    await expect.poll(() => captureService.exchanges[0]?.requestBody).toMatchObject({
+      contentEncoding: 'gzip, br',
+      encodedSize: contentBytes.byteLength,
+    });
+    expect(captureService.bodies.some((body) => body.equals(contentBytes))).toBe(true);
   });
 
   it('forwards the original body when the picked file disappeared', async () => {
