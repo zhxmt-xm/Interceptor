@@ -79,4 +79,17 @@ OpenAI-compatible 模型模拟继续由 Agent fixture 所有，不并入不接 L
 
 - [src/main.tsx](src/main.tsx) 是前端唯一启动文件；`app/` 管页面外壳、共享界面与样式，`capture/` 管协议 Draft，`mcp/` 管连接与调用，`acceptance/` 管人工 recipe 与报告。类型跟随所属功能，不在根目录散放。
 - [server/entry.ts](server/entry.ts) 是服务端唯一启动文件；`api/` 管输入解析，`scenarios/` 管场景和调度，`http/`、`tls/`、`websocket/` 管对应协议，`shared/` 管跨协议工具。
-- 不使用包住全部代码的 `internal/`。已有历史辅助测试保留，后续按实际 Playground 场景与已有真实 E2E 验证，不再扩充“测试的测试”。
+- 不使用包住全部代码的 `internal/`。后续修改按实际Playground场景与已有真实E2E验证，不再扩充“测试的测试”；既有测试按下面的风险边界保留，不以历史存在为由无限维护。
+
+## 既有辅助测试的维护边界
+
+| 范围 | 保留原因 |
+| --- | --- |
+| `redaction`、`observed-fetch`、`acceptance-report` | 防止Token进入展示/导出证据，观测不能消费或阻塞SDK响应，人工结论及schema信息不能被错误转换 |
+| `mcp-config`、`traffic-request-draft` | 保留外部输入边界的有效/无效数据校验，避免错误配置或Draft被当成有效验收输入 |
+| `abortable-attempts` | 取消与页面失效后的迟到结果不能覆盖当前场景，主动取消仍能呈现终态 |
+| HTTP / TLS / WebSocket controls及`traffic-lab` integration | 验证真实wire字节、握手、帧/流、取消、断开和端口释放，保护供产品E2E使用的流量源及证据真实性 |
+
+recipe名称全量清单测试已移除：键集合由`CurrentToolName`和`satisfies Record`约束，非空文字检查不能证明人工步骤正确。Capture workspace的宽度常量、JSON往返及协议文案派生测试也已移除：以实际页面拖拽、编辑Draft和协议场景检查为准，服务端Draft边界测试仍保留。
+
+辅助测试精简不修改工具或产品实现，也不修改真实workflow。`traffic-lab` integration的临时proxy独立登记入站与上游socket，停止listener后销毁本轮连接并等待关闭；清理按创建的反序执行，错误聚合报告，不用`allSettled`吞掉失败。TLS场景保留，不以删除场景或扩大超时处理清理问题。

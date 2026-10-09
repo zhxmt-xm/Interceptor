@@ -17,7 +17,13 @@ MCP的确定性workflow与当前开发Host workflow复用[UI助手](ui/mcp-workf
 profile。`preserveDesktopAppUserData`仅保留已准备的数据，不保留进程或放宽宿主恢复；验收失败使用既有
 profile保留策略，完整成功后删除测试profile。准备通过不等于Host调用通过。
 
-已有辅助单测随所属目录放在 `tests/unit/`，验证驱动自身的安全和状态判断，不替代真实 Electron workflow。
+辅助单测只保留以下既有安全判断，不替代真实 Electron workflow：
+
+- [workflow-host-safety-guard.test.ts](safety/tests/unit/workflow-host-safety-guard.test.ts)：没有基线时不恢复宿主、只终止登记进程、恢复失败仍报告原污染。
+- [windows-workflow-host-safety-operations.test.ts](safety/tests/unit/windows-workflow-host-safety-operations.test.ts)：精确PID代际/profile归属、外部代理修改不被覆盖、journal与恢复范围。
+- [workflow-profile-retention.test.ts](runtime/tests/unit/workflow-profile-retention.test.ts)：失败或恢复未完成时保留profile及证据，不因测试结束误删恢复材料。
+
+文件窗口的PowerShell片段/拼接顺序断言和OpenAI lab自身的响应快照已移除。前者不能证明真实点击或窗口归属，后者只验证模拟器返回自己排入的消息；Windows原生导入/导出与Agent Tool Call继续由所属真实workflow验证。driver、lab及产品实现未因此改变，不把移除辅助断言记为Windows或Agent验收通过。
 
 ## 平台分派
 

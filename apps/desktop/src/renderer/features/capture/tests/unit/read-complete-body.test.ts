@@ -19,7 +19,8 @@ describe('readCompleteBody', () => {
 
     const result = await readCompleteBody({ exchangeId: 'grpc-live', side: 'response' },
       payloadOffset, source.byteLength - payloadOffset);
-    expect(result.bytes).toEqual(source.subarray(payloadOffset));
+    expect(result.bytes.byteLength).toBe(source.byteLength - payloadOffset);
+    expect(Buffer.compare(result.bytes, source.subarray(payloadOffset))).toBe(0);
     expect(result.end).toBe(true);
     expect(readBody).not.toHaveBeenCalled();
     expect(readGrpcBody.mock.calls.map(([request]) => request)).toEqual([
@@ -52,7 +53,8 @@ describe('readCompleteBody', () => {
     );
 
     expect(readBody).toHaveBeenCalledTimes(2);
-    expect(result.bytes).toEqual(source);
+    expect(result.bytes.byteLength).toBe(source.byteLength);
+    expect(Buffer.compare(result.bytes, source)).toBe(0);
     expect(result.end).toBe(true);
   });
 });

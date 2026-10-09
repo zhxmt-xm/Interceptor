@@ -11,7 +11,15 @@ describe('TrafficLab', () => {
   const closeables: Array<() => Promise<void>> = [];
 
   afterEach(async () => {
-    await Promise.allSettled(closeables.splice(0).map((close) => close()));
+    const errors: unknown[] = [];
+    for (const close of closeables.splice(0).reverse()) {
+      try {
+        await close();
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    if (errors.length > 0) throw new AggregateError(errors, 'Traffic Lab test cleanup failed.');
   });
 
   it('describes every currently supported Capture scenario with an editable default draft', async () => {
@@ -479,6 +487,11 @@ async function startForwardProxy(): Promise<{
   close: () => Promise<void>;
   port: number;
 }> {
+  const sockets = new Set<Duplex>();
+  const trackSocket = (socket: Duplex): void => {
+    sockets.add(socket);
+    socket.once('close', () => sockets.delete(socket));
+  };
   const server = createServer((incoming, outgoing) => {
     const target = new URL(incoming.url ?? '/');
     const forwarded = request(target, {
@@ -488,9 +501,11 @@ async function startForwardProxy(): Promise<{
       outgoing.writeHead(response.statusCode ?? 502, response.headers);
       response.pipe(outgoing);
     });
+    forwarded.on('socket', trackSocket);
     forwarded.on('error', (error) => outgoing.destroy(error));
     incoming.pipe(forwarded);
   });
+  server.on('connection', trackSocket);
   server.on('upgrade', (incoming, socket, head) => {
     const target = new URL(incoming.url ?? '/');
     const upstream = net.connect(Number(target.port || 80), target.hostname, () => {
@@ -503,6 +518,7 @@ async function startForwardProxy(): Promise<{
       upstream.write(`${incoming.method ?? 'GET'} ${path} HTTP/1.1\r\n${headers}\r\n\r\n`);
       if (head.byteLength > 0) upstream.write(head);
     });
+    trackSocket(upstream);
     upstream.on('error', () => socket.destroy());
     socket.on('error', () => upstream.destroy());
     upstream.pipe(socket);
@@ -514,13 +530,21 @@ async function startForwardProxy(): Promise<{
       socket.write('HTTP/1.1 200 Connection Established\r\nProxy-Agent: Playground-Test-Proxy\r\n\r\n');
       if (head.byteLength > 0) upstream.write(head);
     });
+    trackSocket(upstream);
     upstream.on('error', () => socket.destroy());
     socket.on('error', () => upstream.destroy());
     upstream.pipe(socket);
     socket.pipe(upstream);
   });
   const port = await listen(server);
-  return { close: () => close(server), port };
+  return {
+    port,
+    close: async () => {
+      const closed = close(server);
+      for (const socket of sockets) socket.destroy();
+      await closed;
+    },
+  };
 }
 
 async function startStalledConnectProxy(): Promise<{

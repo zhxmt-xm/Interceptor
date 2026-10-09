@@ -14,6 +14,16 @@
 
 各层职责独立，不能互相替代。
 
+### 辅助测试取舍
+
+E2E fixture与Playground的既有测试按保护的实际风险维护，不因目录里已有测试就继续增加，也不因为测试失败就删除。产品业务单测、Core真实协议集成、Electron workflow和退出恢复不属于精简范围。
+
+- E2E fixture只保留宿主恢复、精确进程归属和失败profile保留的3个既有测试文件；文件窗口脚本文本断言与模型lab响应快照已移除，真实行为由所属workflow验证，Windows未验收状态不改变。
+- Playground保留输入边界、脱敏/证据、取消及真实HTTP/TLS/WebSocket场景的10个既有测试文件；重复类型约束的recipe清单和布局/序列化辅助函数单测已移除。
+- 工具修改直接跑受影响的Playground场景或已有真实E2E；不因精简另建一套fixture测试、测试注册层或宽泛skip。仅删除测试文件不等于对应业务已通过，已有失败与历史证据仍保留。
+- 具体职责见[fixtures说明](../../apps/desktop/tests/e2e-workflow-tests/fixtures/README.md)与[Playground维护边界](../../apps/playground/README.md#既有辅助测试的维护边界)。
+- 正文分块单测保留超过1MiB的真实字节数组、offset/分块调用和end断言，使用完整字节比较而非对百万个索引做通用对象深比较；不能用降低数据量、抽样字节或放宽超时代替等价校验。
+
 Windows实机验收统一跟踪于[Handover第8项](../HANDOVER.md)及[Windows矩阵](../../apps/desktop/tests/e2e-workflow-tests/README.md#windows-复验)。按用户确认，该项的待验不作为其他item的提交blocker；其他item仍须完成自身可执行验收，Windows未执行、skip和失败不能改写为通过，发布产物门禁不因此取消。
 
 ## 2. Local E2E driver
@@ -27,7 +37,7 @@ Windows实机验收统一跟踪于[Handover第8项](../HANDOVER.md)及[Windows�
 - **共享CA验收**：普通workflow及smoke先只读检查已由产品初始化的用户级CA，结束保留材料和系统信任；不把共享CA复制进profile。首次初始化专项允许产品启动生成/授信，破坏性专项要求空共享目录并保存完整Root/admin trust基线。仅测试fixture声明范围，不给产品增加专用路径或开关；Windows首次窗口等待允许新CA UAC完成，业务/系统代理原生契约不变。
 - **失败时保留特权profile**：调用`preserveUserDataOnFailure()`的workflow，在Playwright实际状态为`failed`、`timedOut`或`interrupted`时必须保留profile，不能仅判断`await use(driver)`是否抛错；任何清理或宿主guard错误也必须保留。判定归`fixtures/runtime/workflow-profile-retention.ts`，unit覆盖状态与错误组合。CA清理按本轮身份和真实信任状态等待正式UI，不以按钮瞬时不可见当作已清理。
 - **零 Mock / 零 seed输入边界**：测试操作通过公共 automation ID 进入真实 App UI，再走 Preload/Main/Core/Storage/Proxy/Worker；测试侧只拥有loopback origin/client、证据与清理。导入文件必须由同一workflow先经产品Export真实产生，测试只能只读核验并重新选择，不得自行构造业务输入。`fixtures/ui/windows-file-dialog.ts`用Windows UI Automation定位真实Open/Save Dialog，再用真实鼠标键盘选择路径，不改写dialog返回值；`apps/playground/server/scenarios/traffic-lab.ts`提供共享协议服务与随机origin port，但被测Proxy listener保持产品默认`127.0.0.1:8888`。**禁止 `page.evaluate(window.interceptor.*)` 代替业务操作。**
-- **fixture分类与协议归属**：`runtime/` 管进程与profile，`ui/` 管真实控件驱动，`safety/` 管宿主恢复，`agent/` 管模型模拟；已有辅助单测随所属目录保留。`trafficLab`为每条workflow统一拥有Playground的HTTP、WebSocket和按需TLS服务，场景运行与细粒度控制共享origin。E2E可直接使用Node流量API；Browser Playground只在页面或Browser MCP流程需要时启动。详细边界见[fixtures说明](../../apps/desktop/tests/e2e-workflow-tests/fixtures/README.md)。
+- **fixture分类与协议归属**：`runtime/` 管进程与profile，`ui/` 管真实控件驱动，`safety/` 管宿主恢复，`agent/` 管模型模拟；按上述取舍保留的安全判断单测仍随所属目录放置。`trafficLab`为每条workflow统一拥有Playground的HTTP、WebSocket和按需TLS服务，场景运行与细粒度控制共享origin。E2E可直接使用Node流量API；Browser Playground只在页面或Browser MCP流程需要时启动。详细边界见[fixtures说明](../../apps/desktop/tests/e2e-workflow-tests/fixtures/README.md)。
 
 ## 3. 驱动与证据边界
 

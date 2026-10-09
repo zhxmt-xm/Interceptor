@@ -47,8 +47,8 @@ apps/playground/
 │   ├── mcp/                     # 连接界面、Client、配置与交换观测
 │   └── acceptance/              # 人工recipe与脱敏报告
 └── tests/
-  ├── unit/                     # 历史辅助测试保留，不扩充设施测试
-  └── integration/              # 历史网络/Browser测试保留
+  ├── unit/                     # 保留输入边界、取消及敏感证据保护
+  └── integration/              # 保留真实协议流量与资源生命周期检查
 ```
 
 启动命令：
@@ -59,6 +59,8 @@ npm run playground
 
 命令启动一个Node进程并只绑定`127.0.0.1`。同一进程提供Vite页面、Lab API和按需创建的本地流量源；
 不引入Electron、Preload、IPC、安装器或第二套生命周期。关闭该进程时必须关闭全部origin、socket和在途请求。
+
+辅助测试按实际风险取舍：recipe静态清单和Capture workspace布局/序列化辅助函数测试已移除；保留脱敏、输入边界、取消及真实wire/关闭行为，不新增设施测试。具体文件职责见[Playground维护边界](../../apps/playground/README.md#既有辅助测试的维护边界)。这些检查不替代产品真实E2E或逐Tool人工结论。
 
 ## 4. 拓扑
 
