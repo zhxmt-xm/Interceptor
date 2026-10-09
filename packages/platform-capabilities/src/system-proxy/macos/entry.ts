@@ -1,6 +1,6 @@
 import { SystemProxyError } from '../internal/errors';
 import type { UpstreamProxyConfig } from '@interceptor/core-protocol';
-import type { MacosSystemProxySnapshot, MacosSystemProxyServiceOptions, SystemProxyJournalStore, SystemProxyRestoreResult, SystemProxyService, SystemProxyStatus } from '../interfaces';
+import type { MacosSystemProxySnapshot, MacosSystemProxyServiceOptions, SystemProxyJournalStore, SystemProxyRestoreResult, SystemProxyService, SystemProxyStatus, SystemProxyUpstreamSource } from '../interfaces';
 import { parseMacosSystemProxySnapshot } from '../../helper/macos/utils';
 import { MacosHelperServiceClient } from '../../helper/macos/helper-client';
 import { toMacosUpstreamProxyConfig } from './upstream';
@@ -98,7 +98,7 @@ export class MacosSystemProxyService implements SystemProxyService {
   }
 
   /** Snapshot all active services, apply loopback HTTP/HTTPS and verify readback. */
-  async enable(host: string, port: number): Promise<SystemProxyStatus> {
+  async enable(host: string, port: number, beforeTakeover?: (source: SystemProxyUpstreamSource) => Promise<void>): Promise<SystemProxyStatus> {
     this.assertSupported();
     MacosSystemProxyService.assertLoopback(host, port);
     const current = await this.readSnapshot();
@@ -110,6 +110,7 @@ export class MacosSystemProxyService implements SystemProxyService {
           'System proxy ownership was lost because settings were modified externally.',
         );
       }
+      await beforeTakeover?.(await this.readUpstreamSource());
       return MacosSystemProxyService.toStatus(current, true, false);
     }
     if (current.services.length === 0) {
@@ -117,7 +118,8 @@ export class MacosSystemProxyService implements SystemProxyService {
     }
 
     const effectiveProxies = await this.macosHelperServiceClient.readEffectiveSystemProxySettings();
-    toMacosUpstreamProxyConfig(effectiveProxies, port);
+    if (beforeTakeover) await beforeTakeover({ platform: 'darwin', settings: effectiveProxies });
+    else toMacosUpstreamProxyConfig(effectiveProxies, port);
     const target = MacosSystemProxyService.createOwnedSnapshot(current, host, port);
     this.originalSnapshot = current;
     this.effectiveProxySettings = effectiveProxies;
@@ -141,6 +143,17 @@ export class MacosSystemProxyService implements SystemProxyService {
     const port = this.ownedSnapshot.services[0]?.settings.HTTPPort;
     if (typeof port !== 'number') throw new SystemProxyError('macOS owned proxy port is missing.');
     return toMacosUpstreamProxyConfig(this.effectiveProxySettings, port);
+  }
+
+  /** Use the captured original while owned, or read the current system configuration before takeover. */
+  async readUpstreamSource(): Promise<SystemProxyUpstreamSource> {
+    this.assertSupported();
+    return {
+      platform: 'darwin',
+      settings: this.effectiveProxySettings
+        ? structuredClone(this.effectiveProxySettings)
+        : await this.macosHelperServiceClient.readEffectiveSystemProxySettings(),
+    };
   }
 
   /** Restore every service only while all current values remain exactly owned. */

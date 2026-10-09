@@ -103,6 +103,15 @@ export type McpToolApprovalState = 'pending' | '';
 export type PlaygroundSection = 'capture' | 'mcp';
 export type PlaygroundCallState = 'complete' | 'approval' | 'error';
 export type PlaygroundManualStatus = 'not-run' | 'pass' | 'fail' | 'blocked';
+export type UpstreamMode = 'system' | 'direct' | 'manual' | 'pac' | 'wpad';
+export type UpstreamProxyProtocol = 'http' | 'https' | 'socks5';
+export interface UpstreamDesignConfig {
+  readonly mode: UpstreamMode;
+  readonly protocol: UpstreamProxyProtocol;
+  readonly host: string;
+  readonly port: string;
+  readonly pacUrl: string;
+}
 
 export interface AgentProviderProfileState {
   readonly displayName: string;
@@ -211,6 +220,14 @@ export interface DesignState {
   readonly mitm: string;
   readonly systemProxy: string;
   readonly upstream: string;
+  readonly upstreamPopoverOpen: boolean;
+  readonly upstreamConfig: UpstreamDesignConfig;
+  readonly upstreamDraft: UpstreamDesignConfig;
+  readonly upstreamOperation: 'idle' | 'applying' | 'discovering';
+  readonly upstreamApplyRequested: boolean;
+  readonly upstreamApplyError: '' | 'discovery' | 'connection';
+  readonly upstreamFixtureOutcome: 'success' | 'failure';
+  readonly upstreamHealth: 'ready' | 'unreachable';
   readonly copy: string;
   readonly transfer: string;
   readonly recording: string;

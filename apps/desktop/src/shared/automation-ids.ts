@@ -55,6 +55,29 @@ export const AUTOMATION_IDS = {
       openDiagnostics: 'shell.boot.open-diagnostics',
     },
   },
+  upstream: {
+    trigger: 'upstream.trigger',
+    popover: 'upstream.popover',
+    currentRoute: 'upstream.current-route',
+    mode: {
+      system: 'upstream.mode.system',
+      direct: 'upstream.mode.direct',
+      manual: 'upstream.mode.manual',
+      pac: 'upstream.mode.pac',
+      wpad: 'upstream.mode.wpad',
+    },
+    protocol: 'upstream.protocol',
+    protocolOption: { http: 'upstream.protocol.http', https: 'upstream.protocol.https', socks5: 'upstream.protocol.socks5' },
+    host: 'upstream.host',
+    port: 'upstream.port',
+    pacUrl: 'upstream.pac-url',
+    apply: 'upstream.apply',
+    discard: 'upstream.discard',
+    close: 'upstream.close',
+    openSettings: 'upstream.open-settings',
+    error: 'upstream.error',
+    progress: 'upstream.progress',
+  },
   capture: {
     recordingToggle: 'capture.recording.toggle',
     contextMenu: {
@@ -479,6 +502,7 @@ export const AUTOMATION_IDS = {
     },
     section: {
       proxy: 'settings.section.proxy',
+      upstream: 'settings.section.upstream',
       appContainers: 'settings.section.app-containers',
       tlsPassthrough: 'settings.section.tls-passthrough',
       certificates: 'settings.section.certificates',

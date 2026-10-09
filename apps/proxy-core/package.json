@@ -19,6 +19,7 @@
     "https-proxy-agent": "7.0.6",
     "iconv-lite": "0.7.3",
     "mockttp": "4.5.0",
+    "pac-proxy-agent": "7.2.0",
     "ws": "8.21.0"
   },
   "devDependencies": {

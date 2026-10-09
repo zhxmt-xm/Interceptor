@@ -31,6 +31,7 @@ export interface FeatureActions {
   ): void;
   openRule(ruleId: string): void;
   openRules(): void;
+  openUpstreamSettings(): void;
   showRuleRequests(ruleId: string): void;
   viewTlsPassthroughPattern(host: string): void;
 }
@@ -55,7 +56,7 @@ export const FEATURE_VIEWS: Record<
         onViewTlsPassthroughPattern={actions.viewTlsPassthroughPattern}
       />
     ),
-    statusbar: <CaptureStatusbar />,
+    statusbar: <CaptureStatusbar onOpenUpstreamSettings={actions.openUpstreamSettings} />,
   }),
   rules: (_settingsSection, _onSettingsSectionChange, actions) => ({
     main: <RulesMain onShowRuleRequests={actions.showRuleRequests} />,

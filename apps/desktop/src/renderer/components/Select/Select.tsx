@@ -13,6 +13,8 @@ export interface SelectOption {
 }
 
 export interface SelectProps {
+  appearance?: 'value' | 'form';
+  disabled?: boolean;
   className?: string;
   /** Extra class for Ant's public selected-content semantic slot. */
   contentClassName?: string;
@@ -27,6 +29,8 @@ export interface SelectProps {
 
 /** Controlled dropdown selector backed by Ant Design. */
 export function Select({
+  appearance = 'value',
+  disabled = false,
   className,
   contentClassName,
   value,
@@ -46,8 +50,8 @@ export function Select({
 
   return (
     <AntSelect
-      className={cx(styles.antSelect, className)}
-      classNames={{
+      className={cx(appearance === 'value' && styles.antSelect, className)}
+      classNames={appearance === 'form' ? undefined : {
         content: cx(styles.content, contentClassName),
         suffix: styles.suffix,
         popup: {
@@ -56,13 +60,16 @@ export function Select({
           listItem: styles.popupItem,
         },
       }}
+      size={appearance === 'form' ? 'middle' : undefined}
+      style={appearance === 'form' ? { width: '100%', minWidth: 0 } : undefined}
+      disabled={disabled}
       value={value}
       options={options}
       listHeight={320}
       onChange={onValueChange}
       aria-label={ariaLabel}
       data-automation-id={automationId}
-      suffixIcon={<ChevronDown size={14} strokeWidth={2} />}
+      {...(appearance === 'value' ? { suffixIcon: <ChevronDown size={14} strokeWidth={2} /> } : {})}
       {...(renderItem || options.some((option) => option.automationId !== undefined)
         ? {
             ...(renderItem ? { labelRender: (item) => renderItem(String(item.value)) } : {}),
@@ -72,4 +79,3 @@ export function Select({
     />
   );
 }
-

@@ -339,7 +339,7 @@ final class MacosHelperService {
                 value = [
                     "processId": getpid(), "privileged": geteuid() == 0,
                     "clientAuthorizedForWrites": (try? requireWriteClient(client: client)) != nil,
-                    "capabilities": ["status", "system-proxy.read", "system-proxy.read-effective", "system-proxy.replace", "certificate.import", "certificate.remove", "request.get-completion"],
+                    "capabilities": ["status", "system-proxy.read", "system-proxy.read-effective", "system-proxy.read-discovery", "system-proxy.replace", "certificate.import", "certificate.remove", "request.get-completion"],
                 ]
             case "request.get-completion":
                 guard let originalRequestId = request.completionRequestId else { throw MacosHelperServiceError.invalidRequest }
@@ -352,6 +352,8 @@ final class MacosHelperService {
                 value = try SystemProxyHelper.readSystemProxySnapshot()
             case "system-proxy.read-effective":
                 value = try SystemProxyHelper.readEffectiveSystemProxySettings()
+            case "system-proxy.read-discovery":
+                value = try SystemProxyHelper.readWpadDiscoveryInfo()
             case "system-proxy.replace":
                 guard let replacement = request.proxyReplacement else { throw MacosHelperServiceError.invalidRequest }
                 mutationOperation = request.operation

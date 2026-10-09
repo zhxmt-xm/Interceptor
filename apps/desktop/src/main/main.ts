@@ -130,6 +130,7 @@ class DesktopApplication {
     onAppContainersChanged: () => this.broadcastAppContainersChanged(),
     onClientAppIconsChanged: (icons) => this.broadcastClientAppIcons(icons),
     onSystemProxyChanged: (status) => this.broadcastSystemProxyStatus(status),
+    onUpstreamSettingsChanged: () => this.broadcastUpstreamSettingsChanged(),
     onStartupStageChanged: (stage) => this.publishStartupStage(stage),
     onError: (operation, error) => this.reportPlatformError(operation, error),
     applicationEnvironment: app.isPackaged ? 'production' : 'development',
@@ -694,6 +695,14 @@ class DesktopApplication {
     return this.platformCapabilitiesService.getSystemProxyStatus();
   }
 
+  private async getUpstreamSettings() {
+    return this.platformCapabilitiesService.getUpstreamSettings();
+  }
+
+  private async applyUpstreamSettings(settings: unknown) {
+    return this.runMainAction('main.upstream.apply', () => this.platformCapabilitiesService.applyUpstreamSettings(settings));
+  }
+
   private async enableSystemProxy(): Promise<DesktopSystemProxyStatus> {
     return this.runMainAction('main.system-proxy.enable', () => this.platformCapabilitiesService.enableSystemProxy());
   }
@@ -952,6 +961,15 @@ class DesktopApplication {
     ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyGetStatus, (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       return this.getSystemProxyStatus();
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.upstreamGetSettings, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.getUpstreamSettings();
+    });
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.upstreamApplySettings, (event, settings: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.applyUpstreamSettings(settings);
     });
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.systemProxyEnable, async (event) => {
@@ -1953,6 +1971,12 @@ class DesktopApplication {
       if (!window.isDestroyed()) {
         window.webContents.send(DESKTOP_IPC_CHANNELS.systemProxyStatus, status);
       }
+    }
+  }
+
+  private broadcastUpstreamSettingsChanged(): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) window.webContents.send(DESKTOP_IPC_CHANNELS.upstreamSettingsChanged);
     }
   }
 

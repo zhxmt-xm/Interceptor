@@ -1,4 +1,4 @@
-import type { BodyPreview, BodyKind, BodyMode, BodyState, BootPhase, DesignState, DesignStatePatch } from './types';
+import type { BodyPreview, BodyKind, BodyMode, BodyState, BootPhase, DesignState, DesignStatePatch, UpstreamDesignConfig } from './types';
 
 export interface BodyScene {
   readonly kind: BodyKind;
@@ -32,6 +32,11 @@ export const BOOT_PHASES: Readonly<Record<Exclude<BootPhase, ''>, Readonly<Recor
   proxy: { core: 'done', listener: 'done', proxy: 'active' },
   ready: { core: 'done', listener: 'done', proxy: 'done' },
   error: { core: 'failed', listener: 'pending', proxy: 'pending' },
+};
+
+const INITIAL_UPSTREAM_CONFIG: UpstreamDesignConfig = {
+  mode: 'system', protocol: 'http', host: '127.0.0.1', port: '7890',
+  pacUrl: 'http://proxy.office.test/proxy.pac',
 };
 
 export const INITIAL_DESIGN_STATE: DesignState = {
@@ -69,6 +74,10 @@ export const INITIAL_DESIGN_STATE: DesignState = {
   tlsPassthroughTargetExpires: false,
   tlsCompatibility: '', tlsCompatibilityHosts: null, https: 'fresh', mitm: 'inactive',
   systemProxy: 'on', upstream: 'on', copy: 'hidden', transfer: '', recording: '', fileMenu: '', ruleSelect: '',
+  upstreamPopoverOpen: false,
+  upstreamConfig: INITIAL_UPSTREAM_CONFIG, upstreamDraft: INITIAL_UPSTREAM_CONFIG,
+  upstreamOperation: 'idle', upstreamApplyRequested: false, upstreamApplyError: '',
+  upstreamFixtureOutcome: 'success', upstreamHealth: 'ready',
   requestMenu: '', ruleFilter: '', ruleOptions: '', scene: 'http', bodyPreview: 'json', bodyKind: 'json',
   bodyMode: 'default', bodyState: '', grpcMessageSource: null,
   bodyRemainderSample: 'current', bodyRemainderNotice: 'none',
@@ -92,6 +101,7 @@ export function reduceDesignState(state: DesignState, patch: DesignStatePatch): 
       storageStatus: patch.storageStatus ?? 'ready',
       pop: patch.pop ?? false,
       pop2: patch.pop2 ?? '',
+      upstreamPopoverOpen: patch.upstreamPopoverOpen ?? false,
       tip: patch.tip ?? '',
       ruleSelect: patch.ruleSelect ?? '',
       requestMenu: patch.requestMenu ?? '',

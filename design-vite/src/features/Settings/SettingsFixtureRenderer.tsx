@@ -1,4 +1,4 @@
-import { ShieldCheck, ShieldX } from 'lucide-react';
+import { ShieldCheck, ShieldX, Waypoints } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import {
@@ -11,6 +11,7 @@ import { useDesignState } from '../../state/useDesignState';
 import styles from './SettingsFixtureRenderer.module.css';
 import { AgentModelSettings } from './AgentModelSettings';
 import { CaptureStorageProposal } from './CaptureStorageProposal';
+import { UpstreamProxySettings } from '../UpstreamProxy/UpstreamProxySettings';
 
 interface SettingsFixtureRendererProps {
   readonly node: FixtureNode;
@@ -30,6 +31,15 @@ function hasAttribute(node: FixtureNode, name: string): boolean {
 export function SettingsFixtureRenderer({ node }: SettingsFixtureRendererProps): ReactNode {
   const { state, updateState } = useDesignState();
   const renderSettingsElement: FixtureElementRenderer = (element, children) => {
+    if (element.attributes['data-settings-nav'] === 'proxy') {
+      return <>
+        <div className={fixtureClassNames('sni')} data-settings-nav="proxy">{children}</div>
+        <button type="button" className={styles.upstreamNavigation} data-selected={state.settings === 'upstream'}
+          data-design-upstream-navigation="" onClick={() => updateState({ settings: 'upstream' })}>
+          <Waypoints size={16} aria-hidden="true" /><span>Upstream proxy</span>
+        </button>
+      </>;
+    }
     if (
       element.attributes['data-tls-host-pattern']
       && element.attributes['data-tls-host-pattern'] === state.tlsPassthroughTargetPattern
@@ -72,6 +82,11 @@ export function SettingsFixtureRenderer({ node }: SettingsFixtureRendererProps):
       );
     }
     if (hasClass(element, 'scontent')) {
+      if (state.settings === 'upstream') {
+        return <div className={fixtureClassNames('scontent')} data-fixture-node="">
+          {state.view === 'settings' ? <UpstreamProxySettings /> : null}
+        </div>;
+      }
       if (state.settings === 'storage') {
         return <div className={fixtureClassNames('scontent')} data-fixture-node="">
           <CaptureStorageProposal />

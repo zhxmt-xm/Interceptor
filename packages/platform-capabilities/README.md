@@ -8,6 +8,8 @@ Interceptor内部平台能力package，负责系统代理、证书、AppContaine
 
 - 证书公开方法：`getCertificateInfo / generateCertificate / installCertificate / uninstallCertificate / deleteCertificate / revealCertificate / viewCertificate / openCertificateManager`；唯一内部CertificateService管理材料、TrustStore、MITM意图与Core同步。Windows DER/PEM与macOS前台helper保持各自实现。
 - 系统代理公开方法：`getSystemProxyStatus / enableSystemProxy / restoreSystemProxy`；内部SystemProxyService拥有listener检查、操作状态、journal、Core upstream同步和探活。
+- 上游公开方法：`getUpstreamSettings / applyUpstreamSettings`；同一SystemProxyService协调Core中的持久化偏好、运行路线、操作状态与变化通知。系统接管前先准备已选上游，Restore不清空独立上游；探活只报告健康状态，不自动改成直连。
+- macOS只读`system-proxy.read-discovery`返回主网络的搜索域及系统缓存的DHCP 252 URL，不修改DNS或代理、不主动请求租约；DHCP由macOS客户端获取，DNS发现使用系统解析器。真实DNS/DHCP选路和恢复范围见[Settings](../../architecture/features/settings.md#upstream-request-adapter)，不能用注入缓存或读取字段代替端到端验收。
 - AppContainer公开方法：`listAppContainers / enableAppContainer / disableAppContainer / enableAllAppContainers / disableAllAppContainers`；内部单项/批量写入共用同组互斥，保留Windows Network Isolation与UAC命令，macOS明确不支持。
 - `getSupportedCapabilities()`：按业务module名称返回支持列表，不把Trust Store、连接归属或图标拆成平级capability；helper是内部执行设施，不列为业务能力。supported不随helper是否已构建或安装改变，也不是ready、owned或authorized。
 - `prepare()`顺序完成helper组件检查、异常退出journal读取和共享CA准备；helper准备忙时不能重复调用或退出。Windows不增加授权步骤，macOS按真实`app.isPackaged`选择生产/开发入口，失败不回退到开发。

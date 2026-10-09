@@ -8,6 +8,7 @@ Core 是被 `utilityProcess.fork` 的独立进程，它的依赖不能靠 Render
 
 - **哪些依赖不内联**：Mockttp 依赖含 WASM（`brotli-wasm`）与原生插件（`tls-impersonate` 的 `.node` prebuilds），WebSocket bridge 直接依赖 `ws`。esbuild 用 `--external:mockttp --external:ws` 保留运行时 `require`。
 - **`ws` 必须 external**：由随包的Node模块在UtilityProcess中加载，避免内联依赖阻塞entry初始化。
+- **`pac-proxy-agent` 保持 external**：Core使用其公开API预检PAC；依赖含QuickJS WASM，继续按原npm模块路径随包，不让内联改变WASM资源查找位置。
 - **怎么拷**：`scripts/ship-core-deps.mjs` 用 `@vercel/nft` 追踪运行时闭包，按 `node_modules` 结构拷进 `dist/proxy-core/node_modules`；Forge extraResource 递归随包发到 `resources/proxy-core/node_modules`。
 
 `@vercel/nft` 有两处必须绕开的坑：

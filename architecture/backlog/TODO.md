@@ -58,10 +58,17 @@
 - Main被强杀或OS崩溃后，系统代理可能停在8888，直到startup journal recovery或人工恢复。独立repair入口是候选，不能宣称运行中的Main可以处理所有退出方式。
 - 外部修改触发ownership lost后，Interceptor不覆盖用户设置；原始、owned和current三份快照的差异需要可理解的恢复指导。
 - Windows只接管WinINet；自带网络栈、WinHTTP、Java、curl、容器或WSL可能不走Capture。`<local>` bypass也会让部分本机和无点主机名流量绕过代理。
-- Windows纯Auto Detect/WPAD没有可交给proxy-agent的URL时按直连处理；macOS仅有Auto Detect而无显式PAC URL时在接管前拒绝，不能混写成两平台均直连。macOS网络服务、VPN/TUN、睡眠唤醒和服务增删可能改变有效上游与ownership，普通loopback不能代表这些环境，见[Settings](../features/settings.md#macos-effective-upstream)。
+- Windows纯Auto Detect/WPAD没有可交给proxy-agent的URL时按直连处理；macOS区分原network service的Auto Detect与系统自动提供的PAC URL，没有URL时由Main发现，失败在接管前拒绝，不能混写成两平台均直连。macOS网络服务、VPN/TUN、睡眠唤醒和服务增删可能改变有效上游与ownership，普通loopback不能代表这些环境，见[Settings](../features/settings.md#macos-effective-upstream)。
 - 证书pinning、mTLS和独立trust store可能拒绝MITM；客户端TLS passthrough与忽略源站证书错误解决的是不同问题。QUIC/HTTP3/UDP不在HTTP proxy捕获范围，不能假设客户端必然回退H2。
 - 更换CA可能重建Mockttp listener并中断活动下载及长连接；仅切换解密开关不必更换listener。旧TLS tunnel不会自动变成MITM，必须重新建立连接。
 - per-host源站例外关闭的是该host的证书验证；Root CA信任则具有系统范围影响。提示和授权必须区分这两种安全后果。
+
+### 上游代理验收边界
+
+- 初始五模式功能未保存修改前真实E2E Red；后续PAC故障修复有真实Red与最终Green，但不能据此补造初始历史。
+  当前macOS选路、DHCP/DNS发现、重启和退出恢复的实际范围见[Settings](../features/settings.md#upstream-request-adapter)。
+- H1对象化不等于任意异常Host与目标不一致、PAC候选间代理认证等组合都已覆盖。
+  既有探索结果见[header边界研究](research.md)，当前发送契约以Settings为准；不为关闭已修复的raw-header/TLS问题宣称这些边界全部解决。
 
 ## 敏感数据
 

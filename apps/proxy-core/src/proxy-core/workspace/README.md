@@ -21,10 +21,14 @@
 3. `entry.ts` 加一对 3 行的 `loadXxx` / `saveXxx`
 
 当前文档表：`rule_set`、`collection_tree`、`tls_passthrough_hosts`、`tls_insecure_hosts`、
-`tls_decryption_preference`。TLS passthrough 文档未保存时使用空名单，不自动绕过任何 host；保存时把
+`tls_decryption_preference`、`upstream_proxy_settings`。TLS passthrough 文档未保存时使用空名单，不自动绕过任何 host；保存时把
 DNS 名规范化为小写 ASCII、去重并拒绝 scheme、port、path 或非法 wildcard，避免坏配置进入 Mockttp
 listener。`tls_insecure_hosts` 是源站证书的 per-host 例外，`tls_decryption_preference` 只记用户
 是否想解密 HTTPS——实际是否解密还取决于 CA 是否已被系统信任，那个判断留在 Main。
+
+`upstream_proxy_settings`只保存用户选择的system/direct/manual/pac/wpad模式及该模式的参数，
+默认system；读写均通过共享协议校验器，不从当前8888配置猜测原上游。系统代理恢复快照、发现结果、
+可达性和Renderer草稿不进入这张表；Main协调应用流程，Workspace本身不发网络请求或修改系统代理。
 
 ## 并发
 

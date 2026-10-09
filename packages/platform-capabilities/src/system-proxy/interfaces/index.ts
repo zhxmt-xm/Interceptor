@@ -37,11 +37,21 @@ export interface SystemProxyService {
   supported(): boolean;
   status(canUpdateOwnership?: () => boolean): Promise<SystemProxyStatus>;
   recoverAfterCrash(): Promise<SystemProxyRestoreResult>;
-  enable(host: string, port: number): Promise<SystemProxyStatus>;
+  enable(host: string, port: number, beforeTakeover?: (source: SystemProxyUpstreamSource) => Promise<void>): Promise<SystemProxyStatus>;
   restore(): Promise<SystemProxyRestoreResult>;
 
   /** 接管前读到的用户原有上游代理；null 表示原本就直连。 */
   detectedUpstream(): UpstreamProxyConfig | null;
+  readUpstreamSource(): Promise<SystemProxyUpstreamSource>;
+}
+
+export type SystemProxyUpstreamSource =
+  | { platform: 'darwin'; settings: Record<string, unknown> }
+  | { platform: 'win32'; settings: WinInetProxySettings };
+
+export interface WpadDiscoveryInfo {
+  searchDomains: string[];
+  dhcpPacUrl: string | null;
 }
 
 /** 崩溃安全的系统代理恢复日志记录。 */

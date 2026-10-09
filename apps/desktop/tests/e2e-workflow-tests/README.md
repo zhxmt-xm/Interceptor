@@ -319,7 +319,7 @@ diagnostics.row.<traceKey>
 
 | Workflow ID | 用户目标 | 策略 | 状态 |
 | --- | --- | --- | --- |
-| `settings.navigation` | 九个Settings section与跨workspace返回保持 | shared | passed |
+| `settings.navigation` | 十个Settings section与跨workspace返回保持 | shared | passed |
 | `settings.tools.readonly` | Agent/MCP六项Settings只读查询、脱敏、撤权、双代零重放与完整宿主恢复 | shared | passed |
 | `settings.tools.system-proxy` | Agent审批/Auto启用与恢复系统代理、首次original保持、撤权和双代零重放 | os-side-effect | passed |
 | `settings.tools.tls` | TLS名单与解密意图/有效状态、即时UI同步、撤权、重启和测试CA清理 | privileged UI | passed；当前Windows版本待实机复验 |
@@ -331,6 +331,7 @@ diagnostics.row.<traceKey>
 | `settings.app-containers.bulk-access` | 对称批量启用/停用并精确恢复AppContainer exemption | os-side-effect | passed |
 | `settings.proxy.enable-restore` | 系统代理Enable/Restore ownership | os-side-effect | planned |
 | `settings.proxy.upstream` | macOS接续ClashX上游，外部改写后退出/跨profile重启不覆盖新配置 | macOS / external proxy / os-side-effect | passed（ClashX三场景及完整系统代理恢复） |
+| `settings.upstream.macos` | System/Direct/Manual/PAC/WPAD双入口、DNS/DHCP选路、重启与完整宿主恢复 | macOS / isolated network / os-side-effect | 当前最终Green；初始整体功能前置Red历史缺证，见[规格](docs/settings-updates.md#settings-upstream-macos) |
 | `settings.system-proxy.crash-recovery` | App A异常退出后由顺序启动的App B加载首次快照并完整恢复 | os-side-effect | passed |
 | `settings.proxy-mitm.persistence` | 异常退出后恢复系统代理并跨进程恢复MITM/TLS配置 | os-side-effect | passed |
 | `settings.certificates.generate-delete` | CA Generate/Regenerate/Delete | shared | planned |

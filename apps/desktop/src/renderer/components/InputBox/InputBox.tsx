@@ -1,10 +1,13 @@
-﻿import type { ReactNode } from 'react';
+﻿import { Input } from 'antd';
+import type { ReactNode } from 'react';
 
 import type { AutomationId } from '../../../shared/automation-ids';
 import { cx } from '../share/cx';
 import styles from './InputBox.module.css';
 
 export interface InputBoxProps {
+  appearance?: 'value' | 'form';
+  inputMode?: 'text' | 'numeric' | 'url';
   children?: ReactNode;
   /** 尾部内嵌插槽（渲染在输入框右侧，如匹配开关）。 */
   trailing?: ReactNode;
@@ -28,6 +31,8 @@ export interface InputBoxProps {
  *（保持同一视觉）。children 可作为前置图标与输入框共存。
  */
 export function InputBox({
+  appearance = 'value',
+  inputMode,
   children,
   trailing,
   className,
@@ -43,6 +48,15 @@ export function InputBox({
   parity,
   automationId,
 }: InputBoxProps): React.JSX.Element {
+  if (appearance === 'form' && onValueChange) {
+    return <Input
+      size="middle" type={type} value={value ?? ''} onChange={event => onValueChange(event.target.value)}
+      placeholder={placeholder} disabled={disabled} prefix={children} suffix={trailing}
+      aria-label={ariaLabel} aria-invalid={ariaInvalid} inputMode={inputMode}
+      spellCheck={false} autoComplete="off" className={className}
+      data-parity={parity} data-automation-id={automationId} {...inputDataAttributes}
+    />;
+  }
   if (onValueChange) {
     return (
       <div className={cx(styles.input, className)} data-parity={parity}>
@@ -50,6 +64,7 @@ export function InputBox({
         <input
           className={styles.field}
           type={type}
+          inputMode={inputMode}
           value={value ?? ''}
           placeholder={placeholder}
           aria-label={ariaLabel}
@@ -76,4 +91,3 @@ export function InputBox({
     </div>
   );
 }
-

@@ -18,7 +18,8 @@ export type PlatformCapability =
 
 export type PlatformCoreCommand = Extract<CoreCommand, {
   type: 'proxy.status' | 'proxy.setUpstream' | 'tls.getDecryptionPreference'
-    | 'tls.saveDecryptionPreference' | 'tls.useCertificate' | 'tls.startDecryption' | 'tls.stopDecryption';
+    | 'tls.saveDecryptionPreference' | 'tls.useCertificate' | 'tls.startDecryption' | 'tls.stopDecryption'
+    | 'upstream.getSettings' | 'upstream.applySettings';
 }>;
 
 export type PlatformCoreRequest = <Command extends PlatformCoreCommand>(
@@ -34,6 +35,7 @@ export interface PlatformCapabilitiesOptions extends HelperServiceOptions {
   readonly onAppContainersChanged?: () => void;
   readonly onClientAppIconsChanged?: (icons: ClientAppIcon[]) => void;
   readonly onSystemProxyChanged?: (status: SystemProxyStatus) => void;
+  readonly onUpstreamSettingsChanged?: () => void;
   readonly onStartupStageChanged?: (stage: 'platform' | 'certificate') => void;
   readonly onError?: (operation: PlatformOperation, error: unknown) => void;
   readonly userDataDirectory: string;

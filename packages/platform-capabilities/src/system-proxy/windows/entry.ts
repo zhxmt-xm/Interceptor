@@ -1,6 +1,6 @@
 import type { UpstreamProxyConfig } from '@interceptor/core-protocol';
 
-import type { SystemProxyCommandResult, SystemProxyCommandRunner, SystemProxyRestoreResult, SystemProxyService, SystemProxyStatus, WinInetProxySettings, WindowsSystemProxyJournalRecord, WindowsSystemProxyJournalStore, WindowsSystemProxyServiceOptions } from '../interfaces';
+import type { SystemProxyCommandResult, SystemProxyCommandRunner, SystemProxyRestoreResult, SystemProxyService, SystemProxyStatus, SystemProxyUpstreamSource, WinInetProxySettings, WindowsSystemProxyJournalRecord, WindowsSystemProxyJournalStore, WindowsSystemProxyServiceOptions } from '../interfaces';
 import { commandRunner } from '../../internal/command-runners';
 import { SystemProxyError } from '../internal/errors';
 import { toUpstreamProxyConfig } from './system-proxy-upstream';
@@ -83,7 +83,7 @@ export class WindowsSystemProxyService implements SystemProxyService {
   }
 
   /** Save current settings, write the loopback proxy and verify exact readback. */
-  async enable(host: string, port: number): Promise<SystemProxyStatus> {
+  async enable(host: string, port: number, beforeTakeover?: (source: SystemProxyUpstreamSource) => Promise<void>): Promise<SystemProxyStatus> {
     this.assertSupported();
     const authority = WindowsSystemProxyService.loopbackAuthority(host, port);
     const current = await this.readSettings();
@@ -92,6 +92,7 @@ export class WindowsSystemProxyService implements SystemProxyService {
         this.ownershipLost = true;
         throw WindowsSystemProxyService.externallyModifiedError();
       }
+      await beforeTakeover?.(await this.readUpstreamSource());
       return WindowsSystemProxyService.toStatus(current, true, false);
     }
 
@@ -99,10 +100,12 @@ export class WindowsSystemProxyService implements SystemProxyService {
     if (existingRecord) {
       const resolution = await this.resolveJournal(existingRecord, current);
       if (resolution === 'owned') {
+        await beforeTakeover?.(await this.readUpstreamSource());
         return WindowsSystemProxyService.toStatus(current, true, false);
       }
     }
 
+    await beforeTakeover?.({ platform: 'win32', settings: current });
     const target = WindowsSystemProxyService.ownedProxySettings(current, authority);
     await this.journal?.save(current, target);
     this.rememberOwnership(current, target, authority);
@@ -114,6 +117,13 @@ export class WindowsSystemProxyService implements SystemProxyService {
     }
     this.ownedSettings = written;
     return WindowsSystemProxyService.toStatus(written, true, false);
+  }
+
+  /** Return the original WinINet input without treating Interceptor's owned address as an upstream. */
+  async readUpstreamSource(): Promise<SystemProxyUpstreamSource> {
+    this.assertSupported();
+    return { platform: 'win32', settings: this.originalSettings
+      ? structuredClone(this.originalSettings) : await this.readSettings() };
   }
 
   /** Restore original settings only while current still exactly equals owned. */

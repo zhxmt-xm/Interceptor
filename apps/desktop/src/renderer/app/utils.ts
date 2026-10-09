@@ -18,6 +18,7 @@ export const PLATFORM_OPERATION_LABEL_KEYS: Record<PlatformOperation, readonly M
   'system-proxy.restore': ['settings.systemProxy', 'settings.restore'],
   'system-proxy.recover': ['settings.systemProxy', 'settings.recovery'],
   'system-proxy.update-upstream': ['settings.systemProxy', 'settings.refresh'],
+  'system-proxy.configure-upstream': ['capture.upstream'],
   'system-proxy.status': ['settings.systemProxy', 'settings.status'],
   'app-container.enable': ['settings.appContainers.title', 'settings.enable'],
   'app-container.disable': ['settings.appContainers.title', 'settings.remove'],

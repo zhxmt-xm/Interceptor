@@ -616,7 +616,123 @@ const BREAKPOINT_QUEUE_VIEWS = ['light', 'dark'].flatMap((theme) => {
   ];
 });
 
+const UPSTREAM_CONFIG = {
+  mode: 'system', protocol: 'http', host: '127.0.0.1', port: '7890',
+  pacUrl: 'http://proxy.office.test/proxy.pac',
+};
+
+const upstreamViews = ['light', 'dark', 'warm', 'ember'].flatMap(theme =>
+  ['system', 'direct', 'manual', 'pac', 'wpad'].flatMap(mode =>
+    ['settings', 'quick'].flatMap(surface => ['editing', 'applied'].map(phase => {
+      const current = phase === 'applied' && mode === 'system'
+        ? { ...UPSTREAM_CONFIG, mode: 'manual', port: '8080' } : UPSTREAM_CONFIG;
+      const actions = surface === 'settings'
+        ? [
+          { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+          { type: 'clickAutomation', automationId: 'settings.section.upstream' },
+        ] : [
+          { type: 'clickAutomation', automationId: 'capture.request-row.http-1' },
+          { type: 'clickAutomation', automationId: 'upstream.trigger' },
+        ];
+      actions.push({ type: 'clickAutomation', automationId: `upstream.mode.${mode}` });
+      if (mode === 'manual') actions.push(
+        { type: 'fillAutomation', automationId: 'upstream.host', value: '127.0.0.1' },
+        { type: 'fillAutomation', automationId: 'upstream.port', value: '7890' },
+      );
+      if (mode === 'pac') actions.push({ type: 'fillAutomation', automationId: 'upstream.pac-url', value: UPSTREAM_CONFIG.pacUrl });
+      if (phase === 'applied') actions.push({ type: 'clickAutomation', automationId: 'upstream.apply' });
+      actions.push({ type: 'clickSelector', selector: surface === 'settings' ? '[data-parity="upstream-settings"] h2' : '[data-parity="upstream-popover"] h3' });
+      const config = phase === 'applied' ? { ...UPSTREAM_CONFIG, mode } : current;
+      return {
+        id: `upstream-${surface}-${mode}-${phase}-${theme}`, theme,
+        rendererNav: surface === 'settings' ? 'Settings' : undefined,
+        rendererActions: actions, mitmActive: false,
+        upstreamSettings: current.mode === 'manual'
+          ? { mode: 'manual', protocol: 'http', host: current.host, port: Number(current.port) }
+          : { mode: 'system' },
+        designState: {
+          view: surface === 'settings' ? 'settings' : 'capture', theme,
+          sidebar: surface === 'settings' ? 'expanded' : 'collapsed',
+          settings: 'upstream', detail: 'open', tab: 'headers', mitm: 'inactive', breakpointState: '',
+          upstreamPopoverOpen: surface === 'quick',
+          upstreamConfig: config, upstreamDraft: { ...UPSTREAM_CONFIG, mode },
+          upstreamOperation: 'idle', upstreamApplyRequested: false, upstreamApplyError: '', upstreamHealth: 'ready',
+        },
+        designShot: `${theme}/upstream/${surface}-${mode}-${phase}.png`,
+        targets: [
+          { name: 'Upstream editor', parity: 'upstream-editor', styleKeys: ['fontSize', 'color'] },
+          { name: 'Current route row', parity: 'upstream-current-route', styleKeys: ['display', 'alignItems', 'padding', 'backgroundColor', 'borderRadius'] },
+          { name: 'Current route label', parity: 'upstream-current-label', styleKeys: ['display', 'alignItems', 'fontSize', 'color'] },
+          { name: 'Current route value', parity: 'upstream-current-value', styleKeys: ['display', 'alignItems', 'gap'] },
+          { name: 'Mode choices', parity: 'upstream-modes' },
+          { name: 'Selected option', designSelector: `label:has([data-design-upstream-mode="${mode}"])`, appSelector: `label:has([data-automation-id="upstream.mode.${mode}"])`, styleKeys: ['backgroundColor', 'borderColor', 'borderRadius', 'alignItems', 'padding'] },
+          { name: 'Apply button', designSelector: '[data-parity="upstream-editor"] button:text-is("Apply")', appSelector: '[data-automation-id="upstream.apply"]' },
+          ...(surface === 'settings'
+            ? [{ name: 'Settings panel', parity: 'upstream-settings' }]
+            : [
+              { name: 'Upstream popup', parity: 'upstream-popover' },
+              { name: 'Status trigger', parity: 'capture-status-upstream' },
+              { name: 'Open Settings', designSelector: '[data-design-upstream-open-settings]', appSelector: '[data-automation-id="upstream.open-settings"]' },
+            ]),
+          ...(mode === 'manual' ? [
+            { name: 'Host input', designSelector: `#upstream-${surface}-host`, appSelector: '[data-automation-id="upstream.host"]' },
+            { name: 'Port input', designSelector: `#upstream-${surface}-port`, appSelector: '[data-automation-id="upstream.port"]' },
+          ] : []),
+          ...(mode === 'pac' ? [{ name: 'PAC input', designSelector: `#upstream-${surface}-pac`, appSelector: '[data-automation-id="upstream.pac-url"]' }] : []),
+        ],
+      };
+    }))),
+);
+
+const upstreamStateViews = ['light', 'dark', 'warm', 'ember'].flatMap(theme =>
+  ['settings', 'quick'].flatMap(surface => {
+    const wpad = upstreamViews.find(view => view.id === `upstream-${surface}-wpad-editing-${theme}`);
+    const manual = upstreamViews.find(view => view.id === `upstream-${surface}-manual-editing-${theme}`);
+    return [
+      ...['discovering', 'failed'].map(state => ({
+        ...wpad,
+        id: `upstream-${surface}-wpad-${state}-${theme}`,
+        upstreamApplyDelayMs: state === 'discovering' ? 60_000 : 0,
+        upstreamApplyFails: state === 'failed',
+        rendererActions: [
+          ...wpad.rendererActions.slice(0, -1),
+          { type: 'clickAutomation', automationId: 'upstream.apply' },
+          ...wpad.rendererActions.slice(-1),
+        ],
+        designState: {
+          ...wpad.designState,
+          upstreamOperation: state === 'discovering' ? 'discovering' : 'idle',
+          upstreamApplyError: state === 'failed' ? 'discovery' : '',
+        },
+        designShot: `${theme}/upstream/${surface}-wpad-${state}.png`,
+        targets: [
+          ...wpad.targets.map(target => target.name === 'Apply button'
+            ? { ...target, designSelector: `[data-parity="upstream-editor"] button:text-is("${state === 'discovering' ? 'Discovering…' : 'Retry'}")` }
+            : target),
+          ...(state === 'failed' ? [{
+            name: 'Discovery failure', designSelector: '[data-design-upstream-error]',
+            appSelector: '[data-automation-id="upstream.error"]',
+          }] : []),
+        ],
+      })),
+      {
+        ...manual,
+        id: `upstream-${surface}-long-unreachable-${theme}`,
+        upstreamDown: true,
+        upstreamSettings: { mode: 'manual', protocol: 'http', host: 'proxy.gateway.department.example.test', port: 3128 },
+        designState: {
+          ...manual.designState, upstreamHealth: 'unreachable',
+          upstreamConfig: { ...UPSTREAM_CONFIG, mode: 'manual', host: 'proxy.gateway.department.example.test', port: '3128' },
+        },
+        designShot: `${theme}/upstream/${surface}-long-unreachable.png`,
+      },
+    ];
+  }),
+);
+
 export const views = [
+  ...upstreamViews,
+  ...upstreamStateViews,
   ...['warm', 'ember'].flatMap((theme) =>
     ['disabled', 'running', 'endpoint-conflict'].map((mcpState) => {
       const designState = mcpState === 'endpoint-conflict' ? 'conflict' : mcpState;
@@ -2369,7 +2485,7 @@ export const views = [
   ...['light', 'dark'].map((theme) => ({
     id: `statusbar-upstream-down${theme === 'dark' ? '-dark' : ''}`,
     theme,
-    designState: { view: 'capture', theme, sidebar: 'collapsed', upstream: 'down' },
+    designState: { view: 'capture', theme, sidebar: 'collapsed', upstreamHealth: 'unreachable' },
     designShot: `${theme}/capture/statusbar-upstream-down.png`,
     upstreamDown: true,
     mitmActive: false,

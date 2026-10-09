@@ -8,6 +8,7 @@ import { CoreRuntime } from '../../core/core-runtime';
 import { MainDiagnostics } from '../../diagnostics/main-diagnostics';
 import { MacosHelperServiceError } from '@interceptor/platform-capabilities/helper/macos/internal/errors';
 import { HelperService } from '@interceptor/platform-capabilities/helper/entry';
+import { UpstreamProbe } from '@interceptor/platform-capabilities/system-proxy/internal/upstream-probe';
 
 const status: SystemProxyStatus = {
   supported: true, enabled: true, owned: true, ownershipLost: false,
@@ -22,15 +23,22 @@ const options: PlatformCapabilitiesOptions = {
   secureStore: { isEncryptionAvailable: () => true, encryptString: vi.fn(), decryptString: vi.fn() },
 };
 const helperService = new HelperService(options);
+const completeNativeEnable: MacosSystemProxyService['enable'] = async (...args) => {
+  await args[2]?.({ platform: 'darwin', settings: {} });
+  return status;
+};
 
 describe('SystemProxyService operation ownership', () => {
   beforeEach(() => {
+    vi.spyOn(UpstreamProbe.prototype, 'start').mockImplementation(() => undefined);
     vi.spyOn(coreRuntime, 'getCoreProcessStatus').mockReturnValue({
       ...coreRuntime.getCoreProcessStatus(), state: 'running', pid: 123,
     });
-    vi.spyOn(coreRuntime, 'request').mockImplementation(async (command) => ({
-      type: command.type, payload: { listening: true, host: '127.0.0.1', port: 8888 },
-    }) as never);
+    vi.spyOn(coreRuntime, 'request').mockImplementation(async (command) => (
+      command.type === 'upstream.getSettings'
+        ? { type: 'upstream.settings', payload: { settings: { mode: 'system' } } }
+        : { type: command.type, payload: { listening: true, host: '127.0.0.1', port: 8888 } }
+    ) as never);
     vi.spyOn(MacosSystemProxyService.prototype, 'status').mockResolvedValue(status);
   });
 
@@ -39,7 +47,7 @@ describe('SystemProxyService operation ownership', () => {
   it('rejects a conflicting user Restore immediately and never executes it later', async () => {
     let finishEnable!: () => void;
     const pendingEnable = new Promise<void>((resolve) => { finishEnable = resolve; });
-    vi.spyOn(MacosSystemProxyService.prototype, 'enable').mockImplementation(async () => { await pendingEnable; return status; });
+    vi.spyOn(MacosSystemProxyService.prototype, 'enable').mockImplementation(async (...args) => { await pendingEnable; return completeNativeEnable(...args); });
     const restore = vi.spyOn(MacosSystemProxyService.prototype, 'restore').mockResolvedValue({ restored: true, status });
     const systemProxyService = new SystemProxyService(options, helperService);
     const running = systemProxyService.enable();
@@ -65,7 +73,7 @@ describe('SystemProxyService operation ownership', () => {
       if (command.type === 'proxy.setUpstream') await synchronization;
       return { type: command.type, payload: { listening: true, host: '127.0.0.1', port: 8888 } } as never;
     });
-    vi.spyOn(MacosSystemProxyService.prototype, 'enable').mockResolvedValue(status);
+    vi.spyOn(MacosSystemProxyService.prototype, 'enable').mockImplementation(completeNativeEnable);
     const systemProxyService = new SystemProxyService({ ...options, onSystemProxyChanged }, helperService);
     const running = systemProxyService.enable();
     try {
@@ -86,7 +94,7 @@ describe('SystemProxyService operation ownership', () => {
     vi.spyOn(coreRuntime, 'request').mockResolvedValue({
       type: 'proxy.status', payload: { listening: false, host: null, port: null },
     } as never);
-    const enable = vi.spyOn(MacosSystemProxyService.prototype, 'enable').mockResolvedValue(status);
+    const enable = vi.spyOn(MacosSystemProxyService.prototype, 'enable').mockImplementation(completeNativeEnable);
     const systemProxyService = new SystemProxyService(options, helperService);
 
     await expect(systemProxyService.enable()).rejects.toThrow('Start capture before enabling the system proxy.');
@@ -101,7 +109,7 @@ describe('SystemProxyService operation ownership', () => {
       if (command.type === 'proxy.status') await read;
       return { type: command.type, payload: { listening: true, host: '127.0.0.1', port: 8888 } } as never;
     });
-    const enable = vi.spyOn(MacosSystemProxyService.prototype, 'enable').mockResolvedValue(status);
+    const enable = vi.spyOn(MacosSystemProxyService.prototype, 'enable').mockImplementation(completeNativeEnable);
     const systemProxyService = new SystemProxyService(options, helperService);
     const running = systemProxyService.enable();
     try {
@@ -114,18 +122,18 @@ describe('SystemProxyService operation ownership', () => {
       finishRead();
       await running;
     }
-    expect(enable).toHaveBeenCalledExactlyOnceWith('127.0.0.1', 8888);
+    expect(enable).toHaveBeenCalledExactlyOnceWith('127.0.0.1', 8888, expect.any(Function));
   });
 
   it('completes one necessary failure restore after an in-flight enable settles', async () => {
     let finishEnable!: () => void;
     const pendingEnable = new Promise<void>((resolve) => { finishEnable = resolve; });
     const actions: string[] = [];
-    vi.spyOn(MacosSystemProxyService.prototype, 'enable').mockImplementation(async () => {
+    vi.spyOn(MacosSystemProxyService.prototype, 'enable').mockImplementation(async (...args) => {
       actions.push('enable-start');
       await pendingEnable;
       actions.push('enable-end');
-      return status;
+      return completeNativeEnable(...args);
     });
     vi.spyOn(MacosSystemProxyService.prototype, 'restore').mockImplementation(async () => {
       actions.push('restore');
@@ -147,13 +155,21 @@ describe('SystemProxyService operation ownership', () => {
   });
 
   it('restores the journal-derived upstream when a new Core becomes ready', async () => {
-    vi.spyOn(MacosSystemProxyService.prototype, 'detectedUpstream').mockReturnValue(null);
+    vi.spyOn(MacosSystemProxyService.prototype, 'readUpstreamSource').mockResolvedValue({
+      platform: 'darwin', settings: {
+        HTTPEnable: 1, HTTPProxy: '127.0.0.1', HTTPPort: 7890,
+        HTTPSEnable: 1, HTTPSProxy: '127.0.0.1', HTTPSPort: 7890,
+      },
+    });
     const systemProxyService = new SystemProxyService(options, helperService);
 
     await systemProxyService.synchronizeCore();
 
-    expect(coreRuntime.request).toHaveBeenCalledExactlyOnceWith({
-      type: 'proxy.setUpstream', payload: { upstream: null },
+    expect(coreRuntime.request).toHaveBeenCalledWith({
+      type: 'proxy.setUpstream', payload: { upstream: {
+        httpProxyUrl: 'http://127.0.0.1:7890', httpsProxyUrl: 'http://127.0.0.1:7890',
+        exceptions: [], excludeSimpleHostnames: false,
+      } },
     });
     expect(systemProxyService.getActiveOperation()).toBeNull();
   });
@@ -169,7 +185,7 @@ describe('SystemProxyService operation ownership', () => {
       await expect(systemProxyService.enable()).rejects.toBe(failure);
 
       expect(recover).toHaveBeenCalledOnce();
-      expect(coreRuntime.request).toHaveBeenCalledWith({ type: 'proxy.setUpstream', payload: { upstream: null } });
+      expect(vi.mocked(coreRuntime.request).mock.calls.some(([command]) => command.type === 'proxy.setUpstream')).toBe(false);
       expect(onSystemProxyChanged).toHaveBeenCalledExactlyOnceWith({ ...status, upstreamProxy: null, upstreamReachable: false });
       expect(systemProxyService.getActiveOperation()).toBeNull();
     },

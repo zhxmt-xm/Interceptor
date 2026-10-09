@@ -1080,6 +1080,9 @@ export function installFakeInterceptor({
   proxyReady = true,
   proxyEnableFails = false,
   upstreamDown = false,
+  upstreamSettings = { mode: 'system' },
+  upstreamApplyFails = false,
+  upstreamApplyDelayMs = 0,
   tlsCompatibilityEvents = [],
   tlsPassthroughHosts = null,
   tlsTunnelHost = null,
@@ -3005,6 +3008,21 @@ export function installFakeInterceptor({
     upstreamProxy: '127.0.0.1:7890',
     upstreamReachable: !upstreamDown,
   };
+  const upstreamListeners = new Set();
+  const upstreamRoute = (settings) => {
+    if (settings.mode === 'direct') return { kind: 'direct' };
+    if (settings.mode === 'manual') return {
+      kind: 'proxy',
+      authority: `${settings.host.includes(':') ? `[${settings.host}]` : settings.host}:${settings.port}`,
+    };
+    if (settings.mode === 'pac') return { kind: 'pac', url: settings.url };
+    if (settings.mode === 'wpad') return { kind: 'pac', url: 'http://wpad.office.test/wpad.dat' };
+    return { kind: 'proxy', authority: '127.0.0.1:7890' };
+  };
+  let upstreamSnapshot = {
+    settings: upstreamSettings, operation: 'idle', route: upstreamRoute(upstreamSettings),
+    health: upstreamDown ? 'unreachable' : 'reachable', error: null,
+  };
   let certificate = freshProfile
     ? {
         ...fixture.certificate,
@@ -3464,6 +3482,27 @@ export function installFakeInterceptor({
     minimizeWindow: async () => undefined,
     toggleMaximizeWindow: async () => true,
     getSystemProxyStatus: async () => systemProxyStatus,
+    getUpstreamSettings: async () => structuredClone(upstreamSnapshot),
+    onUpstreamSettingsChanged: (listener) => {
+      upstreamListeners.add(listener);
+      return () => upstreamListeners.delete(listener);
+    },
+    applyUpstreamSettings: async (settings) => {
+      upstreamSnapshot = { ...upstreamSnapshot, operation: settings.mode === 'wpad' ? 'discovering' : 'applying', error: null };
+      for (const listener of upstreamListeners) listener();
+      if (upstreamApplyDelayMs) await new Promise(resolve => setTimeout(resolve, upstreamApplyDelayMs));
+      if (upstreamApplyFails) {
+        upstreamSnapshot = { ...upstreamSnapshot, operation: 'idle', error: {
+          kind: settings.mode === 'wpad' ? 'discovery' : 'connection',
+          message: settings.mode === 'wpad' ? 'No WPAD configuration found.' : 'Check the address and try again.',
+        } };
+        for (const listener of upstreamListeners) listener();
+        throw new Error(upstreamSnapshot.error.message);
+      }
+      upstreamSnapshot = { settings: structuredClone(settings), operation: 'idle', route: upstreamRoute(settings), health: 'reachable', error: null };
+      for (const listener of upstreamListeners) listener();
+      return structuredClone(upstreamSnapshot);
+    },
     enableSystemProxy: async () => {
       if (proxyEnableFails) {
         return systemProxyStatus;

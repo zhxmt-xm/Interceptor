@@ -40,6 +40,20 @@ describe('capture proxy readiness', () => {
     expect(useCaptureStore.getState().proxyReadinessIssue).toBeNull();
   });
 
+  it.each(['retry', 'start'])('reapplies the route for an already owned system proxy on %s', async action => {
+    useCaptureStore.setState({ capturing: false });
+    const enableSystemProxy = vi.fn().mockResolvedValue(proxyStatus(true));
+    installApi({
+      getSystemProxyStatus: vi.fn().mockResolvedValue(proxyStatus(true)),
+      startCapture: vi.fn().mockResolvedValue(recordingStatus(true)),
+      enableSystemProxy,
+    });
+    if (action === 'retry') await expect(retryCaptureProxyReadiness()).resolves.toBe(true);
+    else await toggleCapture();
+    expect(enableSystemProxy).toHaveBeenCalledOnce();
+    expect(useCaptureStore.getState().capturing).toBe(true);
+  });
+
   it('keeps Core recording events paused until system routing is confirmed', async () => {
     useCaptureStore.setState({ capturing: false });
     let resolveProxy!: (status: DesktopSystemProxyStatus) => void;

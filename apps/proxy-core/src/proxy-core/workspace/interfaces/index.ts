@@ -7,7 +7,8 @@ export type WorkspaceDocument =
   | 'collection_tree'
   | 'tls_passthrough_hosts'
   | 'tls_insecure_hosts'
-  | 'tls_decryption_preference';
+  | 'tls_decryption_preference'
+  | 'upstream_proxy_settings';
 
 /** 单行文档表读出的 revision 与 JSON 载荷。 */
 export interface WorkspaceDocumentRow {

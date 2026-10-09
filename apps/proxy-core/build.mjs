@@ -29,7 +29,7 @@ class ProxyCoreBuilder {
       outdir: this.outputRoot,
       outbase: this.sourceRoot,
       outExtension: { '.js': '.cjs' },
-      external: ['mockttp', 'ws'],
+      external: ['mockttp', 'ws', 'pac-proxy-agent'],
       sourcemap: process.env.INTERCEPTOR_SOURCEMAPS === '1',
       metafile: true,
     });

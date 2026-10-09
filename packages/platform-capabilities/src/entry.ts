@@ -22,7 +22,7 @@ export type { PlatformCapabilitiesOptions, PlatformCapability, PlatformCoreReque
 export type { AppContainerAccessInfo, AppContainerAccessSnapshot } from './app-container/interfaces';
 export type { CertificateInfo } from './certificates/interfaces';
 export type { ClientAppIcon } from './client-app/interfaces';
-export type { SystemProxyStatus, SystemProxyRestoreResult } from './system-proxy/interfaces/public';
+export type { SystemProxyStatus, SystemProxyRestoreResult, UpstreamSettingsSnapshot, UpstreamRoute } from './system-proxy/interfaces/public';
 
 /** Creates the platform-owned capabilities without starting processes or changing the host. */
 export class PlatformCapabilitiesService {
@@ -88,6 +88,15 @@ export class PlatformCapabilitiesService {
 
   async restoreSystemProxy(): Promise<SystemProxyRestoreResult> {
     return this.systemProxyService.restore();
+  }
+
+  async getUpstreamSettings() {
+    return this.systemProxyService.getUpstreamSettings();
+  }
+
+  async applyUpstreamSettings(settings: unknown) {
+    this.assertCanQuit();
+    return this.systemProxyService.applyUpstreamSettings(settings);
   }
 
   async stop(): Promise<void> {

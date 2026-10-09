@@ -27,10 +27,10 @@ function authenticatedProxyUrl(port: number, password = UPSTREAM_PASSWORD): stri
   return url.toString();
 }
 
-function startOrigin(handler: http.RequestListener): Promise<StoppableServer> {
+function startOrigin(handler: http.RequestListener, listenHost = '127.0.0.1'): Promise<StoppableServer> {
   const server = http.createServer(handler);
   return new Promise((resolve) => {
-    server.listen(0, '127.0.0.1', () => {
+    server.listen(0, listenHost, () => {
       resolve({
         port: (server.address() as AddressInfo).port,
         close: () => new Promise<void>((done) => server.close(() => done())),
@@ -65,7 +65,7 @@ function startUpstreamProxy(expectedAuthorization?: string): Promise<StoppableSe
     const target = new URL(request.url ?? '');
     const forwarded = http.request(
       {
-        host: target.hostname,
+        host: target.hostname.replace(/^\[|\]$/g, ''),
         port: target.port,
         method: request.method,
         path: `${target.pathname}${target.search}`,
@@ -87,8 +87,8 @@ function startUpstreamProxy(expectedAuthorization?: string): Promise<StoppableSe
       clientSocket.end('HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm="upstream-fixture"\r\nContent-Length: 0\r\nConnection: close\r\n\r\n');
       return;
     }
-    const [host, port] = (request.url ?? '').split(':');
-    const originSocket = net.connect(Number(port), host, () => {
+    const target = new URL(`http://${request.url}`);
+    const originSocket = net.connect(Number(target.port), target.hostname.replace(/^\[|\]$/g, ''), () => {
       clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
       if (head.length > 0) {
         originSocket.write(head);
@@ -120,7 +120,7 @@ function startUpstreamProxy(expectedAuthorization?: string): Promise<StoppableSe
   });
 }
 
-function proxiedGet(proxyPort: number, url: string): Promise<string> {
+function proxiedGet(proxyPort: number, url: string, signal?: AbortSignal, agent?: http.Agent): Promise<string> {
   return new Promise((resolve, reject) => {
     const target = new URL(url);
     const request = http.request(
@@ -130,6 +130,8 @@ function proxiedGet(proxyPort: number, url: string): Promise<string> {
         method: 'GET',
         path: url,
         headers: { host: target.host },
+        signal,
+        agent,
       },
       (response) => {
         let body = '';
@@ -193,13 +195,105 @@ describe('ProxyService upstream proxy chaining', () => {
     }
   });
 
-  // Mockttp 经上游时统一用 CONNECT 隧道（即使目标是明文 HTTP），因此上游只看得到 host:port。
+  // 固定HTTP上游使用CONNECT，即使目标是明文HTTP；PAC另有普通HTTP转发分支。
   it('forwards through the upstream proxy once configured', async () => {
     proxyService.setUpstreamProxy({ proxyUrl: `http://127.0.0.1:${upstream.port}` });
     const body = await proxiedGet(proxyPort, `http://127.0.0.1:${origin.port}/chained`);
     expect(body).toBe('origin-body');
     expect(upstream.seen).toHaveLength(1);
     expect(upstream.seen[0]).toBe(`CONNECT 127.0.0.1:${origin.port}`);
+  });
+
+  it('forwards plain HTTP through a PAC-selected proxy with the full target and Host header', async () => {
+    const pac = await startOrigin((_request, response) => {
+      response.writeHead(200, { 'content-type': 'application/x-ns-proxy-autoconfig' });
+      response.end(`function FindProxyForURL(url, host) { return "PROXY 127.0.0.1:${upstream.port}"; }`);
+    });
+    try {
+      proxyService.setUpstreamProxy({ proxyUrl: `pac+http://127.0.0.1:${pac.port}/proxy.pac` });
+      const body = await proxiedGet(proxyPort, `http://127.0.0.1:${origin.port}/plain-pac`);
+      expect(body).toBe('origin-body');
+      expect(upstream.seen).toEqual([`GET http://127.0.0.1:${origin.port}/plain-pac`]);
+      expect(originHeaders).toHaveLength(1);
+      expect(originHeaders[0]?.host).toBe(`127.0.0.1:${origin.port}`);
+    } finally {
+      await pac.close();
+    }
+  });
+
+  it('supplies the actual HTTP target port and query when evaluating PAC', async () => {
+    const target = `http://127.0.0.1:${origin.port}/pac-port?key=one&key=two`;
+    const pac = await startOrigin((_request, response) => {
+      response.setHeader('content-type', 'application/x-ns-proxy-autoconfig');
+      response.end(`function FindProxyForURL(url, host) { return url === ${JSON.stringify(target)} ? "PROXY 127.0.0.1:${upstream.port}" : "DIRECT"; }`);
+    });
+    try {
+      proxyService.setUpstreamProxy({ proxyUrl: `pac+http://127.0.0.1:${pac.port}/proxy.pac` });
+      expect(await proxiedGet(proxyPort, target)).toBe('origin-body');
+      expect(upstream.seen).toEqual([`GET ${target}`]);
+      expect(originHeaders[0]?.host).toBe(`127.0.0.1:${origin.port}`);
+    } finally {
+      await pac.close();
+    }
+  });
+
+  it('does not reuse a PAC target port across different origins on one downstream connection', async () => {
+    const secondOrigin = await startOrigin((_request, response) => response.end('second-origin-body'));
+    const firstTarget = `http://127.0.0.1:${origin.port}/first-origin`;
+    const secondTarget = `http://127.0.0.1:${secondOrigin.port}/second-origin`;
+    const pac = await startOrigin((_request, response) => {
+      response.setHeader('content-type', 'application/x-ns-proxy-autoconfig');
+      response.end(`function FindProxyForURL(url, host) { return url === ${JSON.stringify(firstTarget)} || url === ${JSON.stringify(secondTarget)} ? "PROXY 127.0.0.1:${upstream.port}" : "DIRECT"; }`);
+    });
+    const downstreamAgent = new http.Agent({ keepAlive: true, maxSockets: 1 });
+    try {
+      proxyService.setUpstreamProxy({ proxyUrl: `pac+http://127.0.0.1:${pac.port}/proxy.pac` });
+      expect(await proxiedGet(proxyPort, firstTarget, undefined, downstreamAgent)).toBe('origin-body');
+      expect(await proxiedGet(proxyPort, secondTarget, undefined, downstreamAgent)).toBe('second-origin-body');
+      expect(upstream.seen).toEqual([`GET ${firstTarget}`, `GET ${secondTarget}`]);
+    } finally {
+      downstreamAgent.destroy();
+      await pac.close();
+      await secondOrigin.close();
+    }
+  });
+
+  it('evaluates the PAC route again for the next request on a kept-alive downstream connection', async () => {
+    const directTarget = `http://127.0.0.1:${origin.port}/pac-direct-first`;
+    const proxyTarget = `http://127.0.0.1:${origin.port}/pac-proxy-next`;
+    const pac = await startOrigin((_request, response) => {
+      response.setHeader('content-type', 'application/x-ns-proxy-autoconfig');
+      response.end(`function FindProxyForURL(url, host) { return url.indexOf("/pac-proxy-next") >= 0 ? "PROXY 127.0.0.1:${upstream.port}" : "DIRECT"; }`);
+    });
+    const downstreamAgent = new http.Agent({ keepAlive: true, maxSockets: 1 });
+    try {
+      proxyService.setUpstreamProxy({ proxyUrl: `pac+http://127.0.0.1:${pac.port}/proxy.pac` });
+      expect(await proxiedGet(proxyPort, directTarget, undefined, downstreamAgent)).toBe('origin-body');
+      expect(upstream.seen).toEqual([]);
+      expect(await proxiedGet(proxyPort, proxyTarget, undefined, downstreamAgent)).toBe('origin-body');
+      expect(upstream.seen).toEqual([`GET ${proxyTarget}`]);
+      expect(originHeaders).toHaveLength(2);
+    } finally {
+      downstreamAgent.destroy();
+      await pac.close();
+    }
+  });
+
+  it('keeps IPv6 authority and port in the PAC decision and HTTP proxy request', async () => {
+    const ipv6Origin = await startOrigin((_request, response) => response.end('ipv6-origin-body'), '::1');
+    const target = `http://[::1]:${ipv6Origin.port}/ipv6-pac?value=one&value=two`;
+    const pac = await startOrigin((_request, response) => {
+      response.setHeader('content-type', 'application/x-ns-proxy-autoconfig');
+      response.end(`function FindProxyForURL(url, host) { return url === ${JSON.stringify(target)} ? "PROXY 127.0.0.1:${upstream.port}" : "DIRECT"; }`);
+    });
+    try {
+      proxyService.setUpstreamProxy({ proxyUrl: `pac+http://127.0.0.1:${pac.port}/proxy.pac` });
+      expect(await proxiedGet(proxyPort, target)).toBe('ipv6-origin-body');
+      expect(upstream.seen).toEqual([`GET ${target}`]);
+    } finally {
+      await pac.close();
+      await ipv6Origin.close();
+    }
   });
 
   it.runIf(process.platform === 'darwin')('selects the HTTP upstream independently of HTTPS', async () => {
@@ -241,6 +335,46 @@ describe('ProxyService upstream proxy chaining', () => {
     await proxiedGet(proxyPort, `http://127.0.0.1:${origin.port}/second`);
 
     expect(upstream.seen).toEqual([`CONNECT 127.0.0.1:${origin.port}`]);
+  });
+
+  it.each(['proxy', 'direct'] as const)('keeps an in-flight response intact while new requests switch to %s', async nextRoute => {
+    await origin.close();
+    const paths: string[] = [];
+    let releaseResponse: (() => void) | undefined;
+    let received!: () => void;
+    const waitingResponse = new Promise<void>(resolve => { received = resolve; });
+    origin = await startOrigin((request, response) => {
+      paths.push(request.url ?? '');
+      if (request.url === '/held') {
+        response.writeHead(200, { 'content-type': 'text/plain' });
+        response.write('first-');
+        releaseResponse = () => response.end('complete');
+        received();
+      } else {
+        response.end('next-route');
+      }
+    });
+    const nextUpstream = await startUpstreamProxy();
+    const controller = new AbortController();
+    proxyService.setUpstreamProxy({ proxyUrl: `http://127.0.0.1:${upstream.port}` });
+    const first = proxiedGet(proxyPort, `http://127.0.0.1:${origin.port}/held`, controller.signal)
+      .then(value => ({ status: 'fulfilled' as const, value }), reason => ({ status: 'rejected' as const, reason }));
+    try {
+      await waitingResponse;
+      proxyService.setUpstreamProxy(nextRoute === 'proxy' ? { proxyUrl: `http://127.0.0.1:${nextUpstream.port}` } : null);
+      expect(await proxiedGet(proxyPort, `http://127.0.0.1:${origin.port}/next`, controller.signal)).toBe('next-route');
+      releaseResponse?.();
+      expect(await first).toEqual({ status: 'fulfilled', value: 'first-complete' });
+      expect(paths).toEqual(['/held', '/next']);
+      expect(upstream.seen).toEqual([`CONNECT 127.0.0.1:${origin.port}`]);
+      expect(nextUpstream.seen).toHaveLength(nextRoute === 'proxy' ? 1 : 0);
+      expect(proxyService.status().port).toBe(proxyPort);
+    } finally {
+      releaseResponse?.();
+      controller.abort();
+      await first;
+      await nextUpstream.close();
+    }
   });
 
   it('bypasses the upstream for hosts listed in noProxy', async () => {
@@ -301,7 +435,7 @@ describe('ProxyService upstream proxy chaining', () => {
 });
 
 /** HTTPS 源站；证书自签，客户端与 Interceptor 均按不安全例外处理。 */
-async function startTlsOrigin(): Promise<StoppableServer & { headers: http.IncomingHttpHeaders[] }> {
+async function startTlsOrigin(listenHost = '127.0.0.1'): Promise<StoppableServer & { headers: http.IncomingHttpHeaders[] }> {
   const certificate = await generateCACertificate();
   const headers: http.IncomingHttpHeaders[] = [];
   const server = https.createServer(
@@ -315,7 +449,7 @@ async function startTlsOrigin(): Promise<StoppableServer & { headers: http.Incom
   const sockets = new Set<Duplex>();
   server.on('connection', (socket) => sockets.add(socket));
   return new Promise((resolve) => {
-    server.listen(0, '127.0.0.1', () => {
+    server.listen(0, listenHost, () => {
       resolve({
         port: (server.address() as AddressInfo).port,
         headers,
@@ -336,13 +470,15 @@ function tunnelledHttpsGet(
   proxyPort: number,
   originPort: number,
   path: string,
+  targetHost = 'localhost',
 ): Promise<string> {
   return new Promise((resolve, reject) => {
+    const authority = `${net.isIPv6(targetHost) ? `[${targetHost}]` : targetHost}:${originPort}`;
     const request = http.request({
       host: '127.0.0.1',
       port: proxyPort,
       method: 'CONNECT',
-      path: `localhost:${originPort}`,
+      path: authority,
     });
     request.on('connect', (response, socket) => {
       if (response.statusCode !== 200) {
@@ -350,10 +486,10 @@ function tunnelledHttpsGet(
         return;
       }
       const secure = tls.connect(
-        { socket, servername: 'localhost', rejectUnauthorized: false },
+        { socket, servername: net.isIP(targetHost) === 0 ? targetHost : undefined, rejectUnauthorized: false },
         () => {
           secure.write(
-            `GET ${path} HTTP/1.1\r\nHost: localhost:${originPort}\r\nConnection: close\r\n\r\n`,
+            `GET ${path} HTTP/1.1\r\nHost: ${authority}\r\nConnection: close\r\n\r\n`,
           );
         },
       );
@@ -426,6 +562,53 @@ describe('ProxyService upstream proxy chaining without MITM', () => {
       expect(upstream.seen).toEqual([`CONNECT localhost:${tlsOrigin.port}`]);
     } finally {
       await pac.close();
+    }
+  });
+
+  it('passes an HTTPS URL to PAC when choosing the TLS passthrough route', async () => {
+    const pac = await startOrigin((_request, response) => {
+      response.setHeader('content-type', 'application/x-ns-proxy-autoconfig');
+      response.end(`function FindProxyForURL(url, host) { return url.indexOf("https:") === 0 ? "PROXY 127.0.0.1:${upstream.port}" : "DIRECT"; }`);
+    });
+    try {
+      proxyService.setUpstreamProxy({ proxyUrl: `pac+http://127.0.0.1:${pac.port}/proxy.pac` });
+      expect(await tunnelledHttpsGet(proxyPort, tlsOrigin.port, '/pac-https-scheme')).toContain('tls-origin-body');
+      expect(upstream.seen).toEqual([`CONNECT localhost:${tlsOrigin.port}`]);
+    } finally {
+      await pac.close();
+    }
+  });
+
+  it('preserves the non-default CONNECT port in the TLS PAC target', async () => {
+    const expectedUrl = `https://localhost:${tlsOrigin.port}/`;
+    const pac = await startOrigin((_request, response) => {
+      response.setHeader('content-type', 'application/x-ns-proxy-autoconfig');
+      response.end(`function FindProxyForURL(url, host) { return url === ${JSON.stringify(expectedUrl)} && host === "localhost" ? "PROXY 127.0.0.1:${upstream.port}" : "DIRECT"; }`);
+    });
+    try {
+      proxyService.setUpstreamProxy({ proxyUrl: `pac+http://127.0.0.1:${pac.port}/proxy.pac` });
+      expect(await tunnelledHttpsGet(proxyPort, tlsOrigin.port, '/pac-actual-port')).toContain('tls-origin-body');
+      expect(upstream.seen).toEqual([`CONNECT localhost:${tlsOrigin.port}`]);
+    } finally {
+      await pac.close();
+    }
+  });
+
+  it('preserves IPv6 TLS authority without adding another TLS layer', async () => {
+    const ipv6Origin = await startTlsOrigin('::1');
+    const expectedUrl = `https://[::1]:${ipv6Origin.port}/`;
+    const pac = await startOrigin((_request, response) => {
+      response.setHeader('content-type', 'application/x-ns-proxy-autoconfig');
+      response.end(`function FindProxyForURL(url, host) { return url === ${JSON.stringify(expectedUrl)} ? "PROXY 127.0.0.1:${upstream.port}" : "DIRECT"; }`);
+    });
+    try {
+      proxyService.setUpstreamProxy({ proxyUrl: `pac+http://127.0.0.1:${pac.port}/proxy.pac` });
+      expect(await tunnelledHttpsGet(proxyPort, ipv6Origin.port, '/ipv6-pac-tls', '::1')).toContain('tls-origin-body');
+      expect(upstream.seen).toEqual([`CONNECT [::1]:${ipv6Origin.port}`]);
+      expect(ipv6Origin.headers[0]?.host).toBe(`[::1]:${ipv6Origin.port}`);
+    } finally {
+      await pac.close();
+      await ipv6Origin.close();
     }
   });
 

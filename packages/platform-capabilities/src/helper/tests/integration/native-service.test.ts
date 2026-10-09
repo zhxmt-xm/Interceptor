@@ -16,7 +16,7 @@ const execFileAsync = promisify(execFile);
 const helperPath = process.env.INTERCEPTOR_NATIVE_SERVICE_HELPER_PATH
   ?? path.resolve(import.meta.dirname, '../../../../dist/system-proxy/macos-proxy-helper');
 const capabilities = [
-  'status', 'system-proxy.read', 'system-proxy.read-effective', 'system-proxy.replace',
+  'status', 'system-proxy.read', 'system-proxy.read-effective', 'system-proxy.read-discovery', 'system-proxy.replace',
   'certificate.import', 'certificate.remove', 'request.get-completion',
 ];
 
@@ -963,7 +963,7 @@ describe.runIf(process.platform === 'darwin')('macOS native service transport', 
     }
   });
 
-  it.each(['status', 'system-proxy.read', 'system-proxy.read-effective'] as const)(
+  it.each(['status', 'system-proxy.read', 'system-proxy.read-effective', 'system-proxy.read-discovery'] as const)(
     'does not query completion after a lost %s read reply', async (operation) => {
       const operations: string[] = [];
       const server = net.createServer((connection) => {
@@ -980,7 +980,8 @@ describe.runIf(process.platform === 'darwin')('macOS native service transport', 
         const macosHelperServiceClient = new MacosHelperServiceClient(socketPath);
         const request = operation === 'status' ? macosHelperServiceClient.getStatus()
           : operation === 'system-proxy.read' ? macosHelperServiceClient.readSystemProxySnapshot()
-            : macosHelperServiceClient.readEffectiveSystemProxySettings();
+            : operation === 'system-proxy.read-effective' ? macosHelperServiceClient.readEffectiveSystemProxySettings()
+              : macosHelperServiceClient.readWpadDiscoveryInfo();
         await expect(request).rejects.toMatchObject({ code: 'invalid-response', operation });
         expect(operations).toEqual([operation]);
       } finally {

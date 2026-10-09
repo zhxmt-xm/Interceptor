@@ -222,12 +222,12 @@ async function ensureCaptureListener(): Promise<CaptureStatus> {
   return current.listening ? current : api.startCapture(DEFAULT_CAPTURE_PORT);
 }
 
-/** 接管系统代理；已持有则直接复用，接管失败才留下 readiness issue。 */
+/** 由Main确认代理归属并应用当前Core路线；已有OS归属不代表新Core已就绪。 */
 async function ensureSystemProxyOwned(): Promise<boolean> {
   const api = window.interceptor;
   try {
     const status = await api.getSystemProxyStatus();
-    if (!status.supported || (status.owned && !status.ownershipLost)) {
+    if (!status.supported) {
       useCaptureStore.getState().setProxyReadinessIssue(null);
       return true;
     }
@@ -294,9 +294,7 @@ export async function retryCaptureProxyReadiness(): Promise<boolean> {
       useCaptureStore.getState().setProxyReadinessIssue(null);
       return true;
     }
-    const enabled = status.owned && !status.ownershipLost
-      ? status
-      : await api.enableSystemProxy();
+    const enabled = await api.enableSystemProxy();
     if (!enabled.owned || enabled.ownershipLost) {
       useCaptureStore.getState().setProxyReadinessIssue({
         kind: 'system-proxy',

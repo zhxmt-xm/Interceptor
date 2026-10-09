@@ -541,6 +541,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
       apiKeys: [
         'allowAgentToolCall',
         'allowMcpToolCall',
+        'applyUpstreamSettings',
         'automaticallyExecuteAgentTools',
         'automaticallyExecuteMcpClientTools',
         'cancelAgentTurn',
@@ -599,6 +600,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'getToolCapabilitySettings',
         'getTransferJob',
         'getUpdateStatus',
+        'getUpstreamSettings',
         'importCollection',
         'importRules',
         'installCertificate',
@@ -632,6 +634,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'onUiPreferenceChangeRequested',
         'onUiPreferenceChanged',
         'onUpdateStatusChange',
+        'onUpstreamSettingsChanged',
         'openCertificateManager',
         'openDownloadedUpdate',
         'pickBreakpointBodyFile',

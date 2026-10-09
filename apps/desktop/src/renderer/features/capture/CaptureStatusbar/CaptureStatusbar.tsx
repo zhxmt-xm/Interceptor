@@ -1,4 +1,4 @@
-import { ArrowRight, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
@@ -7,14 +7,15 @@ import { useBreakpointsStore } from '../../breakpoints';
 import { useCaptureStore } from '../data/captureStore';
 import styles from './CaptureStatusbar.module.css';
 import { LockOffIcon } from './LockOffIcon';
+import { UpstreamProxyButton } from '../UpstreamProxyButton/UpstreamProxyButton';
 
 /**
  * Capture 状态栏只承载抓包链路：监听端点、系统代理接管、HTTPS 解密、挂起与上游转发。
  * 录制状态、Core 状态与计数分别归属工具栏和侧栏，不在这里重复。
  */
-export function CaptureStatusbar(): React.JSX.Element {
+export function CaptureStatusbar({ onOpenUpstreamSettings }: { onOpenUpstreamSettings: () => void }): React.JSX.Element {
   const { t } = useTranslation();
-  const { endpoint, systemProxyOwned, decrypting, upstream, upstreamReachable } = useCaptureStore(
+  const { endpoint, systemProxyOwned, decrypting } = useCaptureStore(
     (state) => state.linkStatus,
   );
   const setHttpsSetupOpen = useCaptureStore((state) => state.setHttpsSetupOpen);
@@ -71,23 +72,7 @@ export function CaptureStatusbar(): React.JSX.Element {
         )}
       </span>
 
-      <span className={cx(styles.slot, styles.slotEnd)}>
-        <span
-          className={cx(styles.upstream, upstreamReachable ? undefined : styles.upstreamDown)}
-          title={
-            upstreamReachable
-              ? undefined
-              : t('capture.upstreamDownHint', { authority: upstream ?? '' })
-          }
-        >
-          <ArrowRight className={styles.upstreamIcon} size={12} strokeWidth={2} />
-          <span data-parity="capture-status-upstream">
-            {upstream && upstreamReachable
-              ? `${t('capture.upstream')} ${upstream}`
-              : t('capture.directConnection')}
-          </span>
-        </span>
-      </span>
+      <UpstreamProxyButton onOpenSettings={onOpenUpstreamSettings} />
     </div>
   );
 }

@@ -680,7 +680,7 @@ for (const theme of ['light', 'dark']) {
   shots.push({ feature: 'capture', theme, variant: 'recording-paused', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', recording: 'paused' } });
   shots.push({ feature: 'capture', theme, variant: 'statusbar-decrypting', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', mitm: 'active' } });
   shots.push({ feature: 'capture', theme, variant: 'statusbar-direct', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', systemProxy: 'off', upstream: '' } });
-  shots.push({ feature: 'capture', theme, variant: 'statusbar-upstream-down', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', upstream: 'down' } });
+  shots.push({ feature: 'capture', theme, variant: 'statusbar-upstream-down', state: { view: 'capture', theme: TOKEN[theme], sidebar: 'collapsed', overlay: '', upstreamHealth: 'unreachable' } });
 }
 // Default shell: a dedicated global window header with feature tools inside content.
 shots.push({ feature: 'capture', theme: 'dark', variant: 'inspector-sidebar-expanded', state: { view: 'capture', theme: 'dark', sidebar: 'expanded', overlay: '', detail: 'open', tab: 'headers' } });
@@ -716,6 +716,49 @@ for (const theme of ['warm', 'ember']) {
         mcpClientExecutionMode: 'ask',
       },
     });
+  }
+}
+
+for (const theme of ['light', 'dark', 'warm', 'ember']) {
+  for (const mode of ['system', 'direct', 'manual', 'pac', 'wpad']) {
+    for (const surface of ['settings', 'quick']) {
+      for (const phase of ['editing', 'applied']) {
+        const config = { mode: 'system', protocol: 'http', host: '127.0.0.1', port: '7890', pacUrl: 'http://proxy.office.test/proxy.pac' };
+        shots.push({
+          feature: 'upstream', theme, variant: `${surface}-${mode}-${phase}`,
+          state: {
+            view: surface === 'settings' ? 'settings' : 'capture', theme, settings: 'upstream',
+            sidebar: surface === 'settings' ? 'expanded' : 'collapsed', detail: 'open', tab: 'headers', mitm: 'inactive',
+            upstreamPopoverOpen: surface === 'quick', upstreamConfig: phase === 'applied' ? { ...config, mode } : config,
+            upstreamDraft: { ...config, mode }, upstreamOperation: 'idle', upstreamApplyRequested: false,
+            upstreamApplyError: '', upstreamHealth: 'ready',
+          },
+        });
+      }
+    }
+  }
+}
+
+for (const theme of ['light', 'dark', 'warm', 'ember']) {
+  for (const surface of ['settings', 'quick']) {
+    for (const state of ['discovering', 'failed', 'long-unreachable']) {
+      const config = { mode: 'system', protocol: 'http', host: '127.0.0.1', port: '7890', pacUrl: 'http://proxy.office.test/proxy.pac' };
+      const long = state === 'long-unreachable';
+      shots.push({
+        feature: 'upstream', theme,
+        variant: long ? `${surface}-long-unreachable` : `${surface}-wpad-${state}`,
+        state: {
+          view: surface === 'settings' ? 'settings' : 'capture', theme, settings: 'upstream',
+          sidebar: surface === 'settings' ? 'expanded' : 'collapsed', detail: 'open', tab: 'headers', mitm: 'inactive',
+          upstreamPopoverOpen: surface === 'quick',
+          upstreamConfig: long ? { ...config, mode: 'manual', host: 'proxy.gateway.department.example.test', port: '3128' } : config,
+          upstreamDraft: { ...config, mode: long ? 'manual' : 'wpad' },
+          upstreamOperation: state === 'discovering' ? 'discovering' : 'idle',
+          upstreamApplyError: state === 'failed' ? 'discovery' : '', upstreamApplyRequested: false,
+          upstreamHealth: long ? 'unreachable' : 'ready',
+        },
+      });
+    }
   }
 }
 
@@ -794,6 +837,13 @@ async function shoot(list) {
     }
     await page.evaluate(() => window.__setState({
       overlay: '',
+      upstreamPopoverOpen: false,
+      upstreamOperation: 'idle',
+      upstreamApplyRequested: false,
+      upstreamApplyError: '',
+      upstreamHealth: 'ready',
+      upstreamConfig: { mode: 'system', protocol: 'http', host: '127.0.0.1', port: '7890', pacUrl: 'http://proxy.office.test/proxy.pac' },
+      upstreamDraft: { mode: 'system', protocol: 'http', host: '127.0.0.1', port: '7890', pacUrl: 'http://proxy.office.test/proxy.pac' },
       fileMenu: '',
       requestMenu: '',
       breakpointState: '',
@@ -1099,6 +1149,11 @@ async function shoot(list) {
     await page.waitForTimeout(60);
     if (s.hover) await page.hover(s.hover);
     else if (!s.interaction) await page.mouse.move(0, 0);
+    if (s.feature === 'upstream') {
+      await page.waitForSelector('[data-design-upstream-popover]', {
+        state: s.state.upstreamPopoverOpen ? 'visible' : 'detached',
+      });
+    }
     const dest = path.join(shotsRoot, s.theme, s.feature);
     await mkdir(dest, { recursive: true });
     const outputPath = path.join(dest, `${s.variant}.png`);

@@ -17,13 +17,8 @@
   min-width: 0;
 }
 
-.slot:first-child,
-.slotEnd {
+.slot:first-child {
   flex: 1;
-}
-
-.slotEnd {
-  justify-content: flex-end;
 }
 
 .breakpointBar {
@@ -75,28 +70,6 @@
 
 .proxyLabel {
   white-space: nowrap;
-}
-
-.upstream {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  white-space: nowrap;
-}
-
-.upstreamIcon {
-  flex: 0 0 auto;
-  color: var(--text-3);
-}
-
-/* 上游不可达已自动降级为直连，流量仍通，因此是警告而不是错误。 */
-.upstreamDown {
-  color: var(--yellow);
-}
-
-.upstreamDown .upstreamIcon {
-  color: var(--yellow);
 }
 
 .decrypting,

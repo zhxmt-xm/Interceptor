@@ -34,6 +34,24 @@ Capture **只订阅 initiated / body-data 类事件，绝不订阅 completed 的
 新上游session。真正提前EOF按显式stream错误进入现有Mockttp/Capture中断路径，不伪造end或completed。
 Proxy不重复注册进程订阅，不额外缓存响应，也不修改第三方转发方法。
 
+## 上游配置应用
+
+Core的`upstream.applySettings`先调用`ProxyService.validateUpstream()`，通过现有版本
+`pac-proxy-agent`的公开`getResolver()`加载并编译PAC，再保存Workspace偏好并同步切换后续请求的配置。
+下载、编译、取消或Workspace写入失败时不调用`setUpstreamProxy()`；切换本身不重启listener、
+关闭已有stream或重放请求。`proxy.setUpstream`仍是Main用于运行时同步的内部命令，不保存用户偏好。
+
+Mockttp的H1出站构造校验最终字段并转换为小写多值对象，同名值与空值不覆盖，保留`setDefaultHeaders:false`；
+Cookie数组由Node拼接，响应Set-Cookie路径不改。共用header helper使用无原型对象并区分空字符串和缺失，
+不改原始Capture或已生成的正文content bytes。
+
+PAC加载成功不等于选路正确。既有Mockttp patch为TLS stub提供HTTPS实际authority，同时保留
+`secureEndpoint:false`使TLS字节原样透传；IPv6主机模式也使用合法URL表示。普通PAC通过Mockttp内的
+公开resolver适配保留实际目标端口，端口属于Agent缓存key。PAC不复用请求结束后的空闲socket，
+避免后续请求沿用首次DIRECT/PROXY而跳过求值；固定代理keep-alive和在途长连接不改变。
+两份上游Agent源码保持原版；目标原故障及相关边界有真实集成覆盖，完整交付状态见
+[Settings发送契约](../../../../../architecture/features/settings.md#upstream-request-adapter)。
+
 ## ExchangeTracker 的顺序前提
 
 Mockttp 的 `request-initiated`、`*-body-data`、`*-trailers` 都经 `setImmediate` 异步发出，而规则钩子走独立 Promise 链，**两者顺序不保证**。因此所有入口都是幂等 upsert；规则结果若先于 `request-initiated` 到达，先存进孤儿表，待 Exchange 建立后合并。

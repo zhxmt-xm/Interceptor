@@ -11,6 +11,7 @@ import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 const SETTINGS_SECTION_IDS = [
   AUTOMATION_IDS.settings.section.proxy,
+  AUTOMATION_IDS.settings.section.upstream,
   AUTOMATION_IDS.settings.section.appContainers,
   AUTOMATION_IDS.settings.section.tlsPassthrough,
   AUTOMATION_IDS.settings.section.certificates,
@@ -90,11 +91,15 @@ test('settings.navigation keeps the active section across workspace navigation',
   expect(fontEvidence.fontUrls.length).toBeGreaterThan(0);
   expect(fontEvidence.fontUrls.every((url) => url.startsWith('interceptor://app/'))).toBe(true);
 
-  // 用户操作：逐项点击九个正式 section，并要求每一步只有目标项表达 current page。
-  // User actions: visit all nine public sections and require exactly the target to expose the current page state.
+  // 用户操作：逐项点击十个正式section，并要求每一步只有目标项表达current page。
+  // User actions: visit all ten public sections and require exactly the target to expose the current page state.
   for (const sectionId of SETTINGS_SECTION_IDS) {
     await getByAutomationId(page, sectionId).click();
     await expectCurrentSection(page, sectionId, sectionEvidence, `select:${sectionId}`);
+    if (sectionId === AUTOMATION_IDS.settings.section.upstream) {
+      await expect(getByAutomationId(page, AUTOMATION_IDS.upstream.currentRoute)).toBeVisible();
+      await expect(getByAutomationId(page, AUTOMATION_IDS.upstream.mode.system)).toBeChecked();
+    }
     if (sectionId === AUTOMATION_IDS.settings.section.appContainers) {
       await verifyAppContainerControls(page, testInfo);
     }

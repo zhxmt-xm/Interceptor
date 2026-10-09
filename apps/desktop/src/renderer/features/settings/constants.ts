@@ -8,12 +8,14 @@ import {
   Palette,
   Shield,
   Wifi,
+  Waypoints,
 } from 'lucide-react';
 
 import type { PrivacyPreferences, SettingsSection } from './interfaces';
 
 export const SECTIONS: SettingsSection[] = [
   { id: 'proxy', labelKey: 'settings.nav.proxy', Icon: Wifi },
+  { id: 'upstream', labelKey: 'upstream.title', Icon: Waypoints },
   { id: 'app-containers', labelKey: 'settings.nav.appContainers', Icon: AppWindow },
   { id: 'tls-passthrough', labelKey: 'settings.nav.tlsPassthrough', Icon: LockOpen },
   { id: 'certificates', labelKey: 'settings.nav.certificates', Icon: Shield },

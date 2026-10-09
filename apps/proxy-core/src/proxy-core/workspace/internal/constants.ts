@@ -7,4 +7,5 @@ export const WORKSPACE_DOCUMENTS: readonly WorkspaceDocument[] = [
   'tls_passthrough_hosts',
   'tls_insecure_hosts',
   'tls_decryption_preference',
+  'upstream_proxy_settings',
 ];

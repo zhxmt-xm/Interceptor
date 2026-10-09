@@ -3,9 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { createConnection } from 'node:net';
 
 import type { MacosCertificatePayload, MacosHelperServiceRequest, MacosHelperServiceStatus } from '../interfaces';
-import type { MacosSystemProxySnapshot } from '../../system-proxy/interfaces';
+import type { MacosSystemProxySnapshot, WpadDiscoveryInfo } from '../../system-proxy/interfaces';
 import { MacosHelperServiceError } from './internal/errors';
-import { parseMacosEffectiveProxySettings, parseMacosHelperRequestCompletion, parseMacosHelperServiceReply, parseMacosHelperServiceStatus, parseMacosSystemProxySnapshot } from './utils';
+import { parseMacosEffectiveProxySettings, parseMacosHelperRequestCompletion, parseMacosHelperServiceReply, parseMacosHelperServiceStatus, parseMacosSystemProxySnapshot, parseWpadDiscoveryInfo } from './utils';
 
 /** Calls the native service and delegates interactive trust authorization to the installed helper. */
 export class MacosHelperServiceClient {
@@ -34,6 +34,11 @@ export class MacosHelperServiceClient {
     } catch {
       throw new MacosHelperServiceError('invalid-response', 'completed', 'system-proxy.read-effective', true);
     }
+  }
+
+  /** Read only network-provided discovery inputs; never change DNS, DHCP or proxy preferences. */
+  async readWpadDiscoveryInfo(): Promise<WpadDiscoveryInfo> {
+    return parseWpadDiscoveryInfo(await this.requestService({ operation: 'system-proxy.read-discovery' }));
   }
 
   async replaceSystemProxySnapshot(

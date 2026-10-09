@@ -25,6 +25,11 @@ feature 业务命令不进入 Header；Agent toggle 属于全局 Shell 控件。
 
 `features/{capture,rules,composer,diagnostics,settings}/` 均为 Main/Statusbar + colocated CSS Module，无 Feature Topbar；`features/agent/` 是跨 Workspace 的全局右栏，不是第六个 Workspace。Agent提供未配置态、Provider配置、Chat selector、New/Rename/Delete、Streaming Transcript、reasoning展开、Composer、Model selector、Context/Session Usage、Stop/Retry与重启恢复；Configure深链到Settings > Agent，导航不会隐式关闭Panel。Agent/MCP业务Tool共用registry，Settings提供独立授权开关，Tool Call/Result及Ask审批复用Transcript组件；具体能力契约见[../features/tool-capabilities.md](../features/tool-capabilities.md)。`features/breakpoints/`只保留数据层，UI位于Capture。各 feature 的业务命令分别位于自己的列表、协议、暂停队列和日志内容工具栏；内容工具栏统一为 `--content-toolbar-height`（44px）。状态统一进入 Statusbar。所有左右分栏复用 1px `Splitter`，抓手为同一 flex 中轴上的 4×40px 子项。
 
+Settings的Upstream proxy与Capture右下角快捷浮层共用`UpstreamSettingsActions`和一份Renderer草稿。
+Main变化通知由App级订阅处理，加载与Apply使用代际序号防止迟到回包覆盖新状态；导航到Settings保留草稿，
+Cancel/Discard不写后端。`CurrentUpstreamRoute`统一绘制当前生效路线，同行容器使用flex中心对齐；
+长地址单行省略且保留完整提示，不通过文字偏移或裁字对齐。
+
 Rules导入弹窗位于App作用域，使其他workspace中的Agent/MCP也能发起同一个用户流程，但业务所有权仍在
 `features/rules/`。Main通过窄Preload请求/取消事件传递requestId，`RulesImportActions`统一读取、预览与确认状态，
 `RulesImportDialog`复用共享确认组件；RuleList只发起正式导入入口，不再保存第二份预览。完成响应只含公开计数，
@@ -44,6 +49,8 @@ HTTP breakpoint 仍使用整面板 `BreakpointInspector`，两条路径只共享
 - `IconButton`统一padding为0、内部Lucide图标不收缩；`inline`档为18px按钮/14px图标/5px圆角，`Kv`只选择档位并控制行hover显隐，不能由调用方缩小按钮后留下浏览器默认padding。
 - `Button`由组件控制图标和独立label的`inline-flex`及`align-items: center`，button再用`justify-content: center`居中内容组。md/compact/sm继续分别为34/32/28px，不在通知等调用方覆盖位置；检查实际父布局规则、内容范围和正常gap，不以字形像素边界或自算矩形中心定义对齐，也不添加独立位移、裁字或行高补偿。
 - `Button.icon`接收现有Lucide或Ant Design图标组件，由共享icon槽提供尺寸与7px图文gap；调用方不再把图标混进文字children。图标与loading spinner属于装饰，使用`aria-hidden`，按钮名称来自文字或显式`ariaLabel`；UpdatesPanel只保留匿名更新的Check/Download/Open动作。
+- `InputBox`与`Select`的`form`外观使用Ant公开表单props，保留既有`value`外观；
+  Upstream编辑器通过局部ConfigProvider匹配确认稿，不覆盖其他功能的填充式Select主题。
 
 ## 6. 共享树交互
 

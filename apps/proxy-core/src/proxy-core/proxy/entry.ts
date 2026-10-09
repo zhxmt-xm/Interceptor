@@ -452,6 +452,32 @@ export class ProxyService {
     );
   }
 
+  /** Load and compile PAC configuration before committing a user-requested route change. */
+  async validateUpstream(upstream: UpstreamProxyConfig | null, abortSignal: AbortSignal): Promise<void> {
+    abortSignal.throwIfAborted();
+    if (!upstream) return;
+    const urls = 'proxyUrl' in upstream
+      ? [upstream.proxyUrl]
+      : [upstream.httpProxyUrl, upstream.httpsProxyUrl].filter((url): url is string => url !== null);
+    const pacUrls = [...new Set(urls.filter(url => url.startsWith('pac+')))];
+    if (pacUrls.length === 0) return;
+    const { PacProxyAgent } = await import('pac-proxy-agent');
+    for (const url of pacUrls) {
+      const pacProxyAgent = new PacProxyAgent(url, {
+        timeout: 5_000,
+        signal: AbortSignal.any([abortSignal, AbortSignal.timeout(5_000)]),
+      });
+      try {
+        await pacProxyAgent.getResolver();
+        abortSignal.throwIfAborted();
+      } catch (error) {
+        throw new Error('PAC configuration could not be loaded or compiled.', { cause: error });
+      } finally {
+        pacProxyAgent.destroy();
+      }
+    }
+  }
+
   /** 当前上游代理的 Mockttp 形式；undefined 让 Mockttp 直连源站。 */
   private upstreamProxySetting(protocol: 'http' | 'https', hostname: string): ProxySetting | undefined {
     return ProxyUtils.selectUpstreamProxy(this.upstreamProxy, protocol, hostname);

@@ -70,6 +70,8 @@ export class CoreRpcClient {
     'proxy.status': 'proxy.status',
     'proxy.setRecording': 'proxy.status',
     'proxy.setUpstream': 'proxy.status',
+    'upstream.getSettings': 'upstream.settings',
+    'upstream.applySettings': 'upstream.settings',
     'tls.useCertificate': 'tls.state',
     'tls.startDecryption': 'tls.state',
     'tls.stopDecryption': 'tls.state',

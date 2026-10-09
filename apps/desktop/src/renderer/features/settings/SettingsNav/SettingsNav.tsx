@@ -7,6 +7,7 @@ import styles from './SettingsNav.module.css';
 
 const AUTOMATION_ID_BY_SECTION: Record<string, AutomationId> = {
   proxy: AUTOMATION_IDS.settings.section.proxy,
+  upstream: AUTOMATION_IDS.settings.section.upstream,
   'app-containers': AUTOMATION_IDS.settings.section.appContainers,
   'tls-passthrough': AUTOMATION_IDS.settings.section.tlsPassthrough,
   certificates: AUTOMATION_IDS.settings.section.certificates,

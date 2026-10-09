@@ -42,6 +42,7 @@ import type {
   WebSocketBreakpointSettings,
   WebSocketFrameDirection,
   WebSocketFrameSummary,
+  UpstreamProxySettings,
 } from '@interceptor/core-protocol';
 import type {
   AppContainerAccessSnapshot,
@@ -49,9 +50,10 @@ import type {
   ClientAppIcon,
   SystemProxyStatus,
   SystemProxyRestoreResult,
+  UpstreamSettingsSnapshot,
 } from '@interceptor/platform-capabilities';
 
-export type { CoreProcessState } from '@interceptor/core-protocol';
+export type { CoreProcessState, UpstreamProxySettings, UpstreamProxyProtocol } from '@interceptor/core-protocol';
 export type {
   AppContainerAccessInfo,
   AppContainerAccessSnapshot,
@@ -59,6 +61,8 @@ export type {
   ClientAppIcon,
   SystemProxyStatus,
   SystemProxyRestoreResult,
+  UpstreamSettingsSnapshot,
+  UpstreamRoute,
 } from '@interceptor/platform-capabilities';
 
 import type {
@@ -514,6 +518,9 @@ export const DESKTOP_IPC_CHANNELS = {
   systemProxyEnable: 'system-proxy:enable',
   systemProxyRestore: 'system-proxy:restore',
   systemProxyStatus: 'system-proxy:status-changed',
+  upstreamGetSettings: 'upstream:get-settings',
+  upstreamApplySettings: 'upstream:apply-settings',
+  upstreamSettingsChanged: 'upstream:settings-changed',
   appContainerList: 'app-container:list',
   appContainerSetExemption: 'app-container:set-exemption',
   appContainerEnableAll: 'app-container:enable-all',
@@ -656,6 +663,9 @@ export interface InterceptorDesktopApi {
   queryDiagnostics(request: DiagnosticsQueryRequest): Promise<CoreDiagnosticPage>;
   reportRendererDiagnostic(report: RendererDiagnosticReport): Promise<void>;
   getSystemProxyStatus(): Promise<SystemProxyStatus>;
+  getUpstreamSettings(): Promise<UpstreamSettingsSnapshot>;
+  applyUpstreamSettings(settings: UpstreamProxySettings): Promise<UpstreamSettingsSnapshot>;
+  onUpstreamSettingsChanged(listener: () => void): () => void;
   enableSystemProxy(): Promise<SystemProxyStatus>;
   restoreSystemProxy(): Promise<SystemProxyRestoreResult>;
   listAppContainers(): Promise<AppContainerAccessSnapshot>;

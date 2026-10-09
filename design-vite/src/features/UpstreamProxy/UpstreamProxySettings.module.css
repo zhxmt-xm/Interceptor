@@ -1,0 +1,8 @@
+.upstreamSettings { max-width: 1080px; min-width: 0; }
+.upstreamSettingsHeading { margin-bottom: 20px; }
+.upstreamSettingsHeading h2 { margin: 0 0 8px; color: var(--text); font-size: 16px; font-weight: 650; }
+.upstreamSettingsHeading p { margin: 0; color: var(--text-3); font-size: 12px; line-height: 1.6; }
+.upstreamSettingsCard { padding: 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
+.upstreamRecoveryNote { display: flex; align-items: center; gap: 9px; margin-top: 16px; color: var(--text-3); }
+.upstreamRecoveryNote svg { flex: 0 0 auto; }
+.upstreamRecoveryNote p { margin: 0; font-size: 11px; line-height: 1.7; }

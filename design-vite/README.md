@@ -44,6 +44,17 @@ design-vite/
 - 设计稿要完整实现用户可见的状态与交互（展开、选择、菜单、loading、empty、warning、disabled、成功/失败）；网络、Core、IPC、持久化用 fixture/adapter 模拟，不复制业务后端。
 - 这些是**设计资产**，非产品运行代码；落地到 `apps/desktop` 后保留供回归比对。
 
+## 上游代理设计
+
+已确认设计包含Settings的Upstream proxy和Capture右下角快捷浮层，不再使用候选开关。
+`shoot.mjs --feature=upstream`生成五种模式的编辑态/应用态；产品还原与实际WPAD能力分别验收。
+
+- 五种模式共用 `upstreamConfig` 和 `upstreamDraft`，Apply 后同步，Cancel/Discard 不改变生效配置。
+- `upstreamFixtureOutcome` 仅用于设计演示成功/失败，不访问 DNS、代理或产品 API；`upstreamHealth` 演示生效上游不可达。
+- `upstreamOperation` 可展示静态 applying/discovering；实际点击 Apply 才设置 `upstreamApplyRequested` 并演示结果。
+- `upstreamPopoverOpen` 控制同一快捷浮层，Open in Settings 保留草稿并定位到对应区域。
+- WPAD系统模式、DHCP和产品E2E的实际能力以[Settings](../architecture/features/settings.md#upstream-request-adapter)为准；设计交互不替代真实网络验收。
+
 ## 命令
 
 ```powershell

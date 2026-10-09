@@ -6,6 +6,7 @@ import type {
   RuleNode,
   RuleSet,
 } from './rules';
+import type { UpstreamProxySettings } from './upstream';
 
 export const CORE_PROTOCOL_VERSION = 1 as const;
 
@@ -454,6 +455,20 @@ export interface ProxySetUpstreamCommand {
   };
 }
 
+export interface UpstreamGetSettingsCommand {
+  type: 'upstream.getSettings';
+  payload: Record<string, never>;
+}
+
+/** Main resolves the selected route; Core commits settings and runtime routing together. */
+export interface UpstreamApplySettingsCommand {
+  type: 'upstream.applySettings';
+  payload: {
+    settings: UpstreamProxySettings;
+    upstream: UpstreamProxyConfig | null;
+  };
+}
+
 /**
  * 换用一份新的 CA 材料（Root CA 生成 / 安装信任 / 删除后由 Main 下发）。
  * null 表示当前没有可用且受信任的 CA，Core 退回进程内临时身份。
@@ -555,6 +570,8 @@ export type CoreCommand =
   | ProxyStatusCommand
   | ProxySetRecordingCommand
   | ProxySetUpstreamCommand
+  | UpstreamGetSettingsCommand
+  | UpstreamApplySettingsCommand
   | TlsUseCertificateCommand
   | TlsStartDecryptionCommand
   | TlsStopDecryptionCommand
@@ -1040,6 +1057,11 @@ export interface TlsDecryptionPreferenceResult {
   };
 }
 
+export interface UpstreamSettingsResult {
+  type: 'upstream.settings';
+  payload: { settings: UpstreamProxySettings };
+}
+
 export type CoreResult =
   | EchoResult
   | SessionsPageResult
@@ -1070,10 +1092,12 @@ export type CoreResult =
   | ProxyStatusResult
   | TlsStateResult
   | TlsInsecureHostsResult
-  | TlsDecryptionPreferenceResult;
+  | TlsDecryptionPreferenceResult
+  | UpstreamSettingsResult;
 
 export type CoreResultForCommand<T extends CoreCommand> =
-  T extends EchoCommand ? EchoResult
+  T extends UpstreamGetSettingsCommand | UpstreamApplySettingsCommand ? UpstreamSettingsResult
+    : T extends EchoCommand ? EchoResult
     : T extends SessionsQueryCommand ? SessionsPageResult
       : T extends SessionsDetailCommand ? SessionsDetailResult
         : T extends WebSocketFramesCommand ? WebSocketFramesResult

@@ -403,6 +403,107 @@ Main通过同包helper执行macOS代理和System Keychain公开证书操作。
 
 ### 3.4 上游代理链式转发
 
+#### 可选上游配置（与当前实现的差异）
+
+以下为已确认设计及当前macOS实现；真实网络流程和恢复按下述边界验收。
+Windows原生发现与实机验收独立归Handover第8项。
+当前代码已接入五种模式和双入口；WPAD使用系统DNS解析与缓存的DHCP 252 URL，尚不主动发送DHCP发现请求。
+固定路由、Manual重启回载、PAC/WPAD失败保持、DNS-WPAD的DIRECT及重启、系统Auto Detect的DIRECT和跨profile崩溃恢复
+已有真实App验收。macOS在仅启用Auto Detect时会提供`http://wpad/wpad.dat`，由系统搜索域解析短主机名，
+不需要将发现结果写为原始network service的显式PAC。H1/PAC及TLS scheme的Mockttp适配已实现，
+普通HTTP、显式PAC HTTPS、新包smoke、DNS-WPAD/System Auto Detect及隔离DHCP真实流程均已取得最终Green。
+初始整体功能未保存修改前真实E2E证据，仍是历史TDD缺口；不以最终Green或后续故障Red补造该历史。
+
+<a id="upstream-request-adapter"></a>
+**已实现的发送适配**
+
+- 仅修改现有Mockttp patch，不替换Mockttp或代理库，不修改PAC/HTTP Agent源码。
+  使用已有最终目标与headers，在创建Node请求前完成适配，不能在正文已发送后重放或改写请求缓存。
+- Mockttp共用的HTTP/1.x出站构造使用小写字段名；单个值保存string，同名多个值按原顺序保存string数组。
+  空字符串、相同的重复值和未知字段保留；使用无原型对象，不通用join、不覆盖、不去重、不修改源raw列表。
+  原始字段先经过Node名字/值校验，不用大小写转换掩盖非法输入。
+- `setDefaultHeaders:false`与第10项正文/framing保持。Cookie数组由Node按`; `发送；
+  `Set-Cookie`多行、认证挑战、CL/TE、Host及H2转换仍由所属发送层处理，不新增自动修正或后值优先策略。
+  本次允许H1线上名字小写及同名行归组，但不允许字段值丢失、正文变化或真实目标错误。
+- 原始Capture、编辑器、Rules、响应头路径和WS/H2发送选择不重写；
+  共用转换helper若修正空值/特殊键，必须回归原有使用方，不能只验PAC。
+- 未解密TLS传给PAC的判断目标必须是`https://<实际authority>/`，保留CONNECT端口与IPv6表示；
+  保持`secureEndpoint:false`让业务TLS字节原样透传，不从不可见内容猜业务path，不改raw隧道语义。
+  IPv6在TLS主机URL模式匹配时也使用方括号，传给实际socket的host不加括号，避免因匹配失败误入解密分支。
+- 普通PAC求值通过Mockttp内对公开`getResolver()`的适配补上实际端口，原请求path和Agent认证注入顺序不变；
+  含目标端口的Agent缓存不得串用另一目标端口。PAC按每个新HTTP请求求值，不能复用先前DIRECT socket跳过新路线；
+  只关闭PAC请求结束后的空闲socket复用，固定上游的keep-alive策略和已开始的响应/长连接不改变。
+- 原12/17失败输入保持不变。以同一输入直发与经Interceptor后的源站method、目标/path/query、字段值、
+  正文bytes及实际上游路径作对照；H1字段名大小写与必要的逐跳字段变化单独说明，不泛化为忽略所有header差异。
+- 普通PAC非默认端口、多目标与IPv6有独立协议验收。对象化本身不证明任意异常Host输入、
+  PAC候选间代理认证等组合均已覆盖；不将未验边界宣称为全部解决，也不追加未经授权的Agent补丁。
+
+**HTTP/PAC兼容处理**：既有raw-header数组不会建立HTTP Agent读取的Node字段表，
+曾导致Host回退与重建时丢头；上游背景见[httptoolkit/mockttp#194](https://github.com/httptoolkit/mockttp/issues/194)。
+现在由Mockttp在创建H1请求前提交无原型多值对象，字段名小写，字段值与空值保留；
+不修改HTTP Agent，也不将HTTP代理转成CONNECT来绕过。原失败用例保持其输入并取得Green。
+
+**TLS/PAC兼容处理**：保留原始隧道的`secureEndpoint:false`，但给PAC的请求stub明确使用真实HTTPS authority；
+IPv6在主机匹配的URL中加括号，实际socket host保持原值。普通PAC的端口由Mockttp内的
+`TargetPortPacProxyAgent.getResolver()`调用原库公开求值接口前恢复，不改实际请求path或用户PAC。
+原代理库继续拥有连接、候选类型与脚本编译；没有运行时覆盖其prototype或改写其源码。
+
+**验证边界**：同一浏览器直发与经Core Direct/固定/PAC的method、path/query、业务header值与正文已作源站对照；
+H1名字小写、Cookie发送形式及原有逐跳Connection差异有明确记录，不宣称原始报文逐字节完全相同。
+新包构建、随包文件、artifact audit与smoke已验证。DNS-WPAD的DIRECT/重启、
+WPAD与显式PAC的HTTPS PROXY/HTTP DIRECT、System Auto Detect的跨profile崩溃恢复均已复验，
+原代理先由App恢复，实验DNS再按独立保护撤销。
+
+DHCP验收使用真实隔离feth链路、公开SCPreferences持久网络服务和仅监听测试接口的bootpd。
+macOS DHCP客户端实际取得租约并成为主网络，Option 252指向本轮loopback PAC服务；
+正式helper读取同一URL，搜索域为空，没有写入State:/或DHCP缓存，也未使用DNS回退。
+用户仅从UI选择WPAD，两个入口显示相同路线；HTTPS经过真实CONNECT上游，HTTP按PAC选择DIRECT。
+正常Close后复用profile启动第二代，重新下载PAC并再次验证两条路线。
+产品自行恢复代理后才撤销实验网络；原服务配置/顺序、默认路由、接口、DHCP文件和进程均恢复，8888释放。
+实际DHCP报文、两代App与恢复结果见[DHCP验收记录](/Users/zhxmt/Desktop/Interceptor-WPAD-Recovery-20261004-0853/dhcp-experiment-20261009183209/result.json)；
+可复验步骤见[DHCP验收规格](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-upstream-macos)。
+本轮命令、Red/Green、真实App代际与恢复结果见[实现证据](/Users/zhxmt/.copilot/session-state/bda43480-2b1f-4f42-8883-5c58d667f62a/files/mockttp-adapter-implementation-20261008.json)；
+环境阻塞不能作为通过，也不补造此前缺失的整体功能真实E2E前置证据；
+初始实现、后续故障修复和最终网络验收分别记录，不合并成不存在的完整历史TDD链路。
+UI位置、编辑/Apply状态和Main/Core改动见[单文件改动说明](../../commit-changes/202610082241_ui_upstream-proxy_settings-and-routing.html)。
+当前完整Renderer/设计稿一致性结果见[parity记录](/Users/zhxmt/.copilot/session-state/bda43480-2b1f-4f42-8883-5c58d667f62a/files/upstream-full-parity-delivery-20261009.json)；
+检查保留原设计基准，几何、字体和交互状态与实际协议验收分别记录。
+
+| `mode` | 保存字段 | 含义 |
+| --- | --- | --- |
+| `system` | 仅`mode` | 默认沿用接管前系统配置；不能把Interceptor写入的8888当作原上游 |
+| `direct` | 仅`mode` | Core直连目标；不停止Capture，不恢复或改写系统代理 |
+| `manual` | `protocol: http / https / socks5`、`host: string`、`port: integer(1..65535)` | 用户明确指定上游，不接受Host中的scheme、路径或凭据 |
+| `pac` | `url: string` | HTTP/HTTPS PAC URL，不接受内嵌凭据或本地文件scheme |
+| `wpad` | 仅`mode` | 从当前网络发现PAC；未发现或解析失败明确报错，不静默改成DIRECT |
+
+- 配置复用`WorkspaceService`的`upstream_proxy_settings`单行文档，默认`{ mode: 'system' }`；
+  Capture Clear、Recording暂停及Core重启均不删除。系统代理journal仍只承担原系统配置恢复，不保存编辑草稿或用发现结果覆盖`original`。
+- Renderer的`getUpstreamSettings()`读取已保存配置及当前状态；
+  `applyUpstreamSettings(settings)`通过Main唯一业务方法校验、解析上游并应用。
+  Core内部`upstream.getSettings`读偏好，`upstream.applySettings { settings, upstream }`
+  在候选运行配置可用后保存偏好并切换后续转发；原内部`proxy.setUpstream`继续承担代际同步，不隐式保存偏好。
+- Apply前，选择与填写仅改Renderer草稿；Apply成功才更新Current route及Capture状态栏。
+  失败不保存坏配置、不改为其他模式；当前配置和错误分开显示。操作状态、实际路线和可达性使用独立字段，不用`null`暗示正在发现。
+  System模式在接管前发现WPAD失败也须保留发现错误；失败收尾不调用`proxy.setUpstream(null)`，
+  不把尚未解析的路线公布为Direct成功。
+- Main主动通知两个入口重读同一状态；不依赖某个弹窗独占刷新。
+  窗口间或应用／恢复并发由同一平台操作互斥拒绝，不排队重放。
+- 系统Restore只还原操作系统配置，不清空独立的Core上游；显式连入listener的客户端仍使用已选路线。
+  崩溃恢复先加载所有权快照，Core就绪后才读取上游偏好和解析WPAD，不在恢复journal时提前推定路线。
+  Core ready初始化屏障期间RPC已经可用、状态仍为`starting`；Main须在屏障内完成运行路由下发，
+  不能以尚未公开`running`为由跳过已有listener的配置。没有listener时，Capture bootstrap在启动listener后
+  仍调用同一个`enableSystemProxy()`；系统已owned仅表示OS归属，不代表新Core已配置上游。
+  Main在owned分支应用当前路线但不重复写系统配置。进入`running`后通知Renderer显示已配置的路线。
+- Settings新增独立Upstream proxy；Capture右下角按钮打开锚点浮层。
+  Open in Settings保留草稿并定位该区域；Cancel/Discard不写持久化。
+  `Current route`的标签、图标和值由拥有该行的flex/inline-flex容器统一`align-items: center`。
+- 切换只影响后续新发起的请求，不关闭在途请求或既有长连接；
+  固定上游不可达时明确显示失败，不把可达性探针的失败转换为未选择的直连。
+  PAC/WPAD显示按请求选路，不能用一个固定地址代表全部出口。
+- 正常退出、Core故障和下次启动恢复继续比较真实`current/original/owned`；
+  用户选择上游不改变系统快照恢复语义。WPAD系统实验仍需独立回滚保护与授权。
+
 接管后，遵循系统代理的应用将请求交给Interceptor。原有HTTP/SOCKS代理或PAC需要继续作为上游，否则可能绕过指定代理或导致访问失败。Main读取接管前的生效代理配置并交给Core使用；系统路由不由该配置转换过程修改。
 
 ```mermaid
@@ -457,14 +558,18 @@ Mockttp 的 `passthroughSocket` 把 `net.connect(port, host)` 写死，`proxyCon
 - **写**：接管时写回系统的 bypass 必须并入 `localhost` / `127.*` / `[::1]` / `<local>`（`withRequiredBypass`），否则本机与内网流量被推进代理。`<local>` 不匹配 IP 字面量，所以三条都要显式列出；`::1` 必须带方括号，裸写会让 `InternetSetPerConnectionOption` 整体写入失败。
 - **AVD / Dev Box**：Windows owned bypass 不注入产品域名。拒绝 MITM 的 gateway 应由 Core per-host TLS passthrough 处理，使流量仍经过 Capture 并保留 tunnel metadata；默认 passthrough 列表为空。
 
-#### 上游不可达时自动降级
+#### 上游可达性
 
-上游代理进程退出（用户关掉 Clash 之类）后，Interceptor 仍指着一个死端口，全部流量立刻失败。`UpstreamProbe` 在接管期间每 `UPSTREAM_PROBE_INTERVAL_MS`（1s）对上游 `host:port` 做一次 `UPSTREAM_PROBE_TIMEOUT_MS`（500ms）的 TCP 连接：
+上游代理进程退出（用户关掉Clash之类）后，请求可能失败。`UpstreamProbe`每
+`UPSTREAM_PROBE_INTERVAL_MS`（1s）对可单独探测的上游`host:port`做一次
+`UPSTREAM_PROBE_TIMEOUT_MS`（500ms）的TCP连接；这不是HTTP代理握手或目标网站可达证明。
 
-- 探到不可达：清空 Core 的上游改为直连，Capture 状态栏的 `upstream host:port` 转黄并给出提示。
-- 探到恢复：重新下发上游，状态栏复原。
+- 探到不可达：报告unreachable，保留Core的已选上游；不能静默改为直连或重放请求。
+- 探到恢复：更新健康状态，不重复下发相同路由。
 
-只在状态翻转时才下发与广播。PAC 上游没有单一 `host:port` 可探，不纳入监控。状态经 `system-proxy:status-changed` 主动推给 Renderer（`SystemProxyStatus.upstreamProxy` / `upstreamReachable`），状态栏据此显示 `upstream host:port` 或 `direct`。
+只在状态翻转时广播。PAC没有单一出口可探，不将PAC服务器可达误作全部出口可达。
+状态沿既有系统代理通知及上游设置通知发送；Renderer按实际模式和健康状态分别显示，
+失败不能显示成用户选择了Direct。上游新UI仍按本节前述差异与验收门禁交付。
 
 三个边界条件：
 
@@ -474,7 +579,8 @@ Mockttp 的 `passthroughSocket` 把 `net.connect(port, host)` 写死，`proxyCon
 
 Clash 等本机代理应在 Interceptor 接管前启动并启用系统代理，Interceptor 才能把它的 loopback 地址读作上游。若 Clash 在 Interceptor 已 owned 后启动并主动改写 WinINet，guarded ownership 会按外部修改处理并进入 ownership lost；两边不会反复抢写系统设置。
 
-Mockttp经上游时统一使用CONNECT隧道，包括目标为明文HTTP的请求。
+Mockttp的固定HTTP上游使用CONNECT隧道，包括目标为明文HTTP的请求；
+PAC按所选agent走普通HTTP代理转发或CONNECT，不能把固定代理的结果当作PAC兼容性证据。
 
 - HTTP、HTTPS passthrough、HTTPS MITM和WebSocketBridge均通过带userinfo的`proxyUrl`向上游CONNECT发送Basic认证，包含密码中的URL转义字符。
 - HTTP和WebSocket在缺失或错误凭据时被上游拒绝，源站未收到请求，没有直连回退；`noProxy`命中时仍直连且不携带上游认证头。
@@ -535,7 +641,7 @@ AppContainer 列表保持 Main 按名称提供的原始相对顺序，只在 Ren
 
 ### 3.6 已知兼容风险
 
-macOS接管前读取系统生效代理，并通过`detectedUpstream()`下发Core。各network service的完整快照只用于恢复，不任意合并Wi-Fi、以太网和VPN的配置。
+macOS接管前读取系统生效代理，由Main的`SystemProxyService`解析用户模式并下发Core。各network service的完整快照只用于恢复，不任意合并Wi-Fi、以太网和VPN的配置。
 
 <a id="macos-effective-upstream"></a>
 #### macOS生效上游
@@ -548,7 +654,7 @@ macOS接管前读取系统生效代理，并通过`detectedUpstream()`下发Core
 - macOS下发`{ httpProxyUrl, httpsProxyUrl, exceptions, excludeSimpleHostnames }`；单个协议的`null`明确表示该协议直连。Windows原`{ proxyUrl, noProxy }`契约保持。
 - macOS journal只保存`original / owned / effectiveProxies`；不含`version`，不保留旧实现、兼容读取或迁移。切换前确认宿主没有未恢复journal。
 - macOS上游先经URL规范化，再用Node `BlockList`检查回环地址与listener端口；拒绝回环简写/IPv6映射造成自环，其他端口的本地代理保留。
-- 只有Auto Detect而无PAC URL、无效代理地址或不支持的PAC scheme，在写系统代理前拒绝，不能当作直连成功。
+- Auto Detect优先使用系统生效字典给出的自动PAC URL；没有URL时由Main按真实发现信息解析。未发现、无效代理地址或不支持的PAC scheme在写系统代理前拒绝，不能当作直连成功。
 
 覆盖范围限制：Windows 只接管 WinINet，自带网络栈、WinHTTP、Java、curl、容器、WSL 可能不走 Capture。`<local>` bypass 会让 localhost 绕过。
 

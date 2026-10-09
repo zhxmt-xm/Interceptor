@@ -65,6 +65,15 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.rendererDiagnosticReport, report),
   getSystemProxyStatus: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.systemProxyGetStatus),
+  getUpstreamSettings: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.upstreamGetSettings),
+  applyUpstreamSettings: (settings) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.upstreamApplySettings, settings),
+  onUpstreamSettingsChanged: (listener) => {
+    const handler = (): void => listener();
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.upstreamSettingsChanged, handler);
+    return () => ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.upstreamSettingsChanged, handler);
+  },
   enableSystemProxy: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.systemProxyEnable),
   restoreSystemProxy: () =>

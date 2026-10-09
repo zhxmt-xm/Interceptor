@@ -6,6 +6,7 @@ export type PlatformOperation =
   | 'https-decryption.enable' | 'https-decryption.disable'
   | 'system-proxy.enable' | 'system-proxy.restore' | 'system-proxy.recover'
   | 'system-proxy.update-upstream' | 'system-proxy.status'
+  | 'system-proxy.configure-upstream'
   | 'app-container.enable' | 'app-container.disable'
   | 'app-container.enable-all' | 'app-container.disable-all';
 

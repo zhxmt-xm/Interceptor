@@ -1,5 +1,5 @@
 import type { MacosHelperRequestCompletion, MacosHelperServiceErrorCode, MacosHelperServiceOperation, MacosHelperServiceStatus } from '../interfaces';
-import type { MacosSystemProxySnapshot } from '../../system-proxy/interfaces';
+import type { MacosSystemProxySnapshot, WpadDiscoveryInfo } from '../../system-proxy/interfaces';
 import { MacosHelperServiceError } from './internal/errors';
 import { SystemProxyError } from '../../system-proxy/internal/errors';
 
@@ -27,7 +27,7 @@ export function parseMacosHelperServiceReply(data: Uint8Array, requestId: string
 
 export function parseMacosHelperServiceStatus(value: unknown): MacosHelperServiceStatus {
   const capabilities: readonly MacosHelperServiceOperation[] = [
-    'status', 'system-proxy.read', 'system-proxy.read-effective', 'system-proxy.replace',
+    'status', 'system-proxy.read', 'system-proxy.read-effective', 'system-proxy.read-discovery', 'system-proxy.replace',
     'certificate.import', 'certificate.remove', 'request.get-completion',
   ];
   const reportedCapabilities = isRecord(value) ? value.capabilities : undefined;
@@ -96,6 +96,16 @@ export function parseMacosEffectiveProxySettings(value: unknown): Record<string,
     throw new MacosHelperServiceError('invalid-response');
   }
   return value;
+}
+
+export function parseWpadDiscoveryInfo(value: unknown): WpadDiscoveryInfo {
+  if (!isRecord(value) || !hasFields(value, ['searchDomains', 'dhcpPacUrl'])
+    || !Array.isArray(value.searchDomains)
+    || value.searchDomains.some(domain => typeof domain !== 'string' || !domain.trim())
+    || (value.dhcpPacUrl !== null && typeof value.dhcpPacUrl !== 'string')) {
+    throw new MacosHelperServiceError('invalid-response', 'completed', 'system-proxy.read-discovery', true);
+  }
+  return { searchDomains: [...value.searchDomains], dhcpPacUrl: value.dhcpPacUrl };
 }
 
 function assertJsonValue(value: unknown): void {

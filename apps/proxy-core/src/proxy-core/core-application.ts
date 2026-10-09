@@ -4,6 +4,7 @@ import type {
   CoreCommand,
   CoreError,
   CoreResult,
+  UpstreamSettingsResult,
 } from '@interceptor/core-protocol';
 import { collectLeaves } from '@interceptor/core-protocol';
 
@@ -734,9 +735,23 @@ export class CoreApplication implements CoreRpcHost {
         });
       case 'proxy.setUpstream':
         return this.withProxy(async (proxyService) => {
+          await proxyService.validateUpstream(command.payload.upstream, abortSignal);
           proxyService.setUpstreamProxy(command.payload.upstream);
           return { type: 'proxy.status', payload: proxyService.status() };
         });
+      case 'upstream.getSettings':
+        return this.withWorkspace(workspaceService => ({
+          type: 'upstream.settings',
+          payload: { settings: workspaceService.loadUpstreamSettings() },
+        }));
+      case 'upstream.applySettings':
+        return this.withProxy(proxyService => this.withWorkspace(async (workspaceService): Promise<UpstreamSettingsResult> => {
+          await proxyService.validateUpstream(command.payload.upstream, abortSignal);
+          abortSignal.throwIfAborted();
+          const settings = workspaceService.saveUpstreamSettings(command.payload.settings);
+          proxyService.setUpstreamProxy(command.payload.upstream);
+          return { type: 'upstream.settings', payload: { settings } };
+        }));
       case 'tls.useCertificate':
         return this.withProxy(async (proxy) => {
           proxy.useCertificate(command.payload.ca);

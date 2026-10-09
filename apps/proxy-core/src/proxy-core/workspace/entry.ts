@@ -2,12 +2,14 @@ import { DatabaseSync } from 'node:sqlite';
 import { isIP } from 'node:net';
 import { domainToASCII } from 'node:url';
 
-import type {
-  Collection,
-  CollectionNode,
-  RuleNode,
-  RuleSet,
-  TlsPassthroughSettings,
+import {
+  parseUpstreamProxySettings,
+  type Collection,
+  type CollectionNode,
+  type RuleNode,
+  type RuleSet,
+  type TlsPassthroughSettings,
+  type UpstreamProxySettings,
 } from '@interceptor/core-protocol';
 
 import { workspaceDatabasePath } from '../constants';
@@ -154,6 +156,19 @@ export class WorkspaceService {
   /** 记住用户关闭了 HTTPS 解密。 */
   disableDecryptionPreference(): void {
     this.overwrite('tls_decryption_preference', JSON.stringify({ enabled: false }));
+  }
+
+  /** Read the persistent upstream mode without deriving it from the current system proxy. */
+  loadUpstreamSettings(): UpstreamProxySettings {
+    const row = this.read('upstream_proxy_settings');
+    return row ? parseUpstreamProxySettings(JSON.parse(row.json)) : { mode: 'system' };
+  }
+
+  /** Validate and atomically replace only the selected upstream mode's fields. */
+  saveUpstreamSettings(value: unknown): UpstreamProxySettings {
+    const settings = parseUpstreamProxySettings(value);
+    this.overwrite('upstream_proxy_settings', JSON.stringify(settings));
+    return settings;
   }
 
   /** 关闭 workspace.sqlite；配置已持久化，不随 Capture 清理。 */

@@ -13,6 +13,7 @@ import styles from './SettingsContent.module.css';
 import { StoragePanel } from './StoragePanel';
 import { TlsPassthroughPanel } from './TlsPassthroughPanel';
 import { UpdatesPanel } from './UpdatesPanel';
+import { UpstreamProxyPanel } from './UpstreamProxyPanel';
 
 export interface SettingsContentProps {
   active: string;
@@ -22,6 +23,7 @@ export interface SettingsContentProps {
 /** 有专属面板的分区；其余分区落到占位面板。 */
 const PANELS: Record<string, () => React.JSX.Element> = {
   proxy: ProxyPanel,
+  upstream: UpstreamProxyPanel,
   'app-containers': AppContainerPanel,
   agent: AgentSettingsPanel,
   certificates: CertificatesPanel,

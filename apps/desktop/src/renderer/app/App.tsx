@@ -55,6 +55,7 @@ import {
 import type { TlsPassthroughNavigationTarget } from '../features/settings/interfaces';
 import { tlsPassthroughCoveringPattern } from '../features/settings/utils';
 import { UiPreferencesActions } from '../features/settings/data/uiPreferencesActions';
+import { UpstreamSettingsActions } from '../features/settings/data/upstreamSettingsStore';
 import { createAppTheme, type ThemeMode } from '../theme/theme';
 import { WindowControls } from '../components/WindowControls/WindowControls';
 import styles from './App.module.css';
@@ -151,6 +152,13 @@ export function App(): React.JSX.Element {
   useEffect(() => new UiPreferencesActions(setThemeMode).subscribe(), []);
   useEffect(() => TlsCompatibilityActions.subscribe(), []);
   useEffect(() => McpSettingsActions.subscribe(), []);
+  useEffect(() => UpstreamSettingsActions.subscribe(), []);
+  useEffect(() => {
+    if (!booting) void UpstreamSettingsActions.load().catch(error => console.error('[upstream] Initial load failed.', error));
+  }, [booting]);
+  useEffect(() => {
+    if (view !== 'capture') UpstreamSettingsActions.closePopover();
+  }, [view]);
   useEffect(() => {
     void AgentModelsActions.load().catch(() => undefined);
   }, []);
@@ -236,6 +244,10 @@ export function App(): React.JSX.Element {
       });
     },
     openRules: () => setView('rules'),
+    openUpstreamSettings: () => {
+      setSettingsSection('upstream');
+      setView('settings');
+    },
     showRuleRequests: (ruleId) => {
       useCaptureStore.getState().filterByRule(ruleId);
       setView('capture');

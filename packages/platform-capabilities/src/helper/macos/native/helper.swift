@@ -1,6 +1,7 @@
 import Foundation
 import Security
 import SystemConfiguration
+import SystemConfiguration.SCDynamicStoreCopyDHCPInfo
 
 /** Reads and atomically writes proxy dictionaries for every active network service. */
 final class SystemProxyHelper {
@@ -67,6 +68,9 @@ final class SystemProxyHelper {
         case "get-effective-proxies":
             guard arguments.count == 1 else { throw HelperError.usage }
             try writeJSON(try readEffectiveSystemProxySettings())
+        case "get-wpad-settings":
+            guard arguments.count == 1 else { throw HelperError.usage }
+            try writeJSON(try readWpadDiscoveryInfo())
         case "get":
             guard arguments.count == 1 else {
                 throw HelperError.usage
@@ -106,6 +110,54 @@ final class SystemProxyHelper {
             throw HelperError.preferencesUnavailable
         }
         return settings
+    }
+
+    /** Read discovery inputs from the primary network without changing DNS or requesting a DHCP lease. */
+    static func readWpadDiscoveryInfo() throws -> [String: Any] {
+        guard let store = SCDynamicStoreCreate(nil, applicationIdentifier as CFString, nil, nil),
+              let preferences = SCPreferencesCreate(nil, applicationIdentifier as CFString, nil) else {
+            throw HelperError.preferencesUnavailable
+        }
+        let serviceIds = ["IPv4", "IPv6"].compactMap { family -> String? in
+            let settings = SCDynamicStoreCopyValue(store, "State:/Network/Global/\(family)" as CFString) as? [String: Any]
+            return settings?[kSCDynamicStorePropNetPrimaryService as String] as? String
+        }
+        guard let serviceId = serviceIds.first,
+              let service = SCNetworkServiceCopy(preferences, serviceId as CFString),
+              let dns = SCNetworkServiceCopyProtocol(service, kSCNetworkProtocolTypeDNS) else {
+            throw HelperError.preferencesUnavailable
+        }
+        let configured = SCNetworkProtocolGetConfiguration(dns) as? [String: Any]
+        let effective = SCDynamicStoreCopyValue(store, "State:/Network/Service/\(serviceId)/DNS" as CFString) as? [String: Any]
+        var domains: [String] = []
+        for configuration in [configured, effective] {
+            if let search = configuration?[kSCPropNetDNSSearchDomains as String] as? [String] {
+                domains.append(contentsOf: search)
+            }
+            if let domain = configuration?[kSCPropNetDNSDomainName as String] as? String {
+                domains.append(domain)
+            }
+        }
+        var result: [String: Any] = ["dhcpPacUrl": NSNull()]
+        if let info = SCDynamicStoreCopyDHCPInfo(store, serviceId as CFString) {
+            if let option = DHCPInfoGetOptionData(info, 252) {
+                guard let url = String(data: option as Data, encoding: .utf8) else {
+                    throw HelperError.preferencesUnavailable
+                }
+                let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "\0")))
+                guard !trimmed.isEmpty else { throw HelperError.preferencesUnavailable }
+                result["dhcpPacUrl"] = trimmed
+            }
+            if let option = DHCPInfoGetOptionData(info, 15) {
+                guard let domain = String(data: option as Data, encoding: .utf8) else {
+                    throw HelperError.preferencesUnavailable
+                }
+                domains.append(domain.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "\0"))))
+            }
+        }
+        var seen = Set<String>()
+        result["searchDomains"] = domains.filter { !$0.isEmpty && seen.insert($0).inserted }
+        return result
     }
 
     static func readSystemProxySnapshot() throws -> [String: Any] {
@@ -311,7 +363,7 @@ private enum HelperError: Error, CustomStringConvertible {
     var description: String {
         switch self {
         case .usage:
-            return "usage: macos-proxy-helper get | set <base64-json>"
+            return "usage: macos-proxy-helper get | get-effective-proxies | get-wpad-settings | set <base64-json>"
         case .preferencesUnavailable:
             return "SystemConfiguration preferences are unavailable"
         case let .authorizationFailed(status):

@@ -19,7 +19,9 @@ import { AgentRemoveModelDialog } from '../features/Settings/AgentRemoveModelDia
 import { McpClientConfirmationDialog } from '../features/Settings/McpClientConfirmationDialog';
 import { McpClientDialog } from '../features/Settings/McpClientDialog';
 import { McpToolApprovalDialog } from '../features/Settings/McpToolApprovalDialog';
-import { FixtureRenderer, fixtureClassNames } from '../fixtures/FixtureRenderer';
+import { FixtureRenderer, fixtureClassNames, type FixtureElementRenderer } from '../fixtures/FixtureRenderer';
+import { UpstreamProxyStatus } from '../features/UpstreamProxy/UpstreamProxyStatus';
+import { useUpstreamProposal } from '../features/UpstreamProxy/useUpstreamProposal';
 import { useDesignFixtureAdapter } from '../fixtures/useDesignFixtureAdapter';
 import { appAttributes } from '../fixtures/generated/appAttributes';
 import { bootFixture } from '../fixtures/generated/bootFixture';
@@ -39,7 +41,12 @@ import { Sidebar } from './Sidebar';
 function DesignAppContent(): React.JSX.Element {
   const rootRef = useRef<HTMLDivElement>(null);
   const { state, updateState } = useDesignState();
+  useUpstreamProposal();
   useDesignFixtureAdapter(rootRef, state, updateState);
+  const renderStatusbarElement: FixtureElementRenderer = element => (
+    element.attributes.class?.split(/\s+/).includes('capture-upstream')
+      ? (state.view === 'capture' ? <UpstreamProxyStatus /> : null) : undefined
+  );
   const messageConfig = useMemo(() => ({
     getContainer: () => rootRef.current ?? document.body,
     top: 10,
@@ -69,7 +76,7 @@ function DesignAppContent(): React.JSX.Element {
                 <Diagnostics />
               </div>
               <AgentSidePanel />
-              <FixtureRenderer node={statusbarFixture} />
+              <FixtureRenderer node={statusbarFixture} renderElement={renderStatusbarElement} />
               {overlayFixtures.map((fixture, index) => <FixtureRenderer key={`overlay-${index}`} node={fixture} />)}
               <AppContainerBulkDialog />
               <AgentProviderDialog />

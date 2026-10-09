@@ -1,6 +1,6 @@
 # Settings 与 Updates Workflows
 
-本文件定义 Settings 九个section和Update notification的完整E2E流程。每条workflow独立启动Electron、独占profile/trace；系统代理、CA信任和外部程序操作必须由真实App UI发起。
+本文件定义 Settings 十个section和Update notification的完整E2E流程。每条workflow独立启动Electron、独占profile/trace；系统代理、CA信任和外部程序操作必须由真实App UI发起。
 
 ## `settings.certificates.shared-startup`（两端）
 
@@ -312,15 +312,15 @@ macOS定向用例同在`tools-certificates.workflow.ts`，名称含`rejects over
 **状态**：passed
 **策略**：shared
 
-macOS保留九个section、键盘和跨workspace往返；App Containers按产品已有unsupported状态检查Search、Enable all、Disable all不出现并截图，不要求Windows专属控件。Windows原断言不变。macOS启动等待boot退出，产品Close后预留120秒供用户处理原生代理恢复授权；不自动批准、不输入密码，实际恢复与进程/8888/journal检查保持。
+macOS保留十个section、键盘和跨workspace往返；App Containers按产品已有unsupported状态检查Search、Enable all、Disable all不出现并截图，不要求Windows专属控件。新增Upstream section通过正式导航验证共享编辑器，其网络流程独立验收。Windows专属断言不变。macOS启动等待boot退出，产品Close后预留120秒供用户处理原生代理恢复授权；不自动批准、不输入密码，实际恢复与进程/8888/journal检查保持。
 
 离线字体检查：进入默认Certificates后保存`settings-fonts.json/png`，确认`Inter`只注册设计的400/450/500/600/700、550字重请求实际加载非空FontFace，CSSOM中的Inter字体URL均来自`interceptor://app/`。不切换应用语言，不要求英文显示文案；Resource Timing不能代替CSSOM与实际FontFace检查，其他字体的内嵌`data:`资源不在此URL断言范围。
 
 ### Steps
 
 1. 创建profile/evidence，启动trace/Electron，等待App/Core/8888/readiness；点击 `capture.readiness.cancel`，确认System Proxy仍未owned且系统设置未修改。
-2. 点击 `shell.workspace.settings`；检查 Settings rail 九个 section 可用，且只有 `settings.section.certificates` 具有 `aria-current=page`。
-3. 依次点击 Proxy、App Containers、TLS passthrough、Certificates、Appearance、Storage、Privacy、Agent、Updates；每次确认目标项成为唯一 `aria-current=page`，并等待目标面板稳定。Agent section 额外通过键盘聚焦并按 Enter 激活，确认 rail item 使用原生 button 语义。
+2. 点击 `shell.workspace.settings`；检查 Settings rail 十个 section 可用，且只有 `settings.section.certificates` 具有 `aria-current=page`。
+3. 依次点击 Proxy、Upstream proxy、App Containers、TLS passthrough、Certificates、Appearance、Storage、Privacy、Agent、Updates；每次确认目标项成为唯一 `aria-current=page`，并等待目标面板稳定。Upstream面板使用公共ID确认Current route和默认System选择，不在导航场景Apply网络配置；Agent section额外通过键盘聚焦并按Enter激活，确认rail item使用原生button语义。
 	Updates通过`settings.updates.status`公开实际更新状态；标题使用flex和align-items:center，页面不再出现GitHub登录控件。保存状态标题截图，不打开外部授权浏览器；匿名检查、失败重试及重启由Updates专属workflow验证，导航不能替代真实下载或通知验收。
 4. 再次选择 App Containers，点击 `shell.workspace.capture` 离开 Settings，确认 Capture 成为当前 workspace。
 5. 通过普通 `shell.workspace.settings` 返回，确认 App Containers 仍是唯一 `aria-current=page`，没有回到默认 Certificates。
@@ -332,7 +332,7 @@ macOS保留九个section、键盘和跨workspace往返；App Containers按产品
 
 ### 预期效果
 
-九个 section 通过 Settings rail 真实导航；`aria-current` 准确且唯一；跨 feature 普通返回时保留最后访问 section；Proxy/Certificates/Storage/Updates 使用真实后端，Agent 只呈现诚实未配置空态；Appearance 不伪造未实现功能；Header/Main/statusbar 一致。显式 TLS 跨 feature 跳转覆盖当前 section 的语义由独立 `capture.navigate-tls-passthrough` workflow 验收。
+十个section通过Settings rail真实导航；`aria-current`准确且唯一；跨feature普通返回时保留最后访问section；Proxy/Upstream/Certificates/Storage/Updates使用真实后端，Agent只呈现诚实未配置空态；Appearance不伪造未实现功能；Header/Main/statusbar一致。显式TLS跨feature跳转覆盖当前section的语义由独立`capture.navigate-tls-passthrough` workflow验收。
 
 ### 验收要求
 
@@ -428,6 +428,91 @@ Enable all 与 Disable all 各自对应一条 Main 命令和一次 UAC；前者�
 6. 通过ClashX真实菜单恢复该workflow的上游基线，外层host guard验证两代Main/Core/Worker、8888、journal和证书信任，再删除profile。整轮结束还须恢复准备前的最初完整代理状态。
 
 ClashX三条属于`settings.proxy.upstream`，另一条为既有跨profile crash；四条均须保留实际数据流、完整代理和退出恢复证据，现行字段与恢复约定见[macOS生效上游](../../../../../architecture/features/settings.md#macos生效上游)。
+
+<a id="settings-upstream-macos"></a>
+## `settings.upstream.macos`
+
+**状态**：当前macOS流程最终Green（固定模式、失败保持、PAC HTTP/HTTPS、DNS/DHCP WPAD、System Auto Detect、重启与退出恢复）；初始整体功能前置真实E2E Red历史缺证，不记为完整TDD闭环
+**策略**：macOS；真实Electron；系统代理宿主保护；WPAD网络调整另行授权
+
+### Steps
+
+1. 为本workflow创建独立profile、trace和loopback origin/upstream/PAC服务；保存本轮原系统配置。
+   启动真实Electron，等待公共App/Core/listener状态。系统网络实验的离线恢复和定时保护先于任何写入，
+   不使用历史快照，不在日常局域网启动DHCP。
+2. 从Settings进入Upstream proxy，确认五种模式、默认System和当前路线；不改变应用语言。
+   选择Manual，填写协议、Host及Port，但不Apply；Current route与Capture右下角仍保留旧值。
+3. Cancel/Discard后配置和路线均不变。重新编辑并Apply，通过真实请求和上游日志确认网络经过所填代理；
+   Current route和Capture按钮同步更新，Not applied消失，Apply禁用。
+4. 从Capture右下角打开快捷浮层，修改PAC URL，通过Open in Settings转入对应区域，确认草稿保留且尚未生效。
+   Apply后分别访问PAC要求走PROXY和DIRECT的自产目标，核对上游与origin两边实际收到的流量。
+5. 验证Direct仍可抓包，System重新沿用接管前原配置；Apply不得恢复系统代理或将当前8888作为上游。
+   同时保持一条真实在途响应/长连接，切换上游后原连接自然结束，新请求使用新配置，不重放。
+6. 在已授权的真实DNS-WPAD及独立DHCP-WPAD环境分别从UI选择WPAD并Apply，
+   核对真实发现、PAC获取及PROXY/DIRECT路径；不能手填PAC、造发现结果或直接调用Core接口替代。
+   发现失败、PAC不可达、Core应用失败均明确显示错误，已保存配置及原有效路线不被改成直连。
+7. 核对Settings和Capture两个入口的Current route同行布局、可读状态、键盘/Escape、内容滚动和原生焦点；
+   几何/parity独立执行，不替代网络断言。
+8. 保存截图、trace、输入来源和不含凭据的路由结果。点击产品Close，验证所有Main/Core/Worker退出、
+   8888释放、journal清理、系统代理和额外DNS/搜索域恢复；保底回滚触发不能算正常产品恢复通过。
+9. 复用同一profile启动第二代真实Electron，确认已保存模式回载、无请求重放；
+   正常Close并完成同样的销毁与宿主恢复后删除本workflow数据和临时服务。
+
+### 预期与证据
+
+- 本轮按[发送适配契约](../../../../../architecture/features/settings.md#upstream-request-adapter)验证Mockttp补丁：
+  原PAC HTTP和HTTPS scheme场景先保留产品Red，修改后用同样的请求、PAC条件及上游限制取得Green。
+  代理真实收到的目标与源站实际收到的headers/body分别断言；不以按钮切换或HTTP200代替正确选路。
+  H1字段名可小写、同名行可归组，但字段值、同名值顺序、空值和正文必须保留；Cookie/Set-Cookie及framing
+  由所属Core集成覆盖，真实UI仍需验证配置、两入口、持久化与正常Close恢复，不用直接调用业务API替代。
+- 真正的业务Red来自模式/保存/应用/路由不符合目标，而不是selector拼写、授权、服务或构建失败。
+- 无效结构、越界端口、内嵌凭据及持久化坏数据由所属unit/integration覆盖，不在E2E预造业务配置。
+- 只看按钮切换或网页打开不算路由通过；原生系统Auto Detect、程序侧发现、Core流量和设计截图分别记录边界。
+- 同文件的固定路由用例独立覆盖Manual实际经过上游、取消不改路线、Direct不经过上游、
+  跨入口切回System、Manual偏好重启回载及双代正常Close；不能替代原PAC用例。
+  PAC用例保留原HTTP请求、脚本及proxy fixture限制；其HTTP400前置证据保留，修复后同一流程必须通过。
+- 失败保持用例仅在原生只读结果确实没有WPAD来源时运行：先UI应用Manual，再请求本workflow已关闭端口的PAC
+  和当前网络未发现的WPAD；两次均须出现错误、保留Manual，实际请求仍经原上游。不能伪造发现失败、向Store注入状态，
+  也不能把此负向场景当作WPAD成功验收。结束按正常Close和宿主guard恢复。
+- DNS发现用例使用独立定时保护的回环DNS、标准HTTP 80 `/wpad.dat`及临时搜索域，
+  原生只读结果必须实际包含该轮专用域且没有DHCP PAC。用户仅选择WPAD并Apply，不填写PAC URL；
+  两入口显示真实发现的URL，Core按该场景的PAC返回值DIRECT访问自产origin。正常Close后用同一profile
+  再启动，确认WPAD偏好回载、重新获取PAC及真实转发；保存DNS查询/PAC下载记录和两代退出证据。
+  此场景只验证DNS发现、DIRECT和持久化，不改变原PAC HTTP失败输入，不证明HTTP上游分支、
+  系统Auto Detect或DHCP已经通过。先核对产品自行恢复代理，再撤销临时DNS；任何保底恢复均不能算Green。
+- System继承Auto Detect的独立场景由外部保护先保存完整系统配置，再临时关闭固定HTTP/HTTPS/SOCKS及显式PAC，
+  仅启用Auto Detect，保留本轮专用DNS/PAC。fresh profile默认System必须自动发现并由Core按PAC选择DIRECT转发。
+  原network service必须仍是Auto Detect、未设置显式PAC；macOS生效字典会提供`http://wpad/wpad.dat`，
+  短主机名由真实系统搜索域解析，PAC服务同时接受该合法Host与本轮完整域名。只读核对journal分别保存原配置与该生效字典；故意终止第一代App，
+  fresh profile第二代须恢复同一journal并重新发现，真实请求成功。第二代正常Close后系统应先精确回到Auto Detect，
+  再由外部保护还原实验前代理，最后移除DNS配置。分别记录故意crash、正常Close、产品恢复和实验环境恢复，
+  不把后者当成产品恢复，也不把该场景当成DHCP验收。
+  新Core的listener启动后，Capture bootstrap仍通过Main的幂等Enable应用上游；不能因journal仍owned而跳过，
+  Main不得重复写已经持有的系统配置。Current route必须有有效PAC，不能只凭Recording判定已恢复。
+- 独立的成功选路场景提供只对本机开放的HTTPS origin、HTTP CONNECT上游和DNS-WPAD PAC。
+  PAC对HTTPS返回本轮真实上游，对HTTP返回DIRECT；通过UI依次Apply WPAD和显式PAC，
+  每种模式都须取得HTTPS正文和唯一上游CONNECT记录，HTTP请求则只有origin记录、没有上游连接。
+  HTTPS origin使用一次性自签名测试证书，只有测试客户端不验证该证书；不修改产品MITM、用户CA或系统信任。
+- DHCP发现独立场景先由获准的外部保护建立真实隔离接口、持久网络服务与DHCP服务器，
+  只在测试接口下发Option 252；系统DHCP客户端必须实际取得租约，测试服务必须成为主网络。
+  保留DHCP报文与原生状态，不能通过写入State:/或DHCP缓存满足前置条件。
+  `INTERCEPTOR_E2E_DHCP_PAC_PORT`只固定本workflow的loopback PAC/origin监听端口，产品不读取此变量；
+  Option 252指向该服务的`/tls-proxy.pac`，原生helper只读返回同一URL且搜索域为空，排除DNS发现代替DHCP。
+  从Capture快捷浮层仅选择WPAD并Apply，不输入PAC URL；Settings须显示相同生效值。
+  HTTPS请求必须经过本轮真实CONNECT上游，HTTP请求必须DIRECT到达origin；同时保留PAC实际下载记录。
+  正常Close后复用profile启动第二代App，重新核对DHCP来源、WPAD回载、PAC下载及两条路线。
+  保存两代trace、截图、PID/端口与路由证据；第二代通过产品Close恢复代理后，外部保护才移除DHCP服务及接口，
+  核对原服务配置/顺序、默认路由和本轮DHCP服务文件恢复。授权或环境失败记blocked，不算产品Red或验收Green。
+  实验代理端口由外部协调器提供给测试fixture，不进入产品参数。保留原明文HTTP经PAC HTTP上游的失败用例，
+  该独立场景不更改其协议、headers、PAC或断言，也不宣称第17项已修复。
+  前置该场景在首个WPAD HTTPS请求失败：正文成功但上游CONNECT为空，Core的同条件集成也复现。
+  根因及与第17项的区分见[Settings限制](../../../../../architecture/features/settings.md#34-上游代理链式转发)；
+  用例及原PAC条件保留；修改后的DNS-WPAD独立场景已复验，实际取得两种模式各自的上游CONNECT和DIRECT流量，
+  不把它与独立显式PAC用例或DHCP验收混写。
+- 同一fixture另提供`/tls-proxy.pac`，通过真实UI直接选择显式PAC，不需要DNS搜索域或Auto Detect变更。
+  PAC对HTTPS返回PROXY、对HTTP返回DIRECT；HTTPS正文成功必须同时有且仅有一条正确CONNECT记录，
+  HTTP正文只到达自产origin、不新增上游连接。该场景独立取得TLS scheme修复前后证据，
+  不替代DNS-WPAD、系统Auto Detect或DHCP场景，也不修改原明文HTTP/PAC失败输入。
 
 <a id="settings-proxy-enable-restore"></a>
 ## `settings.proxy.enable-restore`

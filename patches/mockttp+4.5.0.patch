@@ -87,6 +87,73 @@ index 3dd0793..979caba 100644
  /**
   * @hidden
   */
+diff --git a/node_modules/mockttp/dist/rules/http-agents.js b/node_modules/mockttp/dist/rules/http-agents.js
+index c90e10e..3e52945 100644
+--- a/node_modules/mockttp/dist/rules/http-agents.js
++++ b/node_modules/mockttp/dist/rules/http-agents.js
+@@ -64,11 +64,26 @@ function getOrCreateConnectionAgent(connection, key, buildAgent) {
+ }
+ const buildHttpsProxyAgent = (href, opts) => new https_proxy_agent_1.HttpsProxyAgent(href, opts);
+ const buildSocksProxyAgent = (href, opts) => new socks_proxy_agent_1.SocksProxyAgent(href, opts);
++// Adapt only the PAC lookup URL; the original agent still owns proxy selection and sockets.
++class TargetPortPacProxyAgent extends pac_proxy_agent_1.PacProxyAgent {
++    constructor(proxyUrl, options, targetPort) {
++        super(proxyUrl, options);
++        this.targetPort = targetPort;
++    }
++    async getResolver() {
++        const resolver = await super.getResolver();
++        return (input, hostname) => {
++            const target = new url.URL(input);
++            target.port = String(this.targetPort);
++            return resolver(target, hostname);
++        };
++    }
++}
+ const ProxyAgentFactoryMap = {
+     'http:': buildHttpsProxyAgent, // HTTPS here really means 'CONNECT-tunnelled' - it can do either
+     'https:': buildHttpsProxyAgent,
+-    'pac+http:': (...args) => new pac_proxy_agent_1.PacProxyAgent(...args),
+-    'pac+https:': (...args) => new pac_proxy_agent_1.PacProxyAgent(...args),
++    'pac+http:': (...args) => new TargetPortPacProxyAgent(...args),
++    'pac+https:': (...args) => new TargetPortPacProxyAgent(...args),
+     'socks:': buildSocksProxyAgent,
+     'socks4:': buildSocksProxyAgent,
+     'socks4a:': buildSocksProxyAgent,
+@@ -95,16 +110,18 @@ async function getAgent({ connection, protocol, hostname, port, tryHttp2, proxyS
+     // likely to behave unexpectedly. (We notably never use HTTP/2 upstream when proxying: it's
+     // complicated to mix up with proxying, so we ignore it entirely here.)
+     if (proxySetting?.proxyUrl && !(0, proxy_config_1.matchesNoProxy)(hostname, port, proxySetting.noProxy)) {
++        const { href, protocol: proxyProtocol } = url.parse(proxySetting.proxyUrl);
++        const isPac = proxyProtocol === 'pac+http:' || proxyProtocol === 'pac+https:';
+         const cacheKey = getCacheKey({
+             url: proxySetting.proxyUrl,
+             trustedCAs: proxySetting.trustedCAs,
+-            additionalTrustedCAs: proxySetting.additionalTrustedCAs
++            additionalTrustedCAs: proxySetting.additionalTrustedCAs,
++            targetPort: isPac ? port : undefined
+         });
+         const agentKey = `proxy:${cacheKey}`;
+         const existing = connection[socket_extensions_1.UpstreamConnectionAgents]?.get(agentKey);
+         if (existing)
+             return existing;
+-        const { href, protocol: proxyProtocol } = url.parse(proxySetting.proxyUrl);
+         const buildProxyAgent = ProxyAgentFactoryMap[proxyProtocol];
+         // If you specify trusted CAs, we override the CAs used for this connection, i.e. the trusted
+         // CA for the certificate of an HTTPS proxy. This is *not* the CAs trusted for upstream servers
+@@ -113,9 +130,10 @@ async function getAgent({ connection, protocol, hostname, port, tryHttp2, proxyS
+         // We resolve the certs (the only async step) above, so building & attaching the agent
+         // below is synchronous - no interleaving, no race with the connection's lifecycle.
+         const buildAgent = () => buildProxyAgent(href, {
+-            keepAlive: true,
++            // Reusing a PAC socket bypasses connect(), and therefore skips per-request PAC selection.
++            keepAlive: !isPac,
+             ...(trustedCerts ? { ca: trustedCerts } : {})
+-        });
++        }, port);
+         if (connection.destroyed)
+             throw abortForDeadConnection();
+         return getOrCreateConnectionAgent(connection, agentKey, buildAgent);
 diff --git a/node_modules/mockttp/dist/rules/passthrough-handling.js b/node_modules/mockttp/dist/rules/passthrough-handling.js
 index 92d0359..6830edd 100644
 --- a/node_modules/mockttp/dist/rules/passthrough-handling.js
@@ -228,7 +295,7 @@ index 8371f80..b8fa876 100644
          if (!Array.isArray(this.ignoreHostHttpsErrors) && typeof this.ignoreHostHttpsErrors !== 'boolean') {
              throw new Error("ignoreHostHttpsErrors must be an array or a boolean");
 diff --git a/node_modules/mockttp/dist/rules/requests/request-step-impls.js b/node_modules/mockttp/dist/rules/requests/request-step-impls.js
-index 8ba0d3d..838410c 100644
+index 8ba0d3d..3703696 100644
 --- a/node_modules/mockttp/dist/rules/requests/request-step-impls.js
 +++ b/node_modules/mockttp/dist/rules/requests/request-step-impls.js
 @@ -279,6 +279,7 @@ class PassThroughStepImpl extends request_step_definitions_1.PassThroughStep {
@@ -300,7 +367,29 @@ index 8ba0d3d..838410c 100644
          const effectivePort = (0, url_1.getEffectivePort)({ protocol, port });
          const trustedCAs = await this.trustedCACertificates();
          // We only do H2 upstream for HTTPS. Http2-wrapper doesn't support H2C, it's rarely used
-@@ -569,6 +624,47 @@ class PassThroughStepImpl extends request_step_definitions_1.PassThroughStep {
+@@ -486,6 +541,12 @@ class PassThroughStepImpl extends request_step_definitions_1.PassThroughStep {
+         else if (isH2Downstream && !shouldTryH2Upstream) {
+             rawHeaders = (0, header_utils_1.h2HeadersToH1)(rawHeaders, method);
+         }
++        if (!shouldTryH2Upstream) {
++            for (const [name, value] of rawHeaders) {
++                http.validateHeaderName(name);
++                http.validateHeaderValue(name, value);
++            }
++        }
+         let serverReq;
+         return new Promise((resolve, reject) => (async () => {
+             serverReq = await makeRequest({
+@@ -497,7 +558,7 @@ class PassThroughStepImpl extends request_step_definitions_1.PassThroughStep {
+                 path: `${pathname || '/'}${query || ''}`,
+                 headers: shouldTryH2Upstream
+                     ? (0, header_utils_1.rawHeadersToObjectPreservingCase)(rawHeaders)
+-                    : (0, header_utils_1.flattenPairedRawHeaders)(rawHeaders),
++                    : (0, header_utils_1.rawHeadersToObject)(rawHeaders),
+                 setDefaultHeaders: shouldTryH2Upstream, // For now, we need this for unexpected H2->H1 header fallback
+                 ...({
+                     // Disable strict HTTP/2 single-value field validation, extracted here
+@@ -569,6 +630,47 @@ class PassThroughStepImpl extends request_step_definitions_1.PassThroughStep {
                  if (isH2Downstream) {
                      serverRawHeaders = (0, header_utils_1.h1HeadersToH2)(serverRawHeaders);
                  }
@@ -348,7 +437,7 @@ index 8ba0d3d..838410c 100644
                  if (this.transformResponse) {
                      const { replaceStatus, updateHeaders, replaceHeaders, replaceBody, replaceBodyFromFile, updateJsonBody, patchJsonBody, matchReplaceBody } = this.transformResponse;
                      if (replaceStatus) {
-@@ -818,10 +914,18 @@ class PassThroughStepImpl extends request_step_definitions_1.PassThroughStep {
+@@ -818,10 +920,18 @@ class PassThroughStepImpl extends request_step_definitions_1.PassThroughStep {
              // Forward the request body to the upstream server:
              if (reqBodyOverride) {
                  clientReqBody.resume(); // Dump any remaining real request body
@@ -410,10 +499,10 @@ index 5f1598e..2332512 100644
                  return; // Do not continue with TLS
              }
 diff --git a/node_modules/mockttp/dist/server/mockttp-server.js b/node_modules/mockttp/dist/server/mockttp-server.js
-index db33b85..80c60dc 100644
+index db33b85..bcdc8a3 100644
 --- a/node_modules/mockttp/dist/server/mockttp-server.js
 +++ b/node_modules/mockttp/dist/server/mockttp-server.js
-@@ -27,6 +27,70 @@ const buffer_utils_1 = require("../util/buffer-utils");
+@@ -27,6 +27,72 @@ const buffer_utils_1 = require("../util/buffer-utils");
  const header_utils_1 = require("../util/header-utils");
  const abort_error_1 = require("../util/abort-error");
  const websocket_rule_1 = require("../rules/websockets/websocket-rule");
@@ -441,9 +530,11 @@ index db33b85..80c60dc 100644
 + * agent - which is exactly the semantics a passthrough tunnel needs. The others only use it
 + * as an event emitter.
 + */
-+function buildTunnelRequestStub() {
++function buildTunnelRequestStub(type, hostname, port) {
++    const authority = net.isIPv6(hostname) ? `[${hostname}]` : hostname;
 +    return Object.assign(new events_1.EventEmitter(), {
-+        path: '/',
++        // PAC selection needs the TLS target, while the returned socket must remain unwrapped.
++        path: type === 'tls' ? new URL(`https://${authority}:${port}/`).href : '/',
 +        getHeader: (name) => name.toLowerCase() === 'upgrade' ? 'websocket' : undefined
 +    });
 +}
@@ -455,7 +546,7 @@ index db33b85..80c60dc 100644
 + * without interception. The agents here all speak CONNECT (or SOCKS), and secureEndpoint: false
 + * keeps the tunnel raw, so the client and the real server still do TLS end-to-end themselves.
 + */
-+async function connectViaUpstreamProxy(proxyUrl, hostname, port) {
++async function connectViaUpstreamProxy(proxyUrl, hostname, port, type) {
 +    const { href, protocol } = new URL(proxyUrl);
 +    const buildProxyAgent = PassthroughProxyAgentFactoryMap[protocol];
 +    if (!buildProxyAgent) {
@@ -464,7 +555,7 @@ index db33b85..80c60dc 100644
 +    const agent = buildProxyAgent(href, { keepAlive: false });
 +    let timer;
 +    const upstreamSocket = await Promise.race([
-+        agent.connect(buildTunnelRequestStub(), {
++        agent.connect(buildTunnelRequestStub(type, hostname, port), {
 +            host: hostname,
 +            port,
 +            secureEndpoint: false
@@ -484,7 +575,7 @@ index db33b85..80c60dc 100644
  const serverPortCheckMutex = new async_mutex_1.Mutex();
  /**
   * A in-process Mockttp implementation. This starts servers on the local machine in the
-@@ -41,6 +105,7 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
+@@ -41,6 +107,7 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
      isHttp2Enabled;
      socksOptions;
      passthroughUnknownProtocols;
@@ -492,7 +583,7 @@ index db33b85..80c60dc 100644
      maxBodySize;
      keyLogFilePath;
      keyLogStream;
-@@ -55,6 +120,7 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
+@@ -55,6 +122,7 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
          this.isHttp2Enabled = options.http2 ?? 'fallback';
          this.socksOptions = options.socks ?? false;
          this.passthroughUnknownProtocols = options.passthrough?.includes('unknown-protocol') ?? false;
@@ -500,7 +591,7 @@ index db33b85..80c60dc 100644
          this.maxBodySize = options.maxBodySize ?? Infinity;
          this.keyLogFilePath = options.https?.keyLogFile;
          this.eventEmitter = new events_1.EventEmitter();
-@@ -256,6 +322,14 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
+@@ -256,6 +324,14 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
              emitter.emit('request-initiated', initiatedReq);
          });
      }
@@ -515,7 +606,7 @@ index db33b85..80c60dc 100644
      announceCompletedRequestAsync(emitter, request) {
          if (emitter.listenerCount('request') === 0)
              return;
-@@ -483,6 +557,9 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
+@@ -483,6 +559,9 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
                  serverPort: this.port,
                  onBodyData: emitter.listenerCount('request-body-data') > 0
                      ? this.announceBodyDataAsync.bind(this, emitter, 'request')
@@ -525,7 +616,7 @@ index db33b85..80c60dc 100644
                      : undefined
              });
          }
-@@ -531,6 +608,9 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
+@@ -531,6 +610,9 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
              onBodyData: emitter.listenerCount('response-body-data') > 0
                  ? this.announceBodyDataAsync.bind(this, emitter, 'response')
                  : undefined,
@@ -535,7 +626,7 @@ index db33b85..80c60dc 100644
              onInformationalResponse: (status, flatHeaders) => this.announceResponseInformationAsync(emitter, response, status, flatHeaders)
          });
          // If the request had Expect: 100-continue, we trigger the auto response now.
-@@ -937,6 +1017,7 @@ ${await this.suggestRule(request)}`;
+@@ -937,6 +1019,7 @@ ${await this.suggestRule(request)}`;
              // Awkward edge case. If we are passing through raw data, but we've already unwrapped TLS beforehand,
              // we need to recreate the TLS for the passthrough. This is more art than science but we can
              // get pretty close to simulating the original incoming configuration:
@@ -543,7 +634,7 @@ index db33b85..80c60dc 100644
              upstreamSocket = tls.connect({
                  host: hostname,
                  port: targetPort,
-@@ -952,11 +1033,77 @@ ${await this.suggestRule(request)}`;
+@@ -952,11 +1035,77 @@ ${await this.suggestRule(request)}`;
              // For raw traffic we pass through raw - not surprising. For TLS traffic this might be surprising,
              // but it's because a TLS tunnel is when we _don't_ terminate TLS ourselves, so we can't get inside
              // the tunnel at all here.
@@ -575,7 +666,7 @@ index db33b85..80c60dc 100644
 +            const proxySetting = await (0, proxy_config_1.getProxySetting)(this.passthroughProxyConfig, { hostname });
 +            upstreamSocket = proxySetting?.proxyUrl &&
 +                !(0, proxy_config_1.matchesNoProxy)(hostname, targetPort, proxySetting.noProxy)
-+                ? await connectViaUpstreamProxy(proxySetting.proxyUrl, hostname, targetPort)
++                ? await connectViaUpstreamProxy(proxySetting.proxyUrl, hostname, targetPort, type)
 +                : net.connect({ host: hostname, port: targetPort });
 +        }
 +        catch (e) {
@@ -646,6 +737,53 @@ index 2664cf5..f2d0933 100644
  export interface WebSocketMessage {
      /**
       * The id of this websocket stream. This will match the id of the request,
+diff --git a/node_modules/mockttp/dist/util/header-utils.js b/node_modules/mockttp/dist/util/header-utils.js
+index b17463e..f04531e 100644
+--- a/node_modules/mockttp/dist/util/header-utils.js
++++ b/node_modules/mockttp/dist/util/header-utils.js
+@@ -84,14 +84,14 @@ function rawHeadersToObject(rawHeaders) {
+         if (Array.isArray(existingValue)) {
+             existingValue.push(value);
+         }
+-        else if (existingValue) {
++        else if (existingValue !== undefined) {
+             headers[key] = [existingValue, value];
+         }
+         else {
+             headers[key] = value;
+         }
+         return headers;
+-    }, {});
++    }, Object.create(null));
+ }
+ /**
+  * Take raw headers, and turn them into headers just like `rawHeadersToObject` but
+@@ -108,7 +108,7 @@ function rawHeadersToObjectPreservingCase(rawHeaders) {
+     // to just use lowercase, because we want to preserve original casing wherever possible.
+     // To make that work, we use the casing from the first instance of each header, along with
+     // a lowercase -> first casing map here to look up that value later:
+-    const headerNameMap = {};
++    const headerNameMap = Object.create(null);
+     return rawHeaders.reduce((headers, [key, value]) => {
+         const lowerCaseKey = key.toLowerCase();
+         if (headerNameMap[lowerCaseKey]) {
+@@ -125,14 +125,14 @@ function rawHeadersToObjectPreservingCase(rawHeaders) {
+         if (Array.isArray(existingValue)) {
+             existingValue.push(value);
+         }
+-        else if (existingValue) {
++        else if (existingValue !== undefined) {
+             headers[key] = [existingValue, value];
+         }
+         else {
+             headers[key] = value;
+         }
+         return headers;
+-    }, {});
++    }, Object.create(null));
+ }
+ function objectHeadersToRaw(headers) {
+     const rawHeaders = [];
 diff --git a/node_modules/mockttp/dist/util/request-utils.js b/node_modules/mockttp/dist/util/request-utils.js
 index 7f00865..6399d8e 100644
 --- a/node_modules/mockttp/dist/util/request-utils.js
@@ -670,11 +808,36 @@ index 7f00865..6399d8e 100644
          return originalAddTrailers.apply(this, args);
      };
      const trackingWrite = function (...args) {
+diff --git a/node_modules/mockttp/dist/util/server-utils.js b/node_modules/mockttp/dist/util/server-utils.js
+index fe57ea6..5e84142 100644
+--- a/node_modules/mockttp/dist/util/server-utils.js
++++ b/node_modules/mockttp/dist/util/server-utils.js
+@@ -1,14 +1,16 @@
+ "use strict";
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.shouldPassThrough = shouldPassThrough;
++const net = require("net");
+ function shouldPassThrough(hostname, 
+ // Only one of these two should have values (validated above):
+ passThroughPatterns, interceptOnlyPatterns) {
+     if (!hostname)
+         return false;
++    const authority = net.isIPv6(hostname) ? `[${hostname}]` : hostname;
+     if (interceptOnlyPatterns) {
+-        return !interceptOnlyPatterns.some((pattern) => pattern.test(`https://${hostname}`));
++        return !interceptOnlyPatterns.some((pattern) => pattern.test(`https://${authority}`));
+     }
+-    return passThroughPatterns.some((pattern) => pattern.test(`https://${hostname}`));
++    return passThroughPatterns.some((pattern) => pattern.test(`https://${authority}`));
+ }
+ //# sourceMappingURL=server-utils.js.map
+\ No newline at end of file
 diff --git a/node_modules/mockttp/src/rules/passthrough-handling.ts b/node_modules/mockttp/src/rules/passthrough-handling.ts
 index 9e56a2a..5808d8b 100644
 --- a/node_modules/mockttp/src/rules/passthrough-handling.ts
 +++ b/node_modules/mockttp/src/rules/passthrough-handling.ts
-@@ -180,6 +180,6 @@ export function getUpstreamTlsOptions({
+@@ -179,7 +179,7 @@ export function getUpstreamTlsOptions({
+ 
              // This magic cipher is the very obtuse way that OpenSSL downgrades the overall
              // security level to allow various legacy settings, protocols & ciphers:
 -            ...(!strictHttpsChecks

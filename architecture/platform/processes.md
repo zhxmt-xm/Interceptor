@@ -79,6 +79,15 @@ flowchart LR
 
 `PlatformCapabilitiesService`来自内部`@interceptor/platform-capabilities`，系统代理、证书与helper业务仍在Main进程执行。Main只注入资源目录、safeStorage、typed `requestCore`与`getCoreProcessState`、DiagnosticsRecorder及通知；package不导入Main、Core应用入口或Electron。Core仅通过独立client-app子入口读取原生应用归属，缓存和Capture关联不搬迁。平台DTO在Desktop API中仅作type导出，Renderer不加载平台运行时代码。
 
+上游配置通过`getUpstreamSettings / applyUpstreamSettings`窄Preload API进入Main，IPC继续校验Renderer发送者。
+`SystemProxyService`统一解析已选模式、处理互斥和广播变化；Core通过`upstream.applySettings`先预检PAC，
+再保存Workspace偏好并更新后续请求的路由。helper只提供原生网络信息和系统代理读写，不转发业务HTTP。
+Core ready屏障内RPC已可用，不能因生命周期尚未公开running而跳过已有listener的上游下发。
+若listener尚未启动，Capture bootstrap在启动后仍调用Main的幂等Enable；OS owned只表示系统归属，
+不代表新Core已经配置路线。Main在已owned分支应用上游但不重复写系统配置，进入running后通知Renderer刷新。
+`system-proxy.read-discovery`为无参数只读入口，返回主网络搜索域及缓存DHCP 252；实际系统WPAD、
+DHCP和端到端验收仍按Settings的能力边界跟踪，不把读取缓存视为主动发现已验证。
+
 `CoreApplication`拥有唯一的[Http2ClientService](../../apps/proxy-core/src/proxy-core/http2-client/README.md)，
 只在本Core代际运行时观察其出站TLS/H2客户端，包括Mockttp与Composer。通过Node公开channel与
 `allowHalfOpen`保留TLS EOF后未排空的响应；真实截断显式失败，不消费正文或替换依赖内部方法。

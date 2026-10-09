@@ -33,7 +33,7 @@ export interface MacosHelperServiceStatus {
 }
 
 export type MacosHelperServiceOperation =
-  | 'status' | 'system-proxy.read' | 'system-proxy.read-effective' | 'system-proxy.replace'
+  | 'status' | 'system-proxy.read' | 'system-proxy.read-effective' | 'system-proxy.read-discovery' | 'system-proxy.replace'
   | 'certificate.import' | 'certificate.remove' | 'request.get-completion';
 
 export type MacosHelperRequestCompletion =
@@ -50,7 +50,7 @@ export interface MacosCertificatePayload {
 }
 
 export type MacosHelperServiceRequest =
-  | { readonly operation: 'status' | 'system-proxy.read' | 'system-proxy.read-effective' }
+  | { readonly operation: 'status' | 'system-proxy.read' | 'system-proxy.read-effective' | 'system-proxy.read-discovery' }
   | {
     readonly operation: 'request.get-completion';
     readonly parameters: { readonly requestId: string };
