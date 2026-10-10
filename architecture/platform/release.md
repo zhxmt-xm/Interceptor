@@ -82,6 +82,6 @@ external模块在顶层`require`可能阻塞packaged Main与CDP初始化，因�
   smoke同时用`INTERCEPTOR_BUILD_VERSION`断言本轮版本；不覆盖本地`out/`或修改manifest来伪装下载产物。
 - 命令给出draft链接并在同一终端等待维护者实机验收，确认后重新核对Release身份、附件名称/大小/digest/更新时间，再执行Publish并读取GitHub状态确认；未确认则保留draft。draft不提供匿名更新。失败保留Actions日志与诊断，重跑仅可更新draft；已发布版本修正使用新tag，不以删除Release或移动tag代替版本管理。
 
-客户端匿名更新与Release CI相互独立。产品不包含GitHub登录或token，不发送Authorization；CI的`GITHUB_TOKEN`只用于当前仓库的draft/资产操作，不进入产物。private仓库允许Release但不提供匿名读取；发布流程不自动公开仓库或改变固定更新源。404或请求失败正常显示failed，下载规则见[Settings](../features/settings.md#4-更新)。首个真实tag与安装验收状态见[Handover](../HANDOVER.md)。
+客户端匿名更新与Release CI相互独立。产品不包含GitHub登录或token，不发送Authorization；CI的`GITHUB_TOKEN`只用于当前仓库的draft/资产操作，不进入产物。private仓库允许Release但不提供匿名读取；发布流程不自动公开仓库或改变固定更新源。404或请求失败正常显示failed，下载规则见[Settings](../features/settings.md#4-更新)。发行记录以[GitHub Releases](https://github.com/zhxmt-xm/Interceptor/releases)为准，未完成的原生验收跟踪于[Handover](../HANDOVER.md)。
 
 macOS内置更新仍只接受同架构DMG；ZIP-only选择会在向导、Release notes和[操作指南](../release-guide.md)中明确提示其仅用于手动分发，不自动扩展Updater协议。
