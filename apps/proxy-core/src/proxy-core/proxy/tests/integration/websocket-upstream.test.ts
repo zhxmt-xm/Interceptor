@@ -1,7 +1,6 @@
 import http from 'node:http';
 import net, { type AddressInfo } from 'node:net';
 import type { Duplex } from 'node:stream';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import WebSocket, { WebSocketServer } from 'ws';
 
@@ -97,7 +96,8 @@ function startUpstreamProxy(expectedAuthorization?: string): Promise<StoppableSe
 }
 
 /** 经 Interceptor 打开 WebSocket 并完成一次回显往返。 */
-function echoThroughProxy(proxyPort: number, originPort: number): Promise<string> {
+async function echoThroughProxy(proxyPort: number, originPort: number): Promise<string> {
+  const { HttpsProxyAgent } = await import('https-proxy-agent');
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(`ws://127.0.0.1:${originPort}`, {
       // ws 没有 proxy 选项，指向 Interceptor 需要显式改写握手目标。

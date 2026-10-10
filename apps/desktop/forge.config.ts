@@ -9,7 +9,7 @@ import {
 } from '@electron/fuses';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import type { ForgeConfig } from '@electron-forge/shared-types';
-import type { WindowsSignOptions } from '@electron/packager';
+import type { PackagerWindowsSignOptions } from '@electron/packager';
 
 const desktopDirectory = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -38,7 +38,7 @@ const clientAppResources = path.join(
 );
 const windowsCertificateFile = process.env.WINDOWS_CERTIFICATE_FILE;
 const windowsCertificatePassword = process.env.WINDOWS_CERTIFICATE_PASSWORD;
-const windowsSign: WindowsSignOptions | undefined = windowsCertificateFile
+const windowsSign: PackagerWindowsSignOptions | undefined = windowsCertificateFile
   ? {
       certificateFile: windowsCertificateFile,
       ...(windowsCertificatePassword
@@ -81,7 +81,7 @@ class ReleasePackaging {
     );
   }
 
-  /** Lock every Electron 43 fuse before platform code signing runs. */
+  /** Lock every Electron fuse before platform code signing runs. */
   static async lockFuses(buildPath: string, platform: string): Promise<void> {
     await flipFuses(this.electronExecutablePath(buildPath, platform), {
       version: FuseVersion.V1,

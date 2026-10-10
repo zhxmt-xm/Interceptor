@@ -69,15 +69,15 @@ describe('Forge release configuration', () => {
     if (!signing || typeof signing !== 'object') throw new Error('Missing macOS signing configuration.');
 
     expect(signing.identity).toBe('-');
-    expect(signing.optionsForFile?.('Interceptor.app')).toMatchObject({
+    expect(signing.optionsForFile?.('Interceptor.app', { platform: 'darwin' })).toMatchObject({
       hardenedRuntime: true,
       entitlements: expect.stringMatching(/[\\/]assets[\\/]macos-local-app-entitlements\.plist$/),
     });
-    expect(signing.optionsForFile?.('Interceptor.app/Contents/Frameworks/Interceptor Helper.app')).toMatchObject({
+    expect(signing.optionsForFile?.('Interceptor.app/Contents/Frameworks/Interceptor Helper.app', { platform: 'darwin' })).toMatchObject({
       hardenedRuntime: true,
       entitlements: expect.stringMatching(/[\\/]assets[\\/]macos-local-app-entitlements\.plist$/),
     });
-    expect(signing.optionsForFile?.('macos-proxy-helper')).toEqual({
+    expect(signing.optionsForFile?.('macos-proxy-helper', { platform: 'darwin' })).toEqual({
       hardenedRuntime: true,
       entitlements: expect.stringMatching(/[\\/]assets[\\/]macos-native-helper-entitlements\.plist$/),
       additionalArguments: ['--identifier', 'com.zhxmt.interceptor.platform-capabilities'],
@@ -94,8 +94,8 @@ describe('Forge release configuration', () => {
     if (!signing || typeof signing !== 'object') throw new Error('Missing macOS signing configuration.');
 
     expect(signing.identityValidation).toBe(true);
-    expect(signing.optionsForFile?.('Interceptor.app')).toEqual({ hardenedRuntime: true });
-    expect(signing.optionsForFile?.('Interceptor.app/Contents/Resources/system-proxy/macos-proxy-helper')).toEqual({
+    expect(signing.optionsForFile?.('Interceptor.app', { platform: 'darwin' })).toEqual({ hardenedRuntime: true });
+    expect(signing.optionsForFile?.('Interceptor.app/Contents/Resources/system-proxy/macos-proxy-helper', { platform: 'darwin' })).toEqual({
       hardenedRuntime: true,
       entitlements: expect.stringMatching(/[\\/]assets[\\/]macos-native-helper-entitlements\.plist$/),
       additionalArguments: ['--identifier', 'com.zhxmt.interceptor.platform-capabilities'],

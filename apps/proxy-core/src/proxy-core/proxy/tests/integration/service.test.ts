@@ -960,6 +960,71 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     }
   });
 
+  it.each([
+    ['client-abort', false],
+    ['client-abort', true],
+    ['origin-reset', true],
+  ] as const)(
+    'captures only the observed SSE bytes after %s (previous capture flush: %s) without appending a proxy error',
+    async (ending, waitForCapture) => {
+      const expectedBody = 'event: update\ndata: {"sequence":1}\n\nevent: update\ndata: {"sequence":2}\n\n';
+      let originResponse: http.ServerResponse | undefined;
+      let originClosed = false;
+      let originRequests = 0;
+      const origin = await startOrigin((incoming, response) => {
+        originRequests += 1;
+        incoming.resume();
+        originResponse = response;
+        response.once('close', () => { originClosed = true; });
+        response.writeHead(200, { 'content-type': 'text/event-stream' });
+        response.write(expectedBody);
+      });
+      const chunks: Buffer[] = [];
+      const errors: string[] = [];
+      let clientResponse: http.IncomingMessage | undefined;
+      let resolveClosed!: () => void;
+      const closed = new Promise<void>((resolve) => { resolveClosed = resolve; });
+      const outgoing = http.request({
+        hostname: address.host,
+        port: address.port,
+        method: 'GET',
+        path: `http://127.0.0.1:${origin.port}/sse-${ending}`,
+        agent: false,
+      }, (response) => {
+        clientResponse = response;
+        response.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+        response.on('error', (error) => errors.push(error.message));
+        response.once('close', resolveClosed);
+      });
+      outgoing.on('error', (error) => errors.push(error.message));
+      try {
+        outgoing.end();
+        await expect.poll(() => Buffer.concat(chunks).toString('utf8')).toBe(expectedBody);
+        if (waitForCapture) {
+          await expect.poll(() => recordingCaptureService.exchanges[0]?.responseBytes)
+            .toBe(Buffer.byteLength(expectedBody));
+        }
+        if (ending === 'client-abort') outgoing.destroy(new Error('SSE client aborted'));
+        else originResponse!.destroy();
+        await closed;
+        await expect.poll(() => originClosed).toBe(true);
+        await expect.poll(() => recordingCaptureService.bodies.length, { timeout: 3_000 }).toBe(1);
+
+        expect(recordingCaptureService.bodies[0]).toEqual(Buffer.from(expectedBody));
+        expect(recordingCaptureService.exchanges[0]).toMatchObject({
+          state: 'aborted', statusCode: 200, responseBytes: Buffer.byteLength(expectedBody),
+        });
+        expect(clientResponse?.complete).toBe(false);
+        expect(errors.length).toBeGreaterThan(0);
+        expect(originRequests).toBe(1);
+      } finally {
+        outgoing.destroy();
+        originResponse?.destroy();
+        await origin.close();
+      }
+    },
+  );
+
   it.each(['download', 'sse'] as const)(
     'keeps an in-flight %s capture complete when recording is paused',
     async (streamType) => {

@@ -99,7 +99,7 @@ grpc-message: OK
 **为什么需要 patch**：Mockttp 只在 `CompletedRequest.rawTrailers` / `CompletedResponse.rawTrailers`
 暴露trailer，而拿到completed对象意味着全量缓冲正文（见3.2）。不能为读取trailer而订阅completed事件。
 
-因此仓库维护 patch（`patches/mockttp+4.5.0.patch`）给 Mockttp 增加独立的
+因此仓库维护 [patch](../../patches/mockttp+4.6.3.patch) 给 Mockttp 增加独立的
 `request-trailers` / `response-trailers` 事件，让 trailer 与正文缓冲解耦：
 
 - `request-utils.js` 的 `rawTrailers` setter 与 `addTrailers` override 中回调 `options.onTrailers`
@@ -295,6 +295,14 @@ Playground手动入口：Capture Lab的HTTP分组提供`h2-error-goaway-client`�
 - 请求和响应分别finalize；提前响应的正文可立即读取，Exchange按双向完成规则收尾。中断时保留已捕获字节并进入`aborted`。
 - 413例外只影响记录：完整接收413响应后保存当时的上传片段并以`completed`收尾，不等待或阻断真实上传；后续片段不追加，也不声称已捕获完整上传。
 - `TrackedExchange.completedAt`保留收尾时间，后续summary沿用终态和耗时。
+
+#### 中断响应的错误正文边界
+
+- 已中断的SSE保留实际观察到的事件正文，不把代理在连接关闭后生成、未发出的错误文字混入正文。
+- Mockttp通用异常入口对原`AbortError`及`response.destroyed && !response.writableFinished`沿用中断收尾，不对已销毁且未正常写完的响应调用`end("Error: aborted")`。正常连接的错误回包保持原行为；新增条件排除已正常写完的响应。
+- 不能依赖错误字符串过滤或直接关闭1秒窗口：正常迟到片段仍须保留，观测批次也可能同时含有先前缓冲的数据。
+- 客户端取消与origin reset均须保留原行、已接收的200和实际正文；真实客户端收到72字节时，Capture同样保持72字节，不能追加14字节错误文字。正常SSE结束仍按完整响应收尾。
+- 对应产品回归在[Proxy集成测试](../../apps/proxy-core/src/proxy-core/proxy/tests/integration/service.test.ts)，真实流程沿用[HTTP workflow](../../apps/desktop/tests/e2e-workflow-tests/workflows/capture/http-scenarios.workflow.ts)的客户端中断与源站reset断言，不降低字节预期。
 
 ### 4.2 Inspector与正文布局
 

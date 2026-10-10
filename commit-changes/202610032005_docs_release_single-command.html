@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Apache-2.0 与单命令发版准备</title>
+  <title>单命令发版、依赖升级与中断正文修复</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; background: #f3f4f6; color: #20252d; font: 15px/1.7 system-ui, sans-serif; }
@@ -37,9 +37,9 @@
 <body>
   <main>
     <header>
-      <h1>Apache-2.0 与单命令发版准备</h1>
+      <h1>单命令发版、依赖升级与中断正文修复</h1>
       <p class="meta">类别：工程与文档 · 时间：2026-10-03 20:05（本地时区）</p>
-      <p>将发版准备统一为一个连续命令，支持版本递增与原生目标选择；自有代码采用Apache-2.0，并将许可声明随安装包交付。</p>
+      <p>将发版准备统一为一个连续命令，支持源码选择、版本递增与原生目标；升级依赖并修正中断正文边界，自有代码采用Apache-2.0，许可声明随安装包交付。</p>
     </header>
     <section>
       <h2>改动：工程与文档</h2>
@@ -96,7 +96,57 @@
               <td>HTTP分组增加client/origin两个错误GOAWAY场景。收到256 KiB后立即中断声明512 KiB的响应，保留实际部分正文、错误与hash，再用新连接发独立恢复GET；现有Protocol面板展示方向、错误码、源站次数与恢复事实。</td>
               <td>开发者可自行Run并对照Capture，不用编写协议客户端。复用原页面、TLS origin与H2流量；预期HTTP失败不自动算人工Pass，HEAD/204/304仍遵守无实体正文语义。</td>
             </tr>
+            <tr>
+              <td>全仓workspace manifests、根<code>package.json</code>及lockfile</td>
+              <td>旧生产依赖触发安全公告；Electron、Forge、测试与UI依赖分散停留在此前版本，强制audit修复还会建议降级代理库。</td>
+              <td>升级到本轮选定的最新稳定依赖，包含Electron 44、Forge 8、Vitest 5、Playwright、React/Ant Design/Monaco及代理库。保留Node 24运行目标与同系列类型，精确锁定修复版传递依赖。</td>
+              <td>先升级并适配再发版，不使用audit fix --force、降级或忽略清单；现有字体文件内容不变，不自动修改设计截图基准。</td>
+            </tr>
+            <tr>
+              <td><code>tests/e2e-workflow-tests/prepare-local.mjs</code>与既有验收断言</td>
+              <td>E2E准备依赖Forge内部ViteConfig路径；部分断言绑定旧Tool数量和Lucide完整class字符串。</td>
+              <td>通过公开VitePlugin生产构建hook与Listr任务生成未打包bundle；目录断言同步当前69项Tool和对应开关，图标断言按准确class token匹配。</td>
+              <td>不绕过包的exports，不额外打包，不修改设计UI；保留既有功能断言，不新增工具自身测试。生产窗口显示和聚焦逻辑不变。</td>
+            </tr>
+            <tr>
+              <td><code>patches/mockttp+4.6.3.patch</code>及根postinstall</td>
+              <td>补丁绑定Mockttp 4.5.0；本地patch-package应用失败可能仍让安装命令返回成功。</td>
+              <td>按4.6.3原包等价迁移已有改动，再补充已销毁且未正常写完响应的错误收尾判断；postinstall增加<code>--error-on-fail</code>。</td>
+              <td>延续header/body/trailer/TLS/上游能力；新增行为仅阻止向已中断响应追加合成错误正文，补丁不适用时明确阻断安装。</td>
+            </tr>
+            <tr>
+              <td><code>packaged-smoke/startup.spec.ts</code>与下载验收说明</td>
+              <td>smoke固定启动本地out中的App，不能直接选择已下载安装的Release。</td>
+              <td>复用已有workflow的<code>INTERCEPTOR_E2E_MACOS_APP_PATH</code>选择真实App，保持默认本地包与既有版本断言。</td>
+              <td>不覆盖本地产物、不改manifest或产品参数；Main、资源及生产helper检查仍针对实际启动的App。</td>
+            </tr>
+            <tr>
+              <td><code>rules/body-effect-evidence.workflow.ts</code>与Rules规格</td>
+              <td>名为Body规则的辅助步骤同时创建删除Transfer-Encoding的Header action，使chunked上传失去framing。</td>
+              <td>只创建Body action，客户端明确发送chunked；沿真实origin核对Transfer-Encoding保留且没有Content-Length。</td>
+              <td>去掉验收输入中的旧绕行，不改变产品framing、Body规则或错误处理。</td>
+            </tr>
+            <tr>
+              <td><code>third-party-licenses/</code>及依赖随包声明</td>
+              <td>旧许可映射不覆盖新版GraphQL Tools和新增PAC运行时依赖。</td>
+              <td>固定新版源码commit，保留上游代理MIT声明和实际QuickJS-NG子模块版权；明确QuickJS WASI包装层只提供MIT元数据、没有独立版权文件，不虚构归属。</td>
+              <td>新增运行时依赖继续携带可追溯的许可信息，不替第三方改授权。</td>
+            </tr>
           </tbody>
+        </table>
+      </div>
+    </section>
+    <section>
+      <h2>改动：Main与构建入口</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>位置</th><th>改前</th><th>改后</th><th>原因与影响</th></tr></thead>
+          <tbody><tr>
+            <td>Desktop <code>package.json.main</code>、Main窗口Preload路径、Forge签名配置</td>
+            <td>入口指向旧<code>main.js/preload.js</code>，签名类型与回调测试使用旧Forge API。</td>
+            <td>使用Forge 8正式生成的<code>main.cjs/preload.cjs</code>，适配新的Windows签名类型与macOS签名回调参数。</td>
+            <td>不保留旧入口回退；Main/Preload隔离、签名策略、Fuses与CSP不变。</td>
+          </tr></tbody>
         </table>
       </div>
     </section>
@@ -128,8 +178,26 @@
             <tr>
               <td>Core回归与现有H2真实workflow</td>
               <td>部分断言将网络终态与正文引用提交当作同一时刻。</td>
-              <td>分别断言即时中断状态、窗口及最终字节/hash；客户端收到前缀后立即GOAWAY，保持实际UI、协议证据和退出恢复检查。</td>
+              <td>分别断言即时中断状态、窗口及最终字节/hash；H2集成等待CaptureService真实释放采集关联，再断言最终正文，避免默认轮询时限与1秒窗口竞争。客户端收到前缀后仍立即GOAWAY。</td>
               <td>验证迟到数据、重复中断、无正文、Clear与事件循环延迟，不放宽字节预期或增加测试超时。</td>
+            </tr>
+            <tr>
+              <td><code>websocket-bridge.ts</code>与相关回归</td>
+              <td>同步导入旧版CommonJS HTTPS proxy agent，提前响应回归依赖poll默认时限。</td>
+              <td>在既有异步选路路径加载ESM代理；提前响应先断言即时aborted，再等待Tracker正式收尾后核对正文引用。</td>
+              <td>上游选择、认证与字节断言保持，不增加网络重放或放宽测试超时。</td>
+            </tr>
+            <tr>
+              <td>Mockttp异常入口、SSE集成与错误处理控制</td>
+              <td>普通异常会尝试对已销毁的响应写入错误正文；观测流先接收文字，即使客户端没有收到，也可能被Core记录。</td>
+              <td>原AbortError或<code>response.destroyed &amp;&amp; !response.writableFinished</code>走中断收尾，不再写错误正文；同步源码与运行JS，补充真实SSE及正常500、完整响应、原有中断控制。</td>
+              <td>保留1秒迟到观测窗口和合法正文，不按错误字符串过滤；连接仍可用的错误回包与正常完成保持原行为。</td>
+            </tr>
+            <tr>
+              <td>Recording边界的Core存储回归与真实workflow</td>
+              <td>真实E2E把全局Storage总数不变当作本场景没有补录；恢复Recording时其他应用的新连接也可能进入全局统计。</td>
+              <td>真实UI按自产路径和原Capture行身份验证暂停期连接不被补录；独立Core集成使用真实CaptureService、BodyStore和随机代理端口，严格比较前后用量及停止后的保留数据。</td>
+              <td>排除工作环境中的无关流量干扰，同时保留无主正文与完整存储数值约束；删除失去适用前提的全局统计比较，不改录制产品逻辑。</td>
             </tr>
           </tbody>
         </table>
@@ -198,7 +266,7 @@
     <section>
       <h2>边界</h2>
       <ul>
-        <li>不修改网络转发、Renderer布局或产品GitHub登录行为；Core只调整中断正文的采集收尾。</li>
+        <li>保持网络转发契约、Renderer布局与产品GitHub登录行为；Core调整中断正文收尾并适配新版代理模块的加载方式。</li>
         <li>不会自动公开仓库、覆盖已发布版本、移动旧tag或绕过系统安全保护。</li>
         <li>不修改或提交本地版本和配置；所选commit必须存在于GitHub，未推送时明确拒绝，不自动上传其他工作。</li>
         <li>发布确认仍由维护者完成；默认Yes不是自动批准。</li>

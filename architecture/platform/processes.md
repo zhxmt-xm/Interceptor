@@ -234,7 +234,7 @@ Main/Core 通信严格区分四类状态，**单条业务数据或请求失败�
 
 `CoreRpcClient` / `CoreRpcServer` 只运行时校验 RPC 信封、协议版本、request/trace/batch 关联字段与 result type；Renderer、Main、Core 同包同版本，command/result/event payload 由 TypeScript 契约负责，**不做运行时长度、数量、枚举或内容校验**。捕获的 URL、path、headers、MIME、status text 与 Body 在 Core 存储/导出边界不截断。
 
-TLS passthrough 名单保存即对新连接生效：`patches/mockttp+4.5.0.patch` 让 `tlsPassthrough` 接受 getter，
+TLS passthrough 名单保存即对新连接生效：[`patches/mockttp+4.6.3.patch`](../../patches/mockttp+4.6.3.patch) 让 `tlsPassthrough` 接受 getter，
 Listener 每连接重新求值那份数组，因此不需要重建 listener，也不再提供“重启应用”入口。已失败的 TLS
 连接无法原地倒带，仍需客户端重试。唯一会换 listener 的场景是开始解密且 listener 上仍挂旧证书；
 此时在途 Exchange 按 `ERR_LISTENER_REBUILD` 干净终结，代际与计数不重置。TLS ready 初始化失败保持同一

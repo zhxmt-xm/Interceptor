@@ -1,5 +1,5 @@
 diff --git a/node_modules/mockttp/dist/mockttp.d.ts b/node_modules/mockttp/dist/mockttp.d.ts
-index 3dd0793..979caba 100644
+index 6d8b931..ee83403 100644
 --- a/node_modules/mockttp/dist/mockttp.d.ts
 +++ b/node_modules/mockttp/dist/mockttp.d.ts
 @@ -2,9 +2,10 @@ import * as cors from 'cors';
@@ -14,7 +14,7 @@ index 3dd0793..979caba 100644
  import type { SocksServerOptions } from "./server/socks-server";
  export type PortRange = {
      startPort: number;
-@@ -332,6 +333,13 @@ export interface Mockttp {
+@@ -377,6 +378,13 @@ export interface Mockttp {
       * @category Events
       */
      on(event: 'request-body-data', callback: (req: BodyData) => void): Promise<void>;
@@ -28,7 +28,7 @@ index 3dd0793..979caba 100644
      /**
       * Subscribe to hear about request details once the request is fully received.
       *
-@@ -359,6 +367,13 @@ export interface Mockttp {
+@@ -404,6 +412,13 @@ export interface Mockttp {
       * @category Events
       */
      on(event: 'response-initiated', callback: (req: InitiatedResponse) => void): Promise<void>;
@@ -42,7 +42,7 @@ index 3dd0793..979caba 100644
      /**
       * Subscribe to hear about HTTP 1xx informational responses (e.g. 102 Processing,
       * 103 Early Hints) sent before the final response.
-@@ -736,10 +751,15 @@ export type MockttpHttpsOptions = CAOptions & {
+@@ -781,10 +796,15 @@ export type MockttpHttpsOptions = CAOptions & {
       *
       * In future more options may be supported
       * here for additional configuration of this behaviour.
@@ -59,7 +59,7 @@ index 3dd0793..979caba 100644
      /**
       * A limited list of the only hostnames whose TLS should be intercepted.
       *
-@@ -849,6 +869,18 @@ export interface MockttpOptions {
+@@ -894,6 +914,18 @@ export interface MockttpOptions {
       * response like any other client HTTP error.
       */
      passthrough?: Array<'unknown-protocol'>;
@@ -78,7 +78,7 @@ index 3dd0793..979caba 100644
      /**
       * By default, requests that match no rules will receive an explanation of the
       * request & existing rules, followed by some suggested example Mockttp code
-@@ -883,7 +915,7 @@ export interface MockttpOptions {
+@@ -928,7 +960,7 @@ export interface MockttpOptions {
       */
      maxBodySize?: number;
  }
@@ -278,7 +278,7 @@ index 3f57894..012e330 100644
  export interface RequestTransform extends PassThroughInitialTransforms {
      /**
 diff --git a/node_modules/mockttp/dist/rules/requests/request-step-definitions.js b/node_modules/mockttp/dist/rules/requests/request-step-definitions.js
-index 8371f80..b8fa876 100644
+index c1635dc..c8c58df 100644
 --- a/node_modules/mockttp/dist/rules/requests/request-step-definitions.js
 +++ b/node_modules/mockttp/dist/rules/requests/request-step-definitions.js
 @@ -186,8 +186,12 @@ class PassThroughStep extends serialization_1.Serializable {
@@ -295,7 +295,7 @@ index 8371f80..b8fa876 100644
          if (!Array.isArray(this.ignoreHostHttpsErrors) && typeof this.ignoreHostHttpsErrors !== 'boolean') {
              throw new Error("ignoreHostHttpsErrors must be an array or a boolean");
 diff --git a/node_modules/mockttp/dist/rules/requests/request-step-impls.js b/node_modules/mockttp/dist/rules/requests/request-step-impls.js
-index 8ba0d3d..3703696 100644
+index 87f3b64..4db9822 100644
 --- a/node_modules/mockttp/dist/rules/requests/request-step-impls.js
 +++ b/node_modules/mockttp/dist/rules/requests/request-step-impls.js
 @@ -279,6 +279,7 @@ class PassThroughStepImpl extends request_step_definitions_1.PassThroughStep {
@@ -499,7 +499,7 @@ index 5f1598e..2332512 100644
                  return; // Do not continue with TLS
              }
 diff --git a/node_modules/mockttp/dist/server/mockttp-server.js b/node_modules/mockttp/dist/server/mockttp-server.js
-index db33b85..bcdc8a3 100644
+index db33b85..2c9a505 100644
 --- a/node_modules/mockttp/dist/server/mockttp-server.js
 +++ b/node_modules/mockttp/dist/server/mockttp-server.js
 @@ -27,6 +27,72 @@ const buffer_utils_1 = require("../util/buffer-utils");
@@ -626,7 +626,21 @@ index db33b85..bcdc8a3 100644
              onInformationalResponse: (status, flatHeaders) => this.announceResponseInformationAsync(emitter, response, status, flatHeaders)
          });
          // If the request had Expect: 100-continue, we trigger the auto response now.
-@@ -937,6 +1019,7 @@ ${await this.suggestRule(request)}`;
+@@ -581,9 +663,10 @@ class MockttpServer extends mockttp_1.AbstractMockttp {
+             result ||= 'responded';
+         }
+         catch (e) {
+-            if (e instanceof abort_error_1.AbortError) {
+-                abort(e);
+-                response.destroy(e);
++            if (e instanceof abort_error_1.AbortError || (response.destroyed && !response.writableFinished)) {
++                const abortError = e instanceof Error ? e : new Error(String(e));
++                abort(abortError);
++                response.destroy(abortError);
+                 if (this.debug) {
+                     console.error("Failed to handle request due to abort:", e);
+                 }
+@@ -937,6 +1020,7 @@ ${await this.suggestRule(request)}`;
              // Awkward edge case. If we are passing through raw data, but we've already unwrapped TLS beforehand,
              // we need to recreate the TLS for the passthrough. This is more art than science but we can
              // get pretty close to simulating the original incoming configuration:
@@ -634,7 +648,7 @@ index db33b85..bcdc8a3 100644
              upstreamSocket = tls.connect({
                  host: hostname,
                  port: targetPort,
-@@ -952,11 +1035,77 @@ ${await this.suggestRule(request)}`;
+@@ -952,11 +1036,77 @@ ${await this.suggestRule(request)}`;
              // For raw traffic we pass through raw - not surprising. For TLS traffic this might be surprising,
              // but it's because a TLS tunnel is when we _don't_ terminate TLS ourselves, so we can't get inside
              // the tunnel at all here.
@@ -713,10 +727,10 @@ index db33b85..bcdc8a3 100644
          socket.pipe(upstreamSocket);
          upstreamSocket.pipe(socket);
 diff --git a/node_modules/mockttp/dist/types.d.ts b/node_modules/mockttp/dist/types.d.ts
-index 2664cf5..f2d0933 100644
+index 848bce9..fdc589b 100644
 --- a/node_modules/mockttp/dist/types.d.ts
 +++ b/node_modules/mockttp/dist/types.d.ts
-@@ -314,6 +314,20 @@ export interface CompletedResponse extends InitiatedResponse {
+@@ -316,6 +316,20 @@ export interface CompletedResponse extends InitiatedResponse {
      rawTrailers: RawTrailers;
      trailers: Trailers;
  }
@@ -738,7 +752,7 @@ index 2664cf5..f2d0933 100644
      /**
       * The id of this websocket stream. This will match the id of the request,
 diff --git a/node_modules/mockttp/dist/util/header-utils.js b/node_modules/mockttp/dist/util/header-utils.js
-index b17463e..f04531e 100644
+index c96bdb7..708fdbd 100644
 --- a/node_modules/mockttp/dist/util/header-utils.js
 +++ b/node_modules/mockttp/dist/util/header-utils.js
 @@ -84,14 +84,14 @@ function rawHeadersToObject(rawHeaders) {
@@ -845,3 +859,21 @@ index 9e56a2a..5808d8b 100644
                  ? ['@SECLEVEL=0']
                  : []
              )
+diff --git a/node_modules/mockttp/src/server/mockttp-server.ts b/node_modules/mockttp/src/server/mockttp-server.ts
+index 693d822..9b2a8cf 100644
+--- a/node_modules/mockttp/src/server/mockttp-server.ts
++++ b/node_modules/mockttp/src/server/mockttp-server.ts
+@@ -784,9 +784,10 @@ export class MockttpServer extends AbstractMockttp implements Mockttp {
+ 
+             result ||= 'responded';
+         } catch (e) {
+-            if (e instanceof AbortError) {
+-                abort(e);
+-                response.destroy(e);
++            if (e instanceof AbortError || (response.destroyed && !response.writableFinished)) {
++                const abortError = e instanceof Error ? e : new Error(String(e));
++                abort(abortError);
++                response.destroy(abortError);
+ 
+                 if (this.debug) {
+                     console.error("Failed to handle request due to abort:", e);

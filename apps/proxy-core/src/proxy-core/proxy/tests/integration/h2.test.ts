@@ -728,6 +728,13 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     const activeCaptureService = new CaptureService();
     captureService = activeCaptureService;
     await activeCaptureService.initialize();
+    const captureReleased = new Promise<string>((resolve) => {
+      const releaseBodyCapture = activeCaptureService.releaseBodyCapture.bind(activeCaptureService);
+      vi.spyOn(activeCaptureService, 'releaseBodyCapture').mockImplementationOnce((exchangeId) => {
+        releaseBodyCapture(exchangeId);
+        resolve(exchangeId);
+      });
+    });
     const ca = await generateCACertificate();
     const originCertificate = await generateCACertificate();
     const prefix = Buffer.alloc(256 * 1024, 0x61);
@@ -802,7 +809,8 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
       .items.find((exchange) => exchange.path === requestPath)?.state).toMatch(/^(aborted|failed)$/);
     const interrupted = (await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} }))
       .items.find((exchange) => exchange.path === requestPath)!;
-    await expect.poll(() => activeCaptureService.getExchangeBodySnapshot(interrupted.id, 'response')).toMatchObject({
+    expect(await captureReleased).toBe(interrupted.id);
+    await expect(activeCaptureService.getExchangeBodySnapshot(interrupted.id, 'response')).resolves.toMatchObject({
       encodedSize: prefix.byteLength, complete: true, available: true,
     });
     await expect(activeCaptureService.getExchangeDetail(interrupted.id)).resolves.toMatchObject({

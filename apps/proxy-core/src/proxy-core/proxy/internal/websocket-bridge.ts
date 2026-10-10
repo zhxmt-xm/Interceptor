@@ -1,7 +1,6 @@
 import type { Agent, IncomingMessage } from 'node:http';
 import type { Socket } from 'node:net';
 
-import { HttpsProxyAgent } from 'https-proxy-agent';
 import type { ProtocolUpstreamProxyConfig, SingleUpstreamProxyConfig } from '@interceptor/core-protocol';
 import {
   matchers,
@@ -71,13 +70,14 @@ export class WebSocketBridge {
   }
 
   /** Preserve the existing single-upstream CONNECT handling used by Windows. */
-  private singleUpstreamAgentFor(url: URL, upstream: SingleUpstreamProxyConfig): { agent?: Agent } {
+  private async singleUpstreamAgentFor(url: URL, upstream: SingleUpstreamProxyConfig): Promise<{ agent?: Agent }> {
     const port = url.port.length > 0 ? Number(url.port) : url.protocol === 'wss:' ? 443 : 80;
     if (matchesNoProxy(url.hostname, port, upstream.noProxy ? [...upstream.noProxy] : undefined)) return {};
     let protocol: string;
     try { protocol = new URL(upstream.proxyUrl).protocol; }
     catch { return {}; }
     if (protocol !== 'http:' && protocol !== 'https:') return {};
+    const { HttpsProxyAgent } = await import('https-proxy-agent');
     return { agent: new HttpsProxyAgent(upstream.proxyUrl) };
   }
 
@@ -114,7 +114,7 @@ export class WebSocketBridge {
       const upstream = this.options.upstreamProxy?.();
       if (upstream) {
         agentOptions = 'proxyUrl' in upstream
-          ? this.singleUpstreamAgentFor(url, upstream)
+          ? await this.singleUpstreamAgentFor(url, upstream)
           : await this.protocolUpstreamAgentFor(url, socket, upstream);
       }
     } catch (error) {

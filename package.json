@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "start": "node scripts/start.mjs",
-    "postinstall": "patch-package",
+    "postinstall": "patch-package --error-on-fail",
     "release": "node scripts/release.mjs",
     "playground": "npm run dev --workspace @interceptor/playground",
     "build:core": "npm run build --workspace @interceptor/core-protocol && npm run build --workspace @interceptor/proxy-core",
@@ -33,21 +33,24 @@
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "overrides": {
+    "@graphql-tools/utils": "12.0.3",
+    "basic-ftp": "6.2.3",
     "monaco-editor": {
-      "dompurify": "3.4.13"
+      "dompurify": "3.4.16"
     },
     "socks": {
-      "ip-address": "10.3.1"
+      "ip-address": "10.7.3"
     }
   },
   "devDependencies": {
-    "@electron-forge/core": "7.11.2",
-    "@inquirer/prompts": "6.0.1",
-    "@types/node": "24.13.3",
+    "@electron-forge/core": "8.0.1",
+    "@inquirer/prompts": "8.7.3",
+    "@types/node": "24.19.2",
+    "listr2": "11.1.1",
     "patch-package": "8.0.1",
     "semver": "7.8.5",
-    "string-width": "5.1.2",
+    "string-width": "8.3.0",
     "typescript": "7.0.2",
-    "wrap-ansi": "6.2.0"
+    "wrap-ansi": "10.0.2"
   }
 }

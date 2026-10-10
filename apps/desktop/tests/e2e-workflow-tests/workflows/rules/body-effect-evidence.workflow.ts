@@ -85,43 +85,25 @@ async function createTextBodyRule(
     page,
     AutomationIdFactory.ruleMatcherField(ruleId, 0, 'value'),
   ).fill('127.0.0.1');
-  if (phase === 'response') {
+  await getByAutomationId(
+    page,
+    AutomationIdFactory.ruleActionField(ruleId, 0, 'remove'),
+  ).click();
+  await getByAutomationId(page, AUTOMATION_IDS.rules.addAction).click();
+  await getByAutomationId(page, AUTOMATION_IDS.rules.actionOption.body).click();
+  if (phase === 'request') {
     await getByAutomationId(
       page,
       AutomationIdFactory.ruleActionField(ruleId, 0, 'phase'),
     ).click();
     await getByAutomationId(
       page,
-      AutomationIdFactory.ruleActionField(ruleId, 0, 'phase-option.response'),
+      AutomationIdFactory.ruleActionField(ruleId, 0, 'phase-option.request'),
     ).click();
   }
   await getByAutomationId(
     page,
-    AutomationIdFactory.ruleActionField(ruleId, 0, 'operation'),
-  ).click();
-  await getByAutomationId(
-    page,
-    AutomationIdFactory.ruleActionField(ruleId, 0, 'operation-option.remove'),
-  ).click();
-  await getByAutomationId(
-    page,
-    AutomationIdFactory.ruleActionField(ruleId, 0, 'name'),
-  ).fill('transfer-encoding');
-  await getByAutomationId(page, AUTOMATION_IDS.rules.addAction).click();
-  await getByAutomationId(page, AUTOMATION_IDS.rules.actionOption.body).click();
-  if (phase === 'request') {
-    await getByAutomationId(
-      page,
-      AutomationIdFactory.ruleActionField(ruleId, 1, 'phase'),
-    ).click();
-    await getByAutomationId(
-      page,
-      AutomationIdFactory.ruleActionField(ruleId, 1, 'phase-option.request'),
-    ).click();
-  }
-  await getByAutomationId(
-    page,
-    AutomationIdFactory.ruleActionField(ruleId, 1, 'content'),
+    AutomationIdFactory.ruleActionField(ruleId, 0, 'content'),
   ).fill(content);
   await getByAutomationId(page, AutomationIdFactory.ruleToggle(ruleId)).click();
   await getByAutomationId(page, AUTOMATION_IDS.rules.apply).click();
@@ -305,12 +287,14 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
     {
       method: 'POST',
       body: regularOriginal,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'transfer-encoding': 'chunked' },
     },
   );
   expect(regularResponse.statusCode).toBe(200);
   const regularObservation = await observe(loopbackLab, regularPath);
   expect(regularObservation.body.toString('utf8')).toBe(regularFinal);
+  expect(regularObservation.headers['transfer-encoding']).toBe('chunked');
+  expect(regularObservation.headers['content-length']).toBeUndefined();
   await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(regularPath);
   const regularRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
     .filter({ hasText: regularPath })

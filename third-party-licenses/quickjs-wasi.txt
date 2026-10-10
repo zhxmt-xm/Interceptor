@@ -1,0 +1,20 @@
+quickjs-wasi@2.2.0
+
+The upstream package.json declares:
+  "name": "quickjs-wasi"
+  "version": "2.2.0"
+  "license": "MIT"
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/vercel-labs/quickjs-wasi.git"
+  }
+
+Source:
+https://github.com/vercel-labs/quickjs-wasi/blob/cc1fea4a6a4ac1d960e0db68d35e1459064a1a23/package.json
+
+The published wrapper does not provide a separate LICENSE or copyright
+notice. No wrapper copyright attribution has been invented here.
+
+The bundled quickjs.wasm contains QuickJS-NG from submodule commit
+dec012362bd93876449f3ecff4f835b2eba89bab. Its complete upstream MIT license
+and copyright notices are reproduced in the following QuickJS-NG section.

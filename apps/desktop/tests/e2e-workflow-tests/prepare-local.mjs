@@ -1,14 +1,8 @@
-import { createRequire } from 'node:module';
-import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { build } from 'vite';
-
-const require = createRequire(import.meta.url);
-const ViteConfigGenerator = require(
-  '@electron-forge/plugin-vite/dist/ViteConfig.js'
-).default;
+import { VitePlugin } from '@electron-forge/plugin-vite';
+import { Listr } from 'listr2';
 
 /** Builds the unpackaged production bundles consumed by the local Electron E2E driver. */
 class LocalE2eBundleBuilder {
@@ -45,34 +39,16 @@ class LocalE2eBundleBuilder {
     if (process.platform === 'darwin' && process.env.INTERCEPTOR_E2E_MACOS_APP_PATH) {
       throw new Error('Run Playwright directly when validating an explicitly selected macOS App artifact.');
     }
-    const outputDirectory = path.join(this.desktopDirectory, '.vite');
-    await rm(outputDirectory, { recursive: true, force: true });
-
-    const generator = new ViteConfigGenerator(
-      this.vitePluginConfig,
-      this.desktopDirectory,
-      true,
-    );
-    const [processConfigs, rendererConfigs] = await Promise.all([
-      generator.getBuildConfigs(),
-      generator.getRendererConfig(),
-    ]);
-
-    await Promise.all(
-      [...processConfigs, ...rendererConfigs].map((config) =>
-        this.buildTarget(config),
-      ),
-    );
-    console.log(`[e2e-workflow] local bundles ready: ${outputDirectory}`);
-  }
-
-  /** Build one resolved Forge Vite target without recursively loading its config file. */
-  static async buildTarget(config) {
-    await build({
-      configFile: false,
-      logLevel: 'warn',
-      ...config,
-    });
+    const vitePlugin = new VitePlugin(this.vitePluginConfig);
+    vitePlugin.init(this.desktopDirectory);
+    const prePackage = vitePlugin.getHooks().prePackage;
+    if (!prePackage) throw new Error('Forge Vite plugin did not expose its production build hook.');
+    const hooks = Array.isArray(prePackage) ? prePackage : [prePackage];
+    await new Listr(hooks.map((hook) => ({
+      title: 'Building production Vite bundles',
+      task: (_context, task) => hook.call(task),
+    })), { renderer: 'simple' }).run();
+    console.log(`[e2e-workflow] local bundles ready: ${path.join(this.desktopDirectory, '.vite')}`);
   }
 }
 

@@ -53,8 +53,8 @@ Windows使用官方`_electron.launch()`启动未打包production bundle；macOS�
 
 ```text
 Electron executable from node_modules
-  -> apps/desktop/.vite/build/main.js
-  -> real preload.js
+  -> apps/desktop/.vite/build/main.cjs
+  -> real preload.cjs
   -> real production Renderer bundle
   -> real Proxy Core dist/proxy-core/entry.cjs
   -> real Diagnostics / Archive Worker bundles
@@ -67,6 +67,9 @@ Electron executable from node_modules
 ### macOS 开发与生产入口
 
 `e2e:prepare-local`依次构建协议/Core/native和未打包production bundle，默认不执行package。Main按真实`app.isPackaged`选择helper入口，业务E2E和日常Forge开发使用同一个常驻服务及开发授权，信任已核准UID的本机代码。首次部署或添加开发授权由系统请求管理员确认；新App构建、profile、下一条workflow不重复申请该项授权。helper自身变化时更新组件，不安装`.pkg`或搬迁App。Windows原准备路径不变。
+
+Forge 8的准备脚本通过公开`VitePlugin`的`prePackage` hook与其Listr任务构建生产bundle，不读取未导出的
+`dist/ViteConfig.js`，也不为拿到bundle额外打包。入口统一为`main.cjs`与`preload.cjs`；此适配不改变窗口焦点策略。
 
 ```sh
 npm run test:e2e:workflow --workspace @interceptor/desktop -- workflows/settings/helper-startup.workflow.ts

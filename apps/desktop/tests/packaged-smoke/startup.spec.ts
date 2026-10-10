@@ -1045,8 +1045,10 @@ function resolvePackagedExecutable(): string {
 
   if (process.platform === 'darwin') {
     return path.join(
-      packageDirectory,
-      'Interceptor.app',
+      path.resolve(
+        process.env.INTERCEPTOR_E2E_MACOS_APP_PATH
+          ?? path.join(packageDirectory, 'Interceptor.app'),
+      ),
       'Contents',
       'MacOS',
       'Interceptor',

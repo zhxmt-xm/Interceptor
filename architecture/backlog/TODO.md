@@ -72,7 +72,6 @@
 
 ## 敏感数据
 
-- `socks`当前固定的`ip-address@10.3.1`存在IPv6 link-local/NAT64识别、跨IP族网段判断和无界错误诊断风险，不能用该版本的地址分类作为完整SSRF或信任边界。升级需同时核对调用方；[上游公告](https://github.com/advisories/GHSA-rpw4-54j3-4h4q)、[NAT64](https://github.com/advisories/GHSA-2vr4-cq9g-pvrc)、[跨IP族](https://github.com/advisories/GHSA-j6r3-76f7-8jcv)、[诊断开销](https://github.com/advisories/GHSA-h3mg-xc3c-68pw)。
 - CA私钥由safeStorage加密且不进入Renderer；这不代表Capture内容也被加密或脱敏。
 - Capture headers/body与spill包含Authorization、Cookie、PII和上传文件，崩溃后可能留到下次清理。临时目录权限、生命周期和用户主动清理需要分别说明。
 - Native Archive包含原始敏感数据；Tool结果脱敏不能替代导出警告。手工输入规则参数同样可能持久化秘密，不能仅靠URL草稿去掉query就认定全部规则安全。

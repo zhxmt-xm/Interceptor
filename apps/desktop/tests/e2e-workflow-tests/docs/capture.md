@@ -89,6 +89,7 @@ General的POST值使用共享IconButton inline档，按钮18x18px、Lucide图标
 ### 证据要求
 
 - 测试对象是Interceptor抓取与展示，不是Playground场景实现；网络返回值只证明流量已产生，产品期望独立写在workflow中。
+- SSE客户端中断后，Capture正文与客户端实际收到的事件分片一致；连接关闭后代理生成的`Error: aborted`不能成为额外正文。保留固定收尾窗口内的合法迟到观测，不以过滤特定字符串、降低字节断言或延长测试超时作为通过条件。
 - 只新增现有产品行为的E2E覆盖，不人为制造Red；若发现产品故障，先保存真实失败证据并补所属模块测试，再修改产品。
 - 长上传取消在两个2 MiB分块已由origin接收并由Capture显示后，由client真实断开；origin必须关闭且未完整接收，Capture保留4 MB及同一行且不再显示进行中占位，不要求生成未收到的200或响应正文。
 - SSE证据保存响应头发出前及两次事件到达后的行内容、公共行身份、实际字节数与origin/client结束状态；三种结束方式分别记录，不以正常结束通过替代取消/reset。本步骤不代表Rule命中、H2大Range或gRPC streaming通过。
@@ -304,12 +305,12 @@ Playground不是直接构造Core状态的测试后门；真实Browser点击自�
 ### Steps
 
 1. 创建空profile、evidence与本轮HTTP/WebSocket loopback origin；启动trace和真实Electron，等待App/Core/8888。通过公开Recording/readiness控件开始录制，不切换语言。
-2. 通过8888发送HTTP请求A并建立WebSocket连接A；发送自产文本并检查origin收到、客户端echo和Messages双向记录。记录Capture行与Storage的Exchange/Body计数。
+2. 通过公开Keyword筛选本workflow自产路径；经8888发送HTTP请求A并建立WebSocket连接A，发送自产文本并检查origin收到、客户端echo和Messages双向记录。记录这两条Capture行的公开身份，不把其他应用的系统代理流量算入本workflow。
 3. 点击`capture.recording.toggle`暂停，`aria-pressed=false`；发送HTTP请求B并确认仍得到200但无对应行；在已录制连接A发送第二条文本，双向消息继续完整记录。
-4. 暂停期间建立WebSocket连接B并发送自产文本；origin和客户端双向成功，但Capture不得创建B的行、消息或正文。通过Settings Storage导航和Refresh取得暂停后的计数快照。
-5. 回Capture点击Recording恢复，`aria-pressed=true`；在B继续发送不同文本，真实echo必须成功，B仍没有Capture行。再次进入Storage点击Refresh，Exchange/Body引用数及正文占用字节必须与上一步相同，不能留下无主正文；真实ExchangeStore会拒绝不存在的Exchange，不能仅靠引用数为零判定没有写入。
+4. 暂停期间建立WebSocket连接B并发送自产文本；origin和客户端双向成功，但Capture不得创建B的行、消息或正文。此时筛选内仍只有A的HTTP与WebSocket两条记录。
+5. 点击Recording恢复，`aria-pressed=true`；在B继续发送不同文本并真实Close，echo成功且B仍没有Capture行，筛选内的两条行身份与暂停时完全相同。恢复后其他应用可以创建新记录，因此不要求全局Storage总数恒定；无主正文与精确Exchange/Body计数由使用真实CaptureService、BodyStore和独立代理端口的[Core存储回归](../../../../proxy-core/src/proxy-core/proxy/tests/integration/recording-body-ownership.test.ts)验证，包括Proxy停止后数据仍保留且用量未增加。
 6. 恢复后发送HTTP请求C并建立WebSocket连接C，确认新Capture行和C的双向消息可见；A/B/C都用真实Close握手结束，origin关闭码为1000。
-7. 保存自产请求路径、消息、公开行身份、Storage前后计数、trace与截图；Renderer无page error，Main/Core无`websocket.persist-failed`。
+7. 保存自产请求路径、消息、前后公开行身份、trace与截图；Renderer无page error，Main/Core无`websocket.persist-failed`。Core回归保持完整存储数值断言，不以真实E2E的筛选行数替代。
 8. fixture点击`shell.window.close`，由Main退出流程恢复仍owned的系统代理；确认Main/Core/Worker全部退出、8888释放、WinINet与共享journal恢复，再删除本轮profile和网络fixture。不主动Restore代替退出恢复验证。
 
 ### 预期效果

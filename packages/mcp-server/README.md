@@ -48,6 +48,9 @@ HTTP response使用SSE并在最终结果后结束。采用官方SDK v2的`create
 三版共用认证、Tool、审批和取消；不增加版本选择器、自写协议适配、旧式HTTP+SSE endpoint或
 `Mcp-Session-Id`状态。普通结果采用SSE不代表产生了中间进度消息。
 
+Client/Server统一使用`2.3.1`及同版Core，Desktop Node adapter使用`2.1.1`。依赖升级不新增OAuth产品入口，
+也不改变现有Bearer、审批、取消和三版协议契约。
+
 2025的`notifications/cancelled`经SDK公开通知handler接入现有业务AbortSignal；在途调用以认证Client、
 协议版本和精确JSON-RPC ID区分，数字ID与字符串ID不同。同一Client/协议的重复活跃ID显式拒绝并审计，
 不覆盖原调用；各Host使用独立Client凭据。HTTP响应取消关联保持到正文结束/失败/取消，避免SSE headers

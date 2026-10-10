@@ -283,7 +283,7 @@ Rule不仅能编辑和保存，也真实作用于Proxy数据面；匹配/不匹�
 
 1. 创建独立profile、trace与可记录request/response body的loopback origin，启动真实Electron并通过UI开始Recording。
 2. 通过Rules UI创建request Breakpoint；发送带非空原文的POST，经Capture选择Text replacement并Forward edited，确认origin收到Final，Capture marker绑定breakpoint rule、source=Text，默认Final，Original/Final可双向切换，marker可导航回Rules。
-3. 停用Breakpoint，通过Rules UI创建request Text body rule并Apply；用chunked POST隔离已登记framing债务，确认origin收到Final、Capture marker绑定普通rule，Original/Final分别可读。
+3. 停用Breakpoint，通过Rules UI创建只包含Body action的request Text rule并Apply；发送明确的chunked POST，确认origin收到Final并保留chunked、没有Content-Length，Capture marker绑定普通rule，Original/Final分别可读。不再加入旧的Transfer-Encoding删除绕行，否则会把正文场景变成无framing的不同输入。
 4. 创建response Text body rule并Apply；origin返回chunked正文，确认客户端和Capture都是Final，marker绑定该rule、source=Text，Original control disabled且状态为unavailable。
 5. 同时启用普通request writer与request Breakpoint；Breakpoint Text覆盖普通writer后，确认只显示Breakpoint marker，普通writer marker不存在，Original仍是客户端入站正文。
 6. 经产品BodyViewer Save和真实Save Dialog生成唯一文件；创建response Breakpoint，File未选择时验证112px居中区域与32px高、11.5px字号的按钮并保存区域截图。通过真实Open Dialog选择同一文件，显式删除冲突的`transfer-encoding`后Forward edited，确认source=File、绝对路径未进入Renderer/evidence、客户端与Capture Final字节等于文件、Original unavailable。

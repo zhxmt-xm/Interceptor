@@ -151,6 +151,10 @@ describe('ExchangeTracker early response capture', () => {
 
     await expect.poll(() => captureService.getExchangeDetail(exchangeId)).toMatchObject({
       summary: { state: 'aborted', requestBytes: 14, responseBytes: 14 },
+    });
+    await exchangeTracker.settle();
+    await expect(captureService.getExchangeDetail(exchangeId)).resolves.toMatchObject({
+      summary: { state: 'aborted', requestBytes: 14, responseBytes: 14 },
       requestBody: { encodedSize: 14 }, responseBody: { encodedSize: 14 },
     });
     const detail = await captureService.getExchangeDetail(exchangeId);

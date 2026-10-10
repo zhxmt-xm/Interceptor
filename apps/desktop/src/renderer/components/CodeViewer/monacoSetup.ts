@@ -14,12 +14,12 @@ import {
 } from 'monaco-editor/languages/features/typescript/register';
 import 'monaco-editor/languages/definitions/javascript/register';
 // Monaco publishes these worker managers as package exports but omits declarations.
-// Their structural contracts below mirror the pinned 0.56 worker APIs used by its providers.
-// @ts-expect-error Missing declaration in monaco-editor 0.56.
+// Their structural contracts below mirror the pinned 0.57 worker APIs used by its providers.
+// @ts-expect-error Missing declaration in monaco-editor 0.57.
 import { WorkerManager as CssWorkerManager } from 'monaco-editor/languages/features/css/workerManager';
-// @ts-expect-error Missing declaration in monaco-editor 0.56.
+// @ts-expect-error Missing declaration in monaco-editor 0.57.
 import { WorkerManager as HtmlWorkerManager } from 'monaco-editor/languages/features/html/workerManager';
-// @ts-expect-error Missing declaration in monaco-editor 0.56.
+// @ts-expect-error Missing declaration in monaco-editor 0.57.
 import { WorkerManager as TypeScriptWorkerManager } from 'monaco-editor/languages/features/typescript/workerManager';
 import 'monaco-editor/languages/definitions/markdown/register';
 import 'monaco-editor/languages/definitions/xml/register';

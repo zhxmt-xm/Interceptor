@@ -1,28 +1,28 @@
 {
-  "@graphql-tools/merge@9.2.0": {
+  "@graphql-tools/merge@9.2.6": {
     "license": "MIT",
     "notices": [
       {
         "file": "graphql-tools.txt",
-        "source": "https://github.com/ardatan/graphql-tools/blob/76b54daadb92cc8128179101370cbcd63953885c/LICENSE"
+        "source": "https://github.com/ardatan/graphql-tools/blob/944121e167466749fecd30167e7b2efabeae60de/LICENSE"
       }
     ]
   },
-  "@graphql-tools/schema@10.0.36": {
+  "@graphql-tools/schema@10.1.3": {
     "license": "MIT",
     "notices": [
       {
         "file": "graphql-tools.txt",
-        "source": "https://github.com/ardatan/graphql-tools/blob/76b54daadb92cc8128179101370cbcd63953885c/LICENSE"
+        "source": "https://github.com/ardatan/graphql-tools/blob/944121e167466749fecd30167e7b2efabeae60de/LICENSE"
       }
     ]
   },
-  "@graphql-tools/utils@11.2.0": {
+  "@graphql-tools/utils@12.0.3": {
     "license": "MIT",
     "notices": [
       {
         "file": "graphql-tools.txt",
-        "source": "https://github.com/ardatan/graphql-tools/blob/76b54daadb92cc8128179101370cbcd63953885c/LICENSE"
+        "source": "https://github.com/ardatan/graphql-tools/blob/944121e167466749fecd30167e7b2efabeae60de/LICENSE"
       }
     ]
   },
@@ -35,12 +35,34 @@
       }
     ]
   },
-  "@whatwg-node/promise-helpers@1.3.2": {
+  "@whatwg-node/promise-helpers@2.0.0": {
     "license": "MIT",
     "notices": [
       {
         "file": "whatwg-node.txt",
-        "source": "https://github.com/ardatan/whatwg-node/blob/65780bcc552693d0f770186984a35115e6f29e8a/LICENSE"
+        "source": "https://github.com/ardatan/whatwg-node/blob/42bbbf6ec476238b7490d46224933159adc08ee7/LICENSE"
+      }
+    ]
+  },
+  "proxy-agent-negotiate@1.1.0": {
+    "license": "MIT",
+    "notices": [
+      {
+        "file": "proxy-agents.txt",
+        "source": "https://github.com/TooTallNate/proxy-agents/blob/b7e5f7ccce1a3ac5b339cc4c587974e8989cbc16/packages/https-proxy-agent/LICENSE (shared proxy-agents implementation extracted into packages/negotiate, as recorded in its CHANGELOG.md; package.json declares MIT and Nathan Rajlich as author)"
+      }
+    ]
+  },
+  "quickjs-wasi@2.2.0": {
+    "license": "MIT",
+    "notices": [
+      {
+        "file": "quickjs-wasi.txt",
+        "source": "https://github.com/vercel-labs/quickjs-wasi/blob/cc1fea4a6a4ac1d960e0db68d35e1459064a1a23/package.json (upstream license metadata; no separate wrapper LICENSE or copyright notice is provided)"
+      },
+      {
+        "file": "quickjs-ng.txt",
+        "source": "https://github.com/quickjs-ng/quickjs/blob/dec012362bd93876449f3ecff4f835b2eba89bab/LICENSE (quickjs-ng submodule compiled into quickjs.wasm)"
       }
     ]
   },

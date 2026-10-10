@@ -185,7 +185,7 @@ Mockttp 提供四种介入形态，代价差异极大。
 `beforeRequest` / `beforeResponse`（分别等待完整请求与响应正文），**也不使用路径 B**。
 所有规则在头部阶段执行，正文始终流式。
 
-路径 C 不是 Mockttp 原生能力，由 `patches/mockttp+4.5.0.patch` 提供。该 patch 当前给 `PassThroughStep` 增加三组能力：
+路径 C 不是 Mockttp 原生能力，由 [`patches/mockttp+4.6.3.patch`](../../patches/mockttp+4.6.3.patch) 提供。该 patch 当前给 `PassThroughStep` 增加三组能力：
 
 | 能力 | 用途 |
 | --- | --- |

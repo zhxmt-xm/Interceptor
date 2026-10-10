@@ -52,7 +52,7 @@ describe('HTTPS setup connection diagram', () => {
       createElement(HttpsConnectionChain, { decrypting }),
     ));
     expect(html).toContain(`data-decrypting="${decrypting}"`);
-    expect(html).toContain(decrypting ? 'class="lucide lucide-lock"' : 'class="lucide lucide-lock-open"');
+    expect(html).toMatch(decrypting ? /class="[^"]*\blucide-lock(?=\s|")/ : /class="[^"]*\blucide-lock-open(?=\s|")/);
     expect(html).not.toContain('<button');
     expect(html).toContain('Client apps');
     expect(html).toContain('Internet');
