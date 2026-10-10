@@ -259,7 +259,13 @@ test('capture.scenarios.http2 captures decrypted H2 headers trailers and body', 
             responseTrailers: {} },
           onStream: (stream) => {
             received.stream = stream;
-            stream.on('data', (chunk: Buffer) => { received.bytes += chunk.byteLength; received.hash.update(chunk); });
+            stream.on('data', (chunk: Buffer) => {
+              received.bytes += chunk.byteLength;
+              received.hash.update(chunk);
+              if (direction === 'client' && received.bytes === prefixSize) {
+                session.goaway(http2.constants.NGHTTP2_INTERNAL_ERROR);
+              }
+            });
             stream.on('end', () => { received.ended = true; });
             stream.on('close', () => { received.closed = true; });
             stream.on('error', (error) => received.errors.push(error.message));
@@ -271,13 +277,11 @@ test('capture.scenarios.http2 captures decrypted H2 headers trailers and body', 
             stream.session!.on('error', (error) => sourceErrors.push(error.message));
           },
         });
-        responseStream.write(responseBytes);
         const capturedRow = getByAutomationIdPrefix(desktopApp.page, AUTOMATION_ID_PREFIXES.captureRequestRow)
           .filter({ hasText: requestPath });
         try {
-          await expect.poll(() => received.bytes).toBe(prefixSize);
           await expect(capturedRow).toHaveCount(1);
-          for (const value of ['h2', 'POST', '200', '256 KB']) await expect(capturedRow).toContainText(value);
+          for (const value of ['h2', 'POST', '200']) await expect(capturedRow).toContainText(value);
           expect(sourceStreams).toHaveLength(1);
           expect(received.ended).toBe(false);
           expect(responseStream.writableEnded).toBe(false);
@@ -286,7 +290,9 @@ test('capture.scenarios.http2 captures decrypted H2 headers trailers and body', 
 
           // 数据面与产品断言：保留真实200和已收字节，区分Node EOF与完整正文，不伪造UI协议字段。
           // Data plane and product assertions: retain the actual 200 and captured bytes; Node EOF is not a complete body or a fabricated UI protocol event.
-          (direction === 'origin' ? sourceSessions[0]! : session).goaway(http2.constants.NGHTTP2_INTERNAL_ERROR);
+          responseStream.write(responseBytes);
+          await expect.poll(() => received.bytes).toBe(prefixSize);
+          if (direction === 'origin') sourceSessions[0]!.goaway(http2.constants.NGHTTP2_INTERNAL_ERROR);
           await expect.poll(() => received.closed).toBe(true);
           await expect.poll(() => responseStream.destroyed).toBe(true);
           const execution = await completed;

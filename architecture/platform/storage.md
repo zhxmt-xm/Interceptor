@@ -68,6 +68,8 @@ gRPC在途预览通过`CaptureService.getExchangeBodySnapshot/readExchangeBodyRa
 
 `ExchangeTracker`跟踪全部已接受但未完成的存储操作，终态记录离开活动Map后仍可排空；`ProxyService.prepareCaptureReset()`在推进generation后先等待这批操作，再允许Capture清理文件。正文commit失败时writer结束且不可读，两侧commit与Exchange终态分别收尾。
 
+HTTP中断后，网络终态立即发布，Tracker固定保留1000ms迟到观测窗口并计入`settle()`责任；窗口不因数据或重复abort延期。CaptureService保留独立的writer读取/清理所有权，窗口内没有writer的一侧也不误报采集完成。截止后经一次`setImmediate`封口，再排空写入、提交hash、解除关联；Clear/Session删除/Dispose与Proxy退出优先取消窗口并按删除或保留语义完成资源回收。该宽限是尽力保留已观察部分，不继续网络读取，也不是Mockttp已精确排空的证明。
+
 ## 6. 构建产物
 
 `proxy-core` 输出 `entry.cjs` + 按需的 `archive/worker/entry.cjs` + 常驻的 `diagnostics/worker/entry.cjs`；Forge 递归复制整个 `dist/proxy-core`。运行时依赖的随包策略见 [release.md](release.md)。

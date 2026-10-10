@@ -28,6 +28,10 @@ Body 的内容寻址决定了 **hash 只有写完才能确定**，因此传输�
 
 在途读取与写入、finalize、abort共用BodyWriter串行队列。小正文读取内存分片，大正文读取同一spill文件；完成后仍经BodyStore读hash，不保存第二份完整正文。已绑定的Final正文优先，不能把Rule替换前的请求writer误当Final；等待writer快照后重新核对Final和Exchange状态，覆盖并发绑定显式空正文或Clear的情况。Clear/Dispose先等待被删除Exchange的writer读取与放弃操作，再删除spill。
 
+Exchange网络状态与正文采集所有权独立：`updateExchange()`只更新metadata，不因`aborted`提前解绑writer。Tracker的中断窗口通过`retainBodyCapture()`登记读取/清理所有权，即使首个writer尚不存在，空正文快照仍保持`complete:false`；窗口封口、写入与引用绑定完成后由`releaseBodyCapture()`解除关联。正常完成同样显式解除，Final仍优先于Original。
+
+Session删除、Clear和Dispose同步取消登记的等待回调，等待已接受的读写及writer放弃后再清理BodyStore；迟到通知不能重新创建writer。采集快照的`complete`表示不再增长，不把中断的HTTP消息声明为完整成功。
+
 提交失败时BodyWriter仍向调用方抛出原错误，但快照必须为已结束、不可读，可读长度归零，observed字节数保持。BodyStore继续负责提交失败的spill清理，不能留下无正文却持续等待增长的writer状态。
 
 单正文导出在sync和关闭临时文件之后、最终rename之前检查取消；取消被确认时清理临时文件并保留原目标。rename成功后返回TransferResult，迟到取消不能将这次成功保存记为cancelled；任务终态由TransferService等待实际结果后发布。

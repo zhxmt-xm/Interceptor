@@ -3,9 +3,10 @@ import http2, {
   type Http2ServerRequest,
   type Http2ServerResponse,
 } from 'node:http2';
+import { createHash } from 'node:crypto';
 import { request } from 'node:http';
 import net from 'node:net';
-import { Readable } from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import tls from 'node:tls';
 import { gzipSync } from 'node:zlib';
@@ -17,6 +18,7 @@ import type {
   GrpcTrafficRequestDraft,
   HttpTrafficRequestDraft,
   TlsTrafficRequestDraft,
+  TrafficProtocolEvent,
   TrafficRequestFact,
   TrafficResponseFact,
   TrafficTlsFact,
@@ -51,6 +53,7 @@ interface TlsHttpExchange {
   readonly request: TrafficRequestFact;
   readonly response: TrafficResponseFact;
   readonly tls: TrafficTlsFact;
+  readonly error?: string;
 }
 
 /** 代理返回的实际 CONNECT 响应及隧道 socket，不等同于已经完成 TLS 握手。 */
@@ -203,14 +206,130 @@ export class TlsTrafficRunner {
         protocol: 'h2',
         request: exchange.request,
         response: exchange.response,
-        state: 'complete',
+        state: exchange.error === undefined ? 'complete' : 'failed',
         tls: exchange.tls,
+        ...(exchange.error === undefined ? {} : { error: exchange.error }),
       };
     } catch (error) {
       return failedExecution(attempt, 'h2', error);
     } finally {
       this.#runById.delete(runId);
       this.#requestByRunId.delete(runId);
+    }
+  }
+
+  /** 在实际收到首段时发送错误GOAWAY，保留部分正文与独立恢复请求的网络事实。 */
+  async runHttp2ErrorGoaway(
+    draft: HttpTrafficRequestDraft,
+    proxyPort: number,
+    direction: 'client' | 'origin',
+  ): Promise<TrafficExecution> {
+    const prefix = Buffer.alloc(256 * 1024, 0x61);
+    const responseStream = new PassThrough();
+    const clientErrors: string[] = [];
+    const originErrors: string[] = [];
+    const receivedHash = createHash('sha256');
+    let receivedBytes = 0;
+    let clientEnded = false;
+    let goawaySent = false;
+    let originRequestCount = 0;
+    let originSession: http2.Http2Session | undefined;
+    let clientStream: ClientHttp2Stream | undefined;
+    const session = await this.openHttp2Session(proxyPort);
+    session.on('error', (error) => clientErrors.push(error.message));
+    const timeout = setTimeout(() => {
+      session.destroy(new Error('HTTP/2 error GOAWAY scenario did not close within 10 seconds.'));
+    }, 10_000);
+    timeout.unref();
+    try {
+      const pendingExecution = this.runHttp2(draft, proxyPort, {
+        session,
+        response: {
+          statusCode: 200,
+          responseBody: responseStream,
+          responseHeaders: {
+            'content-type': 'text/plain; charset=utf-8',
+            'content-length': String(prefix.byteLength * 2),
+          },
+          responseTrailers: {},
+        },
+        onStream: (stream) => {
+          clientStream = stream;
+          stream.on('data', (chunk: Buffer) => {
+            receivedBytes += chunk.byteLength;
+            receivedHash.update(chunk);
+            if (goawaySent || receivedBytes < prefix.byteLength) return;
+            const sender = direction === 'client' ? session : originSession;
+            if (sender === undefined || sender.closed || sender.destroyed) return;
+            sender.goaway(http2.constants.NGHTTP2_INTERNAL_ERROR);
+            goawaySent = true;
+          });
+          stream.on('end', () => { clientEnded = true; });
+          stream.on('error', (error) => clientErrors.push(error.message));
+        },
+        onOriginStream: (stream) => {
+          originRequestCount += 1;
+          originSession = stream.session!;
+          stream.on('error', (error) => originErrors.push(error.message));
+          originSession.on('error', (error) => originErrors.push(error.message));
+        },
+      });
+      responseStream.write(prefix);
+      const execution = await pendingExecution;
+      clearTimeout(timeout);
+      session.destroy();
+      const error = execution.error ?? (goawaySent ? undefined : 'GOAWAY was not sent: the client did not receive the required response prefix.');
+      const goaway: TrafficProtocolEvent = {
+        type: 'goaway',
+        direction: direction === 'client' ? 'client-to-server' : 'server-to-client',
+        sent: goawaySent,
+        errorCode: goawaySent ? http2.constants.NGHTTP2_INTERNAL_ERROR : null,
+        declaredBodyBytes: execution.response?.headers['content-length'] === undefined
+          ? null : Number(execution.response.headers['content-length']),
+        receivedBodyBytes: receivedBytes,
+        receivedBodySha256: receivedHash.digest('hex'),
+        clientEnded,
+        streamResetCode: clientStream?.rstCode ?? null,
+        originRequestCount,
+        clientErrors,
+        originErrors,
+        ...(error === undefined ? {} : { error }),
+      };
+      if (!goawaySent) {
+        return { ...execution, state: 'failed', error, events: [goaway] };
+      }
+      const recoveryUrl = new URL(draft.path, `https://${this.targetHost()}`);
+      recoveryUrl.pathname = `${recoveryUrl.pathname.replace(/\/$/, '')}/recovered`;
+      let recoveryOriginRequestCount = 0;
+      let recoveryOriginSession: http2.Http2Session | undefined;
+      const recovery = await this.runHttp2({
+        kind: 'http', protocol: 'h2', method: 'GET', body: '',
+        headers: { accept: 'application/json' },
+        path: `${recoveryUrl.pathname}${recoveryUrl.search}`,
+      }, proxyPort, {
+        onOriginStream: (stream) => {
+          recoveryOriginRequestCount += 1;
+          recoveryOriginSession = stream.session;
+        },
+      });
+      return {
+        ...execution,
+        events: [goaway, {
+          type: 'recovery',
+          direction: 'client-to-server',
+          state: recovery.state,
+          attempt: recovery.attempt,
+          request: recovery.request,
+          ...(recovery.response === undefined ? {} : { response: recovery.response }),
+          originRequestCount: recoveryOriginRequestCount,
+          differentOriginSession: recoveryOriginSession !== undefined && recoveryOriginSession !== originSession,
+          ...(recovery.error === undefined ? {} : { error: recovery.error }),
+        }],
+      };
+    } finally {
+      clearTimeout(timeout);
+      responseStream.destroy();
+      session.destroy();
     }
   }
 
@@ -267,8 +386,9 @@ export class TlsTrafficRunner {
         protocol: 'grpc',
         request: exchange.request,
         response: exchange.response,
-        state: 'complete',
+        state: exchange.error === undefined ? 'complete' : 'failed',
         tls: exchange.tls,
+        ...(exchange.error === undefined ? {} : { error: exchange.error }),
       };
     } catch (error) {
       return failedExecution(attempt, 'grpc', error);
@@ -331,8 +451,9 @@ export class TlsTrafficRunner {
         protocol: 'tls',
         request: exchange.request,
         response: exchange.response,
-        state: 'complete',
+        state: exchange.error === undefined ? 'complete' : 'failed',
         tls: exchange.tls,
+        ...(exchange.error === undefined ? {} : { error: exchange.error }),
       };
     } catch (error) {
       return failedExecution(attempt, 'tls', error);
@@ -464,10 +585,10 @@ export class TlsTrafficRunner {
         ...headers,
       }, { endStream: Buffer.isBuffer(body) && body.byteLength === 0 });
       options.onStream?.(stream);
-      const response = await requestHttp2Stream(stream, body);
+      const result = await requestHttp2Stream(stream, body);
       return {
         request: await this.#waitForRequest(headers['x-playground-run-id']),
-        response,
+        ...result,
         tls: tlsFact,
       };
     } finally {
@@ -681,11 +802,11 @@ function requestFact(
   };
 }
 
-/** 收集真实 H2 stream 的响应 headers、正文 chunks、timing 和 trailers。 */
+/** 收集真实H2响应；异常close也保留已收字节，EOF不能掩盖reset或声明长度不足。 */
 function requestHttp2Stream(
   stream: ClientHttp2Stream,
   body: Buffer | AsyncIterable<Uint8Array>,
-): Promise<TrafficResponseFact> {
+): Promise<Pick<TlsHttpExchange, 'response' | 'error'>> {
   return new Promise((resolve, reject) => {
     const startedAtMs = performance.now();
     const chunks: Buffer[] = [];
@@ -693,6 +814,7 @@ function requestHttp2Stream(
     let headers: Readonly<Record<string, string>> = {};
     let statusCode = 0;
     let trailers: Readonly<Record<string, string>> = {};
+    let responseError: Error | undefined;
     stream.on('response', (responseHeaders) => {
       statusCode = Number(responseHeaders[':status'] ?? 0);
       headers = stringHeaders(responseHeaders);
@@ -704,14 +826,24 @@ function requestHttp2Stream(
       chunks.push(Buffer.from(chunk));
       chunkTimingsMs.push(elapsed(startedAtMs));
     });
-    stream.on('error', reject);
-    stream.on('end', () => resolve(responseFact(
-      Buffer.concat(chunks),
-      headers,
-      statusCode,
-      chunkTimingsMs,
-      trailers,
-    )));
+    stream.on('error', (error) => { responseError = error; });
+    stream.on('close', () => {
+      if (statusCode === 0) {
+        reject(responseError ?? new Error('HTTP/2 stream closed before receiving response headers.'));
+        return;
+      }
+      const response = responseFact(Buffer.concat(chunks), headers, statusCode, chunkTimingsMs, trailers);
+      let error = responseError?.message;
+      if (error === undefined && (stream.rstCode !== 0 || !stream.readableEnded)) {
+        error = `HTTP/2 stream closed before completion (reset code ${stream.rstCode}).`;
+      }
+      const declaredBytes = headers['content-length'];
+      const expectsBody = stream.sentHeaders?.[':method'] !== 'HEAD' && statusCode !== 204 && statusCode !== 304;
+      if (error === undefined && expectsBody && declaredBytes !== undefined && response.bodyBytes !== Number(declaredBytes)) {
+        error = `HTTP/2 response ended after ${response.bodyBytes} of ${declaredBytes} declared bytes.`;
+      }
+      resolve({ response, ...(error === undefined ? {} : { error }) });
+    });
     if (Buffer.isBuffer(body)) {
       if (body.byteLength > 0) stream.end(body);
     } else {

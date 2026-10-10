@@ -107,7 +107,7 @@ describe('ExchangeTracker body finalization', () => {
       exchangeTracker.abortExchange({ ...request,
         timingEvents: { ...request.timingEvents, abortedTimestamp: 1 },
       } as AbortedRequest);
-      await new Promise<void>((resolve) => setImmediate(resolve));
+      await exchangeTracker.settle();
 
       const detail = await captureService.getExchangeDetail(exchangeId!);
       expect(detail?.summary).toMatchObject({ state: 'aborted', durationMs: expect.any(Number),

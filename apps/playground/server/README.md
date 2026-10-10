@@ -11,7 +11,7 @@
 
 | 类 | 协议和职责 | 实现 |
 | --- | --- | --- |
-| `TrafficLab` | 39项场景目录、Draft transport 校验、共享实例与统一关闭 | [scenarios/traffic-lab.ts](scenarios/traffic-lab.ts) |
+| `TrafficLab` | 41项场景目录、Draft transport 校验、共享实例与统一关闭 | [scenarios/traffic-lab.ts](scenarios/traffic-lab.ts) |
 | `HttpTrafficRunner` | 明文 HTTP/1.1、正文/编码场景、响应控制和 origin 观测 | [http/traffic.ts](http/traffic.ts) |
 | `TlsTrafficRunner` | TLS-only、HTTPS/H1、HTTPS/H2、gRPC 与 CONNECT | [tls/traffic.ts](tls/traffic.ts) |
 | `WebSocketTrafficRunner` | 唯一 WS origin、普通场景、持续连接及证据 | [websocket/traffic.ts](websocket/traffic.ts) |
@@ -22,6 +22,9 @@
 `TlsTrafficRunner` 按传输边界命名，不是 HTTP/2 的别名：
 
 - `runHttp2()`：TLS + ALPN `h2` 上的 HTTP 请求；
+- `runHttp2ErrorGoaway()`：复用普通H2入口和origin，在客户端收到256 KiB后立即由指定一端发送错误GOAWAY；
+  响应声明512 KiB但不发送剩余字节，随后由独立新连接发送恢复GET。结果的Protocol事件保留发送事实、实际字节/hash、
+  原POST次数、Node end/reset/error以及恢复请求，不把故意中断标成完整成功或人工Pass。10秒未关闭时显式报错并销毁本轮连接。
 - `openHttp2Session()`与`runHttp2()`的可选session/受控response：复用同一TLS origin和CONNECT路径，在同一客户端连接发送多个stream；调用方可观察Node ClientHttp2Stream并只取消其中一条。未传选项的普通H2/TLS/gRPC场景保持原行为，共享session由调用方在全部stream结束后销毁。
 - `runGrpc()`：复用同一TLS/H2 origin，发送gRPC envelope与trailers；可分别传入受控的`AsyncIterable<Uint8Array>`响应流、请求流，iterator结束时才结束对应side，用于实际双向streaming验收，不改Browser Draft或产品参数；
 - `runTls()`：按 Draft 选择 CONNECT 后只握手，或继续 HTTPS/H1、HTTPS/H2；
@@ -30,6 +33,10 @@
 一个开启 `allowHTTP1` 的 Node HTTP/2 TLS server 同时承载 H1/H2，避免各功能另造证书和 listener。
 TLS stream 的 `bytesRead` 统计解密后入站字节，并累计已关闭连接；不能仅监听 `data`，H2 原生 parser 会直接消费 stream。
 本地自签名证书只用于 origin，不写入系统信任库；Interceptor 的 MITM、insecure host 与 passthrough 仍由用户通过产品 UI 设置。
+
+H2响应收集以实际stream关闭时的headers、chunks、trailers与错误为准；已收到响应头后的reset或长度不足仍返回
+真实部分正文和`state: failed`，不把origin请求清空为从未发生。HEAD、204与304不按Content-Length要求实体正文；
+没有实际响应头或origin观测的连接失败仍明确报错，不从Draft拼造网络事实。HTTP/gRPC/TLS入口共用此收集逻辑。
 
 ### WebSocket 客户端
 

@@ -26,10 +26,12 @@ import type {
   HeaderInput,
 } from '../../capture/interfaces';
 import type {
+  AbortedExchangeCapture,
   OrphanRuleOutcome,
   RuleBodyReplacement,
   TrackedExchange,
 } from '../interfaces';
+import { ABORT_BODY_GRACE_MS } from './constants';
 import type { CaptureEventQueue } from './capture-event-queue';
 import * as ProxyUtils from '../utils';
 
@@ -46,6 +48,8 @@ import * as ProxyUtils from '../utils';
 export class ExchangeTracker {
   /** Mockttp request id 到进行中的 Exchange。 */
   private readonly entries = new Map<string, TrackedExchange>();
+  /** 已中断但仍接收迟到正文的请求，不计入网络活动数。 */
+  private readonly abortedCapturesByRequestId = new Map<string, AbortedExchangeCapture>();
   /** 已接受但尚未结束的存储写入，不随Exchange进入终态或reset丢弃。 */
   private readonly pendingExchangeWrites = new Set<Promise<void>>();
   /** Exchange 尚未建立时暂存的规则结果。 */
@@ -252,7 +256,7 @@ export class ExchangeTracker {
 
   /** 请求正文增量：写入 writer 并更新已观察字节数。 */
   appendRequestBody(data: BodyData): void {
-    const entry = this.entries.get(data.id);
+    const entry = this.entries.get(data.id) ?? this.abortedCapturesByRequestId.get(data.id)?.entry;
     if (!entry || entry.generation !== this.generation || entry.requestPhase === 'complete') {
       return;
     }
@@ -261,7 +265,7 @@ export class ExchangeTracker {
       entry.requestWriter.write(data.content);
       entry.requestBytes = entry.requestWriter.observedBytes;
     }
-    if (!data.isEnded) {
+    if (!data.isEnded || entry.terminal) {
       this.patch(entry, { requestBytes: entry.requestBytes });
       return;
     }
@@ -276,11 +280,11 @@ export class ExchangeTracker {
 
   /** 响应头到达：更新状态并转入 response-streaming。 */
   beginResponse(response: InitiatedResponse): void {
-    const entry = this.entries.get(response.id);
-    if (!entry || entry.generation !== this.generation || entry.terminal) {
+    const entry = this.entries.get(response.id) ?? this.abortedCapturesByRequestId.get(response.id)?.entry;
+    if (!entry || entry.generation !== this.generation) {
       return;
     }
-    entry.responsePhase = 'headers';
+    if (!entry.terminal) entry.responsePhase = 'headers';
     entry.statusCode = response.statusCode;
     const responseMime = ProxyUtils.readHeader(response.headers, 'content-type');
     entry.responseMime = responseMime;
@@ -299,7 +303,7 @@ export class ExchangeTracker {
         ? Math.floor(rawResponseStartedAt)
         : undefined;
     this.patch(entry, {
-      state: 'response-streaming',
+      state: entry.terminal ? 'aborted' : 'response-streaming',
       statusCode: response.statusCode,
       ...(response.statusMessage ? { statusText: response.statusMessage } : {}),
       ...(responseMime !== undefined ? { responseMime } : {}),
@@ -330,7 +334,7 @@ export class ExchangeTracker {
 
   /** 响应正文增量：413在完整响应后收尾，其余等待双向结束。 */
   appendResponseBody(data: BodyData): void {
-    const entry = this.entries.get(data.id);
+    const entry = this.entries.get(data.id) ?? this.abortedCapturesByRequestId.get(data.id)?.entry;
     if (!entry || entry.generation !== this.generation || entry.responsePhase === 'complete') {
       return;
     }
@@ -342,7 +346,7 @@ export class ExchangeTracker {
         entry.responsePhase = 'body';
       }
     }
-    if (!data.isEnded) {
+    if (!data.isEnded || entry.terminal) {
       this.patch(entry, { responseBytes: entry.responseBytes });
       return;
     }
@@ -356,8 +360,9 @@ export class ExchangeTracker {
     }
   }
 
-  /** 请求中断：记录终态与原因。 */
+  /** 即刻记录网络中断，固定宽限内继续接受此前已传输正文的迟到观测。 */
   abortExchange(request: AbortedRequest): void {
+    if (this.abortedCapturesByRequestId.has(request.id)) return;
     const entry = this.entries.get(request.id);
     if (!entry || entry.generation !== this.generation) {
       this.entries.delete(request.id);
@@ -365,8 +370,8 @@ export class ExchangeTracker {
       this.resolveExchangeReady(request.id, null);
       return;
     }
-    entry.requestPhase = 'aborted';
-    entry.responsePhase = 'aborted';
+    if (entry.requestPhase !== 'complete') entry.requestPhase = 'aborted';
+    if (entry.responsePhase !== 'complete') entry.responsePhase = 'aborted';
     const completedAt =
       ProxyUtils.timingEventToEpoch(
         request.timingEvents,
@@ -380,14 +385,60 @@ export class ExchangeTracker {
         path: entry.path ?? '',
       },
     });
-    this.finishExchange(request.id, entry, 'aborted', completedAt, {
+    entry.terminal = true;
+    entry.completedAt = completedAt;
+    this.entries.delete(request.id);
+    this.patch(entry, {
+      state: 'aborted',
+      completedAt,
+      requestBytes: entry.requestBytes,
+      responseBytes: entry.responseBytes,
       ...(request.error?.code ? { errorCode: request.error.code } : {}),
     });
+    let resolve!: () => void;
+    const settled = new Promise<void>((done) => { resolve = done; });
+    const capture: AbortedExchangeCapture = { entry, timer: null, finalizer: null, settled, resolve };
+    this.abortedCapturesByRequestId.set(request.id, capture);
+    this.captureService.retainBodyCapture(entry.exchangeId, () => {
+      const discarded = this.removeAbortedCapture(request.id);
+      if (discarded) void discarded.entry.tail.then(discarded.resolve);
+    });
+    capture.timer = setTimeout(() => {
+      capture.timer = null;
+      // 到期时已排队的Mockttp setImmediate观测先执行，再关闭追加窗口。
+      capture.finalizer = setImmediate(() => this.finalizeAbortedCapture(request.id));
+    }, ABORT_BODY_GRACE_MS);
+    capture.timer.unref();
+    this.resolveExchangeReady(request.id, entry.exchangeId);
+  }
+
+  /** 关闭观测窗口，按原网络终态完成两侧正文；不重新计算结束时间。 */
+  private finalizeAbortedCapture(requestId: string): void {
+    const capture = this.removeAbortedCapture(requestId);
+    if (!capture) return;
+    const { entry } = capture;
+    if (entry.requestWriter) this.finalizeRequestBody(entry);
+    if (entry.responseWriter) this.finalizeResponseBody(entry);
+    this.schedule(entry, async () => {
+      this.captureService.releaseBodyCapture(entry.exchangeId);
+      this.enqueue(entry, 'exchange-updated');
+    });
+    void entry.tail.then(capture.resolve);
+  }
+
+  /** 取消一个中断记录的定时与排队封口，返回仍由调用方处理的采集上下文。 */
+  private removeAbortedCapture(requestId: string): AbortedExchangeCapture | undefined {
+    const capture = this.abortedCapturesByRequestId.get(requestId);
+    if (!capture) return undefined;
+    this.abortedCapturesByRequestId.delete(requestId);
+    if (capture.timer) clearTimeout(capture.timer);
+    if (capture.finalizer) clearImmediate(capture.finalizer);
+    return capture;
   }
 
   /** 请求 trailer 到达：追加记录，不改变主状态。 */
   recordRequestTrailers(requestId: string, rawTrailers: [string, string][]): void {
-    const entry = this.entries.get(requestId);
+    const entry = this.entries.get(requestId) ?? this.abortedCapturesByRequestId.get(requestId)?.entry;
     if (!entry || entry.generation !== this.generation || rawTrailers.length === 0) {
       return;
     }
@@ -398,7 +449,7 @@ export class ExchangeTracker {
 
   /** 响应 trailer 到达；gRPC 的 grpc-status 依赖此路径。 */
   recordResponseTrailers(requestId: string, rawTrailers: [string, string][]): void {
-    const entry = this.entries.get(requestId);
+    const entry = this.entries.get(requestId) ?? this.abortedCapturesByRequestId.get(requestId)?.entry;
     if (!entry || entry.generation !== this.generation || rawTrailers.length === 0) {
       return;
     }
@@ -582,8 +633,12 @@ export class ExchangeTracker {
     this.generation += 1;
     this.captured = 0;
     for (const entry of this.entries.values()) {
-      void entry.requestWriter?.abort();
-      void entry.responseWriter?.abort();
+      this.discardBodyWriters(entry);
+    }
+    for (const requestId of this.abortedCapturesByRequestId.keys()) {
+      const capture = this.removeAbortedCapture(requestId)!;
+      this.discardBodyWriters(capture.entry);
+      void capture.entry.tail.then(capture.resolve);
     }
     this.entries.clear();
     this.orphanRuleOutcomes.clear();
@@ -594,11 +649,27 @@ export class ExchangeTracker {
     this.exchangeReady.clear();
   }
 
+  /** 将放弃正文与解绑排入同一队列，Clear/退出等待已接受的文件操作完成。 */
+  private discardBodyWriters(entry: TrackedExchange): void {
+    const requestWriter = entry.requestWriter;
+    const responseWriter = entry.responseWriter;
+    entry.requestWriter = null;
+    entry.responseWriter = null;
+    this.schedule(entry, async () => {
+      try {
+        await Promise.all([requestWriter?.abort(), responseWriter?.abort()]);
+      } finally {
+        this.captureService.releaseBodyCapture(entry.exchangeId);
+      }
+    });
+  }
+
   /**
    * 终结全部在途 Exchange 并保留已收到的正文；调用方：原端口重建监听器。
    * 与 reset 不同，代际、已捕获记录与计数都保持不变。
    */
   abortInFlight(errorCode: string): void {
+    for (const requestId of this.abortedCapturesByRequestId.keys()) this.finalizeAbortedCapture(requestId);
     const completedAt = Date.now();
     for (const [requestId, entry] of [...this.entries]) {
       entry.requestPhase = 'aborted';
@@ -611,9 +682,12 @@ export class ExchangeTracker {
     this.exchangeReady.clear();
   }
 
-  /** 等待当前已接受的存储写入，包含已移出活动列表的终态Exchange；调用方：Proxy stop与Clear。 */
+  /** 等待当前存储工作与已经开启的中断收尾，Clear/stop会先取消窗口。 */
   async settle(): Promise<void> {
-    await Promise.allSettled(this.pendingExchangeWrites);
+    await Promise.all([
+      ...this.pendingExchangeWrites,
+      ...[...this.abortedCapturesByRequestId.values()].map((capture) => capture.settled),
+    ]);
   }
 
 
@@ -799,6 +873,7 @@ export class ExchangeTracker {
         requestBytes: entry.requestBytes,
         responseBytes: entry.responseBytes,
       });
+      this.captureService.releaseBodyCapture(entry.exchangeId);
     });
     this.captureEventQueue.enqueue('exchange-updated', {
       ...this.toSummary(entry),
@@ -879,6 +954,7 @@ export class ExchangeTracker {
           : {}),
         ...extra,
       });
+      this.captureService.releaseBodyCapture(entry.exchangeId);
     });
     this.captureEventQueue.enqueue('exchange-updated', {
       ...this.toSummary(entry),

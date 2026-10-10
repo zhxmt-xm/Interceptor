@@ -9,7 +9,7 @@ test('Capture Lab is first, owns its Header, and exposes all current scenarios',
   await expect(page.getByTestId('capture-proxy')).toHaveText('127.0.0.1:8888');
   await expect(page.getByText('MCP 2026-07-28')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Refresh tools' })).toHaveCount(0);
-  await expect(page.locator('[data-scenario-id]')).toHaveCount(39);
+  await expect(page.locator('[data-scenario-id]')).toHaveCount(41);
 
   await navigation.getByRole('button', { name: /MCP/ }).click();
   await expect(page.locator('main')).toHaveAttribute('data-section', 'mcp');

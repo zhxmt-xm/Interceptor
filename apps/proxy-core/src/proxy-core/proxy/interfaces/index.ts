@@ -174,6 +174,15 @@ export interface TrackedExchange {
   tail: Promise<void>;
 }
 
+/** 已处于网络终态、仍保留迟到正文窗口的Exchange。 */
+export interface AbortedExchangeCapture {
+  readonly entry: TrackedExchange;
+  timer: ReturnType<typeof setTimeout> | null;
+  finalizer: ReturnType<typeof setImmediate> | null;
+  readonly settled: Promise<void>;
+  readonly resolve: () => void;
+}
+
 /** RuleService最终正文写入者与实际replacement字节。 */
 export interface RuleBodyReplacement {
   readonly effect: RuleBodyEffect;

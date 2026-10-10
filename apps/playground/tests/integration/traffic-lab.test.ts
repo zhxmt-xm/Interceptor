@@ -28,7 +28,7 @@ describe('TrafficLab', () => {
 
     const scenarios = trafficLab.scenarios();
 
-    expect(scenarios).toHaveLength(39);
+    expect(scenarios).toHaveLength(41);
     expect(new Set(scenarios.map((scenario) => scenario.group))).toEqual(new Set([
       'HTTP',
       'Bodies',

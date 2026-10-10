@@ -27,6 +27,8 @@ export const TRAFFIC_SCENARIOS: readonly TrafficScenarioDescriptor[] = [
   scenario('h1-early-response', 'HTTP', 'H1 early response', 'Response before request completion.', 'POST', '/playground/h1-early-response', '{"request":"continues-after-response"}'),
   scenario('h1-abort', 'HTTP', 'H1 abort', 'Client abort and origin reset.', 'GET', '/playground/h1-abort'),
   scenario('h2-json', 'HTTP', 'H2 JSON', 'HTTP/2 stream and pseudo-headers.', 'GET', '/playground/h2-json'),
+  scenario('h2-error-goaway-client', 'HTTP', 'H2 client error GOAWAY', 'Client interrupts after 256 KiB of a declared 512 KiB response.', 'POST', '/playground/h2/error-goaway-client', 'single-attempt', { 'content-type': 'text/plain' }),
+  scenario('h2-error-goaway-origin', 'HTTP', 'H2 origin error GOAWAY', 'Origin interrupts after the client receives 256 KiB of a declared 512 KiB response.', 'POST', '/playground/h2/error-goaway-origin', 'single-attempt', { 'content-type': 'text/plain' }),
   scenario('body-json', 'Bodies', 'JSON', 'Tree, raw and hex views.', 'POST', '/playground/body/json', '{"ready":true}'),
   scenario('body-text', 'Bodies', 'Plain text', 'UTF-8 text response.', 'POST', '/playground/body/text', 'Interceptor body lab', { 'content-type': 'text/plain; charset=utf-8' }),
   scenario('body-html', 'Bodies', 'HTML', 'Markup syntax and preview.', 'GET', '/playground/body/html'),
@@ -133,7 +135,13 @@ export class TrafficLab {
     } else {
       const tlsTrafficRunner = await this.getTlsTrafficRunner();
       if (draft.kind === 'http') {
-        execution = await tlsTrafficRunner.runHttp2(draft, proxyPort);
+        if (scenarioId === 'h2-error-goaway-client' || scenarioId === 'h2-error-goaway-origin') {
+          execution = await tlsTrafficRunner.runHttp2ErrorGoaway(
+            draft, proxyPort, scenarioId === 'h2-error-goaway-client' ? 'client' : 'origin',
+          );
+        } else {
+          execution = await tlsTrafficRunner.runHttp2(draft, proxyPort);
+        }
       } else if (draft.kind === 'grpc') {
         execution = await tlsTrafficRunner.runGrpc(draft, proxyPort);
       } else if (draft.kind === 'tls') {
@@ -202,7 +210,7 @@ function scenario(
       kind: 'http',
       method,
       path,
-      protocol: id === 'h2-json' ? 'h2' : 'h1',
+      protocol: id.startsWith('h2-') ? 'h2' : 'h1',
     },
     description,
     group,
@@ -343,6 +351,21 @@ function acceptanceSteps(
       observations: [
         `${description} is visible as decrypted traffic.`,
         'ALPN, cipher, request and response facts match Response Detail.',
+      ],
+    };
+  }
+  if (id === 'h2-error-goaway-client' || id === 'h2-error-goaway-origin') {
+    return {
+      setup: [
+        'Keep Interceptor listening on 127.0.0.1:8888 with Recording active.',
+        'Remove localhost from TLS passthrough, enable HTTPS decryption, and allow the self-signed localhost origin in Settings > Certificates.',
+        'Keep the default POST Draft and disable Rules and Breakpoints that would change this request.',
+      ],
+      observations: [
+        'Response Detail > Protocol must show GOAWAY sent=true, errorCode=2, receivedBodyBytes=262144, declaredBodyBytes=524288 and originRequestCount=1. A failed HTTP run is expected, not an automatic Pass.',
+        'In Capture, select the latest matching POST path or x-playground-run-id. After the fixed 1-second cleanup window, the same H2/200 row keeps 256 KB and its partial response, not 512 KB; the ended duration must not grow.',
+        'The partial response contains only "a" bytes. Compare receivedBodySha256 in Protocol with the reference in the Playground README. No POST replay or completed-response claim is allowed.',
+        'The recovery event must show a separate GET to the /recovered path, state=complete, HTTP 200, originRequestCount=1 and differentOriginSession=true. Check its separate Capture row, then record Pass / Fail / Blocked manually.',
       ],
     };
   }

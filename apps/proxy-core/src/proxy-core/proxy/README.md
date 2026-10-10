@@ -74,6 +74,14 @@ origin正文并固定记`unavailable`。规则结果先到或body-data先到都�
 生成content bytes，并按编辑意图维护继承的`Content-Length`。Mockttp headers-stage hook只替换stream，
 不再编码正文或决定CL/TE；`Transfer-Encoding`与H1/H2 framing由Mockttp/Node发送层执行。
 
+## 中断正文收尾
+
+- `abortExchange()`立即固定网络终态、错误及结束时间，把请求移出活动集合；每条中断记录仅保留一个1000ms迟到观测窗口，重复abort不重置它。
+- `abortedCapturesByRequestId`持有等待中的采集关联，不重复存储正文。窗口内按原事件顺序写入现有writer，首批正文也可在abort后创建writer；已完成的一侧不重新打开，迟到结束事件不能恢复completed。
+- 截止定时器将封口排入`setImmediate`，允许同轮已排队的正文通知先执行。封口后拒绝追加，沿原写入队列finalize、绑定正文并解除CaptureService关联；这是尽力保留窗口，不保证所有任意迟到通知必然齐全。
+- `settle()`包含已开启窗口的最终收尾。Clear/stop先取消等待并放弃对应writer；listener重建对等待中的记录立即封口、保留已接受字节和原中断时间。Session清理/Dispose经CaptureService取消窗口，不能在删除后创建writer或复活记录。
+- 定时器属于ExchangeTracker；BodyWriter保留write/finalize/abort，不添加延迟提交或网络策略。网络取消、转发和Mockttp补丁不改变。
+
 ## 依赖
 
 - 依赖：`capture/`（写入抓包数据）、`rules/`（请求/响应评估）、`http-message/`（replacement content bytes）、`client-app/`（源端口反查应用）、`diagnostics/`

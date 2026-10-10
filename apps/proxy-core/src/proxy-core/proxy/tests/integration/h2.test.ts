@@ -683,8 +683,8 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
         const range = ranges.find((candidate) => detail?.url.endsWith(candidate.path))!;
         const expectedSize = ending === 'cancel' && range.path === ranges[0]!.path ? prefixSize : rangeSize;
         const expectedBody = range.body.subarray(0, expectedSize);
-        expect(detail?.responseBody).toMatchObject({ encodedSize: expectedSize,
-          bodyHash: createHash('sha256').update(expectedBody).digest('hex') });
+        await expect.poll(async () => (await activeCaptureService.getExchangeDetail(summary.id))?.responseBody)
+          .toMatchObject({ encodedSize: expectedSize, bodyHash: createHash('sha256').update(expectedBody).digest('hex') });
         await expect(activeCaptureService.readExchangeBodyRange(summary.id, 'response', expectedSize - 32, 64))
           .resolves.toEqual(expectedBody.subarray(expectedSize - 32));
       }
@@ -773,16 +773,23 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
     const received = { bytes: 0, ended: false, closed: false, status: undefined as number | undefined,
       errors: [] as Array<{ code?: string; message: string }>, hash: createHash('sha256') };
     request.on('response', (headers) => { received.status = headers[':status']; });
-    request.on('data', (chunk: Buffer) => { received.bytes += chunk.byteLength; received.hash.update(chunk); });
+    request.on('data', (chunk: Buffer) => {
+      received.bytes += chunk.byteLength;
+      received.hash.update(chunk);
+      if (direction === 'client' && received.bytes === prefix.byteLength) {
+        clientSession!.goaway(http2.constants.NGHTTP2_INTERNAL_ERROR);
+      }
+    });
     request.on('end', () => { received.ended = true; });
     request.on('close', () => { received.closed = true; });
     request.on('error', (error: NodeJS.ErrnoException) => received.errors.push({ code: error.code, message: error.message }));
     request.end('single-attempt');
     await expect.poll(() => received.bytes).toBe(prefix.byteLength);
-    await expect.poll(async () => (await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} }))
-      .items.find((exchange) => exchange.path === requestPath)?.state).toBe('response-streaming');
-    const sourceSession = sourceStreamsByPath.get(requestPath)!.session!;
-    (direction === 'origin' ? sourceSession : clientSession).goaway(http2.constants.NGHTTP2_INTERNAL_ERROR);
+    if (direction === 'origin') {
+      await expect.poll(async () => (await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} }))
+        .items.find((exchange) => exchange.path === requestPath)?.state).toBe('response-streaming');
+      sourceStreamsByPath.get(requestPath)!.session!.goaway(http2.constants.NGHTTP2_INTERNAL_ERROR);
+    }
     await expect.poll(() => received.closed, { timeout: 5_000 }).toBe(true);
     expect(received.status).toBe(200);
     expect(received.bytes).toBe(prefix.byteLength);
@@ -795,8 +802,11 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
       .items.find((exchange) => exchange.path === requestPath)?.state).toMatch(/^(aborted|failed)$/);
     const interrupted = (await activeCaptureService.querySessions({ limit: 10, sort: 'started_desc', filter: {} }))
       .items.find((exchange) => exchange.path === requestPath)!;
-    expect(interrupted).toMatchObject({ protocol: 'h2', statusCode: 200, responseBytes: prefix.byteLength });
+    await expect.poll(() => activeCaptureService.getExchangeBodySnapshot(interrupted.id, 'response')).toMatchObject({
+      encodedSize: prefix.byteLength, complete: true, available: true,
+    });
     await expect(activeCaptureService.getExchangeDetail(interrupted.id)).resolves.toMatchObject({
+      summary: { protocol: 'h2', statusCode: 200, responseBytes: prefix.byteLength, state: interrupted.state },
       responseBody: { encodedSize: prefix.byteLength, bodyHash: createHash('sha256').update(prefix).digest('hex') },
     });
     expect(requestCountsByPath.get(requestPath)).toBe(1);

@@ -118,6 +118,8 @@ General的POST值使用共享IconButton inline档，按钮18x18px、Lucide图标
 
 错误GOAWAY两方向：真实POST的200响应已收到首段256 KiB且声明512 KiB时，分别由源站和客户端发送`INTERNAL_ERROR` GOAWAY。客户端实际中断并只保留首段hash，Capture原行仍保留真实200与部分字节、结束耗时，不显示完整成功；Core集成核对`aborted/failed`终态。源站记录POST仅到达一次，另开下游H2连接发送独立后续请求，真实列表新增200行，旧行及部分正文不改变。沿用原CA准备和恢复，保存错误码、stream/session身份、请求次数、字节/hash、截图和trace；不得注入产品状态或直接调用业务API。背景TLS提示只经公共Dismiss真实关闭，不自动加host；部分正文通过实际Text模式而非JSON Raw查看。
 
+迟到观测收尾：客户端方向在收到完整首段的data回调里立即发送错误GOAWAY，不先等待Capture显示256 KiB后才中断。Capture先进入中断终态，随后在固定1秒收尾窗口内补入已观察正文；用原有公共行与正文视图等待数据可见，不以固定sleep替代断言。网络响应仍仅为256 KiB，不补全声明的512 KiB、不重放POST、不把终态恢复为成功。精确1000ms、重复abort不重置、窗口内首次创建writer、Clear/删除/退出取消由Core回归验证；本workflow保留真实UI、协议字节/hash、原行身份及退出恢复证据。
+
 <a id="capture-scenarios-bodies"></a>
 ## `capture.scenarios.bodies`
 
@@ -279,16 +281,19 @@ Compact正文尺寸：在真实binary JSON消息默认Pretty档、切Tree之前�
 ### Steps
 
 1. 创建fresh profile、trace与独立Playground端口；启动真实Electron并等待Core与8888，使用产品UI开启Recording。
-2. 系统Edge打开真实`apps/playground`，确认默认Capture Lab、39项目录、Capture专属Header与可编辑Draft。
+2. 系统Edge打开真实`apps/playground`，确认默认Capture Lab、41项目录、Capture专属Header与可编辑Draft。
 3. 选择`h1-json`并点击Run；等待Playground显示complete。
 4. 在真实Capture中等待自产`/playground/h1-json`行，选择后进入Response，验证h1和`ord_42`正文。
 5. 回到Edge选择`ws-text`并点击Run；等待Playground显示complete。
 6. 在真实Capture中等待自产`/playground/ws/text`行，选择后进入Messages，验证双向自产text message。
-7. 关闭Edge与Playground；正常Close Electron并验证Main/Core退出、8888/Playground端口释放、系统代理恢复与profile删除。
+7. 保存Root基线，通过产品UI开启HTTPS解密并添加localhost源站例外；在Playground分别选择`h2-error-goaway-client`与`h2-error-goaway-origin`并点击Run，保留默认POST。
+8. 两场景均只在客户端实际收到256 KiB后发送错误码2的GOAWAY，响应声明512 KiB；读取真实Lab响应与页面Protocol证据，核对部分正文/hash、源站POST次数1、独立新连接恢复请求200。`failed`表示这次HTTP响应被故意中断，不自动填写人工Pass。
+9. 在真实Capture按各场景路径定位原POST行，等待同一行保留H2/200/256 KB及非占位耗时；点击Response查看已收到的正文，Headers保留声明的512 KiB，不补全、不重放；恢复GET另有200行。保存Browser/产品截图、网络事实、trace；精确1秒与取消边界仍由Core回归验证。
+10. 通过产品UI清理本轮MITM与localhost配置，核对Root基线；关闭Edge与Playground；正常Close Electron并验证Main/Core退出、8888/Playground端口释放、系统代理恢复与profile删除。
 
 ### 预期效果
 
-Playground不是直接构造Core状态的测试后门；真实Browser点击自产流量进入产品Capture，H1正文与WebSocket消息均可在产品UI检查，退出不遗留listener或系统副作用。
+Playground不是直接构造Core状态的测试后门；真实Browser点击自产流量进入产品Capture，H1正文、WebSocket消息及H2错误GOAWAY后的部分正文均可在产品UI检查，退出不遗留listener或系统副作用。Playground页面与真实Electron共同覆盖新增GOAWAY入口，不以既有H1/WS结果代替。
 
 <a id="capture-recording-pause-resume"></a>
 ## `capture.recording.pause-resume`

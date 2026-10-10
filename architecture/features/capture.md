@@ -271,6 +271,13 @@ H2/gRPC/TLS及断点退出也取得真实Green；Windows实机独立归第8项�
 
 - 源站或客户端发出非零GOAWAY导致stream中断时，保留真实响应头、已收正文和耗时，记录`aborted/failed`，不得把部分正文当作完整成功。
 - 客户端事件可能同时出现reset与end；EOF不是完整成功的充分条件。后续新连接可以继续录制，但不能把旧Exchange回退为completed，也不自动重放POST。
+- Mockttp可能先发`abort`，再发其批处理缓冲中尚未通知的`response-body-data`（`isEnded:false`）；客户端已收到正文不代表Capture已收到全部观测。网络终态与正文采集收尾独立，这与正文编辑framing或源站正常GOAWAY排空不同。
+- `ExchangeTracker`收到第一个`abort`立即发布`aborted`、错误和原网络结束时间，并为该Exchange保留固定1000ms的迟到观测窗口；重复abort和正文通知不延长窗口。定时器到期后将封口排入下一次`setImmediate`，先让已经排队的观测回调执行；封口后不再接受追加，再排空已接受写入并提交正文/hash。调度延迟可能使实际回收晚于1秒，该窗口是有界、尽力保留策略，不代表精确证明Mockttp通知已全部到齐。
+- 请求和响应独立处理：已正常结束的正文不重新打开；尚未创建writer的一侧可以在窗口内按首批数据创建。迟到`isEnded:true`也不把Exchange改回completed，网络结束时间不因采集收尾延长。正文始终是一份已观察的部分数据，不新增“中断后正文”副本或网络读取、重放、转发。
+- `CaptureService`的writer读取/清理所有权与Exchange网络终态分开；窗口内可读范围继续增长，尚未提交hash的正文快照保持`complete:false`，明确空Final不回退到Original。采集封口且写入结束后才解除writer关联；这里的complete表示采集快照不再增长，不表示中断的HTTP消息完整。
+- 暂停录制只拒绝新Exchange，已有窗口继续收尾；Clear、删除所属Session和Dispose优先取消等待并放弃相应writer，不允许迟到通知复活记录或绑定正文。Proxy退出/重建取消定时器并按既定丢弃/保留语义排空已接受写入；正常完成路径不增加1秒延迟。不修改第三方补丁、网络取消/转发或产品UI布局。
+
+Playground手动入口：Capture Lab的HTTP分组提供`h2-error-goaway-client`与`h2-error-goaway-origin`。默认POST接收256 KiB、响应声明512 KiB；收到首段后立即由指定一端发送`NGHTTP2_INTERNAL_ERROR`，不等待Capture先收齐。Response Detail保留实际响应、GOAWAY方向/错误码、接收字节/hash、源站请求次数及独立新连接恢复结果；预期网络失败不能自动算人工Pass。用户通过产品UI启用Recording、HTTPS解密和localhost源站例外，运行后检查原Capture行在约1秒收尾后仍保留200/256 KiB与部分正文、结束耗时不再增长，没有补全或重放；后续独立请求正常完成。页面布局与产品UI不变，操作步骤见[Playground说明](../../apps/playground/README.md#手动复现h2中断正文)。
 
 #### gRPC在途正文
 

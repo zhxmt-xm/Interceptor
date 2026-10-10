@@ -1,5 +1,9 @@
+import { createHash } from 'node:crypto';
+import { writeFile } from 'node:fs/promises';
+
 import { chromium, type Browser } from '@playwright/test';
 
+import type { TrafficScenarioResult } from '../../../../../playground/server/scenarios/interfaces';
 import {
   AUTOMATION_ID_PREFIXES,
   AUTOMATION_IDS,
@@ -9,6 +13,7 @@ import {
   getByAutomationIdPrefix,
 } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { cleanHttpsCapture, prepareHttpsCapture, rootCertificateThumbprints } from '../../fixtures/ui/https-capture';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 
 test('capture.playground-traffic sends Browser traffic into real Capture', async ({
@@ -21,6 +26,10 @@ test('capture.playground-traffic sends Browser traffic into real Capture', async
     description: 'capture.playground-traffic',
   });
 
+  const rootsBefore = await rootCertificateThumbprints();
+  const cleanupErrors: unknown[] = [];
+  let workflowError: unknown;
+  let httpsPrepared = false;
   let browser: Browser | null = null;
   try {
     // 准备：通过产品UI开启真实Recording，再用系统Edge打开完整Playground进程。
@@ -30,7 +39,7 @@ test('capture.playground-traffic sends Browser traffic into real Capture', async
     const browserPage = await browser.newPage({ viewport: { width: 1600, height: 900 } });
     await browserPage.goto(playgroundServer.url);
     await expect(browserPage.locator('main')).toHaveAttribute('data-section', 'capture');
-    await expect(browserPage.locator('[data-scenario-id]')).toHaveCount(39);
+    await expect(browserPage.locator('[data-scenario-id]')).toHaveCount(41);
 
     // 用户操作：在Playground选择H1 JSON并点击公开Run控件，不直接调用Lab API。
     // User action: select H1 JSON in Playground and click its public Run control without calling the Lab API directly.
@@ -86,6 +95,92 @@ test('capture.playground-traffic sends Browser traffic into real Capture', async
     await expect.poll(() => frames.count()).toBeGreaterThanOrEqual(2);
     await expect(frames.filter({ hasText: 'hello from client' })).toHaveCount(2);
 
+    // 准备：经真实产品UI开启HTTPS解密和localhost例外，仍从Playground公开按钮发送流量。
+    // Arrange: enable HTTPS decryption and the localhost exception through product UI; traffic still starts at the public Playground button.
+    await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.close).click();
+    httpsPrepared = true;
+    await prepareHttpsCapture(desktopApp);
+    for (const direction of ['client', 'origin'] as const) {
+      await test.step(`playground-error-goaway-${direction}`, async () => {
+        const scenarioId = `h2-error-goaway-${direction}` as const;
+        const requestPath = `/playground/h2/error-goaway-${direction}`;
+        const prefixSize = 256 * 1024;
+        const expectedHash = createHash('sha256').update(Buffer.alloc(prefixSize, 0x61)).digest('hex');
+
+        // 用户操作：选择场景并Run，读取这次真实HTTP返回值，不直接调用Lab或产品API。
+        // User action: select the scenario and Run, observing its real HTTP response without calling Lab or product APIs.
+        await browserPage.locator(`[data-scenario-id="${scenarioId}"]`).click();
+        await expect(browserPage.locator('[data-traffic-state]')).toHaveCount(0);
+        const responsePromise = browserPage.waitForResponse((response) => (
+          new URL(response.url()).pathname === '/api/traffic/run' && response.request().method() === 'POST'
+        ));
+        await browserPage.locator('[data-playground-action="run"]').click();
+        const response = await responsePromise;
+        expect(response.status()).toBe(200);
+        const result: TrafficScenarioResult = await response.json();
+        await expect(browserPage.locator('[data-traffic-state="failed"]')).toBeVisible();
+
+        // 协议证据：真实接收字节与hash保真，POST不重放，独立连接可以恢复。
+        // Protocol evidence: retain actual bytes and hash, do not replay the POST, and recover over a separate connection.
+        expect(result).toMatchObject({
+          scenarioId, state: 'failed', protocol: 'h2', tls: { alpn: 'h2' },
+          request: { method: 'POST', path: requestPath, body: 'single-attempt' },
+          response: { statusCode: 200, bodyBytes: prefixSize, headers: { 'content-length': String(prefixSize * 2) } },
+        });
+        if (!result.response) throw new Error('GOAWAY scenario did not retain its actual partial response.');
+        const bodyBytes = Buffer.from(result.response.body, result.response.bodyEncoding);
+        expect(bodyBytes.byteLength).toBe(prefixSize);
+        expect(createHash('sha256').update(bodyBytes).digest('hex')).toBe(expectedHash);
+        const goaway = result.events?.find((event) => event.type === 'goaway');
+        const recovery = result.events?.find((event) => event.type === 'recovery');
+        expect(goaway).toMatchObject({
+          sent: true, errorCode: 2,
+          direction: direction === 'client' ? 'client-to-server' : 'server-to-client',
+          receivedBodyBytes: prefixSize, declaredBodyBytes: prefixSize * 2,
+          receivedBodySha256: expectedHash, originRequestCount: 1,
+        });
+        expect(recovery).toMatchObject({
+          state: 'complete', originRequestCount: 1, differentOriginSession: true,
+          request: { method: 'GET', path: `${requestPath}/recovered` }, response: { statusCode: 200 },
+        });
+        const protocolEvidence = browserPage.locator('[data-response-detail] pre').first();
+        await expect(protocolEvidence).toContainText(expectedHash);
+        await expect(protocolEvidence).toContainText('"differentOriginSession": true');
+
+        // 业务断言：原Capture行在收尾后保留200与256 KiB，实际Headers和正文可读，恢复请求另有一行。
+        // Product assertions: keep the original 200/256 KiB Capture row with readable headers/body and a separate recovery row.
+        const interruptedRow = captureRows.filter({ hasText: requestPath }).filter({ hasText: 'POST' });
+        await expect(interruptedRow).toHaveCount(1);
+        const rowId = await interruptedRow.getAttribute('data-automation-id');
+        for (const value of ['h2', '200', '256 KB']) await expect(interruptedRow).toContainText(value);
+        await expect(interruptedRow).not.toContainText('\u00b7\u00b7\u00b7');
+        await interruptedRow.click();
+        await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.headers).click();
+        const responseHeaders = getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.section.responseHeaders);
+        if (await responseHeaders.getAttribute('aria-expanded') === 'false') await responseHeaders.click();
+        const headersBodyId = await responseHeaders.getAttribute('aria-controls');
+        if (!headersBodyId) throw new Error('Response headers have no public content identity.');
+        await expect(desktopApp.page.locator(`[id="${headersBodyId}"]`)).toContainText(String(prefixSize * 2));
+        await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.response).click();
+        await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyMode.default).click();
+        await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyPane))
+          .toContainText('a'.repeat(64));
+        await expect(interruptedRow).toHaveAttribute('data-automation-id', rowId!);
+        const recoveryRow = captureRows.filter({ hasText: `${requestPath}/recovered` });
+        await expect(recoveryRow).toHaveCount(1);
+        for (const value of ['h2', 'GET', '200']) await expect(recoveryRow).toContainText(value);
+
+        // 证据：保存可人工核对的Browser与产品截图，以及原始协议结果。
+        // Evidence: save the Browser/product screenshots and raw protocol result for manual comparison.
+        await browserPage.screenshot({ path: testInfo.outputPath(`${scenarioId}-playground.png`) });
+        await desktopApp.page.screenshot({ path: testInfo.outputPath(`${scenarioId}-capture.png`) });
+        const evidencePath = testInfo.outputPath(`${scenarioId}.json`);
+        await writeFile(evidencePath, JSON.stringify(result, null, 2), 'utf8');
+        await testInfo.attach(`${scenarioId}.json`, { path: evidencePath, contentType: 'application/json' });
+        await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.close).click();
+      });
+    }
+
     // Evidence：保存真实Browser页面、Renderer状态和无page error事实。
     // Evidence: retain the real Browser page, Renderer state, and zero-page-error fact.
     await testInfo.attach('playground-browser-final', {
@@ -93,9 +188,16 @@ test('capture.playground-traffic sends Browser traffic into real Capture', async
       contentType: 'image/png',
     });
     expect(desktopApp.rendererPageErrors()).toEqual([]);
+  } catch (error) {
+    workflowError = error;
   } finally {
-    // 清理：先关闭系统Edge；fixture随后关闭Playground并验证端口，Desktop fixture验证Main/Core/8888与代理恢复。
-    // Cleanup: close system Edge first; fixtures then close Playground and verify its port, Main/Core/8888, and proxy restoration.
-    await browser?.close();
+    // 清理：经产品UI恢复本轮HTTPS配置和Root基线；关闭Edge，fixture验证Playground/Main/Core/8888及宿主恢复。
+    // Cleanup: restore HTTPS settings and Root stores through product UI, close Edge, and let fixtures verify all processes, ports, and host state.
+    if (httpsPrepared) await cleanHttpsCapture(desktopApp).catch((error: unknown) => cleanupErrors.push(error));
+    try { expect(await rootCertificateThumbprints()).toEqual(rootsBefore); } catch (error) { cleanupErrors.push(error); }
+    await browser?.close().catch((error: unknown) => cleanupErrors.push(error));
   }
+  if (workflowError && cleanupErrors.length > 0) throw new AggregateError([workflowError, ...cleanupErrors], 'Playground Capture and cleanup failed.');
+  if (workflowError) throw workflowError;
+  if (cleanupErrors.length > 0) throw new AggregateError(cleanupErrors, 'Playground Capture cleanup failed.');
 });

@@ -7,6 +7,8 @@ export type TrafficScenarioId =
   | 'h1-early-response'
   | 'h1-abort'
   | 'h2-json'
+  | 'h2-error-goaway-client'
+  | 'h2-error-goaway-origin'
   | 'body-json'
   | 'body-text'
   | 'body-html'
@@ -124,12 +126,36 @@ export interface TrafficResponseFact {
   readonly trailers?: Readonly<Record<string, string>>;
 }
 
-export interface TrafficProtocolEvent {
+export type TrafficProtocolEvent = {
   readonly data?: string;
   readonly direction?: 'client-to-server' | 'server-to-client';
   readonly encoding?: 'base64' | 'utf8';
   readonly type: 'binary' | 'close' | 'message' | 'open' | 'ping' | 'pong';
-}
+} | {
+  readonly type: 'goaway';
+  readonly direction: 'client-to-server' | 'server-to-client';
+  readonly sent: boolean;
+  readonly errorCode: number | null;
+  readonly declaredBodyBytes: number | null;
+  readonly receivedBodyBytes: number;
+  readonly receivedBodySha256: string;
+  readonly clientEnded: boolean;
+  readonly streamResetCode: number | null;
+  readonly originRequestCount: number;
+  readonly clientErrors: readonly string[];
+  readonly originErrors: readonly string[];
+  readonly error?: string;
+} | {
+  readonly type: 'recovery';
+  readonly direction: 'client-to-server';
+  readonly state: 'complete' | 'failed';
+  readonly attempt: TrafficScenarioResult['attempt'];
+  readonly request: TrafficRequestFact | null;
+  readonly response?: TrafficResponseFact;
+  readonly originRequestCount: number;
+  readonly differentOriginSession: boolean;
+  readonly error?: string;
+};
 
 export interface TrafficTlsFact {
   readonly alpn: 'h2' | 'http/1.1' | 'tls';

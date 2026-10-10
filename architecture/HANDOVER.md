@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `54603429`
+> Tracked commit: `8887f167`
 
 ## 维护规则
 
@@ -13,8 +13,8 @@
   - 阻塞：当前没有可用的Windows实机验收环境；macOS结果不能替代Windows发布门禁。
   - 下一步：具备Windows实机及授权后执行[Windows矩阵](../apps/desktop/tests/e2e-workflow-tests/README.md#windows-复验)，确认进程、8888、代理、journal和证书恢复。
 
-- **13. 按commit发版与首个Release · blocked**
+- **13. 按commit发版与首个Release · 待Release CI/产物验收**
   - 目标：从已推送的源码commit选择版本和原生目标，通过CI构建、验收并发布首个Release。
-  - 阻塞：尚未以当前源码commit `822734cd`重新运行完整Release CI；`v0.1.1-alpha.0`尚未创建。
+  - 当前：ExchangeTracker已实现固定1秒迟到观测窗口，立即标记aborted且不延长网络结束时间；CaptureService的writer所有权与网络终态分离，Clear/Session删除/退出可取消回收。Core回归、真实H2及macOS打包验收已验证；Playground已提供客户端/源站错误GOAWAY手动场景、部分正文与独立恢复证据，真实Browser到Electron Capture及共用H2/gRPC/TLS链路已验证。Release必须选用包含上述修复的源码commit，不能使用旧源码`8887f167`或旧CI当作新修复的发行证据。边界见[Capture](features/capture.md#h2错误goaway)，操作见[Playground](../apps/playground/README.md#手动复现h2中断正文)。
   - 约束：不修改本地版本、配置或历史来迁就发版；不创建空Release，不用旧产物或旧CI结果证明新源码。
-  - 下一步：运行`npm run release`选择`822734cd`；CI全量Green后完成安装包、授权、packaged smoke和退出恢复验收。
+  - 下一步：选择包含修复的新源码commit运行完整Release CI；Green后验收实际下载的alpha安装包，再发布`v0.1.1-alpha.0`（macOS x64 DMG/ZIP）。1秒是尽力保留策略，不宣称精确排空上游通知；本轮未改第三方补丁、网络转发或UI布局。

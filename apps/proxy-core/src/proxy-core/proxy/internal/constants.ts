@@ -7,6 +7,9 @@ export const TERMINAL_STATES: ReadonlySet<string> = new Set([
   'aborted',
 ]);
 
+/** 网络中断后接收迟到正文观测的固定宽限，不因后续事件延长。 */
+export const ABORT_BODY_GRACE_MS = 1000;
+
 /** Core 可延迟解码的 content-encoding。 */
 export const SUPPORTED_ENCODINGS: ReadonlySet<string> = new Set([
   'gzip',

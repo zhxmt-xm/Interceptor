@@ -220,7 +220,7 @@ diagnostics.row.<traceKey>
 | `capture.inspector.body-modes` | Auto/Text/JSON/Hex精确正文 | shared | planned |
 | `capture.protocols.without-mitm` | HTTP/WS完整捕获，HTTPS/WSS仅tunnel | shared | planned |
 | `capture.protocols.with-mitm` | Trust/MITM前后对比，HTTPS/WSS/H2/gRPC解密 | privileged UI | planned |
-| `capture.playground-traffic` | Playground UI自产H1与WebSocket流量进入真实Capture | os-side-effect | passed |
+| `capture.playground-traffic` | Playground UI自产H1、WebSocket及H2错误GOAWAY流量进入真实Capture | os-side-effect | passed |
 | `capture.scenarios.http` | H1 JSON/上传/流式/early response/中断及413完整响应收尾，不改Mockttp | os-side-effect | passed |
 | `capture.scenarios.http2` | H2 Headers/trailer/正文、Range及双向错误GOAWAY与CA恢复 | privileged UI | passed |
 | `capture.http2-origin-goaway` | 源站正常GOAWAY后放行4 MiB响应，完整hash/trailer/end、新上游session与无重放 | privileged UI | macOS passed；Windows待实机 |

@@ -42,8 +42,10 @@ export class CaptureService {
   private readonly exchangeStore = new ExchangeStore();
   /** 当前 Core 代际的内存+spill 正文。 */
   private readonly bodyStore = new BodyStore();
-  /** 非终态Exchange的正文写入器，Final替换不提前移除原文的清理所有权。 */
+  /** 正文写入器，网络终态及Final替换都不提前移除清理所有权。 */
   private readonly bodyWritersByExchangeId = new Map<string, Partial<Record<CaptureBodySide, BodyWriter>>>();
+  /** 仍允许接收迟到正文的采集所有者；删除记录时同步取消其等待。 */
+  private readonly pendingBodyCapturesByExchangeId = new Map<string, () => void>();
   /** 已接受的Exchange/side读取，清理前等待其释放正文句柄。 */
   private readonly pendingBodyReads = new Set<Promise<Buffer>>();
   private ready: Promise<void> | null = null;
@@ -82,9 +84,17 @@ export class CaptureService {
 
   async updateExchange(patch: ExchangePatch): Promise<void> {
     this.exchangeStore.updateExchange(patch);
-    if (patch.state === 'completed' || patch.state === 'aborted' || patch.state === 'failed') {
-      this.bodyWritersByExchangeId.delete(patch.id);
-    }
+  }
+
+  /** 保留终态正文的读取与清理所有权，即使首个writer尚未创建。 */
+  retainBodyCapture(exchangeId: string, onDiscard: () => void): void {
+    this.pendingBodyCapturesByExchangeId.set(exchangeId, onDiscard);
+  }
+
+  /** 正文已封口且写入结束后解除关联，不以网络state代替采集结束。 */
+  releaseBodyCapture(exchangeId: string): void {
+    this.pendingBodyCapturesByExchangeId.delete(exchangeId);
+    this.bodyWritersByExchangeId.delete(exchangeId);
   }
 
   /** 写入一段临时正文，返回内容寻址结果供 Capture metadata 引用。 */
@@ -119,7 +129,8 @@ export class CaptureService {
       return { ...snapshot, bodyHash: bodyWriter.bodyHash };
     }
     return { encodedSize: 0, available: false,
-      complete: detail.summary.state === 'completed' || detail.summary.state === 'aborted' || detail.summary.state === 'failed' };
+      complete: !this.pendingBodyCapturesByExchangeId.has(exchangeId) &&
+        (detail.summary.state === 'completed' || detail.summary.state === 'aborted' || detail.summary.state === 'failed') };
   }
 
   /** 按Exchange/side读取有限Final或在途正文，Clear后的引用不读取其他记录。 */
@@ -211,7 +222,11 @@ export class CaptureService {
   async cleanup(scope: CleanupScope): Promise<CaptureStatusReport> {
     const result = this.exchangeStore.cleanup(scope);
     await Promise.allSettled(this.pendingBodyReads);
-    await this.abortBodyWriters([...this.bodyWritersByExchangeId.keys()]
+    const pendingExchangeIds = new Set([
+      ...this.bodyWritersByExchangeId.keys(),
+      ...this.pendingBodyCapturesByExchangeId.keys(),
+    ]);
+    await this.abortBodyWriters([...pendingExchangeIds]
       .filter((exchangeId) => this.exchangeStore.getExchangeDetail(exchangeId) === null));
     if (scope.kind === 'all' || scope.kind === 'all-except-session') {
       await this.bodyStore.reset();
@@ -225,6 +240,9 @@ export class CaptureService {
   private async abortBodyWriters(exchangeIds: Iterable<string>): Promise<void> {
     const pending: Promise<void>[] = [];
     for (const exchangeId of exchangeIds) {
+      const cancelCapture = this.pendingBodyCapturesByExchangeId.get(exchangeId);
+      this.pendingBodyCapturesByExchangeId.delete(exchangeId);
+      cancelCapture?.();
       const bodyWriters = this.bodyWritersByExchangeId.get(exchangeId);
       this.bodyWritersByExchangeId.delete(exchangeId);
       if (bodyWriters?.request) pending.push(bodyWriters.request.abort());
@@ -301,7 +319,10 @@ export class CaptureService {
   async dispose(): Promise<void> {
     this.exchangeStore.clear();
     await Promise.allSettled(this.pendingBodyReads);
-    await this.abortBodyWriters(this.bodyWritersByExchangeId.keys());
+    await this.abortBodyWriters(new Set([
+      ...this.bodyWritersByExchangeId.keys(),
+      ...this.pendingBodyCapturesByExchangeId.keys(),
+    ]));
     await this.bodyStore.dispose();
   }
 }
