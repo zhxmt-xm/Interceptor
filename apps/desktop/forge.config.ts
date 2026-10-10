@@ -109,6 +109,7 @@ const config: ForgeConfig = {
     },
   },
   packagerConfig: {
+    appVersion: releaseVersion,
     appBundleId: 'com.zhxmt.interceptor',
     appCategoryType: 'public.app-category.developer-tools',
     asar: true,

@@ -144,7 +144,7 @@
           <tbody><tr>
             <td>Desktop <code>package.json.main</code>、Main窗口Preload路径、Forge签名配置</td>
             <td>入口指向旧<code>main.js/preload.js</code>，签名类型与回调测试使用旧Forge API。</td>
-            <td>使用Forge 8正式生成的<code>main.cjs/preload.cjs</code>，适配新的Windows签名类型与macOS签名回调参数。</td>
+            <td>使用Forge 8正式生成的<code>main.cjs/preload.cjs</code>，适配新的Windows签名类型与macOS签名回调参数；发版版本同时交给<code>readPackageJson</code>与<code>packagerConfig.appVersion</code>，使maker、最终ASAR和原生版本一致。</td>
             <td>不保留旧入口回退；Main/Preload隔离、签名策略、Fuses与CSP不变。</td>
           </tr></tbody>
         </table>

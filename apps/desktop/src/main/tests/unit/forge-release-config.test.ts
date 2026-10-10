@@ -37,6 +37,22 @@ describe('Forge release configuration', () => {
     expect(zip.platforms).toEqual(['darwin']);
   });
 
+  it.each(['0.1.1-alpha.0', '0.2.0'])('passes the requested release version %s to Packager', async (version) => {
+    vi.stubEnv('INTERCEPTOR_BUILD_VERSION', version);
+    vi.resetModules();
+    const { default: releaseConfig } = await import('../../../../forge.config');
+
+    expect(releaseConfig.packagerConfig?.appVersion).toBe(version);
+  });
+
+  it('lets Packager infer the source version without a release override', async () => {
+    vi.stubEnv('INTERCEPTOR_BUILD_VERSION', undefined);
+    vi.resetModules();
+    const { default: localConfig } = await import('../../../../forge.config');
+
+    expect(localConfig.packagerConfig?.appVersion).toBeUndefined();
+  });
+
   it('does not enable Windows signing when no certificate path is present', () => {
     if (process.env.WINDOWS_CERTIFICATE_FILE) {
       return;

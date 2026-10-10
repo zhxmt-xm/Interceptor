@@ -27,6 +27,10 @@ external模块在顶层`require`可能阻塞packaged Main与CDP初始化，因�
 
 ## 3. 身份与安装器
 
+`INTERCEPTOR_BUILD_VERSION`同时提供给Forge的`readPackageJson`及Packager的`appVersion`。
+前者决定Forge/maker元数据，后者决定最终ASAR和原生版本，避免Packager在归档前写回源码版本。
+只有构建副本使用发版版本，源码manifest保持原值；产物审计检查实际ASAR，不以文件名代替。
+
 - **稳定身份/版本**：Desktop `0.1.0`，`com.zhxmt.interceptor` 作为 Bundle ID / AppUserModelId；Windows executable 为 `asInvoker`。MSI 固定 UpgradeCode，x64、per-user，不把 auto-update feature 耦合进安装器。
 - **Windows maker**：Forge WiX maker + 固定校验的 portable WiX 3.14.1；`make` 产出 MSI。可选 `WINDOWS_CERTIFICATE_FILE/PASSWORD` 同时签 app 与 MSI。生命周期 smoke 构建两版，验证 install → launch → major-upgrade → launch → uninstall。
 - **macOS maker**：无身份时使用ad-hoc签名并启用Hardened Runtime；`optionsForFile`仅对App bundles应用[本地entitlements](../../apps/desktop/assets/macos-local-app-entitlements.plist)，允许JIT和无Team ID内嵌库加载，不开放DYLD注入、get-task-allow或关闭执行页保护。原生helper不使用该override。有`APPLE_SIGN_IDENTITY`时使用默认Hardened Runtime、entitlements和身份校验；公证凭据齐全才提交并staple。两种构建共用Fuses、sandbox与CSP，不改Gatekeeper或授权数据库；ad-hoc不等于Developer ID或公证。
