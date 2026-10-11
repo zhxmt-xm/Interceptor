@@ -14,6 +14,9 @@ import { getByAutomationId } from './automation';
 const execFileAsync = promisify(execFile);
 const ORIGIN_HOST = 'localhost';
 export const certificateWaitOptions = getCertificateWaitOptions();
+export const sharedCertificateFileNames = [
+  'root-cert.pem', process.platform === 'win32' ? 'root-key.pem' : 'root-key.enc', 'ca-meta.json',
+];
 const certificateThumbprintsByApplication = new WeakMap<LocalElectronApplicationDriver, string>();
 
 export async function registerTlsCompatibilityDismissal(page: Page): Promise<void> {
@@ -54,7 +57,7 @@ export function sharedCertificateDirectory(): string {
 }
 
 export async function requireSharedCertificateReady(): Promise<void> {
-  for (const name of ['root-cert.pem', 'root-key.enc', 'ca-meta.json']) {
+  for (const name of sharedCertificateFileNames) {
     const metadata = await lstat(path.join(sharedCertificateDirectory(), name)).catch((error: NodeJS.ErrnoException) => {
       if (error.code === 'ENOENT') return null;
       throw error;
@@ -70,7 +73,7 @@ export async function requireSharedCertificateReady(): Promise<void> {
 }
 
 export async function requireEmptySharedCertificateStore(): Promise<void> {
-  for (const name of ['root-cert.pem', 'root-key.enc', 'ca-meta.json']) {
+  for (const name of sharedCertificateFileNames) {
     const metadata = await lstat(path.join(sharedCertificateDirectory(), name)).catch((error: NodeJS.ErrnoException) => {
       if (error.code === 'ENOENT') return null;
       throw error;

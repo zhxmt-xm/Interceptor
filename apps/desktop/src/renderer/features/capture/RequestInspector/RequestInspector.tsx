@@ -107,7 +107,7 @@ export function RequestInspector({
 
   const view = detail?.summary ?? summary;
 
-  const url = view ? detail?.url ?? `${view.host ?? ''}${view.path ?? ''}` : '';
+  const url = detail?.summary.id === selectedId ? detail.url : '';
   const responseHeaders = headersWithRuleEffects(
     detail?.responseHeaders ?? [],
     'response',
@@ -215,7 +215,7 @@ export function RequestInspector({
                 )}
               </span>
             </Tooltip>
-            {view ? (
+            {url ? (
               <IconButton
                 className={styles.urlCopy}
                 icon={Copy}

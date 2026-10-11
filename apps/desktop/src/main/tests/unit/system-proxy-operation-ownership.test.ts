@@ -28,7 +28,7 @@ const completeNativeEnable: MacosSystemProxyService['enable'] = async (...args) 
   return status;
 };
 
-describe('SystemProxyService operation ownership', () => {
+describe.runIf(process.platform === 'darwin')('SystemProxyService macOS operation ownership', () => {
   beforeEach(() => {
     vi.spyOn(UpstreamProbe.prototype, 'start').mockImplementation(() => undefined);
     vi.spyOn(coreRuntime, 'getCoreProcessStatus').mockReturnValue({

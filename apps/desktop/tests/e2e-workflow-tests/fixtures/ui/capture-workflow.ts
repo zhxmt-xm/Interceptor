@@ -24,7 +24,7 @@ interface CapturedExchange {
 
 /** Start real Recording through the same readiness interaction available to users. */
 export async function startRecording(
-  desktopApp: LocalElectronApplicationDriver,
+  desktopApp: Pick<LocalElectronApplicationDriver, 'page'>,
 ): Promise<void> {
   const recording = getByAutomationId(
     desktopApp.page,
@@ -34,10 +34,13 @@ export async function startRecording(
     return;
   }
   await recording.click();
-  await getByAutomationId(
+  const enable = getByAutomationId(
     desktopApp.page,
     AUTOMATION_IDS.capture.readiness.enable,
-  ).click();
+  );
+  await expect.poll(async () => (await recording.getAttribute('aria-pressed') === 'true')
+    || await enable.isVisible()).toBe(true);
+  if (await recording.getAttribute('aria-pressed') !== 'true') await enable.click();
   await expect(recording).toHaveAttribute('aria-pressed', 'true');
 }
 

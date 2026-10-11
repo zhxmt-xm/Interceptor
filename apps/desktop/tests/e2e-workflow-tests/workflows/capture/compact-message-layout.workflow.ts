@@ -40,6 +40,7 @@ for (const protocol of ['grpc', 'websocket'] as const) {
     test.setTimeout(240_000);
     testInfo.annotations.push({ type: 'renderer-workflow', description: 'capture.messages.compact-layout' });
     const { page } = desktopApp;
+    const readCopiedText = async () => (await page.evaluate(() => navigator.clipboard.readText())).replaceAll('\r\n', '\n');
     const requestPath = `/e2e/${protocol}/compact-message-layout`;
     const short = JSON.stringify({ requestId: 'short-message', status: 'ready', count: 18 }, null, 2);
     const long = JSON.stringify({
@@ -141,7 +142,7 @@ for (const protocol of ['grpc', 'websocket'] as const) {
       await expect.poll(async () => (await messageGeometry(pane)).outerScroll).toBeGreaterThan(resized.outerScroll);
       evidence.scrolled = await messageGeometry(pane);
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy).click();
-      await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(long);
+      await expect.poll(readCopiedText).toBe(long);
       const messageId = await messages.nth(1).getAttribute('data-automation-id');
       if (!messageId) throw new Error('Missing selected message identity.');
       const sequence = Number(messageId.slice(messageId.lastIndexOf('.') + 1));
@@ -150,7 +151,7 @@ for (const protocol of ['grpc', 'websocket'] as const) {
         : AutomationIdFactory.websocketPayloadCopy(exchangeId, sequence)).click();
       const messageCopy = protocol === 'grpc' ? long
         : [...Buffer.from(long)].map(byte => byte.toString(16).padStart(2, '0')).join(' ');
-      await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(messageCopy);
+      await expect.poll(readCopiedText).toBe(messageCopy);
       evidence.copy = { length: long.length, sha256: createHash('sha256').update(long).digest('hex') };
 
       // 窗口尺寸：只调整本轮真实Main窗口，恢复空间后保留手动正文高度。
@@ -232,7 +233,7 @@ end tell
         }, { timeout: 15_000 }).toBe(true);
         await lastMessage.click();
         await getByAutomationId(page, AutomationIdFactory.grpcPayloadCopy(pagedExchange, 'response', 204)).click();
-        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(pagePayloads[204]);
+        await expect.poll(readCopiedText).toBe(pagePayloads[204]);
         evidence.pagination = { messageCount: pagePayloads.length, lastIndex: 204, lastCopied: true };
       }
       expect(desktopApp.rendererPageErrors()).toEqual([]);

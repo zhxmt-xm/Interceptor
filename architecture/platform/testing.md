@@ -24,11 +24,12 @@ E2E fixture与Playground的既有测试按保护的实际风险维护，不因�
 - 具体职责见[fixtures说明](../../apps/desktop/tests/e2e-workflow-tests/fixtures/README.md)与[Playground维护边界](../../apps/playground/README.md#既有辅助测试的维护边界)。
 - 正文分块单测保留超过1MiB的真实字节数组、offset/分块调用和end断言，使用完整字节比较而非对百万个索引做通用对象深比较；不能用降低数据量、抽样字节或放宽超时代替等价校验。
 
-Windows实机验收统一跟踪于[Handover第8项](../HANDOVER.md)及[Windows矩阵](../../apps/desktop/tests/e2e-workflow-tests/README.md#windows-复验)。按用户确认，该项的待验不作为其他item的提交blocker；其他item仍须完成自身可执行验收，Windows未执行、skip和失败不能改写为通过，发布产物门禁不因此取消。
+Windows实机验收的范围与实际状态见[Windows矩阵](../../apps/desktop/tests/e2e-workflow-tests/README.md#windows-复验)，后续任务由[Handover](../HANDOVER.md)跟踪。按用户确认，Windows待验不作为其他item的提交blocker；其他item仍须完成自身可执行验收，Windows未执行、skip和失败不能改写为通过，发布产物门禁不因此取消。
 
 ## 2. Local E2E driver
 
 - **平台启动driver**：Windows继续用`_electron.launch()`启动未打包production bundle，prepare复用Forge Vite配置；macOS默认spawn同一项目的未打包Electron，以Renderer CDP驱动相同workflow。两者都由测试拥有进程，不附着人工Forge实例；协议/Core/native按正式构建顺序准备，业务E2E不要求每次package。
+- **Windows启动失败**：Windows保留原`_electron.launch()`与`firstWindow()`入口，按原门禁检查App root、Core PID和listener。启动异常保留profile及原始错误，关闭异常一并报告；不删除仍占用中的Chromium文件，也不将清理的`EBUSY`替代启动失败。
 - **平台差异归属**：业务workflow共用操作、输入和结果。helper读取、journal位置、窗口准备、超时、故障观察/profile选择及独立系统权限检查归driver/fixture的Windows/Macos方法，不把macOS适配扩成Windows业务步骤。Windows保留WinINet六字段宿主比较、JSON证据比较和原恢复顺序；macOS完整结构比较与admin trust检查独立执行。
 - **macOS窗口与日志**：业务E2E由driver按配置准备真实窗口，常规`macos`项目保持1600x900；只有body-fill滚轮边界用独立`macos-scroll-boundary`项目的1600x800，两者互斥匹配。等待System Events就绪并验证DOM尺寸，不改变Windows窗口或产品布局。macOS日志使用profile内0600文件继承给子进程，避免runner结束后保留App遭遇pipe EPIPE；日志附加前仍扫描敏感内容，证据保持有界。正常结束删除profile；恢复未完成保留profile及私有日志。
 - **macOS helper**：开发与业务E2E按`app.isPackaged=false`共用获准UID的开发socket，不核准每次App构建，不因新profile/HMR/rs/重编译业务代码重新安装。原生构建按源码、工具链、签名参数及产物哈希缓存，helper自身变更才更新组件。生产App仍使用独立严格鉴权；`INTERCEPTOR_E2E_MACOS_APP_PATH`只供driver显式选择已有签名App，非产品参数，设置它时直接运行Playwright，不运行prepare。
@@ -57,8 +58,21 @@ macOS常驻helper独立于每条workflow的Main/Core，不作为它们的子进�
 - **Proxy Core 全套必须 `--no-file-parallelism`**。大压缩流、真实文件 I/O 与随机端口并行会产生 5 秒假超时；与 desktop 并行运行时 `proxy/tests/integration/h2.test.ts` 会假失败。
 - **禁止并行运行 `build:core` 与依赖 `dist` 的集成测试**。`build.mjs` 每次先递归删除 `dist`，而真实代理集成测试运行时依赖该目录，并行会导致瞬时 `ECONNRESET`。必须构建完成后再顺序跑测试。
 - 集成测试用 `describe.skipIf(!existsSync(workerBundle))` 保护，worker bundle 不存在时整体跳过。
+- 平台专属测试只在对应平台执行：Windows不执行macOS helper、Keychain、macOS代理及DMG用例；macOS不执行WinINet、AppContainer、Windows原生恢复及MSI用例。平台目录通过Vitest收集范围限定，混合文件中的用例通过`runIf`限定；真实E2E在创建App前由平台条件排除。未执行项不算通过，不为运行另一平台的测试修改产品路径代码。
+- 通用协议、数据格式、版本解析和支持平台检查继续跨平台执行；不能仅因测试数据或说明中出现Windows/macOS就整文件排除。
+
+平台专属范围包括：Windows的WinINet、AppContainer、当前用户CA文件/证书查看器、Windows进程与原生窗口保护及MSI；macOS的helper部署/通信、Keychain信任、macOS系统代理/WPAD、DMG与macOS原生窗口专项。共用的用户流程仍由当前平台driver执行，不能用另一个平台的fake冒充本机实现。普通默认命令遵守这些限定，不要求额外过滤参数。
+
+按用户确认，移除依赖个人登录与第三方页面结构的Bilibili专属workflow，不以第三方登录态作为通用协议验收前提。Windows人工UAC取消专项不作为验收门槛；产品的取消/拒绝错误分支、证书安装/卸载、退出恢复及macOS可自动化的原生授权测试保留。移除范围不记为passed，也不修改系统授权策略。
 
 ## 5. 常用命令
+
+Electron 44的npm包按需下载运行时；`npm ci`成功和`npm ls`版本匹配不代表Windows Electron二进制已经就绪。需要使用镜像的环境先通过包自带入口安装，再运行会加载Electron的测试；PowerShell环境变量只对当前进程及其子进程生效：
+
+```powershell
+$env:ELECTRON_MIRROR = 'https://npmmirror.com/mirrors/electron/'
+npm exec --no --workspace @interceptor/desktop -- install-electron
+```
 
 ```powershell
 npm run typecheck

@@ -50,9 +50,6 @@
 | 所属 module 的 README | 修改 Core 或 package 中的模块职责、entry point、依赖或内部结构时 |
 | [apps/playground/README.md](apps/playground/README.md) | 开发 Playground，或进行协议流量与 MCP 人工验收时 |
 | [README.md](README.md) | 配置开发环境、安装依赖、运行或调试应用、查找常用命令时 |
-| [architecture/backlog/TODO.md](architecture/backlog/TODO.md) | 查询或更新已确认缺陷、实现限制及验收欠账时 |
-| [architecture/backlog/idea.md](architecture/backlog/idea.md) | 整理想法、评审待办或更新工作项状态时 |
-| [architecture/backlog/research.md](architecture/backlog/research.md) | 进行技术调研、评估长期候选或记录未承诺方案时 |
 
 ## 二、实现与命名
 
@@ -297,7 +294,6 @@
 | `architecture/HANDOVER.md` | 跟踪提交、当前任务、阻塞与验证证据 |
 | `architecture/platform/` | 已实现、已验证的进程、通信、存储等设计，不写规划 |
 | `architecture/features/` | 功能设计、数据格式和操作约定；未验证目标放“与当前实现的差异” |
-| `architecture/backlog/` | 已知缺口、待办、想法和未承诺的长期研究 |
 
 ### 交接文档
 
@@ -312,7 +308,7 @@
 
 ### 待办表格
 
-- [architecture/backlog/idea.md](architecture/backlog/idea.md) 的 `Status` 只用 `✅ 已完成`、`🔄 进行中`、`⏳ 未开始`。
+- 如使用待办表格，`Status` 只用 `✅ 已完成`、`🔄 进行中`、`⏳ 未开始`。
 	- 所需阶段和测试全部完成后，`Status` 才能写已完成；缺真实 E2E、人工验收或 UAC 时仍为进行中。
 - `Description` 先写目标，再用 `Steps:` 列阶段和当前状态；不适用的阶段不列，同义阶段统一用词。
 	- 阶段写清设计、代码、自动验证、开发者人工验收、UAC 或具体阻塞，不用模糊描述代替缺口。

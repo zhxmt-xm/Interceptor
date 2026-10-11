@@ -20,7 +20,8 @@ import type { CertificateOperation, CertificateOperationStatus } from './interfa
 /**
  * Root CA 生命周期所有者（平台能力模块内，运行于 Main）。
  *
- * 生成兼容性优先的 RSA/SHA-256 Root CA，私钥经 OS 安全存储加密后落盘，
+ * 生成兼容性优先的 RSA/SHA-256 Root CA；Windows 私钥保存为用户目录中的 PEM，
+ * macOS 私钥保持 OS 安全存储加密，
  * 明文证书与公开元数据（fingerprint/subject/有效期）单独保存。CA 材料只在
  * Main 内解密，供下发 Core 做 HTTPS MITM；Leaf 证书由 Core 的 Mockttp 用该 CA
  * 动态签发。材料与系统信任通过同一个入口管理，平台TrustStore只供模块内部使用。
@@ -39,8 +40,10 @@ export class CertificateService {
   private static readonly CA_VALIDITY_DAYS = 3 * 365;
   /** 证书 PEM 文件名。 */
   private static readonly CERT_FILE = 'root-cert.pem';
-  /** 加密私钥文件名。 */
+  /** macOS 加密私钥文件名。 */
   private static readonly KEY_FILE = 'root-key.enc';
+  /** Windows 用户共享目录中的私钥文件名。 */
+  private static readonly WINDOWS_KEY_FILE = 'root-key.pem';
   /** 公开元数据文件名。 */
   private static readonly META_FILE = 'ca-meta.json';
   /** 懒加载的 @peculiar/x509 单例；仅在生成 CA 时加载以避免顶层副作用。 */
@@ -279,7 +282,7 @@ export class CertificateService {
     };
   }
 
-  /** 确保 CA 存在；缺失时生成并加密存储。返回状态（不含私钥）。 */
+  /** 确保 CA 存在；缺失时生成并按平台保存。返回状态不含私钥。 */
   async ensure(): Promise<CertificateStatus> {
     const presentFiles = await Promise.all([this.certPath, this.keyPath, this.metaPath]
       .map((filePath) => CertificateService.exists(filePath)));
@@ -296,7 +299,7 @@ export class CertificateService {
     try {
       const meta = await this.readMeta();
       const material = await this.getMaterial();
-      if (!meta || !material || !this.secureStore.isEncryptionAvailable()) throw new CertificateError('Root CA material is unavailable.');
+      if (!meta || !material || (this.platform !== 'win32' && !this.secureStore.isEncryptionAvailable())) throw new CertificateError('Root CA material is unavailable.');
       const certificate = new X509Certificate(material.cert);
       const validFrom = Date.parse(certificate.validFrom);
       const validTo = Date.parse(certificate.validTo);
@@ -348,8 +351,8 @@ export class CertificateService {
       return null;
     }
     const cert = await fs.readFile(this.certPath, 'utf8');
-    const encryptedKey = await fs.readFile(this.keyPath);
-    const key = this.secureStore.decryptString(encryptedKey);
+    const storedKey = await fs.readFile(this.keyPath);
+    const key = this.platform === 'win32' ? storedKey.toString('utf8') : this.secureStore.decryptString(storedKey);
     return { key, cert };
   }
 
@@ -365,7 +368,7 @@ export class CertificateService {
   }
 
   private async generate(): Promise<void> {
-    if (!this.secureStore.isEncryptionAvailable()) {
+    if (this.platform !== 'win32' && !this.secureStore.isEncryptionAvailable()) {
       throw new CertificateError(
         'OS secure storage is unavailable; refusing to store the CA private key in plaintext.',
       );
@@ -421,7 +424,7 @@ export class CertificateService {
 
     await fs.mkdir(this.dataDir, { recursive: true, mode: 0o700 });
     await fs.writeFile(this.certPath, certPem, { encoding: 'utf8', mode: 0o600 });
-    await fs.writeFile(this.keyPath, this.secureStore.encryptString(keyPem), { mode: 0o600 });
+    await fs.writeFile(this.keyPath, this.platform === 'win32' ? keyPem : this.secureStore.encryptString(keyPem), { encoding: 'utf8', mode: 0o600 });
     await fs.writeFile(this.metaPath, JSON.stringify(meta, null, 2), { encoding: 'utf8', mode: 0o600 });
   }
 
@@ -430,7 +433,7 @@ export class CertificateService {
   }
 
   private get keyPath(): string {
-    return path.join(this.dataDir, CertificateService.KEY_FILE);
+    return path.join(this.dataDir, this.platform === 'win32' ? CertificateService.WINDOWS_KEY_FILE : CertificateService.KEY_FILE);
   }
 
   private get metaPath(): string {

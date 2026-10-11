@@ -95,7 +95,7 @@ class PackageArtifactAuditor {
       '.vite/build/preload-licenses.txt',
       '.vite/renderer/main_window/renderer-licenses.txt',
     ]) {
-      if (!extractFile(asarPath, licensePath).toString('utf8').trim()) {
+      if (!extractFile(asarPath, path.normalize(licensePath)).toString('utf8').trim()) {
         throw new Error(`Empty bundled dependency license file: ${licensePath}.`);
       }
     }

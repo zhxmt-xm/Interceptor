@@ -31,6 +31,10 @@ const coreCallbacks: Pick<PlatformCapabilitiesOptions, 'requestCore' | 'getCoreP
   requestCore: (command) => coreRuntime.request(command),
   getCoreProcessState: () => coreRuntime.getCoreProcessStatus().state,
 };
+const macosTest = it.runIf(process.platform === 'darwin');
+const windowsTest = it.runIf(process.platform === 'win32');
+const platformTest = it.runIf(process.platform === 'win32' || process.platform === 'darwin');
+const platforms = process.platform === 'win32' ? ['win32'] as const : ['darwin'] as const;
 
 describe('PlatformCapabilitiesService', () => {
   beforeEach(() => {
@@ -41,7 +45,7 @@ describe('PlatformCapabilitiesService', () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
-  it('generates through the public platform method and returns only the public certificate status', async () => {
+  macosTest('generates through the public platform method and returns only the public certificate status', async () => {
     const status = {
       present: true, fingerprint: 'AA', subject: 'Interceptor CA',
       createdAt: '2026-09-21T00:00:00Z', expiresAt: '2029-09-20T00:00:00Z',
@@ -59,7 +63,7 @@ describe('PlatformCapabilitiesService', () => {
     expect(regenerate).toHaveBeenCalledExactlyOnceWith();
   });
 
-  it('propagates a certificate operation failure without scheduling another action', async () => {
+  macosTest('propagates a certificate operation failure without scheduling another action', async () => {
     const failure = new Error('The certificate operation failed.');
     const install = vi.spyOn(CertificateService.prototype, 'install').mockRejectedValue(failure);
     const status = vi.spyOn(CertificateService.prototype, 'getStatus');
@@ -72,7 +76,7 @@ describe('PlatformCapabilitiesService', () => {
     expect(status).not.toHaveBeenCalled();
   });
 
-  it.each(['completed', 'unknown'] as const)('keeps Quit consistent with a certificate import failure whose execution is %s', async (executionState) => {
+  macosTest.each(['completed', 'unknown'] as const)('keeps Quit consistent with a certificate import failure whose execution is %s', async (executionState) => {
     vi.spyOn(CertificateService.prototype, 'getStatus').mockResolvedValue({
       present: true, fingerprint: 'AA', subject: 'Interceptor CA', createdAt: null, expiresAt: null,
     });
@@ -97,7 +101,7 @@ describe('PlatformCapabilitiesService', () => {
     expect(install).toHaveBeenCalledOnce();
   });
 
-  it('rejects quit and duplicate preparation while helper preparation is still running', async () => {
+  macosTest('rejects quit and duplicate preparation while helper preparation is still running', async () => {
     let finishPreparation!: () => void;
     const preparation = new Promise<void>((resolve) => { finishPreparation = resolve; });
     const deploy = vi.spyOn(MacosHelperDeploymentService.prototype, 'ensureInstalled').mockReturnValue(preparation);
@@ -145,7 +149,7 @@ describe('PlatformCapabilitiesService', () => {
     expect(toUpstreamAuthority({ proxyUrl: 'http://user:secret@127.0.0.1:7890' })).toBe('127.0.0.1:7890');
   });
 
-  it('owns client icon caching and deduplicates overlapping requests without exposing executable paths', async () => {
+  windowsTest('owns client icon caching and deduplicates overlapping requests without exposing executable paths', async () => {
     vi.spyOn(clientAppHelper, 'resolveWindowsClientAppHelperPath').mockReturnValue('C:/helpers/client-app-helper.exe');
     let finishIcon!: (icon: string) => void;
     const icon = new Promise<string>((resolve) => { finishIcon = resolve; });
@@ -172,7 +176,7 @@ describe('PlatformCapabilitiesService', () => {
     expect(readIcon).toHaveBeenCalledOnce();
   });
 
-  it('does not invoke a Windows icon helper on macOS', async () => {
+  macosTest('does not invoke a Windows icon helper on macOS', async () => {
     const resolveHelper = vi.spyOn(clientAppHelper, 'resolveWindowsClientAppHelperPath');
     const readIcon = vi.spyOn(clientAppHelper, 'readClientAppIcon');
     const platformCapabilitiesService = new PlatformCapabilitiesService({
@@ -193,7 +197,7 @@ describe('PlatformCapabilitiesService', () => {
     })).toBe('http=direct;https=secure.example:8443');
   });
 
-  it('prepares development from the workspace without an App identity and uses the development socket', async () => {
+  macosTest('prepares development from the workspace without an App identity and uses the development socket', async () => {
     vi.spyOn(CertificateService.prototype, 'prepare').mockResolvedValue();
     const deployment = vi.spyOn(MacosHelperDeploymentService.prototype, 'ensureInstalled').mockResolvedValue();
     const status = vi.spyOn(MacosHelperServiceClient.prototype, 'getStatus').mockResolvedValue({
@@ -213,7 +217,7 @@ describe('PlatformCapabilitiesService', () => {
       '/Library/Application Support/Interceptor/PlatformHelper/development.sock');
   });
 
-  it('prepares the macOS bundled helper before checking the real service write authority', async () => {
+  macosTest('prepares the macOS bundled helper before checking the real service write authority', async () => {
     vi.spyOn(CertificateService.prototype, 'prepare').mockResolvedValue();
     const events: string[] = [];
     vi.spyOn(MacosHelperDeploymentService.prototype, 'ensureInstalled').mockImplementation(async () => { events.push('deployed'); });
@@ -230,7 +234,7 @@ describe('PlatformCapabilitiesService', () => {
     expect(events).toEqual(['deployed', 'authorized']);
   });
 
-  it('never runs macOS deployment while preparing Windows capabilities', async () => {
+  windowsTest('never runs macOS deployment while preparing Windows capabilities', async () => {
     vi.spyOn(CertificateService.prototype, 'prepare').mockResolvedValue();
     const deployment = vi.spyOn(MacosHelperDeploymentService.prototype, 'ensureInstalled');
     const platformCapabilitiesService = new PlatformCapabilitiesService({
@@ -240,7 +244,7 @@ describe('PlatformCapabilitiesService', () => {
     expect(deployment).not.toHaveBeenCalled();
   });
 
-  it('does not report ready when the service rejects the application write identity', async () => {
+  macosTest('does not report ready when the service rejects the application write identity', async () => {
     vi.spyOn(MacosHelperDeploymentService.prototype, 'ensureInstalled').mockResolvedValue();
     const status = vi.spyOn(MacosHelperServiceClient.prototype, 'getStatus').mockResolvedValue({
       processId: 123, privileged: true, clientAuthorizedForWrites: false,
@@ -256,7 +260,7 @@ describe('PlatformCapabilitiesService', () => {
       '/Library/Application Support/Interceptor/PlatformHelper/service.sock');
   });
 
-  it('allows an explicit preparation retry after a confirmed helper failure without retaining quit', async () => {
+  macosTest('allows an explicit preparation retry after a confirmed helper failure without retaining quit', async () => {
     const failure = new MacosHelperServiceError('unavailable', 'completed');
     vi.spyOn(MacosHelperDeploymentService.prototype, 'ensureInstalled').mockResolvedValue();
     const status = vi.spyOn(MacosHelperServiceClient.prototype, 'getStatus').mockRejectedValueOnce(failure).mockResolvedValue({
@@ -277,7 +281,7 @@ describe('PlatformCapabilitiesService', () => {
     expect(status).toHaveBeenCalledTimes(2);
   });
 
-  it('does not retain mutation ownership after a read-only helper status timeout', async () => {
+  macosTest('does not retain mutation ownership after a read-only helper status timeout', async () => {
     const failure = new MacosHelperServiceError('timeout', 'unknown', 'status');
     vi.spyOn(MacosHelperDeploymentService.prototype, 'ensureInstalled').mockResolvedValue();
     vi.spyOn(MacosHelperServiceClient.prototype, 'getStatus').mockRejectedValue(failure);
@@ -293,7 +297,7 @@ describe('PlatformCapabilitiesService', () => {
     expect(prepareCertificate).not.toHaveBeenCalled();
   });
 
-  it('allows Quit and an explicit retry after deployment inspection fails before any authorization', async () => {
+  macosTest('allows Quit and an explicit retry after deployment inspection fails before any authorization', async () => {
     const run = vi.spyOn(commandRunner, 'run').mockResolvedValueOnce({
       code: 0, stdout: '{"state":"invalid"}', stderr: '',
     }).mockResolvedValue({ code: 0, stdout: '{"state":"ready"}', stderr: '' });
@@ -319,7 +323,7 @@ describe('PlatformCapabilitiesService', () => {
     expect(prepareCertificate).toHaveBeenCalledOnce();
   });
 
-  it.each(['certificate.install', 'app-container.enable-all'] as const)(
+  windowsTest.each(['certificate.install', 'app-container.enable-all'] as const)(
     'rejects a second native authorization while %s is active without blocking independent proxy work', async (operation) => {
       let finishAuthorization!: () => void;
       const authorization = new Promise<void>((resolve) => { finishAuthorization = resolve; });
@@ -367,7 +371,7 @@ describe('PlatformCapabilitiesService', () => {
     },
   );
 
-  it('rejects helper-dependent certificate and proxy work while native component preparation is in progress', async () => {
+  macosTest('rejects helper-dependent certificate and proxy work while native component preparation is in progress', async () => {
     let finishPreparation!: () => void;
     const preparation = new Promise<void>((resolve) => { finishPreparation = resolve; });
     vi.spyOn(MacosHelperDeploymentService.prototype, 'ensureInstalled').mockReturnValue(preparation);
@@ -402,7 +406,7 @@ describe('PlatformCapabilitiesService', () => {
     }
   });
 
-  it('composes the existing Windows capabilities without requiring native files to declare support', () => {
+  windowsTest('composes the existing Windows capabilities without requiring native files to declare support', () => {
     const platformCapabilitiesService = new PlatformCapabilitiesService({
       secureStore, ...coreCallbacks, diagnostics, platform: 'win32', nativeDirectory: 'C:\\Interceptor\\resources',
       userDataDirectory: 'C:\\profiles\\test', localAppDataDirectory: 'C:\\Users\\test\\AppData\\Local',
@@ -416,13 +420,14 @@ describe('PlatformCapabilitiesService', () => {
     ]);
   });
 
-  it('reports the macOS implemented capabilities without fabricating Windows AppContainer support', async () => {
+  macosTest('reports the macOS implemented capabilities without fabricating Windows AppContainer support', async () => {
     const platformCapabilitiesService = new PlatformCapabilitiesService({
       secureStore, ...coreCallbacks, diagnostics, platform: 'darwin', nativeDirectory: '/application/resources', userDataDirectory: '/profiles/test',
     });
 
     expect(platformCapabilitiesService).toHaveProperty('systemProxyService.platformSystemProxyService', expect.any(MacosSystemProxyService));
     expect(platformCapabilitiesService).toHaveProperty('certificateService', expect.any(CertificateService));
+    expect(platformCapabilitiesService).toHaveProperty('certificateService.secureStore', secureStore);
     expect(platformCapabilitiesService.getSupportedCapabilities()).toEqual(['system-proxy', 'certificates']);
     expect(await platformCapabilitiesService.listAppContainers()).toEqual({
       supported: false, containers: [],
@@ -431,13 +436,13 @@ describe('PlatformCapabilitiesService', () => {
       .rejects.toThrow('not supported on darwin');
   });
 
-  it('keeps the Windows shared-journal prerequisite explicit', () => {
+  windowsTest('keeps the Windows shared-journal prerequisite explicit', () => {
     expect(() => new PlatformCapabilitiesService({
       secureStore, ...coreCallbacks, diagnostics, platform: 'win32', nativeDirectory: 'C:\\resources', userDataDirectory: 'C:\\profile',
     })).toThrow('LOCALAPPDATA is required for Windows system proxy recovery.');
   });
 
-  it.each(['/profiles/first', '/profiles/second', '/Users/test/Library/Application Support/Interceptor'])('uses the macOS user-level journal independently of profile %s', (userDataDirectory) => {
+  macosTest.each(['/profiles/first', '/profiles/second', '/Users/test/Library/Application Support/Interceptor'])('uses the macOS user-level journal independently of profile %s', (userDataDirectory) => {
     vi.spyOn(os, 'homedir').mockReturnValue('/Users/test');
     const platformCapabilitiesService = new PlatformCapabilitiesService({
       secureStore, ...coreCallbacks, diagnostics, platform: 'darwin', nativeDirectory: '/application/resources', userDataDirectory,
@@ -447,7 +452,7 @@ describe('PlatformCapabilitiesService', () => {
       '/Users/test/Library/Application Support/Interceptor Platform/system-proxy/journal.json');
   });
 
-  it.each(['darwin', 'win32'] as const)('uses a shared certificate directory on %s', (platform) => {
+  platformTest.each(platforms)('uses a shared certificate directory on %s', (platform) => {
     vi.spyOn(os, 'homedir').mockReturnValue('/Users/test');
     for (const userDataDirectory of ['/profiles/first', '/profiles/second']) {
       const platformCapabilitiesService = new PlatformCapabilitiesService({
@@ -460,10 +465,8 @@ describe('PlatformCapabilitiesService', () => {
     }
   });
 
-  it.each([
-    { platform: 'darwin', trusted: false }, { platform: 'darwin', trusted: true },
-    { platform: 'win32', trusted: false }, { platform: 'win32', trusted: true },
-  ] as const)('prepares certificate trust during startup on $platform with trusted=$trusted', async ({ platform, trusted }) => {
+  platformTest.each(platforms.flatMap(platform => [false, true].map(trusted => ({ platform, trusted }))))(
+    'prepares certificate trust during startup on $platform with trusted=$trusted', async ({ platform, trusted }) => {
     const platformCapabilitiesService = new PlatformCapabilitiesService({
       secureStore, ...coreCallbacks, diagnostics, platform, nativeDirectory: '/resources', userDataDirectory: '/profiles/startup',
       localAppDataDirectory: 'C:\\Users\\test\\AppData\\Local',
@@ -494,7 +497,7 @@ describe('PlatformCapabilitiesService', () => {
     else expect(install).not.toHaveBeenCalled();
   });
 
-  it.each(['darwin', 'win32'] as const)('does not request trust when shared certificate material fails on %s', async (platform) => {
+  platformTest.each(platforms)('does not request trust when shared certificate material fails on %s', async (platform) => {
     const platformCapabilitiesService = new PlatformCapabilitiesService({
       secureStore, ...coreCallbacks, diagnostics, platform, nativeDirectory: '/resources', userDataDirectory: '/profiles/startup',
       localAppDataDirectory: 'C:\\Users\\test\\AppData\\Local',
@@ -511,7 +514,7 @@ describe('PlatformCapabilitiesService', () => {
     expect(install).not.toHaveBeenCalled();
   });
 
-  it.each(['darwin', 'win32'] as const)('releases startup ownership after certificate authorization is cancelled on %s without replaying it', async (platform) => {
+  platformTest.each(platforms)('releases startup ownership after certificate authorization is cancelled on %s without replaying it', async (platform) => {
     const stages: string[] = [];
     const platformCapabilitiesService = new PlatformCapabilitiesService({
       secureStore, ...coreCallbacks, diagnostics, platform, nativeDirectory: '/resources',
@@ -550,7 +553,7 @@ describe('PlatformCapabilitiesService', () => {
     expect(regenerate).not.toHaveBeenCalled();
   });
 
-  it.each(['darwin', 'win32'] as const)('rejects startup if the installed CA is still not trusted on %s', async (platform) => {
+  platformTest.each(platforms)('rejects startup if the installed CA is still not trusted on %s', async (platform) => {
     const platformCapabilitiesService = new PlatformCapabilitiesService({
       secureStore, ...coreCallbacks, diagnostics, platform, nativeDirectory: '/resources', userDataDirectory: '/profiles/startup',
       localAppDataDirectory: 'C:\\Users\\test\\AppData\\Local',

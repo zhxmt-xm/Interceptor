@@ -226,6 +226,8 @@ async function restoreInitialCurrentState(
   }
 }
 
+test.skip(process.platform !== 'win32', 'AppContainer APIs are only available on Windows.');
+
 test('settings.app-containers.bulk-access enables, disables, and restores exemptions', async ({
   desktopApp,
 }, testInfo: TestInfo) => {
@@ -234,10 +236,6 @@ test('settings.app-containers.bulk-access enables, disables, and restores exempt
     type: 'renderer-workflow',
     description: 'settings.app-containers.bulk-access',
   });
-  if (process.platform !== 'win32') {
-    throw new Error('settings.app-containers.bulk-access requires Windows AppContainer APIs.');
-  }
-
   desktopApp.preserveUserDataOnFailure();
   const { page } = desktopApp;
   const initialSnapshot = await readSystemSnapshot(desktopApp.desktopDirectory);

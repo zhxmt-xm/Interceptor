@@ -1,5 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
+import { mkdirSync } from 'node:fs';
 import { isIP } from 'node:net';
+import { dirname } from 'node:path';
 import { domainToASCII } from 'node:url';
 
 import {
@@ -40,6 +42,7 @@ export class WorkspaceService {
     if (this.databaseSync) {
       return;
     }
+    mkdirSync(dirname(workspaceDatabasePath), { recursive: true });
     const databaseSync = new DatabaseSync(workspaceDatabasePath);
     try {
       databaseSync.exec('PRAGMA journal_mode = WAL');

@@ -13,9 +13,6 @@
 | [HANDOVER.md](HANDOVER.md) | 当前任务、进度、下一步、阻塞与必要验收结论 |
 | `platform/` | 跨feature的进程、Renderer、存储、打包和测试架构 |
 | `features/` | 功能职责、调用流程、数据契约、交互和限制 |
-| [backlog/TODO.md](backlog/TODO.md) | 已确认问题的复现条件、影响和边界 |
-| [backlog/idea.md](backlog/idea.md) | 候选需求与设计想法，截图与文档平级 |
-| [backlog/research.md](backlog/research.md) | 技术调研、方案比较与未承诺的候选 |
 
 **开工阅读**：新会话和子代理必须先读 [HANDOVER.md](HANDOVER.md)，其余文档按任务读取相关章节，条件见 [../AGENTS.md](../AGENTS.md) 的“按需阅读”。
 

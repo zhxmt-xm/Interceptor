@@ -176,7 +176,7 @@ Electron运行时不追加OpenSSL专用的`@SECLEVEL=0`，Node运行时保留原
 
 Mockttp 4.5 的 `beforeRequest` / `beforeResponse` 会分别等待完整请求与 `streamToBuffer` 完整响应，因此 Proxy 改用 patch 提供的 `beforeRequestHead` / `beforeResponseHead`——**全部规则在头部阶段执行，正文任何情况下都不缓冲**。这样 67 MB Range 视频被取消时不会全量缓冲，也不会污染复用的 H2 session，同时保留浏览器的 H2 pseudo-header 与 trailer。
 
-完整H2帧级观测需要独立采集streamId、GOAWAY、RST和SETTINGS，不能从HTTP成功状态推导。[协议调研](../backlog/research.md)。
+完整H2帧级观测需要独立采集streamId、GOAWAY、RST和SETTINGS，不能从HTTP成功状态推导。
 
 ## 4. Exchange 状态机
 
@@ -357,7 +357,11 @@ Playground手动入口：Capture Lab的HTTP分组提供`h2-error-goaway-client`�
 
 #### Inspector标题行高
 
-- URL使用自然行高，保留完整URL的hover和Copy，不用字体替换或文字位移补偿布局。
+- 标题仍显示host/path，使用自然行高，不用字体替换或文字位移补偿布局。
+- 完整URL仅取当前选中Exchange的详情；尚未就绪时不显示标题Copy，General的Request URL也不提供短标题复制。切换请求时，上一条详情不能让新请求的Copy提前显示。
+- 当前请求URL就绪后才显示Copy，复制原始完整URL（含协议、实际端口和query）；同一请求刷新详情期间已有URL保持可用，不增加额外的详情请求。
+- Windows前置单测及真实Electron均复现了旧实现复制短标题；当前版本的标题与General完整URL复制、JSON/HTML末行Copy和Fullscreen已通过真实UI复验。未改Header CSS，未把既有hover失败解释为已证实的样式缺陷。
+  - 对应场景与证据边界见[Capture fullscreen规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md#capture-body-fullscreen)；真实退出、共享CA及系统设置清理与该轮结果一并核对。
 
 #### Compact正文高度
 
@@ -1330,8 +1334,7 @@ Package Repository 注册表；可改用官方 `PackageManager.FindPackagesForUs
 
 对“当前用户发起的网络连接”，当前用户范围通常正是正确语义；但 SYSTEM/其他用户真正运行的
 packaged process 仍需单独处理。全用户 `FindPackages()` 要管理员权限，不应放入抓包热路径。因此实施前
-必须比较当前 registry 索引、`FindPackagesForUser` 与实际运行 PID 三组结果，不做盲目一换一。详见
-[研究备忘](../backlog/research.md) § 3.3。
+必须比较当前 registry 索引、`FindPackagesForUser` 与实际运行 PID 三组结果，不做盲目一换一。
 
 AppContainer exemption UI 不使用这张索引；它由 `NetworkIsolationEnumAppContainers` 直接提供候选
 AppContainer、SID、package、display name 与 binaries。把 exemption 枚举与 Capture 运行时归属分成

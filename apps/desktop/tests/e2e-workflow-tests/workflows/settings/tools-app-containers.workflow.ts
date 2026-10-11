@@ -187,6 +187,8 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
   }
 }
 
+test.skip(process.platform !== 'win32', 'AppContainer APIs are only available on Windows.');
+
 test('settings.tools.app-containers shares single and bulk changes with exact system restoration', async ({ desktopApp, openAiCompatibleLab }, testInfo) => {
   test.setTimeout(420_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.tools.app-containers' });

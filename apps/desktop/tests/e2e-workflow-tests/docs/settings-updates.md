@@ -8,7 +8,9 @@
 2. fresh profile启动真实App；先显示启动页和窗口控制，再准备系统组件及共享CA。材料缺失时由Main生成并请求正常系统授权，用户亲自确认；确认窗口出现时必须已有可见App首窗及对应启动阶段，不允许用延长firstWindow等待掩盖顺序错误。启动完成后经Settings Certificates核验可Uninstall，并读取共享目录的公开CA、文件大小/mtime及真实系统信任；profile内不得另存CA。
 3. 正常Close，不点击Uninstall/Delete；确认材料和信任保留。另一fresh profile启动后仍为同一指纹、文件大小/mtime不变，Settings可Uninstall，MITM默认关闭；不能用预造文件或测试API代替初始化。
 4. 保存两代trace、公开指纹和文件元数据，不读取/导出私钥。若本workflow首次创建CA，最后经产品Uninstall/Delete恢复初始基线；若CA已存在，则完全保留。第二代正常退出并保存证据后删除其临时profile，确认目录确实不存在，再回读共享CA的指纹/size/mtime与系统信任及完整Root集合，均须保持启动前基线；另存`shared-certificate-profile-deletion.json`。Main/Core/Worker全退、8888释放、完整代理/Root/admin trust恢复后才算Green。
-5. 材料已有未信任、系统拒绝/取消与损坏保留由产品unit/integration及对应真实原生流程覆盖；Windows UAC和产物验收由Windows item独立后验，不能用macOS结果代替。
+5. 材料已有未信任、系统拒绝/取消与损坏保留由产品unit/integration及适用的自动化流程覆盖；Windows人工UAC取消专项已排除，不删除产品的拒绝/取消逻辑测试或macOS可自动化的原生取消流程。Windows安装、卸载与产物验收仍由Windows item独立验证，不能用macOS结果代替。
+
+Windows共享私钥使用用户目录中的`root-key.pem`，跨profile启动不得依赖第一代的`Local State`、复制加密密钥或启动PowerShell加解密。E2E只检查私钥文件是否存在及size/mtime，不读取或记录私钥内容；旧`root-key.enc`不得由新Windows流程生成。macOS与Agent/MCP的原有安全存储不变，不在E2E中伪造CA或注入Store。
 
 <a id="certificate-startup-cancel"></a>
 
@@ -142,6 +144,8 @@ Settings 的六项只读能力在 Agent 与 MCP 共享名称、schema、owner �
 不改变系统或配置。独立授权开关即时生效且跨进程恢复，历史结果不会触发重放。
 
 平台只读证据由fixture分派：Windows保留原AppContainer helper的list命令与SID/exemption断言；macOS必须返回`supported=false`及空containers，不调用Windows原生能力或伪造成功。代理查询通过driver使用当前平台helper。六项Tool调用、UI配置、撤权与重启步骤共用，不以平台差异改变业务输入。
+
+Windows盘符检查使用单词边界，与其他Settings Tools一致；AppContainer公开显示名中的`ms-resource://`不是本机盘符路径。路径和敏感字段仍禁止进入Tool结果，不因合法资源URI误报而移除检查。
 
 ### 验收要求
 
@@ -574,13 +578,13 @@ macOS接入已有平台driver：同profile journal、完整结构比较及Securi
 ### Steps
 
 1. 创建 fresh profile 和第一份 evidence；启动第一代 Electron，等待 App/Core/8888/bootstrap 完成，确认 Recording、WinINet 等于第一份 crash journal 的 `owned`，且 `original != owned`。快照只在内存比较，不进入 evidence。
-2. 只通过 Settings UI 依次 Generate、Install CA 并完成真实 UAC；开启 MITM，在 Certificates 添加 `localhost` 例外，在 TLS passthrough 添加 `127.0.0.2`。
+2. 通过Settings UI确认已有共享CA就绪，不重复Generate/Install；开启MITM，在Certificates添加`localhost`例外，在TLS passthrough添加`127.0.0.2`。
 3. 确认 journal 只包含 `version/original/owned`；不打开会渲染原 proxy server、bypass 与 PAC 的 Proxy 面板。
 4. 由测试环境异常终止第一代 Main，不点击产品 Close/Restore；确认第一代 Main/Core/Worker 退出、8888 释放，共享 journal 与 owned WinINet 仍保留。
 5. 在第一代完全退出后，使用同一 profile 启动第二代 Electron。Main 必须在创建 Renderer/Core 前读取共享 journal，保持当前8888不变并加载相同`original/owned`，最终UI为Recording。
 6. 确认证书文件仍为第一代生成的同一 SHA-1、当前处于有效期内，并由只读 `certutil -verifystore` 确认仍受 LocalMachine Root 信任。
 7. 进入 Certificates，确认 MITM switch 仍开启且 `localhost` 例外仍存在；进入 TLS passthrough，确认 `127.0.0.2` pattern 仍存在。断言只使用公共 automation ID、DOM 状态和只读 OS 比较。
-8. 通过 Settings UI 删除 `127.0.0.2` passthrough 与 `localhost` 例外，关闭 MITM，Uninstall 并 Delete CA；确认测试 CA 不再受信任且 profile 无 CA。
+8. 通过Settings UI删除`127.0.0.2` passthrough与`localhost`例外，关闭MITM；确认共享CA仍为同一身份且受信任，保留共享材料，profile内不存CA。
 9. 保存两代 trace、final screenshot、Main/Renderer 日志和脱敏 persistence evidence；点击第二代 `shell.window.close`。
 10. 由外层宿主 guard 验证第二代 Main/Core/Worker、8888 完整销毁，WinINet 精确等于步骤1快照，共享 journal 不存在并删除 profile。
 

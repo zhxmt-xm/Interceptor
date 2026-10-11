@@ -112,7 +112,7 @@ class FakeWorkflowHostCommandRunner implements WorkflowHostCommandRunner {
   }
 }
 
-describe('WindowsWorkflowHostSafetyOperations', () => {
+describe.runIf(process.platform === 'win32')('WindowsWorkflowHostSafetyOperations', () => {
   it('keeps discovered descendants tracked after their Main parent exits', async () => {
     const fileStore = new FakeWorkflowHostFileStore();
     const commandRunner = new FakeWorkflowHostCommandRunner();

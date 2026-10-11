@@ -544,10 +544,15 @@ flowchart TD
   不新增Session、协议解析器或对Client整连接的强制关闭。响应的取消关联保持到流结束/取消，不在SSE
   headers返回时提前移除，也不为了收尾缓冲全量响应。
 - 官方Client和真实VS Code/Copilot、Claude Desktop是不同验收对象。Client显示名为`VS Code E2E`不能证明真实Host兼容；Host更新后必须重新核对。
-- 当前VS Code Copilot CLI/SDK Host已通过官方AHP配置、注册/重连与公开`mcp://`的`serverTools`通道验收。
+- 既有VS Code Copilot CLI/SDK Host验收覆盖官方AHP配置、注册/重连与公开`mcp://`的`serverTools`通道。
   由当前Agent选取实际目录中的Tool，调用仍经真实Host SDK、Bearer与同一Main/Core链路；App的
   Deny/Allow/Auto、自产正文、真实POST和退出有独立断言。不另起Agent或把直连产品的官方Client冒充Host。
   此结论不包含聊天工具搜索热刷新、Host自身审批UI、其他Host，也不表示全部69项Tool都在Host逐项验收。
+- Windows当前Host的精准筛选版本已完成代表Tool、App审批、真实Clear及退出恢复：
+  workflow通过产品Keyword限定自产路径，查询Tool使用同一路径和Method filter并按返回的`exchangeId`读取。
+  Clear的真实调用返回零Exchange/Body，完整筛选列表为空、Keyword保持且Recording不变；
+  Client、Host配置、临时CA与系统设置均已清理恢复。旧workflow的虚拟行假阳性仍保留并排除，
+  不把这一主线的Green扩大为全部Tool或其他Host通过。
 - 双Host同时读取同一Capture、正式Tool中间进度SSE仍待真实Host验收；普通JSON响应或Client测试不能替代。
   当前开发Agent的识别、配置、Tool清单与恢复步骤见[真实Host workflow](../../apps/desktop/tests/e2e-workflow-tests/docs/mcp.md#当前开发agent的真实host验收)；
   当前宿主条件与待办由[Handover](../HANDOVER.md)跟踪。

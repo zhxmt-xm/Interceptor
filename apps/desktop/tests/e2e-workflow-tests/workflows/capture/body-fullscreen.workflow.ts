@@ -25,13 +25,15 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
   // Arrange: begin with real Recording UI and produce every body through this client's proxied origin traffic.
   await startRecording(desktopApp);
   for (const response of RESPONSES) {
+    await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(response.path);
     httpTrafficRunner.respondWith(response.path, { body: response.body,
       headers: { 'content-type': response.mediaType, [COPY_HEADER]: COPY_HEADER_VALUE } });
     await expect(httpTrafficRunner.requestThroughProxy(desktopApp.capturePort(), response.path, {
       method: 'POST', body: REQUEST_BODY, headers: { 'content-type': 'application/json' },
     })).resolves.toMatchObject({ statusCode: 200, body: response.body });
-    const row = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow).filter({ hasText: response.path });
+    const row = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow);
     await expect(row).toHaveCount(1);
+    await expect(row).toContainText(response.path);
     await row.click();
     const inspectorHead = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).locator('..');
     await expect(inspectorHead).toContainText(`127.0.0.1${response.path}`);
@@ -41,6 +43,13 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
     await inspectorButtons.first().click();
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()))
       .toBe(httpTrafficRunner.url(response.path));
+    const format = response.mediaType === 'text/html' ? 'html' : 'json';
+    await inspectorHead.screenshot({ path: testInfo.outputPath(`inspector-url-ready-${format}.png`) });
+    await writeFile(testInfo.outputPath(`inspector-url-ready-${format}.json`), JSON.stringify({
+      url: httpTrafficRunner.url(response.path),
+      header: await inspectorHead.boundingBox(),
+      copy: await inspectorButtons.first().boundingBox(),
+    }, null, 2), 'utf8');
     await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.headers).click();
     const headerRow = page.getByText(COPY_HEADER, { exact: true }).locator('..');
     const headerCopy = headerRow.getByRole('button');
@@ -75,7 +84,6 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
         gap: copy.getBoundingClientRect().left - previousBox.right, selectedText,
         lineText: line.textContent, buttonWidth: copy.getBoundingClientRect().width };
     });
-    const format = response.mediaType === 'text/html' ? 'html' : 'json';
     const headerEvidencePath = testInfo.outputPath(`header-copy-last-line-${format}.json`);
     await writeFile(headerEvidencePath, JSON.stringify(headerLayout, null, 2), 'utf8');
     await testInfo.attach('header-copy-last-line', { path: headerEvidencePath, contentType: 'application/json' });
@@ -95,7 +103,14 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
       AUTOMATION_IDS.capture.inspector.section.general,
     ).getAttribute('aria-controls');
     expect(generalContentId).not.toBeNull();
-    const methodValue = page.locator(`[id="${generalContentId}"]`).getByText('POST', { exact: true });
+    const generalContent = page.locator(`[id="${generalContentId}"]`);
+    const urlValue = generalContent.getByText(httpTrafficRunner.url(response.path), { exact: true });
+    await expect(urlValue).toHaveCount(1);
+    await urlValue.hover();
+    await urlValue.getByRole('button').click();
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()))
+      .toBe(httpTrafficRunner.url(response.path));
+    const methodValue = generalContent.getByText('POST', { exact: true });
     await expect(methodValue).toHaveCount(1);
     await expect(methodValue).toHaveCSS('font-size', '11.5px');
     await expect(methodValue).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');

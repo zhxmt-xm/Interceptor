@@ -686,4 +686,4 @@ invalid/dirty/applied、revision、enabled/total和selected validation；rule ro
 - 热更新时分别核对request与response阶段实际使用的revision，不假定二者相同。
 - 双实例并发 Apply 产生 conflict 且本地草稿不丢。
 - 暂停 Recording 时规则仍作用于真实流量。
-- Rule删除后的历史marker不应指向无关新Rule；历史snapshot与反馈方案见[风险说明](../backlog/TODO.md#rules与历史证据)。
+- Rule删除后的历史marker不应指向无关新Rule；`ruleIds`与effect `ruleId`不包含命中时的完整定义，不能把当前Rule当成历史证据。保存revision、名称与action摘要的历史snapshot及缺失目标提示仍是候选方案。

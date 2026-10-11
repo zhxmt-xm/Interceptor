@@ -72,6 +72,23 @@ test('capture.detail-body-fill uses the available Inspector height end to end', 
   expect(finalGeometry!.bottomInset).toBeLessThanOrEqual(20);
   expect(Math.abs(finalGeometry!.paneBottomDelta)).toBeLessThan(1);
 
+  // 窗口准备：Windows仅在滚动阶段缩小真实窗口，保留上面的默认尺寸布局验证。
+  // Window setup: shrink the real Windows window only for scrolling, retaining the default-size geometry checks above.
+  if (process.platform === 'win32') {
+    const application = desktopApp.application;
+    if (!application) throw new Error('The Windows driver did not expose its Electron application.');
+    const browserWindowHandle = await application.browserWindow(page);
+    try {
+      await browserWindowHandle.evaluate(browserWindow => {
+        const [width] = browserWindow.getContentSize();
+        browserWindow.setContentSize(width, 800);
+      });
+      await expect.poll(() => page.evaluate(() => window.innerHeight)).toBe(800);
+    } finally {
+      await browserWindowHandle.dispose();
+    }
+  }
+
   // Scroll Monaco to its lower boundary, then prove the next wheel reaches Inspector.
   // 将 Monaco 滚到下边界，再验证下一次滚轮会交接给 Inspector。
   await getByAutomationId(

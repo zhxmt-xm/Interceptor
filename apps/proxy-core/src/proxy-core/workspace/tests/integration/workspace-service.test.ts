@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -28,6 +28,19 @@ describe('WorkspaceService TLS passthrough settings', () => {
       revision: 0,
       hosts: [],
     });
+  });
+
+  it('creates missing database directories without depending on Capture initialization', async () => {
+    workspaceService.dispose();
+    const storageDirectory = path.join(dataDirectory, 'fresh-profile', 'storage');
+    initializeRuntime([`--data-dir=${storageDirectory}`]);
+    workspaceService = new WorkspaceService();
+
+    workspaceService.initialize();
+
+    expect((await stat(path.join(storageDirectory, 'workspace.sqlite'))).isFile()).toBe(true);
+    expect(workspaceService.loadDecryptionPreference()).toBe(false);
+    expect(workspaceService.loadRuleSet()).toEqual({ revision: 0, nodes: [] });
   });
 
   it('normalizes, deduplicates, persists, and reloads host patterns', () => {

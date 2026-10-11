@@ -35,6 +35,8 @@ class RecordingElevatedRunner implements ElevatedRunner {
 }
 
 const SHA1 = 'AABBCCDDEEFF00112233445566778899AABBCCDD';
+const macosTest = it.runIf(process.platform === 'darwin');
+const windowsTest = it.runIf(process.platform === 'win32');
 
 describe('TrustStoreService', () => {
   let certificatePem: string;
@@ -72,14 +74,14 @@ describe('TrustStoreService', () => {
     };
   });
 
-  it('installs into the local machine root store on Windows via elevated certutil', async () => {
+  windowsTest('installs into the local machine root store on Windows via elevated certutil', async () => {
     const recordingElevatedRunner = new RecordingElevatedRunner();
     const trustStoreService = new TrustStoreService({ platform: 'win32', elevatedRunner: recordingElevatedRunner });
     await trustStoreService.install('C:/certs/root.pem');
     expect(recordingElevatedRunner.calls[0]).toBe('certutil -addstore -f Root "C:/certs/root.pem"');
   });
 
-  it('imports and trusts only the public certificate through the helper', async () => {
+  macosTest('imports and trusts only the public certificate through the helper', async () => {
     const recordingRunner = new RecordingRunner();
     const recordingElevatedRunner = new RecordingElevatedRunner();
     const trustStoreService = new TrustStoreService({
@@ -99,7 +101,7 @@ describe('TrustStoreService', () => {
     expect(recordingElevatedRunner.calls).toEqual([]);
   });
 
-  it('routes macOS trust changes through the helper instead of security commands in Main', async () => {
+  macosTest('routes macOS trust changes through the helper instead of security commands in Main', async () => {
     const recordingRunner = new RecordingRunner();
     const trustStoreService = new TrustStoreService({ platform: 'darwin', runner: recordingRunner });
 
@@ -111,7 +113,7 @@ describe('TrustStoreService', () => {
       args[0] === 'add-trusted-cert' || args[0] === 'remove-trusted-cert')).toEqual([]);
   });
 
-  it.each(['timeout', 'unavailable', 'invalid-response', 'verification-failed'] as const)(
+  macosTest.each(['timeout', 'unavailable', 'invalid-response', 'verification-failed'] as const)(
     'removes only the newly imported CA after a confirmed completed %s import failure', async (code) => {
       const recordingRunner = new RecordingRunner();
       const failure = new MacosHelperServiceError(code, 'completed', 'certificate.import', true);
@@ -126,7 +128,7 @@ describe('TrustStoreService', () => {
     },
   );
 
-  it('preserves an existing CA after a confirmed import timeout', async () => {
+  macosTest('preserves an existing CA after a confirmed import timeout', async () => {
     const recordingRunner = new RecordingRunner();
     recordingRunner.result = { code: 0, stdout: certificatePem, stderr: '' };
     const failure = new MacosHelperServiceError('timeout', 'completed', 'certificate.import', true);
@@ -138,7 +140,7 @@ describe('TrustStoreService', () => {
     expect(MacosHelperServiceClient.prototype.removeCertificate).not.toHaveBeenCalled();
   });
 
-  it('does not remove a CA when import completion could not be established', async () => {
+  macosTest('does not remove a CA when import completion could not be established', async () => {
     const recordingRunner = new RecordingRunner();
     const failure = new AggregateError([
       new MacosHelperServiceError('timeout', 'unknown', 'certificate.import', true),
@@ -152,7 +154,7 @@ describe('TrustStoreService', () => {
     expect(MacosHelperServiceClient.prototype.removeCertificate).not.toHaveBeenCalled();
   });
 
-  it('does not request rollback when import was rejected before changing the keychain', async () => {
+  macosTest('does not request rollback when import was rejected before changing the keychain', async () => {
     const recordingRunner = new RecordingRunner();
     const failure = new MacosHelperServiceError('authorization-required', 'completed', 'certificate.import');
     vi.mocked(MacosHelperServiceClient.prototype.importCertificate).mockRejectedValueOnce(failure);
@@ -162,7 +164,7 @@ describe('TrustStoreService', () => {
     expect(MacosHelperServiceClient.prototype.removeCertificate).not.toHaveBeenCalled();
   });
 
-  it('does not request rollback when the import request was never sent', async () => {
+  macosTest('does not request rollback when the import request was never sent', async () => {
     const recordingRunner = new RecordingRunner();
     const failure = new MacosHelperServiceError('unavailable', 'completed', 'certificate.import');
     vi.mocked(MacosHelperServiceClient.prototype.importCertificate).mockRejectedValueOnce(failure);
@@ -173,7 +175,7 @@ describe('TrustStoreService', () => {
     expect(MacosHelperServiceClient.prototype.removeCertificate).not.toHaveBeenCalled();
   });
 
-  it('retains the confirmed import failure together with a rollback error', async () => {
+  macosTest('retains the confirmed import failure together with a rollback error', async () => {
     const recordingRunner = new RecordingRunner();
     const failure = new MacosHelperServiceError('timeout', 'completed', 'certificate.import', true);
     const cleanupError = new MacosHelperServiceError('unavailable', 'unknown', 'certificate.remove', true);
@@ -185,7 +187,7 @@ describe('TrustStoreService', () => {
     expect(MacosHelperServiceClient.prototype.trustCertificate).not.toHaveBeenCalled();
   });
 
-  it('does not request macOS trust if the certificate import fails', async () => {
+  macosTest('does not request macOS trust if the certificate import fails', async () => {
     const recordingRunner = new RecordingRunner();
     const recordingElevatedRunner = new RecordingElevatedRunner();
     vi.mocked(MacosHelperServiceClient.prototype.importCertificate).mockRejectedValueOnce(new MacosHelperServiceError('operation-failed'));
@@ -201,7 +203,7 @@ describe('TrustStoreService', () => {
     expect(recordingElevatedRunner.calls).toHaveLength(0);
   });
 
-  it.each(['authorization-required', 'authorization-cancelled', 'operation-failed'] as const)(
+  macosTest.each(['authorization-required', 'authorization-cancelled', 'operation-failed'] as const)(
     'reports macOS trust failure %s without retrying through a root shell', async (code) => {
     const recordingRunner = new RecordingRunner();
     const trustError = new MacosHelperServiceError(code);
@@ -220,7 +222,7 @@ describe('TrustStoreService', () => {
     },
   );
 
-  it('preserves an already installed macOS CA when trust authorization fails', async () => {
+  macosTest('preserves an already installed macOS CA when trust authorization fails', async () => {
     const recordingRunner = new RecordingRunner();
     recordingRunner.result = { code: 0, stdout: certificatePem, stderr: '' };
     const trustError = new MacosHelperServiceError('operation-failed');
@@ -231,7 +233,7 @@ describe('TrustStoreService', () => {
     expect(MacosHelperServiceClient.prototype.removeCertificate).not.toHaveBeenCalled();
   });
 
-  it.each([
+  macosTest.each([
     'certificate-state-uncertain', 'timeout',
     'unavailable', 'invalid-response', 'verification-failed',
   ] as const)('preserves the imported macOS CA when trust outcome is uncertain: %s', async (code) => {
@@ -245,7 +247,7 @@ describe('TrustStoreService', () => {
     expect(MacosHelperServiceClient.prototype.untrustCertificate).not.toHaveBeenCalled();
   });
 
-  it('does not import a macOS CA when the original certificate inventory cannot be read', async () => {
+  macosTest('does not import a macOS CA when the original certificate inventory cannot be read', async () => {
     const recordingRunner = new RecordingRunner();
     recordingRunner.result = { code: 1, stdout: '', stderr: 'Certificate inventory unavailable' };
     const trustStoreService = new TrustStoreService({ platform: 'darwin', runner: recordingRunner });
@@ -257,7 +259,7 @@ describe('TrustStoreService', () => {
     expect(recordingRunner.calls).toHaveLength(1);
   });
 
-  it('retains both the trust failure and the new-certificate cleanup failure', async () => {
+  macosTest('retains both the trust failure and the new-certificate cleanup failure', async () => {
     const recordingRunner = new RecordingRunner();
     const trustError = new MacosHelperServiceError('operation-failed');
     vi.mocked(MacosHelperServiceClient.prototype.trustCertificate).mockRejectedValueOnce(trustError);
@@ -270,14 +272,14 @@ describe('TrustStoreService', () => {
     });
   });
 
-  it('uninstalls by SHA-1 thumbprint on Windows (elevated)', async () => {
+  windowsTest('uninstalls by SHA-1 thumbprint on Windows (elevated)', async () => {
     const recordingElevatedRunner = new RecordingElevatedRunner();
     const trustStoreService = new TrustStoreService({ platform: 'win32', elevatedRunner: recordingElevatedRunner });
     await trustStoreService.uninstall(SHA1);
     expect(recordingElevatedRunner.calls[0]).toBe(`certutil -delstore Root ${SHA1}`);
   });
 
-  it('removes macOS admin trust before deleting the certificate from the system keychain', async () => {
+  macosTest('removes macOS admin trust before deleting the certificate from the system keychain', async () => {
     const recordingRunner = new RecordingRunner();
     recordingRunner.result = { code: 0, stdout: certificatePem, stderr: '' };
     const recordingElevatedRunner = new RecordingElevatedRunner();
@@ -298,7 +300,7 @@ describe('TrustStoreService', () => {
     expect(recordingElevatedRunner.calls).toEqual([]);
   });
 
-  it('keeps the macOS certificate if admin trust removal is denied', async () => {
+  macosTest('keeps the macOS certificate if admin trust removal is denied', async () => {
     const recordingRunner = new RecordingRunner();
     recordingRunner.result = { code: 0, stdout: certificatePem, stderr: '' };
     const trustError = new MacosHelperServiceError('authorization-required');
@@ -313,7 +315,7 @@ describe('TrustStoreService', () => {
     expect(recordingElevatedRunner.calls).toEqual([]);
   });
 
-  it('does not delete another macOS certificate when the target is absent', async () => {
+  macosTest('does not delete another macOS certificate when the target is absent', async () => {
     const recordingRunner = new RecordingRunner();
     recordingRunner.result = { code: 0, stdout: certificatePem, stderr: '' };
     const recordingElevatedRunner = new RecordingElevatedRunner();
@@ -328,14 +330,14 @@ describe('TrustStoreService', () => {
     expect(recordingElevatedRunner.calls).toEqual([]);
   });
 
-  it('throws when an elevated command exits non-zero', async () => {
+  windowsTest('throws when an elevated command exits non-zero', async () => {
     const recordingElevatedRunner = new RecordingElevatedRunner();
     recordingElevatedRunner.result = { code: 1, stdout: '', stderr: 'denied' };
     const trustStoreService = new TrustStoreService({ platform: 'win32', elevatedRunner: recordingElevatedRunner });
     await expect(trustStoreService.install('root.pem')).rejects.toBeInstanceOf(TrustStoreError);
   });
 
-  it('detects Windows trust by exit code (local machine store)', async () => {
+  windowsTest('detects Windows trust by exit code (local machine store)', async () => {
     const recordingRunner = new RecordingRunner();
     const trustStoreService = new TrustStoreService({ platform: 'win32', runner: recordingRunner });
     recordingRunner.result = { code: 0, stdout: '', stderr: '' };
@@ -348,7 +350,7 @@ describe('TrustStoreService', () => {
     expect(await trustStoreService.isTrusted(SHA1)).toBe(false);
   });
 
-  it('checks macOS system trust only after matching the certificate fingerprint', async () => {
+  macosTest('checks macOS system trust only after matching the certificate fingerprint', async () => {
     const recordingRunner = new RecordingRunner();
     const trustStoreService = new TrustStoreService({ platform: 'darwin', runner: recordingRunner, systemKeychainPath: '/kc' });
     recordingRunner.results.push(
@@ -367,7 +369,7 @@ describe('TrustStoreService', () => {
     ]);
   });
 
-  it('reports an installed macOS certificate as untrusted when system evaluation rejects it', async () => {
+  macosTest('reports an installed macOS certificate as untrusted when system evaluation rejects it', async () => {
     const recordingRunner = new RecordingRunner();
     recordingRunner.results.push(
       { code: 0, stdout: certificatePem, stderr: '' },
@@ -379,7 +381,7 @@ describe('TrustStoreService', () => {
     expect(recordingRunner.calls).toHaveLength(2);
   });
 
-  it('does not verify a different certificate from the macOS keychain', async () => {
+  macosTest('does not verify a different certificate from the macOS keychain', async () => {
     const recordingRunner = new RecordingRunner();
     recordingRunner.result = { code: 0, stdout: certificatePem, stderr: '' };
     const trustStoreService = new TrustStoreService({ platform: 'darwin', runner: recordingRunner, systemKeychainPath: '/kc' });
@@ -395,7 +397,7 @@ describe('TrustStoreService', () => {
     await expect(trustStoreService.install('root.pem')).rejects.toBeInstanceOf(TrustStoreError);
   });
 
-  it('does not treat a macOS certificate inventory entry as a trust decision', async () => {
+  macosTest('does not treat a macOS certificate inventory entry as a trust decision', async () => {
     const recordingRunner = new RecordingRunner();
     recordingRunner.result = { code: 0, stdout: `SHA-1 hash: ${SHA1}\n`, stderr: '' };
     const trustStoreService = new TrustStoreService({

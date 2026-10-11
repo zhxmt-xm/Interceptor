@@ -18,6 +18,9 @@ import { CoreRuntime } from '../../core/core-runtime';
 import { MainDiagnostics } from '../../diagnostics/main-diagnostics';
 import { HelperService } from '@interceptor/platform-capabilities/helper/entry';
 
+const macosTest = it.runIf(process.platform === 'darwin');
+const privateKeyFileName = process.platform === 'win32' ? 'root-key.pem' : 'root-key.enc';
+
 /** 明文前缀“加密”，用于断言私钥确实经 SecureStore 加密后落盘。 */
 class FakeSecureStore implements SecureStore {
   available = true;
@@ -97,7 +100,7 @@ describe('CertificateService', () => {
     expect((keyUsage?.usages ?? 0) & x509.KeyUsageFlags.keyCertSign).toBeTruthy();
   });
 
-  it('stores the private key only through the secure store, never in plaintext', async () => {
+  macosTest('stores the macOS private key through the secure store, never in plaintext', async () => {
     await createService().ensure();
     const encrypted = await fs.readFile(path.join(dataDir, 'root-key.enc'), 'utf8');
     expect(encrypted.startsWith('enc:')).toBe(true);
@@ -106,7 +109,24 @@ describe('CertificateService', () => {
     expect(certPem).not.toContain('PRIVATE KEY');
   });
 
-  it.runIf(process.platform !== 'win32')('creates shared CA material with private file permissions', async () => {
+  it.runIf(process.platform === 'win32')('reuses a Windows CA PEM key without profile encryption', async () => {
+    secureStore.available = false;
+    const encrypt = vi.spyOn(secureStore, 'encryptString');
+    const decrypt = vi.spyOn(secureStore, 'decryptString');
+    const firstService = createService('win32');
+    const first = await firstService.ensure();
+    const key = await fs.readFile(path.join(dataDir, 'root-key.pem'), 'utf8');
+    expect(key).toContain('-----BEGIN PRIVATE KEY-----');
+    await expect(fs.stat(path.join(dataDir, 'root-key.enc'))).rejects.toMatchObject({ code: 'ENOENT' });
+
+    const secondService = createService('win32');
+    expect(await secondService.ensure()).toEqual(first);
+    expect((await secondService.getMaterial())?.key).toBe(key);
+    expect(encrypt).not.toHaveBeenCalled();
+    expect(decrypt).not.toHaveBeenCalled();
+  });
+
+  macosTest('creates shared CA material with private file permissions', async () => {
     await createService().ensure();
     for (const name of ['root-cert.pem', 'root-key.enc', 'ca-meta.json']) {
       expect((await fs.stat(path.join(dataDir, name))).mode & 0o777).toBe(0o600);
@@ -120,7 +140,7 @@ describe('CertificateService', () => {
     expect(second.fingerprint).toBe(first.fingerprint);
   });
 
-  it.each(['root-cert.pem', 'root-key.enc', 'ca-meta.json'])('does not replace partial shared CA material when %s is missing', async (fileName) => {
+  it.each(['root-cert.pem', privateKeyFileName, 'ca-meta.json'])('does not replace partial shared CA material when %s is missing', async (fileName) => {
     const certificateService = createService();
     await certificateService.ensure();
     await fs.rm(path.join(dataDir, fileName));
@@ -136,16 +156,16 @@ describe('CertificateService', () => {
     const certificateService = createService();
     await certificateService.ensure();
     const certificateBefore = await fs.readFile(path.join(dataDir, 'root-cert.pem'));
-    const encryptedKeyBefore = await fs.readFile(path.join(dataDir, 'root-key.enc'));
+    const privateKeyBefore = await fs.readFile(path.join(dataDir, privateKeyFileName));
     await fs.writeFile(path.join(dataDir, 'ca-meta.json'), 'invalid-json', 'utf8');
 
     await expect(certificateService.ensure()).rejects.toBeInstanceOf(CertificateError);
     expect(await fs.readFile(path.join(dataDir, 'root-cert.pem'))).toEqual(certificateBefore);
-    expect(await fs.readFile(path.join(dataDir, 'root-key.enc'))).toEqual(encryptedKeyBefore);
+    expect(await fs.readFile(path.join(dataDir, privateKeyFileName))).toEqual(privateKeyBefore);
     expect(await fs.readFile(path.join(dataDir, 'ca-meta.json'), 'utf8')).toBe('invalid-json');
   });
 
-  it.each(['certificate', 'encrypted-key', 'metadata-fields', 'fingerprint', 'key-pair', 'expired'])(
+  it.each(['certificate', 'private-key', 'metadata-fields', 'fingerprint', 'key-pair', 'expired'])(
     'refuses unusable shared CA %s without changing material', async (failure) => {
       const certificateService = new CertificateService({
         dataDir, secureStore, requestCore: (command) => coreRuntime.request(command), diagnostics, helperService,
@@ -153,10 +173,10 @@ describe('CertificateService', () => {
       });
       await certificateService.ensure();
       const certificatePath = path.join(dataDir, 'root-cert.pem');
-      const keyPath = path.join(dataDir, 'root-key.enc');
+      const keyPath = path.join(dataDir, privateKeyFileName);
       const metaPath = path.join(dataDir, 'ca-meta.json');
       if (failure === 'certificate') await fs.writeFile(certificatePath, 'invalid-certificate', 'utf8');
-      if (failure === 'encrypted-key') await fs.writeFile(keyPath, 'invalid-encrypted-key', 'utf8');
+      if (failure === 'private-key') await fs.writeFile(keyPath, 'invalid-private-key', 'utf8');
       if (failure === 'metadata-fields') await fs.writeFile(metaPath, JSON.stringify({ fingerprint: 'invalid' }), 'utf8');
       if (failure === 'fingerprint') {
         const meta = JSON.parse(await fs.readFile(metaPath, 'utf8'));
@@ -236,7 +256,7 @@ describe('CertificateService', () => {
     expect(onChanged).toHaveBeenCalledOnce();
   });
 
-  it('waits for an accepted certificate operation before synchronizing a restarted Core', async () => {
+  macosTest('waits for an accepted certificate operation before synchronizing a restarted Core', async () => {
     const certificateService = createService('darwin');
     await certificateService.ensure();
     let finishInstall!: () => void;
@@ -302,7 +322,7 @@ describe('CertificateService', () => {
     ]);
   });
 
-  it.each(['timeout', 'unavailable', 'invalid-response', 'certificate-state-uncertain'] as const)(
+  macosTest.each(['timeout', 'unavailable', 'invalid-response', 'certificate-state-uncertain'] as const)(
     'preserves the certificate operation and material after an uncertain helper outcome: %s', async (code) => {
       const certificateService = createService('darwin');
       await certificateService.ensure();
@@ -319,7 +339,7 @@ describe('CertificateService', () => {
     },
   );
 
-  it.each(['timeout', 'unavailable', 'invalid-response', 'verification-failed', 'certificate-state-uncertain'] as const)(
+  macosTest.each(['timeout', 'unavailable', 'invalid-response', 'verification-failed', 'certificate-state-uncertain'] as const)(
     'releases a confirmed completed %s failure without deleting or replacing certificate material', async (code) => {
       const onChanged = vi.fn();
       const certificateService = new CertificateService({ dataDir, secureStore, requestCore: (command) => coreRuntime.request(command), diagnostics, helperService, onChanged, platform: 'darwin' });
@@ -339,7 +359,7 @@ describe('CertificateService', () => {
     },
   );
 
-  it('keeps ownership through Core reconciliation after a confirmed native failure', async () => {
+  macosTest('keeps ownership through Core reconciliation after a confirmed native failure', async () => {
     const certificateService = createService('darwin');
     await certificateService.ensure();
     const failure = new MacosHelperServiceError('invalid-response', 'completed');
@@ -364,7 +384,7 @@ describe('CertificateService', () => {
     expect(certificateService.getActiveOperation()).toBeNull();
   });
 
-  it('does not retain a mutation lock after a read-only certificate viewer fails', async () => {
+  macosTest('does not retain a mutation lock after a read-only certificate viewer fails', async () => {
     const certificateService = createService('darwin');
     await certificateService.ensure();
     vi.spyOn(MacosHelperServiceClient.prototype, 'viewCertificate').mockRejectedValue(new MacosHelperServiceError('timeout'));
@@ -375,7 +395,7 @@ describe('CertificateService', () => {
     expect((await certificateService.getStatus()).present).toBe(true);
   });
 
-  it('releases a certificate operation after a definite authorization cancellation', async () => {
+  macosTest('releases a certificate operation after a definite authorization cancellation', async () => {
     const certificateService = createService('darwin');
     await certificateService.ensure();
     vi.spyOn(TrustStoreService.prototype, 'install').mockRejectedValue(new MacosHelperServiceError('authorization-cancelled'));
@@ -387,7 +407,7 @@ describe('CertificateService', () => {
     expect((await certificateService.getStatus()).present).toBe(false);
   });
 
-  it('refuses to generate when OS secure storage is unavailable', async () => {
+  macosTest('refuses to generate on macOS when OS secure storage is unavailable', async () => {
     secureStore.available = false;
     await expect(createService().ensure()).rejects.toBeInstanceOf(CertificateError);
   });
@@ -396,7 +416,7 @@ describe('CertificateService', () => {
     expect(await createService().getMaterial()).toBeNull();
   });
 
-  it('views the macOS public certificate without decrypting private material or importing a file', async () => {
+  macosTest('views the macOS public certificate without decrypting private material or importing a file', async () => {
     const certificateService = createService('darwin');
     await certificateService.ensure();
     const certificate = new X509Certificate(await fs.readFile(certificateService.getCertificatePath()));
@@ -412,7 +432,7 @@ describe('CertificateService', () => {
     expect((await fs.readdir(dataDir)).sort()).toEqual(['ca-meta.json', 'root-cert.pem', 'root-key.enc']);
   });
 
-  it.each([false, true])('preserves the Windows certificate viewer and PEM retry with failed DER open=%s', async (failedDerOpen) => {
+  it.runIf(process.platform === 'win32').each([false, true])('preserves the Windows certificate viewer and PEM retry with failed DER open=%s', async (failedDerOpen) => {
     const certificateService = createService('win32');
     await certificateService.ensure();
     const certificate = new X509Certificate(await fs.readFile(certificateService.getCertificatePath()));

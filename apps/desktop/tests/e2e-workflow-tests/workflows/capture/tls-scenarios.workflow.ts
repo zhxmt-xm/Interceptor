@@ -14,6 +14,7 @@ test('capture.scenarios.tls distinguishes opaque tunnels from decrypted H1 and H
   desktopApp, trafficLab,
 }, testInfo) => {
   test.setTimeout(180_000);
+  desktopApp.preserveUserDataOnFailure();
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'capture.scenarios.tls' });
   const { page } = desktopApp;
   const rootsBefore = await rootCertificateThumbprints();
@@ -127,6 +128,30 @@ test('capture.scenarios.tls distinguishes opaque tunnels from decrypted H1 and H
           contentType: 'application/json',
         });
       } catch (error) {
+        try {
+          const { tableNames } = await browserSession.send('Network.getCertificate', {
+            origin: `https://localhost:${tlsTrafficRunner.port}`,
+          });
+          const root = new X509Certificate(await readFile(path.join(sharedCertificateDirectory(), 'root-cert.pem')));
+          await testInfo.attach('browser-failed-certificate-chain.json', {
+            body: Buffer.from(JSON.stringify({
+              rootFingerprint: root.fingerprint256,
+              certificates: tableNames.map((encoded: string) => {
+                const certificate = new X509Certificate(Buffer.from(encoded, 'base64'));
+                return {
+                  fingerprint: certificate.fingerprint256, subject: certificate.subject, issuer: certificate.issuer,
+                  signedBySharedCa: certificate.verify(root.publicKey),
+                };
+              }),
+            })),
+            contentType: 'application/json',
+          });
+        } catch (evidenceError) {
+          await testInfo.attach('browser-certificate-evidence-error.json', {
+            body: Buffer.from(JSON.stringify({ message: evidenceError instanceof Error ? evidenceError.message : String(evidenceError) })),
+            contentType: 'application/json',
+          });
+        }
         await testInfo.attach('browser-trust-error.json', {
           body: Buffer.from(JSON.stringify({ message: error instanceof Error ? error.message : String(error) })),
           contentType: 'application/json',

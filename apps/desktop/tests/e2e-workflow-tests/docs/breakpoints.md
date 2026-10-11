@@ -12,6 +12,8 @@
 4. 拖拽File高度后Forward edited，origin的完整长度/hash与步骤1保存文件一致；预览末尾截断不影响发送。分别保留无替换、空Text、File模式切换与取消选文件的原有语义。
 5. 保存改前/改后PNG、预览字节数、完整文件/发送hash和trace；通过正常Close退出，Main/Core/Worker全退、8888释放、完整代理/日常CA保持。不得以fake Preload或预造文件替代产品保存、选择与发送。
 
+键盘复制预览时只归一化平台CRLF/LF差异，然后同时比较完整文本长度和SHA-256，保存原始长度与CRLF数量；不只比较长度。产品导出文件及Forward edited的网络正文仍逐字节核对，不归一化文件或线上数据。
+
 ## `breakpoints.original-body`
 
 1. fresh profile通过真实UI开始Recording并创建POST断点，客户端向loopback origin发送完整3MiB JSON。

@@ -55,8 +55,11 @@ for (const scenario of ['manual', 'truncated'] as const) {
       await expect(formatButton).toBeEnabled();
       await formatButton.click();
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy).click();
-      await expect.poll(() => page.evaluate(async () => (await navigator.clipboard.readText()).length))
-        .toBe(JSON.stringify(JSON.parse(source), null, 2).length);
+      const formatted = JSON.stringify(JSON.parse(source), null, 2);
+      await expect.poll(async () => {
+        const text = (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n');
+        return { length: text.length, sha256: createHash('sha256').update(text).digest('hex') };
+      }).toEqual({ length: formatted.length, sha256: createHash('sha256').update(formatted).digest('hex') });
     } else {
       await expect(formatButton).toBeDisabled();
     }

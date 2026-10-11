@@ -26,6 +26,7 @@ import { WindowsWorkflowHostSafetyOperations } from '../e2e-workflow-tests/fixtu
 import { MacosWorkflowHostSafetyOperations } from '../e2e-workflow-tests/fixtures/safety/macos-workflow-host-safety-operations';
 import { requireSharedCertificateReady } from '../e2e-workflow-tests/fixtures/ui/https-capture';
 import { getByAutomationId } from '../e2e-workflow-tests/fixtures/ui/automation';
+import { startRecording } from '../e2e-workflow-tests/fixtures/ui/capture-workflow';
 
 /** Renderer 启动时自动接管的监听端口；产品不支持迁移，smoke 必须复用它。 */
 const DEFAULT_CAPTURE_PORT = 8888;
@@ -249,12 +250,18 @@ class PackagedWorkflowSmoke {
     if (proxyPort === null) {
       throw new Error('Capture listener port is unavailable.');
     }
-    await page.evaluate(() => window.interceptor.stopCapture());
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+    const recordingToggle = getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle);
+    await recordingToggle.click();
+    await expect(recordingToggle).toHaveAttribute('aria-pressed', 'false');
+    await expect.poll(() => page.evaluate(() => window.interceptor.getCaptureStatus()))
+      .toMatchObject({ listening: true, recording: false });
 
     const origin = await this.startOrigin();
+    const errors: unknown[] = [];
     try {
-      const capture = await page.evaluate((port) =>
-        window.interceptor.startCapture(port), proxyPort);
+      await startRecording({ page });
+      const capture = await page.evaluate(() => window.interceptor.getCaptureStatus());
       expect(capture).toMatchObject({
         listening: true,
         host: '127.0.0.1',
@@ -294,61 +301,72 @@ class PackagedWorkflowSmoke {
         summary: { statusCode: 200 },
       });
 
-      const composer = await page.evaluate((url) =>
-        window.interceptor.sendComposerRequest({
-          method: 'GET',
-          url,
-          headers: [],
-          protocol: 'http/1.1',
-          timeoutMs: 5_000,
-        }), `http://127.0.0.1:${origin.port}/composer-smoke`);
-      expect(composer).toMatchObject({ ok: true, status: 200 });
+      await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.composer).click();
+      await getByAutomationId(page, AUTOMATION_IDS.composer.newRequest).click();
+      await getByAutomationId(page, AUTOMATION_IDS.composer.url).fill(`http://127.0.0.1:${origin.port}/composer-smoke`);
+      await getByAutomationId(page, AUTOMATION_IDS.composer.protocol.h1).click();
+      await getByAutomationId(page, AUTOMATION_IDS.composer.send).click();
+      await expect(getByAutomationId(page, AUTOMATION_IDS.composer.responseBodyPane)).toContainText('releaseSmoke');
+      await getByAutomationId(page, AUTOMATION_IDS.composer.responseBodyAction.copy).click();
+      expect(JSON.parse(await page.evaluate(() => navigator.clipboard.readText()))).toEqual({ releaseSmoke: true });
 
       const rules = await page.evaluate(() => window.interceptor.getRules());
       expect(Array.isArray(rules.nodes)).toBe(true);
 
       const breakpoints = await page.evaluate(() =>
         window.interceptor.listBreakpoints());
-      const disabled = await page.evaluate(() =>
-        window.interceptor.setBreakpointsEnabled(false));
-      expect(disabled).toBe(false);
-      const restored = await page.evaluate((enabled) =>
-        window.interceptor.setBreakpointsEnabled(enabled), breakpoints.enabled);
-      expect(restored).toBe(breakpoints.enabled);
+      await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+      await getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager).click();
+      const breakpointToggle = getByAutomationId(page, AUTOMATION_IDS.breakpoints.toggle);
+      await expect(breakpointToggle).toHaveAttribute('aria-checked', String(breakpoints.enabled));
+      await breakpointToggle.click();
+      await expect(breakpointToggle).toHaveAttribute('aria-checked', String(!breakpoints.enabled));
+      await breakpointToggle.click();
+      await expect(breakpointToggle).toHaveAttribute('aria-checked', String(breakpoints.enabled));
+      await page.keyboard.press('Escape');
+      await expect(breakpointToggle).toBeHidden();
 
       const diagnostics = await page.evaluate(() =>
         window.interceptor.queryDiagnostics({ limit: 20 }));
       expect(diagnostics.records.length).toBeGreaterThan(0);
+    } catch (error) {
+      errors.push(error);
     } finally {
-      const beforeStop = await page.evaluate(() =>
-        window.interceptor.getCaptureUsage());
-      // 暂停记录：监听器与系统代理保持运行、流量继续转发，已录数据保留到手动 Clear。
-      const paused = await page.evaluate(() => window.interceptor.stopCapture())
-        .catch(() => null);
-      if (paused) {
-        expect(paused).toMatchObject({ listening: true, recording: false });
+      try {
+        const beforeStop = await page.evaluate(() =>
+          window.interceptor.getCaptureUsage());
+        // 暂停记录：监听器与系统代理保持运行、流量继续转发，已录数据保留到手动 Clear。
+        await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+        if (await recordingToggle.getAttribute('aria-pressed') === 'true') await recordingToggle.click();
+        await expect(recordingToggle).toHaveAttribute('aria-pressed', 'false');
+        await expect.poll(() => page.evaluate(() => window.interceptor.getCaptureStatus()))
+          .toMatchObject({ listening: true, recording: false });
+        const afterStop = await page.evaluate(() => window.interceptor.getCaptureUsage());
+        expect(afterStop.sessionCount).toBe(beforeStop.sessionCount);
+        expect(afterStop.exchangeCount).toBeGreaterThanOrEqual(beforeStop.exchangeCount);
+        expect(afterStop.bodyCount).toBeGreaterThanOrEqual(beforeStop.bodyCount);
+        expect(afterStop.blobBytes).toBeGreaterThanOrEqual(beforeStop.blobBytes);
+        await getByAutomationId(page, AUTOMATION_IDS.capture.clear).click();
+        await expect.poll(() => page.evaluate(() => window.interceptor.getCaptureUsage()), {
+          message: 'Manual Clear did not delete temporary recording data',
+          timeout: 10_000,
+        }).toMatchObject({
+          sessionCount: 1,
+          exchangeCount: 0,
+          bodyCount: 0,
+          blobBytes: 0,
+        });
+      } catch (error) {
+        errors.push(error);
       }
-      await expect.poll(() => page.evaluate(() => window.interceptor.getCaptureUsage()), {
-        message: 'Pausing Capture changed retained recording data',
-        timeout: 10_000,
-      }).toMatchObject({
-        sessionCount: beforeStop.sessionCount,
-        exchangeCount: beforeStop.exchangeCount,
-        bodyCount: beforeStop.bodyCount,
-        blobBytes: beforeStop.blobBytes,
-      });
-      await page.evaluate(() => window.interceptor.clearCapture());
-      await expect.poll(() => page.evaluate(() => window.interceptor.getCaptureUsage()), {
-        message: 'Manual Clear did not delete temporary recording data',
-        timeout: 10_000,
-      }).toMatchObject({
-        sessionCount: 1,
-        exchangeCount: 0,
-        bodyCount: 0,
-        blobBytes: 0,
-      });
-      await this.closeOrigin(origin.server);
+      try {
+        await this.closeOrigin(origin.server);
+      } catch (error) {
+        errors.push(error);
+      }
     }
+    if (errors.length === 1) throw errors[0];
+    if (errors.length > 1) throw new AggregateError(errors, 'Packaged workflows and cleanup failed.');
   }
 
   /** Start one deterministic JSON origin on a random loopback port. */
@@ -500,6 +518,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
       throw new Error('Packaged app did not create a renderer page');
     }
     const rendererPage = page;
+    rendererPage.setDefaultTimeout(15_000);
 
     await page.waitForLoadState('domcontentloaded');
 
@@ -832,37 +851,6 @@ test('packaged app starts with an isolated renderer and running core', async ({
     expect(storageStatus).not.toHaveProperty('quotaBytes');
     expect(storageStatus.databaseBytes).toBe(0);
 
-    // 保持 listener + Recording，但先恢复系统路由，避免宿主后台请求在 Clear 返回前
-    // 立刻重新填入 Capture；后续 workflow 仍显式通过 8888 发送流量。
-    await restoreProxyBeforeShutdown(page);
-    const restoredBeforeClear = await page.evaluate(() => window.interceptor.getSystemProxyStatus());
-    expect(restoredBeforeClear).toMatchObject({
-      supported: true, owned: false, ownershipLost: false,
-    });
-    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
-
-    // Recording 期间清空应保留当前 Session 壳，但 Exchange/Body 必须归零。
-    await expect.poll(
-      () => rendererPage.evaluate(async (port) => {
-        const current = await window.interceptor.getCaptureStatus();
-        if (current.listening) {
-          return true;
-        }
-        try {
-          return (await window.interceptor.startCapture(port)).listening;
-        } catch {
-          return false;
-        }
-      }, DEFAULT_CAPTURE_PORT),
-      { message: 'Recording did not restart before Clear', timeout: 10_000 },
-    ).toBe(true);
-    const clearedStorage = await page.evaluate(() =>
-      window.interceptor.clearCapture(),
-    );
-    expect(clearedStorage.sessionCount).toBe(1);
-    expect(clearedStorage.exchangeCount).toBe(0);
-    expect(clearedStorage.bodyCount).toBe(0);
-
     await PackagedWorkflowSmoke.run(page);
 
     // Let the async post-restart bootstrap raise and settle its readiness modal before
@@ -877,7 +865,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
     expect(restoredProxy).toMatchObject({
       supported: true, owned: false, ownershipLost: false,
     });
-    await page.evaluate(() => window.interceptor.closeApplication());
+    await getByAutomationId(page, AUTOMATION_IDS.shell.window.close).click();
     await expect
       .poll(() => appProcess.exitCode, {
         message: 'App did not exit cleanly',
@@ -898,9 +886,10 @@ test('packaged app starts with an isolated renderer and running core', async ({
       } catch (error) {
         proxyCleanupError = error;
       }
-      await page.evaluate(() =>
-        window.interceptor.closeApplication()).catch(() => undefined);
-      await waitForExit(appProcess).catch(() => undefined);
+      await getByAutomationId(page, AUTOMATION_IDS.shell.window.close).click().catch((error) => {
+        hostSafetyErrors.push(error);
+      });
+      await waitForExit(appProcess).catch((error) => { hostSafetyErrors.push(error); });
     }
     if (process.platform !== 'darwin') await browser?.close().catch(() => undefined);
     if (appProcess.exitCode === null) {

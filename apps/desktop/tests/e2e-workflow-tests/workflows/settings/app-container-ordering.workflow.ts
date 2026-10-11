@@ -61,6 +61,8 @@ function chooseSearch(
   throw new Error('The real AppContainer SIDs did not provide a narrowing search value.');
 }
 
+test.skip(process.platform !== 'win32', 'AppContainer APIs are only available on Windows.');
+
 test('settings.app-containers.ordering keeps enabled rows first through filtering', async ({
   desktopApp,
 }, testInfo: TestInfo) => {
@@ -68,10 +70,6 @@ test('settings.app-containers.ordering keeps enabled rows first through filterin
     type: 'renderer-workflow',
     description: 'settings.app-containers.ordering',
   });
-  if (process.platform !== 'win32') {
-    throw new Error('settings.app-containers.ordering requires Windows AppContainer APIs.');
-  }
-
   const { page } = desktopApp;
 
   // 准备：通过正式导航打开真实 Windows AppContainer 枚举，不修改任何 exemption。

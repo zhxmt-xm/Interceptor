@@ -12,6 +12,12 @@
 
 > 当前状态：现有 `startup.spec.ts` 已覆盖生产启动、安全边界、关键跨进程路径、真实 Capture、截图矩阵和退出清理，但仍是一条综合测试，尚未复用完整 workflow contract，也尚未做到每条 workflow 独立 trace。本文同时记录当前实现与目标架构；不得把目标清单误报为现有覆盖。
 
+Capture暂停/恢复/Clear、Composer Send、Breakpoint开关与正常Close均操作公共automation ID及真实键盘；恢复Recording复用local workflow的readiness助手。Preload只用于原有白名单、安全与只读状态/协议断言，不通过直接业务API安排这些操作，不在轮询中暗中重启listener。
+
+暂停在系统代理仍由App持有时操作，不能先Restore使UI回到readiness再把点击误认为Stop。暂停不减少已捕获数据，允许已接收的后台流量继续收尾；暂停后真实Clear验证Exchange/Body归零。最终退出前再经Settings恢复系统代理。
+
+自建CDP Page的普通动作期限为15秒；控件缺失时及时进入既有宿主恢复，不让无期限的locator等待耗尽整个测试后遗留代理。启动、Core恢复和原生授权的专用等待保持各自期限。
+
 ## 目录结构
 
 ```text

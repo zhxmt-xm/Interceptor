@@ -1,11 +1,20 @@
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
+import { X509Certificate } from 'node:crypto';
 import { createServer } from 'node:net';
-import { mkdir, readFile, readdir, rm, stat } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
+import { isDeepStrictEqual, promisify } from 'node:util';
 
-import { chromium } from '@playwright/test';
+import { chromium, expect } from '@playwright/test';
+import { AUTOMATION_IDS } from '../../src/shared/automation-ids.ts';
+import { WorkflowHostSafetyGuard } from '../e2e-workflow-tests/fixtures/safety/workflow-host-safety-guard.ts';
+import { WindowsWorkflowHostSafetyOperations } from '../e2e-workflow-tests/fixtures/safety/windows-workflow-host-safety-operations.ts';
+import { dismissWindowsFileDialogs } from '../e2e-workflow-tests/fixtures/ui/windows-file-dialog.ts';
+import { getByAutomationId } from '../e2e-workflow-tests/fixtures/ui/automation.ts';
+
+const execFileAsync = promisify(execFile);
 
 /** End-to-end per-user MSI install, major upgrade, launch and uninstall validation. */
 class WindowsInstallerSmoke {
@@ -31,6 +40,8 @@ class WindowsInstallerSmoke {
   static versions = ['0.0.1', '0.0.2'];
   /** npm CLI JavaScript path inherited from the invoking npm lifecycle. */
   static npmCliPath = process.env.npm_execpath;
+  /** Prevent removing an installed app while host recovery is unresolved. */
+  static hostRestored = true;
 
   /** Execute the complete installer lifecycle on Windows hosts. */
   static async run() {
@@ -39,12 +50,15 @@ class WindowsInstallerSmoke {
       return;
     }
     await this.assertWixAvailable();
+    await this.assertSharedCertificateReady();
     await this.cleanupStaleInstall();
     await rm(this.temporaryRoot, { recursive: true, force: true });
     await rm(this.resultsDirectory, { recursive: true, force: true });
     await mkdir(this.resultsDirectory, { recursive: true });
 
     const installers = [];
+    let completed = false;
+    const errors = [];
     try {
       await this.runNpm(['run', 'build:core'], {
         cwd: this.repoRoot,
@@ -70,14 +84,26 @@ class WindowsInstallerSmoke {
         10_000,
         'MSI uninstall left the application directory behind.',
       );
-      console.log('[windows-installer-smoke] install, upgrade, launch and uninstall passed');
+      completed = true;
+    } catch (error) {
+      errors.push(error);
     } finally {
-      if (await this.exists(this.installDirectory)) {
-        await this.cleanupStaleInstall().catch(() => undefined);
+      try {
+        if (this.hostRestored && await this.exists(this.installDirectory)) {
+          await this.cleanupStaleInstall();
+        }
+        if (completed) {
+          await rm(this.temporaryRoot, { recursive: true, force: true });
+        } else {
+          console.error(`[windows-installer-smoke] failed; retained recovery profile at ${this.userDataDirectory}`);
+        }
+      } catch (error) {
+        errors.push(error);
       }
-      await rm(this.temporaryRoot, { recursive: true, force: true })
-        .catch(() => undefined);
     }
+    if (errors.length === 1) throw errors[0];
+    if (errors.length > 1) throw new AggregateError(errors, 'Windows installer lifecycle and cleanup failed.');
+    console.log('[windows-installer-smoke] install, upgrade, launch and uninstall passed');
   }
 
   /** Build one isolated MSI with a release-only semantic version override. */
@@ -171,6 +197,15 @@ class WindowsInstallerSmoke {
       `app-${version}`,
       'Interceptor.exe',
     );
+    const rootsBefore = await this.readRootCertificates();
+    const workflowHostSafetyGuard = new WorkflowHostSafetyGuard(new WindowsWorkflowHostSafetyOperations({
+      desktopDirectory: this.desktopRoot,
+      helperPath: path.join(this.installDirectory, `app-${version}`, 'resources/system-proxy/wininet-proxy-helper.exe'),
+      localAppDataDirectory: process.env.LOCALAPPDATA,
+      dismissDialogs: dismissWindowsFileDialogs,
+    }));
+    await workflowHostSafetyGuard.captureBaseline();
+    this.hostRestored = false;
     const debuggingPort = await this.reservePort();
     const child = spawn(
       executablePath,
@@ -188,7 +223,15 @@ class WindowsInstallerSmoke {
     child.stderr?.on('data', append);
 
     let browser;
+    let page;
+    let corePid;
+    let closedThroughProductUi = false;
+    let workflowError;
+    const cleanupErrors = [];
     try {
+      if (!child.pid) throw new Error('Installed application did not expose its Main PID.');
+      workflowHostSafetyGuard.registerProcessIdentity(await this.readProcessIdentity(child.pid));
+      workflowHostSafetyGuard.registerApplication(child.pid, this.userDataDirectory);
       await this.waitFor(async () => {
         if (child.exitCode !== null) {
           throw new Error(`Installed application exited early.\n${output}`);
@@ -213,32 +256,88 @@ class WindowsInstallerSmoke {
         10_000,
         'Installed application did not create a Renderer page.',
       );
-      const page = browser.contexts()[0]?.pages()[0];
+      page = browser.contexts()[0]?.pages()[0];
       if (!page) {
         throw new Error('Installed application did not create a Renderer page.');
       }
+      page.setDefaultTimeout(15_000);
+      await page.context().tracing.start({ screenshots: true, snapshots: true, title: `Installed Interceptor ${version}` });
       await page.waitForLoadState('domcontentloaded');
       const title = await page.title();
       if (title !== 'Interceptor') {
         throw new Error(`Unexpected installed application title: ${title}`);
       }
-      await page.evaluate(() => window.close());
+      await expect(getByAutomationId(page, AUTOMATION_IDS.app.root)).toBeVisible({ timeout: 120_000 });
+      await expect(getByAutomationId(page, AUTOMATION_IDS.shell.boot.screen)).toBeHidden({ timeout: 120_000 });
+      const coreStatus = page.locator('[title*=" · PID "]');
+      await expect(coreStatus).toHaveAttribute('title', / · PID \d+$/, { timeout: 20_000 });
+      corePid = Number((await coreStatus.getAttribute('title')).match(/PID (\d+)/)[1]);
+      workflowHostSafetyGuard.registerProcessIdentity(await this.readProcessIdentity(corePid));
+      await workflowHostSafetyGuard.registerCaptureListenerProcess();
+      await workflowHostSafetyGuard.captureProcessTrees();
+      await page.screenshot({ path: path.join(this.resultsDirectory, `${version}-ready.png`) });
+      await page.context().tracing.stop({ path: path.join(this.resultsDirectory, `${version}-trace.zip`) });
+      await getByAutomationId(page, AUTOMATION_IDS.shell.window.close).click();
       await this.waitFor(
         () => Promise.resolve(child.exitCode !== null),
         8_000,
         'Installed application did not exit cleanly.',
       );
+      closedThroughProductUi = true;
+    } catch (error) {
+      workflowError = error;
     } finally {
-      await browser?.close().catch(() => undefined);
-      if (child.exitCode === null) {
-        await this.runCommand(
-          'taskkill.exe',
-          ['/pid', String(child.pid), '/t', '/f'],
-          { allowedExitCodes: [0, 128] },
-        ).catch(() => undefined);
+      if (child.exitCode === null && page && !page.isClosed()) {
+        try {
+          await getByAutomationId(page, AUTOMATION_IDS.shell.window.close).last().click();
+          await this.waitFor(() => Promise.resolve(child.exitCode !== null), 30_000, 'Installed app cleanup did not finish.');
+        } catch (error) { cleanupErrors.push(error); }
       }
-      await this.terminateInstalledProcesses();
+      try { await browser?.close(); } catch (error) { cleanupErrors.push(error); }
+      try { await workflowHostSafetyGuard.verifyRestored(); } catch (error) { cleanupErrors.push(error); }
+      try {
+        if (!isDeepStrictEqual(await this.readRootCertificates(), rootsBefore)) {
+          throw new Error('Installed application changed the shared CA trust baseline.');
+        }
+      } catch (error) { cleanupErrors.push(error); }
+      this.hostRestored = cleanupErrors.length === 0;
+      await writeFile(path.join(this.resultsDirectory, `${version}-main.log`), output, 'utf8');
+      await writeFile(path.join(this.resultsDirectory, `${version}-metadata.json`), JSON.stringify({
+        version, mainPid: child.pid, corePid, closedThroughProductUi,
+        hostRestored: this.hostRestored,
+        gracefulDestroyVerified: closedThroughProductUi && this.hostRestored,
+      }, null, 2), 'utf8');
     }
+    const errors = [workflowError, ...cleanupErrors].filter(error => error !== undefined);
+    if (errors.length === 1) throw errors[0];
+    if (errors.length > 1) throw new AggregateError(errors, 'Installed application and recovery checks failed.');
+  }
+
+  /** Read one exact process generation before registering it with the host guard. */
+  static async readProcessIdentity(processId) {
+    const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+      `$process=Get-Process -Id ${processId} -ErrorAction Stop; [pscustomobject]@{processId=$process.Id;processStartedAt=$process.StartTime.ToUniversalTime().ToString('O',[Globalization.CultureInfo]::InvariantCulture)} | ConvertTo-Json -Compress`,
+    ], { encoding: 'utf8', windowsHide: true });
+    return JSON.parse(stdout);
+  }
+
+  /** Preserve every machine Root certificate across each installed application generation. */
+  static async readRootCertificates() {
+    const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+      'ConvertTo-Json -InputObject @(Get-ChildItem Cert:\\LocalMachine\\Root | Select-Object -ExpandProperty Thumbprint | Sort-Object) -Compress',
+    ], { encoding: 'utf8', windowsHide: true });
+    return JSON.parse(stdout);
+  }
+
+  /** Require normal product CA initialization before the installer can launch an application. */
+  static async assertSharedCertificateReady() {
+    if (!process.env.LOCALAPPDATA) throw new Error('LOCALAPPDATA is required for installer host protection.');
+    const directory = path.join(process.env.LOCALAPPDATA, 'Interceptor', 'certificates');
+    await Promise.all(['root-cert.pem', 'root-key.pem', 'ca-meta.json'].map(name => stat(path.join(directory, name))));
+    const certificate = new X509Certificate(await readFile(path.join(directory, 'root-cert.pem'), 'utf8'));
+    await execFileAsync('certutil.exe', ['-verifystore', 'Root', certificate.fingerprint.replaceAll(':', '')], {
+      encoding: 'utf8', windowsHide: true,
+    });
   }
 
   /** Uninstall a prior interrupted test product before deleting its install tree. */

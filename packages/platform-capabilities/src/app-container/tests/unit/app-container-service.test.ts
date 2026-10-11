@@ -30,7 +30,7 @@ class FakeElevatedRunner implements ElevatedRunner {
   }
 }
 
-describe('AppContainerService', () => {
+describe.runIf(process.platform === 'win32')('AppContainerService', () => {
   it('reports unsupported without invoking the Windows helper', async () => {
     const fakeCommandRunner = new FakeCommandRunner();
     const appContainerService = createService(fakeCommandRunner, 'darwin');

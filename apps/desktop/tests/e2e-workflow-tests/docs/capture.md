@@ -7,6 +7,8 @@
 3. 3MiB正文只预览/Copy前2MiB，Format禁用，完整网络数据不受影响。
 4. 保存截图、字节数/hash和trace；正常Close后核对Main/Core/Worker、8888、系统代理与日常CA恢复。现行正文/压缩/WS/gRPC边界测试使用2MiB；Windows验收单独跟踪。
 
+手动格式化后的Copy按文本语义归一化CRLF/LF，再同时核对完整长度与SHA-256；初始未格式化Copy、截断边界及网络正文仍保留原字节断言，不把格式化副本当成线上正文。
+
 本文件定义 Capture 工作区的完整 E2E 流程。每条 workflow 都独立启动 Electron、独占 profile、trace 和 loopback fixture，并从 fresh App 写到 Close/destroy。
 
 <a id="capture-https-setup-position"></a>
@@ -21,7 +23,7 @@
 <a id="capture-http2-origin-goaway"></a>
 ## `capture.http2-origin-goaway`
 
-**状态**：macOS passed；Windows实机归第8项。
+**状态**：Windows实机已验；macOS保留既有记录。
 
 1. 独立profile、trace和宿主基线启动真实Electron/Core/8888，复用共享受信任CA；经Certificates UI只添加测试localhost例外并开启MITM，经Capture UI开启Recording。
 2. 通过Rules UI创建只匹配本轮自产路径的响应断点并Apply。使用TrafficLab的真实TLS/H2 origin，POST正文固定且只发送一次；响应为4MiB、Content-Length精确匹配，并带自产校验trailer。Core integration另覆盖384KiB边界。
@@ -37,18 +39,26 @@
 
 末行Copy：origin在JSON/HTML响应中返回`x-copy-wrap: private, max-age=60, s-maxage=60, stale-while-revalidate=300`；通过自产Header key定位实际行。离开行Copy透明、hover显示，Copy所属末行18px且flex居中，紧随文字4px；原生跨行选择及按钮Copy均为完整Header值。保存`header-copy-last-line-{json,html}.json/png`再断言。
 
-**状态**：passed
+**状态**：Windows的URL就绪门禁已有前置Red与最终Green；精准筛选后JSON/HTML的Header hover、标题和General复制及完整退出恢复通过。既有失败保留，不以最终Green改写历史。
 **策略**：真实Capture Request/Response；共享BodyViewer/BodyFullscreen；真实剪贴板
 
 General的POST值使用共享IconButton inline档，按钮18x18px、Lucide图标实际14x14px、padding0；离开行opacity0、hover后1且复制完整POST。保存`header-copy-{json,html}.json/png`；不修改语言、不强制显示所有Copy。
 
 ### Steps
 
-1. fresh profile经录制UI开启Capture，真实POST请求通过8888进入本轮origin，分别返回JSON与HTML；不注入Store或正文引用。
-2. 选择Capture行后核对标题中的自产host/path，hover标题并真实点击Copy，剪贴板必须是带scheme和origin端口的完整URL。General的Request Method显示11.5px普通文字，无标签背景，hover后Copy得到完整POST。在Request/Response选择Raw，核对MIME和原始正文，通过正式Fullscreen按钮打开唯一dialog；内联与全屏不出现两份正文视图。
+1. fresh profile经录制UI开启Capture，通过公共Keyword按当前自产路径筛选；真实POST请求通过8888进入本轮origin，分别返回JSON与HTML。完整筛选列表只允许有当前请求，不用Locator文本过滤隐藏背景流量，不注入Store或正文引用。
+2. 选择Capture行后核对标题中的自产host/path；完整URL就绪前标题Copy不显示，当前URL就绪后才可点击，不能复制上一条请求或短标题。通过实际出现的Copy按钮执行操作，剪贴板必须是带scheme和origin端口的完整URL，不用固定sleep代替就绪。General的Request URL同样只复制完整URL；Request Method显示11.5px普通文字，无标签背景，hover后Copy得到完整POST。在Request/Response选择Raw，核对MIME和原始正文，通过正式Fullscreen按钮打开唯一dialog；内联与全屏不出现两份正文视图。
 3. 正文分组标题按设计使用normal字体行高；MIME/大小计数不继承标题的uppercase和字距，保留原本大小写与normal字距。Request的空Query提示使用当前ConfigProvider正文行高token，不继承Shell压缩行高。真实点击弹层Header的Copy，剪贴板必须逐字等于原始正文；Header的Close退出后保持Raw与相同正文。
 4. 再次打开并切Hex，用Escape关闭后仍选中Hex；返回Raw并通过内联Copy确认原始字节不变。响应HTML只作为代码显示。
 5. 保存每个正文的身份、Copy/模式断言、trace与截图；Renderer不得有page error，fixture正常退出Main/Core/Worker并恢复8888、WinINet/journal。
+
+### URL就绪门禁与Windows证据
+
+- `inspector-url-copy.test.ts`覆盖详情未加载、当前URL就绪、保留上一条详情和同一请求刷新；前置2项失败，修复后同组全绿，Inspector tab/行摘要相关测试共27项通过。
+- 真实前置`fullscreen-before`在已精准筛选后仍把`http://127.0.0.1:55192/e2e/fullscreen-json`复制为`127.0.0.1/e2e/fullscreen-json`；这是产品行为Red，不是筛选或环境失败。
+- 最终`fullscreen-final`核对标题与General的完整URL、两种响应的Header hover、完整Header值和正文复制、Raw/Hex及Fullscreen模式保持。URL截图在实际复制及断言之后保存，不用截图等待掩盖快速点击竞态。
+- 两代metadata均确认正常退出；最终通过产品卸载/删除本轮唯一CA，宿主代理、Root、journal和8888恢复。原始report、trace、截图与恢复结果保留在会话files的`item8-url-ready-202610112240`。
+- Capture浅/深色parity的84个目标全部匹配，无缺失或flagged项，最大几何偏差0.5px；像素差异仍分别报告，不将像素diff视为零。未修改正式设计截图或Header CSS。
 
 ## 多协议测试输入
 
@@ -102,15 +112,15 @@ General的POST值使用共享IconButton inline档，按钮18x18px、Lucide图标
 ## `capture.scenarios.http2`
 
 **状态**：passed；源站正常GOAWAY另行跟踪，不在本流程通过范围
-**策略**：真实Electron；正式Certificates UI；仅本轮CA；host-safety-guard
+**策略**：真实Electron；正式Certificates UI；复用已初始化共享CA；host-safety-guard
 
 ### Steps
 
-1. 保存完整Root指纹基线，在fresh profile通过Certificates UI生成、安装本轮CA，添加localhost源站例外并开启MITM；不调用Manager。
+1. 保存完整Root指纹基线，在fresh profile通过Certificates UI确认共享CA就绪，添加localhost源站例外并开启MITM；不重复生成/安装CA，不调用Manager。
 2. 经UI开启Recording，使用现有`h2-json`默认Draft，经CONNECT/TLS/ALPN向真实origin发请求。
 3. 客户端完成H2/200和`x-playground-trailer: h2-complete`；Capture只显示一条自产H2/GET/200行。
 4. 真实点击Headers，核对Request `accept: application/json`、Response `content-type: application/json`和trailer；Response Raw正文包含`"protocol": "h2"`与`"path": "/playground/h2-json"`。
-5. 保存trace、截图和协议/行身份；`finally`通过UI停用MITM、删除localhost例外，按本轮CA指纹卸载、删除材料并比较完整Root集合。
+5. 保存trace、截图和协议/行身份；`finally`通过UI停用MITM、删除localhost例外，保留共享CA材料与信任并比较完整Root集合。
 6. fixture正常退出Electron，验证Main/Core/Worker、8888、WinINet/journal恢复；失败保留profile。fixture不新增unit/integration测试。
 
 同一workflow补充三种多stream场景：每种使用一个真实CONNECT/TLS/H2 session，同时请求两个6 MiB Range。共享TLS origin各先发送2 MiB，尚未结束时通过真实Capture列表核对两条独立H2/GET/206记录及2 MB，在Headers核对Range、Content-Range和Content-Length，保存stream ID、公共行身份、字节数及进行中截图。正常完成后客户端逐流hash一致、原行变为6 MB且Time不再占位；Clear必须点击产品按钮，剩余数据继续完整转发、旧行不恢复，同一连接的新请求仍可录制；取消只发送首条stream的NGHTTP2_CANCEL，源站对应响应关闭、Capture保留2 MB及结束耗时，另一条仍完整接收6 MiB。确定性Core终态由已有H2集成覆盖，UI不虚构未展示的协议字段。每种保存`h2-ranges-<action>.json`和前后截图，最后仍由同一workflow通过真实UI恢复CA/Root及宿主，不增加产品测试专用入口。
@@ -145,7 +155,7 @@ UTF-8场景使预览边界落在2/3/4字节字符内，分别检查普通文本�
 <a id="capture-scenarios-body-media"></a>
 ## `capture.scenarios.body-media`
 
-**状态**：passed（macOS包含媒体布局与真实Save；Windows实机复验归Handover第8项）
+**状态**：Windows媒体布局与真实Save已验；macOS保留既有记录。
 **策略**：真实Capture UI；Windows原生Save Dialog；现有流量库
 
 ### Steps
@@ -177,7 +187,7 @@ UTF-8追加步骤：通过同一真实origin发送超过预览上限的gzip输�
 <a id="capture-scenarios-websocket"></a>
 ## `capture.messages.compact-layout`（普通WebSocket与gRPC正文）
 
-**状态**：macOS passed；Windows待验收
+**状态**：Windows消息布局、拖拽、Copy、全屏与gRPC分页已验；窗口缩放子步骤保留macOS原记录。
 
 1. 每种协议独立fresh profile、trace及完整宿主基线；通过真实UI启动Recording。WebSocket使用现有loopback echo；gRPC通过Certificates复用共享CA、添加localhost源站例外并开启MITM，使用现有TLS/H2 origin，不能生成/清理日常CA。
 2. 经真实8888发送一条短消息和一条含末尾唯一标记的长消息。客户端/origin核对完整字节与协议结束，再由Capture自产路径定位连接，使用公共消息ID展开载荷，选择Text/Raw或默认Pretty，不注入Store或正文。
@@ -188,6 +198,8 @@ UTF-8追加步骤：通过同一真实origin发送超过预览上限的gzip输�
 7. 保存同主题/尺寸的改前/改后PNG、实际高度、内外scroll位置、Copy长度/hash与trace。gRPC通过真实UI关闭本profile的MITM及测试host配置；正常Close后验证Main/Core/Worker全退、8888释放、完整系统代理与CA/Root/admin trust保持，不能把fixture/授权失败当产品目标Red。
 
 WebSocket输入使用binary JSON消息以沿用内容探测与Pretty/Raw，正文Copy是完整UTF-8，而消息专用Copy仍是原binary Hex；不能为了统一断言修改产品语义。内外滚动使用足够的后续真实消息确保外层确有溢出，不给产品注入高度。gRPC第三页加载保持loadMore回调稳定，避免虚拟列表滚动触发同步重渲染时移除同一事件上的分页监听；失败与修复均保留真实证据。
+
+文本剪贴板比较沿用Body/Encoding场景的CRLF/LF归一化后逐字比较；消息专用Copy仍按UTF-8文本或binary Hex分别验证，协议载荷与导出文件保留原字节断言，不修改产品或输入正文。
 
 ## `capture.scenarios.websocket`
 
@@ -247,6 +259,7 @@ Compact正文尺寸：在真实binary JSON消息默认Pretty档、切Tree之前�
 3. 经真实Certificates UI确认共享CA受信任，添加localhost源站例外并开启MITM，不重复Generate/Install，不调用Manager。
 4. 依次运行`tls-mitm-h1`与`tls-mitm-h2`，分别验证实际ALPN为http/1.1与h2、Capture显示对应GET/200行，Response Raw显示mode与secure字段。
 5. TLS页显示https、localhost、本轮端口和TLS事实；另启动独立Edge，经8888访问同一origin的`/playground/tls/browser-trust`固定页面，保留默认HTTPS校验，不指定CA或忽略证书错误。要求200、浏览器securityState为secure、localhost叶证书由当前共享CA签名；协议客户端的`rejectUnauthorized: false`不能代替这项验收。
+   - fresh profile的数据库父目录由Workspace初始化负责；不得以漏读TLS偏好后的临时Mockttp CA冒充共享CA。失败时保留profile及公开证书链/安全状态供诊断，原错误继续抛出，不跳过浏览器校验或重试后覆盖失败。
 6. 保存三个场景、浏览器security state和公开证书指纹，Renderer无page error；finally关闭Edge，经UI停用MITM、移除源站例外，保留共享CA及Root集合，fixture验证origin及Main/Core/Worker、8888、完整系统代理/journal恢复。
 
 <a id="capture-tools-archive-transfer"></a>
@@ -558,12 +571,12 @@ Breakpoint submenu由同一Ant Menu树管理：hover展开不会用第二页替�
 ### Steps
 
 1. 创建独立profile、trace与loopback TLS tunnel lab；启动真实Electron并通过真实UI开始Recording。
-2. 通过产品UI生成并安装测试CA、开启MITM，再在Settings / TLS passthrough添加`127.0.0.1`，返回Capture。
+2. 通过产品UI确认共享CA就绪、开启MITM，再在Settings / TLS passthrough添加`127.0.0.1`，返回Capture；不重复生成或安装CA。
 3. 经8888向测试自产随机端口建立真实CONNECT + TLS ClientHello，完成加密echo，等待动态Capture行并打开TLS tunnel Inspector。
 4. 点击公开`capture.tls-tunnel.view-passthrough-pattern`；确认App切到Settings，激活TLS passthrough section。
 5. 确认产品从当前持久化settings解析出精确覆盖项`127.0.0.1`，对应公开host row滚入可见区域并带`data-highlighted=true`。保存target-layout，确认host/说明14px行高、2px文字组gap，行高不小于66px；不通过修改TLS设置制造推荐标签。
 6. 等待3秒后确认同一row仍存在但`data-highlighted=false`；再次从Capture执行跳转时高亮重新出现，证明timer被重新计时。
-7. 通过Settings UI删除测试pattern、关闭MITM、卸载并删除测试CA，保存trace、最终截图与Main/Renderer日志；正常Close。
+7. 通过Settings UI删除测试pattern、关闭MITM，保留共享CA及信任，保存trace、最终截图与Main/Renderer日志；正常Close。
 8. 验证Main/Core退出、8888释放、系统代理恢复、profile删除。
 
 ### 预期效果
@@ -615,7 +628,7 @@ Tunnel入口导航到实际覆盖当前host的最具体持久化pattern；Settin
 3. 启动random-port HTTP origin；测试客户端以absolute-form URL向8888发送`POST /e2e/detail-body-fill`和200项JSON entries，保留两平台同一份原始输入。macOS的真实窗口尺寸由driver/config准备，不在workflow添加额外query或改产品CSS制造滚动。Origin返回真实JSON response body、`application/json`和固定E2E headers/cookies。
 4. 等待动态`capture.request-row.<exchangeId>`出现并点击；点击`capture.inspector.tab.response`，等待按需`body.read-range`完成，确认`capture.inspector.body-view`与`capture.inspector.body-pane`都可见。
 5. 同一帧读取`capture.inspector.scroll`、BodyViewer root和CodeViewer pane的`getBoundingClientRect`：pane height必须≥320px；scroll bottom减BodyViewer bottom必须为18px设计padding（容差16–20px）；BodyViewer bottom与pane bottom差绝对值<1px。
-6. 点击`capture.inspector.tab.request`加载测试发送的200行JSON request body。让外层Inspector停在距底部80px且鼠标位于`capture.inspector.body-pane`；先用wheel确认Monaco内部滚动，再把Monaco垂直滑块拖到底并记录外层scrollTop；继续同方向wheel 300后，外层scrollTop必须增加，证明内部边界把滚动交回外层。
+6. Windows先保留上述默认1600×900布局检查，再通过driver已持有的真实BrowserWindow把本轮窗口内容高度调整为800px并读回确认；macOS沿用现有800px专项项目。不是模拟viewport、不改产品默认尺寸、CSS或200行请求输入。点击`capture.inspector.tab.request`加载原请求，让外层Inspector停在距底部80px且鼠标位于`capture.inspector.body-pane`；先用wheel确认Monaco内部滚动，再把Monaco垂直滑块拖到底并记录外层scrollTop；继续同方向wheel 300后，外层scrollTop必须增加，证明内部边界把滚动交回外层。
 7. 附加`body-viewer-geometry.json`（含两段scrollTop）、最终截图、trace、Main/Renderer日志和metadata。fixture进入Settings→Proxy；若`settings.proxy.restore`存在则点击并等待消失，然后正常Close，验证Main/Core PID退出、8888可重新bind并删除profile。
 
 ### 预期效果
@@ -894,7 +907,7 @@ AbortSignal并清理I/O，而不是仅将界面改为cancelled。保存各阶段
 <a id="capture-tools-har-transfer"></a>
 ## `capture.tools.har-transfer`
 
-**状态**：passed（macOS包含HAR警示、真实Save/Open及双代恢复；Windows实机复验归Handover第8项）
+**状态**：Windows HAR警示、真实Save/Open及双代恢复已验；macOS保留既有记录。
 **策略**：native-ui；Windows；两代真实Electron；host-safety-guard
 
 ### Steps
@@ -967,32 +980,3 @@ HAR输入由同一workflow的真实Capture生成；标准HAR可解析，Clear后
 ### 预期效果
 
 Archive输入由同一workflow的真实Capture生成；保存文件结构自洽，Clear后通过UI打开可全保真恢复Interceptor专有数据；损坏或恶意ZIP被拒绝并回滚；所有系统副作用在结束前恢复。
-
-<a id="capture-bilibili-login-regression"></a>
-## `capture.bilibili-login-regression`
-
-**状态**：passed
-**策略**：external-profile + os-side-effect
-
-### 前置条件
-
-真实 Edge Default profile 已登录 Bilibili，当前可见标签页为完整 `https://www.bilibili.com/` 页面。测试不写 profile、不注入 Cookie、不调用 typed Preload API 改产品状态，也不代替用户完成登录。
-
-### Steps
-
-1. 启动真实 Electron；在系统代理仍未被 Interceptor 接管时，从当前 Bilibili 页头读取右上角身份入口的 UI Automation 控件类型、层级、可见性与几何关系，确认已登录并保存测试自产基线。判据不使用显示文案、翻译后的 accessibility name、CSS class 或站点私有 API。
-2. 从真实 Settings UI 依次点击 Generate、Install 与 MITM switch；等待 CA trusted / MITM active。进入 Capture，通过真实 Recording/readiness UI 接管系统代理。
-3. 用 CONNECT + TLS handshake 探测 `www.bilibili.com` leaf，要求由步骤2本次 UI 生成的 root CA 签发；通过 `edge://restart` 让 Edge 重载系统信任，返回原 Bilibili 标签页。
-4. 只使用 Edge 公开地址栏 AutomationId `view_1021` 的 ValuePattern 确认当前标签仍是 `https://www.bilibili.com/`；通过刷新按钮 AutomationId `view_1003` 的 InvokePattern执行一次完整页面刷新。
-5. 等待本轮 `www.bilibili.com/` 主文档以非 `tls` exchange完成，要求 H2 / 200、存在 `DedeUserID` / `SESSDATA` / `bili_jct` 且无Rule header effect；随后等待页头runtime ID变化并确认身份入口恢复到步骤1的语言无关UIA结构。
-6. 重复步骤4–5共三轮。每轮只附加 URL、host/protocol汇总、主文档status、Cookie名称、身份入口结构与页头截图；任何一轮出现匿名入口即失败。
-7. 从 UI 关闭 MITM、Uninstall/Delete CA；正常 Close Electron，由产品销毁 Main/Core/Worker、释放8888并恢复原系统代理。测试不通过数据库、profile seed或测试专用命令修复现场。
-
-### 预期效果
-
-Interceptor MITM 对已登录 HTTPS 页面透明：完整页面连续三次真实刷新后，Bilibili 右上角仍保持步骤1采集的身份入口；Cookie不会因 H1/H2 header 归一化、规则钩子或 Capture而丢失或改变语义。
-
-### 验收要求
-
-- Green必须运行同一workflow三轮全部通过，并保留trace、每轮Capture/UIA evidence、Main/Core/Worker销毁、8888释放、系统代理恢复和CA清理证据。
-- 固定登录API路径、显示文案、单独HTTP请求、Cookie/profile注入、数据库修改或MITM关闭均不能作为Red/Green替代。

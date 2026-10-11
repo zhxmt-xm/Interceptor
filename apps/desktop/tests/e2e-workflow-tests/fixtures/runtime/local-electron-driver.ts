@@ -197,7 +197,6 @@ export class LocalElectronApplicationDriver {
   ): Promise<LocalElectronApplicationDriver> {
     if (process.platform === 'darwin') return this.launchMacosApplication(testInfo, options);
     const desktopDirectory = resolveDesktopDirectory();
-    const ownsUserDataDirectory = options.userDataDirectory === undefined;
     const userDataDirectory = options.userDataDirectory
       ?? await LocalElectronApplicationDriver.createUserDataDirectory();
     let application: ElectronApplication | null = null;
@@ -255,9 +254,14 @@ export class LocalElectronApplicationDriver {
         workflowHostSafetyGuard,
       );
     } catch (error) {
-      await application?.close().catch(() => undefined);
-      if (ownsUserDataDirectory) {
-        await rm(userDataDirectory, { recursive: true, force: true });
+      testInfo.annotations.push({
+        type: 'preserved-user-data',
+        description: userDataDirectory,
+      });
+      try {
+        await application?.close();
+      } catch (cleanupError) {
+        throw new AggregateError([error, cleanupError], 'Electron launch and cleanup failed; the profile was retained.');
       }
       throw error;
     }

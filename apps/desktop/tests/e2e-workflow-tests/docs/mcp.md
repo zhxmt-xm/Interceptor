@@ -9,7 +9,7 @@
 
 此流程由正在开发本仓库的Agent执行，不在Playground增加模型配置、Agent Runtime或另一套MCP E2E。
 下方`.workflow.ts`继续提供真实Electron的确定性回归；它们使用的官方Client不是VS Code、Claude或Codex
-本身，必须与本节真实Host结果分开记录。真实Host场景还未执行时，不能仅因自动回归Green关闭Handover第9项。
+本身，必须与本节真实Host结果分开记录。真实Host场景还未执行时，不能仅因自动回归Green关闭Handover中的对应验收项。
 
 ### 识别当前Host与配置入口
 
@@ -34,8 +34,9 @@
    endpoint、版本与连接认证。连接token只驻留调用方内存，不输出或写入验收报告。
 2. 正常认证后调用`initialize`，订阅`ahp-root://`和当前session；读取实际schema确认支持`mcpServers`。
    `dispatchAction`的`root/configChanged`合并本轮MCP配置，不覆盖其他Server或Host设置，回读确认生效。
-3. Host在新SDK任务开始时加载root配置；steering消息不是新任务。读取当前session实际公布的MCP
-   customization，恢复准备好的App后，对其真实id发送`session/mcpServerStartRequested`并等待`ready`。
+3. 读取当前session实际公布的MCP customization，恢复准备好的App后，对其真实id发送
+   `session/mcpServerStartRequested`并等待`ready`。当前Host可能等待会话空闲后应用配置变化；
+   `starting`不等于连接，steering消息也不保证立即刷新。不在重连期间轮换Client或反复创建配置。
 4. 原生工具搜索和公开MCP通道分开验收。当前Host若公开`channel`及`mcpApp.capabilities.serverTools`，
    当前Agent可以通过该`mcp://`通道执行`tools/list`、`tools/call`，请求由真实Host的既有MCP连接送到App。
    不直接构造产品MCP Client，不增加Agent Runtime，也不猜未公开的channel或能力。
@@ -109,8 +110,22 @@ Windows不传`--project macos`。构建后运行真实App前必须满足宿主�
 <a id="mcp-current-host"></a>
 ## `mcp.current-host`
 
-**状态**：当前Copilot CLI/SDK的公开MCP通道验收passed；聊天工具搜索热刷新及其他Host未验证
+**状态**：Windows当前Host的精准筛选版本最终Green；原生Tool查询、正文、Deny/Allow/Auto、Composer及真实Clear已执行，Client、Host配置、CA与宿主恢复已核对。仅覆盖下述代表场景，不代表全部Tool或其他Host通过；旧虚拟行假阳性与重连超时证据保留，不改写为通过。
 **策略**：真实开发Agent交互；复用同一Electron driver，不构造测试MCP Client或模型Runtime
+
+Windows复验入口：本轮Client已撤销，Host配置、profile及临时CA已清理，不能再使用本轮旧配置。
+下次复验先确认系统复制/粘贴和由产品初始化的共享CA前提，再使用以下prepare命令。
+若同一次验收因Host等待中断且仍保留有效profile，应复用该profile执行verify，不重复创建CA或轮换Client。
+Host配置必须与产品Copy config的endpoint和Token指纹一致。
+
+```powershell
+$env:INTERCEPTOR_E2E_MCP_HOST = 'copilot-cli'
+$env:INTERCEPTOR_E2E_MCP_HOST_VERSION = '<核对后的实际Host版本>'
+$env:INTERCEPTOR_E2E_MCP_PHASE = 'prepare'
+npm exec --no --workspace @interceptor/desktop -- playwright test --config tests\e2e-workflow-tests\playwright.config.ts current-host.workflow.ts
+```
+
+prepare通过仍不代表Host已连接；按下文正式配置与verify流程继续，不使用私有RPC、替代Agent或跳过Copy/真实调用断言。
 
 接入分为准备与执行，避免Host重载等待依赖正在运行的App。准备通过真实UI产生Client/endpoint/凭据，
 正常关闭App并验证恢复后，仅保留这个隔离profile与0600配置；此阶段不算Host调用验收通过。配置可通过
@@ -145,13 +160,18 @@ INTERCEPTOR_E2E_MCP_HOST=copilot-cli INTERCEPTOR_E2E_MCP_HOST_VERSION=1.0.73 INT
 2. 从真实Copy config取得配置；trace暂停期间读取Token，仅在临时profile的0600文件保存Host配置，
    保存`prepared`记录后正常退出，验证端口、代理和进程恢复；当前Agent在App关闭后据此配置Host。
 3. `verify`重新启动相同隔离profile，确认MCP running、原Client与凭据保持，真实设置Ask。fixture生成唯一
-   loopback请求并验证实际响应。`current-host-phase.json`中的`connect-query-then-deny-stop`
-   指示当前Agent发现Tool、查询自产请求/正文，再真实调用`capture_stop_recording`；fixture真实点击Deny，
+   loopback请求并验证实际响应；通过公开Keyword控件按该自产路径筛选，使目标行不会被背景流量挤出虚拟列表。
+   fixture断言产品筛选后的完整列表只有该请求，不再用Locator的文本过滤掩盖未筛选的列表。
+   `current-host-phase.json`中的`connect-query-then-deny-stop`
+   指示当前Agent发现Tool；`capture_list_exchanges`也必须按本轮自产路径筛选，取得目标`exchangeId`后仅查询该详情和正文。
+   当前Agent再真实调用`capture_stop_recording`；fixture真实点击Deny，
    核对Recording不变。
 4. phase变为`allow-stop`后，当前Agent再次调用；fixture真实点击Allow并核对Recording停止，再通过UI恢复。
 5. fixture在Settings切换该Client到Auto，发布`auto-stop`；当前Agent再次调用相同Tool，确认无App审批而录制停止。
 6. fixture恢复录制并发布`exercise-tools-then-clear`；当前Agent按前节清单执行本平台适用场景和断言，
-   最后真实调用`capture_clear`。fixture确认自产请求已消失且Recording仍开启。
+   最后真实调用`capture_clear`。等待前先确认筛选内仅有自产行；清空前后均确认Keyword仍为本轮路径，
+   fixture确认筛选后的列表为空且Recording仍开启。
+   虚拟行离开可见区域不代表数据已清除，必须同时保留当前Host实际Clear调用与返回结果，不能仅以DOM数量为0记通过。
 7. fixture真实撤销本轮Client并关闭MCP，保存真实origin、UI结果、trace及Host阶段；正常关闭App并核对
    Main/Core/Worker、MCP/8888与系统设置恢复。当前Agent移除本轮Host配置条目，不覆盖其余配置。
 
@@ -160,16 +180,48 @@ INTERCEPTOR_E2E_MCP_HOST=copilot-cli INTERCEPTOR_E2E_MCP_HOST_VERSION=1.0.73 INT
 phase文件只是测试驱动的进度，不是产品命令或隐藏API。只有真实Host发起调用并取得产品行为证据时，
 本workflow才算通过；身份环境变量、配置文件或模型总结本身都不是连接成功证明。
 
-本轮实际通过范围：当前Copilot Host列出69项，调用20种Tool共22次；覆盖六类业务的代表查询、
+既有其他平台通过范围（非本轮Windows续验）：Copilot Host列出69项，调用20种Tool共22次；覆盖六类业务的代表查询、
 自产正文完整性与Cookie脱敏、App Deny/Allow/Auto、Composer真实POST无重放、Clear与退出恢复。
-本轮从未另起模型或Agent。未调用的其余Tool、其他Host、双Host并发、Host原生工具搜索热刷新以及
+该次未另起模型或Agent。未调用的其余Tool、其他Host、双Host并发、Host原生工具搜索热刷新以及
 正式Tool中间进度SSE不据此算通过；协议单次取消、断连、凭据轮换与重启的三版矩阵继续由
 `mcp.desktop.streamable-http`及所属unit/integration提供独立证据。
+
+本轮Windows实际证据：
+
+- 完整重启后，当前`copilotcli:/66953d47-abed-456a-a694-1f02b9d49b01`实际加载本轮服务；
+  Tool发现与调用来自当前Host，不是另起Agent或直连测试Client。
+- 代表查询、113字节自产正文的64+49字节读取、Cookie脱敏、App Deny/Allow/Auto、
+  Composer真实POST且不进入Capture、Breakpoint恢复和Diagnostics trace均已实际执行。
+- `item8-late/verify-after-restart`保留原runner的`passed`与trace；但没有实际`capture_clear`调用，
+  未筛选的虚拟列表把目标行移出DOM即触发收尾。该结果仅为部分通过，不能沿用其
+  `finalClearPreservedRecording`标志或增加完整workflow通过数。独立正文与POST核对见同目录上级
+  `first-native-call-assertions.json`。
+- `item8-late/filtered-owned-request.json`与同名PNG核对真实产品Keyword保持本轮唯一自产路径，
+  完整筛选列表只有该请求；没有使用Locator文本筛选隐藏其他行。Desktop typecheck通过。
+  修改后的完整Host流程与真实Clear仍需复验，不以这个观察断言替代。
+- 新Client在`host-prepare-filtered`经真实UI生成，配置归属在`item8-late/host-owner.json`。
+  `verify-filtered`已到Host调用前提，但公开start/stop/start后仍未取得ready通道，不能记为调用通过。
+  该运行因等待首次审批超时而失败；fixture通过产品Close正常退出，metadata的
+  `gracefulDestroyVerified=true`，独立恢复核对见`item8-late/filtered-recovery.json`：
+  进程、8888/MCP端口及journal释放，代理匹配原基线；原Root集合外仅保留本轮唯一CA用于接续。
+- 最终`item8-late/verify-filtered-resume`复用上述Client/profile，没有再强制重启VS Code。
+  当前Host实际进入`ready`，原生工具搜索与20种Tool调用完成本节代表主线；
+  `capture_list_exchanges`以本轮路径和GET筛选，仅返回`ex-mv3w1ir9-j5llyrt4`。
+  Clear前的真实产品筛选、同一请求行和Recording状态见`final-before-clear.json`及PNG；
+  64+49字节正文与预期完整内容和SHA-256一致。
+- 最后真实`capture_clear`返回`exchangeCount=0`、`bodyCount=0`、`blobBytes=0`、`totalBytes=0`；
+  workflow继续核对Keyword不变、完整筛选列表为空、Recording开启，再撤销Client、停用MCP。
+  JSON reporter最终通过，metadata确认正常退出；真实origin仅有一次自产GET与一次Composer POST，
+  POST内容和Diagnostics trace对应，且Capture内没有该POST。独立核对见`final-native-host-assertions.json`。
+- 最终通过公开Host入口移除本轮配置，并通过产品UI卸载/删除唯一临时CA；
+  `ca-cleanup`与`final-host-and-ca-recovery.json`确认Main/Core/Worker退出、8888/MCP端口和journal释放、
+  系统代理匹配原基线、Root精确恢复原56项、共享CA材料与MCP profile已删除。
+  `final-native-tool-coverage.json`区分实际调用与未执行的Tool；未调用场景、其他Host及中间进度SSE仍不算通过。
 
 <a id="mcp-settings-protocol-support"></a>
 ## `mcp.settings.protocol-support`
 
-**状态**：macOS前置Red、最终Green与退出恢复已验证；Windows实机归Handover第8项
+**状态**：Windows实机Green与退出恢复已验证；macOS保留既有前置Red/Green记录。
 **策略**：shared
 
 ### Steps
@@ -219,7 +271,7 @@ Origin与Host都不作为身份。任意Browser origin只有持有产品创建�
 <a id="mcp-desktop-streamable-http"></a>
 ## `mcp.desktop.streamable-http`
 
-**状态**：三协议macOS单次取消、握手/断连/重启流程及退出恢复Green；真实开发Host独立验收
+**状态**：Windows三协议单次取消、握手/断连/重启与退出恢复已验；macOS保留既有记录。真实开发Host仍独立验收。
 **策略**：shared
 
 ### 本轮协议矩阵

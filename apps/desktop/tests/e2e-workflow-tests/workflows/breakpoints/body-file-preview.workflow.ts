@@ -102,8 +102,18 @@ test(`breakpoints.body-preview ${fileKind} previews a product-saved file but for
     await preview.click({ position: { x: 90, y: 30 } });
     await page.keyboard.press('ControlOrMeta+A');
     await page.keyboard.press('ControlOrMeta+C');
-    await expect.poll(() => page.evaluate(async () => (await navigator.clipboard.readText()).length))
-      .toBe(Math.min(source.length, 2 * 1024 * 1024));
+    const expectedPreview = source.slice(0, 2 * 1024 * 1024).replace(/\r\n/g, '\n');
+    await expect.poll(async () => {
+      const clipboard = await page.evaluate(() => navigator.clipboard.readText());
+      const text = clipboard.replace(/\r\n/g, '\n');
+      const actual = { length: text.length, sha256: createHash('sha256').update(text).digest('hex') };
+      await writeFile(testInfo.outputPath('clipboard-preview.json'), JSON.stringify({
+        rawLength: clipboard.length, crlfCount: clipboard.split('\r\n').length - 1, ...actual,
+      }), 'utf8');
+      return actual;
+    }).toEqual({
+      length: expectedPreview.length, sha256: createHash('sha256').update(expectedPreview).digest('hex'),
+    });
     await getByAutomationId(page, AUTOMATION_IDS.breakpoints.executeEdited).click();
     const forwardedResponse = await pendingRequest;
     pendingRequest = null;

@@ -8,6 +8,8 @@
 
 `WorkspaceService`（`entry.ts`），由 CoreApplication 独占拥有并注入给需要读写配置的 command handler。
 
+`initialize()`自行递归创建数据库父目录后再打开SQLite，不依赖Capture或Diagnostics的异步目录准备。fresh profile可在首次Core ready阶段读取TLS偏好与规则；目录或数据库错误仍直接抛出，不使用内存配置冒充持久化成功。
+
 ## 为什么单独一个库
 
 这里的东西都是启动读一次、编辑时偶发写，最密集也不过每秒两次，共用一个同步 `DatabaseSync` 连接足够。高频的 diagnostics 有独立 Worker 与独立数据库，**不并入这里**——避免日志写入与配置写入争锁，也避免日志故障波及用户配置。

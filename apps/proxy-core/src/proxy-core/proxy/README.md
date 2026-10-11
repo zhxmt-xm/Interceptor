@@ -6,6 +6,8 @@
 
 `ProxyService`（`entry.ts`）。用 Mockttp `getLocal()` 作显式代理：`thenPassThrough()` 转发 HTTP/1.1 absolute-form 请求；未配置 HTTPS 解密时对 CONNECT 做不解密的字节直通。
 
+`startHttpsDecryption()`必须已经收到实际CA；缺失时显式失败且不改变解密状态、listener或session。仅供TLS分流器使用的临时身份不能用于MITM，不以测试CA或忽略客户端证书校验掩盖Main→Core初始化失败。
+
 ## 只订阅增量事件
 
 Capture **只订阅 initiated / body-data 类事件，绝不订阅 completed 的 `request` / `response`**。Mockttp 一旦发现 completed listener，就会调用 `waitForCompletedRequest` 与 `body.asBuffer()` 无条件缓冲完整正文——那会让大文件下载吃满内存。

@@ -79,6 +79,8 @@ flowchart LR
 
 `PlatformCapabilitiesService`来自内部`@interceptor/platform-capabilities`，系统代理、证书与helper业务仍在Main进程执行。Main只注入资源目录、safeStorage、typed `requestCore`与`getCoreProcessState`、DiagnosticsRecorder及通知；package不导入Main、Core应用入口或Electron。Core仅通过独立client-app子入口读取原生应用归属，缓存和Capture关联不搬迁。平台DTO在Desktop API中仅作type导出，Renderer不加载平台运行时代码。
 
+Windows共享CA私钥由CertificateService直接读写当前用户共享目录中的`root-key.pem`，不启动额外加解密进程、不依赖profile绑定的Electron密钥。私钥不进参数、环境变量、Renderer、日志或root helper；macOS CA与Agent/MCP凭据继续使用各自原有safeStorage。
+
 上游配置通过`getUpstreamSettings / applyUpstreamSettings`窄Preload API进入Main，IPC继续校验Renderer发送者。
 `SystemProxyService`统一解析已选模式、处理互斥和广播变化；Core通过`upstream.applySettings`先预检PAC，
 再保存Workspace偏好并更新后续请求的路由。helper只提供原生网络信息和系统代理读写，不转发业务HTTP。

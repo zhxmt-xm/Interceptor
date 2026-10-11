@@ -1335,6 +1335,15 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     }
   }, 20_000);
 
+  it('rejects HTTPS decryption without a configured CA and keeps the listener opaque', async () => {
+    const before = proxyService.status();
+
+    await expect(proxyService.startHttpsDecryption()).rejects.toThrow('A Root CA is required for HTTPS decryption.');
+
+    expect(proxyService.tlsState()).toEqual({ certificateReady: false, decrypting: false });
+    expect(proxyService.status()).toEqual(before);
+  });
+
   it('passes through only configured TLS hosts while continuing to intercept others', async () => {
     const ca = await generateCACertificate();
     const originCertificate = await generateCACertificate();

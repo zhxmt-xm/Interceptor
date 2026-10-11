@@ -102,15 +102,17 @@ test(`mcp.current-host ${phase} uses the current Host and a retained isolated pr
     // User actions: generate owned traffic; the current Agent configures its Host and calls MCP, without a test SDK Client.
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
     await startRecording(desktopApp);
+    const keywordFilter = getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter);
+    await keywordFilter.fill(requestPath);
     httpTrafficRunner.respondWith(requestPath, {
       headers: { 'content-type': 'application/json' },
       body: responseBody,
     });
     const response = await httpTrafficRunner.requestThroughProxy(desktopApp.capturePort(), requestPath);
     expect(response.body).toBe(responseBody);
-    const requests = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
-      .filter({ hasText: requestPath });
+    const requests = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow);
     await expect(requests).toHaveCount(1);
+    await expect(requests).toContainText(requestPath);
     await desktopApp.writeEvidence(testInfo);
     await publishPhase('connect-query-then-deny-stop');
 
@@ -142,8 +144,12 @@ test(`mcp.current-host ${phase} uses the current Host and a retained isolated pr
 
     // 业务断言：当前Agent继续适用场景，最后真实调用capture_clear结束这一代Host验收。
     // Business assertion: the current Agent exercises applicable scenarios and calls capture_clear last.
+    await expect(keywordFilter).toHaveValue(requestPath);
+    await expect(requests).toHaveCount(1);
+    await expect(requests).toContainText(requestPath);
     await publishPhase('exercise-tools-then-clear');
     await expect(requests).toHaveCount(0, { timeout: HOST_STEP_TIMEOUT });
+    await expect(keywordFilter).toHaveValue(requestPath);
     await expect(recording).toHaveAttribute('aria-pressed', 'true');
 
     // 证据与清理：真实撤销本轮凭据、关闭MCP，fixture负责App正常退出及完整宿主恢复。

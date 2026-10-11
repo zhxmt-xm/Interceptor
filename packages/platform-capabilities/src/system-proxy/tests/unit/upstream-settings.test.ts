@@ -8,7 +8,7 @@ import { MacosSystemProxyService } from '../../macos/entry';
 import { UpstreamProbe } from '../../internal/upstream-probe';
 import { MacosHelperServiceClient } from '../../../helper/macos/helper-client';
 
-describe('Main-owned upstream settings', () => {
+describe.runIf(process.platform === 'darwin')('Main-owned macOS upstream settings', () => {
   let persisted: UpstreamProxySettings;
   let applyFailure: Error | undefined;
   let releaseApply: (() => void) | undefined;

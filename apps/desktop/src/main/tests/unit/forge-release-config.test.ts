@@ -14,7 +14,7 @@ describe('Forge release configuration', () => {
     vi.resetModules();
   });
 
-  it('builds a stable per-user Windows MSI without auto-update coupling', () => {
+  it.runIf(process.platform === 'win32')('builds a stable per-user Windows MSI without auto-update coupling', () => {
     const maker = findMaker('@electron-forge/maker-wix');
 
     expect(maker.platforms).toEqual(['win32']);
@@ -28,7 +28,7 @@ describe('Forge release configuration', () => {
     });
   });
 
-  it('publishes both DMG and ZIP artifacts for macOS', () => {
+  it.runIf(process.platform === 'darwin')('publishes both DMG and ZIP artifacts for macOS', () => {
     const dmg = findMaker('@electron-forge/maker-dmg');
     const zip = findMaker('@electron-forge/maker-zip');
 
@@ -53,7 +53,7 @@ describe('Forge release configuration', () => {
     expect(localConfig.packagerConfig?.appVersion).toBeUndefined();
   });
 
-  it('does not enable Windows signing when no certificate path is present', () => {
+  it.runIf(process.platform === 'win32')('does not enable Windows signing when no certificate path is present', () => {
     if (process.env.WINDOWS_CERTIFICATE_FILE) {
       return;
     }

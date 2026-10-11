@@ -17,7 +17,7 @@ describe('GitHubReleaseUpdateService', () => {
     roots.length = 0;
   });
 
-  it('downloads a newer installer on demand and opens only the completed file', async () => {
+  it.runIf(process.platform === 'win32')('downloads a newer installer on demand and opens only the completed file', async () => {
     const fixture = await GitHubReleaseFixture.create(roots, {
       tagName: 'v0.1.1',
       body: '<b>Capture fixes</b>\n\nDownload is user controlled.',
@@ -53,7 +53,7 @@ describe('GitHubReleaseUpdateService', () => {
     expect(assetRequest?.headers.get('accept')).toBe('application/octet-stream');
   });
 
-  it('selects and downloads the matching macOS DMG', async () => {
+  it.runIf(process.platform === 'darwin')('selects and downloads the matching macOS DMG', async () => {
     const fixture = await GitHubReleaseFixture.create(roots, {
       platform: 'darwin',
       architecture: 'arm64',

@@ -9,7 +9,7 @@ import type { PlatformCapabilitiesOptions, PlatformCoreCommand } from '../../../
 import { SystemProxyService } from '../../entry';
 import { MacosSystemProxyService } from '../../macos/entry';
 
-it('reports a lost upstream without silently switching Core to direct', async () => {
+it.runIf(process.platform === 'darwin')('reports a lost macOS upstream without silently switching Core to direct', async () => {
   let connections = 0;
   const server = net.createServer(socket => { connections += 1; socket.end(); });
   server.listen(0, '127.0.0.1');

@@ -161,9 +161,9 @@ function verifyToolValues(
   expect(values.get('settings_get_tls_passthrough')).toEqual({ revision: 1, hosts: [PASSTHROUGH_HOST] });
   const access = values.get('settings_list_app_containers')!;
   verifyAppContainerQueryResult(access, appContainers);
-  for (const value of values.values()) {
+  for (const [name, value] of values) {
     const serialized = JSON.stringify(value);
-    expect(/[A-Za-z]:[\\/]|"(?:path|privateKey|proxyServer|bypassList|pacUrl|original)"/.test(serialized)).toBe(false);
+    expect(/\b[A-Za-z]:[\\/]|"(?:path|privateKey|proxyServer|bypassList|pacUrl|original)"/.test(serialized), name).toBe(false);
   }
 }
 

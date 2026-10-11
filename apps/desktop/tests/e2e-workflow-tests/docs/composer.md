@@ -256,7 +256,7 @@ Composer splitter遵守两侧最小宽度；请求/响应控件在极限宽度�
 <a id="composer-collection-import"></a>
 ## `composer.collection.import`
 
-**状态**：passed（macOS；Windows实机复验归Handover第8项）
+**状态**：Windows真实Save/Open与导入已验；macOS保留既有记录。
 **策略**：native-ui
 
 ### Steps

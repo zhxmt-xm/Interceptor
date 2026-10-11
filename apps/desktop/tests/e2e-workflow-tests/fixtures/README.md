@@ -27,6 +27,9 @@ profile保留策略，完整成功后删除测试profile。准备通过不等于
 
 ## 平台分派
 
+- Windows文件窗口点击使用UI Automation提供的物理坐标及`SetPhysicalCursorPos`，不混用逻辑坐标；不改变系统缩放、窗口归属/前台检查、真实键鼠或提交后的文件断言。
+- Recording助手同时处理fresh profile的readiness确认与已确认后的暂停/恢复：真实点击后等待Recording或确认按钮，只有确实显示readiness才确认；不等待不存在的弹窗，不调用Preload代替用户操作。
+- Windows仍由`_electron.launch()`启动，并使用原有`firstWindow()`取得首窗；之后继续验证App root、真实Core PID与8888。启动失败保留profile和原始错误，关闭失败单独合并报告，不因删除仍被Chromium占用的profile而覆盖启动错误。
 - macOS窗口准备仅操作已核对PID/启动时间的测试Main：只等待System Events暴露真实窗口，再调整并断言尺寸，不显示隐藏App或用前置促使窗口出现，不改变产品或模拟viewport。
 - 普通收尾在Windows/macOS都点击`shell.window.close`，不打开macOS菜单Quit；Renderer DOM操作及原生文件面板关闭后的页面断言不调用`bringToFront()`。只有真实原生键鼠和最小化恢复专项取得焦点，原生driver继续核对目标窗口和进程代际。
 - 业务workflow共用UI操作、真实流量输入和业务结果，不为macOS增加query、替换输入或改Windows超时。原生差异只放driver/fixture的明确Windows/Macos方法，不复制两套业务流程。

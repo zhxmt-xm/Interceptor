@@ -60,7 +60,16 @@ Renderer瞬态导航反馈，不写workspace、不进入URL，也不由Main/Core
 | leaf 密钥对 | Mockttp 按 host 现造并缓存 | 与客户端的会话 |
 | 源站真实密钥对 | 真实网站 | 代理与源站的会话 |
 
-**CA 私钥经 `safeStorage`（DPAPI/Keychain）加密存盘，只在 Main 与 Core 内存中流转，绝不进 Renderer、日志或导出。**
+**CA私钥不进Renderer、日志或普通证书导出。Windows按用户共享目录保存PEM文件，macOS保持原safeStorage加密方式。**
+
+#### Windows跨profile私钥保存
+
+- Windows将`root-key.pem`与公开证书、元数据放在同一用户共享目录，私钥不额外加密，不依赖Electron profile中的`Local State`。不使用公共目录、网络共享、PowerShell加解密或另一套密钥服务。
+- 同一系统用户的开发版、打包版及不同profile共用这套CA；换profile或删除profile不换CA，不同机器/系统用户不随安装包共享私钥。
+- macOS继续使用Keychain支持的`safeStorage`保存`root-key.enc`；Agent/MCP各自profile内的凭据格式不变。
+- 残缺、损坏或密钥不匹配仍显式失败并保留材料，不隐式重生成CA；不读取旧profile或迁移旧密文。首次启动只在材料全部不存在时生成。
+- 以同一真实workflow证明两代fresh profile保留同一CA身份、材料size/mtime和信任；第二代profile删除后材料及信任仍正确。故障恢复不作为该workflow的Green。
+- HTTPS解密还要求Core已经加载实际CA；没有CA时`tls.startDecryption`必须显式失败并保持不解密，不能出示仅供TLS分流器内部使用的临时身份。fresh profile的Workspace自行创建数据库父目录，不依赖Capture异步初始化，以免启动时TLS偏好读取失败而遗漏CA同步。
 
 ### 2.2 握手时序
 
@@ -118,7 +127,7 @@ sequenceDiagram
     Platform->>Cert: generate()
     Note over Cert: 懒加载 @peculiar/x509<br/>避免阻塞 Main 启动
     Cert->>Cert: RSA 2048 / SHA-256 Root CA
-    Cert->>Cert: safeStorage 加密私钥
+    Cert->>Cert: Windows 保存私钥 PEM / macOS safeStorage 加密保存
 
     UI->>Main: installCertificate
     Main->>Platform: installCertificate()
@@ -178,10 +187,10 @@ macOS只将匹配的公开证书经stdin交给系统验证，不生成临时证�
 #### CA与profile生命周期
 
 - 首窗顺序：App首窗和启动页先显示，再调用`PlatformCapabilitiesService.prepare()`准备系统组件/证书。平台对象通知`platform/certificate`，Main通过`startup:get-stage`及`startup:stage-changed`转发，全部服务可用后发布`ready`。Renderer `ApplicationStartup`准备期间仅挂载BootScreen及窗口控制，ready后才挂载业务订阅；迟到查询不得使进度倒退。Main在ready前拒绝业务IPC；helper、证书或代理操作忙时拒绝本次退出并提示当前操作，不保存延后退出。平台API不接受`AbortSignal`，已开始的操作完整收尾。Core/listener/自动接管顺序与MITM意图保持。
-- 材料为`root-cert.pem`、safeStorage加密的`root-key.enc`、`ca-meta.json`。Windows路径为`%LOCALAPPDATA%/Interceptor/certificates`；macOS路径为`~/Library/Application Support/Interceptor Platform/certificates`，均独立于默认及自定义profile。
+- 材料为公开的`root-cert.pem`、`ca-meta.json`及私钥文件：Windows为不额外加密的`root-key.pem`，macOS为safeStorage加密的`root-key.enc`。Windows路径为`%LOCALAPPDATA%/Interceptor/certificates`；macOS路径为`~/Library/Application Support/Interceptor Platform/certificates`，均独立于默认及自定义profile。
 - 启动顺序：安装安全Renderer协议与IPC → 显示启动页 → 准备原生组件 → 加载系统代理恢复记录 → 检查共享材料及精确指纹的真实信任 → 缺失才生成、未信任才安装/授信 → 其余Main服务/Core准备 → Renderer业务页面。只在App启动做初始化，Core重启与普通退出不重复授信或删除。
-- 已生成且受信任：不改文件、不调用安装、不重复系统确认。已有未信任：保留同一CA，只走原系统安装/授权，之后回读真实信任，仍未信任则报错。残缺、损坏、指纹/密钥不匹配、无法解密或过期材料保留并报错，不隐式换CA；取消/失败沿Main启动失败路径恢复代理并退出。新目录0700、材料0600；私钥仍仅以safeStorage密文保存。
-- `CertificateService`属于Main进程中的平台模块，统一拥有材料、加密、内部TrustStore、MITM意图和Core配置同步。Main只持有一个`PlatformCapabilitiesService`，直接调用业务方法并接收结果/error和状态通知，不持有各module实例。私钥只在Main/Core内存，不交root helper。Windows保留certutil/UAC，macOS保留前台helper系统确认；MITM开关仍按profile且不因CA初始化自动开启。
+- 已生成且受信任：不改文件、不调用安装、不重复系统确认。已有未信任：保留同一CA，只走原系统安装/授权，之后回读真实信任，仍未信任则报错。残缺、损坏、指纹/密钥不匹配、无法解密或过期材料保留并报错，不隐式换CA；取消/失败沿Main启动失败路径恢复代理并退出。Windows沿用当前用户目录权限，不能将0700/0600的POSIX模式当作Windows ACL证明；macOS保留新目录0700、材料0600。
+- `CertificateService`属于Main进程中的平台模块，统一拥有材料、内部TrustStore、MITM意图和Core配置同步。Main只持有一个`PlatformCapabilitiesService`，直接调用业务方法并接收结果/error和状态通知，不持有各module实例。私钥读取后只交Main/Core，不交root helper、Renderer或额外加解密进程。Windows保留certutil/UAC，macOS保留前台helper系统确认；MITM开关仍按profile且不因CA初始化自动开启。
 - 现有Generate/Regenerate、Uninstall、Delete作用于共享CA；仍须显式用户操作，受信任时不能直接Regenerate。Uninstall保留本地材料，Delete先撤销信任再删材料；下次启动按缺失步骤初始化。普通退出和普通业务workflow不能撤销/删除共享CA。
 - 不迁移或复制旧profile材料，不增加测试专用路径/开关，不分发跨用户共用私钥。业务配置、凭据和Tool授权仍隔离，测试不放宽零seed要求。
 - 删除已退出App的业务profile不删除或改写共享CA。共享启动workflow须在真实删除测试profile后再次核对公开指纹、三份文件的size/mtime和系统信任，不能只靠目录不同或退出前的查询推断。
@@ -406,7 +415,8 @@ Main通过同包helper执行macOS代理和System Keychain公开证书操作。
 #### 可选上游配置（与当前实现的差异）
 
 以下为已确认设计及当前macOS实现；真实网络流程和恢复按下述边界验收。
-Windows原生发现与实机验收独立归Handover第8项。
+Windows原生WPAD发现与对应实机验收独立归Handover第13项，不阻塞第8项；当前只记录待办，不将尚未实现的Windows发现能力标记为通过。
+当前Windows显式选择WPAD会返回不支持；System模式仅有Auto Detect、没有显式代理或PAC时按直连处理。macOS的发现与真实网络结果不能证明Windows已实现WPAD；这一限制与实验网络准备分别跟踪。
 当前代码已接入五种模式和双入口；WPAD使用系统DNS解析与缓存的DHCP 252 URL，尚不主动发送DHCP发现请求。
 固定路由、Manual重启回载、PAC/WPAD失败保持、DNS-WPAD的DIRECT及重启、系统Auto Detect的DIRECT和跨profile崩溃恢复
 已有真实App验收。macOS在仅启用Auto Detect时会提供`http://wpad/wpad.dat`，由系统搜索域解析短主机名，
@@ -607,7 +617,7 @@ dialog。dialog 为每个 host 列出多层级候选（精确 host + 逐级父�
 保存未被现有 wildcard 覆盖的 pattern，并导航到
 TLS Settings。Store 同时推进 settings change sequence，使已经挂载的 TLS 面板立即重读，旧请求晚返回
 也不能覆盖新名单。默认列表为空，WVD badge 只是建议，不会自动保存。
-技术选型见[backlog/research.md](../backlog/research.md) § 3.3。Mockttp的`tlsPassthrough`接受getter，
+Mockttp的`tlsPassthrough`接受getter，
 名单每连接求值，因此**保存即对新连接生效**，既不重建共享 listener也不需要重启；在途连接不受
 影响。增加后删除、删除后加回、顺序或大小写变化同样不需要额外动作。
 
@@ -716,7 +726,7 @@ sequenceDiagram
 
 **生命周期**：`DesktopApplication`初始化updater并广播`update:status`；packaged Windows/macOS启动一次检查，此后每小时检查，正在下载或已下载时不自动覆盖结果。退出停止timer并取消检查/下载，已取消请求的迟到响应不能发布新状态或保留安装器，临时`.part`清理。未打包目标为`unsupported`。packaged Renderer从受保护ASAR经`interceptor://app`加载，不存在远程代码覆盖层。
 
-**UI**：Updates从Version开始，Delivery保留固定来源、检查/下载策略、进度和显式Check/Download/Open installer，GitHub access、Private及账号文案已移除。公开`settings.updates.status`只反映`data-state`、`data-supported`和`data-last-checked-at`，不增加业务接口。Main safeStorage仍用于CA及Agent/MCP等原有功能；macOS Keychain访问许可不是GitHub登录。
+**UI**：Updates从Version开始，Delivery保留固定来源、检查/下载策略、进度和显式Check/Download/Open installer，GitHub access、Private及账号文案已移除。公开`settings.updates.status`只反映`data-state`、`data-supported`和`data-last-checked-at`，不增加业务接口。Main safeStorage仍用于macOS CA及Agent/MCP凭据；macOS Keychain访问许可不是GitHub登录。
 
 ### 更新通知按钮
 
@@ -886,7 +896,7 @@ passthrough额外要求`expectedRevision`；空数组仅表示清空该名单，
 
 | 边界 | 保证 |
 | --- | --- |
-| CA 私钥 | 只在 Main 与 Core 内存，safeStorage 加密存盘 |
+| CA 私钥 | Windows用户共享目录内的PEM文件；macOS保持safeStorage密文。读取后只交Main/Core，不进参数、日志或普通证书导出 |
 | 文件路径 | Main/Core负责本地文件访问，Renderer只有窄API公开字段，不能调用通用readFile/writeFile |
 | 更新 URL | 只在 Main，Renderer 无法提交任意 URL |
 | 系统代理 | 只在 Main，guarded 写入，日志不含 snapshot |

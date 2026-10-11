@@ -85,21 +85,20 @@ npm exec --workspace @interceptor/desktop playwright test -- --config tests/e2e-
 
 每条workflow仍独立profile/trace，系统授权由本机用户处理；常驻helper跨workflow保留，Main/Core/Worker、前台helper子进程和8888仍必须退出恢复。macOS失败清理先确认完整代理已恢复，否则保留App、listener和profile，不再让测试侧重复弹旧代理授权后强杀。证书admin trust由同一已部署helper的前台固定入口执行，仍有独立系统权限；不以Main的security写命令代替。组件卸载不等于业务恢复，整轮结束按已确认的保留/卸载范围处理。新trust成功/取消workflow的实机状态见Inventory，不复用旧Main路径的Green。
 
-macOS业务窗口由driver按项目配置准备：常规场景保持真实1600x900，只有body-fill滚轮边界场景使用1600x800，Windows项目/窗口逻辑不变。macOS admin trust前后检查统一在宿主guard；TLS/gRPC/H2保持相同业务步骤。HTTPS弹窗定位已按共享CA前提通过真实验收；共享native文件窗口的14个调用文件、16个场景均完成macOS复验，逐条结果和历史失败见Handover。GoTo使用唯一原生建议项的真实双击，Save/Open及取消真实点击原生按钮，不改输入法、语言或dialog返回值；Windows实机仍归第8项。
+macOS业务窗口由driver按项目配置准备：常规场景保持真实1600x900，只有body-fill滚轮边界场景使用1600x800。Windows项目默认尺寸不变，body-fill保留默认尺寸布局检查后，仅在滚动阶段调整本轮真实窗口高度到800px。macOS admin trust前后检查统一在宿主guard；TLS/gRPC/H2保持相同业务步骤。HTTPS弹窗定位已按共享CA前提通过真实验收；共享native文件窗口的14个调用文件、16个场景均完成macOS复验，逐条结果和历史失败见Handover。GoTo使用唯一原生建议项的真实双击，Save/Open及取消真实点击原生按钮，不改输入法、语言或dialog返回值；Windows实机仍归第8项。
 
 ### Windows 复验
 
-以下是Handover第8项统一跟踪的Windows实机验收范围。按用户确认，Windows待验不作为其他item的提交blocker；原生/E2E的未执行、skip及失败仍分别保留，macOS结果不能替代，也不免除发布产物的门禁。Manager管理员MMC原生专项已由用户排除，Manager功能、逻辑与UI仍保留。路径相对[workflows/](workflows/)，`{a,b}`代表两份文件，详细步骤见[规格索引](docs/README.md)。
+以下记录Windows item 8的验收范围与各场景实际状态。按用户确认，Windows待验不作为其他item的提交blocker；原生/E2E的未执行、skip及失败仍分别保留，macOS结果不能替代，也不免除发布产物的门禁。Manager管理员MMC原生专项及依赖人工点击的Windows UAC取消专项不在本轮验收范围；产品功能、可自动化的拒绝/取消逻辑与证书安装/卸载/退出恢复测试保留。Bilibili专属登录探针已按用户要求移除，不用第三方登录态作为验收前提，也不将移除记为passed。路径相对[workflows/](workflows/)，`{a,b}`代表两份文件，详细步骤见[规格索引](docs/README.md)。
 
 | 分组 | 用例 | 重点 |
 | --- | --- | --- |
-| CA/启动/View | `settings/{certificate-startup,tools-certificates,tools-tls}.workflow.ts` | 首窗先于UAC、取消、跨profile/safeStorage复用、坏材料保留、卸载/删除及真实View关窗；就绪120秒、证书操作30秒、普通操作15秒，先终态后清理 |
+| CA/启动/View | `settings/{certificate-startup,tools-certificates,tools-tls}.workflow.ts` | 首窗先于UAC、跨profile/共享CA复用、坏材料保留、卸载/删除及真实View关窗；就绪120秒、证书操作30秒、普通操作15秒，先终态后清理；不要求人工UAC取消专项 |
 | 代理/AppContainer | `settings/{tools-system-proxy,system-proxy-crash-recovery,app-container-bulk-access,tools-app-containers,app-container-ordering}.workflow.ts` | 单项/批量UAC、冲突/Quit立即拒绝、无重放、完整WinINet/exemption恢复 |
 | 协议/交互 | `capture/{tls-scenarios,http2-scenarios,http2-origin-goaway,grpc-scenarios,navigate-tls-passthrough}.workflow.ts`；`settings/{tls-compatibility,proxy-mitm-persistence}.workflow.ts`；`agent/body-messages.workflow.ts` | 首请求源站例外、暂停响应正常GOAWAY完整排空、Edge证书校验、Raw/Copy长度及hash、每代Page；取消背景host默认选择，Capture discovery精确17项 |
 | 导入/只读 | `composer/{collection-import,tools-transfer}.workflow.ts`；`rules/{import-tree,tools-import}.workflow.ts`；`settings/tools-readonly.workflow.ts` | 真实signal、原生/预览Cancel与Confirm、退出取消、重启零重放；六项无审批查询及CA不变 |
 | 构建/路径（含原第11项） | `npm run build:native --workspace @interceptor/platform-capabilities`及该package所属测试；[Client App](../../../proxy-core/src/proxy-core/client-app/tests/unit/service.test.ts)、[Transfer](../../../proxy-core/src/proxy-core/transfer/tests/unit/job-manager.test.ts)；Windows文件窗口通过上述原生导入/导出workflow验收 | package开发资源与App同包路径、共用runner、8 MiB枚举、certutil/UAC、Windows路径解析、互斥拒绝与无重放；不使用macOS skip或脚本文本断言替代真实原生操作 |
-| 已登录浏览器（原第16项） | `capture/bilibili-login-probe.workflow.ts`；[登录回归规格](docs/capture.md#capture-bilibili-login-regression) | 真实Windows Edge Default profile及既有登录态、UIA完整页面刷新、Cookie名称与H2流量；不注入Cookie、不记录凭据、不使用macOS替代 |
-| 纯Auto Detect/WPAD | [上游契约](../../../../architecture/features/settings.md#34-上游代理链式转发)；真实网络人工验收，尚无可运行workflow | 无PAC URL及显式代理；接管前后实际出网路径、错误与完整退出恢复，不以手填PAC替代 |
+| 纯Auto Detect/WPAD（独立item 13，不阻塞item 8） | [上游契约](../../../../architecture/features/settings.md#34-上游代理链式转发)；[Handover item 13](../../../../architecture/HANDOVER.md)独立跟踪Windows实现和真实网络验收，尚无可运行workflow | 无PAC URL及显式代理；接管前后实际出网路径、错误与完整退出恢复，不以手填PAC替代；从item 8移出不代表已实现或passed |
 | 产物/全量 | 全部适用workflow、[packaged smoke](../packaged-smoke/startup.spec.ts)及[Windows安装器smoke](../installer/windows-installer-smoke.mjs) | ready门禁、精确Preload白名单、Core重启、截图矩阵、签名/资源、安装升级卸载、系统设置/进程恢复 |
 
 ## 目录结构
@@ -216,9 +215,9 @@ diagnostics.row.<traceKey>
 | `capture.navigate-tls-passthrough` | 从TLS tunnel跳到最具体的覆盖pattern并短暂高亮 | privileged UI | passed |
 | `capture.facets-clear-menu` | Facet顺序、Breakpoint菜单和Clear同步回归 | privileged UI | planned |
 | `capture.detail-body-fill` | Detail Response BodyViewer填满剩余高度 | privileged UI | passed |
-| `capture.messages.compact-layout` | 普通gRPC/WS短长消息限高、拖拽、内外滚动、窗口缩放、Copy/全屏及205条gRPC分页 | privileged UI | macOS passed；Windows待实机 |
-| `capture.body-preview-limits` | 2MiB预览、1–2MiB手动格式化与截断禁止 | os-side-effect | macOS passed；Windows待实机 |
-| `capture.body.fullscreen` | Request/Response全屏、真实Copy、关闭/再开、Raw/Hex模式保持 | os-side-effect | passed |
+| `capture.messages.compact-layout` | 普通gRPC/WS短长消息限高、拖拽、内外滚动、窗口缩放、Copy/全屏及205条gRPC分页 | privileged UI | Windows消息布局、拖拽、Copy/分页已验；窗口缩放子步骤保留macOS原记录 |
+| `capture.body-preview-limits` | 2MiB预览、1–2MiB手动格式化与截断禁止 | os-side-effect | Windows实机已验；macOS保留原记录 |
+| `capture.body.fullscreen` | Request/Response全屏、真实Copy、关闭/再开、Raw/Hex模式保持 | os-side-effect | Windows前置Red→最终Green：URL就绪后显示Copy，标题/General完整URL及JSON/HTML Header hover通过；正常退出与宿主恢复已核对 |
 | `capture.list.virtual-scroll` | 大列表虚拟滚动和状态保持 | shared | planned |
 | `capture.inspector.body-modes` | Auto/Text/JSON/Hex精确正文 | shared | planned |
 | `capture.protocols.without-mitm` | HTTP/WS完整捕获，HTTPS/WSS仅tunnel | shared | planned |
@@ -226,7 +225,7 @@ diagnostics.row.<traceKey>
 | `capture.playground-traffic` | Playground UI自产H1、WebSocket及H2错误GOAWAY流量进入真实Capture | os-side-effect | passed |
 | `capture.scenarios.http` | H1 JSON/上传/流式/early response/中断及413完整响应收尾，不改Mockttp | os-side-effect | passed |
 | `capture.scenarios.http2` | H2 Headers/trailer/正文、Range及双向错误GOAWAY与CA恢复 | privileged UI | passed |
-| `capture.http2-origin-goaway` | 源站正常GOAWAY后放行4 MiB响应，完整hash/trailer/end、新上游session与无重放 | privileged UI | macOS passed；Windows待实机 |
+| `capture.http2-origin-goaway` | 源站正常GOAWAY后放行4 MiB响应，完整hash/trailer/end、新上游session与无重放 | privileged UI | Windows实机已验；macOS保留原记录 |
 | `capture.scenarios.bodies` | 十一种正文的实际模式、Raw保真及安全展示 | os-side-effect | passed |
 | `capture.scenarios.body-media` | PNG/二进制/音视频原生导出 | native-ui | passed |
 | `capture.scenarios.encoding` | 三种正常压缩和损坏gzip/图片 | os-side-effect | passed |
@@ -299,8 +298,8 @@ diagnostics.row.<traceKey>
 | `breakpoints.execute-edited` | Header-only、Body-only、Header+Body、继承chunked四段真实HTTP编辑 | privileged UI | passed |
 | `breakpoints.drop` | Drop并终止数据面 | shared | planned |
 | `breakpoints.resize` | Capture列表/Inspector splitter | shared | planned |
-| `breakpoints.body-preview` | 产品导出File的有界预览、完整文件/Text发送及短File布局联动 | native-ui | macOS passed；Windows待实机 |
-| `breakpoints.original-body` | Original限高、2MiB预览与完整原文放行 | os-side-effect | macOS passed；Windows待实机 |
+| `breakpoints.body-preview` | 产品导出File的有界预览、完整文件/Text发送及短File布局联动 | native-ui | Windows大/短File预览与完整文件发送已验；macOS保留原记录 |
+| `breakpoints.original-body` | Original限高、2MiB预览与完整原文放行 | os-side-effect | Windows实机已验；macOS保留原记录 |
 | `breakpoints.websocket-close` | WebSocket close-code-only编辑 | privileged UI | planned |
 
 详细步骤：[docs/breakpoints.md](docs/breakpoints.md)
@@ -325,8 +324,8 @@ diagnostics.row.<traceKey>
 | `settings.navigation` | 十个Settings section与跨workspace返回保持 | shared | passed |
 | `settings.tools.readonly` | Agent/MCP六项Settings只读查询、脱敏、撤权、双代零重放与完整宿主恢复 | shared | passed |
 | `settings.tools.system-proxy` | Agent审批/Auto启用与恢复系统代理、首次original保持、撤权和双代零重放 | os-side-effect | passed |
-| `settings.tools.tls` | TLS名单与解密意图/有效状态、即时UI同步、撤权、重启和测试CA清理 | privileged UI | passed；当前Windows版本待实机复验 |
-| `settings.tools.certificates` | Agent/MCP六项证书生命周期与查看、授权、重启及完整CA清理 | native-ui + privileged UI | passed；当前Windows版本待实机复验 |
+| `settings.tools.tls` | TLS名单与解密意图/有效状态、即时UI同步、撤权、重启和测试CA清理 | privileged UI | passed；Windows PEM方案已实机复验，macOS保留既有记录 |
+| `settings.tools.certificates` | Agent/MCP六项证书生命周期与查看、授权、重启及完整CA清理 | native-ui + privileged UI | passed；Windows PEM生命周期与查看已复验，不含macOS-only授权取消专项 |
 | `settings.tools.app-containers` | Agent/MCP单项及批量exemption、挂载同步、撤权与双代恢复 | privileged UI | passed |
 | `settings.tools.language` | 原UI/Agent/MCP语言设置、独立授权、持久化与双代销毁 | shared | passed |
 | `settings.tools.preferences` | 原UI/Agent/MCP主题与Privacy默认值、HAR草稿隔离和双代销毁 | shared | passed |
@@ -338,7 +337,7 @@ diagnostics.row.<traceKey>
 | `settings.system-proxy.crash-recovery` | App A异常退出后由顺序启动的App B加载首次快照并完整恢复 | os-side-effect | passed |
 | `settings.proxy-mitm.persistence` | 异常退出后恢复系统代理并跨进程恢复MITM/TLS配置 | os-side-effect | passed |
 | `settings.certificates.generate-delete` | CA Generate/Regenerate/Delete | shared | planned |
-| `settings.certificates.shared-startup` | 自动准备共享CA，正常退出保留，跨fresh profile复用且不重写材料 | shared / os-side-effect | macOS签名包生成/复用及删除profile后保留已验；契约见[Settings](../../../../architecture/features/settings.md#ca与profile生命周期) |
+| `settings.certificates.shared-startup` | 自动准备共享CA，正常退出保留，跨fresh profile复用且不重写材料 | shared / os-side-effect | Windows PEM生成/跨profile复用及删除profile后保留已验；macOS保留既有签名包记录，契约见[Settings](../../../../architecture/features/settings.md#ca与profile生命周期) |
 | `settings.certificates.startup-cancel` | 首次原生授权时首窗可见、Quit即时拒绝、取消收尾及同CA正常重启 | macOS / os-side-effect | passed |
 | `settings.certificates.trust` | Install/Uninstall本机信任 | os-side-effect | planned |
 | `settings.certificates.helper-trust` | macOS两张不同CA直接经前台helper授信/撤销，复用同一常驻组件 | macOS / os-side-effect | passed |
@@ -349,7 +348,7 @@ diagnostics.row.<traceKey>
 | `settings.tls-compatibility` | 真实TLS失败提示、精确host/wildcard选择、滚动、保存与Not now；最终Green，保留样式前置缺口 | privileged UI | planned |
 | `settings.storage.refresh-clear` | 单项正文用量、右上Refresh及两处Clear同步、取消和录制状态保持 | os-side-effect | passed |
 | `settings.privacy.defaults` | Export隐私默认值与持久化 | os-side-effect | planned |
-| `settings.updates.check` | 匿名检查、请求失败重试和同profile重启；无账号API/控件，退出恢复 | native-ui | passed（macOS packaged失败路径；Windows待复验，不含下载/Open成功链路） |
+| `settings.updates.check` | 匿名检查、请求失败重试和同profile重启；无账号API/控件，退出恢复 | native-ui | Windows local不可用状态已验；保留macOS packaged失败路径记录，Windows下载/Open成功链路未验 |
 | `settings.updates.download-open` | 真实下载、校验和打开安装器 | native-ui | planned |
 | `settings.update-notification` | Header通知与Settings状态同步 | shared | planned |
 
@@ -380,8 +379,8 @@ diagnostics.row.<traceKey>
 | Workflow ID | 用户目标 | 策略 | 状态 |
 | --- | --- | --- | --- |
 | `mcp.desktop.streamable-http` | 三版官方Client经loopback HTTP接入、单次取消、授权Tool、同步Rules并跨重启保持状态 | shared | macOS三协议Green；不代表当前开发Host验收 |
-| `mcp.settings.protocol-support` | Server关闭/运行时均显示三版协议说明，不提供版本切换器 | shared | macOS passed；Windows实机归Handover第8项 |
-| `mcp.current-host` | 当前开发Agent通过真实Host公开MCP通道调用Tool，fixture核对App裁决与退出 | current-agent interactive | Copilot CLI/SDK公开通道passed；原生工具搜索热刷新/其他Host未验，未提供Host时明确skip |
+| `mcp.settings.protocol-support` | Server关闭/运行时均显示三版协议说明，不提供版本切换器 | shared | Windows实机已验；macOS保留原记录 |
+| `mcp.current-host` | 当前开发Agent通过真实Host公开MCP通道调用Tool，fixture核对App裁决与退出 | current-agent interactive | Windows精准筛选版本最终Green：当前Host代表查询、审批、真实Clear及Client/CA/宿主清理通过；旧假阳性和重连超时保留，不代表全部Tool或其他Host通过 |
 | `mcp.browser-playground-cors` | Browser以Bearer跨Origin连接最新MCP并完成query/change调用 | shared | passed |
 | `mcp.tools.breakpoints` | 官方MCP Client处理真实HTTP/WebSocket pending | privileged UI | passed |
 
@@ -445,6 +444,8 @@ Trace不得包含真实凭据、CA私钥或真实用户流量。
 ## 并发与隔离
 
 默认 `workers: 1`。系统代理、信任库、8888 listener和UtilityProcess属于进程/OS级资源；只有全部改为独立资源并经过证明后才能提高并发。
+
+平台专属workflow在创建App/fixture前限定平台：AppContainer仅Windows；macOS helper、Keychain授权、上游/WPAD及macOS窗口专项仅macOS。共享流程使用当前平台driver，未执行平台不记通过。
 
 普通fixture使用loopback origin；privileged workflow必须headed运行，并在Close前通过UI恢复全部系统副作用。
 

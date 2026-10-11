@@ -5,7 +5,7 @@ import path from 'node:path';
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import { getByAutomationId } from '../../fixtures/ui/automation';
-import { isCertificateTrusted, rootCertificateThumbprints, sharedCertificateDirectory } from '../../fixtures/ui/https-capture';
+import { isCertificateTrusted, rootCertificateThumbprints, sharedCertificateDirectory, sharedCertificateFileNames } from '../../fixtures/ui/https-capture';
 
 interface SharedCertificateSnapshot {
   thumbprint: string;
@@ -22,7 +22,7 @@ async function readSharedCertificate(): Promise<SharedCertificateSnapshot | null
     throw error;
   }
   const files = [];
-  for (const name of ['root-cert.pem', 'root-key.enc', 'ca-meta.json']) {
+  for (const name of sharedCertificateFileNames) {
     const metadata = await stat(path.join(directory, name));
     files.push({ name, size: metadata.size, modifiedAt: metadata.mtimeMs });
   }
@@ -62,6 +62,10 @@ startupTest('settings.certificates.shared-startup reuses a trusted CA across fre
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.section.certificates).click();
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.certificates.uninstall)).toBeEnabled();
+    if (process.platform === 'win32') {
+      expect((await stat(path.join(sharedCertificateDirectory(), 'root-key.pem'))).isFile()).toBe(true);
+      await expect(stat(path.join(sharedCertificateDirectory(), 'root-key.enc'))).rejects.toMatchObject({ code: 'ENOENT' });
+    }
     expect(await isCertificateTrusted(firstCertificate!.thumbprint)).toBe(true);
     await expect(stat(path.join(desktopApp.userDataDirectory, 'certificates', 'root-cert.pem'))).rejects.toMatchObject({ code: 'ENOENT' });
     if (certificateBaseline.certificate) expect(firstCertificate).toEqual(certificateBaseline.certificate);

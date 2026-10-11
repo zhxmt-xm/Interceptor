@@ -33,6 +33,8 @@ external模块在顶层`require`可能阻塞packaged Main与CDP初始化，因�
 
 - **稳定身份/版本**：Desktop `0.1.0`，`com.zhxmt.interceptor` 作为 Bundle ID / AppUserModelId；Windows executable 为 `asInvoker`。MSI 固定 UpgradeCode，x64、per-user，不把 auto-update feature 耦合进安装器。
 - **Windows maker**：Forge WiX maker + 固定校验的 portable WiX 3.14.1；`make` 产出 MSI。可选 `WINDOWS_CERTIFICATE_FILE/PASSWORD` 同时签 app 与 MSI。生命周期 smoke 构建两版，验证 install → launch → major-upgrade → launch → uninstall。
+  - 安装生命周期runner复用workflow的Windows宿主guard，运行前要求共享CA已就绪；每版等待真实App/Core/8888，点击公共Close并复核进程、完整WinINet、journal和Root集合。失败保留profile，恢复未确认时不移除安装树，不把强杀当作正常退出。
+  - npm入口仅为测试runner启用Node 24的`--experimental-transform-types`，直接加载既有TypeScript guard；不增加依赖，也不将此参数传给产品Electron。
 - **macOS maker**：无身份时使用ad-hoc签名并启用Hardened Runtime；`optionsForFile`仅对App bundles应用[本地entitlements](../../apps/desktop/assets/macos-local-app-entitlements.plist)，允许JIT和无Team ID内嵌库加载，不开放DYLD注入、get-task-allow或关闭执行页保护。原生helper不使用该override。有`APPLE_SIGN_IDENTITY`时使用默认Hardened Runtime、entitlements和身份校验；公证凭据齐全才提交并staple。两种构建共用Fuses、sandbox与CSP，不改Gatekeeper或授权数据库；ad-hoc不等于Developer ID或公证。
 - **原生helper**：`@interceptor/platform-capabilities`拥有原生源码和构建；Windows使用系统.NET Framework的`csc.exe`，macOS使用`xcrun swiftc`。Desktop调用package的`build:native`，Forge将`packages/platform-capabilities/dist`内的`system-proxy`、`app-container`、`client-app`复制到原有同名resources目录。macOS helper使用package内固定identifier、Hardened Runtime和独立空entitlements，不继承Electron的JIT/设备权限。构建按源码、工具链、签名参数和产物hash缓存，缓存不进入App资源。
 - **macOS首次启动组件**：helper随App交付，Main检查部署并按需请求本机管理员授权，仅安装helper、root保护配置和launchd，不移动App或要求独立`.pkg`。生产按App配套签名身份核准；开发/业务E2E使用独立UID授权，不绑定每次App构建。两个socket共用服务，helper不独立下载或升级。[部署规则](../../packages/platform-capabilities/README.md#首次启动部署)。
@@ -49,6 +51,7 @@ external模块在顶层`require`可能阻塞packaged Main与CDP初始化，因�
 - 自有代码采用根目录`LICENSE`中的Apache-2.0，版权归属见`NOTICE`；自有workspace声明相同SPDX标识，`private: true`继续防止误发npm，与GitHub仓库可见性无关。
 - Forge将`LICENSE`与`NOTICE`复制到App的Resources。Main、Preload和Renderer使用Vite已有的`build.license`收集各自内联依赖的许可；Core同时根据esbuild输入和nft运行时闭包收集原始许可/归属声明，随Core资源交付。
 - 第三方代码继续遵守各自许可，不因Interceptor采用Apache-2.0而改写第三方许可；Electron自带许可和Chromium notices保留。artifact audit核对自有许可、元数据及生成的依赖许可声明。
+- ASAR审计向`extractFile()`传入按宿主规则规范化的内部路径；Windows与macOS都必须读到Main、Preload和Renderer三份非空许可文件，不因路径分隔符差异跳过检查。
 - 少数npm tarball未附许可正文；`third-party-licenses/sources.json`按准确包名、版本和SPDX记录已核对的上游正文、README许可段落及来源。Core构建只对这些已登记版本补入声明；依赖升级后缺失许可正文或SPDX不一致时直接失败，不能以通用许可模板或空文本代替版权声明。
 - GraphQL Tools与Promise helpers按升级后的准确版本固定官方LICENSE来源；代理认证模块保留其从HTTP/HTTPS
   Agent抽出的共享实现的上游MIT声明。QuickJS WASI包装层仅提供MIT元数据，明确记录这一上游限制，不虚构包装层

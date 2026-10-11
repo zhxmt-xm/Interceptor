@@ -209,6 +209,9 @@ export class ProxyService {
    * 调用方：tls.startDecryption command handler（Settings 的 Decrypt HTTPS 开关）。
    */
   async startHttpsDecryption(): Promise<void> {
+    if (!this.tlsConfig.ca) {
+      throw new Error('A Root CA is required for HTTPS decryption.');
+    }
     this.generateTls({ ...this.tlsConfig, mitm: true });
     if (this.server && this.listenerCertificate?.cert !== this.tlsConfig.ca?.cert) {
       await this.rebuildServer();

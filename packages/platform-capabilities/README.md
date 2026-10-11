@@ -90,7 +90,8 @@ Main/Core连接适配、平台组合和Certificate材料的既有回归位于Des
 
 ### 谁执行
 
-- Main：调用平台启动/退出入口并转发通知；平台module在Main进程执行。CertificateService生成CA、用safeStorage加密私钥，通过内部TrustStore完成安装/撤销/删除并同步Core；私钥只交Core内存签发叶证书，不交helper。
+- Main：调用平台启动/退出入口并转发通知；平台module在Main进程执行。CertificateService生成CA，Windows将私钥作为`root-key.pem`保存到当前用户共享目录，macOS保持safeStorage加密的`root-key.enc`；内部TrustStore完成安装/撤销/删除并同步Core，私钥不交特权helper。
+- Windows私钥不额外加密，也不增加PowerShell、原生加解密helper或独立密钥服务；CA和私钥共用用户级目录，不跟随profile复制。目录权限不等于加密，私钥不能随公开CA证书分发。Agent/MCP的同步safeStorage契约不变。
 - macOS常驻root helper：读写系统代理，向System.keychain导入/删除精确公开CA。没有trust/untrust socket命令，不修改授权规则。
 - macOS前台helper：同一个已安装二进制，以登录用户身份执行`certificate.trust/untrust`；Security框架请求系统确认。`certificate.view`另用SecurityInterface的`SFCertificatePanel`只读显示公开DER，关闭信任编辑；真实窗口显示且控件证书字节匹配后回复`{ sha256, opened: true }`，关闭或调用App退出时结束前台进程。后台root socket不开放View，参数不接受路径/私钥。
 - macOS部署入口：同包helper请求系统确认，获准的固定root操作负责安装、更新、卸载组件；不属于日常代理命令或证书信任授权。
@@ -104,7 +105,7 @@ Main/Core连接适配、平台组合和Certificate材料的既有回归位于Des
 - macOS组件与批准：helper、launchd、socket和生产/开发配置在`/Library`固定位置。开发按获准UID复用；生产App身份或helper字节改变仍可能需要更新批准，与profile无关。
 - Windows恢复journal：`%LOCALAPPDATA%/Interceptor/system-proxy/journal.json`为用户级固定路径。它是待恢复的临时状态，不是永久保持代理接管的配置。
 - macOS恢复journal：`~/Library/Application Support/Interceptor Platform/system-proxy/journal.json`；不放进默认Interceptor profile，格式仍为`original/owned/effectiveProxies`。
-- 共享CA材料：Windows `%LOCALAPPDATA%/Interceptor/certificates`，macOS `~/Library/Application Support/Interceptor Platform/certificates`；同OS用户的开发/生产/fresh profile共用，safeStorage密文私钥不分发给其他用户。
+- 共享CA材料：Windows `%LOCALAPPDATA%/Interceptor/certificates`，macOS `~/Library/Application Support/Interceptor Platform/certificates`；同OS用户的开发/生产/fresh profile共用，私钥不分发给其他用户或设备。
 - 两端随App交付的native程序属于安装资源，不复制到各profile。
 
 ### profile内状态：两端业务隔离一致
@@ -118,7 +119,7 @@ Main/Core连接适配、平台组合和Certificate材料的既有回归位于Des
 - CA原profile材料不迁移、不回退读取。共享材料残缺、损坏、过期、指纹或密钥不匹配时保留并报错；只在全部材料不存在时生成，信任就绪后不写文件或重复授信。
 - macOS尚不支持`client-app`，即本机连接归属与应用图标；AppContainer仅适用于Windows，不为macOS提供伪实现。
 - macOS证书View使用只读系统面板显示目标证书；Finder识别系统返回的已知路径引号，不依赖列表模式，复用窗口不关闭用户已有窗口。
-- WinINet与SystemConfiguration、UAC与macOS系统确认、DPAPI与Keychain是必要原生差异。macOS保存完整service快照和接管前生效上游，按HTTP/HTTPS分别下发；Windows保留原单一上游结构及journal版本，不为形式一致改Windows。
+- WinINet与SystemConfiguration、UAC与macOS系统确认是必要原生差异。CA私钥按Windows用户目录PEM/macOS Keychain支持的safeStorage分别保存；macOS保存完整service快照和接管前生效上游，按HTTP/HTTPS分别下发，Windows保留原单一上游结构及journal版本。
 - 仅Auto Detect的上游行为仍不同：Windows现行直连，macOS无显式代理/PAC时拒绝接管，不能宣称WPAD双端一致或已验。
 
 ### 聚合与迁移状态
