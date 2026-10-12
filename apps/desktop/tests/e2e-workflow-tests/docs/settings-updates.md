@@ -433,6 +433,81 @@ Enable all 与 Disable all 各自对应一条 Main 命令和一次 UAC；前者�
 
 ClashX三条属于`settings.proxy.upstream`，另一条为既有跨profile crash；四条均须保留实际数据流、完整代理和退出恢复证据，现行字段与恢复约定见[macOS生效上游](../../../../../architecture/features/settings.md#macos生效上游)。
 
+<a id="settings-upstream-windows"></a>
+## `settings.upstream.windows`
+
+**状态**：已验证。负向workflow取得真实前置Red和最终Green；隔离Windows VM中DNS-only、DHCP-only、双来源分别以WPAD与System运行，HTTP/TLS选路、App/Core代际及正常退出恢复均通过。正向网络的历史前置Red不补造；详细边界见[实现与证据](../../../../../architecture/features/settings.md#windows-wpad-research)。
+**策略**：真实Windows Electron；沿用现有PlatformCapabilities上游API；macOS代码、分支和测试不修改。
+
+### Steps
+
+1. 创建独立profile和trace，由Windows宿主guard保存完整WinINet、journal、Root集合及进程/端口基线。
+   共享CA须已通过产品正常初始化；不为普通上游用例修改证书信任。
+2. 启动真实Electron，等待App/Core/listener；按公共readiness入口进入Recording。
+   使用本workflow的loopback origin及HTTP CONNECT上游，不连接外部业务目标。
+3. 通过Capture快捷浮层选择Manual，填入本轮上游Host/Port并Apply。
+   验证快捷入口与Current route均为Manual，实际请求经过该上游且取得自产origin正文。
+4. 本机负向场景只在独立原生只读检查确认当前网络没有WPAD时运行，不修改DNS、DHCP或Auto Detect。
+   从UI选择WPAD并Apply，须报告发现失败而非`WPAD discovery is not supported on this platform.`；
+   最长等待35秒覆盖30秒发现期限及收尾，不用翻译文案定位或断言错误类别。
+   已保存Manual、当前路线及原WinINet保持不变，后续真实请求仍经过原上游，失败操作解除占用。
+5. 同场景另尝试本workflow已关闭端口的PAC URL，验证PAC不可达也保留Manual及实际选路。
+   Cancel后重开浮层，草稿回到Manual且错误消失；通过Settings入口核对同一已保存模式。
+6. 获得隔离实验网络授权后，分别运行DNS-only、DHCP-only和两者提供不同PAC的优先级场景。
+   用户只选择WPAD，不手填发现结果；保存真实DNS/DHCP报文、PAC请求和Core的PROXY/DIRECT路径。
+7. 在隔离环境中仅开启System Auto Detect、关闭显式代理/PAC，通过默认System验证自动发现；
+   发现或PAC预检失败时不得接管WinINet。成功后同profile重启、跨profile崩溃恢复及Core代际恢复须重新选路，
+   不把owned的8888作为原上游，不把发现URL写入原始WinINet/journal。
+8. 保存每条实际执行场景的trace、截图、输入来源和路由证据。点击产品Close，
+   验证Main/Core/Worker与本次Windows helper退出、8888释放、完整WinINet及journal恢复。
+   实验网络在产品自行恢复后再由独立保护撤销；保底恢复、未运行或环境阻塞不能算Green。
+
+### 预期与证据
+
+- Windows helper用WinHTTP发现URL，Core继续下载、编译并逐请求选路；两个UI入口读取同一状态。
+- 明确区分Windows原生无WPAD、其他Win32错误、进程超时与PAC预检失败；非法JSON、URL及原生边界由所属unit/integration覆盖。
+- 先取得定向unit/integration Red，再运行真实Electron目标行为Red，修改后按相同顺序复跑。
+  本机负向流程只证明Windows实际执行发现并保持旧路线，不能替代DNS/DHCP正向、System Auto Detect或崩溃恢复证据。
+- 独立网络未授权或未就绪时保留待验范围，不改宿主日常网卡，不在办公网启动DHCP，不以macOS既有结果代替Windows。
+
+### 正向网络输入与复验
+
+使用[wpad-network.workflow.ts](../workflows/settings/wpad-network.workflow.ts)及原local Electron driver。
+`INTERCEPTOR_E2E_WPAD_NETWORK`和`INTERCEPTOR_E2E_WPAD_MODE`只由workflow读取，不进入产品。
+普通无lab运行会明确skip此文件，不能以该skip作为验收通过。
+
+| 输入 | DNS-only：`dns` | DHCP-only：`dhcp` | 双来源：`both` |
+| --- | --- | --- | --- |
+| DNS | `wpad.item13.wpad.test` → `192.168.233.1` | 同名返回NXDOMAIN | 与DNS-only相同 |
+| DHCP | 分配真实地址、DNS及搜索域，不提供252 | 实际回复252=`http://192.168.233.1/dhcp.pac` | 与DHCP-only相同 |
+| PAC | HTTP 80 `/wpad.dat`选择`127.0.0.1:18081` | HTTP 80 `/dhcp.pac`选择`127.0.0.1:18082` | 两个不同PAC同时可用，必须选DHCP的`18082` |
+
+- 两个PAC对URL含`/via-upstream-`的HTTP及所有HTTPS返回对应`PROXY`，其他请求返回`DIRECT`。
+  上游仅允许本workflow的HTTP/TLS origin，fixture在Windows guest回环地址监听`18081/18082`；
+  PAC服务器、DHCP及DNS只监听隔离链路。不开宿主转发，不桥接日常网络。
+- 每种网络各跑`wpad`、`system`：lab在App启动前保存完整WinINet，再设置无显式代理/PAC的
+  `flags: 1`或仅Auto Detect的`flags: 9`。原配置从产品真实journal的`original`核对，
+  不能把自动接管后读到的owned地址误当实验输入。
+- WPAD从快捷浮层选择并Apply；System保留默认模式。两入口按公开mode/route属性及PAC URL title核对，
+  不用翻译文案定位。每代实际验证一次HTTP PROXY、一次HTTP DIRECT和一次HTTPS CONNECT。
+- WPAD经正常Close复用profile重启；System故意终止本轮App后用fresh profile恢复同一journal，
+  原original/owned必须相同。第二代再终止本轮Core，等待新PID和Recording，重新验证全部路线。
+  最终必须正常Close，完整WinINet回到实验输入、journal删除、进程和8888释放。
+- lab仅在产品退出恢复完成后撤销实验WinINet准备；保留PCAP、真实252、DNS结果、PAC GET及实际流量。
+  最后正常关机并移除本轮VM及专用Private switch，原宿主交换机和已启用的Hyper-V保留。
+
+在已准备好的隔离Windows中分别设置两项环境变量，再运行正式workflow，例如：
+
+```powershell
+$env:INTERCEPTOR_E2E_WPAD_NETWORK = 'dns'
+$env:INTERCEPTOR_E2E_WPAD_MODE = 'wpad'
+npm run test:e2e:workflow --workspace @interceptor/desktop -- wpad-network.workflow.ts
+```
+
+换网络时先停止App，由外部lab切换真实DNS/DHCP配置并更新Windows租约、清除实验guest的旧发现缓存，
+再开始下一条独立workflow；不能只改变量而不改网络，也不能注入发现URL。
+测试工具、Node/Electron和Main的所有开发runtime依赖须先就绪，准备失败或原生授权失败不算产品Red。
+
 <a id="settings-upstream-macos"></a>
 ## `settings.upstream.macos`
 

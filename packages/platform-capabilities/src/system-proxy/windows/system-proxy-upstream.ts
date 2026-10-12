@@ -6,6 +6,24 @@ import type { WinInetProxySettings } from '../interfaces';
 const PROXY_TYPE_PROXY = 2;
 /** WinINet PROXY_TYPE 位标志：PAC 脚本。 */
 const PROXY_TYPE_AUTO_PROXY_URL = 4;
+/** WinINet PROXY_TYPE 位标志：自动发现。 */
+const PROXY_TYPE_AUTO_DETECT = 8;
+
+/** Resolve automatic discovery only when the original connection has no enabled explicit route. */
+export async function resolveUpstreamProxyConfig(
+  settings: WinInetProxySettings,
+  selfAuthority: string,
+  discoverPacUrl: () => Promise<string>,
+): Promise<UpstreamProxyConfig | null> {
+  if ((settings.flags & PROXY_TYPE_AUTO_DETECT) !== 0
+    && (settings.flags & (PROXY_TYPE_PROXY | PROXY_TYPE_AUTO_PROXY_URL)) === 0) {
+    const pacUrl = await discoverPacUrl();
+    return toUpstreamProxyConfig({
+      ...settings, flags: settings.flags | PROXY_TYPE_AUTO_PROXY_URL, pacUrl,
+    }, selfAuthority);
+  }
+  return toUpstreamProxyConfig(settings, selfAuthority);
+}
 
 /**
  * 把用户原有的 WinINet 代理设置转成 Interceptor 的上游代理配置。

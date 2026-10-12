@@ -167,7 +167,7 @@ Traffic Lab使用显式`127.0.0.1:8888`产生可观测H1场景。
 | `DesktopApplication`（Electron Main） | 持有一个readonly平台对象并直接调用方法，管理App/Core生命周期、转发通知与展示error | 持有子service或重复实现平台操作、互斥、upstream与恢复步骤 |
 | `PlatformCapabilitiesService`及所属module（Main进程） | private组装各module；SystemProxyService管理操作状态、journal、upstream与必要恢复，CertificateService管理材料/信任/Core同步 | 集中维护所有组busy副本、排队或重放被拒绝的用户请求、向Renderer或日志泄露原始快照 |
 | Proxy Core UtilityProcess | 监听8888并按 Main 下发的 upstream 转发 | 修改系统代理、读取 journal、决定恢复目标 |
-| native helper | Windows执行一次原生读写；macOS常驻root服务认证生产App/开发UID，只执行固定代理/公开证书存取；同一二进制的普通用户前台入口执行trust/untrust并请求系统确认 | 保存第二份系统代理original/journal、修改授权规则、决定接管时机、接收CA私钥或通用shell |
+| native helper | Windows执行一次原生读写或只读WPAD发现，发现只返回PAC URL；macOS常驻root服务认证生产App/开发UID，只执行固定代理/公开证书存取；同一二进制的普通用户前台入口执行trust/untrust并请求系统确认 | 保存第二份系统代理original/journal、修改授权规则、决定接管时机、接收CA私钥或通用shell |
 | E2E runner | 在产品外记录测试进程 PID+启动时间，并在失败后保护宿主 | 把测试进程身份写入产品 journal 或协议 |
 
 Windows 使用 `%LOCALAPPDATA%/Interceptor/system-proxy/journal.json`，现有`version/original/owned`契约不变。

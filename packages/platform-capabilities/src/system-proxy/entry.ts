@@ -14,7 +14,7 @@ import { SystemProxyError, WpadNotFoundError } from './internal/errors';
 import { UpstreamProbe } from './internal/upstream-probe';
 import { assertUpstreamDoesNotLoop, describeUpstreamRoute, toUpstreamAuthority } from './internal/upstream';
 import { toMacosUpstreamProxyConfig } from './macos/upstream';
-import { toUpstreamProxyConfig } from './windows/system-proxy-upstream';
+import { resolveUpstreamProxyConfig } from './windows/system-proxy-upstream';
 import { discoverWpadPacUrl } from './macos/discover-wpad';
 import { MacosSystemProxyService } from './macos/entry';
 import { MacosSystemProxyJournal, resolveMacosSystemProxyJournalPath } from './macos/journal';
@@ -149,7 +149,7 @@ export class SystemProxyService {
       case 'system': {
         const source = originalSource ?? await this.platformSystemProxyService.readUpstreamSource();
         if (source.platform === 'win32') {
-          return toUpstreamProxyConfig(source.settings, `127.0.0.1:${listenerPort}`);
+          return resolveUpstreamProxyConfig(source.settings, `127.0.0.1:${listenerPort}`, () => this.discoverPacUrl());
         }
         const original = source.settings;
         if (original.ProxyAutoDiscoveryEnable === 1 && original.ProxyAutoConfigEnable !== 1
@@ -163,6 +163,11 @@ export class SystemProxyService {
   }
 
   private async discoverPacUrl(): Promise<string> {
+    if (this.platformSystemProxyService instanceof WindowsSystemProxyService) {
+      this.discoveringUpstream = true;
+      this.onUpstreamSettingsChanged?.();
+      return this.platformSystemProxyService.discoverWpadPacUrl();
+    }
     const client = this.helperService.macosHelperServiceClient;
     if (!client) throw new SystemProxyError('WPAD discovery is not supported on this platform.');
     this.discoveringUpstream = true;

@@ -98,7 +98,7 @@ macOS业务窗口由driver按项目配置准备：常规场景保持真实1600x9
 | 协议/交互 | `capture/{tls-scenarios,http2-scenarios,http2-origin-goaway,grpc-scenarios,navigate-tls-passthrough}.workflow.ts`；`settings/{tls-compatibility,proxy-mitm-persistence}.workflow.ts`；`agent/body-messages.workflow.ts` | 首请求源站例外、暂停响应正常GOAWAY完整排空、Edge证书校验、Raw/Copy长度及hash、每代Page；取消背景host默认选择，Capture discovery精确17项 |
 | 导入/只读 | `composer/{collection-import,tools-transfer}.workflow.ts`；`rules/{import-tree,tools-import}.workflow.ts`；`settings/tools-readonly.workflow.ts` | 真实signal、原生/预览Cancel与Confirm、退出取消、重启零重放；六项无审批查询及CA不变 |
 | 构建/路径（含原第11项） | `npm run build:native --workspace @interceptor/platform-capabilities`及该package所属测试；[Client App](../../../proxy-core/src/proxy-core/client-app/tests/unit/service.test.ts)、[Transfer](../../../proxy-core/src/proxy-core/transfer/tests/unit/job-manager.test.ts)；Windows文件窗口通过上述原生导入/导出workflow验收 | package开发资源与App同包路径、共用runner、8 MiB枚举、certutil/UAC、Windows路径解析、互斥拒绝与无重放；不使用macOS skip或脚本文本断言替代真实原生操作 |
-| 纯Auto Detect/WPAD（独立item 13，不阻塞item 8） | [上游契约](../../../../architecture/features/settings.md#34-上游代理链式转发)；[Handover item 13](../../../../architecture/HANDOVER.md)独立跟踪Windows实现和真实网络验收，尚无可运行workflow | 无PAC URL及显式代理；接管前后实际出网路径、错误与完整退出恢复，不以手填PAC替代；从item 8移出不代表已实现或passed |
+| 纯Auto Detect/WPAD | [上游契约与证据](../../../../architecture/features/settings.md#windows-wpad-research)；`settings/wpad-failure-preservation.workflow.ts`及`settings/wpad-network.workflow.ts` | 本机原生失败保持；隔离Windows中DNS-only、DHCP-only、双来源优先级分别覆盖WPAD/System，HTTP/TLS选路、App/Core代际和完整恢复已验，不以手填PAC或macOS结果替代 |
 | 产物/全量 | 全部适用workflow、[packaged smoke](../packaged-smoke/startup.spec.ts)及[Windows安装器smoke](../installer/windows-installer-smoke.mjs) | ready门禁、精确Preload白名单、Core重启、截图矩阵、签名/资源、安装升级卸载、系统设置/进程恢复 |
 
 ## 目录结构
@@ -334,6 +334,7 @@ diagnostics.row.<traceKey>
 | `settings.proxy.enable-restore` | 系统代理Enable/Restore ownership | os-side-effect | planned |
 | `settings.proxy.upstream` | macOS接续ClashX上游，外部改写后退出/跨profile重启不覆盖新配置 | macOS / external proxy / os-side-effect | passed（ClashX三场景及完整系统代理恢复） |
 | `settings.upstream.macos` | System/Direct/Manual/PAC/WPAD双入口、DNS/DHCP选路、重启与完整宿主恢复 | macOS / isolated network / os-side-effect | 当前最终Green；初始整体功能前置Red历史缺证，见[规格](docs/settings-updates.md#settings-upstream-macos) |
+| `settings.upstream.windows` | Windows原生WPAD/PAC失败保持，DNS/DHCP、优先级、System Auto Detect和代际恢复 | Windows / isolated network / os-side-effect | passed；负向Red→Green及六条正向/恢复Green，适用范围与历史Red边界见[规格](docs/settings-updates.md#settings-upstream-windows) |
 | `settings.system-proxy.crash-recovery` | App A异常退出后由顺序启动的App B加载首次快照并完整恢复 | os-side-effect | passed |
 | `settings.proxy-mitm.persistence` | 异常退出后恢复系统代理并跨进程恢复MITM/TLS配置 | os-side-effect | passed |
 | `settings.certificates.generate-delete` | CA Generate/Regenerate/Delete | shared | planned |

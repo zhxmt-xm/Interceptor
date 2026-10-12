@@ -3,6 +3,7 @@ import type { UpstreamProxyConfig } from '@interceptor/core-protocol';
 import type { SystemProxyCommandResult, SystemProxyCommandRunner, SystemProxyRestoreResult, SystemProxyService, SystemProxyStatus, SystemProxyUpstreamSource, WinInetProxySettings, WindowsSystemProxyJournalRecord, WindowsSystemProxyJournalStore, WindowsSystemProxyServiceOptions } from '../interfaces';
 import { commandRunner } from '../../internal/command-runners';
 import { SystemProxyError } from '../internal/errors';
+import { discoverWpadPacUrl } from './discover-wpad';
 import { toUpstreamProxyConfig } from './system-proxy-upstream';
 
 type JournalResolution = 'owned' | 'not-owned' | 'externally-modified';
@@ -124,6 +125,12 @@ export class WindowsSystemProxyService implements SystemProxyService {
     this.assertSupported();
     return { platform: 'win32', settings: this.originalSettings
       ? structuredClone(this.originalSettings) : await this.readSettings() };
+  }
+
+  /** Discover the current network's PAC without changing proxy settings or ownership. */
+  async discoverWpadPacUrl(): Promise<string> {
+    this.assertSupported();
+    return discoverWpadPacUrl(this.helperPath);
   }
 
   /** Restore original settings only while current still exactly equals owned. */

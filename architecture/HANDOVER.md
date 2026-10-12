@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `0e3d40da`
+> Tracked commit: `ba3ca0f0`
 
 ## 维护规则
 
@@ -35,16 +35,9 @@
   - 下一步：先完成渠道与帖子清单，再按顺序逐项备稿、核对发布规则、确认最终内容与账号授权并发布；正式外发使用 item 9–11 已就绪的资料与入口，本轮仅登记待办，不操作外部账号或对外发布。
   - 验收：每个选定渠道都有最终稿、素材和实际发布链接，并处理发布后的有效问题与反馈；发布链接及反馈记录保存在对应推广材料中，不把草稿算作已发布。账号、平台规则或人工操作阻塞时说明原因，继续其他可执行渠道。
 
-- **13. Windows WPAD 自动发现与真实网络验收 · 待实现**
-  - 边界：按用户确认从item 8独立拆出，不阻塞item 8；当前仅记录待办，不新增产品实现或调整系统网络。
-  - 目标：补齐Windows显式WPAD，以及System仅开启Auto Detect时的自动发现和上游选路。
-  - 当前：[SystemProxyService](../packages/platform-capabilities/src/system-proxy/entry.ts)的WPAD发现只接入macOS helper，Windows显式WPAD报不支持；System仅Auto Detect、无显式代理/PAC时按直连处理。独立DNS/DHCP实验网络尚未准备；这是实现与验收缺口，不是已有功能仅缺一次运行。
-  - 下一步：核对Windows原生发现能力与现有helper边界，确定最小接入方案；实现前更新[Settings约定](features/settings.md)及[上游代理workflow规格](../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md)，网络环境调整另行授权。
-  - 验收：Windows定向unit/integration与真实Electron流程覆盖显式WPAD、System Auto Detect、发现失败及原配置保持；独立DNS/DHCP环境提供发现、PAC获取、实际上游流量证据，退出后恢复进程、端口和系统网络设置。未实现或未执行的范围不记为passed。
-
 ## 验收约束
 
 - AppContainer写入与顺序仍依赖Windows及对应的真实运行环境，不能用macOS结果代替。
-- 空共享CA目录的证书生命周期专项、独立DNS/DHCP WPAD lab及实际MCP Host验收仍需各自前提；没有执行的范围不能因Release发布而改写为通过，不删除日常CA凑测试条件。
+- 空共享CA目录的证书生命周期专项、独立DNS/DHCP WPAD lab及实际MCP Host验收仍需各自前提；Windows WPAD现有范围见[Settings证据](features/settings.md#windows-wpad-research)，后续复验仍需隔离环境。没有执行的范围不能因Release发布而改写为通过，不删除日常CA凑测试条件。
 - 原生安装、Gatekeeper、钥匙串与helper授权保留真实系统流程；不删除quarantine、关闭全局安全策略或用强杀代替退出恢复。
 - 生产依赖审计与开发工具链告警分别报告，DMG、extract-zip及patch-package的开发依赖公告不能算作已经修复；边界见[发布与依赖约束](platform/release.md#依赖升级约束)。

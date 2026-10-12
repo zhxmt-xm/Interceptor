@@ -14,6 +14,8 @@ internal static class Program
     private const int InternetOptionPerConnectionOption = 75;
     // Identifies the per-connection flags option.
     private const int InternetPerConnFlags = 1;
+    // Reads the configured connection flags independently of WinINet detection state.
+    private const int InternetPerConnFlagsUi = 10;
     // Identifies the explicit proxy server option.
     private const int InternetPerConnProxyServer = 2;
     // Identifies the proxy bypass list option.
@@ -24,6 +26,9 @@ internal static class Program
     private const int ProxyTypeProxy = 2;
     // Indicates that automatic proxy discovery is enabled.
     private const int ProxyTypeAutoDetect = 8;
+    // Requests DHCP discovery before DNS discovery.
+    private const uint WinHttpAutoDetectTypeDhcp = 1;
+    private const uint WinHttpAutoDetectTypeDnsA = 2;
 
     private sealed class ProxySettings
     {
@@ -91,6 +96,9 @@ internal static class Program
         IntPtr buffer,
         int bufferLength);
 
+    [DllImport("winhttp.dll", SetLastError = true)]
+    private static extern bool WinHttpDetectAutoProxyConfigUrl(uint flags, out IntPtr autoConfigUrl);
+
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr GlobalFree(IntPtr memory);
 
@@ -103,6 +111,11 @@ internal static class Program
             {
                 Console.WriteLine(ToJson(ReadSettings()));
                 return 0;
+            }
+
+            if (args.Length == 1 && args[0] == "discover-wpad")
+            {
+                return DiscoverWpadPacUrl();
             }
 
             if (args.Length == 5 && args[0] == "set")
@@ -119,13 +132,36 @@ internal static class Program
                 return 0;
             }
 
-            Console.Error.WriteLine("Usage: wininet-proxy-helper get | set <flags> <proxy> <bypass> <pac>");
+            Console.Error.WriteLine("Usage: wininet-proxy-helper get | discover-wpad | set <flags> <proxy> <bypass> <pac>");
             return 2;
         }
         catch (Exception error)
         {
             Console.Error.WriteLine(error.GetType().Name + ": " + error.Message);
             return 1;
+        }
+    }
+
+    // Returns only the discovered URL; PAC retrieval and evaluation remain in Core.
+    private static int DiscoverWpadPacUrl()
+    {
+        IntPtr autoConfigUrl = IntPtr.Zero;
+        try
+        {
+            if (!WinHttpDetectAutoProxyConfigUrl(
+                WinHttpAutoDetectTypeDhcp | WinHttpAutoDetectTypeDnsA,
+                out autoConfigUrl))
+            {
+                int error = Marshal.GetLastWin32Error();
+                Console.Error.WriteLine("{\"win32Error\":" + error.ToString(CultureInfo.InvariantCulture) + "}");
+                return 1;
+            }
+            Console.WriteLine("{\"pacUrl\":" + JsonString(Marshal.PtrToStringUni(autoConfigUrl)) + "}");
+            return 0;
+        }
+        finally
+        {
+            if (autoConfigUrl != IntPtr.Zero) GlobalFree(autoConfigUrl);
         }
     }
 
@@ -212,7 +248,7 @@ internal static class Program
     {
         return new InternetPerConnOption[]
         {
-            CreateDwordOption(InternetPerConnFlags, 0),
+            CreateDwordOption(InternetPerConnFlagsUi, 0),
             CreateStringOption(InternetPerConnProxyServer, IntPtr.Zero),
             CreateStringOption(InternetPerConnProxyBypass, IntPtr.Zero),
             CreateStringOption(InternetPerConnAutoConfigUrl, IntPtr.Zero),
