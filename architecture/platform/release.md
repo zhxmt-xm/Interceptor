@@ -71,6 +71,7 @@ external模块在顶层`require`可能阻塞packaged Main与CDP初始化，因�
 
 ## 6. 交互配置与发布 CI
 
+- `npm start`的顶层Release入口在显示执行摘要并取得确认后调用现有`npm run release`；不复制发版逻辑，也不跳过后续CI与Publish确认。直接发版命令继续保留。
 - `npm run release`先展示当前分支最近10个commit，另提供短/完整hash查询确认；本地无对象时查询当前GitHub仓库，不接受分支名、歧义hash或非commit对象。选中后向GitHub核对完整SHA，未推送或不可访问时拒绝，不自动上传或改用main。
 - 版本基准结合所选源码的Desktop版本与已有GitHub版本tag，保留版本增量和目标选择。源码SHA、版本和目标作为workflow_dispatch输入；本地不修改版本/配置/index/HEAD，不commit、push、stash或清理文件，不要求干净工作区。
 - `scripts/release-config.mjs`统一校验本次请求、生成原生矩阵及资产数量，不读取工作区发版配置文件；macOS x64对应`macos-15-intel`，macOS arm64对应`macos-15`，Windows x64对应`windows-2025`。默认仅macOS x64 DMG/ZIP；不接受空选择、重复目标、错误包类型或未实现架构，不宣称universal。Windows支持alpha/beta/rc，仍拒绝build metadata及超出Windows Installer版本段范围的值。

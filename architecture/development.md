@@ -68,13 +68,14 @@ Renderer 内部按 `app/`、`features/`、`components/`、`theme/` 和 `styles/`
 npm start
 ```
 
-一级菜单为`Development / Test / Build`。只选择目标和必要范围，构建准备自动完成，不要求判断缓存或“已有构建”。执行摘要按列展示操作、目录和命令，注意事项逐条显示；确认默认Yes，仍需按Enter才执行，输入`n`取消。
+一级菜单为`Development / Test / Build / Release`。只选择目标和必要范围，构建准备自动完成，不要求判断缓存或“已有构建”。执行摘要按列展示操作、目录和命令，注意事项逐条显示；确认默认Yes，仍需按Enter才执行，输入`n`取消。
 
 | 大类 | 逐步选择 |
 | --- | --- |
 | Development | Desktop / Playground / Design → 确认启动，不再选择启动模式 |
 | Test | Typecheck、Unit/Integration、E2E、Parity、Packaged smoke、Artifact audit → 必要的workspace、测试范围、workflow或视图 |
 | Build | App应用包 / Installer安装包 → 确认构建 |
+| Release | 确认启动 → 现有发版向导（源码commit、版本、目标、CI与Publish确认） |
 
 - 选择菜单中的“返回上一级”可以重新选择；最终确认输入`n`回到主菜单，不执行命令。`Ctrl+C`退出。
 - 命令顺序执行，任一步失败立即停止后续步骤并以非零状态退出，不自动重试或忽略失败。正常结束后回到主菜单。
@@ -83,7 +84,8 @@ npm start
 - Packaged smoke自动打包后运行；Artifact audit先打包再审计资源，不启动Desktop。不要与其他构建、开发实例或依赖产物的测试并行。
 - Parity只选择现有视图，保留其主题、尺寸和阈值，不修改设计基准。Watch、Browser专项、截图/图片对比、报告查看、单独Core/native构建等低频操作继续使用下文原始命令，不占用常用菜单。
 - 原生启动和打包只在相应平台可选。启动App或真实验收前会提示系统代理、证书授权和正常退出要求；向导不替代系统授权或恢复检查。
-- 原始命令继续保留，CI与非交互环境直接调用它们。发版使用独立的`npm run release`，不接入此入口，也不与其脚本共享实现。
+- Release调用现有`npm run release`，不复制发版逻辑；需要已安装并登录`gh`，启动CI和最终Publish仍分别在发版向导中确认。
+- 原始命令继续保留，CI与非交互环境直接调用它们；也可直接运行`npm run release`进入同一向导。
 
 查看入口说明：
 
@@ -463,7 +465,7 @@ npm run test:release:macos
 
 ### 正式发布
 
-统一入口：
+运行`npm start`并选择`Release`，确认执行摘要后进入发版向导；也可直接运行：
 
 ```bash
 npm run release

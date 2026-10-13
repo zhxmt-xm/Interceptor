@@ -1,6 +1,6 @@
 # 按指定commit发版
 
-只运行一次：
+运行`npm start`并选择`Release`，确认执行摘要后进入发版向导；也可直接运行：
 
 ```bash
 npm run release

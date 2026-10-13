@@ -279,10 +279,10 @@ async function main() {
   });
   if (values.help) {
     console.log('npm start');
-    console.log('Development / Test / Build → 目标或必要范围 → 确认执行');
+    console.log('Development / Test / Build / Release → 目标或必要范围 → 确认执行');
     console.log('Desktop / Design 选择后直接启动；构建准备自动完成，不询问缓存模式。');
     console.log('执行摘要分列显示，确认默认 Yes，仍需按 Enter；输入 n 取消。');
-    console.log('低频工具保留原命令，发版使用独立的 npm run release。');
+    console.log('低频工具保留原命令；Release 启动 npm run release，继续完成发版向导。');
     console.log('↑/↓ 选择，Enter 确认；选择“返回上一级”返回，Ctrl+C 退出。');
     console.log('CI 和非交互环境继续使用原始 npm 命令。说明：architecture/development.md');
     return;
@@ -293,8 +293,7 @@ async function main() {
   if (!process.env.npm_execpath) throw new Error('请通过 npm start 启动，以便使用当前 npm 执行已有命令。');
   const workspaces = await readWorkspaces();
   console.log(`\nInterceptor 开发工具 · ${process.platform}/${process.arch}`);
-  console.log('选择目标后自动准备；需要执行时按 Enter，取消时输入 n。');
-  console.log('release 正在重构，本入口暂不接入发版流程。\n');
+  console.log('选择目标后自动准备；需要执行时按 Enter，取消时输入 n。\n');
   while (true) {
     const category = await select({
       message: 'Select a category',
@@ -302,13 +301,23 @@ async function main() {
         { name: 'Development', value: 'development' },
         { name: 'Test', value: 'test' },
         { name: 'Build', value: 'build' },
+        { name: 'Release', value: 'release' },
         { name: 'Exit', value: 'exit' },
       ],
     });
     if (category === 'exit') return;
     const task = category === 'development' ? await chooseDevelopment(workspaces)
       : category === 'test' ? await chooseChecks(workspaces)
-      : await chooseBuild();
+      : category === 'build' ? await chooseBuild()
+      : {
+          title: '启动 Release 发版向导',
+          commands: [npmCommand('release')],
+          notices: [
+            '需要已安装并登录 GitHub CLI（gh），且具备仓库和 Actions 权限。',
+            '按指定源码 commit 发版，本地未提交修改不会进入安装包。',
+            '启动 CI 和最终 Publish 仍分别由发版向导确认。',
+          ],
+        };
     if (task && !await runTask(task)) return;
   }
 }
