@@ -61,6 +61,7 @@
       <h3>发布约定</h3>
       <p><code>architecture/release-guide.md</code>、<code>architecture/platform/release.md</code></p>
       <p>说明三种 Windows 格式的关系、EXE 的原生 MSI UI、ZIP 解压运行方式及内置更新仍选 MSI 的边界。未改动桌面 Renderer，也未新增第二套安装向导。</p>
+      <p>发布完成后从 Handover 移除该发布待办，将结果和证据归入发布平台文档；Handover 的验收约束保留未验证范围及 AppContainer 偶发超时风险，不把已发布与实机验收通过混为一谈。</p>
       <h3>CI 检查通过后直接 Publish</h3>
       <p>位置：<code>scripts/release.mjs</code>、<code>scripts/start.mjs</code>、Release workflow 的说明文字及开发/发版指南。</p>
       <div class="change">
