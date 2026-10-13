@@ -85,9 +85,8 @@ export function createReleasePlan(version, config, sourceSha) {
         target.packages.some((type) => !supported.packageTypes.includes(type))) {
       throw new Error(`${supported.label} 的包类型只能从 ${supported.packageTypes.join(', ')} 中选择，且不能重复或留空。`);
     }
-    if (supported.platform === 'win32' &&
-        (semver.prerelease(version) !== null || semver.parse(version).build.length > 0)) {
-      throw new Error('Windows MSI 当前只支持不含预发布标识或 build metadata 的版本；预发布请仅选择 macOS。');
+    if (supported.platform === 'win32' && semver.parse(version).build.length > 0) {
+      throw new Error('Windows安装器不支持build metadata；alpha/beta/rc预发布版本可以使用。');
     }
     if (supported.platform === 'win32' &&
         (semver.major(version) > 255 || semver.minor(version) > 255 || semver.patch(version) > 65535)) {
@@ -101,6 +100,9 @@ export function createReleasePlan(version, config, sourceSha) {
       arch: supported.arch,
       runner: supported.runner,
       packages: [...target.packages],
+      ...(supported.platform === 'win32'
+        ? { windowsInstallerVersion: `${semver.major(version)}.${semver.minor(version)}.${semver.patch(version)}.0` }
+        : {}),
     };
   });
   return {

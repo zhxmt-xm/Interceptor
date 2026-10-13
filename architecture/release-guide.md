@@ -67,7 +67,7 @@ d274c2f8   2026-10-04    fix(capture): count requests in filter group badges
 | Patch | 0.1.1 |
 | Minor | 0.2.0 |
 | Major | 1.0.0 |
-| 预发布 + beta | 0.1.1-beta.0，仅macOS |
+| 预发布 + beta | 0.1.1-beta.0，macOS与Windows均支持 |
 | 指定版本 | 输入未使用的合法SemVer |
 
 已有版本不能复用。预发布会设置GitHub prerelease标识，不进入稳定版更新。
@@ -80,7 +80,8 @@ d274c2f8   2026-10-04    fix(capture): count requests in filter group badges
 
 - `Space`勾选，`Enter`确认，可以选择多个目标和包类型。
 - 两个macOS架构分别出包，不是universal。不提供Linux或Windows arm64。
-- Windows目标沿用MSI版本约束，不接受预发布/build metadata，数字段上限为255.255.65535。
+- Windows支持alpha/beta/rc，但不接受build metadata；数字段上限为255.255.65535。App、tag、安装目录及附件名称保留完整SemVer，MSI内部由现有`electron-wix-msi`转换为`major.minor.patch.0`，EXE固定版本字段使用同一个数字版本。例如`0.1.1-alpha.1`的系统安装器版本是`0.1.1.0`，这不改变GitHub的Pre-release标记。
+- 同一基础版本的alpha/beta/rc在Windows Installer中具有相同数字版本；现有MSI模板允许同版本升级，不识别预发布序号的先后。应按完整SemVer核对所装版本，不声称MSI会阻止同基础版本的旧alpha覆盖新alpha。
 - Windows三种格式共用同一应用构建；EXE是NSIS离线引导包，内嵌并启动本轮同一MSI，不维护另一套应用安装、升级或卸载记录。MSI仍是内置更新使用的安装格式；EXE和ZIP供手动分发，ZIP不是单文件版。
 - EXE需要Windows CI中的NSIS 3.11和7-Zip；CI核对内嵌MSI与单独MSI的SHA-256，不能只把应用exe改名当安装器。NSIS启动MSI保留原生安装UI及退出码，不自行提权、不静默安装、不强制重启。
 - macOS内置更新只接受同架构DMG；ZIP-only只能手动分发。

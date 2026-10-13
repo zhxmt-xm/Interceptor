@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `6236e775`
+> Tracked commit: `d565d7d7`
 
 ## 维护规则
 
@@ -35,12 +35,13 @@
   - 下一步：先完成渠道与帖子清单，再按顺序逐项备稿、核对发布规则、确认最终内容与账号授权并发布；正式外发使用 item 9–11 已就绪的资料与入口，本轮仅登记待办，不操作外部账号或对外发布。
   - 验收：每个选定渠道都有最终稿、素材和实际发布链接，并处理发布后的有效问题与反馈；发布链接及反馈记录保存在对应推广材料中，不把草稿算作已发布。账号、平台规则或人工操作阻塞时说明原因，继续其他可执行渠道。
 
-- **14. v0.1.1 macOS / Windows Release · 进行中**
-  - 目标：基于`6236e775`补齐Windows格式支持后固定新源码SHA，发布macOS Intel x64 DMG/ZIP、macOS Apple Silicon arm64 DMG/ZIP和Windows x64 EXE/MSI/ZIP；macOS两个架构分别出包，不是universal，本地官网及item 10改动不进入安装包。
-  - 当前：用户已确认Windows增加ZIP及低成本EXE，并授权只将打包支持作为中间进度commit/push。原五附件CI已取消、未创建Release；本地已补充NSIS薄引导包、完整ZIP、CLI选择及七附件校验，不采用会增加另一套安装登记的Burn Bundle。下一轮CI须使用此打包支持的commit。
-  - 本地检查：Forge目标配置已有Red/Green，Desktop typecheck与七附件参数契约通过；Windows专属断言尚未在本机执行，NSIS原生编译、payload核验及实际安装仍待Windows。[本地检查记录](../apps/desktop/test-results/release-tooling-20261013/)仅供本轮恢复，不作为跨平台通过证明；改动说明统一维护于[发布格式说明](../commit-changes/202610131328_docs_release_windows-package-formats.html)。
+- **14. v0.1.1-alpha.1 macOS / Windows Release · 进行中 · 修正alpha发布**
+  - 目标：继续alpha预发布，为macOS Intel x64和Apple Silicon arm64各提供DMG/ZIP，为Windows x64提供EXE/MSI/ZIP；实际通过`npm run release`选择固定源码、构建并进行最终发布确认，不直接派发workflow或编辑Release代替命令。本地官网及item 10改动不进入安装包。
+  - 当前：`v0.1.1`草稿及tag已删除，原`v0.1.1-alpha.0`及其tag保持不变。release脚本已允许Windows预发布，完整SemVer与Windows安装器数字版本明确分开；实际`npm run release`预检已选出`0.1.1-alpha.1`及七个附件，并在启动CI前取消确认。接下来保存本次alpha修正，再由该命令启动构建。
+  - 已验证范围：alpha/beta/rc参数契约已有Red/Green，稳定版本行为和Windows数字范围约束保留；Desktop配置测试与typecheck通过。MSI库保留完整`semanticVersion`并生成数字版本，同基础版本允许同版本升级；[alpha参数及真实CLI预检](../apps/desktop/test-results/release-alpha-20261013/)记录实际命令选择结果，不代表新安装包已验收。
+  - 验证边界：被删除的`0.1.1`产物不是本次alpha交付，原[打包支持证据](../apps/desktop/test-results/release-tooling-20261013/)不能代替新版本检查。新alpha的NSIS原生编译、实际附件和实机安装仍待验证；改动说明继续维护于[发布格式说明](../commit-changes/202610131328_docs_release_windows-package-formats.html)。
   - 发布门禁：CI通过不代替实际下载、安装、系统授权、packaged smoke和退出恢复。macOS采用ad-hoc且未公证，Windows安装器未签名；macOS arm64和Windows最终产物仍需对应实机验收，未取得证据和最终确认前不Publish。
-  - 下一步：等待原生CI结果，核对实际附件的版本、平台、数量和SHA-256；在可用实机执行验收，缺少的平台保留draft并给出恢复步骤。不公开仓库、不改变系统安全设置、不移动已有tag。
+  - 下一步：推送本次alpha修正，再实际执行`npm run release`生成七个alpha附件；依[发版指南](release-guide.md#6-实机验收和最终确认)完成对应实机验收后，在同一命令的最终提示中确认Publish，保留Pre-release标记。不覆盖本机旧App、不改变仓库可见性、不把“已发布alpha”混同于稳定版。
 
 ## 验收约束
 

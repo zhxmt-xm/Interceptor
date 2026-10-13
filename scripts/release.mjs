@@ -78,7 +78,7 @@ async function choosePlan(source, sourceVersion, existingTags) {
       { name: `Patch 补丁版本：${incrementVersion(base, 'patch')}`, value: 'patch' },
       { name: `Minor 次版本：${incrementVersion(base, 'minor')}`, value: 'minor' },
       { name: `Major 主版本：${incrementVersion(base, 'major')}`, value: 'major' },
-      { name: '预发布版本：alpha / beta / rc（仅 macOS）', value: 'prerelease' },
+      { name: '预发布版本：alpha / beta / rc', value: 'prerelease' },
       { name: '输入指定版本', value: 'custom' },
     ],
   });
@@ -99,14 +99,14 @@ async function choosePlan(source, sourceVersion, existingTags) {
     version = incrementVersion(base, increment, identifier);
   }
   if (existingVersions.has(version)) throw new Error(`${version} 已有tag，不会删除或覆盖。`);
-  const windowsVersion = semver.prerelease(version) === null && semver.parse(version).build.length === 0;
+  const windowsVersionSupported = semver.parse(version).build.length === 0;
   const selectedIds = await checkbox({
     message: '选择平台和CPU架构（Space勾选，Enter确认）',
     choices: releaseTargets.map((target) => ({
       name: target.label,
       value: target.id,
       checked: target.id === 'darwin-x64',
-      disabled: target.platform === 'win32' && !windowsVersion ? 'MSI当前只支持稳定版本' : false,
+      disabled: target.platform === 'win32' && !windowsVersionSupported ? 'Windows安装器不支持build metadata' : false,
     })),
     validate: (values) => values.length > 0 || '至少选择一个目标。',
   });
@@ -151,6 +151,7 @@ function printPlan(plan, context, source) {
       console.log(`  macOS ${target.arch} 仅ZIP：只供手动下载，内置更新需要同架构DMG。`);
     }
     if (target.platform === 'win32') {
+      console.log(`  Windows系统安装器数字版本：${target.windowsInstallerVersion}；App/tag/附件版本仍为 ${plan.version}。`);
       console.log('  Windows EXE内嵌同一MSI并显示原生安装UI；ZIP为完整解压包，不是单文件版。');
       if (!target.packages.includes('msi')) {
         console.log('  Windows未选择MSI：只供手动下载，内置更新仍需要同架构MSI。');

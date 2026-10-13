@@ -24,7 +24,7 @@ async function fileDigest(file) {
   return hash.digest('hex');
 }
 
-async function buildWindowsBootstrapper(msiPath, version) {
+async function buildWindowsBootstrapper(msiPath, version, windowsInstallerVersion) {
   const outputDirectory = path.join(desktopDirectory, 'out/make/nsis/x64');
   await mkdir(outputDirectory, { recursive: true });
   const executablePath = path.join(outputDirectory, `Interceptor-${version}-win32-x64.exe`);
@@ -34,6 +34,7 @@ async function buildWindowsBootstrapper(msiPath, version) {
     `/DMSI_PATH=${msiPath}`,
     `/DOUTPUT_PATH=${executablePath}`,
     `/DVERSION=${version}`,
+    `/DWINDOWS_VERSION=${windowsInstallerVersion}`,
     `/DICON_PATH=${path.join(desktopDirectory, 'assets/interceptor-icon.ico')}`,
     templatePath,
   ], { cwd: repositoryRoot, stdio: 'inherit' });
@@ -120,7 +121,7 @@ async function main() {
   }
   if (target.packages.includes('exe')) {
     const msiPath = artifacts.find((file) => path.extname(file) === '.msi');
-    artifacts.push(await buildWindowsBootstrapper(msiPath, plan.version));
+    artifacts.push(await buildWindowsBootstrapper(msiPath, plan.version, target.windowsInstallerVersion));
   }
   for (const file of artifacts) {
     if ((await stat(file)).size === 0) throw new Error(`安装包为空：${file}`);

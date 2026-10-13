@@ -26,7 +26,7 @@
   <main>
     <h1>Windows EXE / MSI / ZIP 发布支持</h1>
     <p class="meta">提交改动说明 · 2026-10-13 13:28 +08:00 · 工程与文档</p>
-    <p>复用同一应用构建与现有 MSI 安装逻辑，为 Windows 提供三种分发格式，保留 macOS 两种架构的 DMG / ZIP。</p>
+    <p>复用同一应用构建与现有 MSI 安装逻辑，为 Windows 提供三种分发格式，保留 macOS 两种架构的 DMG / ZIP，并让各平台均可发布完整的 alpha 预发布版本。</p>
     <section>
       <h2>工程与文档</h2>
       <h3>发布目标与交互选择</h3>
@@ -36,6 +36,13 @@
         <div><p class="label">改后</p><p>Windows 可选择 EXE、MSI、ZIP，按实际选择计算附件数量；未选择 MSI 时明确说明内置更新限制。</p></div>
       </div>
       <p>原因与影响：支持面向普通用户的 EXE、标准 MSI 与完整解压包，不把 EXE 或 ZIP 假装成内置更新所需的 MSI。</p>
+      <h3>保留 alpha，而不是改成稳定版</h3>
+      <p><code>scripts/release-config.mjs</code>、<code>scripts/release.mjs</code>、<code>scripts/windows-bootstrapper.nsi</code></p>
+      <div class="change">
+        <div><p class="label">改前</p><p>发布向导禁止 Windows 选择预发布版本；EXE 固定版本字段直接拼接完整版本，不能接受 alpha 标记。</p></div>
+        <div><p class="label">改后</p><p>App、tag 和附件名完整保留 alpha/beta/rc。Windows 系统安装器数字版本单独表达，例如 <code>0.1.1-alpha.1</code> 对应内部 <code>0.1.1.0</code>，GitHub 仍标为 Pre-release。</p></div>
+      </div>
+      <p>原因与影响：复用 MSI 库已有的版本转换，不通过改成稳定版本绕过限制。同基础版本的预发布在 MSI 层是同版本，系统不按 alpha 序号阻止覆盖；App 版本仍需按完整 SemVer 核对。</p>
       <h3>EXE 复用现有 MSI</h3>
       <p><code>scripts/release-build.mjs</code>、<code>scripts/windows-bootstrapper.nsi</code></p>
       <div class="change">

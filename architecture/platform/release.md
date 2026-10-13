@@ -73,7 +73,8 @@ external模块在顶层`require`可能阻塞packaged Main与CDP初始化，因�
 
 - `npm run release`先展示当前分支最近10个commit，另提供短/完整hash查询确认；本地无对象时查询当前GitHub仓库，不接受分支名、歧义hash或非commit对象。选中后向GitHub核对完整SHA，未推送或不可访问时拒绝，不自动上传或改用main。
 - 版本基准结合所选源码的Desktop版本与已有GitHub版本tag，保留版本增量和目标选择。源码SHA、版本和目标作为workflow_dispatch输入；本地不修改版本/配置/index/HEAD，不commit、push、stash或清理文件，不要求干净工作区。
-- `scripts/release-config.mjs`统一校验本次请求、生成原生矩阵及资产数量，不读取工作区发版配置文件；macOS x64对应`macos-15-intel`，macOS arm64对应`macos-15`，Windows x64对应`windows-2025`。默认仅macOS x64 DMG/ZIP；不接受空选择、重复目标、错误包类型或未实现架构，不宣称universal。MSI拒绝预发布/build metadata及超出Windows Installer版本段范围的值。
+- `scripts/release-config.mjs`统一校验本次请求、生成原生矩阵及资产数量，不读取工作区发版配置文件；macOS x64对应`macos-15-intel`，macOS arm64对应`macos-15`，Windows x64对应`windows-2025`。默认仅macOS x64 DMG/ZIP；不接受空选择、重复目标、错误包类型或未实现架构，不宣称universal。Windows支持alpha/beta/rc，仍拒绝build metadata及超出Windows Installer版本段范围的值。
+- 预发布的App版本、tag与附件名称保留完整SemVer，GitHub设置`prerelease=true`；Windows目标另有明确的`windowsInstallerVersion`，与现有`electron-wix-msi`的`major.minor.patch.0`转换一致，供NSIS的固定版本字段使用。例如`0.1.1-alpha.1`不变成稳定版，只在系统安装器内部使用`0.1.1.0`。MSI既有`AllowSameVersionUpgrades`允许同基础版本覆盖，不能识别alpha序号顺序；安装版本核对以完整SemVer为准。
 - 原生job先按workflow SHA取得编排/校验工具及NSIS模板，再在同一源码目录检出所选产品SHA；不复制整个产品仓库或创建额外worktree。`INTERCEPTOR_RELEASE_SOURCE_ROOT`只指明CI源码目录，工具不进入App。构建前后核对源码SHA、tracked差异和未跟踪文件，防止后续步骤污染所选快照。
 - `scripts/release-build.mjs`从所选源码的已安装依赖加载Forge公开`api.make()`，使用`INTERCEPTOR_BUILD_VERSION`注入本次版本，只运行所需makers并复用当前artifact audit和macOS签名/架构检查。Windows选EXE时先构建作为其payload的MSI，仅归集用户选择的格式；EXE-only不额外发布MSI。缺少构建、许可或安全条件的旧快照明确失败，不修改其业务代码或放宽门禁。归集目录仍为`out/release/<target-id>`，文件名包含版本、平台和架构。
 - 所有actions固定commit SHA，并选用官方`runs.using: node24`版本：checkout v7.0.1、setup-node v7.0.0、upload-artifact v7.0.1、download-artifact v8.0.1。Action自身的Node运行时与项目`.nvmrc`分别管理，不用项目Node版本或强制兼容环境变量掩盖旧Action警告。工具准备的setup-node显式关闭自动npm缓存，保留原来只有安装依赖步骤启用缓存的行为；上传保持默认ZIP归档，下载保留合并目录与摘要不匹配时报错。

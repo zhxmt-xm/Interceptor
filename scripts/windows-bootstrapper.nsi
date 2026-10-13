@@ -6,7 +6,7 @@ Icon "${ICON_PATH}"
 RequestExecutionLevel user
 SilentInstall silent
 SetCompressor /SOLID lzma
-VIProductVersion "${VERSION}.0"
+VIProductVersion "${WINDOWS_VERSION}"
 VIAddVersionKey /LANG=1033 "ProductName" "Interceptor"
 VIAddVersionKey /LANG=1033 "ProductVersion" "${VERSION}"
 VIAddVersionKey /LANG=1033 "FileVersion" "${VERSION}"
