@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `bf2df473`
+> Tracked commit: `e55f1ed1`
 
 ## 维护规则
 
@@ -35,16 +35,19 @@
   - 下一步：先完成渠道与帖子清单，再按顺序逐项备稿、核对发布规则、确认最终内容与账号授权并发布；正式外发使用 item 9–11 已就绪的资料与入口，本轮仅登记待办，不操作外部账号或对外发布。
   - 验收：每个选定渠道都有最终稿、素材和实际发布链接，并处理发布后的有效问题与反馈；发布链接及反馈记录保存在对应推广材料中，不把草稿算作已发布。账号、平台规则或人工操作阻塞时说明原因，继续其他可执行渠道。
 
-- **14. v0.1.1-alpha.1 macOS / Windows Release · 进行中 · 修正alpha发布**
-  - 目标：继续alpha预发布，为macOS Intel x64和Apple Silicon arm64各提供DMG/ZIP，为Windows x64提供EXE/MSI/ZIP；实际通过`npm run release`选择固定源码、构建并进行最终发布确认，不直接派发workflow或编辑Release代替命令。本地官网及item 10改动不进入安装包。
-  - 当前：`v0.1.1`草稿及tag已删除，原`v0.1.1-alpha.0`及其tag保持不变。release脚本已允许Windows预发布，完整SemVer与Windows安装器数字版本明确分开；源码`160ec875`的两次alpha构建均在Windows的Archive取消导出测试超时，尚未执行Windows安装包构建。已定位SQLite schema逐条自动提交的慢路径；`archive/worker/snapshot-store.ts`改为一次事务创建完整schema，初始化失败关闭并回滚连接，不改变同步级别、格式、取消语义或测试超时。
+- **14. v0.1.1-alpha.1 macOS / Windows Release · 已发布 · 待实机验收**
+  - 目标：继续alpha预发布，为macOS Intel x64和Apple Silicon arm64各提供DMG/ZIP，为Windows x64提供EXE/MSI/ZIP；通过`npm run release`选择固定源码并构建，按用户新要求取消最终Publish询问，CI及完整性核对通过后直接发布。保留启动CI前的计划确认，已完成CI的草稿与正常向导共用`publishRelease()`，不复制发布业务。本地官网及item 10改动不进入安装包。
+  - 当前：[v0.1.1-alpha.1](https://github.com/zhxmt-xm/Interceptor/releases/tag/v0.1.1-alpha.1)已按用户授权发布，保留Pre-release及七个安装包。发布前重新核对已通过的[三平台CI](https://github.com/zhxmt-xm/Interceptor/actions/runs/38438803055)、草稿身份和全部附件，再调用与正常向导共用的`publishRelease()`；API确认`draft: false`、`prerelease: true`及非空`published_at`。tag仍精确指向修复源码`e55f1ed1`，附件未变；原`v0.1.1-alpha.0`及其tag保持不变。
   - 已验证范围：alpha/beta/rc参数契约已有Red/Green，稳定版本行为和Windows数字范围约束保留；Desktop配置测试与typecheck通过。MSI库保留完整`semanticVersion`并生成数字版本，同基础版本允许同版本升级；[alpha参数及真实CLI预检](../apps/desktop/test-results/release-alpha-20261013/)记录实际命令选择结果，不代表新安装包已验收。
-  - 验证边界：被删除的`0.1.1`产物不是本次alpha交付，原[打包支持证据](../apps/desktop/test-results/release-tooling-20261013/)不能代替新版本检查。新alpha的NSIS原生编译、实际附件和实机安装仍待验证；改动说明继续维护于[发布格式说明](../commit-changes/202610131328_docs_release_windows-package-formats.html)。
-  - 发布门禁：CI通过不代替实际下载、安装、系统授权、packaged smoke和退出恢复。macOS采用ad-hoc且未公证，Windows安装器未签名；macOS arm64和Windows最终产物仍需对应实机验收，未取得证据和最终确认前不Publish。
-  - 失败证据：[最近一次Release](https://github.com/zhxmt-xm/Interceptor/actions/runs/38381263013)及[前一次Release](https://github.com/zhxmt-xm/Interceptor/actions/runs/38379052816)均为`preserves the original archive when cancelled during the final blob stream`超出默认5000ms；两个macOS job通过，draft步骤未运行。本次修复尚未送入GitHub，不能把本机Green记为远端Release通过。
+  - 验证边界：本轮CI已完成Windows NSIS编译、EXE内嵌MSI与独立MSI的SHA-256比较、三平台应用与安装包审计；七个附件名称、非零大小及digest已核对，见[远端结果](../apps/desktop/test-results/release-archive-20261014/release-ci-verification.json)和[发布后核验](../apps/desktop/test-results/release-archive-20261014/publish-verification.json)。尚未完成该Release下载产物的各平台实机安装与最终验收；本机包及原[打包支持证据](../apps/desktop/test-results/release-tooling-20261013/)不能冒充下载产物证据。改动说明继续维护于[发布格式说明](../commit-changes/202610131328_docs_release_windows-package-formats.html)。
+  - 发布约定：用户已明确授权取消最终询问并直接发布当前alpha.1；自动Publish仍须核对tag源码、Release身份和完整附件，失败即中止。CI或发布成功不代替实际下载、安装、系统授权、packaged smoke和退出恢复；macOS采用ad-hoc且未公证，Windows安装器未签名，缺失的各平台实机证据继续保留，不改写为passed。
+  - 可见性：仓库仍为`private`，有权限账号可读取已发布的alpha.1，匿名Release API返回404；这是仓库可见性限制，不是draft未发布。本轮没有公开仓库或改变匿名更新源，若需面向所有用户下载，须另行明确授权公开发布源。
+  - Archive根因与结果：[原失败Release](https://github.com/zhxmt-xm/Interceptor/actions/runs/38381263013)及[前一次Release](https://github.com/zhxmt-xm/Interceptor/actions/runs/38379052816)均为最后Blob流取消用例超出默认5000ms。SQLite schema逐条自动提交造成重复磁盘同步；修复为单事务创建全部对象，失败关闭并回滚连接。新源码的两次Windows CI中Archive Service整组分别499ms与893ms通过；完整schema事务/回滚断言也通过，未改变同步级别、格式、取消语义或超时。
+  - 保留风险：[首次修复版CI](https://github.com/zhxmt-xm/Interceptor/actions/runs/38436939031)另遇到未修改的`app-container/tests/integration/windows-helper.test.ts`原生只读枚举超过5000ms；相同SHA再次通过真实向导执行时，该用例465ms通过，前两次CI及本机也通过。没有修改helper、跳过用例或放宽超时；该单次超时原因未单独定位，保留原日志，不把同SHA复跑通过写成AppContainer代码修复。
   - 本轮前置：新增真实SQLite事务/失败回滚断言取得产品Red，再取得同组Archive/真实Worker Green；`tools-archive-transfer.workflow.ts`与`tools-transfer-jobs.workflow.ts`在修改实现前后均通过，覆盖原生Save/Open、UI/Agent/MCP调用、运行中取消、重启与退出恢复。原始Red/Green、SQLite测量及两组trace保留在[本轮证据](../apps/desktop/test-results/release-archive-20261014/)。
   - 当前验证：全workspace typecheck通过；以`CI=true`及`INTERCEPTOR_BUILD_VERSION=0.1.1-alpha.1`重建后，`npm run test --workspaces --if-present -- --no-file-parallelism --reporter=dot`全部通过，既有条件skip不算通过。两个真实workflow、package、artifact audit及既有截图矩阵packaged smoke通过；四代Main/Core正常退出，8888可重新绑定，宿主guard确认代理、journal与证书恢复。Windows包按未签名开发策略审计，不代表签名发布或安装器生命周期验收；[验证摘要与源码/Worker哈希](../apps/desktop/test-results/release-archive-20261014/verification.json)明确记录未提交源码与本机范围。此前中断结果不计为通过。
-  - 下一步：用户已授权继续提交并推送本次Archive修复，通过现有`npm run release`选择包含修复的新源码SHA，复验原三平台七个`0.1.1-alpha.1`附件；仅保留draft，不Publish。依[发版指南](release-guide.md#6-实机验收和最终确认)完成对应实机验收后，才可由维护者在原向导最终提示确认Publish，保留Pre-release标记。不覆盖本机旧App、不改变仓库可见性、不把“已发布alpha”混同于稳定版。
+  - 命令续作：`scripts/release.mjs`已移除最终Publish询问，保留启动CI前的确认、同一发布函数的元数据一致性和发布后状态检查；start提示、发版说明及CI文字已同步。十项[发布分支检查](../apps/desktop/test-results/release-archive-20261014/auto-publish-checks.json)、Node语法、真实命令帮助与workflow YAML解析通过，并已用该函数真实发布alpha.1；没有重建或移动既有tag。
+  - 剩余验收：依[发版指南](release-guide.md#6-实机验收与验证边界)对本轮实际安装包完成所有所选平台的安装、原生授权、packaged smoke及退出恢复，保留Pre-release标记。不覆盖本机旧App、不改变仓库可见性；发现AppContainer枚举超时再次出现时保留原生调用证据并单独定位。
 
 ## 验收约束
 

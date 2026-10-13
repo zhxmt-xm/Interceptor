@@ -92,7 +92,7 @@ MCP 默认关闭。客户端是否兼容取决于其支持的 Streamable HTTP �
 
 欢迎代码、文档、翻译和具体的问题反馈。源码初始化、模块分工、调试、验证与打包统一见 [中文开发指南](architecture/development.md)；功能契约和平台说明见 [架构文档索引](architecture/README.md)。
 
-完成初始化后，运行`npm start`，选择`Development / Test / Build / Release`。Desktop与Design不再询问构建模式；确认默认Yes，仍需按Enter执行。Release进入现有`npm run release`向导，保留CI与Publish确认。原始命令继续供直接调用和CI使用。
+完成初始化后，运行`npm start`，选择`Development / Test / Build / Release`。Desktop与Design不再询问构建模式；确认默认Yes，仍需按Enter执行。Release进入现有`npm run release`向导，启动CI前确认源码、版本与目标，构建和完整性检查通过后自动Publish，不再二次询问。原始命令继续供直接调用和CI使用。
 
 ## 致谢
 

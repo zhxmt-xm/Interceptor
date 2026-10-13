@@ -26,7 +26,7 @@
   <main>
     <h1>Windows EXE / MSI / ZIP 发布支持</h1>
     <p class="meta">提交改动说明 · 2026-10-13 13:28 +08:00 · 工程与文档、Core</p>
-    <p>复用同一应用构建与现有 MSI 安装逻辑，为 Windows 提供三种分发格式，保留 macOS 两种架构的 DMG / ZIP，并让各平台均可发布完整的 alpha 预发布版本。Archive 快照初始化改为单个事务，消除逐条创建 schema 对象时的重复磁盘同步。</p>
+    <p>复用同一应用构建与现有 MSI 安装逻辑，为 Windows 提供三种分发格式，保留 macOS 两种架构的 DMG / ZIP，并让各平台均可发布完整的 alpha 预发布版本。Archive 快照初始化改为单个事务，消除逐条创建 schema 对象时的重复磁盘同步。CI 与完整性检查通过后自动 Publish，不再二次询问。</p>
     <section>
       <h2>工程与文档</h2>
       <h3>发布目标与交互选择</h3>
@@ -61,6 +61,13 @@
       <h3>发布约定</h3>
       <p><code>architecture/release-guide.md</code>、<code>architecture/platform/release.md</code></p>
       <p>说明三种 Windows 格式的关系、EXE 的原生 MSI UI、ZIP 解压运行方式及内置更新仍选 MSI 的边界。未改动桌面 Renderer，也未新增第二套安装向导。</p>
+      <h3>CI 检查通过后直接 Publish</h3>
+      <p>位置：<code>scripts/release.mjs</code>、<code>scripts/start.mjs</code>、Release workflow 的说明文字及开发/发版指南。</p>
+      <div class="change">
+        <div><p class="label">改前</p><p>CI 生成 draft 后再次询问实机验收与 Publish，输入 No 会留下未发布草稿。</p></div>
+        <div><p class="label">改后</p><p>保留源码、版本、目标选择与启动 CI 前的确认；CI 成功后核对 tag、Release 身份与附件，直接 Publish 并读取 GitHub 状态确认，不再二次询问。</p></div>
+      </div>
+      <p>原因与影响：按维护者要求连续完成发布；正常向导及已完成 CI 的草稿共用 <code>publishRelease()</code>，导入脚本不会意外启动向导。源码 SHA、附件名称/大小/digest/更新时间、草稿身份及发布后状态检查保留。自动发布不代表实机安装和系统授权已通过，未验证范围继续单独记录。</p>
     </section>
     <section>
       <h2>Core</h2>

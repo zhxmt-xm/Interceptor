@@ -75,7 +75,7 @@ npm start
 | Development | Desktop / Playground / Design → 确认启动，不再选择启动模式 |
 | Test | Typecheck、Unit/Integration、E2E、Parity、Packaged smoke、Artifact audit → 必要的workspace、测试范围、workflow或视图 |
 | Build | App应用包 / Installer安装包 → 确认构建 |
-| Release | 确认启动 → 现有发版向导（源码commit、版本、目标、CI与Publish确认） |
+| Release | 确认启动 → 发版向导选择源码commit、版本与目标 → 确认CI → 检查通过后自动Publish |
 
 - 选择菜单中的“返回上一级”可以重新选择；最终确认输入`n`回到主菜单，不执行命令。`Ctrl+C`退出。
 - 命令顺序执行，任一步失败立即停止后续步骤并以非零状态退出，不自动重试或忽略失败。正常结束后回到主菜单。
@@ -84,7 +84,7 @@ npm start
 - Packaged smoke自动打包后运行；Artifact audit先打包再审计资源，不启动Desktop。不要与其他构建、开发实例或依赖产物的测试并行。
 - Parity只选择现有视图，保留其主题、尺寸和阈值，不修改设计基准。Watch、Browser专项、截图/图片对比、报告查看、单独Core/native构建等低频操作继续使用下文原始命令，不占用常用菜单。
 - 原生启动和打包只在相应平台可选。启动App或真实验收前会提示系统代理、证书授权和正常退出要求；向导不替代系统授权或恢复检查。
-- Release调用现有`npm run release`，不复制发版逻辑；需要已安装并登录`gh`，启动CI和最终Publish仍分别在发版向导中确认。
+- Release调用现有`npm run release`，不复制发版逻辑；需要已安装并登录`gh`。启动CI前确认发版计划，CI及完整性检查通过后自动Publish，不再二次询问。
 - 原始命令继续保留，CI与非交互环境直接调用它们；也可直接运行`npm run release`进入同一向导。
 
 查看入口说明：
@@ -475,13 +475,13 @@ npm run release
 
 默认macOS x64 DMG/ZIP，也可选macOS arm64或Windows x64 MSI。CI编排工具与产品源码分开记录：产品精确检出所选SHA，编排工具取自运行workflow的版本；不会偷偷改用main源码或跳过旧commit不满足的许可/安全/测试要求。
 
-所有CI构建检查通过后生成tag及draft，再由用户实机验收确认后Publish。没有本地构建/版本commit或第二轮tag CI。完整选择、hash查询、工具部署前提和GitHub排障步骤见[发版完整操作指南](release-guide.md)。
+所有CI构建检查通过后生成tag及draft，CLI核对源码SHA、Release身份与附件完整性后自动Publish，不再等待第二次确认。自动发布不代表实机验收已经通过，缺失证据仍须如实记录。没有本地构建/版本commit或第二轮tag CI。完整选择、hash查询、工具部署前提和GitHub排障步骤见[发版完整操作指南](release-guide.md)。
 
 **访问与历史**
 
 - private仓库也能创建draft和Release，但用户匿名下载与当前固定更新源需要public可读的发布源。仓库可见性必须单独确认，脚本不会自动更改；不因产品没有GitHub登录而将CI token写入产品。
 - 删除Release不会自动删除Git tag、commit或已经下载的副本。已发布版本修正使用新tag；启用immutable releases时，即使删除Release，也不能复用原tag名称。不要把删除当成首次发布的回滚保证。
-- 未选择Windows时，其实机验收不阻塞macOS-only发行；选择Windows不代表验收完成，不能省略该平台发布门禁。
+- 未选择Windows时，不要求执行Windows实机验收；选择或自动发布Windows产物不代表其安装、授权和退出恢复已通过，仍须保留独立验证状态。
 
 本机已有签名资质时，Forge仍可使用`WINDOWS_CERTIFICATE_FILE/PASSWORD`或`APPLE_SIGN_IDENTITY`；Apple公证还需`APPLE_ID`、`APPLE_ID_PASSWORD`和`APPLE_TEAM_ID`。它们不是当前macOS CI前提。密钥、密码和证书私钥不得进入仓库或产物。
 

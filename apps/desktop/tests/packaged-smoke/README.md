@@ -118,7 +118,7 @@ macOS Main的stdout/stderr继承测试profile内0600日志文件，父runner在s
 ### macOS直接分发验收
 
 - macOS tag发行使用ad-hoc签名，不要求Developer ID或Apple公证。`codesign --verify --deep --strict`验证包与内嵌代码完整性，不代表Gatekeeper会直接放行。
-- 托管Release CI精确检出用户选定的源码SHA，按所选原生目标执行构建、helper读取、CPU架构/签名完整性、许可/资源审计和安装包检查，不执行本套件所需的原生授权流程。CI通过后才创建指向该SHA的tag及draft，本套件的真实结果和安装证据齐全后才能确认Publish；所选包类型数量必须与本轮结果一致，不能用本地未提交文件或旧make输出冒充所选commit的产物。
+- 托管Release CI精确检出用户选定的源码SHA，按所选原生目标执行构建、helper读取、CPU架构/签名完整性、许可/资源审计和安装包检查，不执行本套件所需的原生授权流程。CI通过后创建指向该SHA的tag及draft，CLI核对完整性后自动Publish，不再二次询问；这不代表本套件或实际安装验收已通过，缺失证据仍须单独记录。所选包类型数量必须与本轮结果一致，不能用本地未提交文件或旧make输出冒充所选commit的产物。
 - 从GitHub实际下载DMG/ZIP，将App复制到Applications，再按系统正常流程核对首次启动、单个可信应用放行、helper和CA授权。禁止删除quarantine属性或全局关闭Gatekeeper来制造通过结果；开发helper授权不能替代生产入口。
 - 保存下载来源、版本、架构、SHA-256、系统提示及正常退出证据。确认Main/Core/Worker退出、8888释放、系统代理和证书状态符合基线；常驻helper的保留/卸载遵守现有独立授权范围。
 - 默认配置不含Windows；向导选择Windows后仍须完成Windows smoke和安装器生命周期，未运行不能记为通过。具体配置和手动CI步骤见[发版指南](../../../../architecture/release-guide.md)。

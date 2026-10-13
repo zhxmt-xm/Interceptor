@@ -92,7 +92,7 @@ Report reproducible problems or suggest improvements through [GitHub Issues](htt
 
 Code, documentation, translations and focused bug reports are welcome. Start with the [development guide (Chinese)](architecture/development.md) for setup, module responsibilities, debugging, validation and packaging. The [architecture index (Chinese)](architecture/README.md) links to feature contracts and platform documentation.
 
-After setup, run `npm start` and choose Development, Test, Build or Release. Desktop and Design start without build-mode questions; confirmation defaults to Yes but still waits for Enter. Release opens the existing `npm run release` wizard, keeping its CI and Publish confirmations. Existing commands remain available for direct use and CI.
+After setup, run `npm start` and choose Development, Test, Build or Release. Desktop and Design start without build-mode questions; confirmation defaults to Yes but still waits for Enter. Release opens the existing `npm run release` wizard: confirm the source, version and targets before CI, then successful builds are verified and published automatically without another prompt. Existing commands remain available for direct use and CI.
 
 ## Acknowledgements
 

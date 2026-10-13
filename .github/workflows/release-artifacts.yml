@@ -169,7 +169,7 @@ jobs:
             echo "Workflow tooling commit: $RELEASE_TOOLING_SHA"
             echo "Only the selected native target and packages were built."
             echo "macOS is ad-hoc signed without notarization; Windows installers are unsigned."
-            echo "Real download, installation, native authorization, packaged smoke and exit restoration remain manual gates before Publish."
+            echo "Real download, installation, native authorization, packaged smoke and exit restoration require separate real-platform validation; automatic Publish does not certify them."
           } >> "$GITHUB_STEP_SUMMARY"
 
   release:
@@ -230,7 +230,7 @@ jobs:
             if test "$PRERELEASE" = true; then FLAGS+=(--prerelease); fi
             gh release create "$RELEASE_TAG" "${ASSETS[@]}" "${FLAGS[@]}" \
               --draft --verify-tag --target "$SOURCE_SHA" --generate-notes \
-              --notes "Source commit: $SOURCE_SHA. Targets: $TARGET_SUMMARY. macOS is ad-hoc signed and not notarized; Windows installers are unsigned. Windows EXE embeds and launches the same MSI without separate app registration. ZIP packages require extraction. Built-in updates require a matching macOS DMG or Windows MSI. EXE and ZIP are for manual distribution. Complete real installation, authorization, packaged smoke and exit-restoration acceptance on every included platform before publishing. Do not disable system-wide security protections." \
+              --notes "Source commit: $SOURCE_SHA. Targets: $TARGET_SUMMARY. macOS is ad-hoc signed and not notarized; Windows installers are unsigned. Windows EXE embeds and launches the same MSI without separate app registration. ZIP packages require extraction. Built-in updates require a matching macOS DMG or Windows MSI. EXE and ZIP are for manual distribution. Real installation, authorization, packaged smoke and exit-restoration acceptance require separate validation on every included platform; CI and automatic publication do not certify them. Do not disable system-wide security protections." \
               --title "Interceptor $RELEASE_VERSION"
           else
             gh release upload "$RELEASE_TAG" "${ASSETS[@]}" --clobber
@@ -252,5 +252,5 @@ jobs:
           {
             echo "## Draft prepared"
             echo "Tag $RELEASE_TAG points to product commit $SOURCE_SHA."
-            echo "The assets are staged, not published. Complete real-platform acceptance before Publish."
+            echo "The assets are staged. The release CLI verifies and publishes this draft automatically after the workflow succeeds."
           } >> "$GITHUB_STEP_SUMMARY"

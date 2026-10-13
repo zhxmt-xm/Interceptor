@@ -6,7 +6,7 @@
 npm run release
 ```
 
-流程为：**选择源码commit → 选择版本和目标 → 确认 → CI检出指定SHA并构建/tag/draft → 实机验收确认 → Publish**。
+流程为：**选择源码commit → 选择版本和目标 → 确认 → CI检出指定SHA并构建/tag/draft → 核对源码及附件完整性 → 自动Publish**。
 
 本地工作区可以保留未提交修改。命令不会修改本地版本或配置，不commit、push、stash、checkout、清理文件或改变HEAD；未提交内容不会进入安装包。
 
@@ -97,17 +97,17 @@ d274c2f8   2026-10-04    fix(capture): count requests in filter group badges
 - 默认分支只提供本轮CI编排脚本；它的HEAD不替换你选中的源码。
 - GitHub运行页面显示的workflow commit可能不同，Summary会同时列出`Product commit`和`Workflow tooling commit`。
 
-开始和最终Publish确认均默认Yes，显示`(Y/n)`。按Enter继续，输入`n`取消。开始前可能已查询Git/GitHub元数据，但不会写本地文件或启动构建/tag/发布。
+启动CI前的确认默认Yes，显示`(Y/n)`。按Enter即授权检查通过后自动Publish，输入`n`取消；后续不再询问Publish。开始前可能已查询Git/GitHub元数据，但不会写本地文件或启动构建/tag/发布。
 
 ## 5. 后续仍是一条连续流程
 
-**本地不是先打包再上传。** 本地命令只查询并收集发版参数、派发CI、等待结果和最终发布确认；GitHub runner检出选定源码SHA，安装依赖、测试、构建安装包并上传。Release job从同次CI的artifact取得安装包，再创建tag和draft。本地`out/`里的已有安装包不会被上传。
+**本地不是先打包再上传。** 本地命令查询并收集发版参数、派发CI、等待结果、核对产物并自动发布；GitHub runner检出选定源码SHA，安装依赖、测试、构建安装包并上传。Release job从同次CI的artifact取得安装包，再创建tag和draft。本地`out/`里的已有安装包不会被上传。
 
 | 进度 | 程序行为 |
 | --- | --- |
 | `[1/3]` | 传入固定源码SHA、版本、目标，启动一次CI并等待 |
-| `[2/3]` | CI成功后给出draft链接，等待你完成实机验收 |
-| `[3/3]` | 你确认后再次核对tag来源和附件，再Publish |
+| `[2/3]` | CI成功后核对tag源码、Release身份及附件名称、大小、digest和更新时间 |
+| `[3/3]` | 无需再次确认，直接Publish并读取GitHub状态确认成功 |
 
 CI原生job在同一工作目录精确检出所选SHA。为避免旧commit缺少新版发版工具，仅将发版脚本、EXE引导模板与产物校验工具保存到runner临时目录，再检出源码；不复制整个产品仓库或创建额外worktree。工具不进入App。
 
@@ -115,16 +115,19 @@ CI原生job在同一工作目录精确检出所选SHA。为避免旧commit缺少
 
 你可以继续在本地开发；这不会改变本轮选定的SHA。若源码commit还没推送或新版workflow还没部署，必须先解决，不自动推送其他工作。
 
-## 6. 实机验收和最终确认
+## 6. 实机验收与验证边界
 
-1. 保持终端打开，打开命令给出的draft链接，以有权限的账号登录GitHub。
+自动Publish不等于实机验收通过。以下检查仍需在对应平台执行，未执行、失败或受阻的范围继续记录在Handover，不因Release已发布改写为passed。
+
+1. 打开命令给出的Release链接；private仓库需要以有权限的账号登录GitHub。
 2. 展开`Assets`，下载匹配版本、架构的DMG/ZIP/EXE/MSI；不要下载`Source code`压缩包。
 3. macOS将App复制到Applications后启动，ZIP先解压。只对来源及完整性可信的应用使用系统提供的`Open Anyway`；不要全局关闭Gatekeeper或删除quarantine制造通过。
 4. 按产品正常流程完成helper/CA授权，以及所选平台的packaged smoke、安装生命周期与必要功能验收。
 5. 正常退出，确认进程和8888释放、系统代理恢复、证书状态符合验收基线；不把原代理一律清空。
    Windows额外核对EXE正常安装及取消、MSI与EXE交叉升级/卸载、ZIP解压后启动与退出；EXE只启动MSI，系统应用列表不应出现第二套引导器卸载项。解压ZIP仍遵循正常helper/CA授权，不能称为无需系统权限。
-6. 回到同一终端，在`实机验收全部通过，现在Publish？`处确认。尚未完成就输入`n`，保留draft。
-7. 命令检查tag仍指向原SHA、附件未变后发布，最后给出正式链接。不要在命令等待期间提前到网页Publish。
+6. 保存各平台实际验收结果与限制；命令不再等待这些操作，也不要求输入第二次Publish确认。
+
+CLI在自动Publish前仍会再次检查tag指向及附件是否变化；发现变化、CI失败或发布请求失败时明确中止。中断本地命令可能留下draft，不得把它当作已经发布。
 
 仓库可见性不会改变。private仓库允许内部发版，但匿名下载需要另行确认公开发布源；公开前须核对源码和历史中的敏感内容。
 

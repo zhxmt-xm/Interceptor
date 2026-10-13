@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
 import { checkbox, confirm, input, select } from '@inquirer/prompts';
@@ -142,7 +144,7 @@ function printPlan(plan, context, source) {
     ]),
   ]);
   console.log('\n执行方式');
-  console.log('  CI检出上面的源码SHA → 检查/构建 → tag/draft → 实机验收确认 → Publish');
+  console.log('  CI检出上面的源码SHA → 检查/构建 → tag/draft → 核对完整性 → 自动Publish');
   console.log('  工作流分支只提供编排脚本，不是发版源码；本地未提交修改不会进入安装包。');
   console.log('  不修改本地文件、版本、index或HEAD，不commit、push、stash或清理工作区。');
   if (plan.prerelease) console.log('  此为预发布版本，不进入稳定版更新。');
@@ -223,18 +225,13 @@ function artifactFingerprint(release) {
   });
 }
 
-async function publishAfterAcceptance(plan, context) {
+export function publishRelease(plan, context) {
   const draft = readRelease(plan, context);
   if (!draft.draft) throw new Error('该Release已不再是draft，停止自动操作，请检查GitHub状态。');
-  console.log(`\n[2/3] 等待实机验收：${draft.html_url}`);
-  console.log('保持终端打开，从草稿实际下载，完成所有所选平台的安装、系统授权和退出恢复。');
-  if (!await confirm({ message: '实机验收全部通过，现在Publish？', default: true })) {
-    console.log(`保留草稿，未Publish：${draft.html_url}`);
-    return;
-  }
+  console.log(`\n[2/3] 核对Release与安装包：${draft.html_url}`);
   const checked = readRelease(plan, context);
   if (!checked.draft || artifactFingerprint(checked) !== artifactFingerprint(draft)) {
-    throw new Error('验收期间草稿或附件发生变化，未Publish，请重新核对和验收。');
+    throw new Error('核对期间草稿或附件发生变化，未Publish，请检查GitHub状态。');
   }
   console.log('[3/3] Publish Release');
   runCommand('gh', ['release', 'edit', plan.tag, '--repo', context.repository, '--draft=false']);
@@ -250,7 +247,7 @@ async function main() {
   });
   if (values.help) {
     console.log('npm run release');
-    console.log('最近10个commit / 输入hash → 版本与目标 → 固定SHA的CI构建和草稿 → 实机验收确认 → Publish');
+    console.log('最近10个commit / 输入hash → 版本与目标 → 确认启动CI → 核对固定SHA及安装包 → 自动Publish');
     console.log('本地工作区可以保留未提交修改。完整步骤：architecture/release-guide.md');
     return;
   }
@@ -283,18 +280,20 @@ async function main() {
   }
   console.log(`[1/3] 提交CI：源码 ${plan.sourceSha}`);
   await runCi(plan, context);
-  await publishAfterAcceptance(plan, context);
+  publishRelease(plan, context);
 }
 
-try {
-  await main();
-} catch (error) {
-  if (error instanceof Error && error.name === 'ExitPromptError') {
-    console.log('\n已取消本地操作；已启动的远端运行不会自动取消。');
-    process.exitCode = 130;
-  } else {
-    console.error(`\n[release] ${error instanceof Error ? error.message : String(error)}`);
-    console.error('本地文件、index和HEAD未被发版命令修改。恢复步骤见architecture/release-guide.md。');
-    process.exitCode = 1;
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    await main();
+  } catch (error) {
+    if (error instanceof Error && error.name === 'ExitPromptError') {
+      console.log('\n已取消本地操作；已启动的远端运行不会自动取消。');
+      process.exitCode = 130;
+    } else {
+      console.error(`\n[release] ${error instanceof Error ? error.message : String(error)}`);
+      console.error('本地文件、index和HEAD未被发版命令修改。恢复步骤见architecture/release-guide.md。');
+      process.exitCode = 1;
+    }
   }
 }

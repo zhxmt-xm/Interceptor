@@ -71,7 +71,7 @@ external模块在顶层`require`可能阻塞packaged Main与CDP初始化，因�
 
 ## 6. 交互配置与发布 CI
 
-- `npm start`的顶层Release入口在显示执行摘要并取得确认后调用现有`npm run release`；不复制发版逻辑，也不跳过后续CI与Publish确认。直接发版命令继续保留。
+- `npm start`的顶层Release入口在显示执行摘要并取得确认后调用现有`npm run release`；不复制发版逻辑，保留启动CI前的发版计划确认，检查通过后自动Publish，不再二次询问。直接发版命令继续保留。
 - `npm run release`先展示当前分支最近10个commit，另提供短/完整hash查询确认；本地无对象时查询当前GitHub仓库，不接受分支名、歧义hash或非commit对象。选中后向GitHub核对完整SHA，未推送或不可访问时拒绝，不自动上传或改用main。
 - 版本基准结合所选源码的Desktop版本与已有GitHub版本tag，保留版本增量和目标选择。源码SHA、版本和目标作为workflow_dispatch输入；本地不修改版本/配置/index/HEAD，不commit、push、stash或清理文件，不要求干净工作区。
 - `scripts/release-config.mjs`统一校验本次请求、生成原生矩阵及资产数量，不读取工作区发版配置文件；macOS x64对应`macos-15-intel`，macOS arm64对应`macos-15`，Windows x64对应`windows-2025`。默认仅macOS x64 DMG/ZIP；不接受空选择、重复目标、错误包类型或未实现架构，不宣称universal。Windows支持alpha/beta/rc，仍拒绝build metadata及超出Windows Installer版本段范围的值。
@@ -83,10 +83,10 @@ external模块在顶层`require`可能阻塞packaged Main与CDP初始化，因�
 - workflow输入为`source_sha`（完整40位SHA）、`version`、`targets`（受支持目标JSON）和可选`request_id`。CLI从默认分支启动编排，用唯一request ID跟踪；GitHub运行的headSha代表工作流版本，不当作产品源码SHA，Summary同时记录两者。
 - 一次workflow完成检查和构建后，在GitHub创建直接指向`source_sha`的tag及**draft Release**，不再以本地推tag触发第二次CI。重跑时已有tag必须解析到同一SHA，已有Release必须仍是draft；不移动tag或覆盖已发布版本。预发布SemVer同步设置prerelease，CLI在最终Publish前再次核对tag指向及附件。
 - Release资产数量和类型从配置计算，不固定为2或3；逐项将GitHub返回的大小和SHA-256与本轮本地文件对比。诊断文件使用独立artifact，**绝不混入Release assets**。
-- 托管runner只证明构建与上述自动检查。需要已初始化共享CA、已登录桌面、原生系统授权的packaged smoke，以及浏览器下载后的Gatekeeper/SmartScreen、真实安装生命周期和退出恢复，在对应平台实机执行。它们不是托管CI的passed项目，证据未齐不得Publish draft；Windows产物仍须满足其独立门禁。
+- 托管runner只证明构建与上述自动检查。需要已初始化共享CA、已登录桌面、原生系统授权的packaged smoke，以及浏览器下载后的Gatekeeper/SmartScreen、真实安装生命周期和退出恢复，在对应平台实机执行。自动Publish不证明这些检查已通过；缺失证据仍在Handover保留，Windows与macOS分别记录验证状态。
 - macOS下载产物的workflow与packaged smoke共用`INTERCEPTOR_E2E_MACOS_APP_PATH`选择实际安装App，
   smoke同时用`INTERCEPTOR_BUILD_VERSION`断言本轮版本；不覆盖本地`out/`或修改manifest来伪装下载产物。
-- 命令给出draft链接并在同一终端等待维护者实机验收，确认后重新核对Release身份、附件名称/大小/digest/更新时间，再执行Publish并读取GitHub状态确认；未确认则保留draft。draft不提供匿名更新。失败保留Actions日志与诊断，重跑仅可更新draft；已发布版本修正使用新tag，不以删除Release或移动tag代替版本管理。
+- 命令在CI成功后重新核对tag源码、Release身份、附件名称/大小/digest/更新时间，直接执行Publish并读取GitHub状态确认，不再等待实机验收问句。`publishRelease()`由正常向导与已完成CI的草稿恢复共用，导入模块不会自动启动交互向导。检查失败时中止，不能将不一致的草稿发布；命令中断可能留下draft，draft不提供匿名更新。失败保留Actions日志与诊断，重跑仅可更新draft；已发布版本修正使用新tag，不以删除Release或移动tag代替版本管理。
 
 客户端匿名更新与Release CI相互独立。产品不包含GitHub登录或token，不发送Authorization；CI的`GITHUB_TOKEN`只用于当前仓库的draft/资产操作，不进入产物。private仓库允许Release但不提供匿名读取；发布流程不自动公开仓库或改变固定更新源。404或请求失败正常显示failed，下载规则见[Settings](../features/settings.md#4-更新)。发行记录以[GitHub Releases](https://github.com/zhxmt-xm/Interceptor/releases)为准，未完成的原生验收跟踪于[Handover](../HANDOVER.md)。
 

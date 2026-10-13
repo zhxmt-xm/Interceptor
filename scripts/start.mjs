@@ -315,7 +315,7 @@ async function main() {
           notices: [
             '需要已安装并登录 GitHub CLI（gh），且具备仓库和 Actions 权限。',
             '按指定源码 commit 发版，本地未提交修改不会进入安装包。',
-            '启动 CI 和最终 Publish 仍分别由发版向导确认。',
+            '发版向导确认启动 CI 后，检查通过即自动 Publish，不再二次询问。',
           ],
         };
     if (task && !await runTask(task)) return;
