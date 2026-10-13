@@ -33,7 +33,7 @@ export const releaseTargets = [
     platform: 'win32',
     arch: 'x64',
     runner: 'windows-2025',
-    packageTypes: ['msi'],
+    packageTypes: ['exe', 'msi', 'zip'],
   },
 ];
 
@@ -71,7 +71,7 @@ export function createReleasePlan(version, config, sourceSha) {
     throw new Error('发版配置必须至少选择一个目标。');
   }
   const targetIds = new Set();
-  const packageCounts = { dmg: 0, zip: 0, msi: 0 };
+  const packageCounts = { dmg: 0, zip: 0, msi: 0, exe: 0 };
   const targets = config.targets.map((target) => {
     requireObjectKeys(target, ['platform', 'arch', 'packages'], '发版目标');
     const supported = releaseTargets.find((candidate) =>

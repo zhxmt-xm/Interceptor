@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { copyFile, mkdir, stat, unlink } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { createReadStream } from 'node:fs';
+import { copyFile, mkdir, mkdtemp, rm, stat, unlink } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
@@ -14,6 +16,40 @@ const { spawn } = createRequire(sourceRequire.resolve('@electron-forge/core'))('
 
 async function runNpm(args) {
   await spawn('npm', args, { cwd: repositoryRoot, stdio: 'inherit' });
+}
+
+async function fileDigest(file) {
+  const hash = createHash('sha256');
+  for await (const chunk of createReadStream(file)) hash.update(chunk);
+  return hash.digest('hex');
+}
+
+async function buildWindowsBootstrapper(msiPath, version) {
+  const outputDirectory = path.join(desktopDirectory, 'out/make/nsis/x64');
+  await mkdir(outputDirectory, { recursive: true });
+  const executablePath = path.join(outputDirectory, `Interceptor-${version}-win32-x64.exe`);
+  const templatePath = fileURLToPath(new URL('./windows-bootstrapper.nsi', import.meta.url));
+  await spawn('makensis.exe', [
+    '/NOCD',
+    `/DMSI_PATH=${msiPath}`,
+    `/DOUTPUT_PATH=${executablePath}`,
+    `/DVERSION=${version}`,
+    `/DICON_PATH=${path.join(desktopDirectory, 'assets/interceptor-icon.ico')}`,
+    templatePath,
+  ], { cwd: repositoryRoot, stdio: 'inherit' });
+  const verificationDirectory = await mkdtemp(path.join(outputDirectory, 'verify-'));
+  try {
+    await spawn('7z.exe', ['e', executablePath, '*.msi', '-r', `-o${verificationDirectory}`, '-y'], {
+      cwd: repositoryRoot, stdio: 'inherit',
+    });
+    const embeddedMsi = path.join(verificationDirectory, 'Interceptor.msi');
+    if (await fileDigest(embeddedMsi) !== await fileDigest(msiPath)) {
+      throw new Error('Windows EXE内嵌MSI与本次Forge产物的SHA-256不一致。');
+    }
+  } finally {
+    await rm(verificationDirectory, { recursive: true, force: true });
+  }
+  return executablePath;
 }
 
 function assertSourceCheckout(sourceSha) {
@@ -56,6 +92,7 @@ async function main() {
   console.log('[release-build 2/5] 构建当前平台的 native helpers');
   await runNpm(['run', 'build:native', '--workspace', '@interceptor/desktop']);
   console.log('[release-build 3/5] 只运行所选 Forge makers');
+  const makerPackageTypes = [...new Set(target.packages.map((type) => type === 'exe' ? 'msi' : type))];
   const previousDirectory = process.cwd();
   let results;
   // Forge's Vite config paths are relative to the Desktop working directory.
@@ -65,7 +102,7 @@ async function main() {
       dir: desktopDirectory,
       platform: target.platform,
       arch: target.arch,
-      overrideTargets: target.packages.map((type) => makersByPackageType[type]),
+      overrideTargets: makerPackageTypes.map((type) => makersByPackageType[type]),
       interactive: false,
     });
   } finally {
@@ -77,9 +114,13 @@ async function main() {
     throw new Error('Forge 返回的版本、平台或架构与发版配置不一致。');
   }
   const artifacts = results.flatMap((result) => result.artifacts);
-  if (artifacts.length !== target.packages.length ||
-      target.packages.some((type) => artifacts.filter((file) => path.extname(file) === `.${type}`).length !== 1)) {
+  if (artifacts.length !== makerPackageTypes.length ||
+      makerPackageTypes.some((type) => artifacts.filter((file) => path.extname(file) === `.${type}`).length !== 1)) {
     throw new Error('Forge 返回的安装包类型或数量与选择不一致。');
+  }
+  if (target.packages.includes('exe')) {
+    const msiPath = artifacts.find((file) => path.extname(file) === '.msi');
+    artifacts.push(await buildWindowsBootstrapper(msiPath, plan.version));
   }
   for (const file of artifacts) {
     if ((await stat(file)).size === 0) throw new Error(`安装包为空：${file}`);
@@ -95,7 +136,7 @@ async function main() {
   console.log('[release-build 5/5] 归集本次安装包，不混入其他 make 输出');
   const outputDirectory = path.join(desktopDirectory, 'out/release', target.id);
   await mkdir(outputDirectory, { recursive: true });
-  for (const type of ['dmg', 'zip', 'msi']) {
+  for (const type of Object.keys(plan.packageCounts)) {
     const destination = path.join(outputDirectory, `Interceptor-${plan.version}-${target.id}.${type}`);
     if (target.packages.includes(type)) {
       const source = artifacts.find((file) => path.extname(file) === `.${type}`);

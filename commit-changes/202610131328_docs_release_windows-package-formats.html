@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Windows EXE / MSI / ZIP 发布支持</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 40px 20px; background: #0c0d11; color: #f3f4f8; font: 15px/1.8 system-ui, sans-serif; }
+    main { max-width: 980px; margin: auto; }
+    h1 { margin: 0; font-size: clamp(24px, 4vw, 36px); line-height: 1.4; }
+    h2 { color: #2fd4b8; font-size: 20px; margin: 0 0 16px; }
+    h3 { font-size: 17px; margin: 20px 0 8px; }
+    p { margin: 8px 0; }
+    section { margin-top: 24px; padding: 24px; border: 1px solid #292d36; border-radius: 12px; background: #101116; }
+    code { font: 0.9em ui-monospace, monospace; overflow-wrap: anywhere; color: #bde7e0; }
+    .meta { color: #a4abbb; margin-top: 12px; }
+    .change { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .change > div { padding: 16px; background: #171922; border-radius: 8px; }
+    .label { color: #a4abbb; font-size: 13px; }
+    ul { margin: 8px 0; padding-left: 22px; }
+    @media (max-width: 640px) { body { padding: 24px 16px; } section { padding: 20px; } .change { grid-template-columns: minmax(0, 1fr); } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Windows EXE / MSI / ZIP 发布支持</h1>
+    <p class="meta">提交改动说明 · 2026-10-13 13:28 +08:00 · 工程与文档</p>
+    <p>复用同一应用构建与现有 MSI 安装逻辑，为 Windows 提供三种分发格式，保留 macOS 两种架构的 DMG / ZIP。</p>
+    <section>
+      <h2>工程与文档</h2>
+      <h3>发布目标与交互选择</h3>
+      <p><code>scripts/release-config.mjs</code>、<code>scripts/release.mjs</code></p>
+      <div class="change">
+        <div><p class="label">改前</p><p>Windows 只能选择 MSI，附件类型统计没有 EXE。</p></div>
+        <div><p class="label">改后</p><p>Windows 可选择 EXE、MSI、ZIP，按实际选择计算附件数量；未选择 MSI 时明确说明内置更新限制。</p></div>
+      </div>
+      <p>原因与影响：支持面向普通用户的 EXE、标准 MSI 与完整解压包，不把 EXE 或 ZIP 假装成内置更新所需的 MSI。</p>
+      <h3>EXE 复用现有 MSI</h3>
+      <p><code>scripts/release-build.mjs</code>、<code>scripts/windows-bootstrapper.nsi</code></p>
+      <div class="change">
+        <div><p class="label">改前</p><p>发布脚本仅归集 Forge maker 的直接输出。</p></div>
+        <div><p class="label">改后</p><p>选择 EXE 时先构建同一 MSI，再由 NSIS 离线封装；EXE 释放 MSI、显示原生安装 UI 并传递退出码，不写应用卸载记录。</p></div>
+      </div>
+      <p>原因与影响：避免第二套安装逻辑或 Burn Bundle 登记；只选 EXE 时，作为 payload 的 MSI 不额外成为 Release 附件。</p>
+      <h3>Windows ZIP 与 CI</h3>
+      <p><code>apps/desktop/forge.config.ts</code>、<code>scripts/start.mjs</code>、<code>.github/workflows/release-artifacts.yml</code></p>
+      <ul>
+        <li>ZIP maker 从仅 macOS 改为同时支持 Windows，打包完整应用目录。</li>
+        <li>Windows EXE 构建使用固定的 NSIS 3.11；编译器、模板及7-Zip检查只属于构建流程，不进入 App。</li>
+        <li>CI 对比 EXE 内嵌 MSI 与独立 MSI 的 SHA-256，附件统计增加 EXE，诊断产物仍不进入 Release。</li>
+        <li>Forge 配置测试随 Windows ZIP 约定更新；macOS 签名、资源和安装包规则不变。</li>
+      </ul>
+      <h3>发布约定</h3>
+      <p><code>architecture/release-guide.md</code>、<code>architecture/platform/release.md</code></p>
+      <p>说明三种 Windows 格式的关系、EXE 的原生 MSI UI、ZIP 解压运行方式及内置更新仍选 MSI 的边界。未改动桌面 Renderer，也未新增第二套安装向导。</p>
+    </section>
+  </main>
+</body>
+</html>

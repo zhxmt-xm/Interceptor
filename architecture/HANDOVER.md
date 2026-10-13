@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `ba3ca0f0`
+> Tracked commit: `6236e775`
 
 ## 维护规则
 
@@ -34,6 +34,13 @@
   - 交付：每个选定平台分别准备标题、正文、语言版本、真实截图或视频、官网/下载/GitHub 链接和必要的回复要点；内容针对平台和具体使用场景调整，不机械复制同一篇宣传稿。
   - 下一步：先完成渠道与帖子清单，再按顺序逐项备稿、核对发布规则、确认最终内容与账号授权并发布；正式外发使用 item 9–11 已就绪的资料与入口，本轮仅登记待办，不操作外部账号或对外发布。
   - 验收：每个选定渠道都有最终稿、素材和实际发布链接，并处理发布后的有效问题与反馈；发布链接及反馈记录保存在对应推广材料中，不把草稿算作已发布。账号、平台规则或人工操作阻塞时说明原因，继续其他可执行渠道。
+
+- **14. v0.1.1 macOS / Windows Release · 进行中**
+  - 目标：基于`6236e775`补齐Windows格式支持后固定新源码SHA，发布macOS Intel x64 DMG/ZIP、macOS Apple Silicon arm64 DMG/ZIP和Windows x64 EXE/MSI/ZIP；macOS两个架构分别出包，不是universal，本地官网及item 10改动不进入安装包。
+  - 当前：用户已确认Windows增加ZIP及低成本EXE，并授权只将打包支持作为中间进度commit/push。原五附件CI已取消、未创建Release；本地已补充NSIS薄引导包、完整ZIP、CLI选择及七附件校验，不采用会增加另一套安装登记的Burn Bundle。下一轮CI须使用此打包支持的commit。
+  - 本地检查：Forge目标配置已有Red/Green，Desktop typecheck与七附件参数契约通过；Windows专属断言尚未在本机执行，NSIS原生编译、payload核验及实际安装仍待Windows。[本地检查记录](../apps/desktop/test-results/release-tooling-20261013/)仅供本轮恢复，不作为跨平台通过证明；改动说明统一维护于[发布格式说明](../commit-changes/202610131328_docs_release_windows-package-formats.html)。
+  - 发布门禁：CI通过不代替实际下载、安装、系统授权、packaged smoke和退出恢复。macOS采用ad-hoc且未公证，Windows安装器未签名；macOS arm64和Windows最终产物仍需对应实机验收，未取得证据和最终确认前不Publish。
+  - 下一步：等待原生CI结果，核对实际附件的版本、平台、数量和SHA-256；在可用实机执行验收，缺少的平台保留draft并给出恢复步骤。不公开仓库、不改变系统安全设置、不移动已有tag。
 
 ## 验收约束
 

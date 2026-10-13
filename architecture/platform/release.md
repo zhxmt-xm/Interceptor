@@ -32,9 +32,10 @@ external模块在顶层`require`可能阻塞packaged Main与CDP初始化，因�
 只有构建副本使用发版版本，源码manifest保持原值；产物审计检查实际ASAR，不以文件名代替。
 
 - **稳定身份/版本**：Desktop `0.1.0`，`com.zhxmt.interceptor` 作为 Bundle ID / AppUserModelId；Windows executable 为 `asInvoker`。MSI 固定 UpgradeCode，x64、per-user，不把 auto-update feature 耦合进安装器。
-- **Windows maker**：Forge WiX maker + 固定校验的 portable WiX 3.14.1；`make` 产出 MSI。可选 `WINDOWS_CERTIFICATE_FILE/PASSWORD` 同时签 app 与 MSI。生命周期 smoke 构建两版，验证 install → launch → major-upgrade → launch → uninstall。
+- **Windows maker**：Forge WiX maker + 固定校验的 portable WiX 3.14.1；`make` 产出 MSI/ZIP。可选 `WINDOWS_CERTIFICATE_FILE/PASSWORD` 同时签 app 与 MSI。生命周期 smoke 构建两版，验证 install → launch → major-upgrade → launch → uninstall。
   - 安装生命周期runner复用workflow的Windows宿主guard，运行前要求共享CA已就绪；每版等待真实App/Core/8888，点击公共Close并复核进程、完整WinINet、journal和Root集合。失败保留profile，恢复未确认时不移除安装树，不把强杀当作正常退出。
   - npm入口仅为测试runner启用Node 24的`--experimental-transform-types`，直接加载既有TypeScript guard；不增加依赖，也不将此参数传给产品Electron。
+  - Forge ZIP maker同时支持Windows，打包完整目录而非单独exe。Release可另用NSIS 3.11生成EXE薄引导包：只释放并启动同一MSI，保持per-user安装、原生安装UI和MSI退出码，不注册另一套应用或卸载器；CI用7-Zip解出内嵌MSI并核对SHA-256。EXE及ZIP是手动分发格式，Main内置更新仍选MSI。
 - **macOS maker**：无身份时使用ad-hoc签名并启用Hardened Runtime；`optionsForFile`仅对App bundles应用[本地entitlements](../../apps/desktop/assets/macos-local-app-entitlements.plist)，允许JIT和无Team ID内嵌库加载，不开放DYLD注入、get-task-allow或关闭执行页保护。原生helper不使用该override。有`APPLE_SIGN_IDENTITY`时使用默认Hardened Runtime、entitlements和身份校验；公证凭据齐全才提交并staple。两种构建共用Fuses、sandbox与CSP，不改Gatekeeper或授权数据库；ad-hoc不等于Developer ID或公证。
 - **原生helper**：`@interceptor/platform-capabilities`拥有原生源码和构建；Windows使用系统.NET Framework的`csc.exe`，macOS使用`xcrun swiftc`。Desktop调用package的`build:native`，Forge将`packages/platform-capabilities/dist`内的`system-proxy`、`app-container`、`client-app`复制到原有同名resources目录。macOS helper使用package内固定identifier、Hardened Runtime和独立空entitlements，不继承Electron的JIT/设备权限。构建按源码、工具链、签名参数和产物hash缓存，缓存不进入App资源。
 - **macOS首次启动组件**：helper随App交付，Main检查部署并按需请求本机管理员授权，仅安装helper、root保护配置和launchd，不移动App或要求独立`.pkg`。生产按App配套签名身份核准；开发/业务E2E使用独立UID授权，不绑定每次App构建。两个socket共用服务，helper不独立下载或升级。[部署规则](../../packages/platform-capabilities/README.md#首次启动部署)。
@@ -73,8 +74,8 @@ external模块在顶层`require`可能阻塞packaged Main与CDP初始化，因�
 - `npm run release`先展示当前分支最近10个commit，另提供短/完整hash查询确认；本地无对象时查询当前GitHub仓库，不接受分支名、歧义hash或非commit对象。选中后向GitHub核对完整SHA，未推送或不可访问时拒绝，不自动上传或改用main。
 - 版本基准结合所选源码的Desktop版本与已有GitHub版本tag，保留版本增量和目标选择。源码SHA、版本和目标作为workflow_dispatch输入；本地不修改版本/配置/index/HEAD，不commit、push、stash或清理文件，不要求干净工作区。
 - `scripts/release-config.mjs`统一校验本次请求、生成原生矩阵及资产数量，不读取工作区发版配置文件；macOS x64对应`macos-15-intel`，macOS arm64对应`macos-15`，Windows x64对应`windows-2025`。默认仅macOS x64 DMG/ZIP；不接受空选择、重复目标、错误包类型或未实现架构，不宣称universal。MSI拒绝预发布/build metadata及超出Windows Installer版本段范围的值。
-- 原生job先按workflow SHA取得编排/校验工具，仅保存4个工具文件到runner临时目录，再在同一源码目录检出所选产品SHA；不复制整个产品仓库或创建额外worktree。`INTERCEPTOR_RELEASE_SOURCE_ROOT`只指明CI源码目录，工具不进入App。构建前后核对源码SHA、tracked差异和未跟踪文件，防止后续步骤污染所选快照。
-- `scripts/release-build.mjs`从所选源码的已安装依赖加载Forge公开`api.make()`，使用`INTERCEPTOR_BUILD_VERSION`注入本次版本，只运行所选makers并复用当前artifact audit和macOS签名/架构检查。缺少构建、许可或安全条件的旧快照明确失败，不修改其业务代码或放宽门禁。归集目录仍为`out/release/<target-id>`，文件名包含版本、平台和架构。
+- 原生job先按workflow SHA取得编排/校验工具及NSIS模板，再在同一源码目录检出所选产品SHA；不复制整个产品仓库或创建额外worktree。`INTERCEPTOR_RELEASE_SOURCE_ROOT`只指明CI源码目录，工具不进入App。构建前后核对源码SHA、tracked差异和未跟踪文件，防止后续步骤污染所选快照。
+- `scripts/release-build.mjs`从所选源码的已安装依赖加载Forge公开`api.make()`，使用`INTERCEPTOR_BUILD_VERSION`注入本次版本，只运行所需makers并复用当前artifact audit和macOS签名/架构检查。Windows选EXE时先构建作为其payload的MSI，仅归集用户选择的格式；EXE-only不额外发布MSI。缺少构建、许可或安全条件的旧快照明确失败，不修改其业务代码或放宽门禁。归集目录仍为`out/release/<target-id>`，文件名包含版本、平台和架构。
 - 所有actions固定commit SHA，并选用官方`runs.using: node24`版本：checkout v7.0.1、setup-node v7.0.0、upload-artifact v7.0.1、download-artifact v8.0.1。Action自身的Node运行时与项目`.nvmrc`分别管理，不用项目Node版本或强制兼容环境变量掩盖旧Action警告。工具准备的setup-node显式关闭自动npm缓存，保留原来只有安装依赖步骤启用缓存的行为；上传保持默认ZIP归档，下载保留合并目录与摘要不匹配时报错。
 - 无付费签名Secrets要求；macOS保留ad-hoc与Hardened Runtime、strict/nested签名完整性，Windows为未签名安装器。原生helper、Fuses/CSP、ASAR与许可校验不因免证书而放宽。
 - workflow输入为`source_sha`（完整40位SHA）、`version`、`targets`（受支持目标JSON）和可选`request_id`。CLI从默认分支启动编排，用唯一request ID跟踪；GitHub运行的headSha代表工作流版本，不当作产品源码SHA，Summary同时记录两者。

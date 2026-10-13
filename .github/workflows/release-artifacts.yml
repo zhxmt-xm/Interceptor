@@ -96,6 +96,7 @@ jobs:
           for (const file of [
             'scripts/release-config.mjs',
             'scripts/release-build.mjs',
+            'scripts/windows-bootstrapper.nsi',
             'apps/desktop/tests/installer/macos-release-smoke.mjs',
             'apps/desktop/tests/installer/package-artifact-audit.mjs',
           ]) {
@@ -122,6 +123,21 @@ jobs:
         if: matrix.platform == 'win32'
         shell: pwsh
         run: ./scripts/prepare-wix.ps1 -Destination "$env:RUNNER_TEMP/wix314"
+      - name: Prepare NSIS 3.11 and 7-Zip
+        if: matrix.platform == 'win32' && contains(needs.plan.outputs.targets, '"exe"')
+        shell: pwsh
+        run: |
+          choco install nsis --version=3.11.0 --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { throw 'NSIS installation failed.' }
+          $directory = Join-Path ${env:ProgramFiles(x86)} 'NSIS'
+          $compiler = Join-Path $directory 'makensis.exe'
+          if (-not (Test-Path $compiler)) { throw 'NSIS compiler is missing.' }
+          $version = & $compiler /VERSION
+          if ($LASTEXITCODE -ne 0 -or $version.Trim() -notmatch '^v?3\.11(?:\.0)?$') {
+            throw "Unexpected NSIS compiler version: $version"
+          }
+          Add-Content -Path $env:GITHUB_PATH -Value $directory
+          Get-Command 7z.exe -ErrorAction Stop
       - run: npm run build:core
       - run: npm run build:native --workspace @interceptor/desktop
       - run: npm run typecheck
@@ -183,7 +199,7 @@ jobs:
         run: |
           mapfile -d '' ASSETS < <(find release-assets -type f -print0)
           test "${#ASSETS[@]}" -eq "$EXPECTED_ASSET_COUNT"
-          for TYPE in dmg zip msi; do
+          for TYPE in dmg zip msi exe; do
             EXPECTED=$(jq -r --arg type "$TYPE" '.[$type]' <<< "$EXPECTED_PACKAGE_COUNTS")
             test "$(find release-assets -type f -name "*.$TYPE" | wc -l)" -eq "$EXPECTED"
           done
@@ -214,7 +230,7 @@ jobs:
             if test "$PRERELEASE" = true; then FLAGS+=(--prerelease); fi
             gh release create "$RELEASE_TAG" "${ASSETS[@]}" "${FLAGS[@]}" \
               --draft --verify-tag --target "$SOURCE_SHA" --generate-notes \
-              --notes "Source commit: $SOURCE_SHA. Targets: $TARGET_SUMMARY. macOS is ad-hoc signed and not notarized; Windows installers are unsigned. macOS built-in updates require a matching DMG; ZIP-only builds are for manual download. Complete real installation, authorization, packaged smoke and exit-restoration acceptance on every included platform before publishing. Do not disable system-wide security protections." \
+              --notes "Source commit: $SOURCE_SHA. Targets: $TARGET_SUMMARY. macOS is ad-hoc signed and not notarized; Windows installers are unsigned. Windows EXE embeds and launches the same MSI without separate app registration. ZIP packages require extraction. Built-in updates require a matching macOS DMG or Windows MSI. EXE and ZIP are for manual distribution. Complete real installation, authorization, packaged smoke and exit-restoration acceptance on every included platform before publishing. Do not disable system-wide security protections." \
               --title "Interceptor $RELEASE_VERSION"
           else
             gh release upload "$RELEASE_TAG" "${ASSETS[@]}" --clobber

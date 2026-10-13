@@ -76,11 +76,13 @@ d274c2f8   2026-10-04    fix(capture): count requests in filter group badges
 | --- | --- | --- |
 | macOS Intel / x64 | DMG、ZIP | macos-15-intel |
 | macOS Apple Silicon / arm64 | DMG、ZIP | macos-15 |
-| Windows / x64 | MSI | windows-2025 |
+| Windows / x64 | EXE、MSI、ZIP | windows-2025 |
 
 - `Space`勾选，`Enter`确认，可以选择多个目标和包类型。
 - 两个macOS架构分别出包，不是universal。不提供Linux或Windows arm64。
-- Windows MSI不接受预发布/build metadata，数字段上限为255.255.65535。
+- Windows目标沿用MSI版本约束，不接受预发布/build metadata，数字段上限为255.255.65535。
+- Windows三种格式共用同一应用构建；EXE是NSIS离线引导包，内嵌并启动本轮同一MSI，不维护另一套应用安装、升级或卸载记录。MSI仍是内置更新使用的安装格式；EXE和ZIP供手动分发，ZIP不是单文件版。
+- EXE需要Windows CI中的NSIS 3.11和7-Zip；CI核对内嵌MSI与单独MSI的SHA-256，不能只把应用exe改名当安装器。NSIS启动MSI保留原生安装UI及退出码，不自行提权、不静默安装、不强制重启。
 - macOS内置更新只接受同架构DMG；ZIP-only只能手动分发。
 - 任意可访问commit都能查询和选择，但不保证每个旧快照都能通过当前构建、许可、安全和测试门禁；不为旧快照跳过检查或注入业务修复。
 
@@ -106,7 +108,7 @@ d274c2f8   2026-10-04    fix(capture): count requests in filter group badges
 | `[2/3]` | CI成功后给出draft链接，等待你完成实机验收 |
 | `[3/3]` | 你确认后再次核对tag来源和附件，再Publish |
 
-CI原生job在同一工作目录精确检出所选SHA。为避免旧commit缺少新版发版工具，只将4个编排/校验文件保存到runner临时目录，再检出源码；不复制整个产品仓库或创建额外worktree。工具不进入App。
+CI原生job在同一工作目录精确检出所选SHA。为避免旧commit缺少新版发版工具，仅将发版脚本、EXE引导模板与产物校验工具保存到runner临时目录，再检出源码；不复制整个产品仓库或创建额外worktree。工具不进入App。
 
 构建版本通过环境变量注入。CI构建前后检查源码SHA和源码树，不能把测试造成的文件改动混入包。所有目标检查通过后，CI在GitHub创建指向该SHA的tag及draft；本地不创建tag，也不再进行“本地版本commit → 推tag → 第二轮CI”。
 
@@ -115,10 +117,11 @@ CI原生job在同一工作目录精确检出所选SHA。为避免旧commit缺少
 ## 6. 实机验收和最终确认
 
 1. 保持终端打开，打开命令给出的draft链接，以有权限的账号登录GitHub。
-2. 展开`Assets`，下载匹配版本、架构的DMG/ZIP/MSI；不要下载`Source code`压缩包。
+2. 展开`Assets`，下载匹配版本、架构的DMG/ZIP/EXE/MSI；不要下载`Source code`压缩包。
 3. macOS将App复制到Applications后启动，ZIP先解压。只对来源及完整性可信的应用使用系统提供的`Open Anyway`；不要全局关闭Gatekeeper或删除quarantine制造通过。
 4. 按产品正常流程完成helper/CA授权，以及所选平台的packaged smoke、安装生命周期与必要功能验收。
 5. 正常退出，确认进程和8888释放、系统代理恢复、证书状态符合验收基线；不把原代理一律清空。
+   Windows额外核对EXE正常安装及取消、MSI与EXE交叉升级/卸载、ZIP解压后启动与退出；EXE只启动MSI，系统应用列表不应出现第二套引导器卸载项。解压ZIP仍遵循正常helper/CA授权，不能称为无需系统权限。
 6. 回到同一终端，在`实机验收全部通过，现在Publish？`处确认。尚未完成就输入`n`，保留draft。
 7. 命令检查tag仍指向原SHA、附件未变后发布，最后给出正式链接。不要在命令等待期间提前到网页Publish。
 

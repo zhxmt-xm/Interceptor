@@ -113,13 +113,11 @@ async function choosePlan(source, sourceVersion, existingTags) {
   const targets = [];
   for (const id of selectedIds) {
     const target = releaseTargets.find((candidate) => candidate.id === id);
-    const packages = target.platform === 'win32'
-      ? ['msi']
-      : await checkbox({
-          message: `${target.label}：选择安装包类型`,
-          choices: target.packageTypes.map((type) => ({ name: type.toUpperCase(), value: type, checked: true })),
-          validate: (values) => values.length > 0 || '至少选择一种安装包。',
-        });
+    const packages = await checkbox({
+      message: `${target.label}：选择安装包类型`,
+      choices: target.packageTypes.map((type) => ({ name: type.toUpperCase(), value: type, checked: true })),
+      validate: (values) => values.length > 0 || '至少选择一种安装包。',
+    });
     targets.push({ platform: target.platform, arch: target.arch, packages });
   }
   return createReleasePlan(version, { targets }, source.sha);
@@ -151,6 +149,12 @@ function printPlan(plan, context, source) {
   for (const target of plan.targets) {
     if (target.platform === 'darwin' && !target.packages.includes('dmg')) {
       console.log(`  macOS ${target.arch} 仅ZIP：只供手动下载，内置更新需要同架构DMG。`);
+    }
+    if (target.platform === 'win32') {
+      console.log('  Windows EXE内嵌同一MSI并显示原生安装UI；ZIP为完整解压包，不是单文件版。');
+      if (!target.packages.includes('msi')) {
+        console.log('  Windows未选择MSI：只供手动下载，内置更新仍需要同架构MSI。');
+      }
     }
   }
   console.log('  macOS采用ad-hoc且未公证，Windows未签名；不会自动公开仓库。\n');

@@ -34,7 +34,12 @@ describe('Forge release configuration', () => {
 
     expect(dmg.platforms).toEqual(['darwin']);
     expect(dmg.config).toMatchObject({ format: 'ULFO' });
-    expect(zip.platforms).toEqual(['darwin']);
+    expect(zip.platforms).toEqual(['darwin', 'win32']);
+  });
+
+  it('declares complete ZIP packages for both supported desktop platforms', () => {
+    expect(findMaker('@electron-forge/maker-zip').platforms)
+      .toEqual(['darwin', 'win32']);
   });
 
   it.each(['0.1.1-alpha.0', '0.2.0'])('passes the requested release version %s to Packager', async (version) => {

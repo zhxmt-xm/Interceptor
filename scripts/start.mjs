@@ -206,7 +206,7 @@ async function chooseChecks(workspaces) {
 async function chooseBuild() {
   const action = await choose('Build：选择产物', [
     { name: process.platform === 'darwin' ? 'App 应用包 (.app)' : 'App 应用包', value: 'package', disabled: platformRestriction },
-    { name: process.platform === 'darwin' ? 'Installer 安装包 (.dmg / .zip)' : 'Installer 安装包 (.msi)', value: 'make', disabled: platformRestriction },
+    { name: process.platform === 'darwin' ? 'Installer 安装包 (.dmg / .zip)' : 'Installer 安装包 (.msi / .zip)', value: 'make', disabled: platformRestriction },
   ]);
   if (action === back) return;
   return {
