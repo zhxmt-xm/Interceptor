@@ -230,6 +230,10 @@ Body、HAR、Diagnostics和Archive导出均通过临时文件、`fsync`和直接
 
 Archive、Workspace 与 Diagnostics 的 SQLite 均**直接创建当前表结构**，不保留 `user_version`、迁移步骤或旧数据库搬运路径。
 
+Archive快照的完整schema（含建表、索引与FTS）在单个事务中创建，避免每条DDL自动提交导致重复磁盘同步。
+初始化失败时关闭连接并回滚未提交的schema；保留`journal_mode = DELETE`、`synchronous = NORMAL`、
+现有数据格式、100条批次、导出顺序、取消与原文件保护语义。
+
 ### 5.3 快照语义
 
 `createArchiveSnapshot(batchSize)` 在点击时捕获 Exchange 与 body hash 的时间切面。导出期间新增流量不进入本次存档。

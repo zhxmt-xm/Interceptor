@@ -168,24 +168,32 @@ export class SnapshotStore {
     this.databaseSync = new DatabaseSync(location, {
       readOnly: mode === 'import',
     });
-    this.databaseSync.exec('PRAGMA foreign_keys = ON');
-    if (mode === 'export') {
-      this.databaseSync.exec('PRAGMA journal_mode = DELETE');
-      this.databaseSync.exec('PRAGMA synchronous = NORMAL');
-      this.databaseSync.exec(SnapshotStore.SCHEMA);
-      this.totalExchanges = 0;
-    } else {
-      const integrity = this.databaseSync.prepare('PRAGMA integrity_check').all() as {
-        integrity_check?: string;
-      }[];
-      if (integrity[0]?.integrity_check !== 'ok') {
-        throw new Error('Archive database failed its integrity check.');
-      }
-      this.totalExchanges = (
-        this.databaseSync.prepare('SELECT COUNT(*) AS count FROM exchange').get() as {
-          count: number;
+    try {
+      this.databaseSync.exec('PRAGMA foreign_keys = ON');
+      if (mode === 'export') {
+        this.databaseSync.exec('PRAGMA journal_mode = DELETE');
+        this.databaseSync.exec('PRAGMA synchronous = NORMAL');
+        this.databaseSync.exec('BEGIN IMMEDIATE');
+        this.databaseSync.exec(SnapshotStore.SCHEMA);
+        this.databaseSync.exec('COMMIT');
+        this.totalExchanges = 0;
+      } else {
+        const integrity = this.databaseSync.prepare('PRAGMA integrity_check').all() as {
+          integrity_check?: string;
+        }[];
+        if (integrity[0]?.integrity_check !== 'ok') {
+          throw new Error('Archive database failed its integrity check.');
         }
-      ).count;
+        this.totalExchanges = (
+          this.databaseSync.prepare('SELECT COUNT(*) AS count FROM exchange').get() as {
+            count: number;
+          }
+        ).count;
+      }
+    } catch (error) {
+      // 关闭连接同时回滚未提交的建表事务。
+      this.databaseSync.close();
+      throw error;
     }
   }
 

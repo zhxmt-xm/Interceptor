@@ -15,6 +15,9 @@
 
 Worker 不参与活动 Capture 数据面，因此 archive 任务再慢也不影响抓包。
 
+`SnapshotStore`在单个事务中创建完整schema，避免建表、建索引逐条自动提交造成重复磁盘同步。
+保留`journal_mode = DELETE`与`synchronous = NORMAL`；初始化失败时关闭连接并回滚未提交的schema，不遗留打开的数据库句柄。
+
 导出时，snapshot和Blob读取流绑定同一任务AbortSignal；最后一块数据完成后、最终rename前也检查取消。
 取消发生在提交前时关闭流和文件句柄、删除临时ZIP与snapshot，不覆盖原有目标；不更改ZIP格式或Worker快照内容。
 

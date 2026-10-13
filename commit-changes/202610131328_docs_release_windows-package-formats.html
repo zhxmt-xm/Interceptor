@@ -25,8 +25,8 @@
 <body>
   <main>
     <h1>Windows EXE / MSI / ZIP 发布支持</h1>
-    <p class="meta">提交改动说明 · 2026-10-13 13:28 +08:00 · 工程与文档</p>
-    <p>复用同一应用构建与现有 MSI 安装逻辑，为 Windows 提供三种分发格式，保留 macOS 两种架构的 DMG / ZIP，并让各平台均可发布完整的 alpha 预发布版本。</p>
+    <p class="meta">提交改动说明 · 2026-10-13 13:28 +08:00 · 工程与文档、Core</p>
+    <p>复用同一应用构建与现有 MSI 安装逻辑，为 Windows 提供三种分发格式，保留 macOS 两种架构的 DMG / ZIP，并让各平台均可发布完整的 alpha 预发布版本。Archive 快照初始化改为单个事务，消除逐条创建 schema 对象时的重复磁盘同步。</p>
     <section>
       <h2>工程与文档</h2>
       <h3>发布目标与交互选择</h3>
@@ -61,6 +61,17 @@
       <h3>发布约定</h3>
       <p><code>architecture/release-guide.md</code>、<code>architecture/platform/release.md</code></p>
       <p>说明三种 Windows 格式的关系、EXE 的原生 MSI UI、ZIP 解压运行方式及内置更新仍选 MSI 的边界。未改动桌面 Renderer，也未新增第二套安装向导。</p>
+    </section>
+    <section>
+      <h2>Core</h2>
+      <h3>Archive 快照原子初始化</h3>
+      <p>位置：<code>apps/proxy-core/src/proxy-core/archive/worker/snapshot-store.ts</code>。</p>
+      <div class="change">
+        <div><p class="label">改前</p><p>完整 schema 的建表、索引和 FTS 语句没有事务包裹，每条 DDL 独立自动提交；初始化中途失败时，连接未关闭，已提交的部分 schema 仍保留。</p></div>
+        <div><p class="label">改后</p><p>以 <code>BEGIN IMMEDIATE</code> 和 <code>COMMIT</code> 包裹整个 schema，所有对象只提交一次；初始化失败时关闭连接，回滚尚未提交的 schema 并继续抛出原错误。</p></div>
+      </div>
+      <p>原因与影响：避免 Windows 慢磁盘放大重复同步成本，并保证失败不遗留打开的数据库连接。保持 <code>journal_mode = DELETE</code>、<code>synchronous = NORMAL</code>、原有 schema、100 条批次、文件格式及取消时保护原文件的语义；不提高测试超时或跳过检查。</p>
+      <p>相关位置：<code>archive/tests/integration/snapshot-initialization.test.ts</code> 用真实 SQLite 操作检查全部 schema 对象处于同一事务，并在建表被拒绝时检查连接关闭及部分 schema 回滚；模块 README 与 Transfer 功能文档同步说明该约定。</p>
     </section>
   </main>
 </body>

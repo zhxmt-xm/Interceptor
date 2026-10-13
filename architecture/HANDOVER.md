@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `160ec875`
+> Tracked commit: `bf2df473`
 
 ## 维护规则
 
@@ -37,11 +37,14 @@
 
 - **14. v0.1.1-alpha.1 macOS / Windows Release · 进行中 · 修正alpha发布**
   - 目标：继续alpha预发布，为macOS Intel x64和Apple Silicon arm64各提供DMG/ZIP，为Windows x64提供EXE/MSI/ZIP；实际通过`npm run release`选择固定源码、构建并进行最终发布确认，不直接派发workflow或编辑Release代替命令。本地官网及item 10改动不进入安装包。
-  - 当前：`v0.1.1`草稿及tag已删除，原`v0.1.1-alpha.0`及其tag保持不变。release脚本已允许Windows预发布，完整SemVer与Windows安装器数字版本明确分开；实际`npm run release`预检已选出`0.1.1-alpha.1`及七个附件，并在启动CI前取消确认。接下来保存本次alpha修正，再由该命令启动构建。
+  - 当前：`v0.1.1`草稿及tag已删除，原`v0.1.1-alpha.0`及其tag保持不变。release脚本已允许Windows预发布，完整SemVer与Windows安装器数字版本明确分开；源码`160ec875`的两次alpha构建均在Windows的Archive取消导出测试超时，尚未执行Windows安装包构建。已定位SQLite schema逐条自动提交的慢路径；`archive/worker/snapshot-store.ts`改为一次事务创建完整schema，初始化失败关闭并回滚连接，不改变同步级别、格式、取消语义或测试超时。
   - 已验证范围：alpha/beta/rc参数契约已有Red/Green，稳定版本行为和Windows数字范围约束保留；Desktop配置测试与typecheck通过。MSI库保留完整`semanticVersion`并生成数字版本，同基础版本允许同版本升级；[alpha参数及真实CLI预检](../apps/desktop/test-results/release-alpha-20261013/)记录实际命令选择结果，不代表新安装包已验收。
   - 验证边界：被删除的`0.1.1`产物不是本次alpha交付，原[打包支持证据](../apps/desktop/test-results/release-tooling-20261013/)不能代替新版本检查。新alpha的NSIS原生编译、实际附件和实机安装仍待验证；改动说明继续维护于[发布格式说明](../commit-changes/202610131328_docs_release_windows-package-formats.html)。
   - 发布门禁：CI通过不代替实际下载、安装、系统授权、packaged smoke和退出恢复。macOS采用ad-hoc且未公证，Windows安装器未签名；macOS arm64和Windows最终产物仍需对应实机验收，未取得证据和最终确认前不Publish。
-  - 下一步：推送本次alpha修正，再实际执行`npm run release`生成七个alpha附件；依[发版指南](release-guide.md#6-实机验收和最终确认)完成对应实机验收后，在同一命令的最终提示中确认Publish，保留Pre-release标记。不覆盖本机旧App、不改变仓库可见性、不把“已发布alpha”混同于稳定版。
+  - 失败证据：[最近一次Release](https://github.com/zhxmt-xm/Interceptor/actions/runs/38381263013)及[前一次Release](https://github.com/zhxmt-xm/Interceptor/actions/runs/38379052816)均为`preserves the original archive when cancelled during the final blob stream`超出默认5000ms；两个macOS job通过，draft步骤未运行。本次修复尚未送入GitHub，不能把本机Green记为远端Release通过。
+  - 本轮前置：新增真实SQLite事务/失败回滚断言取得产品Red，再取得同组Archive/真实Worker Green；`tools-archive-transfer.workflow.ts`与`tools-transfer-jobs.workflow.ts`在修改实现前后均通过，覆盖原生Save/Open、UI/Agent/MCP调用、运行中取消、重启与退出恢复。原始Red/Green、SQLite测量及两组trace保留在[本轮证据](../apps/desktop/test-results/release-archive-20261014/)。
+  - 当前验证：全workspace typecheck通过；以`CI=true`及`INTERCEPTOR_BUILD_VERSION=0.1.1-alpha.1`重建后，`npm run test --workspaces --if-present -- --no-file-parallelism --reporter=dot`全部通过，既有条件skip不算通过。两个真实workflow、package、artifact audit及既有截图矩阵packaged smoke通过；四代Main/Core正常退出，8888可重新绑定，宿主guard确认代理、journal与证书恢复。Windows包按未签名开发策略审计，不代表签名发布或安装器生命周期验收；[验证摘要与源码/Worker哈希](../apps/desktop/test-results/release-archive-20261014/verification.json)明确记录未提交源码与本机范围。此前中断结果不计为通过。
+  - 下一步：用户已授权继续提交并推送本次Archive修复，通过现有`npm run release`选择包含修复的新源码SHA，复验原三平台七个`0.1.1-alpha.1`附件；仅保留draft，不Publish。依[发版指南](release-guide.md#6-实机验收和最终确认)完成对应实机验收后，才可由维护者在原向导最终提示确认Publish，保留Pre-release标记。不覆盖本机旧App、不改变仓库可见性、不把“已发布alpha”混同于稳定版。
 
 ## 验收约束
 
