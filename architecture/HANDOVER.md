@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `e05514e0`
+> Tracked commit: `d32aad9d`
 
 ## 维护规则
 
@@ -13,11 +13,13 @@
   - 范围：以[功能设计](features/)、[workflow 规格索引](../apps/desktop/tests/e2e-workflow-tests/docs/README.md)和[workflow 源码](../apps/desktop/tests/e2e-workflow-tests/workflows/)核对完整功能目录，逐 feature、逐功能点建立对应关系；相似测试归纳为用户场景，不照搬测试脚本、fixture 或验收日志。
   - 交付：每个功能点写清使用目的、适用平台与前提、简单直接的操作步骤、预期结果和关键说明，并配关键操作节点的真实产品截图；每个 feature 提供对应操作视频，按功能点分章节或时间戳，与 guidebook 相互链接。
   - 当前：用户要求先写完整教程、先完成Homepage，再接入App；唯一[教程目录](../../Interceptor-Homepage/guidebook/README.md)已整理为普通Markdown目录，含快速上手、工作区、Capture、Composer、Rules、Breakpoints、导入导出、Settings、Diagnostics、Agent、MCP、权限、Tool速查与排查中文初稿。[覆盖关系](../../Interceptor-Homepage/docs/guidebook-coverage.md)逐组链接到正文及功能点锚点；已按源码区分Capture快捷断点立即Apply、普通规则草稿、Collection自动保存和Agent当前Chat模型等行为。
-  - 已核对范围：[内容检查](../../Interceptor-Homepage/artifacts/guidebook-content-20261014.json)覆盖章节目录、相对链接/锚点、workflow归属、生产Tool名称/类型与UTF-8；本地阅读页已接入React Router、`/guide`及章节路由，已有浏览器验证覆盖正文、链接、刷新和404，共享Header已定向复核。本次保存前官网与设计workspace的typecheck通过，按用户要求不重跑全套；不将这些结果视为教程实机操作、英文或媒体验收。
+  - 已核对范围：[内容检查](../../Interceptor-Homepage/artifacts/guidebook-content-20261014.json)覆盖正文映射与UTF-8；当前阅读器的lint/typecheck、静态构建及[整站Browser](../../Interceptor-Homepage/artifacts/guide-reader-20261014/site-green/)通过，覆盖中英入口、真实正文、同一document切换、前进后退、刷新、手机/主题与404。已修复本章锚点删除`lang=en`导致UI回到中文的问题，[前置Red](../../Interceptor-Homepage/artifacts/guide-reader-20261014/anchor-red/)与[教程Green](../../Interceptor-Homepage/artifacts/guide-reader-20261014/guide-green/)保留；验证使用独立构建目录，避免并行重建`dist/`造成临时资源404。
+  - 页面与托管核对：[浅深/手机阅读区对比](../../Interceptor-Homepage/artifacts/guide-reader-20261014/visual/comparison.json)的标题、简介、初稿提示与可见章节选中态几何、字体和像素一致；全文及独立维护的Header不伪装成缩略设计fixture。[Cloudflare本地Browser](../../Interceptor-Homepage/artifacts/guide-reader-20261014/cloudflare-green/)与静态发布dry-run通过，保留现有frame保护、无业务Worker/绑定。以上不证明公开地址、App接入、英文正文或真实产品媒体验收。
   - 页面实现：[官网阅读器](../../Interceptor-Homepage/src/features/guide/)与中文Markdown已接入首页和Header，“使用指南 / User Guide”可进入真实章节；不再把旧的“准备中”卡片描述为当前实现。[早期候选源码](../design-vite/src/features/HomepageGuidePreview/)随本仓库保留，[目录效果](../../../.copilot/session-state/549e8dc8-bccd-40ee-9228-d5895e50551f/files/homepage-guide-proposal/light/homepage-guide/overview.png)与[交互核对](../../../.copilot/session-state/549e8dc8-bccd-40ee-9228-d5895e50551f/files/homepage-guide-interaction/result.json)只说明候选，不能替代官网或App验收。
   - 组织与构建：按用户明确要求保存两个仓库全部当前进度，Homepage首次快照包含共享入口、依赖与lockfile，避免提交无法构建的孤立教程目录；本仓库保存设计候选。仍不发布教程npm包、不向App同步目录或压缩包、不增加私有registry认证，未部署网站或接入App。
+  - 远端同步阻塞：本轮Homepage阅读修复已保存为本地`8d39d29`，Git HTTPS连接超时；GitHub API可读不能代替push成功，官方SSH 443的认证也被拒绝。网络或Git认证恢复后分别执行`git -C /Users/zhxmt/Desktop/Interceptor-Homepage push origin main`与`git -C /Users/zhxmt/Desktop/Interceptor push origin main`同步本轮修复和交接；未修改remote、全局凭据或他人的部署改动。
   - 已确认方向：Homepage提供对应教程路由，完成后App使用无边框iframe内嵌，并提供浏览器打开按钮；嵌入模式去掉官网外壳、与App主题/语言衔接，保持滚动并明确加载失败。现在暂停App入口和预览实现；官网及App的具体UI仍须截图确认，不承诺离线阅读。官网只用免费Cloudflare，不要求购买域名或启用付费服务。
-  - 下一步：按[内容与页面约定](../../Interceptor-Homepage/docs/guidebook.md)复核当前阅读体验，按已验收版本逐章试读并补真实图文视频和英文；官网公开地址就绪后才处理App iframe及浏览器跳转。涉及item8的未验证场景保留限制；不得全站解除frame保护或把远程页面接入App Preload。
+  - 下一步：按[内容与页面约定](../../Interceptor-Homepage/docs/guidebook.md)在已验收版本中逐章试读并补真实图文视频和英文；官网公开地址就绪后才处理App iframe及浏览器跳转。当前本地阅读页面为`http://127.0.0.1:4175/guide`，停止后在Homepage执行`npm run dev`恢复。涉及item8的未验证场景保留限制；不得全站解除frame保护或把远程页面接入App Preload。
   - 验收：所有 feature 和功能点均可从目录找到图文步骤及对应视频章节；按教程在真实 App 中完成操作，文字、截图、视频和发布版本一致；演示使用可公开的测试数据，不包含凭据、个人流量或其他敏感信息。
 
 - **10. 产品官网设计、制作与上线 · 进行中 · 外观与功能展示已更新，待公开上线**
