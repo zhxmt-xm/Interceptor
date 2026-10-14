@@ -83,6 +83,7 @@ external模块在顶层`require`可能阻塞packaged Main与CDP初始化，因�
 - workflow输入为`source_sha`（完整40位SHA）、`version`、`targets`（受支持目标JSON）和可选`request_id`。CLI从默认分支启动编排，用唯一request ID跟踪；GitHub运行的headSha代表工作流版本，不当作产品源码SHA，Summary同时记录两者。
 - 一次workflow完成检查和构建后，在GitHub创建直接指向`source_sha`的tag及**draft Release**，不再以本地推tag触发第二次CI。重跑时已有tag必须解析到同一SHA，已有Release必须仍是draft；不移动tag或覆盖已发布版本。预发布SemVer同步设置prerelease，CLI在最终Publish前再次核对tag指向及附件。
 - Release资产数量和类型从配置计算，不固定为2或3；逐项将GitHub返回的大小和SHA-256与本轮本地文件对比。诊断文件使用独立artifact，**绝不混入Release assets**。
+- Release正文由workflow生成Source、Downloads、Installation、Validation四组Markdown列表：源码与目标来自已验证的plan，其余说明为维护者提供的模板；`--notes-file`保留换行，GitHub自动变更记录继续由`--generate-notes`追加。正文排版不改变tag、附件、预发布标识或Publish行为，已有Release不因模板调整而自动改写。
 - 托管runner只证明构建与上述自动检查。需要已初始化共享CA、已登录桌面、原生系统授权的packaged smoke，以及浏览器下载后的Gatekeeper/SmartScreen、真实安装生命周期和退出恢复，在对应平台实机执行。自动Publish不证明这些检查已通过；缺失证据仍在Handover保留，Windows与macOS分别记录验证状态。
 - macOS下载产物的workflow与packaged smoke共用`INTERCEPTOR_E2E_MACOS_APP_PATH`选择实际安装App，
   smoke同时用`INTERCEPTOR_BUILD_VERSION`断言本轮版本；不覆盖本地`out/`或修改manifest来伪装下载产物。

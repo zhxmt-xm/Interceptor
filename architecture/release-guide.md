@@ -113,6 +113,8 @@ CI原生job在同一工作目录精确检出所选SHA。为避免旧commit缺少
 
 构建版本通过环境变量注入。CI构建前后检查源码SHA和源码树，不能把测试造成的文件改动混入包。所有目标检查通过后，CI在GitHub创建指向该SHA的tag及draft；本地不创建tag，也不再进行“本地版本commit → 推tag → 第二轮CI”。
 
+Release正文由workflow中的模板生成，按Source、Downloads、Installation、Validation分组列出，使用`--notes-file`保留Markdown换行。Source commit来自本轮选择的源码SHA，短标签链接到完整commit；Downloads逐项列出已选择的平台及格式。安装与验证边界是仓库维护的说明，不是GitHub自动撰写。`--generate-notes`继续追加GitHub生成的变更记录或Full Changelog链接。修改模板只影响新建草稿，不自动改写已发布Release。
+
 你可以继续在本地开发；这不会改变本轮选定的SHA。若源码commit还没推送或新版workflow还没部署，必须先解决，不自动推送其他工作。
 
 ## 6. 实机验收与验证边界

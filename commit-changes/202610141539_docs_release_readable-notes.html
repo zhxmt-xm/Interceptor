@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Release说明：分组列表代替单段文字</title><style>*{box-sizing:border-box}body{margin:0;background:#f6f7fa;color:#1a1b1e;font:15px/1.8 system-ui,sans-serif;padding:32px 20px}main{max-width:1100px;margin:auto}h1{font-size:30px;line-height:1.35}h2{font-size:21px}section{background:white;border:1px solid #dfe2eb;border-radius:12px;padding:24px;margin-top:24px}code{overflow-wrap:anywhere}figure{margin:20px 0}.image{position:relative}.image img{display:block;width:100%;height:auto}.mark{position:absolute;border:3px solid #e53935;pointer-events:none}figcaption,.meta{color:#5b5e65;font-size:13px}li{margin-bottom:8px}@media(max-width:640px){body{padding:16px}section{padding:16px}h1{font-size:24px}}</style></head>
+<body><main><h1>Release说明：分组列表代替单段文字</h1><p class="meta">2026-10-14 15:39 +08:00</p>
+<p>只改变后续Release正文排版，保持发布参数、附件与发布行为。</p>
+<section><h2>工程与文档</h2><ul>
+<li><strong>位置：</strong><code>.github/workflows/release-artifacts.yml</code>。<strong>改前：</strong><code>--notes</code>把源码SHA、平台、安装说明与验证边界拼成一段文字。<strong>改后：</strong>生成Source、Downloads、Installation、Validation四组Markdown列表，以<code>--notes-file</code>传入。</li>
+<li><strong>数据来源：</strong>源码SHA和目标仍来自已验证的plan；源码显示短SHA并链接完整commit，每个平台独立一条。</li>
+<li><strong>影响：</strong>保留<code>--generate-notes</code>自动变更记录，不改tag、附件、预发布标记或自动Publish。模板不会回写已发布正文。</li>
+<li><strong>文档：</strong><code>architecture/release-guide.md</code>与<code>architecture/platform/release.md</code>说明正文来源和维护边界。</li>
+</ul></section></main></body></html>

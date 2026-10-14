@@ -184,6 +184,32 @@ jobs:
           pattern: interceptor-release-*
           path: release-assets
           merge-multiple: true
+      - name: Write readable release notes
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ needs.plan.outputs.source_sha }}
+          TARGET_SUMMARY: ${{ needs.plan.outputs.summary }}
+        run: |
+          {
+            printf '## Source\n\n'
+            printf -- '- Source commit: [%s](https://github.com/%s/commit/%s)\n' "${SOURCE_SHA:0:8}" "$GITHUB_REPOSITORY" "$SOURCE_SHA"
+            printf '\n## Downloads\n\n'
+            printf -- '- %s\n' "${TARGET_SUMMARY//; /$'\n- '}"
+            cat <<'NOTES'
+
+          ## Installation
+
+          - macOS: ad-hoc signed and not notarized.
+          - Windows: installers are unsigned. EXE embeds and launches the same MSI without separate app registration.
+          - ZIP packages must be fully extracted before running the app.
+          - Built-in updates require a matching macOS DMG or Windows MSI. EXE and ZIP are for manual distribution.
+
+          ## Validation
+
+          - Native installation, system authorization, packaged smoke and exit restoration require separate validation on each included platform.
+          - CI checks and automatic publication do not certify those checks. Do not disable system-wide security protections.
+          NOTES
+          } > "$RUNNER_TEMP/release-notes.md"
       - name: Verify artifacts and bind the tag to the selected SHA
         shell: bash
         env:
@@ -192,7 +218,6 @@ jobs:
           SOURCE_SHA: ${{ needs.plan.outputs.source_sha }}
           RELEASE_TAG: v${{ needs.plan.outputs.version }}
           RELEASE_VERSION: ${{ needs.plan.outputs.version }}
-          TARGET_SUMMARY: ${{ needs.plan.outputs.summary }}
           EXPECTED_ASSET_COUNT: ${{ needs.plan.outputs.asset_count }}
           EXPECTED_PACKAGE_COUNTS: ${{ needs.plan.outputs.package_counts }}
           PRERELEASE: ${{ needs.plan.outputs.prerelease }}
@@ -230,7 +255,7 @@ jobs:
             if test "$PRERELEASE" = true; then FLAGS+=(--prerelease); fi
             gh release create "$RELEASE_TAG" "${ASSETS[@]}" "${FLAGS[@]}" \
               --draft --verify-tag --target "$SOURCE_SHA" --generate-notes \
-              --notes "Source commit: $SOURCE_SHA. Targets: $TARGET_SUMMARY. macOS is ad-hoc signed and not notarized; Windows installers are unsigned. Windows EXE embeds and launches the same MSI without separate app registration. ZIP packages require extraction. Built-in updates require a matching macOS DMG or Windows MSI. EXE and ZIP are for manual distribution. Real installation, authorization, packaged smoke and exit-restoration acceptance require separate validation on every included platform; CI and automatic publication do not certify them. Do not disable system-wide security protections." \
+              --notes-file "$RUNNER_TEMP/release-notes.md" \
               --title "Interceptor $RELEASE_VERSION"
           else
             gh release upload "$RELEASE_TAG" "${ASSETS[@]}" --clobber
