@@ -12,6 +12,7 @@ import { Rules } from '../features/Rules/Rules';
 import { RulesImportDialog } from '../features/Rules/RulesImportDialog';
 import { RulesRootContextMenu } from '../features/Rules/RulesRootContextMenu';
 import { AcceptancePlayground } from '../features/Playground/AcceptancePlayground';
+import { HomepageGuidePreview } from '../features/HomepageGuidePreview/HomepageGuidePreview';
 import { Settings } from '../features/Settings/Settings';
 import { AppContainerBulkDialog } from '../features/Settings/AppContainerBulkDialog';
 import { AgentProviderDialog } from '../features/Settings/AgentProviderDialog';
@@ -60,10 +61,11 @@ function DesignAppContent(): React.JSX.Element {
         <div
           {...attributes}
           {...designRootAttributes(state)}
+          data-homepage-guide={state.homepageGuidePreview ? 'open' : undefined}
           ref={rootRef}
           className={fixtureClassNames(designRootClassName(state, rootClasses))}
         >
-          {state.view === 'playground' ? <AcceptancePlayground /> : (
+          {state.homepageGuidePreview ? <HomepageGuidePreview /> : state.view === 'playground' ? <AcceptancePlayground /> : (
             <>
               <Sidebar />
               <FixtureRenderer node={topbarFixture} />

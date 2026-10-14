@@ -35,6 +35,7 @@ body {
 .app.expanded { grid-template-columns: 220px minmax(0,1fr); }
 .app.collapsed { grid-template-columns: 60px minmax(0,1fr); }
 .app[data-view="playground"] { display: block; border-radius: 8px; }
+.app[data-homepage-guide="open"] { display: block; border: 0; border-radius: 0; box-shadow: none; }
 .app.expanded[data-agent-panel="open"] { grid-template-areas: "side top top" "side main agent" "side status status"; grid-template-columns: 220px minmax(440px,1fr) minmax(220px,440px); }
 .app.collapsed[data-agent-panel="open"] { grid-template-areas: "side top top" "side main agent" "side status status"; grid-template-columns: 60px minmax(440px,1fr) minmax(220px,440px); }
 

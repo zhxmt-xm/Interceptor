@@ -124,6 +124,8 @@ export interface AgentProviderProfileState {
 }
 
 export interface DesignState {
+  readonly homepageGuidePreview: boolean;
+  readonly homepageGuidePage: 'resources' | 'overview' | 'capture';
   readonly view: DesignView;
   readonly theme: DesignTheme;
   readonly sidebar: SidebarState;

@@ -40,6 +40,7 @@ const INITIAL_UPSTREAM_CONFIG: UpstreamDesignConfig = {
 };
 
 export const INITIAL_DESIGN_STATE: DesignState = {
+  homepageGuidePreview: false, homepageGuidePage: 'overview',
   storageCleared: false, storageConfirming: false, storageOperation: 'idle', storageStatus: 'ready',
   view: 'capture', theme: 'light', sidebar: 'collapsed', lang: 'en', overlay: '', tab: 'headers', detail: 'open',
   filters: 'open', filterGroup: '', filterActive: '', search: '', tip: '', pop: false, pop2: '',
@@ -95,6 +96,8 @@ export function reduceDesignState(state: DesignState, patch: DesignStatePatch): 
   if (patch.view !== undefined) {
     next = {
       ...next,
+      homepageGuidePreview: patch.homepageGuidePreview ?? false,
+      homepageGuidePage: patch.homepageGuidePage ?? 'overview',
       storageCleared: patch.storageCleared ?? false,
       storageConfirming: patch.storageConfirming ?? false,
       storageOperation: patch.storageOperation ?? 'idle',

@@ -57,6 +57,32 @@ design-vite/
 
 ## 命令
 
+### Homepage 教程阅读候选
+
+`src/features/HomepageGuidePreview/`保留官网Guidebook入口、目录和Capture样章的早期版式候选，不另建官网设计应用。候选默认关闭，不改变既有App设计或正式`shots/`；当前Homepage已在独立仓库接入Markdown阅读路由，此处不替代官网实现。
+
+- `homepageGuidePreview`开启候选，`homepageGuidePage`选择`resources / overview / capture`；入口、目录与Capture按钮使用同一typed state。
+- 预览只用于确认资源卡片和阅读内容区；正式接入时继续复用Homepage现有SiteHeader及其语言、主题菜单、下载和手机导航，不以候选里的简化Header替换它。
+- 其余章节只展示目录排版，完整内容仍以Homepage的Markdown为唯一来源，不把样章预览算作全部章节已经可用。
+- 此处仍是设计候选，不复制到正式App基准，也不接入App iframe；内容与媒体验收状态见Handover。
+
+```sh
+node design-vite/shoot.mjs --feature=homepage-guide --out-dir="<独立候选目录>"
+```
+
+以上命令生成浅深主题的入口、目录、正文和完整内容截图。直接交互可在设计SPA设置：
+
+```js
+window.__setState({
+  view: 'playground',
+  theme: 'light',
+  homepageGuidePreview: true,
+  homepageGuidePage: 'overview',
+});
+```
+
+### 既有场景
+
 ```powershell
 npm run dev --workspace @interceptor/design-vite       # http://localhost:5173/
 npm run typecheck --workspace @interceptor/design-vite

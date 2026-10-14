@@ -41,6 +41,20 @@ const onlyTheme = process.argv
 // Output path is shots/<theme>/<feature>/<variant>.png so light and dark stay separated.
 const shots = [];
 for (const theme of ['light', 'dark']) {
+  for (const homepageGuidePage of ['resources', 'overview', 'capture']) {
+    shots.push({
+      feature: 'homepage-guide', theme, variant: homepageGuidePage,
+      state: { view: 'playground', theme, homepageGuidePreview: true, homepageGuidePage },
+    });
+  }
+  for (const homepageGuidePage of ['overview', 'capture']) {
+    shots.push({
+      feature: 'homepage-guide', theme, variant: `${homepageGuidePage}-full`, full: true,
+      state: { view: 'playground', theme, homepageGuidePreview: true, homepageGuidePage },
+    });
+  }
+}
+for (const theme of ['light', 'dark']) {
   for (const [variant, mode, notice] of [
     ['breakpoint-request-original-long', 'original', 'none'],
     ['breakpoint-request-file-long', 'file', 'none'],
@@ -766,6 +780,8 @@ const STABILIZE = '*{caret-color:transparent!important}body:not(.menu-interactio
 const FULL_CSS = `
 .app{height:auto!important;min-height:900px!important}
 .mainhost,.mv{overflow:visible!important}
+.app[data-homepage-guide="open"] .hppRoot{position:relative!important;overflow:visible!important}
+.app[data-homepage-guide="open"] .hppSidebar{position:static!important;max-height:none!important;overflow:visible!important}
 .listwrap,.cfilters-scroll,.rlist,.reditor,.insp,.scroll,.edscroll,.ccol-scroll,.creq,.cresp,.cpane,.cscroll,.cedit,.jsonv,
 .snav,.scontent,.break-inspector,.break-scroll,.dlist,.ddetail,.dscroll{overflow:visible!important;max-height:none!important}
 `;
@@ -836,6 +852,8 @@ async function shoot(list) {
       if (s.full) await page.addStyleTag({ content: FULL_CSS });
     }
     await page.evaluate(() => window.__setState({
+      homepageGuidePreview: false,
+      homepageGuidePage: 'overview',
       overlay: '',
       upstreamPopoverOpen: false,
       upstreamOperation: 'idle',
