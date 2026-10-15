@@ -7,6 +7,7 @@ const desktopDirectory = path.resolve(__dirname, '../..');
 export default defineConfig({
   testDir: path.join(__dirname, 'workflows'),
   testMatch: '**/*.workflow.ts',
+  testIgnore: '**/guidebook-*.workflow.ts',
   outputDir: path.join(desktopDirectory, 'test-results/e2e-workflow-tests'),
   preserveOutput: 'always',
   fullyParallel: false,
@@ -39,7 +40,7 @@ export default defineConfig({
     projects: [
       {
         name: 'macos',
-        testIgnore: '**/capture/detail-body-fill.workflow.ts',
+        testIgnore: ['**/capture/detail-body-fill.workflow.ts', '**/guidebook-*.workflow.ts'],
         use: { viewport: { width: 1600, height: 900 } },
       },
       {

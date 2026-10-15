@@ -423,6 +423,21 @@ test('composer sends a request', async ({ desktopApp, httpTrafficRunner }) => {
 
 ## Trace 与证据
 
+教程媒体使用独立的`playwright.guidebook.config.ts`选择`guidebook-*.workflow.ts`。这些是真实App步骤复验与录制，不进入普通全量E2E，避免CI在没有原生录屏前提时误触发；普通业务契约和用例不被跳过或替换。每个步骤核对实际UI/流量，再保存真实窗口图、视频时间与相同示例数据，退出仍由原driver/宿主guard验收。
+
+macOS 15+录制前编译`fixtures/ui/macos-guide-recorder.swift`为本地验收可执行文件，通过`INTERCEPTOR_GUIDE_RECORDER`选择；`INTERCEPTOR_GUIDE_FFMPEG`选择已安装的视频编码器，`INTERCEPTOR_E2E_MACOS_APP_PATH`选择已核验的实际Release。它们不进入App生产包，不读取或改变产品状态：
+
+```sh
+xcrun swiftc -parse-as-library tests/e2e-workflow-tests/fixtures/ui/macos-guide-recorder.swift \
+  -o test-results/guide-recorder
+INTERCEPTOR_GUIDE_RECORDER="$PWD/test-results/guide-recorder" \
+INTERCEPTOR_GUIDE_FFMPEG="<ffmpeg绝对路径>" \
+INTERCEPTOR_E2E_MACOS_APP_PATH="<已核验Release的App绝对路径>" \
+npx playwright test --config tests/e2e-workflow-tests/playwright.guidebook.config.ts
+```
+
+以上命令从Desktop目录执行。原始视频、trace、系统路径和metadata留在私有验收目录；发布前检查隐私、逐步骤对应、字幕与25MiB静态资源上限。录屏只选择本轮Main进程的唯一App窗口ID，原生Open/Save只选择该App拥有的面板。不录整个显示器、桌面区域、其他App或麦克风；不得在窗口选择失败时回退成整屏/区域录制，也不把未录到的原生窗口算通过。
+
 每条workflow独立保留：
 
 ```text

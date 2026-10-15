@@ -1,5 +1,13 @@
 # Rules Workflows
 
+## 教程逐步骤录制
+
+`guidebook-header.workflow.ts`在真实Release从空树创建`Guide test header`，依次填写Host `127.0.0.1`、Path `/guide/rules/order`和请求Header `x-interceptor-guide: rules-demo`，启用、Apply后由外部客户端产生匹配与非匹配请求，核对源站实际Header、命中与Capture详情，再停用并Apply。每个操作步骤保留独立原生截图与视频位置；不通过Store、Preload或业务API创建规则。
+
+使用独立教程录制配置；本流程不代替其他matcher/action及原生导入导出验收。结束后正式Close和宿主guard必须证明代理、进程及8888恢复。
+
+补充实录由`guidebook-actions.workflow.ts`逐个核对Query、Body、Status、Synthetic、Delay、Block、Map Remote和Map Local，后者必须先用产品Save body生成输入文件。`guidebook-matchers.workflow.ts`构造全部八类条件并用真实GET/POST核对AND正反例；`guidebook-organization.workflow.ts`核对可见顺序导致的真实Header覆盖、目录拖动、Export、Import取消与追加。它们保存独立步骤图和真实输入值，不把未执行的组合归为已通过。
+
 macOS原生文件选择沿用共享fixture：先回读完整GoTo路径，再真实双击唯一匹配的自产文件/目录建议项，使用原生Save/Open或Cancel按钮收尾；不发送关闭GoTo的Return，不更改系统输入法或应用语言。实际导出文件、导入预览、取消零写入和退出恢复仍由每条workflow独立核验。
 
 本文件定义 Rules 工作区的完整 E2E 流程。每条 workflow 都独立启动 Electron、独占 profile/trace，并通过真实 Rules UI、Preload、Core RuleStore 与 Proxy data plane 验证。

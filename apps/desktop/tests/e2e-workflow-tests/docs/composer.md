@@ -1,5 +1,34 @@
 # Composer Workflows
 
+## 教程逐步骤录制
+
+`workflows/composer/guidebook-request.workflow.ts`复用现有真实driver与loopback origin，按用户操作逐步记录正式App窗口。先核对Release资产SHA-256，再通过`INTERCEPTOR_E2E_MACOS_APP_PATH`启动对应产物；保持App当前语言，不使用设计fixture、Store或Preload业务注入。
+
+流程从打开Composer、新建请求、填写自产URL、Send、响应Headers、Query/Header字段、Auth和Recent sends到响应正文。每一步先断言真实状态，再保存该步原生窗口截图并记录视频时间；示例字段固定为`guide=composer-demo`和`x-interceptor-guide: composer-demo`，动态origin端口以实际录制清单为准。原始视频与截图不自动发布，先核对对应文案、隐私及版本；录制不改变原有Close、进程/8888释放与宿主恢复门禁。
+
+该录制证明对应步骤，不把短录制扩大为Composer全部功能、所有平台或原生导入导出均已完成。macOS 15+的ScreenCaptureKit按窗口ID隔离录制，`INTERCEPTOR_GUIDE_RECORDER`指向由`fixtures/ui/macos-guide-recorder.swift`编译的验收工具；`INTERCEPTOR_GUIDE_FFMPEG`指定已安装后处理编码器。两者都不进入产品包，不给产品添加录制参数或运行依赖。
+
+`guidebook-editing.workflow.ts`补充JSON/Text/Form的实际出站字节、空认证控件、命名、目录拖动和原生Collection文件往返。每种正文使用独立测试路径，避免`observation()`的首条记录语义误判后续发送；编辑已有URL时按正式输入框只修改主机/路径，不重复已经单独显示的协议前缀。不录入或展示真实凭据。
+
+`guidebook-fields.workflow.ts`核对Header/Query行启用、停用、删除后的实际重发，JSON Format、Body None及Recent sends只恢复method/URL的边界。`guidebook-collection.workflow.ts`从真实UI建立三级目录，在第三级菜单检查继续嵌套禁用，创建和切换两条自产请求，再核对目录改名、同级排序、原生导出/导入预览取消及本轮节点删除。所有操作都附独立步骤图，导入文件由同轮产品Export生成；锁屏拒绝不作为流程通过。
+
+### 独立响应检查与实际重发补录
+
+`guidebook-inspection.workflow.ts`与`guidebook-replay.workflow.ts`只补教程媒体，不修改产品行为，也不替代其他Composer契约的验收。当前目标是macOS正式Release `0.1.1-alpha.1`；每条独立profile、trace与loopback origin，等待真实App/Core/8888后录制，保持App当前语言。每个具体操作经`media.step()`独立保存窗口截图、时间戳与字幕，使用`composer-inspection`和`composer-replay`命名，不覆盖既有素材。
+
+- 响应检查：新建GET请求，输入自产`/guide/composer-inspection/response`地址，逐字段添加`x-guide-request: inspection-demo`后Send。真实origin返回`x-guide-response: inspection-demo`、两条`guide_session=inspection-demo` / `guide_theme=light` Cookie和含`Hello response`、`guide-001`、`demo-001`的JSON。分别打开Headers、Cookies、Timing，独立记录Response Headers、Request Headers、Cookies、Timing、Connection的折叠与展开，检查真实响应与连接信息；明文HTTP不冒充TLS握手证据。
+- 正文与布局：返回Body，切Tree、折叠/展开根节点、打开`message`右键菜单并复制值，再切Raw、复制原文、切Hex、复制字节、进入和退出Fullscreen。Copy只读核验真实按钮产生的剪贴板内容；不预写剪贴板。用真实pointer分别拖宽Collection和增高响应区，记录前后几何，确认当前响应保持。
+- 手动Format：只修改已有URL的host/port/path，向独立`/guide/composer-inspection/format`发送请求。响应为`.guide{color:teal}`及其后的1,048,576个ASCII空格，超过1 MiB自动格式化阈值但仍可完整格式化。先Copy证明未格式化原文，再点击Format与Copy核对分行结果；不能以小响应自动格式化的最终画面替代手动Format步骤。
+- 重复Query：新建POST，URL填`/guide/composer-replay/query?guide=url`；确认Query表格初始不因URL自动生成行，再逐字段添加两条同名`guide=table`、`guide=again`。Send必须由真实origin观测到`guide=url&guide=table&guide=again`，URL输入仍保留原值，不把追加描述成替换或双向同步。
+- Text中间态：改为独立`/guide/composer-replay/text?guide=text-url`与PUT，分别记录打开Body、选择空Text、输入`Hello`、补齐`Hello text`及Send。输入阶段不新增origin请求，发送后核对完整字节。Text不自动增加`Content-Type`；未手工填写时origin没有该Header，控件上的`text/plain`不能当作实际出站Header。
+- Recent sends实际重发：将当前Query的`table`改成`current`，正文改成`Hello replay`；单独记录打开历史菜单、选择旧POST地址、检查当前Query、再次Send。历史恢复已组合的旧URL与method，当前Query/Body不恢复；预期origin收到`guide=url&guide=table&guide=again&guide=current&guide=again`及`Hello replay`。三次完整path各不相同，并核对origin记录总数，避免`observation(path)`只返回首条记录产生假通过；如Release行为不同，保留真实证据并标明限制。
+
+两条均保存逐步骤清单、原生视频、字幕、独立origin/剪贴板/几何证据以及原driver的`trace.zip`、日志、`metadata.json`。macOS Release的[响应检查实录](../../../test-results/guidebook-media-20261015/composer-inspection-complete/run-01/composer-guidebook-inspect-563c5-views-actions-and-splitters-macos-guidebook/)和[实际重发实录](../../../test-results/guidebook-media-20261015/composer-inspection-complete/run-03-replay/composer-guidebook-replay.-42eae--actual-Recent-sends-replay-macos-guidebook/)已核对上述数据面结果与代表性原图、视频帧。原driver通过`shell.window.close`正常关闭，进程退出、8888释放及宿主代理/证书恢复门禁通过；未强杀，不扩大为Windows、TLS或整个Composer的验收。
+
+取景只包含workflow所属App窗口：原生视频使用`SCContentFilter(desktopIndependentWindow:)`，逐步骤截图使用`screencapture -l <windowID>`；这两条没有原生文件面板，也没有显示器、桌面或区域录屏。录制保持`zh-CN`，没有为截图切换语言。
+
+**已发布UI限制**：当前中文Release把Text档标签显示成`composer.text`。输入中间态、完整字节与重发功能已验证，但正常翻译标签的素材仍为`blocked`，需要独立产品修复授权及相应Release；原图和视频保留实际标签，不修图、不切语言绕过，不把本次功能通过写成缺译已修复。Text未手工设置时不发送`Content-Type`、历史已组合URL再次追加当前Query也必须按实录描述，不能写成自动Header、覆盖同名参数或恢复完整历史草稿。
+
 本文件定义 Composer 工作区的完整 E2E 流程。每条 workflow 独立启动 Electron、独占 profile/trace，并使用真实 Composer UI 和本地 origin。
 
 macOS原生文件选择由共享fixture读取完整GoTo路径、真实双击唯一目标建议项，再用原生Save/Open或Cancel按钮完成；不以窗口消失代替文件结果。完整产品输出、预览确认/取消、重启和宿主恢复断言保持，当前输入法与应用语言不切换。

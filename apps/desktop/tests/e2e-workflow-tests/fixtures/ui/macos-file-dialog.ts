@@ -19,10 +19,14 @@ interface MacosFileDialogState {
 
 const execFileAsync = promisify(execFile);
 
-export async function submitMacosFileDialogPath(owner: WorkflowProcessIdentity, targetPath: string): Promise<void> {
+export async function submitMacosFileDialogPath(
+  owner: WorkflowProcessIdentity,
+  targetPath: string,
+  beforeConfirm?: () => Promise<void>,
+): Promise<void> {
   if (!path.isAbsolute(targetPath) || /[\r\n\0]/.test(targetPath)) throw new Error('Native dialog target must be an absolute file path.');
   try {
-    await navigateMacosFileDialog(owner, targetPath);
+    await navigateMacosFileDialog(owner, targetPath, beforeConfirm);
   } catch (error) {
     try {
       if ((await readMacosFileDialog(owner)).visible) await cancelMacosFileDialog(owner);
@@ -33,7 +37,9 @@ export async function submitMacosFileDialogPath(owner: WorkflowProcessIdentity, 
   }
 }
 
-async function navigateMacosFileDialog(owner: WorkflowProcessIdentity, targetPath: string): Promise<void> {
+async function navigateMacosFileDialog(
+  owner: WorkflowProcessIdentity, targetPath: string, beforeConfirm?: () => Promise<void>,
+): Promise<void> {
   await expect.poll(async () => (await readMacosFileDialog(owner)).visible, {
     message: 'The workflow-owned macOS file dialog did not appear', timeout: 15_000,
   }).toBe(true);
@@ -81,6 +87,7 @@ pressKey(123, $.kCGEventFlagMaskCommand | $.kCGEventFlagMaskShift);
       message: 'The macOS Save file name was not entered completely',
     }).toBe(path.basename(targetPath));
   }
+  await beforeConfirm?.();
   await sendMacosFileDialogKeys(owner, 'clickNativeButton("OKButton");');
   await expect.poll(async () => (await readMacosFileDialog(owner)).visible, {
     message: 'The macOS file dialog did not accept the selected path',
@@ -97,6 +104,43 @@ export async function cancelMacosFileDialog(owner: WorkflowProcessIdentity): Pro
   }
   await sendMacosFileDialogKeys(owner, 'clickNativeButton("CancelButton");');
   await expect.poll(async () => (await readMacosFileDialog(owner)).visible).toBe(false);
+}
+
+/** Match the actual owned native panel to its public WindowServer rectangle. */
+export async function macosFileDialogWindowId(owner: WorkflowProcessIdentity): Promise<number> {
+  const output = await runMacosDialogScript(owner, `
+ObjC.import("CoreGraphics");
+function identifier(element) {
+  const values = element.attributes.whose({ name: "AXIdentifier" })();
+  return values.length ? values[0].value() : "";
+}
+const panels = ownedApp.windows().flatMap(window => [window, ...window.sheets()])
+  .filter(panel => ["save-panel", "open-panel"].includes(identifier(panel)));
+if (panels.length !== 1) throw new Error("The workflow must own exactly one native file panel");
+const position = panels[0].position(), size = panels[0].size();
+const windows = ObjC.deepUnwrap(ObjC.castRefToObject($.CGWindowListCopyWindowInfo(1, 0)));
+const matches = windows.filter(window => {
+  const bounds = window.kCGWindowBounds;
+  return window.kCGWindowLayer === 0
+    && Math.abs(bounds.X - position[0]) <= 1 && Math.abs(bounds.Y - position[1]) <= 1
+    && Math.abs(bounds.Width - size[0]) <= 1 && Math.abs(bounds.Height - size[1]) <= 1;
+});
+if (matches.length !== 1) throw new Error("The owned native file panel has no unique WindowServer match");
+JSON.stringify({ windowId: matches[0].kCGWindowNumber });
+`);
+  const result: unknown = JSON.parse(output);
+  if (typeof result !== 'object' || result === null || !('windowId' in result)
+    || typeof result.windowId !== 'number' || !Number.isInteger(result.windowId)) {
+    throw new Error('Native file panel lookup returned an invalid window ID.');
+  }
+  return result.windowId;
+}
+
+/** Show only the chosen demo folder instead of parent-folder columns in published media. */
+export async function showMacosFileDialogList(owner: WorkflowProcessIdentity): Promise<void> {
+  const state = await readMacosFileDialog(owner);
+  if (!state.visible || state.goToVisible) throw new Error('Prepare the owned file panel before recording it.');
+  if (!state.save) await sendMacosFileDialogKeys(owner, 'pressKey(19, $.kCGEventFlagMaskCommand);');
 }
 
 async function readMacosFileDialog(owner: WorkflowProcessIdentity): Promise<MacosFileDialogState> {

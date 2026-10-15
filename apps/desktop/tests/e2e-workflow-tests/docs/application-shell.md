@@ -1,5 +1,9 @@
 # Application 与 Shell Workflows
 
+## 教程逐步骤录制
+
+`guidebook-workspace.workflow.ts`在实际Release中录制侧栏展开、各workspace、四主题与恢复、语言菜单只读查看、Agent面板打开和关闭；不更改当前语言，不将主题/语言设计稿当作产品。每步原生截图与视频时间绑定，录制前通过正式筛选隐藏非演示流量，结束沿用真实Close和完整宿主恢复。
+
 本文件定义 Application 生命周期和共享 Shell 的完整 E2E 步骤。每条 workflow 独立启动 Electron、独占 profile/trace，并只检查与本流程相关的起始状态。
 
 <a id="application-startup-ready"></a>

@@ -1,5 +1,13 @@
 # MCP Workflows
 
+## 教程逐步骤录制
+
+`guidebook-client.workflow.ts`通过实际Release开启Server、创建`Guide local client`、Copy config，再由明确标注的官方SDK演示客户端执行真实查询、Ask Deny/Allow、模式切换、撤销和停用。配置内容读取复用已有脱敏trace边界，视频不展示token，metadata只含公开endpoint和名称；最后清理本轮剪贴板凭据并正常退出。
+
+每个操作有独立原生截图和视频位置，不把演示SDK客户端当作真实VS Code、Claude或远端connector验收。实际Host配置窗口、凭据轮换等未录步骤仍保留缺口。
+
+当前主录制补充了凭据轮换、旧配置拒绝、新配置重新查询与运行期`EADDRINUSE`后结束已知占用再重试。`guidebook-endpoint.workflow.ts`正常关闭首代App，保留本轮profile，测试端占用其旧endpoint后启动第二代；只在真实`endpoint-conflict`界面点击Change endpoint，并记录新旧公开地址。两代都保留退出证据，测试listener完整关闭，不将手动Enable失败时的disabled/error界面冒充重启恢复入口。
+
 本文件定义外部MCP Host接入Interceptor Desktop的真实E2E流程。确定性回归使用官方MCP Client，
 `current-host`使用当前开发Agent所在的真实Host；两者都使用产品UI创建的配置，不直接构造Client记录、
 读取加密Store、调用Main测试后门或绕过Renderer操作。Token只在暂停trace期间从产品「复制配置」

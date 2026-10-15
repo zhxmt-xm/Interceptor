@@ -1,5 +1,15 @@
 # Capture Workflows
 
+## 教程逐步骤录制
+
+`guidebook-recording.workflow.ts`在已核验Release上使用真实Capture与自产HTTP流量，先通过正式筛选限定`/guide/capture`，再录制操作，避免后台个人请求进入素材。逐步执行Recording、GET、选中、Headers、JSON/Tree/Raw/Hex、Timing、Pause、暂停时转发、Resume、新请求、缩小/恢复搜索和Clear，每步保存原生窗口图与视频位置；固定正文使用`orderId: guide-001`和`message: Hello Interceptor`。
+
+该workflow只证明这些已实际操作的步骤，不自动代表HTTPS、WebSocket、gRPC或导出专项；缺图步骤仍留在教程覆盖清单。视频与步骤图共用真实示例值，fixture在收尾验证系统代理、CA、进程和8888恢复。
+
+当前扩展录制已包含Fullscreen、已有CA下的解密、H2 headers/trailer/body、WebSocket文本、gRPC JSON、HTML/Markdown/Form/PNG/Binary/音视频元信息、gzip与损坏编码提示。所有协议复用TrafficLab真实客户端和origin，结束通过UI停用解密并移除本轮localhost例外，复核共享CA未变；不重生成CA，不把这些范围扩成所有异常、所有客户端或Windows通过。
+
+`guidebook-transfer.workflow.ts`对自产请求暂停录制，取消筛选后先确认当前Capture只有这一条记录，再开始原生文件演示。HAR和Archive先由产品Export生成，再Import同一个文件；每个文件窗口在真实选择测试目录、核对文件名后截图，文件参数不通过业务API或Dialog返回值注入。录像原件先保留私有目录，检查原生窗口是否含个人目录信息后才分发。普通macOS文件助手新增的`beforeConfirm`只让截图在真实确认前发生，不替换原生选择与点击。
+
 ## `capture.body-preview-limits`
 
 1. fresh profile通过UI开启录制，loopback origin分别返回完整1.25MiB和3MiB JSON；客户端校验完整响应。

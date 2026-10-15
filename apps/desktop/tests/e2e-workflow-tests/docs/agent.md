@@ -1,5 +1,11 @@
 # Agent Workflows
 
+## 教程逐步骤录制
+
+`guidebook-chat.workflow.ts`使用实际Release与明确标注的无Key本地演示endpoint，逐步录制Custom字段、Test/Save、New Chat、固定公开问题与回复、Context、Ask/Auto、Stop和Retry。Profile为`Guide local demo`，Model ID为`guide-demo-model`；不把预设演示响应和用量冒充真实商业模型的智能或计费，不包含真实Key。
+
+`guidebook-permissions.workflow.ts`独立录制Agent与MCP两列的`capture_clear`开关及`capture_get_proxy_status`查询项。每步独立截图，输入值与媒体清单一致；单项关闭不标成整个入口只读，也不真正清空数据。两个流程都保持App当前语言并复用原退出/宿主guard。
+
 本文件定义内置 Agent 阶段 1 的完整 E2E 流程。每条 workflow 独立启动真实 Electron、独占 profile 与 trace；
 只有需要 Model 的 workflow 才启动本地 OpenAI-compatible lab。所有配置、Chat 与导航动作都经过真实产品边界，
 不注入 Provider、Session、Transcript 或 Usage。
