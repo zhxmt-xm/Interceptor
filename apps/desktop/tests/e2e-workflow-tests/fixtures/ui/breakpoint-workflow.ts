@@ -24,8 +24,9 @@ export async function createRequestBreakpointRule(
   page: Page,
   name: string,
   method?: string,
+  pathMatch?: string,
 ): Promise<string> {
-  return createHttpBreakpointRule(page, name, '127.0.0.1', 'request', method);
+  return createHttpBreakpointRule(page, name, '127.0.0.1', 'request', method, pathMatch);
 }
 
 export async function createResponseBreakpointRule(page: Page, name: string, pathMatch: string): Promise<string> {
@@ -38,6 +39,7 @@ async function createHttpBreakpointRule(
   matchValue: string,
   phase: 'request' | 'response',
   method?: string,
+  pathMatch?: string,
 ): Promise<string> {
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.rules).click();
   await getByAutomationId(page, AUTOMATION_IDS.rules.rootMenuSurface).click({ button: 'right' });
@@ -64,6 +66,11 @@ async function createHttpBreakpointRule(
       page,
       AutomationIdFactory.ruleMatcherField(ruleId, 1, 'value'),
     ).fill(method);
+  }
+  if (pathMatch !== undefined) {
+    await getByAutomationId(page, AUTOMATION_IDS.rules.addCondition).click();
+    await getByAutomationId(page, AUTOMATION_IDS.rules.conditionOption.path).click();
+    await getByAutomationId(page, AutomationIdFactory.ruleMatcherField(ruleId, method ? 2 : 1, 'value')).fill(pathMatch);
   }
   await getByAutomationId(
     page,

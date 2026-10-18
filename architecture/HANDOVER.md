@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `5537d4b4`
+> Tracked commit: `702f2a3c`
 > Homepage guidebook: `b044362`
 
 ## 维护规则
@@ -29,28 +29,9 @@
   - 下一步：按[内容与页面约定](../../Interceptor-Homepage/docs/guidebook.md)在已验收版本中逐章操作，逐步骤配图并录制feature视频、同步英文与对应关系；官网公开地址就绪后才处理App iframe及浏览器跳转。当前本地阅读页面为`http://127.0.0.1:4175/guide`，停止后在Homepage执行`npm run dev`恢复。涉及item8的未验证场景保留限制；不得全站解除frame保护或把远程页面接入App Preload。
   - 验收：所有 feature 和功能点均可从目录找到图文步骤及对应视频章节；按教程在真实 App 中完成操作，文字、截图、视频和发布版本一致；演示使用可公开的测试数据，不包含凭据、个人流量或其他敏感信息。
 
-- **10. 产品官网设计、制作与上线 · blocked · 待Cloudflare登录与公开上线确认**
-  - 目标：制作酷炫、有辨识度的产品官网，借鉴主流 app 官网的视觉与交互表达，让访客快速理解 Interceptor 并进入下载、GitHub 和反馈入口。
-  - 当前分工与步骤：本会话负责官网主体、公共Header及滚动策略，不修改item 9的教程正文、阅读器结构、步骤图或视频。正式UI统一使用Ant Design，旧Radix及自写菜单项已移除。
-    - Header：桌面下载收为36px；小屏先放外观/语言，底部独立下载区留16px分隔间距并使用40px按钮。菜单直接互切、焦点、窄屏滚动及新标签页行为已核对，本地预览已更新。
-    - 滚动：首页和指南锚点改由根级CSS控制smooth，首页重复点击同一锚点也能定位；系统减少动态效果时直接定位，滚轮/触控板保留原生行为。指南只修改共享锚点helper的滚动策略，已与负责item 9的会话同步。
-    - 验证边界：实际滚动轨迹、生产CSP、typecheck/build和浅深方案对比见[当前证据](../../Interceptor-Homepage/docs/architecture.md#锚点滚动与下载布局)。保存边界仅含item 10，提交内源码类型与独立依赖锁文件已核对；[离线改动说明](../../Interceptor-Homepage/commit-changes/202610141539_ui_homepage_initial-progress.html#homepage-item10-20261016)包含同尺寸前后图和红框。旧菜单截图仅作历史记录，公开上线仍待Cloudflare授权。
-  - 范围：产品定位、重要 feature 介绍、真实产品截图与演示视频、下载链接、GitHub 链接、feedback 入口及 guidebook 导航；复用 item 9 的已核对素材，不把设计预览冒充已发布产品画面。
-  - 当前：官网仓库为同账号的私有[Interceptor-Homepage](https://github.com/zhxmt-xm/Interceptor-Homepage)，本地目录`/Users/zhxmt/Desktop/Interceptor-Homepage`。本轮官网主体、公共Header及滚动进度已保存并推送至`0ee867b`，初始首页/教程共用基座保留在`93fb996`；item 9未提交的正文、媒体及阅读器改动留给所属会话独立保存。官网未公开上线，不标记整项验收完成，也没有修改桌面App运行实现。
-  - 首页实现：用户已确认“首屏总览＋纵向图文功能模块”，并补充独立MCP模块。[src/](../../Interceptor-Homepage/src/)按`app / features/home / components / content / theme / styles`分层，组件使用独立CSS Module；默认跟随系统，右上角提供System/Light/Dark，记住手动选择并同步主题图片。Capture、Rules、Breakpoints、Composer、Agent、MCP分别绑定说明与截图；手机图文上下排列，补充能力使用紧凑卡片。App图片仍标注设计预览，本地页面为`http://127.0.0.1:4175/`，停止后在官网目录执行`npm run dev`恢复。
-  - 页面精简：按用户反馈移除重复的三步使用流程、虚构请求/响应卡片、独立下载区和同地址的平台卡片；顶部“如何使用”及首屏重复下载按钮一并移除。功能后直接进入学习资源，保留真实Quick Start链接。
-  - 下载入口：Header在所有宽度保持左品牌、中间导航、右侧操作的单行布局，删除旧双行规则。导航始终居中可见，不收入菜单；不超过840px时仅将下载、主题、语言收纳到右侧操作菜单，480px及以下品牌仅显示Logo并保留可访问名称。下载采用当前Ant Design尺寸与布局，Star斜条及右缘安全区104px/手机36px不变；下载以`noopener noreferrer`在新标签页打开`https://github.com/zhxmt-xm/Interceptor/releases/latest`。
-  - Header历史核对：小屏换行前置Red与单行/居中/无重叠检查覆盖首页及Guidebook；[早期单行Header证据](../../Interceptor-Homepage/artifacts/single-row-header/)和[分区证据](../../Interceptor-Homepage/artifacts/header-regions/)只保留为历史状态，其中按钮与旧菜单不代表当前Ant Design实现。本轮验收按上述当前证据，不重跑无关全套流程。
-  - GitHub入口：最右上角提供45°“Star on GitHub”，窄屏为星形角标；与固定Header一起保持可见，以新标签页打开产品仓库，不代替访客Star。前置Red、lint/typecheck/build及官网浏览器流程通过；已核对各尺寸的导航点击区域、主题菜单、opener隔离和仅读取仓库的请求，中英/浅深截图无横向溢出，未改动内容像素保持一致。[Star入口证据](../../Interceptor-Homepage/artifacts/github-ribbon/)保留，不代表私有仓库已可匿名访问。
-  - 已验证范围：固定Header与新标签页取得前置Red及最终Green，lint、typecheck/build和全部官网浏览器流程通过；真实滚轮、锚点避让、手机菜单、鼠标/键盘创建独立标签页及opener隔离已验证，原官网地址与滚动位置保持不变。中英/浅深/桌面平板手机截图已检查，首屏像素未变。[固定Header证据](../../Interceptor-Homepage/artifacts/sticky-header/)及原[页头下载证据](../../Interceptor-Homepage/artifacts/header-download/)只证明官网导航，外部响应在浏览器测试中隔离，不代替GitHub匿名访问。主题持久化、系统/跨页同步、存储拒绝警告、键盘、文字对比度及Cloudflare静态资源检查保留于[主题与模块证据](../../Interceptor-Homepage/artifacts/theme-features/)；[长期入口证据](../../Interceptor-Homepage/artifacts/evergreen-downloads/)与原[内容证据](../../Interceptor-Homepage/artifacts/content-20261014/)仍保留，不作为桌面App E2E或公开上线证据。
-  - 部署准备：[wrangler.jsonc](../../Interceptor-Homepage/wrangler.jsonc)仅托管`dist/`，不需要业务Worker、数据库或服务端凭据；[部署说明](../../Interceptor-Homepage/docs/deployment.md)包含免费Static Assets与Pages备选。CI只检查，不自动发布；托管账号、域名和公开地址尚未操作。
-  - 上线阻塞：[官网提交的CI](https://github.com/zhxmt-xm/Interceptor-Homepage/actions/runs/38530368721)已通过，当前源码的typecheck/build和Wrangler dry-run通过，产物包含首页、教程目录及全部已登记章节入口，未上传。官方OAuth登录未收到浏览器授权回调而超时，`wrangler whoami`仍显示未认证；登录进程已退出，回调端口8976已释放。需要用户本人完成登录及公开上线确认，不能以临时账号绕过。两个源码仓库保持private，匿名下载权限不能因网站上线自动取得。
-  - 下一步：用户确认免费静态上线后，在官网目录执行`npx wrangler login`并完成浏览器授权，再运行`npm run deploy`；核对返回的真实URL、首页与教程深链、404、响应头及资源。真实产品截图、视频及教程实机验收仍依赖item 9，域名及任何付费操作另行确认；此前不创建临时公开部署或改变仓库可见性。
-  - 验收：完成桌面和移动端展示、动效与媒体播放检查，所有下载、GitHub、feedback 和 guidebook 链接可用；下载平台与版本以实际 Release 资产为准，通过页面、构建产物与公开访问检查后才算上线。
-
 - **11. README 与 GitHub 仓库介绍优化 · 待实现**
   - 目标：用简单、直接、清楚的图文或视频说明 App 的用途和价值，覆盖每个重要 feature，同时让 GitHub 仓库介绍包含足够准确的产品与搜索信息。
-  - 范围：同步优化[英文 README](../README.md)和[中文 README](../README.zh-CN.md)，按重要 feature 配简明介绍及真实截图或视频入口；保留清楚的下载、快速上手、权限与隐私说明，详细操作链接 item 9 的 guidebook，官网入口使用 item 10 的正式地址。
+  - 范围：同步优化[英文 README](../README.md)和[中文 README](../README.zh-CN.md)，按重要 feature 配简明介绍及真实截图或视频入口；保留清楚的下载、快速上手、权限与隐私说明，详细操作链接 item 9 的 guidebook，官网入口使用 item 15 验收后的实际地址。
   - 仓库信息：更新 GitHub About/Description、Website 和 Topics；简介在平台长度限制内明确产品类别、适用人群与核心能力，关键词与实际支持的功能一致，不堆砌无关搜索词。
   - 下一步：先梳理重要 feature 和搜索关键词，准备中英文文案及媒体对应表，再更新 README 和仓库元数据；素材、官网与下载信息按对应 item 的实际交付同步，不使用占位链接作为最终结果。
   - 验收：中英文信息一致，重要 feature 无遗漏，GitHub 页面中的图片、视频入口和链接可用；仓库简介、Topics、官网与 Release 的实际能力及平台说明一致。
@@ -59,13 +40,20 @@
   - 目标：明确在哪个平台、面向谁、发布什么内容，并逐个平台准备完整材料后发布，不停留在渠道建议或通用模板。
   - 范围：评估 V2EX、掘金、B 站、Show HN、Reddit、DEV Community、YouTube、Product Hunt 及相关开源周刊等候选渠道，按受众、社区规则和准备成本确定发布顺序，不要求不加筛选地全部发布。
   - 交付：每个选定平台分别准备标题、正文、语言版本、真实截图或视频、官网/下载/GitHub 链接和必要的回复要点；内容针对平台和具体使用场景调整，不机械复制同一篇宣传稿。
-  - 下一步：先完成渠道与帖子清单，再按顺序逐项备稿、核对发布规则、确认最终内容与账号授权并发布；正式外发使用 item 9–11 已就绪的资料与入口，本轮仅登记待办，不操作外部账号或对外发布。
+  - 下一步：先完成渠道与帖子清单，再按顺序逐项备稿、核对发布规则、确认最终内容与账号授权并发布；正式外发使用 item 9、11 和 15 已就绪的资料与入口，本轮仅登记待办，不操作外部账号或对外发布。
   - 验收：每个选定渠道都有最终稿、素材和实际发布链接，并处理发布后的有效问题与反馈；发布链接及反馈记录保存在对应推广材料中，不把草稿算作已发布。账号、平台规则或人工操作阻塞时说明原因，继续其他可执行渠道。
 
 - **13. 教程全局搜索 · 待实现 · Guidebook完成后启动**
   - 目标：在教程中跨章节搜索内容，按关键词找到相关说明，并定位到对应章节或步骤。
   - 前置：先完成item 9的Guidebook交付，再启动本项；不并入当前阅读性能修复。
   - 下一步：Guidebook完成后确认搜索范围与交互，按设计确认、实现和Browser验收推进；当前只登记待办，不添加搜索入口、索引或依赖。
+
+- **15. Cloudflare 受限部署与线上验收 · 待确认**
+  - 目标：把已完成本地制作的官网部署到免费Cloudflare静态托管，先限制为本人或明确允许的成员访问，再按用户确认决定公开。源码仓库继续保持private，不要求购买域名或启用付费服务。
+  - 当前：本地官网行为、素材来源与验证保留在[官网架构](../../Interceptor-Homepage/docs/architecture.md#真实首页素材)，[同一item改动说明](../../Interceptor-Homepage/commit-changes/202610141539_ui_homepage_initial-progress.html#homepage-real-media-20261017)保留前后画面。尚无已验收的线上URL，账号授权和访问保护需要确认，不将先前OAuth失败等同于当前认证状态。
+  - 步骤：按[受限部署约定](../../Interceptor-Homepage/docs/deployment.md#待执行受限部署与线上验收)先确认实际账号、保护范围与全部正式/预览地址，再连接本人的GitHub官网仓库或授权Wrangler部署；`Cloudflare account`必须确实限定账号成员，不能只选择项目所属账号。不得创建临时公开部署、擅自影响其他应用或靠网址未公布代替访问控制。
+  - 验收：首页与教程深链/刷新、真实404、静态缓存、原图、视频播放/拖动与Range响应；获准账号能访问，匿名及未授权账号不能绕过保护，包括直接资源和预览地址。保留实际URL与浏览器证据，核对国内外线路和Google Fonts依赖，不承诺免费默认域名在大陆稳定快速。
+  - 入口边界：下载、GitHub与feedback仍受私有产品仓库权限限制，需确认目标访客可用的入口；上线不会自动获得匿名下载权限。App iframe、主题语言衔接与登录会话仍归item 9，不由普通网页可嵌入替代；正式公开、域名及任何付费操作另行确认。
 
 ## 验收约束
 

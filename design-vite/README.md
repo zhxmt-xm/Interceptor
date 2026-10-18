@@ -81,6 +81,18 @@ window.__setState({
 });
 ```
 
+### Homepage 真实素材替换预览
+
+`tools/homepage-media-preview.mjs`复用独立Homepage仓库现有SPA的完整布局与交互，只在预览服务内替换图片响应和对应说明；不复制另一套官网、不修改正式首页源码、教程媒体或`shots/`。这是媒体替换方案，不是产品验收，也不向产品增加预览参数或状态setter。
+
+- 输入来自`guidebook-homepage-media.workflow.ts`的实际Release原生窗口录制，必须包含六个功能的light/dark原图及`homepage-steps.json`；不通过调色生成主题图。
+- 工具覆盖总览与六功能模块的中英、浅深、1600/390px，保存改前/拟议截图和几何、来源摘要；字体必须真实加载，预览服务结束后关闭。
+- 当前App截图保持实际中文语言，英文网页不伪装成英文App；Agent为无Key本地演示，MCP仅展示实际本机配置。接入正式首页前需确认前后效果。
+
+```sh
+node design-vite/tools/homepage-media-preview.mjs "<实际workflow输出目录>" "<独立评审目录>"
+```
+
 ### 既有场景
 
 ```powershell

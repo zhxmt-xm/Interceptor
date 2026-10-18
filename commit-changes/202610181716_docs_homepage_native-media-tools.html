@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>官网真实媒体录制与方案预览工具</title>
+  <style>
+    body{margin:0;background:#f6f7fa;color:#20232b;font:16px/1.75 system-ui,sans-serif}
+    main{max-width:960px;margin:auto;padding:32px 20px 64px}section{background:white;border:1px solid #dfe3eb;border-radius:12px;padding:24px;margin-top:20px}
+    h1,h2{line-height:1.35}code{overflow-wrap:anywhere;font:0.9em/1.6 ui-monospace,monospace}li{margin-block:10px}.meta{color:#626a78}
+  </style>
+</head>
+<body><main>
+  <h1>官网真实媒体录制与方案预览工具</h1>
+  <p class="meta">Item 10 · 2026-10-18 · 工程与文档</p>
+  <p>为官网六个功能的浅深主题真实截图提供独立录制和方案预览，不修改Desktop产品界面。</p>
+  <section>
+    <h2>改动</h2>
+    <ul>
+      <li><strong>位置：</strong><code>workflows/application/guidebook-homepage-media.workflow.ts</code>。<strong>改前：</strong>首页素材主要来自设计画面。<strong>改后：</strong>使用签名Release、独立profile、真实流量与UI建立Capture、Rules、Breakpoints、Composer、Agent、MCP状态，分别记录light/dark单窗口原图。<strong>原因与影响：</strong>展示实际产品能力，不调色伪造主题，也不把本地模型/SDK冒充商业服务。</li>
+      <li><strong>位置：</strong><code>design-vite/tools/homepage-media-preview.mjs</code>。<strong>改前：</strong>缺少在保持既有官网布局时比较真实素材的工具。<strong>改后：</strong>在隔离预览服务内替换图片与对应文案，输出中英、主题和尺寸对照。<strong>原因与影响：</strong>正式接入前可审阅方案，不向产品加入测试参数或复制另一套官网。</li>
+      <li><strong>位置：</strong><code>docs/application-shell.md</code>及<code>design-vite/README.md</code>。<strong>改后：</strong>写清独立录制范围、输入来源、预览命令与正常退出要求。<strong>影响：</strong>与item 9教程媒体保持边界；官网实际前后画面保存在Homepage仓库原有item 10报告中。</li>
+      <li><strong>位置：</strong><code>fixtures/ui/breakpoint-workflow.ts</code>。<strong>改前：</strong>共用创建辅助仅能指定Host和Method。<strong>改后：</strong>允许创建时就加入Path范围。<strong>原因与影响：</strong>首页断点示例仅挂起自己的请求路径，其他教程复用同一辅助，不复制规则创建步骤。</li>
+    </ul>
+  </section>
+</main></body>
+</html>

@@ -2,6 +2,16 @@
 
 ## 教程逐步骤录制
 
+### 官网功能素材
+
+`guidebook-homepage-media.workflow.ts`只负责item 10首页的真实发布App素材，不替代item 9逐步骤教程，也不回写其媒体目录。
+
+- 准备：使用已核对SHA-256的Release App、独立profile和loopback源站，保持App语言；端口8888必须空闲，禁止附着其他会话的App。记录本profile原主题，不修改日常CA或其他应用。
+- 操作：通过真实UI启用Capture，产生`/showcase/`范围的JSON流量；创建并Apply一条狭窄Header规则、核对源站命中；挂起一条POST、编辑正文并Forward；在Composer发送本轮请求；配置无Key本地演示模型并完成Agent对话；开启MCP并创建独立演示Client。
+- 截图：每个功能都通过正式主题菜单分别切到light/dark，确认相同业务状态后只截本轮App原生窗口，保留完整界面和原始字节。首页总览复用Capture原图，不着色、拼接或使用设计fixture冒充真实产品。Agent明确为本地确定性演示，不声称商业模型能力；MCP画面只展示本机设置，不展示凭据。
+- 断言与证据：真实响应、规则改写字节、断点转发结果、Composer响应和Agent已完成状态必须成立；记录两套主题原图、发布来源、示例值、语言、native-window录制及trace。
+- 清理：撤销MCP Client并停止Server，恢复本profile原主题，保留App语言；由driver正常Close并核对Main/Core/Worker退出、8888释放、系统代理与CA基线恢复。无法取得原生桌面权限或端口被其他App占用时停止，不改用整屏录制或强杀。
+
 `guidebook-workspace.workflow.ts`在实际Release中录制侧栏展开、各workspace、四主题与恢复、语言菜单只读查看、Agent面板打开和关闭；不更改当前语言，不将主题/语言设计稿当作产品。每步原生截图与视频时间绑定，录制前通过正式筛选隐藏非演示流量，结束沿用真实Close和完整宿主恢复。
 
 本文件定义 Application 生命周期和共享 Shell 的完整 E2E 步骤。每条 workflow 独立启动 Electron、独占 profile/trace，并只检查与本流程相关的起始状态。
