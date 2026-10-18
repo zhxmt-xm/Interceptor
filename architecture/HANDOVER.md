@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `702f2a3c`
+> Tracked commit: `0c11c2a5`
 > Homepage guidebook: `b044362`
 
 ## 维护规则
@@ -47,6 +47,13 @@
   - 目标：在教程中跨章节搜索内容，按关键词找到相关说明，并定位到对应章节或步骤。
   - 前置：先完成item 9的Guidebook交付，再启动本项；不并入当前阅读性能修复。
   - 下一步：Guidebook完成后确认搜索范围与交互，按设计确认、实现和Browser验收推进；当前只登记待办，不添加搜索入口、索引或依赖。
+
+- **14. Android USB 流量接入 · 待确认 · 本轮仅授权架构文档**
+  - 目标：Android 使用`VpnService`创建并读写TUN，经USB/`adb reverse`接入PC；每台手机作为带Android图标的虚拟App，复用PC的Rules、Breakpoints和Capture。
+  - 范围：仅USB，不做局域网、无线adb或云中继；不把TUN当作VPN之外的可选补充，不以无VPN显式代理替代系统流量接管。
+  - 当前步骤：[架构方案](features/android.md)已记录双端职责、映射隔离、协议、来源、证书、断线与实施验收边界；未引入依赖、修改产品或执行真机验收，不代表功能可用。
+  - 下一步：先确认TUN库与Android平台范围、异常断线和非DNS UDP策略、adb交付方式及具体UI；取得实现授权后补workflow规格和所需前置Red，再进入单设备闭环。
+  - 验收约束：必须使用真实Android设备与Electron验证规则、断点、协议及退出恢复；USB授权、VPN授权和CA信任分别处理，未验证的分支不得算作支持。
 
 - **15. Cloudflare 受限部署与线上验收 · 待确认**
   - 目标：把已完成本地制作的官网部署到免费Cloudflare静态托管，先限制为本人或明确允许的成员访问，再按用户确认决定公开。源码仓库继续保持private，不要求购买域名或启用付费服务。
