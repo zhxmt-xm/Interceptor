@@ -51,6 +51,10 @@ Capture Lab无需MCP配置。41个场景都由Node使用显式代理`127.0.0.1:8
 trailers和timing。详情默认宽560px，可用splitter拖拽；窄窗口保留全部栏并允许水平滚动。Developer在Interceptor
 Capture中对照同一请求，再记录人工结论。
 
+服务器验收代码中的`runTls`会核对原origin确实收到请求；Map Remote可能合法绕过该origin，不能直接把
+缺少原origin观测当作映射失败。这类流程复用`TlsTrafficRunner.openHttp1Socket()`建立真实CONNECT/TLS连接，
+分别读取客户端响应并核对实际目标origin，不给产品增加专用参数或绕过代理。
+
 ### 手动复现H2中断正文
 
 1. 启动Interceptor并开启Recording，确认监听`127.0.0.1:8888`。

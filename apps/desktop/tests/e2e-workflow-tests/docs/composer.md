@@ -10,7 +10,28 @@
 
 `guidebook-editing.workflow.ts`补充JSON/Text/Form的实际出站字节、空认证控件、命名、目录拖动和原生Collection文件往返。每种正文使用独立测试路径，避免`observation()`的首条记录语义误判后续发送；编辑已有URL时按正式输入框只修改主机/路径，不重复已经单独显示的协议前缀。不录入或展示真实凭据。
 
+`guidebook-auth.workflow.ts`仅用临时127.0.0.1服务接受的公开演示字符串，实录None的401、Basic/Bearer的200、切None后自动Authorization移除，以及自行添加的Authorization必须单独删除。它不是商业服务或真实凭据验收；最后清空三种演示输入、保持None，并确认Composer没有写入Capture。源站逐次检查实际Header，关闭服务与App后按原driver核对退出恢复。
+
+`guidebook-tools.workflow.ts`补录Composer专用MCP Ask与Collection读取/替换，不改产品代码。解锁后已在同一签名Release取得[真实操作、原生媒体及退出证据](../../../test-results/guidebook-media-20261016/prepared-unlocked/composer-guidebook-tools.w-439f3-iven-Collection-replacement-macos-guidebook/)；该流程通过不代替其他未录的深字段跨重启或原生集合文件Tool。
+
+- 前提：只使用产品UI创建的独立Ask Client和官方本地SDK；配置凭据只留在内存并登记脱敏，取景前进入Settings，不让默认Capture背景流量进入画面。保持App语言。
+- UI输入：在Composer创建并命名`Guide UI request`，URL为本轮自有`/guide/composer-tools/saved`，Header为`x-guide-collection: public-example`；通过UI Send得到`guide-ui-response`。等待`data-save-state=saved`后，读取真实request ID与revision，不预造节点树。
+- 发送审批：SDK请求`composer_send_request`，method为POST，独立路径`/guide/composer-tools/allowed`，Header为`x-guide-tool: public-example`，body为`{"message":"guide-tool-request"}`，protocol为`http/1.1`、timeoutMs为5000。先Deny且源站零请求，再次请求并Allow；真实源站核对method/Header/body，实际Tool结果为201、`HTTP/1.1`和`guide-tool-response`，无不完整正文。
+- 显示边界：返回仍选中的Composer请求，URL和`guide-ui-response`保持。Tool发送结果在调用方，不伪造Composer响应区，也不借用手工Send图冒充Tool返回。
+- Collection：`composer_get_collection`实际读取UI保存的完整树；用返回的revision/原节点身份只修改name为`Guide MCP renamed request`。记录Ask当前/目标请求及目录计数，先Deny核对revision和UI不变，再Allow核对revision递增与已挂载UI通知更新。保留原URL、Header和UI响应；读取/替换不新增源站请求。
+- 证据与清理：逐步骤原生截图/视频/字幕、独立网络事实与Tool结果断言，最后关闭本轮MCP Server，沿原driver正常Close与宿主恢复。失败片段、锁屏拒绝、单纯typecheck或`--list`都不能算真实E2E通过。
+
+本次原图/字幕对应22个实际步骤；UI保存的revision从4变为5，Tool发送返回201而当前Composer响应仍为先前UI Send的200。Main `8102`、Core `8157`正常退出，`gracefulDestroyVerified=true`、`abruptDestroyVerified=false`，8888已释放后才把真实截图窗口交接给item10。SDK不是商业Host界面，输入Header/Body均为本轮公开示例。
+
 `guidebook-fields.workflow.ts`核对Header/Query行启用、停用、删除后的实际重发，JSON Format、Body None及Recent sends只恢复method/URL的边界。`guidebook-collection.workflow.ts`从真实UI建立三级目录，在第三级菜单检查继续嵌套禁用，创建和切换两条自产请求，再核对目录改名、同级排序、原生导出/导入预览取消及本轮节点删除。所有操作都附独立步骤图，导入文件由同轮产品Export生成；锁屏拒绝不作为流程通过。
+
+`guidebook-request-persistence.workflow.ts`补完整代表性请求的深层目录跨重启，不重复已有目录管理影片。前提目录通过真实UI创建，第一段只录请求字段：POST、HTTP/1.1、本轮`/guide/persisted-request?guide=url`、启用的`x-guide-persist: retained`、停用的`x-guide-disabled: omitted`、Query `scope=retained`、JSON `{"message":"persisted-fields","count":2}`和只供公开示例的Bearer值`public-persistence-example`。等待实际保存后正常Close；第一代不得Send。
+
+第二代同profile真实重开，取景前先进入Composer，逐层展开三个实际保留的目录，检查同一request ID、name、URL、method、protocol及各字段/开关。不重新填写保存字段，最后仅点一次Send；真实源站必须收到POST、两个Query值、启用Header、JSON字节和演示Authorization，不收到停用Header，也没有重启自动重发。随后清空演示Auth并选None。两段分代记录、分别核对正常退出；第二代证据前缀为`composer-reopened`。这是一条完整选用字段的代表性请求，不宣称穷举所有Body/Auth类型组合；真实运行前只登记待验证，不发布素材。
+
+`guidebook-response-formatting.workflow.ts`只补现有Composer响应影片未覆盖的HTML/JavaScript自动格式化、XML失败保留原文与超过2MiB的JSON预览，不重复已录CSS手动Format和分栏。四条请求通过UI分别命名，源站路径各自独立；小HTML的Copy须含真实格式化换行，JavaScript核对格式化空格与原文不同，不强求短函数换行。`<root><`的真实HTTP响应在手动Format后仍逐字保留且无新增Renderer异常。大JSON由自有origin返回，Copy只含2MiB预览且Format disabled，不造导入文件。最后切回原HTML请求核对格式化视图仍在。每步原生图/字幕、Clipboard摘要与真实源站次数分别保存，正常退出走原guard；未运行前不能声明媒体通过。
+
+`guidebook-file-tools.workflow.ts`准备补录Collection文件Tool：产品UI创建并保存一条公开请求，官方本地SDK以Ask调用Export/Import。先Deny并核对不写文件，再Allow后通过真实Save取消；随后由产品Tool导出唯一`guide-tool-collection.json`，所有Import只读取这个文件。分别记录Open取消、导入预览取消、预览确认追加；最后选择Auto并再次导入，仍需真实Open和预览确认，三份同名请求保持独立新ID、原请求ID不被替换。请求及Header由同一UI生成，无真实凭据；所有文件操作不自动Send。原生面板先定位自有临时目录再取景，取消由真实键鼠完成；未运行前只标代码准备，不发布素材。
 
 ### 独立响应检查与实际重发补录
 

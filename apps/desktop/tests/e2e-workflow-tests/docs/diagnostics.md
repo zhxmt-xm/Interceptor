@@ -2,6 +2,10 @@
 
 本文件定义 Diagnostics 工作区的完整 E2E 流程。每条 workflow 独立启动 Electron、独占 profile/trace，并通过真实 App 操作产生诊断记录。
 
+## 教程连续补录
+
+`guidebook-lifecycle.workflow.ts`先由真实Composer Send准备分页历史，不注入数据库。镜头内发送成功请求、再访问主动关闭连接的自有端点，明确Composer网络失败仍可作为正常命令结果返回，不能把diagnostic success当HTTP成功。另用自有404 PAC触发真正的`main.upstream.apply.failed`且原路线保持；在Diagnostics按main/error/failed选取该操作，查看静态时间线、调整分栏、逐项清除过滤并加载历史。JSONL由产品真实Save生成并核对分类，最后回Composer恢复可用URL；不伪造取消/超时记录或不存在的展开按钮。
+
 <a id="diagnostics-tools-queries-export"></a>
 ## `diagnostics.tools.queries-export`
 

@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 import { expect, test, type TestInfo } from '@playwright/test';
 
 import type { LocalElectronApplicationDriver } from '../runtime/local-electron-driver';
+import { MacosWorkflowHostSafetyOperations } from '../safety/macos-workflow-host-safety-operations';
 import { macosFileDialogWindowId, showMacosFileDialogList } from './macos-file-dialog';
 
 const execFileAsync = promisify(execFile);
@@ -61,15 +62,22 @@ export class GuidebookMedia {
     chapter: string,
   ): Promise<GuidebookMedia> {
     if (process.platform !== 'darwin') throw new Error('Native guide recording currently requires macOS.');
+    await MacosWorkflowHostSafetyOperations.assertDesktopUnlocked();
     if (!process.env.INTERCEPTOR_GUIDE_FFMPEG) throw new Error('Set INTERCEPTOR_GUIDE_FFMPEG to an installed FFmpeg executable.');
     desktopApp.page.setDefaultTimeout(15_000);
     const owner = desktopApp.nativeFileDialogOwner();
+    const bounds = await desktopApp.page.evaluate(() => ({ width: window.outerWidth, height: window.outerHeight }));
     const { stdout } = await execFileAsync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', `
 ObjC.import("CoreGraphics");
-const windows = ObjC.deepUnwrap(ObjC.castRefToObject($.CGWindowListCopyWindowInfo(1, 0)));
+const windows = ObjC.deepUnwrap(ObjC.castRefToObject($.CGWindowListCopyWindowInfo(0, 0)));
 const owned = windows.filter(window => window.kCGWindowOwnerPID === ${owner.processId}
-  && window.kCGWindowLayer === 0 && window.kCGWindowBounds.Width >= 800);
-if (owned.length !== 1) throw new Error("Expected exactly one workflow-owned App window");
+  && window.kCGWindowLayer === 0
+  && Math.abs(window.kCGWindowBounds.Width - ${bounds.width}) < 1
+  && Math.abs(window.kCGWindowBounds.Height - ${bounds.height}) < 1);
+if (owned.length !== 1) throw new Error("Expected exactly one workflow-owned App window: " + JSON.stringify(owned.map(window => ({
+  id: window.kCGWindowNumber, name: window.kCGWindowName, alpha: window.kCGWindowAlpha,
+  onScreen: window.kCGWindowIsOnscreen, sharing: window.kCGWindowSharingState, bounds: window.kCGWindowBounds
+}))));
 JSON.stringify({ windowId: owned[0].kCGWindowNumber });
 `], { encoding: 'utf8', timeout: 10_000 });
     const value: unknown = JSON.parse(stdout);
@@ -102,6 +110,11 @@ JSON.stringify({ windowId: owned[0].kCGWindowNumber });
     await this.captureStep(id, title, action, this.windowId);
   }
 
+  /** Capture a real short-lived progress state without delaying the next user action. */
+  async transientStep(id: string, title: string, action: () => Promise<void>): Promise<void> {
+    await this.captureStep(id, title, action, this.windowId, 0);
+  }
+
   async nativeDialogStep(id: string, title: string): Promise<void> {
     await showMacosFileDialogList(this.desktopApp.nativeFileDialogOwner());
     const windowId = await macosFileDialogWindowId(this.desktopApp.nativeFileDialogOwner());
@@ -115,32 +128,38 @@ JSON.stringify({ windowId: owned[0].kCGWindowNumber });
 
   private async selectRecordingWindow(windowId: number): Promise<void> {
     const sequence = ++this.nextWindowRequest;
+    await this.sendRecorderCommand(`window ${windowId} ${sequence}\n`, `window-ready:${sequence}\n`);
+  }
+
+  private async sendRecorderCommand(command: string, acknowledgement: string): Promise<void> {
     if (!this.recording.stdin) throw new Error('Native recorder control input is unavailable.');
-    this.recording.stdin.write(`window ${windowId} ${sequence}\n`);
+    this.recording.stdin.write(command);
     await expect.poll(() => {
       if (this.recordingInputError) throw this.recordingInputError;
       if (this.recording.exitCode !== null || this.recording.signalCode !== null) {
-        throw new Error(`Native recorder stopped: ${this.recordingErrors}`);
+        throw new Error(`Native recorder stopped (${this.recording.exitCode ?? this.recording.signalCode}): ${this.recordingProgress}\n${this.recordingErrors}`);
       }
-      return this.recordingProgress.includes(`window-ready:${sequence}\n`);
+      return this.recordingProgress.includes(acknowledgement);
     }, { timeout: 10_000 }).toBe(true);
   }
 
   private async captureStep(
-    id: string, title: string, action: () => Promise<void>, windowId: number,
+    id: string, title: string, action: () => Promise<void>, windowId: number, readingPauseMs = 2500,
   ): Promise<void> {
     if (this.steps.some(step => step.id === id)) throw new Error(`Duplicate tutorial step: ${id}`);
     if (this.recording.exitCode !== null || this.recording.signalCode !== null) {
-      throw new Error(`Recording stopped: ${this.recordingErrors}`);
+      throw new Error(`Recording stopped (${this.recording.exitCode ?? this.recording.signalCode}): ${this.recordingProgress}\n${this.recordingErrors}`);
     }
+    await MacosWorkflowHostSafetyOperations.assertDesktopUnlocked();
     const seconds = (performance.now() - this.startedAt) / 1000;
     await test.step(title, action);
     // A deliberate reading pause is part of the video, not a substitute for product assertions.
-    await this.desktopApp.page.waitForTimeout(2500);
+    if (readingPauseMs > 0) await this.desktopApp.page.waitForTimeout(readingPauseMs);
+    await MacosWorkflowHostSafetyOperations.assertDesktopUnlocked();
     const image = `${this.chapter}-${id}.png`;
-    await execFileAsync('/usr/sbin/screencapture', [
-      '-x', '-o', '-l', String(windowId), this.testInfo.outputPath(image),
-    ], { timeout: 10_000 });
+    const sequence = ++this.nextWindowRequest;
+    const destination = Buffer.from(this.testInfo.outputPath(image), 'utf8').toString('base64');
+    await this.sendRecorderCommand(`snapshot ${windowId} ${sequence} ${destination}\n`, `snapshot-ready:${sequence}\n`);
     expect((await stat(this.testInfo.outputPath(image))).size).toBeGreaterThan(1000);
     this.steps.push({ id, title, image, seconds });
   }
@@ -154,8 +173,10 @@ JSON.stringify({ windowId: owned[0].kCGWindowNumber });
     if (!ffmpeg) throw new Error('Set INTERCEPTOR_GUIDE_FFMPEG to an installed FFmpeg executable.');
     const input = this.testInfo.outputPath(`${this.chapter}-raw.mp4`);
     const video = this.testInfo.outputPath(`${this.chapter}.mp4`);
+    // ScreenCaptureKit omits unchanged trailing frames; retain the recorded reading pause.
     await execFileAsync(ffmpeg, [
-      '-y', '-i', input, '-an', '-vf', 'scale=1600:-2', '-r', '20',
+      '-y', '-i', input, '-an', '-vf', 'scale=1600:-2,tpad=stop_mode=clone:stop=-1',
+      '-r', '20', '-t', duration.toFixed(3),
       '-c:v', 'libx264', '-preset', 'medium', '-crf', '26', '-pix_fmt', 'yuv420p',
       '-movflags', '+faststart', video,
     ], { encoding: 'utf8', maxBuffer: 2 * 1024 * 1024, timeout: 120_000 });

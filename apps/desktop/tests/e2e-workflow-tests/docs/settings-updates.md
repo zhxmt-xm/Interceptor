@@ -2,6 +2,16 @@
 
 本文件定义 Settings 十个section和Update notification的完整E2E流程。每条workflow独立启动Electron、独占profile/trace；系统代理、CA信任和外部程序操作必须由真实App UI发起。
 
+## 教程逐步骤录制
+
+`guidebook-tls-passthrough.workflow.ts`使用已有受信任CA与自有`localhost` TLS origin，不操作首次授权或日常CA生命周期。fresh profile先保留未解密状态，录制Tunnel及HTTPS Setup取消；经Certificates添加仅本轮的源站例外并启用解密，确认新GET的真实正文。随后在TLS passthrough输入精确`localhost`并添加，回到Capture建立新连接，确认客户端成功而App只显示新的CONNECT；点击Tunnel中的配置入口定位实际条目，删除后再连接，确认HTTP正文恢复。最后逐步停用解密并移除源站例外，经正常Close核对代理、CA信任、Main/Core/Worker和8888恢复。每步保存同一语言的原生图、影片位置与实际随机端口；不把精确主机扩成wildcard或Windows通过。
+
+`guidebook-upstream.workflow.ts`沿用现有真实上游场景的受控HTTP转发方式，只允许本轮loopback origin；PAC由同一origin提供。逐步操作Manual Apply、浮层PAC草稿Cancel、Open in Settings保留草稿、PAC的PROXY/DIRECT分支、Direct及System恢复，以实际上游观测核对路线。它不配置外部Clash、WPAD或系统PAC，不把按钮/草稿当作生效路线；退出关闭自有服务并由driver验证宿主恢复。
+
+`guidebook-privacy-export.workflow.ts`使用公开loopback Header/Cookie值，逐项更改Authorization、Cookie和警示默认值，以真实三份HAR验证单次覆盖、未遮罩输出、遮罩加去正文及旧文件不变。输入文件均由同流程Export生成，最后真实Import确认被移除的正文不会自动恢复；不使用真实凭据，也不把某些字段被遮罩扩成整份数据绝对匿名。
+
+`guidebook-update-check.workflow.ts`只操作Release的真实Check，并用`data-last-checked-at`与终态核对本次实际结果；不改更新源、不注入状态、没有下载或打开安装器。检查失败须保留失败说明，不能拿到页面或版本号当作更新链通过，后续下载/安装仍依赖真实受支持发布条件。
+
 ## `settings.certificates.shared-startup`（两端）
 
 1. 启动前只读保存共享材料是否存在、公开指纹及完整系统Root/admin trust；禁止预造CA。已有材料须可用且受信任，否则先由用户完成产品初始化，不把既有CA当作清理目标。

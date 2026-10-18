@@ -14,4 +14,20 @@
 <li><strong>取景：</strong>macOS ScreenCaptureKit仅录制本轮App窗口；文件选择器通过实际原生UI准备、匹配其真实窗口并单独取景。字幕时间、步骤图片与公开示例值共同保存，既有文件助手仍使用真实键鼠确认。</li>
 <li><strong>范围：</strong>涵盖协议正文、规则动作/匹配/顺序、断点、Composer、文件往返、Agent审批、MCP与设置等已有功能，不新增产品测试参数、隐藏API或生产运行依赖。</li>
 <li><strong>影响：</strong>普通workflow排除需要独立录屏前提的媒体场景，原流程不被替换；设计稿只作视觉来源，不能代替真实产品图。</li>
-</ul></section></main></body></html>
+</ul></section>
+<section><h2>工程与文档：响应证据与TLS透传教程实录</h2><ul>
+<li><strong>位置：</strong><code>workflows/rules/guidebook-response-evidence.workflow.ts</code>与<code>workflows/settings/guidebook-tls-passthrough.workflow.ts</code>。<strong>改前：</strong>教程没有响应Header append/remove、正文版本完整操作及TLS名单往返的独立步骤素材。<strong>改后：</strong>沿用现有真实App driver、TrafficLab和单窗口录制器，逐个操作并采集对应画面。</li>
+<li><strong>响应与正文：</strong>同一公开示例贯穿空白区域新建、响应Header、请求Original/Final、复制、全屏、原生正文保存、规则效果导航和停用；响应Original不可用单独表达，不用空正文代替。</li>
+<li><strong>TLS：</strong>复用现有CA和自有localhost源站，记录未解密Tunnel、精确名单添加与命中、从Tunnel定位并删除，以及新连接恢复解密。搜索按实际Host/Path语义，端口在连接详情核对，不改变产品筛选实现。</li>
+<li><strong>原因与影响：</strong>给中英教程补充相同名称、输入值和视频位置的真实素材；只有App及其实际打开的Save面板进入录制。没有修改App产品代码、UI设计、第三方行为或日常CA；workflow规格与交接同步对应范围。</li>
+<li><strong>共用编码：</strong><code>GuidebookMedia.stop()</code>原先按稀疏原生帧直接输出，静止尾部可能提前结束。现在保持最后一个真实帧至实际录制停止时间，使已经记录的阅读停顿与最后字幕保留；不添加新动作或更改原始截图。</li>
+<li><strong>Capture筛选录制：</strong><code>guidebook-filters.workflow.ts</code>在开始取景前确认未筛选记录也只有本轮四条自产请求，最后通过搜索框清空按钮移除搜索词，保留记录和暂停状态；不把Capture Clear当成搜索重置。</li>
+</ul></section><!-- guidebook-final-reading-change:start --><section id="guidebook-final-reading-change"><h2>工程与文档：功能补录与窗口隐私边界</h2>
+<ul>
+<li><strong>位置：</strong><code>tests/e2e-workflow-tests/workflows/*/guidebook-*.workflow.ts</code>。<strong>改前：</strong>教程主要覆盖基础录制。<strong>改后：</strong>补充匹配/冲突/映射、HTTP与WebSocket断点、消息分页、完整正文、导出取消、认证、上游、Diagnostics与Agent/MCP用户操作。<strong>影响：</strong>每个步骤使用真实发布App画面和自己的示例值，不改正式产品行为。</li>
+<li><strong>位置：</strong><code>guidebook-media.ts</code>、原生录制器与文件窗口辅助代码。<strong>改前：</strong>独立截图和原生窗口切换容易打断连续取景。<strong>改后：</strong>同一原生进程完成窗口切换与PNG快照，准备文件路径与最终确认分开，仍只捕获本次App和相关原生面板。<strong>影响：</strong>可以准确记录Save取消、再次保存与真实短暂状态，不录整个桌面。</li>
+<li><strong>位置：</strong><code>guidebook-session-lifecycle.workflow.ts</code>。<strong>改前：</strong>重启后默认Capture页面可能带入背景流量。<strong>改后：</strong>开始重启段取景前先通过UI进入Settings与Agent分组。<strong>影响：</strong>不把背景请求放进公开教程。</li>
+<li><strong>位置：</strong><code>architecture/HANDOVER.md</code>与Homepage的<code>docs/guidebook.md</code>。<strong>改前：</strong>原item 9同时包含本机交付、跨平台前提和暂停的App入口。<strong>改后：</strong>按用户授权将未完成范围转入item 16，原事实、链接、命令和风险归档到现有教程文档；部署仍归item 15。<strong>影响：</strong>不把剩余范围误写成只有Windows，也不将未验证部分混为本机交付。</li>
+<li><strong>位置：</strong><code>macos-file-dialog.ts</code>与窗口控件workflow。<strong>改前：</strong>后台App的原生面板可能无法被识别，签名App也未提供通用CDP Browser窗口方法。<strong>改后：</strong>文件操作先按PID/启动身份激活所属App；窗口流程通过原生Accessibility只读核对尺寸与最小化状态。<strong>影响：</strong>不附着其他App、不修改第三方依赖或产品行为。</li>
+<li><strong>位置：</strong>Playground的TLS流量辅助。<strong>改前：</strong>统一往返辅助要求原origin收到请求，无法准确验证合法Map Remote改道。<strong>改后：</strong>复用CONNECT/TLS建立HTTP/1连接，分别核对客户端和实际目标。<strong>影响：</strong>区分原origin未收到请求与映射请求失败。</li>
+</ul></section><!-- guidebook-final-reading-change:end --></main></body></html>

@@ -26,7 +26,12 @@ export async function submitMacosFileDialogPath(
 ): Promise<void> {
   if (!path.isAbsolute(targetPath) || /[\r\n\0]/.test(targetPath)) throw new Error('Native dialog target must be an absolute file path.');
   try {
-    await navigateMacosFileDialog(owner, targetPath, beforeConfirm);
+    await prepareMacosFileDialogPath(owner, targetPath);
+    await beforeConfirm?.();
+    await sendMacosFileDialogKeys(owner, 'clickNativeButton("OKButton");');
+    await expect.poll(async () => (await readMacosFileDialog(owner)).visible, {
+      message: 'The macOS file dialog did not accept the selected path',
+    }).toBe(false);
   } catch (error) {
     try {
       if ((await readMacosFileDialog(owner)).visible) await cancelMacosFileDialog(owner);
@@ -37,9 +42,12 @@ export async function submitMacosFileDialogPath(
   }
 }
 
-async function navigateMacosFileDialog(
-  owner: WorkflowProcessIdentity, targetPath: string, beforeConfirm?: () => Promise<void>,
+/** Prepare the real panel without confirming, so an owned cancel flow can show the same public demo folder. */
+export async function prepareMacosFileDialogPath(
+  owner: WorkflowProcessIdentity, targetPath: string,
 ): Promise<void> {
+  if (!path.isAbsolute(targetPath) || /[\r\n\0]/.test(targetPath)) throw new Error('Native dialog target must be an absolute file path.');
+  await activateMacosFileDialogOwner(owner);
   await expect.poll(async () => (await readMacosFileDialog(owner)).visible, {
     message: 'The workflow-owned macOS file dialog did not appear', timeout: 15_000,
   }).toBe(true);
@@ -87,14 +95,10 @@ pressKey(123, $.kCGEventFlagMaskCommand | $.kCGEventFlagMaskShift);
       message: 'The macOS Save file name was not entered completely',
     }).toBe(path.basename(targetPath));
   }
-  await beforeConfirm?.();
-  await sendMacosFileDialogKeys(owner, 'clickNativeButton("OKButton");');
-  await expect.poll(async () => (await readMacosFileDialog(owner)).visible, {
-    message: 'The macOS file dialog did not accept the selected path',
-  }).toBe(false);
 }
 
 export async function cancelMacosFileDialog(owner: WorkflowProcessIdentity): Promise<void> {
+  await activateMacosFileDialogOwner(owner);
   await expect.poll(async () => (await readMacosFileDialog(owner)).visible, {
     message: 'The workflow-owned macOS file dialog did not appear', timeout: 15_000,
   }).toBe(true);
@@ -241,4 +245,13 @@ const ownedApp = owners[0];
 ${script}
 `], { encoding: 'utf8', timeout: 15_000 });
   return stdout.trim();
+}
+
+async function activateMacosFileDialogOwner(owner: WorkflowProcessIdentity): Promise<void> {
+  await MacosWorkflowHostSafetyOperations.assertDesktopUnlocked();
+  await runMacosDialogScript(owner, `
+ownedApp.frontmost = true;
+delay(0.2);
+if (!ownedApp.frontmost()) throw new Error("The native file dialog owner did not become foreground");
+`);
 }

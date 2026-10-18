@@ -77,7 +77,11 @@ private struct GuideWindowRecorder {
             FileHandle.standardOutput.write(Data("capture-started\n".utf8))
             for try await line in FileHandle.standardInput.bytes.lines {
                 let fields = line.split(separator: " ")
-                guard fields.count == 3, fields[0] == "window",
+                guard (fields.count == 3 && fields[0] == "window")
+                    || (fields.count == 4 && fields[0] == "snapshot") else {
+                    fail("Invalid native recording command.")
+                }
+                guard
                       let targetID = UInt32(fields[1]), let sequence = Int(fields[2]) else {
                     fail("Invalid native recording window command.")
                 }
@@ -87,8 +91,34 @@ private struct GuideWindowRecorder {
                 guard let target = current.windows.first(where: { $0.windowID == targetID }) else {
                     fail("The selected owned recording window disappeared.")
                 }
-                try await stream.updateContentFilter(SCContentFilter(desktopIndependentWindow: target))
-                FileHandle.standardOutput.write(Data("window-ready:\(sequence)\n".utf8))
+                let targetFilter = SCContentFilter(desktopIndependentWindow: target)
+                if fields[0] == "window" {
+                    try await stream.updateContentFilter(targetFilter)
+                    FileHandle.standardOutput.write(Data("window-ready:\(sequence)\n".utf8))
+                } else {
+                    guard let pathData = Data(base64Encoded: String(fields[3])),
+                          let destination = String(data: pathData, encoding: .utf8),
+                          destination.hasPrefix("/") else {
+                        fail("Invalid native snapshot destination.")
+                    }
+                    let imageConfiguration = SCStreamConfiguration()
+                    imageConfiguration.width = Int(targetFilter.contentRect.width * CGFloat(targetFilter.pointPixelScale))
+                    imageConfiguration.height = Int(targetFilter.contentRect.height * CGFloat(targetFilter.pointPixelScale))
+                    imageConfiguration.showsCursor = false
+                    imageConfiguration.includeChildWindows = true
+                    imageConfiguration.ignoreShadowsSingleWindow = true
+                    imageConfiguration.capturesAudio = false
+                    let image = try await SCScreenshotManager.captureImage(
+                        contentFilter: targetFilter, configuration: imageConfiguration
+                    )
+                    guard let png = NSBitmapImageRep(cgImage: image).representation(
+                        using: .png, properties: [:]
+                    ) else {
+                        fail("Cannot encode the owned native window image.")
+                    }
+                    try png.write(to: URL(fileURLWithPath: destination), options: .atomic)
+                    FileHandle.standardOutput.write(Data("snapshot-ready:\(sequence)\n".utf8))
+                }
                 withExtendedLifetime((output, delegate, stop)) {}
             }
             try await stream.stopCapture()

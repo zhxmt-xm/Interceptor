@@ -8,7 +8,25 @@
 
 当前扩展录制已包含Fullscreen、已有CA下的解密、H2 headers/trailer/body、WebSocket文本、gRPC JSON、HTML/Markdown/Form/PNG/Binary/音视频元信息、gzip与损坏编码提示。所有协议复用TrafficLab真实客户端和origin，结束通过UI停用解密并移除本轮localhost例外，复核共享CA未变；不重生成CA，不把这些范围扩成所有异常、所有客户端或Windows通过。
 
+`guidebook-filters.workflow.ts`录制同组OR、跨组AND与搜索叠加，最后通过搜索框的真实清空按钮恢复全部四条记录，不执行Capture Clear。录屏前先暂停并核对未筛选记录也只有这四条自产请求，防止清空搜索时暴露其他流量；收尾的静止阅读停顿仍保留在成片中，最后字幕及步骤可实际播放。
+
+`guidebook-facets.workflow.ts`从“已有两条公开记录及对应已应用规则”的前提开始实录Application、Host、Protocol、Content type和Rule分组。录屏前通过真实UI准备仅匹配`/guide/facets/selected-json`的`Guide facets`，快速发送JSON与text两条自产请求后立即暂停，并核对全局Method计数只有两条，防止公开其他流量的主机或归属；不把前置准备冒充已逐步取景。本次Application只记录实际macOS Unknown，不扩成Windows通过。组合筛选后经清除分组按钮保留搜索和两条原记录，收起/显示筛选栏，最后停用Apply规则并正常Close。
+
+`guidebook-inspection.workflow.ts`使用`/guide/inspection/body`的真实POST、24个公开Query字段、96条请求记录与160行Markdown响应，展示Headers折叠/展开、Request Raw、真实分栏拖动、正文滚轮/键盘末尾及内外层滚动交接。Markdown通过既有radio键盘控件切换Preview/Split/Source，复制和全屏保留当前内容；不为Release补注入automation属性或改产品样式。最后真实Clear、Resume并发送`/guide/inspection/after-clear`，确认新记录可读；逐步录制后经正式Close恢复宿主。
+
+`guidebook-messages.workflow.ts`分别录制WebSocket与gRPC：六条自产消息中展开短/长正文、调整高度、滚轮/键盘末尾、外层滚动、两种Copy和全屏；新连接再发送205条消息，通过真实滚动加载并复制第205条。WebSocket长消息使用binary JSON，正文Copy为UTF-8，消息专用Copy仍为Hex；分页连接使用text，不混淆两种复制语义。gRPC使用已有CA与本轮localhost例外，按既有证书教程完成前提，最后通过UI清理MITM和例外；逐步截图/影片与同一真实协议数据匹配，不把任何部分扩成全部异常分支或Windows通过。
+
+`guidebook-http2.workflow.ts`用自有H2流分阶段发送两段64KiB文本及结束标记，在未结束时核对客户端已收字节及Capture行进度，同时明确正常HTTP正文此时尚不可读；结束后才核对完整正文和trailer，并实际选择HTTP/2分组。随后复用TrafficLab的客户端/源站错误GOAWAY场景，分别查看原POST声明524288但实际捕获262144字节的结果，以及新连接的独立`/recovered` GET；不重放POST，不修改个人服务或日常CA。最后经UI清理本轮MITM和源站例外、正常Close并核对宿主恢复。
+
+`guidebook-body-limits.workflow.ts`使用完整公开JSON分别越过1MiB和2MiB：前者先Copy原文，再手动Format并核对格式化副本；后者只预览/Copy前2MiB且Format禁用。最后经真实Save Dialog生成`guide-full-response.json`，核对保存文件仍有完整3MiB数据和结束标记；图片、字幕、网络/预览/保存摘要分别对应真实动作，不用造文件代替产品输出。正常Close核对进程、代理与8888。
+
+`guidebook-export-scopes.workflow.ts`在录屏前核对只有三条自产请求并暂停，过滤后可见两条且选中其中一条；分别经真实Save Dialog导出全部/筛选/选中HAR，核对文件实际包含3/2/1条URL。随后从真实Open Dialog导入同流程生成的筛选文件，只追加两条，清空搜索后总数五条；不预造导入文件，不用暂停状态下新增业务输入。结束后正常Close与宿主恢复。
+
+`guidebook-transfer-cancel.workflow.ts`沿用真实128MiB自有响应构造运行中的Archive工作，经原生Save选择`guide-cancel.iarchive`；仅该短暂进度步骤立即截图，不改变产品耗时或增加暂停钩子。必须在实际running状态点击Cancel，确认原记录保留、取消清理不留文件，再真实Clear；不能把原生面板取消当成任务取消。录制前核对Capture只有本轮源数据，结束通过正常Close验收。
+
 `guidebook-transfer.workflow.ts`对自产请求暂停录制，取消筛选后先确认当前Capture只有这一条记录，再开始原生文件演示。HAR和Archive先由产品Export生成，再Import同一个文件；每个文件窗口在真实选择测试目录、核对文件名后截图，文件参数不通过业务API或Dialog返回值注入。录像原件先保留私有目录，检查原生窗口是否含个人目录信息后才分发。普通macOS文件助手新增的`beforeConfirm`只让截图在真实确认前发生，不替换原生选择与点击。
+
+`settings/guidebook-tls-passthrough.workflow.ts`同时覆盖Capture的真实不透明CONNECT与解密HTTPS对照。按`localhost`筛选并在Tunnel详情核对本轮动态端口，复用TrafficLab自有TLS origin；搜索只匹配Host/Path，不把`host:port`当作有效搜索。依次记录未开启解密的Tunnel、已有CA下开启解密、添加精确`localhost`透传项后的新Tunnel、从Tunnel跳转并删除匹配项，以及重新连接后的HTTP正文。修改只限本profile的MITM、TLS名单和自有源站例外，结束全部通过UI恢复，不重生成或撤销日常CA；每个步骤和实际协议结果独立保留，不能推及wildcard、首次授权或Windows。
 
 ## `capture.body-preview-limits`
 

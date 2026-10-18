@@ -6,6 +6,14 @@
 
 完成后停用并Apply，原driver验证代理、Core及8888恢复。此流程不证明File、响应阶段或WebSocket步骤已配图，不能以本片覆盖未实际录制的分支。
 
+`guidebook-manager.workflow.ts`补录Endpoint快捷创建后的Undo、管理器全局Break on match和单条规则开关，以及真实客户端abort后的pending解除。只使用自有endpoint，不创建覆盖其他本机服务的host级暂停；再次发送取得新ID，分别放行请求和响应，再在管理器停用该规则并核对Rules已应用状态。撤销不冒充普通Rules空树删除，客户端结束也不冒充超时自动放行；所有客户端、App和宿主按真实退出收尾。
+
+`guidebook-mixed-queues.workflow.ts`补HTTP request/response的`http`队列与已建立连接`ws:*`队列的独立性。仅使用`/guide/mixed/`自产路径，先建立Both消息断点连接，再准备狭窄Rules；连续产生HTTP Head、响应Queued、一条Sent帧和一条源站Received帧。两方向可同时等待，同方向后续读取受前一帧背压影响，不用两个Sent模拟双项队列。真实Release中的WebSocket Upgrade即使有该狭窄GET规则也直接建立连接，没有pending；必须录实际结果，不把契约中的预期Upgrade排队伪造成已实现，也不修改发布包来通过。HTTP队首输入不提交草稿，Continue queue原样处理两个HTTP成员而保留WS等待；再Drop WS queue，Sent不抵达源站、Received不抵达该客户端。最后新建一个HTTP与一个WS等待项，录像停在真实Close之前，实际正常Close必须取消连接且不转发等待内容；状态/网络/进程证据不能用关闭前图片代替。每一步都保留原生窗口图与视频时间，不注入pending、草稿或模拟发送结果。
+
+`guidebook-request-variants.workflow.ts`在Apply前为POST规则添加自有Path范围，以本流程真实Save body生成JSON和binary两个替换文件；分别演示请求Header-only、HTTP头阶段的空Text、JSON File、binary File，再将同一规则改为响应阶段并只编辑状态202。头阶段快照不含完整body与Capture另有可读原文预览是不同事实，不能按某张预览图推断快照内容。逐例核对源站/客户端实际字节，文件不是预造输入；最后停用Apply并释放所有等待项，正常Close验收。
+
+`guidebook-websocket-controls.workflow.ts`在同一真实连接先选择Both，明确把非空message改为空Text，验证源站收到零字节且返回方向仍独立暂停；再分别放行真实ping与pong。关闭示例通过UI改为仅Sent close，把发往源站的1000改为1001而保持reason，同时如实记录客户端连接收到的确认仍为1000，不把两段连接的关闭码混为同一个结果。控制帧不伪造成数据消息，HTTP空Text保持原文也不套用到WebSocket；最后无pending并正常Close。
+
 ### 响应 Header、Text 与 File
 
 `guidebook-response.workflow.ts`只录真实Release中的响应断点，不重复普通请求断点教程。

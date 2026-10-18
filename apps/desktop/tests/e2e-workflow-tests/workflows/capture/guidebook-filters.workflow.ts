@@ -18,8 +18,8 @@ test('capture filter guide records OR, AND, search and non-destructive reset', a
     if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
   };
-  // 准备：四条可公开请求构成可量化的筛选组合，不向Store预置记录。
-  // Arrange: produce four public requests with measurable filter combinations, never seed the Store.
+  // 准备：四条可公开请求构成筛选组合；暂停后先核对全部记录，避免录入无关流量。
+  // Arrange: produce four public requests; verify no unrelated records before filming.
   await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(prefix);
   await startRecording(desktopApp);
   for (const sample of [
@@ -35,6 +35,9 @@ test('capture filter guide records OR, AND, search and non-destructive reset', a
   }
   await getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle).click();
   await expect(rows).toHaveCount(4);
+  await getByAutomationId(page, AUTOMATION_IDS.capture.clearSearch).click();
+  await expect(rows).toHaveCount(4);
+  await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(prefix);
   const media = await GuidebookMedia.start(desktopApp, testInfo, 'capture-filters');
   try {
     // 用户操作：每次改变过滤后验证真实行数，并保留组展开状态与记录。
@@ -81,12 +84,19 @@ test('capture filter guide records OR, AND, search and non-destructive reset', a
       await getByAutomationId(page, AutomationIdFactory.captureFacetToggle('method')).click();
       await expect(rows).toHaveCount(4);
     });
+    await media.step('13-clear-search', '清空搜索但不删除请求 / Clear search without deleting requests', async () => {
+      await getByAutomationId(page, AUTOMATION_IDS.capture.clearSearch).click();
+      await expect(getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter)).toHaveValue('');
+      await expect(rows).toHaveCount(4);
+      await expect(getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle)).toHaveAttribute('aria-pressed', 'false');
+    });
     // 证据：所有过滤都未执行Clear，结束仍有四条原始演示记录。
     // Evidence: no filter operation used Clear; all four example records remain.
     expect(desktopApp.rendererPageErrors()).toEqual([]);
   } finally {
     await media.stop({ search: prefix, methods: 'GET + POST', status: '200',
-      addedSearch: `${prefix}/post-ok`, initialRecords: '4', afterOr: '3', afterAnd: '2', afterSearch: '1', finalRecords: '4' });
+      addedSearch: `${prefix}/post-ok`, initialRecords: '4', afterOr: '3', afterAnd: '2', afterSearch: '1', finalRecords: '4',
+      finalSearch: '(empty; cleared through the search control, not Capture Clear)' });
   }
   // 清理：既有fixture完成真实Close、8888与系统代理恢复。
   // Cleanup: the existing fixture verifies normal Close, port 8888 and proxy restoration.

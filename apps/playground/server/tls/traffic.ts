@@ -333,6 +333,14 @@ export class TlsTrafficRunner {
     }
   }
 
+  /** 打开真实HTTPS/H1 socket，供重路由场景读取客户端结果而不假设原origin必定收到请求。 */
+  async openHttp1Socket(proxyPort: number): Promise<tls.TLSSocket> {
+    const { tlsSocket } = await connectTls(
+      proxyPort, this.targetHost(), {}, ['http/1.1'], this.#outboundSockets,
+    );
+    return tlsSocket;
+  }
+
   /** 建立真实CONNECT/TLS/H2连接，调用方在全部stream结束后关闭session。 */
   async openHttp2Session(
     proxyPort: number,

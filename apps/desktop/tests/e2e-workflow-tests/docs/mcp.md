@@ -1,5 +1,11 @@
 # MCP Workflows
 
+## 教程调用生命周期补录
+
+`guidebook-tool-lifecycle.workflow.ts`使用官方SDK与产品创建的Ask Client，真实取消尚待审批的暂停请求；Recent/Trace从真实返回值关联，不编造traceId。Diagnostics Export分别Deny、Allow后原生Cancel和实际保存/查任务；Auto长Composer请求由自有origin保持，撤销Client时核对真实socket中断与旧身份拒绝。只展示App侧控件及相关原生面板，配置凭据不录制，不冒充商业Host设置页。
+
+`guidebook-endpoint-reconnect.workflow.ts`在第一代创建真实Client并保存Server开启状态，正常关闭后由自有进程占用旧端口；第二代真实Change endpoint后重新复制当前配置，用同一Client身份在新地址完成SDK发现与查询。第二代证据为`endpoint-reopened`；这补齐本机新地址通信，不扩成商业Host配置UI或版本升级兼容性。
+
 ## 教程逐步骤录制
 
 `guidebook-client.workflow.ts`通过实际Release开启Server、创建`Guide local client`、Copy config，再由明确标注的官方SDK演示客户端执行真实查询、Ask Deny/Allow、模式切换、撤销和停用。配置内容读取复用已有脱敏trace边界，视频不展示token，metadata只含公开endpoint和名称；最后清理本轮剪贴板凭据并正常退出。

@@ -14,6 +14,10 @@
 
 `guidebook-workspace.workflow.ts`在实际Release中录制侧栏展开、各workspace、四主题与恢复、语言菜单只读查看、Agent面板打开和关闭；不更改当前语言，不将主题/语言设计稿当作产品。每步原生截图与视频时间绑定，录制前通过正式筛选隐藏非演示流量，结束沿用真实Close和完整宿主恢复。
 
+`guidebook-navigation.workflow.ts`补录Settings末次分组保留、Agent空态Configure深链及面板跨workspace保持，两种关闭入口分别操作。只打开主题菜单不改变主题，调整本轮真实窗口到1280×800后恢复；从Capture底栏Upstream浮层进入指定设置分组，离开再返回核对保留新位置，最后验证新请求。它不是首次CA/UAC或异常readiness实录，不因正常路径没有弹窗而制造异常，不改变App语言或日常CA，最后正常Close验证代理和进程恢复。
+
+`guidebook-window-controls.workflow.ts`只补自绘窗口控件，不重复前一条分栏/尺寸录制。先进入Settings避免背景流量出镜；通过真实Maximize/Restore按钮改变窗口，以本次PID和启动身份限定原生Accessibility窗口，读取尺寸与`AXMinimized`。最大化尺寸按该窗口的可用屏幕范围核对，恢复后核对原尺寸；不使用签名App未提供的CDP `Browser.getWindowForTarget`。最后先记录Minimize入口，再实际点击并确认minimized；按现有`shell.window.controls`契约由测试侧只恢复/show/focus同一窗口，不改业务状态。最小化期间不捕获桌面/Dock，恢复工具调用不冒充系统Dock操作的影像证据。逐步清单明确“按钮图在实际点击之前”，视频包含真实点击时段，状态证据与图片分别保存。保持App主题/语言，最终正常Close核对所有进程、8888和宿主恢复。
+
 本文件定义 Application 生命周期和共享 Shell 的完整 E2E 步骤。每条 workflow 独立启动 Electron、独占 profile/trace，并只检查与本流程相关的起始状态。
 
 <a id="application-startup-ready"></a>

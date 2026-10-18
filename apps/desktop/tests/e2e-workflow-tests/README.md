@@ -438,6 +438,12 @@ npx playwright test --config tests/e2e-workflow-tests/playwright.guidebook.confi
 
 以上命令从Desktop目录执行。原始视频、trace、系统路径和metadata留在私有验收目录；发布前检查隐私、逐步骤对应、字幕与25MiB静态资源上限。录屏只选择本轮Main进程的唯一App窗口ID，原生Open/Save只选择该App拥有的面板。不录整个显示器、桌面区域、其他App或麦克风；不得在窗口选择失败时回退成整屏/区域录制，也不把未录到的原生窗口算通过。
 
+ScreenCaptureKit可能不写入静止画面的尾部重复帧。编码使用最后一个真实帧保留实际录制期间的阅读停顿，并以录制停止时间裁定总长；不添加新状态、动作或其他窗口。字幕与步骤时间仍来自同一次录制，成片时长应在20fps单帧舍入内一致，最后一个步骤与字幕必须实际可播放。保留旧原始录屏后可按同一参数重新编码，不为修正尾部时长重跑或伪造原操作。
+
+窗口选择使用全部Space的窗口清单，严格匹配本轮Main PID、普通窗口层及该Renderer实际外窗尺寸，排除同PID的菜单栏辅助窗口，再要求唯一App窗口；不以当前Space可见性猜测App是否存在，也不主动切Space或前置窗口。录制开始、每步操作前及截图前均复用解锁guard；屏幕中途锁定时该录制失败并保留证据，不发布冻结或缺失画面，不回退到桌面录制。
+
+步骤PNG与影片统一由同一原生录制进程使用ScreenCaptureKit单窗口过滤；PNG通过序号对应的snapshot命令由`SCScreenshotManager`按窗口实际点像素比例生成，去除窗口阴影，不另启一个录制器进程截图。原生Open/Save仍选本轮App拥有的面板。旧`screencapture -l`在Space切换时可能无法读取有效窗口，不能因此转成整屏截图或使用Renderer替代图。
+
 每条workflow独立保留：
 
 ```text
