@@ -1,4 +1,6 @@
+import { once } from 'node:events';
 import { writeFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
 
 import type { Locator, Page } from '@playwright/test';
 
@@ -13,6 +15,8 @@ import {
   getByAutomationIdPrefix,
 } from '../../fixtures/ui/automation';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
+import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 
 async function automationSuffix(locator: Locator, prefix: string): Promise<string> {
   const automationId = await locator.getAttribute('data-automation-id');
@@ -31,8 +35,226 @@ async function openFolderMenu(page: Page, folderId: string): Promise<void> {
   ).click();
 }
 
+async function verifyRequestAuthentication(page: Page): Promise<void> {
+  const username = 'workflow-user';
+  const password = 'public-loopback-password';
+  const token = 'public-loopback-token';
+  const basic = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
+  const bearer = `Bearer ${token}`;
+  const authorizations: Array<string | undefined> = [];
+  let currentAuth = 'none';
+  const origin = createServer((incoming, response) => {
+    if (incoming.url !== '/e2e/composer/auth') {
+      response.writeHead(404).end();
+      return;
+    }
+    const authorization = incoming.headers.authorization;
+    authorizations.push(authorization);
+    const status = authorization === basic || authorization === bearer ? 200 : 401;
+    response.writeHead(status, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ marker: `auth-${authorizations.length}`, status }));
+  });
+  const selectAuth = async (kind: 'none' | 'bearer' | 'basic'): Promise<void> => {
+    await getByAutomationId(page, AUTOMATION_IDS.composer.tab.auth).click();
+    const control = getByAutomationId(page, AUTOMATION_IDS.composer.authType).getByRole('combobox');
+    await control.click();
+    const types = ['none', 'bearer', 'basic'];
+    const distance = types.indexOf(kind) - types.indexOf(currentAuth);
+    for (let index = 0; index < Math.abs(distance); index += 1) {
+      await control.press(distance > 0 ? 'ArrowDown' : 'ArrowUp');
+    }
+    await control.press('Enter');
+    currentAuth = kind;
+  };
+  const send = async (authorization: string | undefined, status: number): Promise<void> => {
+    const count = authorizations.length;
+    await getByAutomationId(page, AUTOMATION_IDS.composer.send).click();
+    await expect.poll(() => authorizations.length).toBe(count + 1);
+    expect(authorizations[count]).toBe(authorization);
+    const response = getByAutomationId(page, AUTOMATION_IDS.composer.responseBodyPane);
+    await expect(response).toContainText(`auth-${count + 1}`);
+    await expect(response).toContainText(String(status));
+  };
+  try {
+    origin.listen(0, '127.0.0.1');
+    await once(origin, 'listening');
+    const address = origin.address();
+    if (!address || typeof address === 'string') throw new Error('The owned authentication origin has no TCP port.');
+    await getByAutomationId(page, AUTOMATION_IDS.composer.url).fill(`127.0.0.1:${address.port}/e2e/composer/auth`);
+    await send(undefined, 401);
+    await screenshotStep('None请求由自有认证服务返回401 / The owned authentication service rejects a None request');
+    await selectAuth('basic');
+    await getByAutomationId(page, AUTOMATION_IDS.composer.username).fill(username);
+    await getByAutomationId(page, AUTOMATION_IDS.composer.password).fill(password);
+    await send(basic, 200);
+    await screenshotStep('Basic仅使用公开本机示例并核对200 / Verify Basic with public loopback-only example values');
+    await selectAuth('bearer');
+    await expect(getByAutomationId(page, AUTOMATION_IDS.composer.bearerToken)).toBeVisible();
+    await getByAutomationId(page, AUTOMATION_IDS.composer.bearerToken).fill(token);
+    await send(bearer, 200);
+    await screenshotStep('切换Bearer并核对真实Authorization / Switch to Bearer and verify the actual Authorization');
+    await selectAuth('none');
+    await send(undefined, 401);
+    await screenshotStep('切回None后不再发送自动认证字段 / Switching to None removes the derived authentication header');
+    await getByAutomationId(page, AUTOMATION_IDS.composer.tab.headers).click();
+    await getByAutomationId(page, AUTOMATION_IDS.composer.headerDraft.name).fill('Authorization');
+    await getByAutomationId(page, AUTOMATION_IDS.composer.headerDraft.value).fill(bearer);
+    await getByAutomationId(page, AUTOMATION_IDS.composer.addHeader).click();
+    await send(bearer, 200);
+    await screenshotStep('None仍保留用户显式添加的Header / None retains an explicitly authored header');
+    await page.locator('input[value="Authorization"]').locator('..').getByRole('button').click();
+    await send(undefined, 401);
+    await screenshotStep('删除显式Authorization后重新核对401 / Verify 401 after deleting the explicit Authorization');
+  } finally {
+    if (origin.listening) {
+      await new Promise<void>((resolve, reject) => origin.close((error) => error ? reject(error) : resolve()));
+    }
+  }
+}
+
+async function verifyRequestFields(page: Page, loopbackLab: HttpTrafficRunner): Promise<void> {
+  const prefix = '/e2e/composer/fields';
+  const url = getByAutomationId(page, AUTOMATION_IDS.composer.url);
+  const method = getByAutomationId(page, AUTOMATION_IDS.composer.method);
+  const body = getByAutomationId(page, AUTOMATION_IDS.composer.body);
+  const bodyModes = () => getByAutomationId(page, AUTOMATION_IDS.composer.bodyType).locator('..').getByRole('radio');
+  const fillUrl = async (pathname: string): Promise<void> => {
+    const target = new URL(loopbackLab.url(pathname));
+    await url.fill(`${target.host}${target.pathname}${target.search}`);
+  };
+  const addHeader = async (name: string, value: string): Promise<void> => {
+    await getByAutomationId(page, AUTOMATION_IDS.composer.tab.headers).click();
+    await getByAutomationId(page, AUTOMATION_IDS.composer.headerDraft.name).fill(name);
+    await getByAutomationId(page, AUTOMATION_IDS.composer.headerDraft.value).fill(value);
+    await getByAutomationId(page, AUTOMATION_IDS.composer.addHeader).click();
+  };
+  const headerRow = (name: string) => page.locator(`input[value=${JSON.stringify(name)}]`).locator('..');
+  const send = async (pathname: string) => {
+    const count = loopbackLab.evidence().length;
+    await getByAutomationId(page, AUTOMATION_IDS.composer.send).click();
+    await expect.poll(() => loopbackLab.evidence().length).toBe(count + 1);
+    await expect(getByAutomationId(page, AUTOMATION_IDS.composer.send)).toBeEnabled();
+    const observation = loopbackLab.observation(pathname);
+    if (!observation) throw new Error(`The owned origin did not receive ${pathname}.`);
+    return observation;
+  };
+
+  // 用户操作：Query保留同名行和URL参数，Body/Content-Type由实际编辑决定。
+  // User actions: preserve duplicate Query/URL values; actual edits determine Body and Content-Type.
+  await method.click();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await addHeader('x-e2e-current', 'enabled');
+  await addHeader('Content-Type', 'application/json');
+  await getByAutomationId(page, AUTOMATION_IDS.composer.tab.query).click();
+  for (const value of ['table', 'again']) {
+    await getByAutomationId(page, AUTOMATION_IDS.composer.queryDraft.name).fill('entry');
+    await getByAutomationId(page, AUTOMATION_IDS.composer.queryDraft.value).fill(value);
+    await getByAutomationId(page, AUTOMATION_IDS.composer.addQuery).click();
+  }
+  const jsonText = '{"message":"formatted-request","count":2}';
+  for (const [kind, index, contentType] of [
+    ['json', 1, 'application/json'],
+    ['text', 2, 'text/plain'],
+    ['form', 3, 'application/x-www-form-urlencoded'],
+  ] as const) {
+    const count = loopbackLab.evidence().length;
+    await fillUrl(`${prefix}/${kind}?entry=url`);
+    await getByAutomationId(page, AUTOMATION_IDS.composer.tab.headers).click();
+    await headerRow('Content-Type').locator('input:not([type="checkbox"])').nth(1).fill(contentType);
+    await getByAutomationId(page, AUTOMATION_IDS.composer.tab.body).click();
+    await bodyModes().nth(index).click();
+    if (kind === 'form') {
+      for (const [name, value] of [['name', 'Interceptor'], ['ready', 'true']]) {
+        await getByAutomationId(page, AUTOMATION_IDS.composer.formDraft.name).fill(name!);
+        await getByAutomationId(page, AUTOMATION_IDS.composer.formDraft.value).fill(value!);
+        await getByAutomationId(page, AUTOMATION_IDS.composer.addForm).click();
+      }
+    } else {
+      await body.click();
+      await page.keyboard.press('ControlOrMeta+A');
+      await page.keyboard.insertText(kind === 'json' ? jsonText : 'Hello text');
+      if (kind === 'json') await body.locator('xpath=preceding-sibling::div[1]').getByRole('button').first().click();
+    }
+    expect(loopbackLab.evidence()).toHaveLength(count);
+    const observation = await send(`${prefix}/${kind}?entry=url&entry=table&entry=again`);
+    expect(observation.method).toBe('POST');
+    expect(observation.headers['content-type']).toBe(contentType);
+    expect(observation.headers['x-e2e-current']).toBe('enabled');
+    const sentBody = observation.body.toString('utf8');
+    if (kind === 'json') {
+      expect(JSON.parse(sentBody)).toEqual(JSON.parse(jsonText));
+      expect(sentBody).toContain('\n');
+    } else {
+      expect(sentBody).toBe(kind === 'text' ? 'Hello text' : 'name=Interceptor&ready=true');
+    }
+    expect(new URL(observation.path, 'http://127.0.0.1').searchParams.getAll('entry')).toEqual(['url', 'table', 'again']);
+    await screenshotStep(`发送${kind}并核对重复Query与完整正文 / Send ${kind} and verify duplicate Query values and complete body bytes`);
+  }
+
+  // 历史恢复：只恢复method和已组合URL，当前Query、Header及Text不被旧快照覆盖。
+  // History restoration: restore only method/composed URL, never replace the current Query, Header or Text.
+  await getByAutomationId(page, AUTOMATION_IDS.composer.tab.query).click();
+  await page.locator('input[value="table"]').fill('current');
+  await getByAutomationId(page, AUTOMATION_IDS.composer.tab.headers).click();
+  await headerRow('x-e2e-current').locator('input:not([type="checkbox"])').nth(1).fill('current');
+  await headerRow('Content-Type').locator('input:not([type="checkbox"])').nth(1).fill('text/plain');
+  await getByAutomationId(page, AUTOMATION_IDS.composer.tab.body).click();
+  await bodyModes().nth(2).click();
+  await body.click();
+  await page.keyboard.press('ControlOrMeta+A');
+  await page.keyboard.insertText('Hello replay');
+  await method.click();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  const beforeHistory = loopbackLab.evidence().length;
+  await getByAutomationId(page, AUTOMATION_IDS.composer.history).click();
+  await page.getByRole('button').filter({
+    hasText: `${prefix}/json?entry=url&entry=table&entry=again`,
+  }).click();
+  await expect(method).toContainText('POST');
+  await expect(body).toContainText('Hello replay');
+  expect(loopbackLab.evidence()).toHaveLength(beforeHistory);
+  const replay = await send(`${prefix}/json?entry=url&entry=table&entry=again&entry=current&entry=again`);
+  expect(replay.body.toString('utf8')).toBe('Hello replay');
+  expect(replay.headers['x-e2e-current']).toBe('current');
+  expect(replay.headers['content-type']).toBe('text/plain');
+  expect(new URL(replay.path, 'http://127.0.0.1').searchParams.getAll('entry'))
+    .toEqual(['url', 'table', 'again', 'current', 'again']);
+  await screenshotStep('Recent sends重发使用当前字段与正文 / Recent sends replay uses the current fields and body');
+
+  // 业务断言：停用与删除分别操作；Body None不发送残留正文。
+  // Business assertions: disabling and deleting are separate actions; Body None sends no retained body.
+  await getByAutomationId(page, AUTOMATION_IDS.composer.tab.query).click();
+  for (const row of await page.locator('input[value="entry"]').all()) {
+    await row.locator('..').getByRole('checkbox').click();
+  }
+  await getByAutomationId(page, AUTOMATION_IDS.composer.tab.headers).click();
+  await headerRow('x-e2e-current').getByRole('checkbox').click();
+  await getByAutomationId(page, AUTOMATION_IDS.composer.tab.body).click();
+  await bodyModes().first().click();
+  await expect(body).toHaveCount(0);
+  await fillUrl(`${prefix}/disabled`);
+  const disabled = await send(`${prefix}/disabled`);
+  expect(disabled.headers['x-e2e-current']).toBeUndefined();
+  expect(disabled.body.byteLength).toBe(0);
+  await screenshotStep('停用的字段和Body None均不发送 / Disabled fields and Body None are not sent');
+  await getByAutomationId(page, AUTOMATION_IDS.composer.tab.query).click();
+  for (let index = 0; index < 2; index += 1) {
+    await page.locator('input[value="entry"]').first().locator('..').getByRole('button').click();
+  }
+  await expect(page.locator('input[value="entry"]')).toHaveCount(0);
+  await getByAutomationId(page, AUTOMATION_IDS.composer.tab.headers).click();
+  await headerRow('x-e2e-current').getByRole('button').click();
+  await headerRow('Content-Type').getByRole('button').click();
+  await method.click();
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Enter');
+  await screenshotStep('删除测试字段后保留同一请求身份 / Delete the test fields while retaining the same request identity');
+}
+
 test('composer.collection.tree-interactions keeps tree intent and layout independent', async ({
-  desktopApp,
+  desktopApp, httpTrafficRunner: loopbackLab,
 }, testInfo) => {
   testInfo.annotations.push({
     type: 'renderer-workflow',
@@ -87,6 +309,7 @@ test('composer.collection.tree-interactions keeps tree intent and layout indepen
   await renameFields.fill('E2E level 3');
   await renameFields.press('Enter');
   await expect(folderRows).toHaveCount(3);
+  await screenshotStep('通过toolbar与目录菜单连续创建三级目录，每次都走同一行内rename流程。 / Create three folder levels through the toolbar and folder menus, using the same inline rename flow.');
 
   // 第三层菜单必须禁用继续嵌套，但仍允许在该目录中新建request。
   // The third-level menu must disable deeper nesting while still allowing request creation.
@@ -108,9 +331,10 @@ test('composer.collection.tree-interactions keeps tree intent and layout indepen
     requestRows,
     AUTOMATION_ID_PREFIXES.composerCollectionRequest,
   );
-  const requestUrl = 'collection.e2e.invalid/request';
+  const requestUrl = loopbackLab.url('/e2e/collection/first').replace(/^http:\/\//, '');
   const url = getByAutomationId(page, AUTOMATION_IDS.composer.url);
-  await url.fill(requestUrl);
+  await url.fill(`http://${requestUrl}`);
+  await screenshotStep('第三层菜单必须禁用继续嵌套，但仍允许在该目录中新建request。 / The third-level menu must disable deeper nesting while still allowing request creation.');
 
   // request右键菜单进入同一行内rename，提交后节点身份与打开文档保持。
   // Use the request context menu for inline rename while preserving node identity and the open document.
@@ -147,6 +371,7 @@ test('composer.collection.tree-interactions keeps tree intent and layout indepen
     name: expect.stringContaining('E2E renamed request'),
     url: requestUrl,
   });
+  await screenshotStep('在节流保存触发前立即卸载Composer，返回后必须由Core恢复最新rename与URL。 / Unmount Composer before the debounce fires; remount must restore the latest rename and URL from Core.');
 
   // 目录选择和空白取消只改变新建落点，不得关闭或替换当前request。
   // Folder selection and whitespace clearing change only the creation target, never the active request.
@@ -163,6 +388,7 @@ test('composer.collection.tree-interactions keeps tree intent and layout indepen
   await collectionTree.click({ position: { x: 12, y: treeBox!.height - 8 } });
   await expect(level1Target).toHaveAttribute('aria-pressed', 'false');
   await expect(url).toHaveValue(requestUrl);
+  await screenshotStep('目录选择和空白取消只改变新建落点，不得关闭或替换当前request。 / Folder selection and whitespace clearing change only the creation target, never the active request.');
 
   // 拖动Collection splitter只改变左栏宽度，树与当前文档仍保持可用。
   // Drag the Collection splitter to change only layout while preserving the tree and active document.
@@ -179,6 +405,7 @@ test('composer.collection.tree-interactions keeps tree intent and layout indepen
   expect(widthAfter).toBeGreaterThan(widthBefore + 60);
   await expect(folderRows).toHaveCount(3);
   await expect(url).toHaveValue(requestUrl);
+  await screenshotStep('拖动Collection splitter只改变左栏宽度，树与当前文档仍保持可用。 / Drag the Collection splitter to change only layout while preserving the tree and active document.');
 
   // 保存动态ID、层级几何与splitter证据；driver随后负责trace和完整销毁。
   // Save dynamic IDs, nesting geometry, and splitter evidence; the driver owns trace and teardown.
@@ -231,6 +458,7 @@ test('composer.collection.tree-interactions keeps tree intent and layout indepen
     path: evidencePath,
     contentType: 'application/json',
   });
+  await screenshotStep('保存动态ID、层级几何与splitter证据；driver随后负责trace和完整销毁。 / Save dynamic IDs, nesting geometry, and splitter evidence; the driver owns trace and teardown.');
 
   // 标签通过flex在固定尺寸中居中文字，外框与标题保持居中对齐。
   // Center badge text with flex in a fixed frame, and align the frame with its title.
@@ -247,4 +475,50 @@ test('composer.collection.tree-interactions keeps tree intent and layout indepen
     .toBeLessThanOrEqual(1 / methodAlignment.pixelRatio);
   expect(Math.abs(methodAlignment.textLeft - methodAlignment.textRight))
     .toBeLessThanOrEqual(1 / methodAlignment.pixelRatio);
+
+  // 请求字段：在同一真实文档补齐Auth、Body、Query和历史的必要网络断言。
+  // Request fields: verify Auth, Body, Query and history against real network results on this same document.
+  expect(loopbackLab.evidence()).toHaveLength(0);
+  await verifyRequestAuthentication(page);
+  await verifyRequestFields(page, loopbackLab);
+  await url.fill(requestUrl);
+  const explicitSendCount = loopbackLab.evidence().length;
+
+  // 用户操作：同一目录新建另一请求，切换、改名和拖动不能串改请求内容。
+  // User actions: create a sibling request; switching, renaming and dragging must preserve each document.
+  await openFolderMenu(page, level3Id);
+  await getByAutomationId(page, AutomationIdFactory.composerCollectionNodeAction(level3Id, 'new-request')).click();
+  await expect(requestRows).toHaveCount(2);
+  const secondId = await automationSuffix(requestRows.last(), AUTOMATION_ID_PREFIXES.composerCollectionRequest);
+  const secondRequest = getByAutomationId(page, AutomationIdFactory.composerCollectionRequest(secondId));
+  const secondUrl = loopbackLab.url('/e2e/collection/second').replace(/^http:\/\//, '');
+  await url.fill(secondUrl);
+  await persistedRequest.click();
+  await expect(url).toHaveValue(requestUrl);
+  await secondRequest.click();
+  await expect(url).toHaveValue(secondUrl);
+  await screenshotStep('切换同目录请求并保留各自内容 / Switch sibling requests while preserving their content');
+  await openFolderMenu(page, level3Id);
+  await getByAutomationId(page, AutomationIdFactory.composerCollectionNodeAction(level3Id, 'rename')).click();
+  await renameFields.fill('E2E renamed folder');
+  await renameFields.press('Enter');
+  await secondRequest.dragTo(persistedRequest, { targetPosition: { x: 40, y: 2 } });
+  await expect(requestRows.first()).toHaveAttribute('data-automation-id', AutomationIdFactory.composerCollectionRequest(secondId));
+  await expect(url).toHaveValue(secondUrl);
+  await screenshotStep('重命名目录并调整请求顺序 / Rename the folder and reorder its requests');
+
+  // 业务断言：删除只作用于本轮节点，编辑过程没有向源站隐式发送请求。
+  // Business assertions: delete only owned nodes; editing must never send to the origin implicitly.
+  await secondRequest.click({ button: 'right' });
+  await getByAutomationId(page, AutomationIdFactory.composerCollectionNodeAction(secondId, 'delete')).click();
+  await expect(requestRows).toHaveCount(1);
+  await expect(persistedRequest).toBeVisible();
+  await screenshotStep('删除同级请求并保留原请求 / Delete the sibling while retaining the original request');
+  await openFolderMenu(page, level3Id);
+  await getByAutomationId(page, AutomationIdFactory.composerCollectionNodeAction(level3Id, 'delete')).click();
+  await expect(requestRows).toHaveCount(0);
+  await expect(folderRows).toHaveCount(2);
+  await expect(collection).toHaveAttribute('data-save-state', 'saved');
+  expect(loopbackLab.evidence()).toHaveLength(explicitSendCount);
+  await screenshotStep('删除目录及其请求后完成自动保存 / Autosave after deleting the folder and its requests');
 });

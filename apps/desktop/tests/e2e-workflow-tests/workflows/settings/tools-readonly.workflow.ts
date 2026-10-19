@@ -8,6 +8,7 @@ import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/auto
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { sharedCertificateDirectory } from '../../fixtures/ui/https-capture';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { PlaygroundServer } from '../../fixtures/runtime/playground-server';
 import { readAppContainerSystemState, verifyAppContainerQueryResult, type AppContainerSystemState } from '../../fixtures/safety/app-container-system-state';
@@ -249,6 +250,7 @@ test('settings.tools.readonly queries six real Settings owners without approval'
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.panel.toggle).click();
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.chat.new).click();
     await completeTurn(desktopApp.page, PROMPT);
+    await screenshotStep('用户操作：默认 Ask Chat 发起 discovery 和六项只读查询。 / User actions: a default Ask Chat discovers and executes the six read-only queries.');
 
     // 业务断言：真实 Model 历史必须披露六项，并包含六个成功结果；query 不出现审批。
     // Business assertions: real Model history must disclose all six Tools and successful results without approval.
@@ -272,6 +274,7 @@ test('settings.tools.readonly queries six real Settings owners without approval'
       await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolResult(name)))
         .toHaveAttribute('data-summary-kind', summaryKinds[index]!);
     }
+    await screenshotStep('业务断言：真实 Model 历史必须披露六项，并包含六个成功结果；query 不出现审批。 / Business assertions: real Model history must disclose all six Tools and successful results without approval.');
 
     // 外部交互：产品 UI 创建 MCP Client；真实系统 Browser 操作正式 Playground 的六项查询。
     // External interaction: create the MCP Client through UI, then execute all six queries in the official Playground Browser.
@@ -298,6 +301,7 @@ test('settings.tools.readonly queries six real Settings owners without approval'
     verifyToolValues(mcpValues, initialSystemState.appContainers, initialSystemState.certificate);
     expect(mcpValues.get('settings_get_core_process_status')!.pid)
       .toBe(agentValues.get('settings_get_core_process_status')!.pid);
+    await screenshotStep('外部交互：产品 UI 创建 MCP Client；真实系统 Browser 操作正式 Playground 的六项查询。 / External interaction: create the MCP Client through UI, then execute all six queries in the official Playground Browser.');
 
     // 只读断言：查询前后完整代理和 exemption 集合不变，TLS 与证书 UI 状态不变。
     // Read-only assertions: the complete proxy and exemption sets, TLS settings, and certificate UI remain unchanged.
@@ -338,6 +342,7 @@ test('settings.tools.readonly queries six real Settings owners without approval'
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.panel.close).click();
     expect(await callPlaygroundTool(browserPage, 'settings_get_tls_passthrough'))
       .toEqual({ revision: 1, hosts: [PASSTHROUGH_HOST] });
+    await screenshotStep('用户操作：逐项撤销 Agent 权限；旧披露仍必须返回 unknown_tool，MCP 保持独立可用。 / User actions: revoke each Agent permission; disclosed calls return unknown_tool while MCP stays independently available.');
 
     // 用户操作：MCP 六项逐个撤权，保留 Browser 已选中的旧 Tool 验证调用失败，再刷新目录。
     // User actions: revoke each MCP Tool, verify the Browser's stale selection fails, then refresh the catalog.
@@ -365,6 +370,7 @@ test('settings.tools.readonly queries six real Settings owners without approval'
     await playgroundServer.close();
     await playgroundServer.writeEvidence(testInfo);
     playgroundServer = null;
+    await screenshotStep('用户操作：MCP 六项逐个撤权，保留 Browser 已选中的旧 Tool 验证调用失败，再刷新目录。 / User actions: revoke each MCP Tool, verify the Browser\'s stale selection fails, then refresh the catalog.');
 
     // 重启：完整销毁第一代并保留 profile；第二代只恢复状态，不重放 Model 或 Tool 请求。
     // Restart: fully destroy generation one and retain its profile; generation two restores state without replaying Model or Tool requests.

@@ -16,6 +16,7 @@ import {
   LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const COMPOSER_TOOL_NAMES = ['composer_send_request', 'composer_probe_connection', 'composer_get_collection', 'composer_replace_collection', 'composer_export_collection', 'composer_import_collection'] as const;
@@ -255,6 +256,7 @@ test('agent.tools.composer sends direct HTTP and probes TLS with real cancellati
   await getByAutomationId(page, AutomationIdFactory.agentToolDeny('send-deny')).click();
   await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
   expect(loopbackLab.observation(deniedPath)).toBeUndefined();
+  await screenshotStep('Ask Deny：问询展示完整目标；拒绝后origin零到达。 / Ask Deny: approval shows the complete target; denial leaves the origin untouched.');
 
   // Ask Allow：真实origin接收method/query/header/body；结果遮罩凭据并且不进入Capture。
   // Ask Allow: the real origin receives method/query/header/body; the result redacts credentials and never enters Capture.
@@ -312,6 +314,7 @@ test('agent.tools.composer sends direct HTTP and probes TLS with real cancellati
     AUTOMATION_ID_PREFIXES.captureRequestRow,
   ).filter({ hasText: '/e2e/agent/composer/allowed' })).toHaveCount(0);
   evidence.directRequestVerified = true;
+  await screenshotStep('Ask Allow：真实origin接收method/query/header/body；结果遮罩凭据并且不进入Capture。 / Ask Allow: the real origin receives method/query/header/body; the result redacts credentials and never enters Capture.');
 
   // Auto TLS：成功探测只握手不发应用数据；未监听端口返回稳定失败结果。
   // Auto TLS: a successful probe performs only a handshake; a closed port returns a stable failure result.
@@ -352,6 +355,7 @@ test('agent.tools.composer sends direct HTTP and probes TLS with real cancellati
   expect(failedProbe.ok).toBe(false);
   expect(typeof failedProbe.error === 'string' && failedProbe.error.length > 0).toBe(true);
   evidence.tlsProbeVerified = true;
+  await screenshotStep('Auto TLS：成功探测只握手不发应用数据；未监听端口返回稳定失败结果。 / Auto TLS: a successful probe performs only a handshake; a closed port returns a stable failure result.');
 
   // Stop：真实origin已收到请求但暂缓响应；停止Turn必须立即关闭socket且不发起下一次Model Call。
   // Stop: the real origin has received a held request; stopping the Turn must close the socket and skip the next Model Call.
@@ -385,6 +389,7 @@ test('agent.tools.composer sends direct HTTP and probes TLS with real cancellati
   await expect(cancelledResult).toHaveCount(1);
   expect(openAiCompatibleLab.evidence()).toHaveLength(modelRequestCountAtCancel);
   evidence.cancelledSocketVerified = true;
+  await screenshotStep('Stop：真实origin已收到请求但暂缓响应；停止Turn必须立即关闭socket且不发起下一次Model Call。 / Stop: the real origin has received a held request; stopping the Turn must close the socket and skip the next Model Call.');
 
   // Settings撤权：关闭全部六项后discovery为空，旧网络调用均unknown_tool且网络计数不变。
   // Settings revocation: disabling all six empties discovery; previous network calls are unknown and network counts stay unchanged.
@@ -435,6 +440,7 @@ test('agent.tools.composer sends direct HTTP and probes TLS with real cancellati
   await setExecutionMode(page, 'ask');
   await getByAutomationId(page, AUTOMATION_IDS.agent.panel.close).click();
   await desktopApp.startTrace(testInfo);
+  await screenshotStep('Settings撤权：关闭全部六项后discovery为空，旧网络调用均unknown_tool且网络计数不变。 / Settings revocation: disabling all six empties discovery; previous network calls are unknown and network counts stay unchanged.');
 
   // Restart：两代之间Model、HTTP与TLS都零增量；取消的原Chat恢复但不重放网络动作。
   // Restart: Model, HTTP, and TLS all stay unchanged across generations; the cancelled Chat restores without network replay.

@@ -16,7 +16,7 @@
     "test": "vitest run",
     "test:installer:windows": "node --experimental-transform-types tests/installer/windows-installer-smoke.mjs",
     "test:package-audit": "node tests/installer/package-artifact-audit.mjs",
-    "test:e2e:workflow": "npm run e2e:prepare-local && playwright test --config tests/e2e-workflow-tests/playwright.config.ts",
+    "test:e2e:workflow": "node tests/e2e-workflow-tests/run.mjs",
     "test:e2e:workflow:report": "playwright show-report playwright-report/e2e-workflow-tests",
     "test:release:macos": "node tests/installer/macos-release-smoke.mjs",
     "test:smoke": "playwright test",

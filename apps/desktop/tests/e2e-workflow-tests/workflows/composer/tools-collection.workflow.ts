@@ -7,6 +7,7 @@ import type { Page, TestInfo } from '@playwright/test';
 import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const TOOL_NAMES = ['composer_get_collection', 'composer_replace_collection'] as const;
@@ -100,9 +101,24 @@ async function createCollection(page: Page, url: string): Promise<string> {
   if (!automationId?.startsWith(AUTOMATION_ID_PREFIXES.composerCollectionRequest)) throw new Error('Collection request has no public ID.');
   const firstId = automationId.slice(AUTOMATION_ID_PREFIXES.composerCollectionRequest.length);
   await getByAutomationId(page, AUTOMATION_IDS.composer.url).fill(`${url}?token=${SECRETS.query}`);
+  await getByAutomationId(page, AUTOMATION_IDS.composer.method).click();
+  await page.keyboard.press('Home');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await getByAutomationId(page, AUTOMATION_IDS.composer.protocol.h1).click();
   await getByAutomationId(page, AUTOMATION_IDS.composer.headerDraft.name).fill('Authorization');
   await getByAutomationId(page, AUTOMATION_IDS.composer.headerDraft.value).fill(SECRETS.header);
   await getByAutomationId(page, AUTOMATION_IDS.composer.addHeader).click();
+  await getByAutomationId(page, AUTOMATION_IDS.composer.headerDraft.name).fill('x-e2e-disabled');
+  await getByAutomationId(page, AUTOMATION_IDS.composer.headerDraft.value).fill('omitted');
+  await getByAutomationId(page, AUTOMATION_IDS.composer.addHeader).click();
+  const disabledHeader = page.locator('input[value="x-e2e-disabled"]').locator('..').getByRole('checkbox');
+  await expect(disabledHeader).toBeVisible();
+  await disabledHeader.click();
+  await getByAutomationId(page, AUTOMATION_IDS.composer.tab.query).click();
+  await getByAutomationId(page, AUTOMATION_IDS.composer.queryDraft.name).fill('scope');
+  await getByAutomationId(page, AUTOMATION_IDS.composer.queryDraft.value).fill('retained');
+  await getByAutomationId(page, AUTOMATION_IDS.composer.addQuery).click();
   await getByAutomationId(page, AUTOMATION_IDS.composer.tab.auth).click();
   await getByAutomationId(page, AUTOMATION_IDS.composer.authType).click();
   await page.keyboard.press('Home');
@@ -131,11 +147,19 @@ async function createCollection(page: Page, url: string): Promise<string> {
 
 async function verifyCredentials(page: Page, requestId: string): Promise<void> {
   await getByAutomationId(page, AutomationIdFactory.composerCollectionRequest(requestId)).click();
+  await expect(getByAutomationId(page, AUTOMATION_IDS.composer.method)).toContainText('POST');
+  await expect(getByAutomationId(page, AUTOMATION_IDS.composer.protocol.h1)).toHaveAttribute('aria-checked', 'true');
   await getByAutomationId(page, AUTOMATION_IDS.composer.tab.auth).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.composer.bearerToken)).toHaveValue(SECRETS.auth);
   await expect(getByAutomationId(page, AUTOMATION_IDS.composer.url)).toHaveValue(new RegExp(SECRETS.query));
   await getByAutomationId(page, AUTOMATION_IDS.composer.tab.headers).click();
   await expect.poll(() => page.locator('input').evaluateAll((inputs, value) => inputs.some((input) => input instanceof HTMLInputElement && input.value === value), SECRETS.header)).toBe(true);
+  const disabledHeader = page.locator('input[value="x-e2e-disabled"]').locator('..');
+  await expect(disabledHeader.getByRole('checkbox')).not.toBeChecked();
+  await getByAutomationId(page, AUTOMATION_IDS.composer.tab.query).click();
+  await expect(page.locator('input[value="retained"]')).toBeVisible();
+  await getByAutomationId(page, AUTOMATION_IDS.composer.tab.body).click();
+  await expect(getByAutomationId(page, AUTOMATION_IDS.composer.body)).toContainText('owned-body');
 }
 
 async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Promise<{ client: Client; clientId: string }> {
@@ -224,6 +248,7 @@ test('composer.tools.collection reads and replaces the saved tree without disclo
     expect(requests(original.nodes).find((request) => request.id === requestId)?.bodyText).toBe(BODY);
     for (const secret of Object.values(SECRETS)) expect(JSON.stringify(original)).not.toContain(secret);
     await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolApproval('collection-get'))).toHaveCount(0);
+    await screenshotStep('用户操作：UI 创建两条请求和一级目录；查询只读Core保存态，秘密字段不得进入Model。 / User actions: create two requests and a folder through UI; the query reads persisted Core state without exposing secrets to the Model.');
 
     // 审批与替换：Deny零写入，Allow/Auto更新已挂载UI；凭据往返保持，旧revision不能覆盖。
     // Approval and replacement: Deny performs no write, Allow and Auto update the mounted UI, secrets survive round trips, and stale revisions cannot overwrite.
@@ -244,7 +269,8 @@ test('composer.tools.collection reads and replaces the saved tree without disclo
     expect(await callAgentTool(desktopApp.page, openAiCompatibleLab, 'collection-stale', TOOL_NAMES[1], { baseRevision: original.revision, nodes: allowedNodes }))
       .toMatchObject({ ok: false, error: { code: 'invalid_arguments' } });
     await verifyCredentials(desktopApp.page, requestId);
-    expect(loopbackLab.observation(originPath)).toBeUndefined();
+    expect(loopbackLab.evidence()).toHaveLength(0);
+    await screenshotStep('审批与替换：Deny零写入，Allow/Auto更新已挂载UI；凭据往返保持，旧revision不能覆盖。 / Approval and replacement: Deny performs no write, Allow and Auto update the mounted UI, secrets survive round trips, and stale revisions cannot overwrite.');
 
     // 授权与MCP：分别关闭Agent两项，MCP仍可读取并审批替换；MCP撤权对现有连接即时生效。
     // Authorization and MCP: disable both Agent Tools while MCP can still read and approve replacement; MCP revocation immediately affects the existing connection.
@@ -277,6 +303,7 @@ test('composer.tools.collection reads and replaces the saved tree without disclo
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.composer).click();
     await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.composerCollectionRequest(requestId))).toContainText('Collection MCP');
     await verifyCredentials(desktopApp.page, requestId);
+    await screenshotStep('授权与MCP：分别关闭Agent两项，MCP仍可读取并审批替换；MCP撤权对现有连接即时生效。 / Authorization and MCP: disable both Agent Tools while MCP can still read and approve replacement; MCP revocation immediately affects the existing connection.');
 
     // 重启与证据：同profile保留集合/授权且Model和origin零重放，最终只归档脱敏哈希与结论。
     // Restart and evidence: preserve the collection and permissions without Model or origin replay, retaining only redacted hashes and outcomes.
@@ -290,7 +317,20 @@ test('composer.tools.collection reads and replaces the saved tree without disclo
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.shell.workspace.composer).click();
     await expect(getByAutomationId(relaunchedApp.page, AutomationIdFactory.composerCollectionRequest(requestId))).toContainText('Collection MCP');
     await verifyCredentials(relaunchedApp.page, requestId);
-    expect(loopbackLab.observation(originPath)).toBeUndefined();
+    expect(loopbackLab.evidence()).toHaveLength(0);
+
+    // 用户操作与断言：重启后不重填字段，只明确Send一次，核对真实出站字节。
+    // User actions and assertions: after restart, send once without refilling fields and verify the actual wire data.
+    await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.composer.send).click();
+    const sentPath = `${originPath}?token=${SECRETS.query}&scope=retained`;
+    await expect.poll(() => loopbackLab.observation(sentPath)?.method).toBe('POST');
+    await expect(getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.composer.send)).toBeEnabled();
+    const sent = loopbackLab.observation(sentPath);
+    expect(sent?.body.toString('utf8')).toBe(BODY);
+    expect(sent?.headers.authorization).toBe(`Bearer ${SECRETS.auth}`);
+    expect(sent?.headers['x-e2e-disabled']).toBeUndefined();
+    expect(loopbackLab.evidence()).toHaveLength(1);
+    await screenshotStep('重启后由用户明确发送已保存请求 / Explicitly send the saved request after restarting');
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.settings.section.agent).click();
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.tools.search).fill('collection');
@@ -303,7 +343,9 @@ test('composer.tools.collection reads and replaces the saved tree without disclo
       initialRevision: original.revision, finalRevision: mcpCollection.revision + 1,
       treeHash: createHash('sha256').update(JSON.stringify(original)).digest('hex'),
       requestCount: 2, folderCount: 1, credentialsPreserved: true, staleRejected: true,
-      agentAndMcpRevoked: true, restartModelRequests: 0, originRequests: 0,
+      agentAndMcpRevoked: true, restartModelRequests: 0,
+      collectionCommandsOriginRequests: 0, explicitUiSendOriginRequests: loopbackLab.evidence().length,
+      persistedRequestBytesVerified: true,
     }, null, 2), 'utf8');
     await testInfo.attach('composer-tools-collection.json', { path: evidencePath, contentType: 'application/json' });
   } catch (error) {

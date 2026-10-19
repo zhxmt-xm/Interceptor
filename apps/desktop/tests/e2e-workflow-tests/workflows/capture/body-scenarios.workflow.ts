@@ -3,6 +3,7 @@ import { readFile, rm } from 'node:fs/promises';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { submitFileDialogPath } from '../../fixtures/ui/file-dialog';
@@ -59,6 +60,7 @@ test('capture.scenarios.bodies displays the captured text document and form bodi
       const responseMode = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyMode[expected.mode]);
       await responseMode.click();
       await expect(responseMode).toHaveAttribute('aria-checked', 'true');
+      await screenshotStep('产品操作：选择自产Capture行，检查Request正文，再切换Response正文的既有模式。 / Product actions: select the generated Capture row, inspect its Request body, and select the existing Response mode.');
 
       // 业务断言：固定正文独立于流量库定义；HTML/SVG不执行，Markdown按真实Preview渲染。
       // Product assertions: body expectations are independent of the traffic library; HTML/SVG stay inert and Markdown renders in Preview.
@@ -79,8 +81,10 @@ test('capture.scenarios.bodies displays the captured text document and form bodi
       }
       evidence.push({ scenarioId: expected.id, row: await row.getAttribute('data-automation-id'), bytes: Buffer.byteLength(expected.body) });
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
+      await screenshotStep('业务断言：固定正文独立于流量库定义；HTML/SVG不执行，Markdown按真实Preview渲染。 / Product assertions: body expectations are independent of the traffic library; HTML/SVG stay inert and Markdown renders in Preview.');
     });
   }
+  await screenshotStep('准备：经产品UI开启Recording，场景只负责向真实代理发送流量。 / Arrange: start Recording through product UI; scenarios only send traffic to the real proxy.');
 
   // 截断边界：真实响应使2 MiB落在多字节字符内，只比较剪贴板摘要，不向trace返回完整大正文。
   // Truncation boundary: real responses split UTF-8 characters at 2 MiB; compare clipboard digests without returning large bodies to the trace.
@@ -167,8 +171,10 @@ test('capture.scenarios.bodies displays the captured text document and form bodi
         }
       }
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
+      await screenshotStep('原始保存：文件由产品Save产生，包含完整尾字符和预览范围以外的字节。 / Raw export: the product Save action must retain the complete character and bytes beyond the preview limit.');
     });
   }
+  await screenshotStep('截断边界：真实响应使2 MiB落在多字节字符内，只比较剪贴板摘要，不向trace返回完整大正文。 / Truncation boundary: real responses split UTF-8 characters at 2 MiB; compare clipboard digests without returning large bodies to the trace.');
 
   // 证据与清理：保存逐场景公开身份；fixture保存trace并关闭origin、Main/Core/Worker及恢复宿主。
   // Evidence and cleanup: retain public scenario identities; fixtures save traces, close origins and product processes, and restore the host.

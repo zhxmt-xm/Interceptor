@@ -4,6 +4,7 @@ import type { TestInfo } from '@playwright/test';
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 async function verifyAnonymousUpdateCheck(
   desktopApp: LocalElectronApplicationDriver,
@@ -25,6 +26,7 @@ async function verifyAnonymousUpdateCheck(
   const updateStatus = getByAutomationId(page, AUTOMATION_IDS.settings.updates.status);
   await expect(updateStatus).toBeVisible();
   const supported = await updateStatus.getAttribute('data-supported') === 'true';
+  await screenshotStep(`打开更新设置 / Open update settings (${generation})`);
   if (supported) {
     await expect(updateStatus).toHaveAttribute('data-state', 'failed', { timeout: 90_000 });
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -36,12 +38,14 @@ async function verifyAnonymousUpdateCheck(
         .not.toBe(lastCheckedAt);
       await expect(updateStatus).toHaveAttribute('data-state', 'failed', { timeout: 90_000 });
       await expect(check).toBeEnabled();
+      await screenshotStep(`检查更新失败后仍可重试 / Retry after an unavailable update check (${generation}, ${attempt + 1})`);
     }
     await expect(getByAutomationId(page, AUTOMATION_IDS.settings.updates.download)).toHaveCount(0);
     await expect(getByAutomationId(page, AUTOMATION_IDS.settings.updates.openInstaller)).toHaveCount(0);
   } else {
     await expect(updateStatus).toHaveAttribute('data-state', 'unsupported');
     await expect(getByAutomationId(page, AUTOMATION_IDS.settings.updates.check)).toHaveCount(0);
+    await screenshotStep(`未打包App明确显示不支持更新 / Unpackaged App reports unsupported updates (${generation})`);
   }
   await page.screenshot({ path: testInfo.outputPath(`${generation}-updates-final.png`) });
   expect(desktopApp.rendererPageErrors()).toEqual([]);

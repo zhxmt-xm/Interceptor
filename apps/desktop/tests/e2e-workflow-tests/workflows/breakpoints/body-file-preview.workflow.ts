@@ -3,6 +3,7 @@ import { readFile, rm, writeFile } from 'node:fs/promises';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { createRequestBreakpointRule } from '../../fixtures/ui/breakpoint-workflow';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
@@ -38,6 +39,7 @@ test(`breakpoints.body-preview ${fileKind} previews a product-saved file but for
         throw error;
       }
     }).toBe(Buffer.byteLength(source));
+    await screenshotStep('准备：替换文件由同一workflow通过产品Save body生成，不能在测试中写业务输入。 / Arrange: create the replacement file through this workflow\'s product Save body, not a seeded file.');
 
     // 用户操作：创建POST断点，使用真实Open Dialog选择刚保存的文件。
     // User actions: create a POST breakpoint and choose the exported file through the real Open dialog.
@@ -66,6 +68,7 @@ test(`breakpoints.body-preview ${fileKind} previews a product-saved file but for
     await expect(selected).toHaveAttribute('data-file-name', 'exported-body.json');
     await expect(selected).toHaveAttribute('data-file-size', String(Buffer.byteLength(source)));
     await page.screenshot({ path: testInfo.outputPath('file-preview.png') });
+    await screenshotStep('用户操作：创建POST断点，使用真实Open Dialog选择刚保存的文件。 / User actions: create a POST breakpoint and choose the exported file through the real Open dialog.');
 
     // 业务断言：大JSON有有限预览，Forward edited仍发送完整原文件。
     // Assertions: large JSON has a bounded preview while Forward edited sends the entire original file.
@@ -92,6 +95,7 @@ test(`breakpoints.body-preview ${fileKind} previews a product-saved file but for
         return current.height - Math.max(current.minimum, current.available);
       }).toBeLessThanOrEqual(1);
       await page.locator(`[aria-controls="${originalContentId}"]`).click();
+      await screenshotStep('布局联动：展开前面的Original后，File必须立即按新剩余空间重算。 / Layout dependency: expanding the preceding Original must immediately update the File height.');
     }
     const box = await preview.boundingBox();
     if (!box) throw new Error('File preview is not visible.');
@@ -131,6 +135,7 @@ test(`breakpoints.body-preview ${fileKind} previews a product-saved file but for
       fileSha256: createHash('sha256').update(await readFile(filePath)).digest('hex'),
       previewVisible: true,
     }, null, 2), 'utf8');
+    await screenshotStep('业务断言：大JSON有有限预览，Forward edited仍发送完整原文件。 / Assertions: large JSON has a bounded preview while Forward edited sends the entire original file.');
 
     // 完整编辑：Text输入不受只读预览上限影响，末尾追加仍完整到达origin。
     // Complete editing: Text input is not capped by readonly preview limits and its appended suffix reaches the origin.
@@ -151,6 +156,7 @@ test(`breakpoints.body-preview ${fileKind} previews a product-saved file but for
     expect(textObserved?.byteLength).toBe(Buffer.byteLength(edited));
     expect(textObserved?.equals(Buffer.from(edited))).toBe(true);
     }
+    await screenshotStep('完整编辑：Text输入不受只读预览上限影响，末尾追加仍完整到达origin。 / Complete editing: Text input is not capped by readonly preview limits and its appended suffix reaches the origin.');
   } finally {
     // 清理：失败时经Continue结束请求，fixture验证正常退出和完整宿主恢复。
     // Cleanup: settle failures through Continue; the fixture verifies normal exit and complete host restoration.
@@ -160,6 +166,7 @@ test(`breakpoints.body-preview ${fileKind} previews a product-saved file but for
       await pendingRequest;
     }
     await rm(filePath, { force: true });
+    await screenshotStep('清理：失败时经Continue结束请求，fixture验证正常退出和完整宿主恢复。 / Cleanup: settle failures through Continue; the fixture verifies normal exit and complete host restoration.');
   }
 });
 }

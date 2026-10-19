@@ -9,6 +9,7 @@ import {
   LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type {
   OpenAiCompatibleLab,
   OpenAiCompatibleObservation,
@@ -167,6 +168,7 @@ test('agent.chat.streaming-context persists ordered Streaming, Usage, Stop and R
         attributeFilter: ['data-sequence'],
       });
     }, AUTOMATION_IDS.agent.session.root);
+    await screenshotStep('准备：通过产品Settings配置真实本地Provider，再显式打开全局Agent Panel。 / Arrange: configure a real local Provider through Settings, then explicitly open the global Agent Panel.');
 
     // 证据边界：Prompt/Reasoning进入DOM前停止快照trace，业务事实改由hash与公开状态记录。
     // Evidence boundary: stop snapshot tracing before Prompt/Reasoning enters DOM; retain hashes and public state instead.
@@ -203,6 +205,7 @@ test('agent.chat.streaming-context persists ordered Streaming, Usage, Stop and R
     const reasoning = getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.reasoning).last();
     await reasoning.click();
     await expect(reasoning).toContainText(FIRST_REASONING);
+    await screenshotStep('用户操作：第一轮必须逐chunk原位增长，并在终态显示精确Context与Usage。 / User actions: the first turn must grow in place by chunk and expose exact terminal Context and Usage.');
 
     // 用户操作：第二轮发送完整历史；Reasoning保持独立，Session Usage按Token加权聚合。
     // User actions: the second turn sends complete history; Reasoning stays separate and Session Usage is token-weighted.
@@ -239,6 +242,7 @@ test('agent.chat.streaming-context persists ordered Streaming, Usage, Stop and R
       .toHaveAttribute('data-input-tokens', '30');
     await expect(sessionUsage)
       .toHaveAttribute('data-cache-hit-rate', '0.8');
+    await screenshotStep('用户操作：第二轮发送完整历史；Reasoning保持独立，Session Usage按Token加权聚合。 / User actions: the second turn sends complete history; Reasoning stays separate and Session Usage is token-weighted.');
 
     // 用户操作：可见delta后Stop必须abort真实HTTP；Retry复用原user item且不伪造取消调用Usage。
     // User actions: Stop after a visible delta must abort real HTTP; Retry reuses the user item without fake cancelled-call Usage.
@@ -274,6 +278,7 @@ test('agent.chat.streaming-context persists ordered Streaming, Usage, Stop and R
       .toHaveAttribute('data-model-call-count', '3');
     await expect(sessionUsage)
       .toHaveAttribute('data-total-tokens', '66');
+    await screenshotStep('用户操作：可见delta后Stop必须abort真实HTTP；Retry复用原user item且不伪造取消调用Usage。 / User actions: Stop after a visible delta must abort real HTTP; Retry reuses the user item without fake cancelled-call Usage.');
 
     // 业务断言：事件sequence严格递增；只把计数、hash和脱敏HTTP事实写入evidence。
     // Business assertions: event sequences strictly increase; evidence stores only counts, hashes and redacted HTTP facts.
@@ -292,6 +297,7 @@ test('agent.chat.streaming-context persists ordered Streaming, Usage, Stop and R
     // Evidence/teardown: close the Panel before resuming trace so no Prompt/Reasoning enters retained snapshots.
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.panel.close).click();
     await desktopApp.startTrace(testInfo);
+    await screenshotStep('Evidence/teardown：关闭Panel后恢复trace，确保任何Prompt/Reasoning都不进入保存的快照。 / Evidence/teardown: close the Panel before resuming trace so no Prompt/Reasoning enters retained snapshots.');
   } catch (error) {
     workflowError = error;
   } finally {

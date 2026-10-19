@@ -1,10 +1,18 @@
 # Diagnostics Workflows
 
-本文件定义 Diagnostics 工作区的完整 E2E 流程。每条 workflow 独立启动 Electron、独占 profile/trace，并通过真实 App 操作产生诊断记录。
+## 原流程与可选步骤截图
 
-## 教程连续补录
+Diagnostics只保留原`tools-queries-export.workflow.ts`，截图由同一流程的option开启。
 
-`guidebook-lifecycle.workflow.ts`先由真实Composer Send准备分页历史，不注入数据库。镜头内发送成功请求、再访问主动关闭连接的自有端点，明确Composer网络失败仍可作为正常命令结果返回，不能把diagnostic success当HTTP成功。另用自有404 PAC触发真正的`main.upstream.apply.failed`且原路线保持；在Diagnostics按main/error/failed选取该操作，查看静态时间线、调整分栏、逐项清除过滤并加载历史。JSONL由产品真实Save生成并核对分类，最后回Composer恢复可用URL；不伪造取消/超时记录或不存在的展开按钮。
+- 原Recent/Trace静默查询、顺序、脱敏、Ask/Auto、真实Save取消/确认和文件过滤保持不变。
+
+- 页内差集在同一流程补充：历史来自真实Composer Send，不写数据库；自有失败连接与404 PAC产生实际结果，按main/error/failed选择、读取时间线、拖动分栏、清空筛选并加载较早历史。
+
+- JSONL由产品导出并核对真实分类，最后回Composer重新发送成功请求。Composer网络失败可以作为正常命令结果返回，diagnostic success不等于HTTP成功。
+
+- 不伪造取消/超时记录、不新增不存在的时间线展开控件，不把PNG代替原日志、文件及正常退出断言。
+
+命令、输出清单和显式导入边界见[套件说明](../README.md#trace-与证据)。已有公开PNG及历史验收记录保持原来源，新的运行不会自动替换它们；本节不把未经执行的平台或分支记为通过。
 
 <a id="diagnostics-tools-queries-export"></a>
 ## `diagnostics.tools.queries-export`

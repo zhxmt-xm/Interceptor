@@ -5,6 +5,7 @@ import { createServer, request, type ClientRequest, type IncomingMessage, type S
 import { closeServer, listen } from '../../../../../playground/server/shared/traffic-utils';
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 
@@ -58,6 +59,7 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
         if (!bodyId) throw new Error(`Missing section body: ${sectionId}`);
         for (const value of values) await expect(desktopApp.page.locator(`[id="${bodyId}"]`)).toContainText(value);
       }
+      await screenshotStep('业务断言：只出现一个自产Exchange，Headers保留场景身份与响应MIME。 / Product assertions: one generated Exchange appears and its Headers preserve the scenario identity and response MIME.');
 
       // 正文断言：真实点击Request/Response与Raw，核对完整上传以及每个响应分块。
       // Body assertions: click Request/Response and Raw to verify the complete upload and every response chunk.
@@ -78,8 +80,10 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
       }
       evidence.push({ scenarioId: expected.id, row: await row.getAttribute('data-automation-id'),
         requestBytes: result.request!.bodyBytes, responseBytes: result.response!.bodyBytes });
+      await screenshotStep('正文断言：真实点击Request/Response与Raw，核对完整上传以及每个响应分块。 / Body assertions: click Request/Response and Raw to verify the complete upload and every response chunk.');
     });
   }
+  await screenshotStep('准备：通过真实产品UI开启Recording，复用现有场景，独立定义产品期望。 / Arrange: start Recording through product UI, reuse existing scenarios, and define product expectations independently.');
 
   // 进行中：SSE由外部origin逐段释放，Capture必须在响应结束前展示同一行及增长字节。
   // In flight: release SSE events from the external origin and require one Capture row with growing bytes before completion.
@@ -502,6 +506,7 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
     evidence.push({ scenarioId: scenario.id, row: await row.getAttribute('data-automation-id'),
       requestBytes: result.request!.bodyBytes, responseBytes: 0 });
   });
+  await screenshotStep('中断：origin真实断开连接，Capture仍保留请求且不显示成功或等待状态。 / Abort: the origin closes the real connection; Capture retains the request without a success or pending status.');
 
   // 证据：保存逐场景身份与实际字节数，Renderer必须没有page error。
   // Evidence: retain each scenario identity and observed byte counts and require zero Renderer page errors.

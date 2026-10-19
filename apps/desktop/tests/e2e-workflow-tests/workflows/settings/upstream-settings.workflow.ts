@@ -14,6 +14,7 @@ import { generateCACertificate } from 'mockttp';
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { parseMacosSystemProxySnapshot } from '../../../../../../packages/platform-capabilities/src/helper/macos/utils';
 import { expect, LocalElectronApplicationDriver, test as workflowTest } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 
 interface UpstreamLab {
@@ -204,6 +205,7 @@ test('settings.upstream applies shared Manual PAC and Direct routes and reloads 
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.upstream).click();
   await expect(getByAutomationId(page, ids.currentRoute)).toHaveAttribute('data-upstream-mode', 'system');
+  await screenshotStep('准备：真实App已启动，fixture拥有回环源站、上游和PAC，不写产品配置文件。 / Arrange: the real App is running; the fixture owns loopback origin, proxy and PAC without seeding product settings.');
 
   // 用户操作：草稿取消不改路线；Manual通过两个入口共用的Apply生效。
   // User actions: cancelling a draft keeps the route; Manual is applied through the shared settings operation.
@@ -216,6 +218,7 @@ test('settings.upstream applies shared Manual PAC and Direct routes and reloads 
   await getByAutomationId(page, ids.apply).click();
   await expect(getByAutomationId(page, ids.currentRoute)).toHaveAttribute('data-upstream-mode', 'manual');
   await expect(getByAutomationId(page, ids.apply)).toBeDisabled();
+  await screenshotStep('用户操作：草稿取消不改路线；Manual通过两个入口共用的Apply生效。 / User actions: cancelling a draft keeps the route; Manual is applied through the shared settings operation.');
 
   // 业务断言：实际连接经过上游，PAC分别选择代理和DIRECT，不以按钮文案代替网络结果。
   // Business assertions: real traffic crosses the proxy; PAC selects proxy and DIRECT independently of UI labels.
@@ -247,6 +250,7 @@ test('settings.upstream applies shared Manual PAC and Direct routes and reloads 
   await getByAutomationId(page, ids.mode.direct).check();
   await getByAutomationId(page, ids.apply).click();
   await expect(getByAutomationId(page, ids.currentRoute)).toHaveAttribute('data-upstream-mode', 'direct');
+  await screenshotStep('业务断言：实际连接经过上游，PAC分别选择代理和DIRECT，不以按钮文案代替网络结果。 / Business assertions: real traffic crosses the proxy; PAC selects proxy and DIRECT independently of UI labels.');
 
   // 证据与用户重启：经产品Close退出，同一profile回载真实SQLite偏好。
   // Evidence and user restart: exit through product Close, then reload the real SQLite preference from the same profile.
@@ -297,6 +301,7 @@ test('settings.upstream preserves Manual Direct System choices across a real res
   await getByAutomationId(page, ids.apply).click();
   await expect(getByAutomationId(page, ids.currentRoute)).toHaveAttribute('data-upstream-mode', 'manual');
   await expect(getByAutomationId(page, ids.apply)).toBeDisabled();
+  await screenshotStep('准备：使用真实App、独立profile及当前workflow的回环源站和上游。 / Arrange: use the real App, isolated profile and this workflow\'s loopback origin and proxy.');
 
   // 用户操作与业务断言：Manual真实经上游，取消Direct不改路线，Apply Direct后不再经过上游。
   // User actions and assertions: Manual really uses the proxy; cancelling Direct keeps it, then applying Direct bypasses it.
@@ -324,6 +329,7 @@ test('settings.upstream preserves Manual Direct System choices across a real res
   await getByAutomationId(page, ids.mode.manual).check();
   await getByAutomationId(page, ids.apply).click();
   await expect(getByAutomationId(page, ids.currentRoute)).toHaveAttribute('data-upstream-mode', 'manual');
+  await screenshotStep('用户操作与业务断言：Manual真实经上游，取消Direct不改路线，Apply Direct后不再经过上游。 / User actions and assertions: Manual really uses the proxy; cancelling Direct keeps it, then applying Direct bypasses it.');
 
   // 用户重启：正常Close后复用同一profile，确认Manual及其参数由SQLite回载，而非测试注入。
   // User restart: close normally and reuse the same profile; Manual and its parameters reload from SQLite, not test injection.
@@ -410,6 +416,7 @@ test('settings.upstream keeps the Manual route after unavailable PAC or WPAD', a
   await getByAutomationId(page, ids.trigger).click();
   await expect(getByAutomationId(page, ids.mode.manual)).toBeChecked();
   await expect(getByAutomationId(page, ids.error)).toHaveCount(0);
+  await screenshotStep('用户操作：由真实UI应用Manual，再分别尝试有效格式但不可访问的PAC及未发现配置的WPAD。 / User actions: apply Manual through real UI, then try an unreachable valid PAC URL and WPAD with no discoverable configuration.');
 
   // 证据：保存失败后的有效模式及真实路由结果，不把缺少WPAD的用例当作发现成功。
   // Evidence: record the effective mode and actual route after failures, without claiming successful WPAD discovery.
@@ -422,6 +429,7 @@ test('settings.upstream keeps the Manual route after unavailable PAC or WPAD', a
   // 清理：关闭浮层后由标准fixture点击产品Close并检查完整进程和宿主恢复。
   // Cleanup: dismiss the flyout; the standard fixture uses product Close and verifies complete process and host recovery.
   await getByAutomationId(page, ids.close).click();
+  await screenshotStep('清理：关闭浮层后由标准fixture点击产品Close并检查完整进程和宿主恢复。 / Cleanup: dismiss the flyout; the standard fixture uses product Close and verifies complete process and host recovery.');
 });
 
 test('settings.upstream discovers DNS WPAD and reloads its saved mode through a real restart', async ({ desktopApp, upstreamLab }, testInfo) => {
@@ -457,6 +465,7 @@ test('settings.upstream discovers DNS WPAD and reloads its saved mode through a 
   await getByAutomationId(page, ids.openSettings).click();
   await expect(getByAutomationId(page, ids.mode.wpad)).toBeChecked();
   await expect(getByAutomationId(page, ids.currentRoute).locator('code')).toHaveAttribute('title', expectedPacUrl);
+  await screenshotStep('用户操作：快捷浮层仅选择WPAD，由Main发现地址；跳转Settings后确认两个入口共用生效值。 / User actions: select WPAD without entering a URL, then open Settings to verify the same applied discovery result.');
 
   // 业务断言：本DNS场景的PAC明确选择DIRECT，真实Core仍须转发；PAC HTTP上游由独立回归覆盖。
   // Business assertions: this DNS scenario's PAC selects DIRECT through real Core; plain-HTTP proxying has a separate regression.
@@ -549,6 +558,7 @@ test('settings.upstream discovers DHCP WPAD and reloads its routes through a rea
   await getByAutomationId(page, ids.openSettings).click();
   await expect(getByAutomationId(page, ids.mode.wpad)).toBeChecked();
   await expect(getByAutomationId(page, ids.currentRoute).locator('code')).toHaveAttribute('title', expectedPacUrl);
+  await screenshotStep('用户操作：仅选择WPAD，不填写PAC地址；快捷浮层和Settings必须显示同一DHCP发现结果。 / User actions: select WPAD without entering a PAC URL; the flyout and Settings must show the same DHCP discovery.');
 
   // 业务断言：核对实际PAC下载、HTTPS CONNECT与HTTP DIRECT，而非只看当前模式或HTTP200。
   // Business assertions: verify actual PAC fetches, HTTPS CONNECT and HTTP DIRECT, not just the selected mode or HTTP 200.
@@ -640,6 +650,7 @@ test('settings.upstream inherits system Auto Detect and restores it after a real
   const firstPath = `/system-wpad-${randomUUID()}`;
   expect(await requestThroughCapture(desktopApp.capturePort(), `http://127.0.0.1:${upstreamLab.originPort}${firstPath}`))
     .toBe(`upstream-e2e:${firstPath}`);
+  await screenshotStep('用户操作：打开默认System的快捷浮层，检查其发现的真实PAC，不手填地址。 / User actions: open the default System route and inspect its discovered PAC, without entering a URL.');
 
   // 异常退出：精确终止第一代后，用fresh profile启动第二代，保留共享journal的原配置。
   // Abrupt exit: terminate only generation one, then start a fresh profile while retaining the shared original journal.
@@ -706,6 +717,7 @@ test('settings.upstream applies an explicit PAC to HTTPS PROXY and HTTP DIRECT',
   await expect(getByAutomationId(page, ids.currentRoute).locator('code')).toHaveAttribute('title', pacUrl);
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
   await expect(getByAutomationId(page, ids.trigger)).toHaveAttribute('data-upstream-mode', 'pac');
+  await screenshotStep('用户操作：通过Settings输入并Apply显式PAC，Capture按钮读取同一生效配置。 / User actions: apply the explicit PAC through Settings and verify the same saved mode in Capture.');
 
   // 业务断言：HTTPS必须经过实际CONNECT，HTTP必须DIRECT，不能只看源站200。
   // Business assertions: HTTPS must use the observed CONNECT route, while HTTP is DIRECT; origin HTTP 200 alone is insufficient.
@@ -759,6 +771,7 @@ test('settings.upstream routes HTTPS PROXY and HTTP DIRECT through discovered WP
     await expect(getByAutomationId(page, ids.currentRoute)).toHaveAttribute('data-route-kind', 'pac');
     discoveredPacUrl = await getByAutomationId(page, ids.currentRoute).locator('code').getAttribute('title');
     expect(discoveredPacUrl).toMatch(/^http:\/\/wpad\.r[0-9a-f]{12}\.interceptor-wpad\.test\/wpad\.dat$/);
+    await screenshotStep('用户操作：先从WPAD发现PAC，再通过同一真实编辑器显式应用该PAC，不注入Core配置。 / User actions: discover via WPAD, then explicitly apply that PAC through the same real editor without injecting Core state.');
 
     // 业务断言：HTTPS必须经过唯一上游CONNECT，HTTP必须按PAC的DIRECT绕过上游。
     // Business assertions: HTTPS must cross one upstream CONNECT, while HTTP must bypass it via the PAC's DIRECT result.
@@ -774,6 +787,7 @@ test('settings.upstream routes HTTPS PROXY and HTTP DIRECT through discovered WP
       .toBe(`upstream-e2e:${directPath}`);
     expect(upstreamLab.proxiedTargets).toHaveLength(before + 1);
   }
+  await screenshotStep('准备：外部保护已提供真实DNS/PAC，fixture代理仅允许本轮HTTP和HTTPS源站。 / Arrange: the external guard owns real DNS/PAC; the fixture proxy only permits this run\'s HTTP and HTTPS origins.');
 
   // 证据：两种模式各有实际PROXY/DIRECT结果，PAC明文HTTP上游仍由独立回归验证。
   // Evidence: both modes have actual PROXY/DIRECT results; plain-HTTP upstream behavior has its own regression.
@@ -786,4 +800,5 @@ test('settings.upstream routes HTTPS PROXY and HTTP DIRECT through discovered WP
   // 清理：退出浮层，标准fixture正常Close并核对宿主；外层保护最后撤销DNS。
   // Cleanup: dismiss the flyout, close normally through the standard fixture, then let the outer guard remove DNS.
   await getByAutomationId(page, ids.close).click();
+  await screenshotStep('清理：退出浮层，标准fixture正常Close并核对宿主；外层保护最后撤销DNS。 / Cleanup: dismiss the flyout, close normally through the standard fixture, then let the outer guard remove DNS.');
 });

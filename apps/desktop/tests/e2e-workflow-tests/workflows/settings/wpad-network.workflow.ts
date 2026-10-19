@@ -10,6 +10,7 @@ import { generateCACertificate } from 'mockttp';
 
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 
@@ -73,6 +74,7 @@ test('settings.upstream.windows discovers the isolated network and restores rout
     await expect(getByAutomationId(desktopApp.page, ids.currentRoute)).toHaveAttribute('data-route-kind', 'pac');
     const firstJournal: unknown = JSON.parse(await readFile(desktopApp.systemProxyJournalPath(), 'utf8'));
     expect(firstJournal).toMatchObject({ version: 1, original });
+    await screenshotStep('用户操作：只在UI选择WPAD或保留System，不把发现到的PAC URL填入产品。 / User actions: select WPAD in the UI or retain System, never entering the discovered PAC URL.');
 
     // 业务断言：WPAD正常重启回载偏好；System跨profile崩溃恢复原快照，并重新配置新Core的PAC路线。
     // Business assertions: WPAD reloads its saved intent; System recovers the original journal across fresh profiles and configures PAC in the new Core.

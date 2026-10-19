@@ -2,6 +2,7 @@ import { writeFile } from 'node:fs/promises';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 
@@ -49,6 +50,7 @@ test('settings.storage.refresh-clear presents one usage measure and shares Captu
   const beforeClear = await usage();
   expect(beforeClear.exchanges).toBeGreaterThan(0);
   expect(beforeClear.bodies).toBeGreaterThan(0);
+  await screenshotStep('准备：真实POST经代理进入Capture，暂停新录制使统计不受系统背景流量影响。 / Arrange: proxy a real POST into Capture and pause new recording to keep background traffic out of the measurement.');
 
   // 布局：Refresh归属于标题，单项用量保留真实Core值，不用新增API或文案选择器。
   // Layout: Refresh belongs to the heading and the single usage measure retains Core values without extra APIs or translated selectors.
@@ -76,6 +78,7 @@ test('settings.storage.refresh-clear presents one usage measure and shares Captu
   await refresh.click();
   await expect(refresh).toBeEnabled();
   await expect.poll(usage).toEqual(beforeClear);
+  await screenshotStep('布局：Refresh归属于标题，单项用量保留真实Core值，不用新增API或文案选择器。 / Layout: Refresh belongs to the heading and the single usage measure retains Core values without extra APIs or translated selectors.');
 
   // 用户操作：Cancel不清理；确认后清理记录和正文，列表与Inspector收到同一reset通知。
   // User actions: Cancel preserves data; confirmation clears records and bodies and resets both the list and Inspector.
@@ -96,6 +99,7 @@ test('settings.storage.refresh-clear presents one usage measure and shares Captu
   await expect(rows).toHaveCount(0);
   await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close)).toHaveCount(0);
   await expect(recording).toHaveAttribute('aria-pressed', 'false');
+  await screenshotStep('用户操作：Cancel不清理；确认后清理记录和正文，列表与Inspector收到同一reset通知。 / User actions: Cancel preserves data; confirmation clears records and bodies and resets both the list and Inspector.');
 
   // 再录制与反向清理：新请求可见，Capture列表Clear后Storage刷新得到相同的空状态。
   // Record again and clear from the other entry: new traffic is captured and list Clear produces the same empty Storage state.
@@ -119,6 +123,7 @@ test('settings.storage.refresh-clear presents one usage measure and shares Captu
   await refresh.click();
   await expect(refresh).toBeEnabled();
   await expect.poll(usage).toEqual({ exchanges: 0, bodies: 0, bytes: 0 });
+  await screenshotStep('再录制与反向清理：新请求可见，Capture列表Clear后Storage刷新得到相同的空状态。 / Record again and clear from the other entry: new traffic is captured and list Clear produces the same empty Storage state.');
 
   // 证据与清理：只保存本轮统计及身份，fixture正常Close并核验进程、8888和系统代理恢复。
   // Evidence and cleanup: save this workflow's measurements and identities; the fixture verifies normal exit and host restoration.

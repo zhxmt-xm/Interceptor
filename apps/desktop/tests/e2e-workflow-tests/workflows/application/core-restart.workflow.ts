@@ -14,6 +14,7 @@ import {
   startRecording,
 } from '../../fixtures/ui/capture-workflow';
 import { expect, type LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 interface SystemProxyJournalRecord {
   /** Complete WinINet snapshot captured before takeover. */
@@ -140,6 +141,7 @@ test('application.lifecycle.core-restart restores Core and system proxy ordering
     AUTOMATION_IDS.capture.inspector.bodyPane,
   )).toContainText(firstRequestPath);
   evidence.firstRequestCaptured = true;
+  await screenshotStep('用户流：Core A先处理一条真实代理请求，Renderer通过row和Inspector展示结果。 / User flow: Core A serves one real proxied request and Renderer exposes it through the row and Inspector.');
 
   // 故障：测试环境只终止已登记的Core A代际，Main保持运行并创建Core B。
   // Fault: the test environment terminates only registered Core A while Main stays alive and creates Core B.
@@ -169,6 +171,7 @@ test('application.lifecycle.core-restart restores Core and system proxy ordering
   expect(evidence.originalSnapshotPreserved).toBe(true);
   expect(evidence.ownedSnapshotPreserved).toBe(true);
   expect(isDeepStrictEqual(await desktopApp.readSystemProxySettings(), secondJournal.record.owned)).toBe(true);
+  await screenshotStep('业务断言：旧Capture消失；自动Restore后新Core重新接管，但original绝不变成8888。 / Business assertions: old Capture disappears; the new Core retakes the proxy after automatic Restore without replacing original with 8888.');
 
   // 恢复：Core B处理第二条请求，并通过公开导航证明Renderer与RPC仍可用。
   // Recovery: Core B serves a second request and public navigation proves Renderer and RPC remain usable.
@@ -192,6 +195,7 @@ test('application.lifecycle.core-restart restores Core and system proxy ordering
     );
   }
   expect(desktopApp.rendererPageErrors()).toEqual([]);
+  await screenshotStep('恢复：Core B处理第二条请求，并通过公开导航证明Renderer与RPC仍可用。 / Recovery: Core B serves a second request and public navigation proves Renderer and RPC remain usable.');
 
   // Evidence/teardown：Core B故障后立即Close；忙时核对拒绝且不自动退出，恢复后再显式Quit。
   // Evidence/teardown: Close after Core B fails; verify a busy rejection is not replayed, then explicitly Quit after recovery.

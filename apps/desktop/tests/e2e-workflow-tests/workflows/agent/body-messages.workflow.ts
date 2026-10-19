@@ -18,6 +18,7 @@ import {
   LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { runPlaygroundCaptureScenario } from '../../fixtures/ui/playground-capture-workflow';
 
@@ -301,6 +302,7 @@ test('agent.tools.body-messages reads bounded HTTP, WebSocket and gRPC data', as
     await runPlaygroundCaptureScenario(browserPage, 'ws-bidirectional');
     const httpExchangeId = await capturedExchangeId(desktopApp.page, HTTP_PATH);
     const webSocketExchangeId = await capturedExchangeId(desktopApp.page, WEBSOCKET_PATH);
+    await screenshotStep('准备：经产品UI配置Provider和Recording，再从正式Playground公开UI自产HTTP正文与WebSocket流量。 / Arrange: configure Provider and Recording through product UI, then create HTTP body and WebSocket traffic through the official Playground UI.');
 
     // 用户操作：先discover并读取真实Exchange detail，从Tool Result而非测试内部状态取得bodyId。
     // User action: discover and read the real Exchange detail, deriving bodyId from the Tool Result rather than test internals.
@@ -406,6 +408,7 @@ test('agent.tools.body-messages reads bounded HTTP, WebSocket and gRPC data', as
       desktopApp.page,
       AutomationIdFactory.agentToolResult('call-ws-all'),
     )).toHaveAttribute('data-summary-kind', 'websocket');
+    await screenshotStep('用户操作：同一Chat按真实bodyId读取有限正文，并分页读取全部与单方向WebSocket消息。 / User action: read a bounded body by its real bodyId, then page all and one-direction WebSocket messages in the same Chat.');
 
     // 准备：完全通过产品Certificates UI启用localhost解密，再运行正式Playground gRPC场景。
     // Arrange: enable localhost decryption entirely through product Certificates UI, then run the official Playground gRPC scenario.
@@ -414,6 +417,7 @@ test('agent.tools.body-messages reads bounded HTTP, WebSocket and gRPC data', as
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
     await runPlaygroundCaptureScenario(browserPage, 'grpc-unary-json');
     const grpcExchangeId = await capturedExchangeId(desktopApp.page, GRPC_PATH);
+    await screenshotStep('准备：完全通过产品Certificates UI启用localhost解密，再运行正式Playground gRPC场景。 / Arrange: enable localhost decryption entirely through product Certificates UI, then run the official Playground gRPC scenario.');
 
     // 用户操作与断言：读取gRPC两侧envelope元数据，验证side、offset、length与完成状态。
     // User action and assertions: read both gRPC envelope sides and verify side, offset, length, and completion state.
@@ -467,6 +471,7 @@ test('agent.tools.body-messages reads bounded HTTP, WebSocket and gRPC data', as
       AutomationIdFactory.agentToolResult('call-grpc-response'),
     )).toHaveAttribute('data-summary-kind', 'grpc');
     expect(desktopApp.rendererPageErrors()).toEqual([]);
+    await screenshotStep('用户操作与断言：读取gRPC两侧envelope元数据，验证side、offset、length与完成状态。 / User action and assertions: read both gRPC envelope sides and verify side, offset, length, and completion state.');
 
     // 清理特权状态：在重启前经产品UI关闭MITM、移除例外、卸载并删除本轮CA。
     // Privileged cleanup: before restart, disable MITM, remove the exception, uninstall and delete this CA through product UI.
@@ -551,6 +556,7 @@ test('agent.tools.body-messages reads bounded HTTP, WebSocket and gRPC data', as
       await toggle.click();
       await expect(toggle).toHaveAttribute('aria-checked', 'true');
     }
+    await screenshotStep('用户操作：关闭三项Agent开关后，新Chat不可发现也不可猜测调用；随后恢复全部开关。 / User action: after disabling all three Agent switches, a new Chat cannot discover or guess-call them; restore every switch afterward.');
 
     // Evidence：只保存identity、计数、状态码和请求hash，不附加Prompt或正文。
     // Evidence: retain only identities, counts, status codes, and request hashes, never prompts or body content.
@@ -575,6 +581,7 @@ test('agent.tools.body-messages reads bounded HTTP, WebSocket and gRPC data', as
     });
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.panel.close).click();
     await relaunchedApp.startTrace(testInfo);
+    await screenshotStep('Evidence：只保存identity、计数、状态码和请求hash，不附加Prompt或正文。 / Evidence: retain only identities, counts, status codes, and request hashes, never prompts or body content.');
   } catch (error) {
     workflowError = error;
   } finally {

@@ -12,6 +12,7 @@ import {
   getByAutomationIdPrefix,
 } from '../../fixtures/ui/automation';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 async function dynamicId(locator: Locator, prefix: string): Promise<string> {
   const automationId = await locator.getAttribute('data-automation-id');
@@ -69,6 +70,7 @@ test('rules.action-tag-overflow keeps row actions compact and fully accessible',
   const level3Id = await dynamicId(folderRename, AUTOMATION_ID_PREFIXES.ruleFolderRename);
   await folderRename.fill('E2E action tags level 3');
   await folderRename.press('Enter');
+  await screenshotStep('通过真实Rules菜单创建三级目录，锁定最窄的合法Rule row宽度。 / Create three folder levels through real Rules menus to lock the narrowest legal Rule row.');
 
   // 在第三级目录创建Rule，并按真实用户顺序添加四类可区分chip的action。
   // Create a Rule in the third-level folder and add four distinct chip categories in user order.
@@ -98,6 +100,7 @@ test('rules.action-tag-overflow keeps row actions compact and fully accessible',
   await level3Target.click();
   await expect(level3Target).toHaveAttribute('aria-pressed', 'true');
   await expect(ruleTarget).toHaveAttribute('aria-pressed', 'false');
+  await screenshotStep('在第三级目录创建Rule，并按真实用户顺序添加四类可区分chip的action。 / Create a Rule in the third-level folder and add four distinct chip categories in user order.');
 
   // 行内必须只有前两个chip；省略入口与hit count不重叠，整行不得横向溢出。
   // Only the first two chips stay inline; overflow and hit count cannot overlap or widen the row.
@@ -137,6 +140,7 @@ test('rules.action-tag-overflow keeps row actions compact and fully accessible',
     .toBeLessThan(0.5);
   expect(overflowBox!.x + overflowBox!.width).toBeLessThanOrEqual(hitBox!.x);
   expect(await ruleRow.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await screenshotStep('行内必须只有前两个chip；省略入口与hit count不重叠，整行不得横向溢出。 / Only the first two chips stay inline; overflow and hit count cannot overlap or widen the row.');
 
   // Mouse hover与keyboard focus都展示完整有序Tooltip，入口本身不改变Rule状态。
   // Mouse hover and keyboard focus both reveal the full ordered Tooltip without changing Rule state.
@@ -159,6 +163,7 @@ test('rules.action-tag-overflow keeps row actions compact and fully accessible',
     .toHaveValue('E2E ordered action tags');
   await expect(getByAutomationId(page, AUTOMATION_IDS.rules.editorEnabled))
     .toHaveAttribute('aria-checked', 'false');
+  await screenshotStep('Mouse hover与keyboard focus都展示完整有序Tooltip，入口本身不改变Rule状态。 / Mouse hover and keyboard focus both reveal the full ordered Tooltip without changing Rule state.');
 
   // 保存结构、顺序与几何事实；driver随后验证正常销毁及系统副作用恢复。
   // Save structure, order, and geometry facts; the driver then verifies teardown and restoration.
@@ -185,4 +190,5 @@ test('rules.action-tag-overflow keeps row actions compact and fully accessible',
     path: evidencePath,
     contentType: 'application/json',
   });
+  await screenshotStep('保存结构、顺序与几何事实；driver随后验证正常销毁及系统副作用恢复。 / Save structure, order, and geometry facts; the driver then verifies teardown and restoration.');
 });

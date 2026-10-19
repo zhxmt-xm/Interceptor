@@ -1,4 +1,5 @@
 import { writeFile } from 'node:fs/promises';
+import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type { Page, TestInfo } from '@playwright/test';
 
 import {
@@ -6,11 +7,13 @@ import {
   AutomationIdFactory,
 } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
+import { copyMcpClientConfiguration } from '../../fixtures/ui/mcp-workflow';
 import {
   expect,
   LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 interface ProductState {
   readonly recording: string | null;
@@ -167,7 +170,7 @@ async function closeGeneration(
 test('agent.tools.settings-capabilities persists independent default-on switches', async ({
   desktopApp,
 }, testInfo) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   testInfo.annotations.push({
     type: 'renderer-workflow',
     description: 'agent.tools.settings-capabilities',
@@ -200,6 +203,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       ) ?? ''
     )), TOOL_GROUP_AUTOMATION_PREFIX);
     expect(groupIds).toEqual(TOOL_GROUP_IDS);
+    await screenshotStep('准备：记录真实产品业务初态，再进入无Provider也必须可用的Tool设置。 / Arrange: record real product state, then open Tool settings that require no Provider.');
 
     // 业务断言：fresh profile的69行、138个Agent/MCP开关必须全部开启。
     // Business assertion: all 138 Agent/MCP switches across 69 fresh-profile rows start enabled.
@@ -211,6 +215,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
     expect(await switches.evaluateAll((items) => (
       items.every((item) => item.getAttribute('aria-checked') === 'true')
     ))).toBe(true);
+    await screenshotStep('业务断言：fresh profile的69行、138个Agent/MCP开关必须全部开启。 / Business assertion: all 138 Agent/MCP switches across 69 fresh-profile rows start enabled.');
 
     // 用户操作：两列各关闭一项；同一行另一列和其他Tool不得联动。
     // User actions: disable one Tool in each column without changing its peer or other Tools.
@@ -228,6 +233,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
     await expectToolState(desktopApp.page, 'rules_replace_tree', 'mcp', false);
     await expectToolState(desktopApp.page, 'capture_get_exchange', 'agent', true);
     await expectToolState(desktopApp.page, 'capture_get_exchange', 'mcp', true);
+    await screenshotStep('用户操作：两列各关闭一项；同一行另一列和其他Tool不得联动。 / User actions: disable one Tool in each column without changing its peer or other Tools.');
 
     // 用户操作：搜索只过滤可见行；清空与Settings往返后关闭状态仍由Main快照恢复。
     // User actions: search only filters rows; clearing it and returning to Settings retain Main state.
@@ -244,6 +250,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
     await openAgentSettings(desktopApp.page);
     await expectToolState(desktopApp.page, 'capture_get_proxy_status', 'agent', false);
     await expectToolState(desktopApp.page, 'rules_replace_tree', 'mcp', false);
+    await screenshotStep('用户操作：搜索只过滤可见行；清空与Settings往返后关闭状态仍由Main快照恢复。 / User actions: search only filters rows; clearing it and returning to Settings retain Main state.');
 
     // 业务断言：开关交互没有改变Capture、Rules或系统代理状态。
     // Business assertion: capability switches do not change Capture, Rules, or system proxy state.
@@ -296,6 +303,74 @@ test('agent.tools.settings-capabilities persists independent default-on switches
     ));
     expect(evidence.allEnabledRestored).toBe(true);
     expect(secondRelaunch.rendererPageErrors()).toEqual([]);
+
+    // 完整只读：逐项关闭全部change的双列权限，保留全部query，不执行任何change。
+    // Complete read-only setup: disable every change Tool in both columns, retaining every query without executing a change.
+    const kinds = await secondRelaunch.page.locator('[data-automation-id^="agent.tools.row."]').evaluateAll(elements =>
+      elements.map(element => ({
+        name: element.getAttribute('data-automation-id')?.slice('agent.tools.row.'.length),
+        kind: element.querySelector('[data-kind]')?.getAttribute('data-kind'),
+      })));
+    const changes: string[] = [];
+    const queries: string[] = [];
+    for (const item of kinds) {
+      if (!item.name || !['query', 'change'].includes(item.kind ?? '')) {
+        throw new Error('The capability row omitted its name or kind.');
+      }
+      if (item.kind === 'query') queries.push(item.name);
+      else {
+        changes.push(item.name);
+        await getByAutomationId(secondRelaunch.page, AutomationIdFactory.agentToolAgentSwitch(item.name)).click();
+        await getByAutomationId(secondRelaunch.page, AutomationIdFactory.agentToolMcpSwitch(item.name)).click();
+      }
+    }
+    expect(changes.length).toBeGreaterThan(0);
+    expect(queries.length).toBeGreaterThan(0);
+    await getByAutomationId(secondRelaunch.page, AUTOMATION_IDS.mcp.server.enable).click();
+    await expect(getByAutomationId(secondRelaunch.page, AUTOMATION_IDS.mcp.server.root)).toHaveAttribute('data-server-state', 'running');
+    await getByAutomationId(secondRelaunch.page, AUTOMATION_IDS.mcp.client.add).click();
+    await getByAutomationId(secondRelaunch.page, AUTOMATION_IDS.mcp.client.label).fill('Read-only verification client');
+    await getByAutomationId(secondRelaunch.page, AUTOMATION_IDS.mcp.client.create).click();
+    const clientId = await secondRelaunch.page.locator('[data-automation-id^="mcp.client.row."]').getAttribute('data-client-id');
+    if (!clientId) throw new Error('The read-only Client omitted its identity.');
+    const configuration = await copyMcpClientConfiguration(secondRelaunch, testInfo, clientId);
+    const verifyReadOnly = async (current: LocalElectronApplicationDriver) => {
+      for (const [names, enabled] of [[changes, false], [queries, true]] as const) {
+        for (const name of names) {
+          await expectToolState(current.page, name, 'agent', enabled);
+          await expectToolState(current.page, name, 'mcp', enabled);
+        }
+      }
+      const client = new Client({ name: 'readonly-capabilities', version: '1.0.0' }, {
+        versionNegotiation: { mode: { pin: '2026-07-28' } },
+      });
+      try {
+        await client.connect(new StreamableHTTPClientTransport(new URL(configuration.url), {
+          requestInit: { headers: { Authorization: `Bearer ${configuration.token}` } },
+        }));
+        expect((await client.listTools()).tools.map(tool => tool.name).sort()).toEqual([...queries].sort());
+        await expect(client.callTool({ name: 'capture_clear', arguments: {} })).rejects.toThrow('Tool capture_clear not found');
+        expect((await client.callTool({ name: 'capture_get_proxy_status', arguments: {} })).isError).not.toBe(true);
+        await expect(getByAutomationId(current.page, AUTOMATION_IDS.mcp.approval.root)).toHaveCount(0);
+      } finally {
+        await client.close();
+      }
+    };
+    await verifyReadOnly(secondRelaunch);
+    await screenshotStep('全部change关闭后只能发现query / Only query Tools remain discoverable after all change Tools are disabled');
+    await closeGeneration(secondRelaunch, testInfo);
+    activeApp = null;
+    const readonlyRelaunch = await LocalElectronApplicationDriver.launch(testInfo, {
+      userDataDirectory: desktopApp.userDataDirectory, evidencePrefix: 'readonly-relaunch',
+    });
+    activeApp = readonlyRelaunch;
+    await readonlyRelaunch.waitUntilReady();
+    await openAgentSettings(readonlyRelaunch.page);
+    readonlyRelaunch.registerSensitiveTextForEvidenceAudit(configuration.token);
+    await verifyReadOnly(readonlyRelaunch);
+    await screenshotStep('重启后保留完整双列只读权限 / Retain the complete read-only configuration in both columns after restart');
+    await getByAutomationId(readonlyRelaunch.page, AUTOMATION_IDS.mcp.server.enable).click();
+    await expect(getByAutomationId(readonlyRelaunch.page, AUTOMATION_IDS.mcp.server.root)).toHaveAttribute('data-server-state', 'disabled');
 
     // 证据：只附加公开行ID和状态，不读取或注入内部设置文件。
     // Evidence: attach only public row IDs and state without reading or seeding the settings file.

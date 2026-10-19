@@ -7,6 +7,7 @@ import type { Locator } from '@playwright/test';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { cleanHttpsCapture, prepareHttpsCapture } from '../../fixtures/ui/https-capture';
@@ -112,6 +113,7 @@ for (const protocol of ['grpc', 'websocket'] as const) {
       evidence.initial = initial;
       await page.screenshot({ path: testInfo.outputPath(`${protocol}-initial.png`) });
       await writeFile(testInfo.outputPath(`${protocol}-geometry.json`), JSON.stringify(evidence, null, 2), 'utf8');
+      await screenshotStep('用户操作：按自产连接及公共消息ID展开短/长正文，不调用业务API或注入Store。 / User actions: select the captured connection and expand short/long payloads through public IDs, without injected state.');
 
       // 业务断言：长正文只占容器可用空间，右下角真实拖拽改变显示高度而非字节。
       // Assertions: bound the long body to available space; real corner dragging changes height, not payload bytes.
@@ -153,6 +155,7 @@ for (const protocol of ['grpc', 'websocket'] as const) {
         : [...Buffer.from(long)].map(byte => byte.toString(16).padStart(2, '0')).join(' ');
       await expect.poll(readCopiedText).toBe(messageCopy);
       evidence.copy = { length: long.length, sha256: createHash('sha256').update(long).digest('hex') };
+      await screenshotStep('交互断言：滚动正文时标题不移动，到末行后继续滚外层；键盘及Copy仍可访问完整消息。 / Interaction: scroll within the body before chaining outward; keyboard navigation and Copy retain the full message.');
 
       // 窗口尺寸：只调整本轮真实Main窗口，恢复空间后保留手动正文高度。
       // Window sizing: resize only the owned Main window and restore its manually selected body height.
@@ -235,8 +238,10 @@ end tell
         await getByAutomationId(page, AutomationIdFactory.grpcPayloadCopy(pagedExchange, 'response', 204)).click();
         await expect.poll(readCopiedText).toBe(pagePayloads[204]);
         evidence.pagination = { messageCount: pagePayloads.length, lastIndex: 204, lastCopied: true };
+        await screenshotStep('分页回归：使用同一外层滚动容器继续加载超过两页的真实消息并复制末条。 / Pagination regression: the same outer scroll viewport loads over two real message pages and copies the last one.');
       }
       expect(desktopApp.rendererPageErrors()).toEqual([]);
+      await screenshotStep('窗口尺寸：只调整本轮真实Main窗口，恢复空间后保留手动正文高度。 / Window sizing: resize only the owned Main window and restore its manually selected body height.');
     } finally {
       // 证据与清理：保留实际结果，经UI恢复本profile TLS配置，外层fixture验证全部进程和系统恢复。
       // Evidence and cleanup: retain observed results, restore profile TLS through UI, and let the fixture verify process and host restoration.

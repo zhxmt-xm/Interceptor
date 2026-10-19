@@ -2,6 +2,7 @@ import { writeFile } from 'node:fs/promises';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 
@@ -185,6 +186,7 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
         await expect(bodyPane).toHaveCount(1);
         await expect(dialog.locator(`[data-automation-id="${AUTOMATION_IDS.capture.inspector.bodyPane}"]`)).toContainText(expected.body);
         await expect(dialog.locator(`[data-automation-id="${AUTOMATION_IDS.capture.inspector.bodyAction.fullscreen}"]`)).toHaveCount(0);
+        await screenshotStep('用户操作：选定正文并切到Raw，再由正式Fullscreen按钮打开共享弹层。 / User actions: select the body in Raw mode, then open the shared dialog through the real Fullscreen button.');
 
         // 内容断言：弹层Header仅保留Copy与Close，复制原文，关闭后仍保持Raw且正文不变。
         // Content assertions: the dialog header keeps Copy and Close, copies the original body, and preserves Raw content on closing.
@@ -204,6 +206,7 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
         await expect(rawMode).toHaveAttribute('aria-checked', 'true');
         await expect(bodyPane).toHaveCount(1);
         await expect(bodyPane).toContainText(expected.body);
+        await screenshotStep('内容断言：弹层Header仅保留Copy与Close，复制原文，关闭后仍保持Raw且正文不变。 / Content assertions: the dialog header keeps Copy and Close, copies the original body, and preserves Raw content on closing.');
 
         // 模式与生命周期：再次打开切到Hex，用Escape关闭后保留Hex，再回Raw复制同一份正文。
         // Mode and lifecycle: reopen in Hex, preserve Hex after Escape, then return to Raw and copy the same captured body.
@@ -219,10 +222,12 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
         await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy).click();
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(expected.body);
         evidence.push({ path: response.path, side: expected.side, bodyBytes: Buffer.byteLength(expected.body), copyVerified: true, urlCopyVerified: true, methodCopyVerified: true, modePreserved: true });
+        await screenshotStep('模式与生命周期：再次打开切到Hex，用Escape关闭后保留Hex，再回Raw复制同一份正文。 / Mode and lifecycle: reopen in Hex, preserve Hex after Escape, then return to Raw and copy the same captured body.');
       });
     }
     await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
   }
+  await screenshotStep('准备：从真实录制UI开始，所有正文均由本轮客户端和origin经代理产生。 / Arrange: begin with real Recording UI and produce every body through this client\'s proxied origin traffic.');
 
   // 证据与清理：不注入正文或Store，保存真实Copy/模式结论，fixture负责正常退出及宿主恢复。
   // Evidence and cleanup: no body or Store injection; retain real Copy/mode results and let fixtures verify graceful host restoration.

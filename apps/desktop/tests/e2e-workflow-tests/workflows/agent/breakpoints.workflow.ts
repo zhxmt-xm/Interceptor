@@ -18,6 +18,7 @@ import {
   LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
@@ -320,6 +321,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
     page,
     AutomationIdFactory.agentToolResult('breakpoints-list'),
   )).toHaveAttribute('data-breakpoint-count', '1');
+  await screenshotStep('Query：渐进发现严格十一项，并直接读取与DOM相同的pending identity和typed摘要。 / Query: discover exactly eleven Tools and directly read the same pending identity plus typed summary.');
 
   // Ask Deny/Allow：Deny保持客户端等待，Allow只释放公开ID且typed结果为continued。
   // Ask Deny/Allow: Deny keeps the client waiting; Allow releases only the public ID with a typed continued result.
@@ -362,6 +364,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
     AutomationIdFactory.agentToolResult('continue-allow'),
   )).toHaveAttribute('data-breakpoint-state', 'continued');
   evidence.continueAllowed = true;
+  await screenshotStep('Ask Deny/Allow：Deny保持客户端等待，Allow只释放公开ID且typed结果为continued。 / Ask Deny/Allow: Deny keeps the client waiting; Allow releases only the public ID with a typed continued result.');
 
   // Stale：已解决ID在审批前失败，不产生第二次副作用。
   // Stale: the resolved ID fails before approval and cannot produce a second side effect.
@@ -381,6 +384,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
     AutomationIdFactory.agentToolApproval('continue-stale'),
   )).toHaveCount(0);
   evidence.staleRejected = true;
+  await screenshotStep('Stale：已解决ID在审批前失败，不产生第二次副作用。 / Stale: the resolved ID fails before approval and cannot produce a second side effect.');
 
   // Ask Edit / Auto Drop：真实origin只收到Allow后的文本编辑；Drop客户端失败且origin零到达。
   // Ask Edit / Auto Drop: the real origin receives text edits only after Allow; Drop fails the client and never reaches origin.
@@ -429,6 +433,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
   await expect(dropped.outcome).resolves.toHaveProperty('error');
   expect(loopbackLab.observation(dropPath)).toBeUndefined();
   evidence.editAndDrop = true;
+  await screenshotStep('Ask Edit / Auto Drop：真实origin只收到Allow后的文本编辑；Drop客户端失败且origin零到达。 / Ask Edit / Auto Drop: the real origin receives text edits only after Allow; Drop fails the client and never reaches origin.');
 
   // HTTP配置：disable让后续POST直通，enable让下一条POST重新pending并可继续。
   // HTTP configuration: disable lets the next POST pass; enable makes the following POST pending again and resolvable.
@@ -583,6 +588,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
     AUTOMATION_ID_PREFIXES.breakpointPending,
   ).filter({ hasText: afterDisable })).toHaveCount(0);
   evidence.webSocketConfiguration = true;
+  await screenshotStep('WebSocket：真实连接自产exchangeId；Agent启用后frame变pending，Continue后到达origin，停用后下一帧直通。 / WebSocket: a real connection produces exchangeId; enable makes a frame pending, Continue reaches origin, and disable lets the next frame pass.');
 
   // Settings边界：关闭十一项后分轮验证discovery与逐项unknown_tool，避免把整组失败塞进一个Turn；最后恢复默认开关与Ask。
   // Settings boundary: verify empty discovery and each unknown Tool in separate turns, without packing every failure into one turn; finally restore defaults and Ask.
@@ -634,6 +640,7 @@ test('agent.tools.breakpoints controls real HTTP and WebSocket pending traffic',
   await setExecutionMode(page, 'ask');
   await getByAutomationId(page, AUTOMATION_IDS.agent.panel.close).click();
   await desktopApp.startTrace(testInfo);
+  await screenshotStep('Settings边界：关闭十一项后分轮验证discovery与逐项unknown_tool，避免把整组失败塞进一个Turn；最后恢复默认开关与Ask。 / Settings boundary: verify empty discovery and each unknown Tool in separate turns, without packing every failure into one turn; finally restore defaults and Ask.');
 
   // 重启：第一代完整销毁后，同profile不得重放Model调用或任何已完成resolution。
   // Restart: after fully destroying generation one, the same profile must not replay Model calls or completed resolutions.

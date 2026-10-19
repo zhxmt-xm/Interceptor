@@ -48,6 +48,8 @@ macOS常驻helper独立于每条workflow的Main/Core，不作为它们的子进�
 
 `apps/playground`不是测试Runner。Browser MCP流程需要真实Electron与浏览器之间的链路；Playground人工报告由使用者实际操作并观察产品与origin后填写，自动结果不能代填。
 
+业务workflow从`npm start → Test → E2E`选择普通验收或逐步截图，仍执行同一份操作与断言。截图模式自动建立独立运行目录，普通测试不会清理其产物；在明确检查点记录PNG，在原driver及宿主guard结束后生成带结果、语言/主题、尺寸和SHA-256的清单。不维护单独Guidebook制作/导入菜单或跨仓发布脚本，截图不绑定Homepage。macOS使用独立的一次性原生窗口截图工具，不需要录屏器或FFmpeg；Windows原生面板截图未实现时明确报错。直接CLI/CI参数、目录和平台范围见[步骤截图说明](../../apps/desktop/tests/e2e-workflow-tests/README.md#trace-与证据)。原图不自动发布，使用前仍须审核隐私与实际验证范围。
+
 ## 4. 执行约束
 
 - 普通E2E的Renderer DOM操作、原生文件面板关闭后的页面断言、窗口尺寸准备和产品Close均不主动前置App。窗口准备只等待并调整真实窗口，不以`frontmost`促使窗口出现；原生Open/Save、系统授权、原生快捷键和最小化恢复专项才由所属driver核对进程代际后取得焦点。产品正常启动显示窗口的行为不变，不增加后台模式或测试专用产品参数。

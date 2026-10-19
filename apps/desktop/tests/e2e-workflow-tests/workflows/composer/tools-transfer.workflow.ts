@@ -9,6 +9,7 @@ import type { Page, TestInfo } from '@playwright/test';
 import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { cancelFileDialog, submitFileDialogPath } from '../../fixtures/ui/file-dialog';
 import { automaticallyExecuteMcpClientTools } from '../../fixtures/ui/settings-workflow';
@@ -254,6 +255,7 @@ test('composer.tools.transfer exports and imports Collections through native dia
       expect(resultForCall(openAiCompatibleLab, `native-cancel-${index}`)).toEqual({ ok: true, value: index === 0 ? { exported: false } : { imported: false } });
     }
     expect(await readdir(directory)).toEqual(['product-collection.json']);
+    await screenshotStep('自产输入：UI创建请求与目录并自动保存，再由产品UI导出唯一导入文件，测试只读解析。 / Product-owned input: create requests and a folder, await autosave, then export the sole import file through product UI and inspect it read-only.');
 
     // Ask保存与确认：导出保持完整树，导入预览取消不写，确认后立即追加且重新生成所有身份。
     // Ask saving and confirmation: export preserves the tree, preview cancellation writes nothing, and confirmation appends with fresh identities immediately.
@@ -274,6 +276,7 @@ test('composer.tools.transfer exports and imports Collections through native dia
     await finishCall(desktopApp.page);
     expect(resultForCall(openAiCompatibleLab, 'import-allow')).toEqual({ ok: true, value: { imported: true, revision: initialRevision + 1, requestCount: 2, folderCount: 1, skippedCount: 0 } });
     verifyCopies(original, await exportFromUi(desktopApp, path.join(directory, 'after-allow.json')), 2);
+    await screenshotStep('Ask保存与确认：导出保持完整树，导入预览取消不写，确认后立即追加且重新生成所有身份。 / Ask saving and confirmation: export preserves the tree, preview cancellation writes nothing, and confirmation appends with fresh identities immediately.');
 
     // Auto仍保留原生选择与确认，重复导入只追加，不自动发送任何请求。
     // Auto still requires native selection and confirmation; repeated imports only append and never send requests.
@@ -291,6 +294,7 @@ test('composer.tools.transfer exports and imports Collections through native dia
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), autoPath);
     await finishCall(desktopApp.page);
     verifyCopies(original, await readTree(autoPath), 3);
+    await screenshotStep('Auto仍保留原生选择与确认，重复导入只追加，不自动发送任何请求。 / Auto still requires native selection and confirmation; repeated imports only append and never send requests.');
 
     // 双授权：Agent撤权后旧Chat无效，MCP仍使用同一导入/导出命令，随后MCP撤权立即生效。
     // Independent permissions: revoke Agent calls, exercise the same import and export commands through MCP, then revoke MCP immediately.
@@ -337,6 +341,7 @@ test('composer.tools.transfer exports and imports Collections through native dia
     for (const name of [EXPORT_TOOL, IMPORT_TOOL]) await expect(client.callTool({ name, arguments: {} })).rejects.toMatchObject({ code: -32602 });
     await client.close();
     client = null;
+    await screenshotStep('双授权：Agent撤权后旧Chat无效，MCP仍使用同一导入/导出命令，随后MCP撤权立即生效。 / Independent permissions: revoke Agent calls, exercise the same import and export commands through MCP, then revoke MCP immediately.');
 
     // 重启与证据：保存态/双授权保持，旧文件操作和Model请求不重放，归档只有哈希与协议结论。
     // Restart and evidence: preserve data and permissions without replaying file operations or Model requests; retain hashes and protocol outcomes only.

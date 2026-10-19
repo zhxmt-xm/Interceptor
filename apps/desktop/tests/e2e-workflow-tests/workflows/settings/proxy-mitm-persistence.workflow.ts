@@ -14,6 +14,7 @@ import {
   LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 const INSECURE_HOST = 'localhost';
 const PASSTHROUGH_HOST = '127.0.0.2';
@@ -311,6 +312,7 @@ test('restores proxy ownership and persists MITM settings across processes', asy
     )).toBeVisible();
     evidence.passthroughHostRestored = true;
     expect(relaunchedApp.rendererPageErrors()).toEqual([]);
+    await screenshotStep('业务断言：第二代Settings必须恢复MITM意图、源站例外和passthrough pattern。 / Business assertions: the second Settings view restores MITM intent, insecure host and passthrough pattern.');
   } catch (error) {
     workflowError = error;
   } finally {

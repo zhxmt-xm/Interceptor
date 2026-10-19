@@ -2,6 +2,7 @@ import { writeFile } from 'node:fs/promises';
 
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 
 test.skip(process.platform !== 'darwin', 'macOS HTTPS dialog positioning only');
@@ -49,9 +50,11 @@ test('capture.https-setup keeps the dialog centered while opening and taking evi
   expect(Math.max(...settled.map((frame) => Math.abs(frame.centerX)))).toBeLessThanOrEqual(1);
   expect(Math.max(...settled.map((frame) => Math.abs(frame.centerY)))).toBeLessThanOrEqual(1);
   expect(new Set(settled.map((frame) => `${frame.screenX},${frame.screenY}`)).size).toBe(1);
+  await screenshotStep('用户操作与证据：真实点击打开，按既有方式截图，再核对定位和主窗口稳定性。 / User actions and evidence: open through the real control, capture existing evidence, then verify dialog and window positions.');
 
   // 清理：只关闭弹窗；fixture 完成产品退出与系统代理恢复。
   // Cleanup: close only the dialog; the fixture performs product shutdown and system proxy restoration.
   await getByAutomationId(page, AUTOMATION_IDS.capture.httpsSetup.cancel).click();
   await expect(dialog).toHaveCount(0);
+  await screenshotStep('清理：只关闭弹窗；fixture 完成产品退出与系统代理恢复。 / Cleanup: close only the dialog; the fixture performs product shutdown and system proxy restoration.');
 });

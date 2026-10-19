@@ -8,6 +8,7 @@ import type { Page, TestInfo } from '@playwright/test';
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 
 const execFileAsync = promisify(execFile);
@@ -242,6 +243,7 @@ test('settings.tools.app-containers shares single and bulk changes with exact sy
         await expectState(desktopApp.page, desktopApp.desktopDirectory, expected, currentSids);
       }
     }
+    await screenshotStep('Agent：Ask逐项拒绝及允许，Auto重复四项，OS完整集合与已挂载的行状态必须同步。 / Agent: deny and allow each Ask action, then repeat in Auto and compare the complete OS set with mounted rows.');
 
     // MCP：正式UI创建独立Client，沿同一四项owner验证Ask/Auto及完整目标范围。
     // MCP: create a real Client through UI and verify the same owners, Ask/Auto, and exact mutation scope.
@@ -268,6 +270,7 @@ test('settings.tools.app-containers shares single and bulk changes with exact sy
         await expectState(desktopApp.page, desktopApp.desktopDirectory, expected, currentSids);
       }
     }
+    await screenshotStep('MCP：正式UI创建独立Client，沿同一四项owner验证Ask/Auto及完整目标范围。 / MCP: create a real Client through UI and verify the same owners, Ask/Auto, and exact mutation scope.');
 
     // 撤权：Agent与MCP开关独立生效，旧会话与Client不得再次写入系统。
     // Revocation: independent Agent and MCP switches stop old sessions and Clients from mutating the system.
@@ -288,6 +291,7 @@ test('settings.tools.app-containers shares single and bulk changes with exact sy
     await client.close();
     client = null;
     expect(setHash((await readSystemSnapshot(desktopApp.desktopDirectory)).exemptSids)).toBe(setHash(outside));
+    await screenshotStep('撤权：Agent与MCP开关独立生效，旧会话与Client不得再次写入系统。 / Revocation: independent Agent and MCP switches stop old sessions and Clients from mutating the system.');
 
     // 重启：第一代通过正式UI恢复完整初始集合，再验证下一代不重放且授权保持关闭。
     // Restart: restore the complete initial set through UI before closing, then verify no replay and persisted revocations.

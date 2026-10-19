@@ -13,6 +13,7 @@ import {
 } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import { submitFileDialogPath } from '../../fixtures/ui/file-dialog';
 
@@ -232,6 +233,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
   await expect(inFlight).resolves.toMatchObject({ statusCode: 200 });
   const observation = await observe(loopbackLab, requestPath);
   expect(observation.body.toString('utf8')).toBe(replacement);
+  await screenshotStep('中文：真实POST经8888进入暂停态，再通过产品编辑器提交Text正文替换。 / English: Send a real POST through 8888, then submit a Text body replacement in the product editor.');
 
   // 中文：数据面成功后，Capture必须公开绑定最终Breakpoint rule的正文证据marker。
   // English: After the data plane succeeds, Capture must expose a body marker bound to the final Breakpoint Rule.
@@ -259,6 +261,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
     AUTOMATION_IDS.capture.inspector.bodyEffect.final,
   ).click();
   await expect.poll(() => bodyPane.textContent()).toContain('final');
+  await screenshotStep('中文：数据面成功后，Capture必须公开绑定最终Breakpoint rule的正文证据marker。 / English: After the data plane succeeds, Capture must expose a body marker bound to the final Breakpoint Rule.');
 
   // 中文：marker必须导航回最终写入Rule；随后停用Breakpoint以隔离普通Rule场景。
   // English: The marker must navigate to the final writer Rule; then disable the Breakpoint for the regular Rule scene.
@@ -269,6 +272,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
   await expect(getByAutomationId(page, AUTOMATION_IDS.shell.workspace.rules))
     .toHaveAttribute('aria-current', 'page');
   await setRuleEnabled(page, ruleId, false);
+  await screenshotStep('中文：marker必须导航回最终写入Rule；随后停用Breakpoint以隔离普通Rule场景。 / English: The marker must navigate to the final writer Rule; then disable the Breakpoint for the regular Rule scene.');
 
   // 中文：普通Request Text Rule使用chunked输入，origin与Capture分别验证Final和Original。
   // English: A regular Request Text Rule uses chunked input; origin and Capture verify Final and Original.
@@ -312,6 +316,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
     AUTOMATION_IDS.capture.inspector.bodyEffect.original,
   ).click();
   await expect.poll(() => bodyPane.textContent()).toContain('regular-original');
+  await screenshotStep('中文：普通Request Text Rule使用chunked输入，origin与Capture分别验证Final和Original。 / English: A regular Request Text Rule uses chunked input; origin and Capture verify Final and Original.');
 
   // 中文：Response Text Rule保留Final，并明确禁用不可观测的Original。
   // English: A Response Text Rule keeps Final while explicitly disabling the unobservable Original.
@@ -358,6 +363,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
     AUTOMATION_IDS.capture.inspector.bodyEffect.unavailable,
   )).toBeVisible();
   await expect.poll(() => bodyPane.textContent()).toContain('response-final');
+  await screenshotStep('中文：Response Text Rule保留Final，并明确禁用不可观测的Original。 / English: A Response Text Rule keeps Final while explicitly disabling the unobservable Original.');
 
   // 中文：普通Rule先写正文，随后Request Breakpoint Text必须成为唯一最终写入者。
   // English: A regular Rule writes first, then Request Breakpoint Text must become the sole final writer.
@@ -398,6 +404,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
     AUTOMATION_IDS.capture.inspector.bodyEffect.original,
   ).click();
   await expect.poll(() => bodyPane.textContent()).toContain('override-original');
+  await screenshotStep('中文：普通Rule先写正文，随后Request Breakpoint Text必须成为唯一最终写入者。 / English: A regular Rule writes first, then Request Breakpoint Text must become the sole final writer.');
 
   // 中文：先用产品Save Dialog生成唯一的File replacement输入，不由测试写业务文件。
   // English: First generate the only File replacement input through the product Save Dialog, never by test seeding.
@@ -498,6 +505,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
       statusCode: 200,
       body: responseFileBytes.toString('utf8'),
     });
+    await screenshotStep('中文：Response Breakpoint通过真实Open Dialog选中该文件并Forward edited。 / English: A Response Breakpoint selects that file through the real Open Dialog and forwards it.');
 
     // 中文：Capture只公开File来源和Final，绝不泄漏绝对路径或伪造Response Original。
     // English: Capture exposes only File source and Final, never an absolute path or fabricated Response Original.
@@ -521,6 +529,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
     await expect.poll(() => bodyPane.textContent()).toContain('breakpoint-file-final');
     await expect(getByAutomationId(page, AUTOMATION_IDS.app.root))
       .not.toContainText(generatedFile);
+    await screenshotStep('中文：Capture只公开File来源和Final，绝不泄漏绝对路径或伪造Response Original。 / English: Capture exposes only File source and Final, never an absolute path or fabricated Response Original.');
   } finally {
     await rm(generatedFile, { force: true });
   }
@@ -531,6 +540,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
   await setRuleEnabled(page, responseBreakpointRuleId, false);
   await setRuleEnabled(page, ruleId, true);
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+  await screenshotStep('中文：先用产品Save Dialog生成唯一的File replacement输入，不由测试写业务文件。 / English: First generate the only File replacement input through the product Save Dialog, never by test seeding.');
 
   // 中文：Continue unmodified保留原文，不能从rule hit反推正文marker。
   // English: Continue unmodified preserves the body and must not infer a body marker from a Rule hit.
@@ -557,6 +567,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
     page,
     AUTOMATION_ID_PREFIXES.captureBodyRuleEffect,
   )).toHaveCount(0);
+  await screenshotStep('中文：Continue unmodified保留原文，不能从rule hit反推正文marker。 / English: Continue unmodified preserves the body and must not infer a body marker from a Rule hit.');
 
   // 中文：只编辑header时仍保留原正文，也不制造body marker。
   // English: A header-only edit still preserves the original body and creates no body marker.
@@ -586,6 +597,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
     page,
     AUTOMATION_ID_PREFIXES.captureBodyRuleEffect,
   )).toHaveCount(0);
+  await screenshotStep('中文：只编辑header时仍保留原正文，也不制造body marker。 / English: A header-only edit still preserves the original body and creates no body marker.');
 
   // 中文：保存origin证据；driver随后验证正常销毁、8888释放和系统代理恢复。
   // English: Attach origin evidence; the driver then verifies graceful teardown, port release, and proxy restoration.
@@ -703,6 +715,7 @@ test('rules.body-effect-evidence keeps breakpoint header effects aligned', async
         expect.soft(Math.abs(row.effect.rightDelta)).toBeLessThan(0.1);
       }
     }
+    await screenshotStep('布局证据：先保存真实区域与几何，再软断言以便两阶段都正常放行。 / Layout evidence: capture real geometry before soft assertions so both phases can still resume normally.');
 
     // 用户操作与数据断言：编辑后恢复值，增删普通行，再正常放行验证原有Rule结果。
     // User actions and data assertions: restore an edited value, add/remove a row, then resume and verify the Rule result.
@@ -724,7 +737,9 @@ test('rules.body-effect-evidence keeps breakpoint header effects aligned', async
       expect(String(result.headers['x-effect-layout'])).toContain('origin');
     }
     await setRuleEnabled(page, ruleId, false);
+    await screenshotStep('用户操作与数据断言：编辑后恢复值，增删普通行，再正常放行验证原有Rule结果。 / User actions and data assertions: restore an edited value, add/remove a row, then resume and verify the Rule result.');
   }
+  await screenshotStep('准备：真实Recording与loopback流量，不注入Rule或暂停快照。 / Arrange: use real Recording and loopback traffic without injecting Rules or paused snapshots.');
 
   // 清理：fixture关闭真实应用并验证进程、端口、WinINet和journal恢复。
   // Cleanup: the fixture closes the real application and verifies process, port, WinINet, and journal restoration.

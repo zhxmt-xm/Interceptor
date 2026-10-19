@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 const execute = promisify(execFile);
 const helperPath = '/Library/PrivilegedHelperTools/com.zhxmt.interceptor.platform-capabilities';
@@ -33,6 +34,7 @@ test('settings.helper-startup deploys the bundled component on launch and reuses
   const { stdout } = await execute('/bin/ps', ['-axww', '-o', 'pid=,comm=']);
   const servicePid = stdout.split('\n').find((line) => line.trim().endsWith(helperPath))?.trim().split(/\s+/)[0];
   expect(servicePid).toMatch(/^\d+$/);
+  await screenshotStep('App启动后原生组件已就绪 / The native component is ready after App startup');
 
   // 用户操作：由产品 Close 退出，再以同一 profile 启动新的真实 App。
   // User actions: exit using product Close and start another real App with the same profile.
@@ -53,6 +55,7 @@ test('settings.helper-startup deploys the bundled component on launch and reuses
     expect((await readFile(configurationPath)).equals(configurationBefore)).toBe(true);
     const processInfo = await execute('/bin/ps', ['-ww', '-p', servicePid!, '-o', 'comm=']);
     expect(processInfo.stdout.trim()).toBe(helperPath);
+    await screenshotStep('重新启动App后复用原生组件 / Reuse the native component after restarting the App');
     await restartedApp.captureFinalScreenshot(testInfo);
     await writeFile(testInfo.outputPath('helper-reuse.json'), JSON.stringify({
       helperProcessId: Number(servicePid), helperReused: true,

@@ -17,6 +17,7 @@ import {
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { waitForCertificateInstallation } from '../../fixtures/ui/https-capture';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 const PASSTHROUGH_HOST = '127.0.0.1';
 const TUNNEL_PROBE = Buffer.from('tls-passthrough-navigation-probe');
@@ -218,6 +219,7 @@ test('capture.navigate-tls-passthrough locates the persisted pattern', async ({
       AUTOMATION_IDS.shell.workspace.capture,
     ).click();
     tunnel = await tunnelLab.openThroughProxy(desktopApp.capturePort());
+    await screenshotStep('中文：全部系统副作用均由产品UI创建，随后建立测试自产CONNECT tunnel。 / English: Create every system side effect through product UI, then open a test-owned CONNECT tunnel.');
 
     // 中文：从真实Capture行进入Tunnel Inspector，只通过公开导航命令跳转。
     // English: Open the Tunnel Inspector from the real Capture row and navigate only through the public command.
@@ -233,6 +235,7 @@ test('capture.navigate-tls-passthrough locates the persisted pattern', async ({
     );
     await expect(navigate).toBeVisible();
     await navigate.click();
+    await screenshotStep('中文：从真实Capture行进入Tunnel Inspector，只通过公开导航命令跳转。 / English: Open the Tunnel Inspector from the real Capture row and navigate only through the public command.');
 
     // 中文：目标必须是实际持久化row，自动滚入视口并带短暂公开高亮状态。
     // English: The target must be the persisted row, scrolled into view with a short public highlight state.
@@ -256,6 +259,7 @@ test('capture.navigate-tls-passthrough locates the persisted pattern', async ({
     expect(targetLayout.height).toBeGreaterThanOrEqual(66);
     await testInfo.attach('tls-passthrough-target-layout', { body: Buffer.from(JSON.stringify(targetLayout)), contentType: 'application/json' });
     await expect(target).toHaveAttribute('data-highlighted', 'false', { timeout: 4_500 });
+    await screenshotStep('中文：目标必须是实际持久化row，自动滚入视口并带短暂公开高亮状态。 / English: The target must be the persisted row, scrolled into view with a short public highlight state.');
 
     // 中文：重复导航必须重新产生高亮，而不是持久保存旧状态。
     // English: Repeating navigation must restart the highlight instead of persisting stale state.
@@ -266,6 +270,7 @@ test('capture.navigate-tls-passthrough locates the persisted pattern', async ({
     await expect(navigate).toBeVisible();
     await navigate.click();
     await expectInsideViewport(target, desktopApp.page);
+    await screenshotStep('中文：重复导航必须重新产生高亮，而不是持久保存旧状态。 / English: Repeating navigation must restart the highlight instead of persisting stale state.');
   } catch (error) {
     workflowError = error;
   } finally {

@@ -12,6 +12,7 @@ import {
 } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 test('capture.clear-facets clears rows, selection and facets in one visible transition', async ({
   desktopApp,
@@ -42,6 +43,7 @@ test('capture.clear-facets clears rows, selection and facets in one visible tran
     requestPath,
     { method: 'GET' },
   )).resolves.toMatchObject({ statusCode: 200 });
+  await screenshotStep('通过真实Recording与显式代理请求建立一条刚进入facet快照的Capture记录。 / Build one freshly snapshotted Capture record through real Recording and an explicit proxy request.');
 
   // 冻结新录制，不假设系统代理接管期间只有本轮请求；既有请求与facet仍保留供Clear验证。
   // Freeze new recording without assuming exclusive system traffic; keep existing rows and facets for Clear assertions.
@@ -70,6 +72,7 @@ test('capture.clear-facets clears rows, selection and facets in one visible tran
     AutomationIdFactory.captureFacetOptionCount('method', 'GET'),
   );
   await expect(getCount).toHaveText(/^[1-9]\d*$/);
+  await screenshotStep('冻结新录制，不假设系统代理接管期间只有本轮请求；既有请求与facet仍保留供Clear验证。 / Freeze new recording without assuming exclusive system traffic; keep existing rows and facets for Clear assertions.');
 
   // 筛选清除只重置筛选，不清记录或selection；按钮随有效筛选在禁用与启用间切换。
   // Clearing filters preserves records and selection; the button follows inactive and active filter states.
@@ -91,6 +94,7 @@ test('capture.clear-facets clears rows, selection and facets in one visible tran
     methodGroupCount: (await methodGroupCount.textContent())?.trim() ?? null,
     getCount: (await getCount.textContent())?.trim() ?? null,
   };
+  await screenshotStep('筛选清除只重置筛选，不清记录或selection；按钮随有效筛选在禁用与启用间切换。 / Clearing filters preserves records and selection; the button follows inactive and active filter states.');
 
   // Clear完成后只等待列表业务结果，再原始读取selection与facet，禁止auto-retry掩盖600ms旧快照。
   // After Clear, wait only for the list result, then read selection and facets raw so auto-retry cannot hide the stale 600 ms snapshot.
@@ -116,6 +120,7 @@ test('capture.clear-facets clears rows, selection and facets in one visible tran
     getOptions: 0,
     groupCounts: Object.fromEntries(CAPTURE_FACET_IDS.map((facet) => [facet, '0'])),
   });
+  await screenshotStep('Clear完成后只等待列表业务结果，再原始读取selection与facet，禁止auto-retry掩盖600ms旧快照。 / After Clear, wait only for the list result, then read selection and facets raw so auto-retry cannot hide the stale 600 ms snapshot.');
 
   // 保存同帧归零证据；fixture随后正常Close并验证Main/Core、8888与系统代理恢复。
   // Save the same-transition clear evidence; the fixture then verifies normal Close, Main/Core, port 8888, and proxy restoration.

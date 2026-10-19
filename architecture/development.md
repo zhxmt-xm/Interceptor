@@ -80,7 +80,8 @@ npm start
 - 选择菜单中的“返回上一级”可以重新选择；最终确认输入`n`回到主菜单，不执行命令。`Ctrl+C`退出。
 - 命令顺序执行，任一步失败立即停止后续步骤并以非零状态退出，不自动重试或忽略失败。正常结束后回到主菜单。
 - Desktop使用`npm run dev`自动准备运行所需文件；Design直接启动开发预览。菜单不再提供“沿用已有Core”或不同预览模式。
-- Unit/Integration测试先构建Core，再以`--no-file-parallelism`运行所选范围；E2E自动prepare后运行所选功能或workflow，不再追问构建方式。
+- Unit/Integration测试先构建Core，再以`--no-file-parallelism`运行所选范围；E2E先选择普通验收或逐步截图，再选功能/workflow，自动prepare，不再追问构建方式。截图模式仍执行原业务断言，自动新建`apps/desktop/test-results/workflow-screenshots/<run>/`并输出实际路径；普通测试不清理该独立目录。
+- 不提供Guidebook专用workflow、制作或导入菜单。步骤图只是原E2E的可选产物，不绑定Homepage；采用截图作为文档素材前仍须审核隐私、版本和步骤内容。
 - Packaged smoke自动打包后运行；Artifact audit先打包再审计资源，不启动Desktop。不要与其他构建、开发实例或依赖产物的测试并行。
 - Parity只选择现有视图，保留其主题、尺寸和阈值，不修改设计基准。Watch、Browser专项、截图/图片对比、报告查看、单独Core/native构建等低频操作继续使用下文原始命令，不占用常用菜单。
 - 原生启动和打包只在相应平台可选。启动App或真实验收前会提示系统代理、证书授权和正常退出要求；向导不替代系统授权或恢复检查。

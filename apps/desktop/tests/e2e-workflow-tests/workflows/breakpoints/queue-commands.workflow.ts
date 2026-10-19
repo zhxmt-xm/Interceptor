@@ -9,6 +9,7 @@ import {
 import { createRequestBreakpointRule } from '../../fixtures/ui/breakpoint-workflow';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 test('breakpoints.queue-commands executes logical queue batch actions', async ({
   desktopApp,
@@ -49,6 +50,7 @@ test('breakpoints.queue-commands executes logical queue batch actions', async ({
   await expect(manager.locator(':scope > div').first()).toHaveCSS('line-height', 'normal');
   await manager.locator('header > button').last().click();
   await expect(manager).toBeHidden();
+  await screenshotStep('布局：队列操作前检查Manager的自然排版和共享按钮，不改变规则配置。 / Layout: inspect the shared manager before queue commands without changing its rules.');
 
   // Continue all from this rule: release both POST requests, ignore the draft, and leave PUT pending.
   // Continue all from this rule：释放两条POST、忽略草稿，并让PUT继续pending。
@@ -99,6 +101,7 @@ test('breakpoints.queue-commands executes logical queue batch actions', async ({
   await expect(rowPostB).not.toHaveAttribute('data-breakpoint-id');
   await expect(rowPutA).toHaveAttribute('data-breakpoint-state', 'head');
   await expect(breakpointBadge).toHaveText('1');
+  await screenshotStep('Continue all from this rule：释放两条POST、忽略草稿，并让PUT继续pending。 / Continue all from this rule: release both POST requests, ignore the draft, and leave PUT pending.');
 
   // Drop all: add a second PUT, then drop the invocation-time HTTP queue without reaching origin.
   // Drop all：再加入一条PUT，丢弃调用开始时的HTTP队列，且不得抵达origin。
@@ -121,6 +124,7 @@ test('breakpoints.queue-commands executes logical queue batch actions', async ({
   await expect(rowPutA).not.toHaveAttribute('data-breakpoint-id');
   await expect(rowPutB).not.toHaveAttribute('data-breakpoint-id');
   await expect(breakpointBadge).toHaveText('');
+  await screenshotStep('Drop all：再加入一条PUT，丢弃调用开始时的HTTP队列，且不得抵达origin。 / Drop all: add a second PUT, then drop the invocation-time HTTP queue without reaching origin.');
 
   // Continue all: build a fresh POST queue and release the whole logical queue unchanged.
   // Continue all：建立新的POST队列，并原样释放整个逻辑队列。
@@ -151,6 +155,7 @@ test('breakpoints.queue-commands executes logical queue batch actions', async ({
   await expect.poll(() => loopbackLab.observation(queueBPath)?.body.toString('utf8'))
     .toBe('queue-b-original');
   await expect(breakpointBadge).toHaveText('');
+  await screenshotStep('Continue all：建立新的POST队列，并原样释放整个逻辑队列。 / Continue all: build a fresh POST queue and release the whole logical queue unchanged.');
 
   // Evidence: retain all origin facts; shared fixture proves process and listener cleanup.
   // 证据：保存全部origin事实；共享fixture验证进程与listener销毁。

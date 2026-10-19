@@ -6,6 +6,7 @@ import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/cli
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const TOOL_NAMES = ['settings_enable_system_proxy', 'settings_restore_system_proxy'] as const;
@@ -192,6 +193,7 @@ test('settings.tools.system-proxy rejects overlapping Enable calls without a que
     expect(error).toContain('system-proxy.enable');
     await expect(getByAutomationId(page, AUTOMATION_IDS.platform.operationConflict))
       .toHaveAttribute('data-operation', 'system-proxy.enable');
+    await screenshotStep('用户操作：同一真实Main并发接收两个Enable，冲突请求必须立即结束而不是排队。 / User actions: send two concurrent Enable calls to the same real Main; a conflicting call must finish without queuing.');
 
     // 业务断言与证据：先前original/owned不变，旧冲突不重放，新显式调用可以正常执行。
     // Business assertions and evidence: preserve original/owned, never replay the conflict, and allow a new explicit call.
@@ -261,6 +263,7 @@ test('settings.tools.system-proxy preserves ownership across Ask Auto and restar
     await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolResult('restore-allow')))
       .toHaveAttribute('data-summary-kind', 'systemProxyRestore');
     await expectRestored(desktopApp, original);
+    await screenshotStep('用户操作与断言：Restore Deny 保持全部状态；Allow 精确恢复首次 original 并清除 journal。 / User actions and assertions: Restore Deny preserves all state; Allow restores the first original exactly and removes the journal.');
 
     // 用户操作与断言：Enable Deny 不写 OS；Allow 重新接管且 journal original 不被自身代理覆盖。
     // User actions and assertions: Enable Deny does not write the OS; Allow retakes ownership without replacing the journal original with itself.
@@ -275,6 +278,7 @@ test('settings.tools.system-proxy preserves ownership across Ask Auto and restar
     await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolResult('enable-allow')))
       .toHaveAttribute('data-summary-kind', 'systemProxy');
     await expectOwned(desktopApp, original);
+    await screenshotStep('用户操作与断言：Enable Deny 不写 OS；Allow 重新接管且 journal original 不被自身代理覆盖。 / User actions and assertions: Enable Deny does not write the OS; Allow retakes ownership without replacing the journal original with itself.');
 
     // 用户操作与断言：Auto 只省略审批，重复 Restore 返回 not-owned，然后沿正式路径重新接管。
     // User actions and assertions: Auto skips approval only; repeated Restore reports not-owned before the formal Enable path retakes ownership.
@@ -286,6 +290,7 @@ test('settings.tools.system-proxy preserves ownership across Ask Auto and restar
     await expectRestored(desktopApp, original);
     await completeChange(desktopApp.page, openAiCompatibleLab, 'enable-auto', 'settings_enable_system_proxy');
     await expectOwned(desktopApp, original);
+    await screenshotStep('用户操作与断言：Auto 只省略审批，重复 Restore 返回 not-owned，然后沿正式路径重新接管。 / User actions and assertions: Auto skips approval only; repeated Restore reports not-owned before the formal Enable path retakes ownership.');
 
     // 撤权：关闭两项 Agent/MCP 开关，旧 Chat 直接调用被拒绝，OS 和 journal 不变。
     // Revocation: disable both Agent and MCP switches; stale Chat calls are rejected without changing the OS or journal.
@@ -315,6 +320,7 @@ test('settings.tools.system-proxy preserves ownership across Ask Auto and restar
         .toMatchObject({ ok: false, error: { code: 'unknown_tool' } });
     }
     expect(desktopApp.matchesSystemProxyEvidence(await readProxyState(desktopApp), beforeRevokedCalls)).toBe(true);
+    await screenshotStep('撤权：关闭两项 Agent/MCP 开关，旧 Chat 直接调用被拒绝，OS 和 journal 不变。 / Revocation: disable both Agent and MCP switches; stale Chat calls are rejected without changing the OS or journal.');
 
     // 重启：第一代正常退出恢复宿主；同 profile 第二代仍自动接管，但 Model 和 Tool 不重放。
     // Restart: generation one restores the host on exit; generation two still takes ownership automatically without replaying Model or Tool calls.

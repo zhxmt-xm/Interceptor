@@ -12,6 +12,7 @@ import {
   getByAutomationIdPrefix,
 } from '../../fixtures/ui/automation';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 interface ClipboardSummary {
   readonly length: number;
@@ -92,6 +93,13 @@ test('composer.response.body-formatting formats by language and preserves failur
     headers: { 'content-type': 'application/xml' },
     body: xmlBody,
   });
+  const previewLimit = 2 * 1024 * 1024;
+  const largePath = '/e2e/composer/body-formatting/preview-limit';
+  const largeBody = JSON.stringify({ marker: 'preview-limit', padding: 'x'.repeat(previewLimit) });
+  loopbackLab.respondWith(largePath, {
+    headers: { 'content-type': 'application/json' },
+    body: largeBody,
+  });
 
   // 通过真实Composer UI发送小HTML，验证挂载时自动格式化。
   // Send small HTML through the real Composer UI and verify mount-time auto-formatting.
@@ -107,6 +115,7 @@ test('composer.response.body-formatting formats by language and preserves failur
   const htmlSummary = await copyBodySummary(page, copy);
   expect(htmlSummary.prefix.startsWith('<main>')).toBe(true);
   expect(htmlSummary.suffix.endsWith('</main>')).toBe(true);
+  await screenshotStep('01 · HTML自动格式化 / Automatically format HTML');
 
   // 发送小JavaScript，验证公开worker getter的自动格式化路径。
   // Send small JavaScript and verify auto-formatting through its public worker getter.
@@ -123,6 +132,7 @@ test('composer.response.body-formatting formats by language and preserves failur
   const javascriptSummary = await copyBodySummary(page, copy);
   expect(javascriptSummary.prefix).toContain('function example() {');
   expect(javascriptSummary.suffix).toContain('return { value };');
+  await screenshotStep('02 · JavaScript自动格式化 / Automatically format JavaScript');
 
   // 发送超过自动阈值的CSS，先锁定原文，再由用户显式Format。
   // Send CSS above the auto threshold, lock the raw baseline, then invoke explicit Format.
@@ -134,6 +144,7 @@ test('composer.response.body-formatting formats by language and preserves failur
   const cssRequestId = await activeRequestId(page);
   const cssBefore = await copyBodySummary(page, copy);
   expect(cssBefore).toMatchObject({ length: cssBody.length, lineCount: 1 });
+  await screenshotStep('03 · 查看超过自动阈值的CSS原文 / Inspect CSS above the automatic-formatting limit');
   await format.click();
   await expect.poll(
     async () => (await copyBodySummary(page, copy)).lineCount,
@@ -141,6 +152,7 @@ test('composer.response.body-formatting formats by language and preserves failur
   ).toBeGreaterThan(1);
   const cssAfter = await copyBodySummary(page, copy);
   expect(cssAfter.suffix).toContain('.a {');
+  await screenshotStep('04 · 手动Format CSS / Format CSS manually');
 
   // malformed XML必须恢复原文且不向真实Renderer泄漏未处理错误。
   // Malformed XML must restore the original text without leaking an uncaught Renderer error.
@@ -161,6 +173,7 @@ test('composer.response.body-formatting formats by language and preserves failur
   });
   await writeFile(testInfo.outputPath('body-formatting-errors.json'), JSON.stringify(pageFailures, null, 2), 'utf8');
   expect(desktopApp.rendererPageErrors()).toEqual(errorsBefore);
+  await screenshotStep('05 · 格式化失败保留XML原文 / Retain XML source when formatting fails');
 
   // 切回CSS文档时不再触发Format，必须恢复该response自己的格式化view cache。
   // Return to the CSS document without formatting again; its response-scoped view cache must restore.
@@ -176,6 +189,20 @@ test('composer.response.body-formatting formats by language and preserves failur
     prefix: cssAfter.prefix,
     suffix: cssAfter.suffix,
   });
+  await screenshotStep('06 · 切回文档保持格式化视图 / Restore the document’s formatted view');
+
+  // 超限响应：只复制2MiB预览，禁用Format，不把预览当完整响应。
+  // Preview limit: copy only the 2 MiB preview and disable Format, without treating it as the full response.
+  await getByAutomationId(page, AUTOMATION_IDS.composer.newRequest).click();
+  await getByAutomationId(page, AUTOMATION_IDS.composer.url).fill(loopbackLab.url(largePath));
+  await getByAutomationId(page, AUTOMATION_IDS.composer.send).click();
+  await expect.poll(() => loopbackLab.observation(largePath)?.method).toBe('GET');
+  await expect(format).toBeDisabled();
+  const largeSummary = await copyBodySummary(page, copy);
+  expect(largeSummary.length).toBe(previewLimit);
+  expect(largeSummary.prefix).toBe(largeBody.slice(0, 80));
+  expect(largeBody.length).toBeGreaterThan(largeSummary.length);
+  await screenshotStep('07 · 检查2MiB预览与禁用Format / Check the 2 MiB preview and disabled Format');
 
   // 保存四段及CSS恢复摘要；driver随后负责trace、正常Close和销毁验证。
   // Save four path summaries plus CSS restoration; the driver owns trace and teardown.
@@ -189,6 +216,7 @@ test('composer.response.body-formatting formats by language and preserves failur
       cssAfter,
       cssRestored,
       xmlSummary,
+      largeSummary,
     }, null, 2),
     'utf8',
   );

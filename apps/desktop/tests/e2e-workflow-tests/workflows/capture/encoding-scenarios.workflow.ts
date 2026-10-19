@@ -3,6 +3,7 @@ import { gzipSync } from 'node:zlib';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 
@@ -61,8 +62,10 @@ test('capture.scenarios.encoding decodes compressed bodies and preserves damaged
       }
       evidence.push({ scenarioId: expected.id, encodedBytes: result.response!.bodyBytes });
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
+      await screenshotStep('业务断言：正常编码显示独立预期JSON；损坏编码保留错误信息及原始字节，不伪造成功预览。 / Product assertions: valid encodings display independent JSON expectations; damaged bodies retain errors and bytes without fake previews.');
     });
   }
+  await screenshotStep('准备：真实UI开启Recording，使用已有压缩和损坏正文场景，所有字节经产品代理。 / Arrange: start Recording through UI and use existing compressed and damaged-body scenarios through the product proxy.');
 
     // 解码边界：压缩输入超过2 MiB，Core按明文字节截断，保留边界前的完整字符。
     // Decoded boundary: compressed input exceeds 2 MiB and Core limits decoded bytes without displaying an incomplete final character.
@@ -102,6 +105,7 @@ test('capture.scenarios.encoding decodes compressed bodies and preserves damaged
       evidence.push({ scenarioId: 'gzip-decoded-utf8-boundary', encodedBytes: encoded.byteLength });
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
     });
+    await screenshotStep('解码边界：压缩输入超过2 MiB，Core按明文字节截断，保留边界前的完整字符。 / Decoded boundary: compressed input exceeds 2 MiB and Core limits decoded bytes without displaying an incomplete final character.');
 
   // 证据与清理：保存逐场景字节事实；fixture保存trace并完整关闭origin/产品、恢复WinINet与journal。
   // Evidence and cleanup: retain per-scenario byte facts; fixtures save traces, close origins/product processes, and restore WinINet and journal.

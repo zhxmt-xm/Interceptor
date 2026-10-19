@@ -11,6 +11,7 @@ import {
   LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
@@ -263,6 +264,7 @@ test('agent.tools.diagnostics queries real redacted records in stable order', as
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.diagnostics).click();
     const composerRows = desktopApp.page.getByRole('button').filter({ hasText: 'composer.send' });
     await expect.poll(() => composerRows.count()).toBe(2);
+    await screenshotStep('业务断言：Diagnostics UI必须先看到两组composer.send记录，查询本身不得制造记录。 / Business assertion: Diagnostics UI must first observe two composer.send groups without the query recording itself.');
 
     // 用户操作：默认Ask Chat依次发现Diagnostics并执行组合过滤query，不出现change审批。
     // User actions: a default Ask Chat discovers Diagnostics and runs the filtered query without change approval.
@@ -282,6 +284,7 @@ test('agent.tools.diagnostics queries real redacted records in stable order', as
       'discover_tools',
       'diagnostics_query',
     ]);
+    await screenshotStep('用户操作：默认Ask Chat依次发现Diagnostics并执行组合过滤query，不出现change审批。 / User actions: a default Ask Chat discovers Diagnostics and runs the filtered query without change approval.');
 
     // 业务断言：首次仅有discovery；两次请求各有action和command记录，最新优先且不含Composer敏感输入。
     // Business assertions: only discovery is initially exposed; each request has action and command records, newest first and free of sensitive Composer input.
@@ -330,6 +333,7 @@ test('agent.tools.diagnostics queries real redacted records in stable order', as
     await expect(querySummary).toHaveAttribute('data-diagnostics-count', '4');
     await expect(querySummary).toHaveAttribute('data-diagnostics-has-more', 'false');
     await expect(querySummary).toHaveAttribute('data-diagnostics-dropped-count', '0');
+    await screenshotStep('业务断言：首次仅有discovery；两次请求各有action和command记录，最新优先且不含Composer敏感输入。 / Business assertions: only discovery is initially exposed; each request has action and command records, newest first and free of sensitive Composer input.');
 
     // 重启：隐藏敏感Transcript并完整销毁第一代；同profile恢复轨迹但不重放Model、Tool或Composer请求。
     // Restart: hide the sensitive Transcript and fully destroy generation one; restore it without replaying Model, Tool, or Composer requests.
@@ -402,6 +406,7 @@ test('agent.tools.diagnostics queries real redacted records in stable order', as
       toolResult(restoredRequests[1]!, 'restored-discover'),
     );
     expect(restoredDiscoveryNames).toEqual(DIAGNOSTICS_TOOL_NAMES);
+    await screenshotStep('用户操作：关闭全部Diagnostics Tool后验证discovery与原查询不可达，再整组开启并恢复discovery。 / User actions: disable every Diagnostics Tool, verify discovery and the original query are inaccessible, then restore the entire group.');
 
     // 证据与销毁：只写计数、顺序、协议字段和request hash；关闭Panel后恢复trace并完整销毁第二代。
     // Evidence and teardown: write only counts, order, protocol fields, and request hashes; hide the Panel before final teardown.
@@ -434,6 +439,7 @@ test('agent.tools.diagnostics queries real redacted records in stable order', as
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.panel.close).click();
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
     await relaunchedApp.startTrace(testInfo);
+    await screenshotStep('证据与销毁：只写计数、顺序、协议字段和request hash；关闭Panel后恢复trace并完整销毁第二代。 / Evidence and teardown: write only counts, order, protocol fields, and request hashes; hide the Panel before final teardown.');
   } catch (error) {
     workflowError = error;
   } finally {

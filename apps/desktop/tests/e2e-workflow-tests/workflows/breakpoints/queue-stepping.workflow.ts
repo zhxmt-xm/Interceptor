@@ -9,6 +9,7 @@ import {
 import { createRequestBreakpointRule } from '../../fixtures/ui/breakpoint-workflow';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 test('breakpoints.queue-stepping advances from the latest HTTP snapshot without stealing focus', async ({
   desktopApp,
@@ -66,6 +67,7 @@ test('breakpoints.queue-stepping advances from the latest HTTP snapshot without 
   for (const { requestPath } of capacityRequests) {
     expect(loopbackLab.observation(requestPath)).toBeUndefined();
   }
+  await screenshotStep('构造并断言：依次挂起十一条真实请求，证明超过旧上限后的每次命中仍保持等待。 / Arrange and assert: enqueue eleven real requests, proving every hit beyond the former limit remains pending.');
 
   // Cleanup: real client disconnects release all eleven items before the stepping scenario starts.
   // 清理：由真实客户端断开释放十一条等待项，再开始后续逐项推进场景。
@@ -76,6 +78,7 @@ test('breakpoints.queue-stepping advances from the latest HTTP snapshot without 
     await expect(outcome).resolves.toMatchObject({ error: expect.any(Error) });
   }
   await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('');
+  await screenshotStep('清理：由真实客户端断开释放十一条等待项，再开始后续逐项推进场景。 / Cleanup: real client disconnects release all eleven items before the stepping scenario starts.');
 
   // Arrange: enqueue A, B, C in a deterministic order and prove their public queue positions.
   // 构造：按确定顺序挂起A、B、C，并验证公开的队列位置。
@@ -118,6 +121,7 @@ test('breakpoints.queue-stepping advances from the latest HTTP snapshot without 
   await expect(rowC).toHaveAttribute('data-breakpoint-state', 'queued');
   await expect(rowC).toHaveAttribute('data-queue-position', '3');
   await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('3');
+  await screenshotStep('构造：按确定顺序挂起A、B、C，并验证公开的队列位置。 / Arrange: enqueue A, B, C in a deterministic order and prove their public queue positions.');
 
   // Act: abort the middle client, then continue A and require selection to advance to C from the latest snapshot.
   // 操作：中止中间客户端，再继续A；选择必须根据最新快照推进到C。
@@ -134,6 +138,7 @@ test('breakpoints.queue-stepping advances from the latest HTTP snapshot without 
   await expect(rowC).toHaveAttribute('data-breakpoint-state', 'head');
   await expect(rowC).toHaveAttribute('data-queue-position', '1');
   await expect(continueUnmodified).toBeVisible();
+  await screenshotStep('操作：中止中间客户端，再继续A；选择必须根据最新快照推进到C。 / Act: abort the middle client, then continue A and require selection to advance to C from the latest snapshot.');
 
   // Act: queue D, view ordinary traffic, then abort C; D becomes head without taking Capture focus.
   // 操作：加入D并查看普通流量，再中止C；D成为队首但不得夺取Capture焦点。
@@ -159,6 +164,7 @@ test('breakpoints.queue-stepping advances from the latest HTTP snapshot without 
   await expect(rowD).toHaveAttribute('data-breakpoint-state', 'head');
   await expect(rowD).toHaveAttribute('data-queue-position', '1');
   await expect(continueUnmodified).toHaveCount(0);
+  await screenshotStep('操作：加入D并查看普通流量，再中止C；D成为队首但不得夺取Capture焦点。 / Act: queue D, view ordinary traffic, then abort C; D becomes head without taking Capture focus.');
 
   // Assert and cleanup: D only becomes editable after explicit selection; aborted requests never reach origin.
   // 断言与清理：显式选择D后才出现编辑器；已中止请求绝不抵达origin。
@@ -176,4 +182,5 @@ test('breakpoints.queue-stepping advances from the latest HTTP snapshot without 
     body: Buffer.from(JSON.stringify(loopbackLab.evidence(), null, 2)),
     contentType: 'application/json',
   });
+  await screenshotStep('断言与清理：显式选择D后才出现编辑器；已中止请求绝不抵达origin。 / Assert and cleanup: D only becomes editable after explicit selection; aborted requests never reach origin.');
 });

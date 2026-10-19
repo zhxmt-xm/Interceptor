@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, LocalElectronApplicationDriver } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { certificateLifecycleTest as test } from '../../fixtures/runtime/certificate-lifecycle-driver';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { removeCreatedSharedCertificate, rootCertificateThumbprints, sharedCertificateDirectory, sharedCertificateThumbprint } from '../../fixtures/ui/https-capture';
@@ -50,6 +51,7 @@ JSON.stringify(windows.filter(window => window.kCGWindowOwnerPID === ${owner.pro
     const certificateBefore = await readFile(certificatePath, 'utf8');
     const thumbprint = new X509Certificate(certificateBefore).fingerprint.replaceAll(':', '');
     expect(certificateRootsBeforeStartup).not.toContain(thumbprint);
+    await screenshotStep('准备：直接观察真实首次授权中的首窗和业务门禁，不注入状态或预造CA。 / Arrange: observe the real first window and startup gate during native authorization, without state injection or seeded CA material.');
 
     // 用户操作：准备期间真实点击Close，核对立即拒绝，再取消精确归属的原生授权。
     // User actions: click Close during preparation, verify immediate refusal, then cancel only this App's native authorization.
@@ -81,6 +83,7 @@ JSON.stringify(windows.filter(window => window.kCGWindowOwnerPID === ${owner.pro
     await expect(getByAutomationId(restartedApp.page, AUTOMATION_IDS.settings.certificates.mitmToggle)).toHaveAttribute('aria-checked', 'false');
     expect(await readFile(certificatePath, 'utf8')).toBe(certificateBefore);
     expect(restartedApp.page.isClosed()).toBe(false);
+    await screenshotStep('业务断言：取消只撤回新增系统证书；重启后继续使用同一份本地CA并正常授信。 / Business assertions: cancellation rolls back only the new system certificate; restart reuses the same local CA and requests normal trust.');
 
     // 证据：保存公开指纹、授权归属与拒绝结果，不采集密码或私钥。
     // Evidence: retain only the public fingerprint, authorization identity and rejected operation, never credentials or private key bytes.

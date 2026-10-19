@@ -42,7 +42,7 @@ export async function submitMacosFileDialogPath(
   }
 }
 
-/** Prepare the real panel without confirming, so an owned cancel flow can show the same public demo folder. */
+/** Navigate to this workflow's path before confirmation and optional screenshot capture. */
 export async function prepareMacosFileDialogPath(
   owner: WorkflowProcessIdentity, targetPath: string,
 ): Promise<void> {
@@ -75,11 +75,21 @@ if (matches.length !== 1) throw new Error("The macOS Go to Folder suggestion is 
 const position = matches[0].position(), size = matches[0].size();
 clickAt([position[0] + size[0] / 2, position[1] + size[1] / 2], 2);
 `);
-  await expect.poll(async () => (await readMacosFileDialog(owner)).goToVisible, {
-    message: 'The macOS Go to Folder sheet did not finish navigating',
-  }).toBe(false);
-  if (initial.save) {
+  await expect.poll(async () => {
     const state = await readMacosFileDialog(owner);
+    return state.visible && !state.goToVisible;
+  }, {
+    message: 'The macOS Go to Folder sheet did not finish navigating',
+  }).toBe(true);
+  if (initial.save) {
+    let state = await readMacosFileDialog(owner);
+    // AX can briefly omit the panel's controls while Go to Folder closes.
+    await expect.poll(async () => {
+      state = await readMacosFileDialog(owner);
+      return state.visible && state.save && !state.goToVisible && state.nameFieldCenter !== null;
+    }, {
+      message: 'The macOS Save file name control did not become ready after navigation',
+    }).toBe(true);
     if (!state.nameFieldCenter) throw new Error('The macOS Save dialog omitted its file name control.');
     await sendMacosFileDialogKeys(owner, `clickAt(${JSON.stringify(state.nameFieldCenter)});`);
     await sendMacosFileDialogKeys(owner, `
@@ -143,7 +153,7 @@ JSON.stringify({ windowId: matches[0].kCGWindowNumber });
 /** Show only the chosen demo folder instead of parent-folder columns in published media. */
 export async function showMacosFileDialogList(owner: WorkflowProcessIdentity): Promise<void> {
   const state = await readMacosFileDialog(owner);
-  if (!state.visible || state.goToVisible) throw new Error('Prepare the owned file panel before recording it.');
+  if (!state.visible || state.goToVisible) throw new Error('Prepare the owned file panel before capturing it.');
   if (!state.save) await sendMacosFileDialogKeys(owner, 'pressKey(19, $.kCGEventFlagMaskCommand);');
 }
 

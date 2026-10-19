@@ -13,6 +13,7 @@ import {
 } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { HttpTrafficRunner, LoopbackRequestObservation } from '../../../../../playground/server/scenarios/traffic-lab';
 
 const BREAKPOINT_REPLACEMENT_TEXT = 'breakpoints.replacement.text';
@@ -229,6 +230,7 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
   await contentType.value.fill('application/x-header-only');
   const stageHeader = await breakpointHeader(page, 'x-edit-stage');
   await stageHeader.value.fill('edited');
+  await screenshotStep('仅编辑暂停请求的Headers / Edit only the paused request headers');
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.executeEdited).click();
   await expect(headerOnlyRequest).resolves.toMatchObject({ statusCode: 200 });
   const headerOnlyObservation = await observe(loopbackLab, headerOnlyPath);
@@ -244,6 +246,7 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
       'x-edit-stage',
     ),
   )).toBeVisible();
+  await screenshotStep('执行后核对Headers规则效果 / Inspect header effects after execution');
 
   const bodyOnlyPath = '/e2e/body-only';
   const bodyOnlyOriginal = Buffer.from('{"stage":"body-original"}');
@@ -263,6 +266,7 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
   await selectPausedRequest(page, bodyOnlyPath);
   await getByAutomationId(page, BREAKPOINT_REPLACEMENT_TEXT).click();
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.body).fill(bodyOnlyReplacement);
+  await screenshotStep('仅替换暂停请求的正文 / Replace only the paused request body');
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.executeEdited).click();
   await expect(bodyOnlyRequest).resolves.toMatchObject({ statusCode: 200 });
   const bodyOnlyObservation = await observe(loopbackLab, bodyOnlyPath);
@@ -270,6 +274,7 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
   expect(bodyOnlyObservation.headers['content-length']).toBe(
     String(Buffer.byteLength(bodyOnlyReplacement)),
   );
+  await screenshotStep('执行后保留正确的正文长度 / Preserve the correct body length after execution');
 
   const headerAndBodyPath = '/e2e/header-and-body';
   const headerAndBodyOriginal = Buffer.from('{"stage":"combined-original"}');
@@ -292,6 +297,7 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.body).fill(
     headerAndBodyReplacement,
   );
+  await screenshotStep('同时编辑正文与压缩Headers / Edit the body and compression headers together');
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.executeEdited).click();
   await expect(headerAndBodyRequest).resolves.toMatchObject({ statusCode: 200 });
   const headerAndBodyObservation = await observe(loopbackLab, headerAndBodyPath);
@@ -302,6 +308,7 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
   expect(headerAndBodyObservation.headers['content-length']).toBe(
     String(headerAndBodyObservation.body.byteLength),
   );
+  await screenshotStep('核对gzip编码后的真实结果 / Verify the actual gzip-encoded result');
 
   const chunkedPath = '/e2e/body-only-chunked';
   const chunkedOriginal = Buffer.from('chunked-original');
@@ -321,12 +328,14 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
   await selectPausedRequest(page, chunkedPath);
   await getByAutomationId(page, BREAKPOINT_REPLACEMENT_TEXT).click();
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.body).fill(chunkedReplacement);
+  await screenshotStep('替换chunked请求正文 / Replace a chunked request body');
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.executeEdited).click();
   await expect(chunkedRequest).resolves.toMatchObject({ statusCode: 200 });
   const chunkedObservation = await observe(loopbackLab, chunkedPath);
   expect(chunkedObservation.body.toString('utf8')).toBe(chunkedReplacement);
   expect(chunkedObservation.headers['transfer-encoding']).toBe('chunked');
   expect(chunkedObservation.headers['content-length']).toBeUndefined();
+  await screenshotStep('核对chunked传输不添加Content-Length / Verify chunked transfer omits Content-Length');
 
   await attachOriginEvidence(loopbackLab, testInfo);
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();

@@ -7,6 +7,7 @@ import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/auto
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { isCertificateTrusted, removeCreatedSharedCertificate, sharedCertificateDirectory, waitForCertificateInstallation } from '../../fixtures/ui/https-capture';
 import { expect, LocalElectronApplicationDriver } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { certificateLifecycleTest as test } from '../../fixtures/runtime/certificate-lifecycle-driver';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
@@ -202,6 +203,7 @@ test('settings.tools.tls keeps configuration intent trust and mounted panels con
     await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.insecureHost(INSECURE_HOST))).toHaveCount(0);
     await callTool(desktopApp.page, openAiCompatibleLab, 'insecure-auto', TOOL_NAMES[0], { hosts: [INSECURE_HOST] });
     await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.insecureHost(INSECURE_HOST))).toBeVisible();
+    await screenshotStep('用户操作：保持证书面板挂载，Deny 不改名单，Allow 与 Auto 成功后当前行立即同步。 / User actions: keep Certificates mounted; Deny preserves the list while Allow and Auto update its visible rows immediately.');
 
     // 用户操作：passthrough 按真实查询的 revision 提交；当前面板刷新，旧 revision 不覆盖新配置。
     // User actions: submit passthrough using its queried revision; the mounted panel refreshes and stale revisions cannot overwrite new settings.
@@ -228,6 +230,7 @@ test('settings.tools.tls keeps configuration intent trust and mounted panels con
     revision += 1;
     await callTool(desktopApp.page, openAiCompatibleLab, 'passthrough-auto', TOOL_NAMES[1], { hosts, expectedRevision: revision });
     await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.tlsPassthroughHost(PASSTHROUGH_HOST))).toBeVisible();
+    await screenshotStep('用户操作：passthrough 按真实查询的 revision 提交；当前面板刷新，旧 revision 不覆盖新配置。 / User actions: submit passthrough using its queried revision; the mounted panel refreshes and stale revisions cannot overwrite new settings.');
 
     // 信任边界：未生成 CA 时只保存解密意图；证书只能由真实产品 UI 生成并通过 OS 正式安装。
     // Trust boundary: without a CA only decryption intent is saved; generate and install the certificate solely through real product UI and OS trust.
@@ -243,6 +246,7 @@ test('settings.tools.tls keeps configuration intent trust and mounted panels con
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.certificates.install).click();
     await waitForCertificateInstallation(desktopApp.page);
     expect(await isCertificateTrusted(thumbprint)).toBe(true);
+    await screenshotStep('信任边界：未生成 CA 时只保存解密意图；证书只能由真实产品 UI 生成并通过 OS 正式安装。 / Trust boundary: without a CA only decryption intent is saved; generate and install the certificate solely through real product UI and OS trust.');
 
     // 用户操作：启用和停用分别覆盖 Ask Deny/Allow 与 Auto，当前开关及真实 Core 状态保持一致。
     // User actions: cover Ask Deny/Allow and Auto for both directions, keeping the mounted switch and real Core state consistent.
@@ -270,6 +274,7 @@ test('settings.tools.tls keeps configuration intent trust and mounted panels con
     await callTool(desktopApp.page, openAiCompatibleLab, 'enable-persisted', TOOL_NAMES[2]);
     await expect(toggle).toHaveAttribute('aria-checked', 'true');
     expect(await certificateThumbprint(desktopApp)).toBe(thumbprint);
+    await screenshotStep('用户操作：启用和停用分别覆盖 Ask Deny/Allow 与 Auto，当前开关及真实 Core 状态保持一致。 / User actions: cover Ask Deny/Allow and Auto for both directions, keeping the mounted switch and real Core state consistent.');
 
     // 撤权与重启：四项关闭后旧 Chat 无法执行，保留的配置和信任跨进程恢复但不重放请求。
     // Revocation and restart: stale Chat calls cannot execute disabled Tools; configuration and trust survive restart without replay.

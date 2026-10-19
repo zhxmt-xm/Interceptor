@@ -6,6 +6,7 @@ import { gzipSync } from 'node:zlib';
 import { grpcMessages } from '../../../../../playground/server/tls/traffic';
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { cleanHttpsCapture, prepareHttpsCapture, rootCertificateThumbprints } from '../../fixtures/ui/https-capture';
@@ -123,6 +124,7 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
         await completedResponse;
       }
     });
+    await screenshotStep('在途消息：用共享TLS origin逐段发送envelope，完成HTTP响应前读取并复制已收齐的消息。 / Streaming messages: send envelope fragments from the shared TLS origin and read/copy complete messages before the HTTP response ends.');
 
     // 录制代际：H2流跨Pause/Resume继续捕获，Clear只移除旧代数据而不中断实际响应。
     // Capture generation: keep capturing an H2 stream across Pause/Resume; Clear drops old data without interrupting its response.
@@ -212,6 +214,7 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
         }
       });
     }
+    await screenshotStep('录制代际：H2流跨Pause/Resume继续捕获，Clear只移除旧代数据而不中断实际响应。 / Capture generation: keep capturing an H2 stream across Pause/Resume; Clear drops old data without interrupting its response.');
 
     // 双向消息：Request和Response同时保持在途，逐侧复制完整消息并拒绝半条payload。
     // Bidirectional messages: keep both sides in flight, copy complete messages on each side, and exclude incomplete payloads.
@@ -336,12 +339,15 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
             await getByAutomationId(page, AutomationIdFactory.grpcPayloadCopy(exchangeId, side, index)).click();
             await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(clipboard);
             await message.click();
+            await screenshotStep('业务断言：声明长度与envelope offset保留，真实Copy得到实际载荷；损坏消息不补造缺失字节。 / Product assertions: retain declared length and envelope offset; actual Copy returns stored payload without inventing truncated bytes.');
           }
         }
         evidence.push({ scenarioId: expected.id, exchangeId, status: expected.status, truncated: expected.truncated });
         await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
+        await screenshotStep('产品操作：选择独立Capture请求，进入gRPC并逐侧检查，不调用消息查询API代替界面。 / Product actions: select the Capture request and inspect both gRPC sides without calling message query APIs directly.');
       });
     }
+    await screenshotStep('双向消息：Request和Response同时保持在途，逐侧复制完整消息并拒绝半条payload。 / Bidirectional messages: keep both sides in flight, copy complete messages on each side, and exclude incomplete payloads.');
 
     // 消息边界：同一HTTP body中的多条JSON消息分别限长，不能把相邻envelope或消息混入预览。
     // Message boundary: limit each JSON payload independently without reading bytes from adjacent envelopes or messages.
@@ -439,6 +445,7 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
       evidence.push({ scenarioId: 'grpc-json-utf8-preview-boundary', exchangeId, status: '0', truncated: false });
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
     });
+    await screenshotStep('消息边界：同一HTTP body中的多条JSON消息分别限长，不能把相邻envelope或消息混入预览。 / Message boundary: limit each JSON payload independently without reading bytes from adjacent envelopes or messages.');
 
     // 证据：记录公开消息与状态事实，Renderer不得因压缩或损坏envelope崩溃。
     // Evidence: retain public message/status facts and require no Renderer errors for compressed or damaged envelopes.

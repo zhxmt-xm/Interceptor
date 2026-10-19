@@ -13,6 +13,7 @@ import {
   LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const phrase = (...parts: readonly string[]): string => parts.join(' ');
@@ -194,6 +195,7 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
     const sessionRoot = getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.session.root);
     await expect(sessionRoot).toHaveAttribute('data-tool-execution-mode', 'ask');
     firstSessionId = await currentSessionId(desktopApp.page);
+    await screenshotStep('准备：通过真实Settings配置本地Provider，经Capture UI开始Recording，再创建默认Ask的Chat。 / Arrange: configure a local Provider in real Settings, start Recording in Capture, then create a default-Ask Chat.');
 
     // 业务断言：Mode属于Session，新Chat固定Ask且返回原Chat恢复其Auto。
     // Business assertion: Mode belongs to a Session; a new Chat starts Ask and returning restores the original Auto.
@@ -260,6 +262,7 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
       ? deniedResult.error.code
       : '';
     expect(deniedErrorCode).toBe('tool_denied');
+    await screenshotStep('用户操作：Ask下change Tool先进入pending；切Auto不处置它，跨Chat返回后Deny也不改变Recording。 / User actions: Ask makes the change Tool pending; switching Auto does not resolve it, and Deny after Chat switching keeps Recording.');
 
     // 用户操作：Ask中Allow执行正式stop命令；Auto下后续调用不显示问询并直接暂停Capture。
     // User actions: Allow in Ask executes the formal stop command; a later Auto call pauses Capture without an approval.
@@ -294,6 +297,7 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
     )).toHaveCount(0);
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle))
       .toHaveAttribute('aria-pressed', 'false');
+    await screenshotStep('用户操作：Ask中Allow执行正式stop命令；Auto下后续调用不显示问询并直接暂停Capture。 / User actions: Allow in Ask executes the formal stop command; a later Auto call pauses Capture without an approval.');
 
     // 用户操作：Settings关闭项优先于Auto；schema移除，猜测调用返回unknown_tool且不触达Recording。
     // User actions: a Settings disable overrides Auto; schema disappears and a guessed call returns unknown_tool without touching Recording.
@@ -318,6 +322,7 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
     expect(disabledErrorCode).toBe('unknown_tool');
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle))
       .toHaveAttribute('aria-pressed', 'true');
+    await screenshotStep('用户操作：Settings关闭项优先于Auto；schema移除，猜测调用返回unknown_tool且不触达Recording。 / User actions: a Settings disable overrides Auto; schema disappears and a guessed call returns unknown_tool without touching Recording.');
 
     // 重启与销毁：恢复Auto和关闭项且零重放，随后经UI恢复Ask、Tool与Recording默认状态。
     // Restart and teardown: restore Auto and the disabled Tool with zero replay, then reset Ask, Tool and Recording through UI.

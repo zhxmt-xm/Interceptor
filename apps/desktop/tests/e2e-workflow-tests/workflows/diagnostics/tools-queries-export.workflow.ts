@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
+import { once } from 'node:events';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -9,6 +11,7 @@ import type { Page, TestInfo } from '@playwright/test';
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { cancelFileDialog, submitFileDialogPath } from '../../fixtures/ui/file-dialog';
@@ -19,6 +22,115 @@ const PROMPT = ['Inspect or export', 'the requested Diagnostics records.'].join(
 const ANSWER = ['The requested Diagnostics', 'operation is complete.'].join(' ');
 const SECRET = ['diagnostics-transfer-', 'private-query'].join('');
 const FILTER = { process: 'core', level: 'info', outcome: 'success' } as const;
+
+async function verifyDiagnosticViews(
+  desktopApp: LocalElectronApplicationDriver, httpTrafficRunner: HttpTrafficRunner, directory: string,
+): Promise<void> {
+  const { page } = desktopApp;
+  const address = getByAutomationId(page, AUTOMATION_IDS.composer.url);
+  const send = getByAutomationId(page, AUTOMATION_IDS.composer.send);
+  const body = getByAutomationId(page, AUTOMATION_IDS.composer.responseBodyPane);
+  const source = '/e2e/diagnostics/history';
+  await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.composer).click();
+  await getByAutomationId(page, AUTOMATION_IDS.composer.newRequest).click();
+  await address.fill(httpTrafficRunner.url(`${source}/0`));
+  for (let index = 0; index < 120; index += 1) {
+    const pathname = `${source}/${index}`;
+    httpTrafficRunner.respondWith(pathname, {
+      body: JSON.stringify({ marker: `diagnostics-${index}` }), headers: { 'content-type': 'application/json' },
+    });
+    if (index > 0) await address.fill(new URL(httpTrafficRunner.url(pathname)).host + pathname);
+    await send.click();
+    await expect.poll(() => httpTrafficRunner.observation(pathname)?.method).toBe('GET');
+    await expect(body).toContainText(`diagnostics-${index}`);
+  }
+  await screenshotStep('通过真实Composer操作产生历史页 / Produce the history page through real Composer operations');
+
+  let resets = 0;
+  const resetOrigin = net.createServer(socket => { resets += 1; socket.destroy(); });
+  try {
+    resetOrigin.listen(0, '127.0.0.1');
+    await once(resetOrigin, 'listening');
+    const resetAddress = resetOrigin.address();
+    if (!resetAddress || typeof resetAddress === 'string') throw new Error('The owned reset origin has no port.');
+    await address.fill(`127.0.0.1:${resetAddress.port}/e2e/diagnostics/failure`);
+    await send.click();
+    await expect.poll(() => resets).toBeGreaterThan(0);
+    await expect(send).toBeEnabled();
+    const pacPath = '/e2e/diagnostics/missing.pac';
+    httpTrafficRunner.respondWith(pacPath, { statusCode: 404, body: 'owned-unavailable-pac' });
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
+    await getByAutomationId(page, AUTOMATION_IDS.settings.section.upstream).click();
+    await getByAutomationId(page, AUTOMATION_IDS.upstream.mode.pac).check();
+    await getByAutomationId(page, AUTOMATION_IDS.upstream.pacUrl).fill(httpTrafficRunner.url(pacPath));
+    await getByAutomationId(page, AUTOMATION_IDS.upstream.apply).click();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.upstream.error)).toBeVisible();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.upstream.currentRoute)).toHaveAttribute('data-upstream-mode', 'system');
+    await getByAutomationId(page, AUTOMATION_IDS.upstream.discard).click();
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.diagnostics).click();
+    const main = getByAutomationId(page, AUTOMATION_IDS.app.main);
+    const buttons = main.getByRole('button');
+    const failedPhase = 'main.upstream.apply.failed';
+    await buttons.nth(0).click();
+    await buttons.nth(0).click();
+    await expect(buttons.nth(0)).toContainText('main');
+    await buttons.nth(1).click();
+    await expect(buttons.nth(1)).toContainText('error');
+    await buttons.nth(2).click();
+    await buttons.nth(2).click();
+    await expect(buttons.filter({ hasText: failedPhase }).last()).toBeVisible();
+    await buttons.filter({ hasText: failedPhase }).last().click();
+    const grid = main.locator('[style*="grid-template-columns"]');
+    const detail = grid.locator(':scope > div').nth(2);
+    await expect(detail).toContainText(failedPhase);
+    await expect(detail).toContainText('failed');
+    await screenshotStep('按真实main/error/failed记录查看时间线 / Inspect the timeline for an actual main/error/failed record');
+    const split = await grid.locator(':scope > div').nth(1).boundingBox();
+    const initial = await detail.boundingBox();
+    if (!split || !initial) throw new Error('The Diagnostics splitter is unavailable.');
+    await page.mouse.move(split.x, split.y + 80);
+    await page.mouse.down();
+    await page.mouse.move(split.x - 180, split.y + 80, { steps: 12 });
+    await page.mouse.up();
+    await expect.poll(async () => (await detail.boundingBox())?.width).toBeGreaterThan(initial.width + 150);
+    for (let index = 0; index < 4; index += 1) await buttons.nth(1).click();
+    for (let index = 0; index < 3; index += 1) await buttons.nth(2).click();
+    for (let index = 0; index < 2; index += 1) await buttons.nth(0).click();
+    await expect(buttons.nth(0)).not.toContainText(/core|main|renderer/);
+    await expect(buttons.nth(1)).not.toContainText(/error|warn|info|debug/);
+    await expect(buttons.nth(2)).not.toContainText(/success|failed|cancelled|timed_out/);
+    const before = await buttons.count();
+    await buttons.last().click();
+    await expect.poll(() => buttons.count()).toBeGreaterThan(before);
+    await screenshotStep('清除筛选并加载真正的较早历史 / Clear filters and load the actual earlier history');
+    const file = path.join(directory, 'lifecycle.jsonl');
+    await buttons.nth(3).click();
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), file);
+    await expect.poll(async () => {
+      try { return (await readFile(file, 'utf8')).length; }
+      catch (error) {
+        if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return 0;
+        throw error;
+      }
+    }).toBeGreaterThan(0);
+    const records: unknown[] = (await readFile(file, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+    expect(records).toEqual(expect.arrayContaining([
+      expect.objectContaining({ command: 'composer.send', outcome: 'success' }),
+      expect.objectContaining({ phase: failedPhase, outcome: 'failed' }),
+    ]));
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.composer).click();
+    const recoveredPath = '/e2e/diagnostics/recovered';
+    httpTrafficRunner.respondWith(recoveredPath, { body: 'diagnostics-recovered' });
+    await address.fill(new URL(httpTrafficRunner.url(recoveredPath)).host + recoveredPath);
+    await send.click();
+    await expect(body).toContainText('diagnostics-recovered');
+    await screenshotStep('导出诊断后回到真实请求核对恢复 / Return to the real request and verify recovery after exporting Diagnostics');
+  } finally {
+    if (resetOrigin.listening) {
+      await new Promise<void>((resolve, reject) => resetOrigin.close(error => error ? reject(error) : resolve()));
+    }
+  }
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -234,6 +346,7 @@ test('diagnostics.tools.queries-export reads current traces and exports redacted
     for (const callId of ['diagnostics-recent', 'diagnostics-trace', 'diagnostics-recent-again']) {
       await expect(getByAutomationId(page, AutomationIdFactory.agentToolApproval(callId))).toHaveCount(0);
     }
+    await screenshotStep('自产记录与静默查询：通过Composer产生四条记录，Recent保持内存顺序，Trace只返回指定身份且不自污染。 / Product-owned records and silent queries: Composer creates four records; Recent preserves memory order and Trace returns only the requested identity without self-generated records.');
 
     // Agent导出：Deny不开文件，真实Cancel不创建任务；Allow/Auto均经Save并只读取产品生成的原子JSONL。
     // Agent export: Deny opens no file, native Cancel creates no job; Allow and Auto both use Save, and assertions only inspect the product-generated atomic JSONL.
@@ -260,6 +373,7 @@ test('diagnostics.tools.queries-export reads current traces and exports redacted
     assertStarted((await finishAgentCall(page, openAiCompatibleLab, 'diagnostics-export-auto')).value);
     exportedFiles.push(await readCompletedExport(autoFile));
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolApproval('diagnostics-export-auto'))).toHaveCount(0);
+    await screenshotStep('Agent导出：Deny不开文件，真实Cancel不创建任务；Allow/Auto均经Save并只读取产品生成的原子JSONL。 / Agent export: Deny opens no file, native Cancel creates no job; Allow and Auto both use Save, and assertions only inspect the product-generated atomic JSONL.');
 
     // 独立授权与MCP：Agent撤权不影响MCP，两项查询静默；导出仍需独立审批和真实Save，撤权立即生效。
     // Independent permissions and MCP: revoking Agent leaves MCP enabled; both queries stay silent and export retains independent approval and native Save until MCP is revoked.
@@ -309,6 +423,11 @@ test('diagnostics.tools.queries-export reads current traces and exports redacted
     for (const name of TOOL_NAMES) await expect(client.callTool({ name, arguments: {} })).rejects.toMatchObject({ code: -32602 });
     await client.close();
     client = null;
+    await screenshotStep('独立授权与MCP：Agent撤权不影响MCP，两项查询静默；导出仍需独立审批和真实Save，撤权立即生效。 / Independent permissions and MCP: revoking Agent leaves MCP enabled; both queries stay silent and export retains independent approval and native Save until MCP is revoked.');
+
+    // 页面验收：只补原查询/导出流程没有覆盖的失败分类、分栏和较早历史。
+    // Page acceptance: add only the missing failure classification, splitter and earlier-history checks.
+    await verifyDiagnosticViews(desktopApp, loopbackLab, directory);
 
     // 重启与证据：Model结果无路径/秘密，文件与网络无重放，凭据只在产品中使用，产物仅保留计数和hash。
     // Restart and evidence: Model results contain neither paths nor secrets, files and network operations do not replay, and artifacts retain only counts and hashes.
@@ -319,7 +438,7 @@ test('diagnostics.tools.queries-export reads current traces and exports redacted
     const modelRequests = openAiCompatibleLab.evidence().length;
     const originRequests = loopbackLab.evidence().length;
     const fileNames = (await readdir(directory)).sort();
-    expect(fileNames).toHaveLength(4);
+    expect(fileNames).toHaveLength(5);
     await closeGeneration(desktopApp, testInfo);
     relaunchedApp = await LocalElectronApplicationDriver.launch(testInfo, { userDataDirectory: desktopApp.userDataDirectory, evidencePrefix: 'relaunch' });
     for (const value of [PROMPT, ANSWER, SECRET]) relaunchedApp.registerSensitiveTextForEvidenceAudit(value);

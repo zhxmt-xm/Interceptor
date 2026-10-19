@@ -1,5 +1,6 @@
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 
@@ -48,6 +49,7 @@ test('capture.recording.pause-resume fixes recording at request and WebSocket up
     await expect(rows.filter({ hasText: `${prefix}/ws-paused` })).toHaveCount(0);
     await expect(rows).toHaveCount(2);
     const pausedRows = await rows.evaluateAll((elements) => elements.map((element) => element.getAttribute('data-automation-id')));
+    await screenshotStep('用户操作：暂停只影响新请求；旧连接继续双向转发和记录，新连接只转发。 / User actions: pause affects only new requests; the recorded connection still captures both directions and a paused connection only forwards.');
 
     // 业务断言：只比较自产记录，避免把恢复期间其他应用的新流量误判为补录；精确存储所有权由真实Core回归验证。
     // Product assertions: compare owned records, not new traffic from other apps after resume; real Core regression verifies exact storage ownership.
@@ -80,6 +82,7 @@ test('capture.recording.pause-resume fixes recording at request and WebSocket up
     await expect(rows.filter({ hasText: prefix })).toHaveCount(4);
     await expect(rows.filter({ hasText: `${prefix}/http-paused` })).toHaveCount(0);
     await expect(rows.filter({ hasText: `${prefix}/ws-paused` })).toHaveCount(0);
+    await screenshotStep('恢复后新流量：新HTTP和WebSocket重新录制，旧的暂停期流量仍不补录。 / New traffic after resume: new HTTP and WebSocket requests are captured without backfilling paused traffic.');
 
     // 证据与清理：真实Close握手后保存数据面证据，fixture负责trace及完整进程和宿主恢复。
     // Evidence and cleanup: finish real Close handshakes and save network evidence; the fixture owns traces and full process and host restoration.

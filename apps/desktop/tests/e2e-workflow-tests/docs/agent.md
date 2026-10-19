@@ -1,20 +1,21 @@
 # Agent Workflows
 
-## 教程逐步骤录制
+## 原流程与可选步骤截图
 
-`guidebook-chat.workflow.ts`使用实际Release与明确标注的无Key本地演示endpoint，逐步录制Custom字段、Test/Save、New Chat、固定公开问题与回复、Context、Ask/Auto、Stop和Retry。Profile为`Guide local demo`，Model ID为`guide-demo-model`；不把预设演示响应和用量冒充真实商业模型的智能或计费，不包含真实Key。
+Agent只使用原workflow与已有可控模型lab；截图模式不增加第二套模型操作或商业凭据。
 
-`guidebook-permissions.workflow.ts`独立录制Agent与MCP两列的`capture_clear`开关及`capture_get_proxy_status`查询项。每步独立截图，输入值与媒体清单一致；单项关闭不标成整个入口只读，也不真正清空数据。两个流程都保持App当前语言并复用原退出/宿主guard。
+- `model-configuration`继续验证Test/Save、编辑后重新验证、默认配置、脱敏凭据与最后模型移除。
 
-`guidebook-session-lifecycle.workflow.ts`使用无Key本地模型，真实Command+Enter发送，按Shift+Tab进入Context并读取服务返回的演示用量；新建独立Chat后删除仍在流式运行的另一个Chat，验证实际HTTP取消。随后正常Close并重开同一profile，按真实UI确认保留/删除的历史、没有模型请求重放，再删除最后一个模型并核对未配置状态。两段影片分别对应两代App；第二代退出证据为`agent-reopened`，不把演示Usage当商业计费。
+- `restart-recovery.workflow.ts`在原Chat隔离/重启基础上核对全局默认与当前Chat模型独立、运行中删除取消真实HTTP、恢复后不重放和未配置面板。
 
-重启段开始取景前先通过UI进入Settings > Agent，避免默认Capture里的背景流量出镜。[解锁后完整实录](../../../test-results/guidebook-media-20261016/prepared-unlocked/agent-guidebook-session-li-6c1a1-tart-and-last-model-removal-macos-guidebook/)的两代App均正常退出；第一段与新重启段作为同一轮来源发布，保持原语言、不重建历史、不重放模型请求。旧片含背景流量的前段不公开；其独立安全删除尾段如被引用，必须标明节选与原片时间，不冒充新录制。
+- `streaming-context`与`execution-modes`保留真实流式增量、Usage、Stop/Retry、Ask/Auto和当前Session边界。`traffic-control`补已允许Tool完成后Stop仅取消模型解释、不撤销业务结果，并先确认真实HTTP取消后再Retry。
 
-`guidebook-management.workflow.ts`已经实录`guide-two`改成`guide-two-edited`、Save失效、重新Test及Save。排查正文应复用`02-edit`、`03-retest`、`04-save-edit`，不重复补录，也不扩展为API Key或Base URL变化的影像证据。
+- `settings-capabilities.workflow.ts`保留原独立开关与全部开启的重启验收，再验证全部change双列关闭、query精确保留、真实MCP拒绝及另一代App中的只读权限；不用单项关闭冒充整个入口只读。
 
-`guidebook-readonly-permissions.workflow.ts`先分别禁用Agent/MCP的`capture_clear`，通过真正的调用拒绝与原记录保留核对执行门禁；再按真实目录逐行关闭全部change的两列开关、清空搜索并复核六组，MCP发现列表必须精确等于保留的query集合。两代App实际重启后再次验证所有开关与调用边界，不重新设值或把单项关闭当成全局只读；凭据复制不录制，模型为无Key本地演示。
+- 各领域Tool仍在原`composer`、`diagnostics`、`rules`、`breakpoints`、`capture-discovery`等流程验证，不重复复制到教程脚本。模型内容与用量是本地测试输入，不是商业模型能力或计费证明。
 
-`guidebook-tool-lifecycle.workflow.ts`真实批准Pause后停止尚在流式进行的模型回复，确认已完成Tool不被撤销；Retry仅演示一次不再请求业务动作的解释，并随后发送明确只读的新问题。Diagnostics Recent/Trace使用真正返回的traceId；Export在Ask后仍走真实Save，分别取消与完成，再查实际Transfer job并读产品文件。Tool结果卡、App状态和文件三者核对，不让模型回答替代成功；本地模型无Key。
+命令、输出清单和显式导入边界见[套件说明](../README.md#trace-与证据)。已有公开PNG及历史验收记录保持原来源，新的运行不会自动替换它们；本节不把未经执行的平台或分支记为通过。
+
 本文件定义内置 Agent 阶段 1 的完整 E2E 流程。每条 workflow 独立启动真实 Electron、独占 profile 与 trace；
 只有需要 Model 的 workflow 才启动本地 OpenAI-compatible lab。所有配置、Chat 与导航动作都经过真实产品边界，
 不注入 Provider、Session、Transcript 或 Usage。

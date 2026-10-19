@@ -1,54 +1,22 @@
 # Composer Workflows
 
-## 教程逐步骤录制
+## 原流程与可选步骤截图
 
-`workflows/composer/guidebook-request.workflow.ts`复用现有真实driver与loopback origin，按用户操作逐步记录正式App窗口。先核对Release资产SHA-256，再通过`INTERCEPTOR_E2E_MACOS_APP_PATH`启动对应产物；保持App当前语言，不使用设计fixture、Store或Preload业务注入。
+只保留原Composer workflow，普通模式与`--screenshots`模式使用同一份操作和断言。
 
-流程从打开Composer、新建请求、填写自产URL、Send、响应Headers、Query/Header字段、Auth和Recent sends到响应正文。每一步先断言真实状态，再保存该步原生窗口截图并记录视频时间；示例字段固定为`guide=composer-demo`和`x-interceptor-guide: composer-demo`，动态origin端口以实际录制清单为准。原始视频与截图不自动发布，先核对对应文案、隐私及版本；录制不改变原有Close、进程/8888释放与宿主恢复门禁。
+- `collection-tree-interactions.workflow.ts`保留目录、自动保存和分栏，补同一真实文档的Basic/Bearer/None及显式Authorization、JSON/Text/Form/None、Query同名值、字段启停/删除、Recent sends真正重发，以及同级切换/排序和节点删除。认证值只由自有loopback接受；不使用真实账号。
 
-该录制证明对应步骤，不把短录制扩大为Composer全部功能、所有平台或原生导入导出均已完成。macOS 15+的ScreenCaptureKit按窗口ID隔离录制，`INTERCEPTOR_GUIDE_RECORDER`指向由`fixtures/ui/macos-guide-recorder.swift`编译的验收工具；`INTERCEPTOR_GUIDE_FFMPEG`指定已安装后处理编码器。两者都不进入产品包，不给产品添加录制参数或运行依赖。
+- 重命名后立即卸载的debounce边界之间不插入截图。编辑、菜单、字段选择不得隐式Send；只有显式Send增加源站请求。
 
-`guidebook-editing.workflow.ts`补充JSON/Text/Form的实际出站字节、空认证控件、命名、目录拖动和原生Collection文件往返。每种正文使用独立测试路径，避免`observation()`的首条记录语义误判后续发送；编辑已有URL时按正式输入框只修改主机/路径，不重复已经单独显示的协议前缀。不录入或展示真实凭据。
+- `response-section-collapse.workflow.ts`复用同一响应补Cookies、Timing/Connection、Tree/Raw/Hex、Copy、全屏及响应分栏；格式化仅由原`body-formatting.workflow.ts`维护。
 
-`guidebook-auth.workflow.ts`仅用临时127.0.0.1服务接受的公开演示字符串，实录None的401、Basic/Bearer的200、切None后自动Authorization移除，以及自行添加的Authorization必须单独删除。它不是商业服务或真实凭据验收；最后清空三种演示输入、保持None，并确认Composer没有写入Capture。源站逐次检查实际Header，关闭服务与App后按原driver核对退出恢复。
+- `body-formatting.workflow.ts`保留HTML/JavaScript自动格式化、CSS手动Format、XML失败原文与文档缓存；新增大JSON的Copy恰为2MiB、前缀符合实际响应且Format disabled。
 
-`guidebook-tools.workflow.ts`补录Composer专用MCP Ask与Collection读取/替换，不改产品代码。解锁后已在同一签名Release取得[真实操作、原生媒体及退出证据](../../../test-results/guidebook-media-20261016/prepared-unlocked/composer-guidebook-tools.w-439f3-iven-Collection-replacement-macos-guidebook/)；该流程通过不代替其他未录的深字段跨重启或原生集合文件Tool。
+- `tools-collection.workflow.ts`保留Tool读写零隐式发送，重启后仅由用户明确Send一次，检查保存的method/protocol、Header启停、Query、JSON及Auth字节。
 
-- 前提：只使用产品UI创建的独立Ask Client和官方本地SDK；配置凭据只留在内存并登记脱敏，取景前进入Settings，不让默认Capture背景流量进入画面。保持App语言。
-- UI输入：在Composer创建并命名`Guide UI request`，URL为本轮自有`/guide/composer-tools/saved`，Header为`x-guide-collection: public-example`；通过UI Send得到`guide-ui-response`。等待`data-save-state=saved`后，读取真实request ID与revision，不预造节点树。
-- 发送审批：SDK请求`composer_send_request`，method为POST，独立路径`/guide/composer-tools/allowed`，Header为`x-guide-tool: public-example`，body为`{"message":"guide-tool-request"}`，protocol为`http/1.1`、timeoutMs为5000。先Deny且源站零请求，再次请求并Allow；真实源站核对method/Header/body，实际Tool结果为201、`HTTP/1.1`和`guide-tool-response`，无不完整正文。
-- 显示边界：返回仍选中的Composer请求，URL和`guide-ui-response`保持。Tool发送结果在调用方，不伪造Composer响应区，也不借用手工Send图冒充Tool返回。
-- Collection：`composer_get_collection`实际读取UI保存的完整树；用返回的revision/原节点身份只修改name为`Guide MCP renamed request`。记录Ask当前/目标请求及目录计数，先Deny核对revision和UI不变，再Allow核对revision递增与已挂载UI通知更新。保留原URL、Header和UI响应；读取/替换不新增源站请求。
-- 证据与清理：逐步骤原生截图/视频/字幕、独立网络事实与Tool结果断言，最后关闭本轮MCP Server，沿原driver正常Close与宿主恢复。失败片段、锁屏拒绝、单纯typecheck或`--list`都不能算真实E2E通过。
+- `collection-import`与`tools-transfer`继续负责产品Export→Import、真实原生取消/确认、全新身份、Auto仍需确认及重启。截图清单只在退出及宿主恢复后形成，不再需要录像或字幕。
 
-本次原图/字幕对应22个实际步骤；UI保存的revision从4变为5，Tool发送返回201而当前Composer响应仍为先前UI Send的200。Main `8102`、Core `8157`正常退出，`gracefulDestroyVerified=true`、`abruptDestroyVerified=false`，8888已释放后才把真实截图窗口交接给item10。SDK不是商业Host界面，输入Header/Body均为本轮公开示例。
-
-`guidebook-fields.workflow.ts`核对Header/Query行启用、停用、删除后的实际重发，JSON Format、Body None及Recent sends只恢复method/URL的边界。`guidebook-collection.workflow.ts`从真实UI建立三级目录，在第三级菜单检查继续嵌套禁用，创建和切换两条自产请求，再核对目录改名、同级排序、原生导出/导入预览取消及本轮节点删除。所有操作都附独立步骤图，导入文件由同轮产品Export生成；锁屏拒绝不作为流程通过。
-
-`guidebook-request-persistence.workflow.ts`补完整代表性请求的深层目录跨重启，不重复已有目录管理影片。前提目录通过真实UI创建，第一段只录请求字段：POST、HTTP/1.1、本轮`/guide/persisted-request?guide=url`、启用的`x-guide-persist: retained`、停用的`x-guide-disabled: omitted`、Query `scope=retained`、JSON `{"message":"persisted-fields","count":2}`和只供公开示例的Bearer值`public-persistence-example`。等待实际保存后正常Close；第一代不得Send。
-
-第二代同profile真实重开，取景前先进入Composer，逐层展开三个实际保留的目录，检查同一request ID、name、URL、method、protocol及各字段/开关。不重新填写保存字段，最后仅点一次Send；真实源站必须收到POST、两个Query值、启用Header、JSON字节和演示Authorization，不收到停用Header，也没有重启自动重发。随后清空演示Auth并选None。两段分代记录、分别核对正常退出；第二代证据前缀为`composer-reopened`。这是一条完整选用字段的代表性请求，不宣称穷举所有Body/Auth类型组合；真实运行前只登记待验证，不发布素材。
-
-`guidebook-response-formatting.workflow.ts`只补现有Composer响应影片未覆盖的HTML/JavaScript自动格式化、XML失败保留原文与超过2MiB的JSON预览，不重复已录CSS手动Format和分栏。四条请求通过UI分别命名，源站路径各自独立；小HTML的Copy须含真实格式化换行，JavaScript核对格式化空格与原文不同，不强求短函数换行。`<root><`的真实HTTP响应在手动Format后仍逐字保留且无新增Renderer异常。大JSON由自有origin返回，Copy只含2MiB预览且Format disabled，不造导入文件。最后切回原HTML请求核对格式化视图仍在。每步原生图/字幕、Clipboard摘要与真实源站次数分别保存，正常退出走原guard；未运行前不能声明媒体通过。
-
-`guidebook-file-tools.workflow.ts`准备补录Collection文件Tool：产品UI创建并保存一条公开请求，官方本地SDK以Ask调用Export/Import。先Deny并核对不写文件，再Allow后通过真实Save取消；随后由产品Tool导出唯一`guide-tool-collection.json`，所有Import只读取这个文件。分别记录Open取消、导入预览取消、预览确认追加；最后选择Auto并再次导入，仍需真实Open和预览确认，三份同名请求保持独立新ID、原请求ID不被替换。请求及Header由同一UI生成，无真实凭据；所有文件操作不自动Send。原生面板先定位自有临时目录再取景，取消由真实键鼠完成；未运行前只标代码准备，不发布素材。
-
-### 独立响应检查与实际重发补录
-
-`guidebook-inspection.workflow.ts`与`guidebook-replay.workflow.ts`只补教程媒体，不修改产品行为，也不替代其他Composer契约的验收。当前目标是macOS正式Release `0.1.1-alpha.1`；每条独立profile、trace与loopback origin，等待真实App/Core/8888后录制，保持App当前语言。每个具体操作经`media.step()`独立保存窗口截图、时间戳与字幕，使用`composer-inspection`和`composer-replay`命名，不覆盖既有素材。
-
-- 响应检查：新建GET请求，输入自产`/guide/composer-inspection/response`地址，逐字段添加`x-guide-request: inspection-demo`后Send。真实origin返回`x-guide-response: inspection-demo`、两条`guide_session=inspection-demo` / `guide_theme=light` Cookie和含`Hello response`、`guide-001`、`demo-001`的JSON。分别打开Headers、Cookies、Timing，独立记录Response Headers、Request Headers、Cookies、Timing、Connection的折叠与展开，检查真实响应与连接信息；明文HTTP不冒充TLS握手证据。
-- 正文与布局：返回Body，切Tree、折叠/展开根节点、打开`message`右键菜单并复制值，再切Raw、复制原文、切Hex、复制字节、进入和退出Fullscreen。Copy只读核验真实按钮产生的剪贴板内容；不预写剪贴板。用真实pointer分别拖宽Collection和增高响应区，记录前后几何，确认当前响应保持。
-- 手动Format：只修改已有URL的host/port/path，向独立`/guide/composer-inspection/format`发送请求。响应为`.guide{color:teal}`及其后的1,048,576个ASCII空格，超过1 MiB自动格式化阈值但仍可完整格式化。先Copy证明未格式化原文，再点击Format与Copy核对分行结果；不能以小响应自动格式化的最终画面替代手动Format步骤。
-- 重复Query：新建POST，URL填`/guide/composer-replay/query?guide=url`；确认Query表格初始不因URL自动生成行，再逐字段添加两条同名`guide=table`、`guide=again`。Send必须由真实origin观测到`guide=url&guide=table&guide=again`，URL输入仍保留原值，不把追加描述成替换或双向同步。
-- Text中间态：改为独立`/guide/composer-replay/text?guide=text-url`与PUT，分别记录打开Body、选择空Text、输入`Hello`、补齐`Hello text`及Send。输入阶段不新增origin请求，发送后核对完整字节。Text不自动增加`Content-Type`；未手工填写时origin没有该Header，控件上的`text/plain`不能当作实际出站Header。
-- Recent sends实际重发：将当前Query的`table`改成`current`，正文改成`Hello replay`；单独记录打开历史菜单、选择旧POST地址、检查当前Query、再次Send。历史恢复已组合的旧URL与method，当前Query/Body不恢复；预期origin收到`guide=url&guide=table&guide=again&guide=current&guide=again`及`Hello replay`。三次完整path各不相同，并核对origin记录总数，避免`observation(path)`只返回首条记录产生假通过；如Release行为不同，保留真实证据并标明限制。
-
-两条均保存逐步骤清单、原生视频、字幕、独立origin/剪贴板/几何证据以及原driver的`trace.zip`、日志、`metadata.json`。macOS Release的[响应检查实录](../../../test-results/guidebook-media-20261015/composer-inspection-complete/run-01/composer-guidebook-inspect-563c5-views-actions-and-splitters-macos-guidebook/)和[实际重发实录](../../../test-results/guidebook-media-20261015/composer-inspection-complete/run-03-replay/composer-guidebook-replay.-42eae--actual-Recent-sends-replay-macos-guidebook/)已核对上述数据面结果与代表性原图、视频帧。原driver通过`shell.window.close`正常关闭，进程退出、8888释放及宿主代理/证书恢复门禁通过；未强杀，不扩大为Windows、TLS或整个Composer的验收。
-
-取景只包含workflow所属App窗口：原生视频使用`SCContentFilter(desktopIndependentWindow:)`，逐步骤截图使用`screencapture -l <windowID>`；这两条没有原生文件面板，也没有显示器、桌面或区域录屏。录制保持`zh-CN`，没有为截图切换语言。
-
-**已发布UI限制**：当前中文Release把Text档标签显示成`composer.text`。输入中间态、完整字节与重发功能已验证，但正常翻译标签的素材仍为`blocked`，需要独立产品修复授权及相应Release；原图和视频保留实际标签，不修图、不切语言绕过，不把本次功能通过写成缺译已修复。Text未手工设置时不发送`Content-Type`、历史已组合URL再次追加当前Query也必须按实录描述，不能写成自动Header、覆盖同名参数或恢复完整历史草稿。
+命令、输出清单和显式导入边界见[套件说明](../README.md#trace-与证据)。已有公开PNG及历史验收记录保持原来源，新的运行不会自动替换它们；本节不把未经执行的平台或分支记为通过。
 
 本文件定义 Composer 工作区的完整 E2E 流程。每条 workflow 独立启动 Electron、独占 profile/trace，并使用真实 Composer UI 和本地 origin。
 
@@ -222,13 +190,14 @@ Response Headers、Request Headers、Cookies、Timing与Connection沿用同一�
 4. 新建请求并发送完整1–2 MiB的单行CSS响应；Format前Copy确认原文无换行，点击公共Format动作，等待busy结束后再次Copy并确认已分行。
 5. 新建请求并发送无法解析的XML；记录Renderer page errors，点击Format后确认原文逐字节不变、按钮恢复可用且未新增未处理page error。
 6. 不再点击Format，切回此前CSS request；Copy必须仍返回该response的4行格式化视图，证明格式化副本按文档隔离且未改写原始body。
-7. 附加四段正文摘要、CSS恢复摘要与Renderer错误增量；正常Close并验证Main/Core/Renderer退出、8888释放和profile删除。
+7. 发送超过2 MiB的JSON响应；Copy恰好返回2 MiB预览且与真实响应前缀一致，Format必须disabled，不把预览当作完整响应。
+8. 附加正文摘要、CSS恢复摘要与Renderer错误增量；截图模式在上述七个检查点保存PNG。正常Close并验证Main/Core/Renderer退出、8888释放和profile删除。
 
 ### 验收要求
 
 - unit必须验证formatter异常返回原文，不向调用方泄漏异常。
 - 真实Electron不得出现格式化内容错误或未处理Renderer error；selector、fixture、构建或listener失败不算产品故障。
-- 同时覆盖HTML/JavaScript自动格式化、CSS手动格式化、跨文档恢复、XML失败回退以及完整销毁。
+- 同时覆盖HTML/JavaScript自动格式化、CSS手动格式化、跨文档恢复、XML失败回退、2 MiB预览边界以及完整销毁。
 
 ### 预期效果
 

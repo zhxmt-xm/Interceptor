@@ -8,6 +8,7 @@ import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/auto
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 
@@ -252,6 +253,7 @@ async function runPreferenceWorkflow(desktopApp: LocalElectronApplicationDriver,
         await assertPreference(page, item.name, item.second);
       }
       await getByAutomationId(page, AUTOMATION_IDS.agent.panel.close).click();
+      await screenshotStep('Agent操作：Deny保持原值，Allow和Auto应用指定设置，已挂载UI反映结果。 / Agent actions: Deny preserves values; Allow and Auto apply the requested preferences and update the mounted UI.');
 
       // 原UI：Sidebar仍应用同一设置请求；Privacy连续点击只修改各自字段。
       // Original UI: Sidebar uses the same preference request; consecutive Privacy clicks change only their own fields.
@@ -274,6 +276,7 @@ async function runPreferenceWorkflow(desktopApp: LocalElectronApplicationDriver,
       }
       await getByAutomationId(page, AUTOMATION_IDS.agent.panel.close).click();
       if (!languageOnly) await openPrivacy(page);
+      await screenshotStep('原UI：Sidebar仍应用同一设置请求；Privacy连续点击只修改各自字段。 / Original UI: Sidebar uses the same preference request; consecutive Privacy clicks change only their own fields.');
 
       // MCP：Agent撤权不影响独立Ask/Auto，审批拒绝无修改，允许后结果与页面一致。
       // MCP: Agent revocation leaves independent Ask/Auto access; denial does not mutate settings and allowed results agree with the page.
@@ -308,6 +311,7 @@ async function runPreferenceWorkflow(desktopApp: LocalElectronApplicationDriver,
         await assertPreference(page, item.name, item.second);
       }
       await expect(getByAutomationId(page, AUTOMATION_IDS.mcp.approval.root)).toHaveCount(0);
+      await screenshotStep('MCP：Agent撤权不影响独立Ask/Auto，审批拒绝无修改，允许后结果与页面一致。 / MCP: Agent revocation leaves independent Ask/Auto access; denial does not mutate settings and allowed results agree with the page.');
 
       // 导出默认值：真实Capture使HAR选项可用，打开中的草稿保持原值，下次打开读取新偏好。
       // Export defaults: real Capture enables HAR options; an open draft retains its values and the next draft reads the updated preferences.
@@ -342,6 +346,7 @@ async function runPreferenceWorkflow(desktopApp: LocalElectronApplicationDriver,
       for (const item of cases) await expect(client.callTool({ name: item.name, arguments: item.first })).rejects.toMatchObject({ code: -32602 });
       await client.close();
       client = null;
+      await screenshotStep('导出默认值：真实Capture使HAR选项可用，打开中的草稿保持原值，下次打开读取新偏好。 / Export defaults: real Capture enables HAR options; an open draft retains its values and the next draft reads the updated preferences.');
 
       // 证据与重启：偏好与授权持久化，Model零重放；恢复初始值仍通过原UI。
       // Evidence and restart: preferences and permissions persist without Model replay; restore initial values through the original UI.

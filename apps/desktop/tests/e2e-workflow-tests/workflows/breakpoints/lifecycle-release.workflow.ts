@@ -9,6 +9,7 @@ import {
 import { createRequestBreakpointRule } from '../../fixtures/ui/breakpoint-workflow';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 test('breakpoints.lifecycle-release aborts all pending traffic on shutdown', async ({
   desktopApp,
@@ -42,6 +43,7 @@ test('breakpoints.lifecycle-release aborts all pending traffic on shutdown', asy
   await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointToggle).click();
   await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointEnable).click();
   await createRequestBreakpointRule(page, 'E2E lifecycle release', 'POST');
+  await screenshotStep('准备：启用真实WebSocket断点，再通过产品UI创建只匹配POST的HTTP断点规则。 / Arrange: enable one real WebSocket breakpoint, then create a POST-only HTTP breakpoint Rule.');
 
   // Arrange pending traffic: neither HTTP nor WebSocket may reach origin while no user command runs.
   // 构造pending：在用户未执行命令时，HTTP与WebSocket均不得抵达origin。
@@ -65,6 +67,7 @@ test('breakpoints.lifecycle-release aborts all pending traffic on shutdown', asy
   await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('2');
   expect(loopbackLab.observation(httpPath)).toBeUndefined();
   expect(webSocketLab.hasMessage(disconnectPayload)).toBe(false);
+  await screenshotStep('构造pending：在用户未执行命令时，HTTP与WebSocket均不得抵达origin。 / Arrange pending traffic: neither HTTP nor WebSocket may reach origin while no user command runs.');
 
   // Act and assert client lifecycle: abnormal disconnect releases only its WebSocket queue.
   // 操作并断言客户端生命周期：异常断开只释放所属WebSocket队列。
@@ -100,6 +103,7 @@ test('breakpoints.lifecycle-release aborts all pending traffic on shutdown', asy
   await expect(pendingRows).toHaveCount(1);
   await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('2');
   expect(webSocketLab.hasMessage(shutdownPayload)).toBe(false);
+  await screenshotStep('准备Core关闭生命周期：建立第二条真实连接并再次挂起一帧。 / Arrange shutdown lifecycle: create a second real connection and hold one new frame.');
 
   // Act: product Close must release Core/RPC lifecycle state as aborted and close both clients.
   // 操作：产品Close必须以aborted释放Core/RPC生命周期状态，并关闭两个客户端。

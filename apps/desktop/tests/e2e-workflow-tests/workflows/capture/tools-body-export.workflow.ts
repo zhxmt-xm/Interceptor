@@ -12,6 +12,7 @@ import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { cancelFileDialog, submitFileDialogPath } from '../../fixtures/ui/file-dialog';
@@ -275,6 +276,7 @@ test('capture.tools.body-export saves captured bytes through native Agent and MC
     const requestArgs = { exchangeId: source.exchangeId, bodyId: source.request.bodyId };
     const otherArgs = { exchangeId: otherSource.exchangeId, bodyId: otherSource.response.bodyId };
     await getByAutomationId(page, AUTOMATION_IDS.agent.panel.toggle).click();
+    await screenshotStep('自产正文：通过真实代理录制大gzip响应、请求正文和独立Exchange，再从正式Tool读取正文身份。 / Product-owned bodies: capture a large gzip response, a request body, and another exchange through the real proxy, then read identities through a formal Tool.');
 
     // Agent Ask：Deny不产生文件，原生Cancel无任务，Allow保存完整编码正文并只展示安全摘要。
     // Agent Ask: Deny creates no file, native Cancel creates no job, and Allow saves the complete encoded body with only a safe summary.
@@ -293,6 +295,7 @@ test('capture.tools.body-export saves captured bytes through native Agent and MC
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('body-allow'))).toHaveAttribute('data-summary-kind', 'transferJob');
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('body-allow'))).toHaveAttribute('data-transfer-job-id', responseJobId);
     await verifyExport(client, responseJobId, agentResponseFile, source.response);
+    await screenshotStep('Agent Ask：Deny不产生文件，原生Cancel无任务，Allow保存完整编码正文并只展示安全摘要。 / Agent Ask: Deny creates no file, native Cancel creates no job, and Allow saves the complete encoded body with only a safe summary.');
 
     // Agent Auto：无审批但仍经原生Save，另一侧请求正文保持原始字节，不读取有限预览冒充导出。
     // Agent Auto: native Save is still required without approval, and the request-side body preserves its original bytes rather than a limited preview.
@@ -303,6 +306,7 @@ test('capture.tools.body-export saves captured bytes through native Agent and MC
     const requestJobId = startedJob((await finishAgentCall(page, openAiCompatibleLab, 'body-auto')).value);
     await verifyExport(client, requestJobId, agentRequestFile, source.request);
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolApproval('body-auto'))).toHaveCount(0);
+    await screenshotStep('Agent Auto：无审批但仍经原生Save，另一侧请求正文保持原始字节，不读取有限预览冒充导出。 / Agent Auto: native Save is still required without approval, and the request-side body preserves its original bytes rather than a limited preview.');
 
     // 独立授权与MCP Auto：Agent撤权立即生效，MCP仍能经真实Cancel和Save操作另一正文。
     // Independent permissions and MCP Auto: Agent revocation takes effect immediately while MCP still uses real Cancel and Save for another body.
@@ -332,6 +336,7 @@ test('capture.tools.body-export saves captured bytes through native Agent and MC
     const mcpJobId = startedJob(mcpValue(exporting));
     await verifyExport(client, mcpJobId, mcpFile, otherSource.response);
     await expect(getByAutomationId(page, AUTOMATION_IDS.mcp.approval.root)).toHaveCount(0);
+    await screenshotStep('独立授权与MCP Auto：Agent撤权立即生效，MCP仍能经真实Cancel和Save操作另一正文。 / Independent permissions and MCP Auto: Agent revocation takes effect immediately while MCP still uses real Cancel and Save for another body.');
 
     // 原入口与身份隔离：Capture保存按钮仍可用，错配正文或Clear后的旧身份均不得启动文件任务。
     // Original entry and identity isolation: the Capture save button still works, while mismatched bodies or identities invalidated by Clear cannot start file jobs.
@@ -357,6 +362,7 @@ test('capture.tools.body-export saves captured bytes through native Agent and MC
     await expect(client.callTool({ name: TOOL_NAME, arguments: otherArgs })).rejects.toMatchObject({ code: -32602 });
     await client.close();
     client = null;
+    await screenshotStep('原入口与身份隔离：Capture保存按钮仍可用，错配正文或Clear后的旧身份均不得启动文件任务。 / Original entry and identity isolation: the Capture save button still works, while mismatched bodies or identities invalidated by Clear cannot start file jobs.');
 
     // 脱敏与重启：仅保存长度/hash，模型无正文与文件信息，两代之间不重放请求、任务或保存文件。
     // Redaction and restart: retain only lengths and hashes, keep body and file information out of the model, and never replay requests, jobs, or file saves across generations.

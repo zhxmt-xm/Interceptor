@@ -21,6 +21,7 @@ import {
   getByAutomationIdPrefix,
 } from '../../fixtures/ui/automation';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { WorkflowProcessIdentity } from '../../fixtures/safety/workflow-host-safety-guard';
 import { submitFileDialogPath } from '../../fixtures/ui/file-dialog';
 
@@ -153,6 +154,7 @@ test('composer.collection.import appends product-exported requests with fresh id
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.composer).click();
     const importCollection = getByPublicAutomationId(page, IMPORT_IDS.toolbar);
     await expect(importCollection).toBeVisible();
+    await screenshotStep('先锁定新能力入口；旧提交必须在这里因真实产品缺口取得Red。 / Lock the new capability first; the old commit must become Red here on the real product gap.');
 
     // 通过真实Composer UI创建两个带字段的请求和一层目录，并把第二个请求拖入目录。
     // Create two requests with fields and one folder through the real Composer UI, then drag the second request into it.
@@ -236,6 +238,7 @@ test('composer.collection.import appends product-exported requests with fresh id
       AutomationIdFactory.composerCollectionRequest(secondRequestId),
     )).toHaveCount(1);
     await page.waitForTimeout(COLLECTION_SAVE_DELAY_MS * 2);
+    await screenshotStep('通过真实Composer UI创建两个带字段的请求和一层目录，并把第二个请求拖入目录。 / Create two requests with fields and one folder through the real Composer UI, then drag the second request into it.');
 
     // Export经真实Save Dialog生成唯一导入文件；测试只读确认请求字段与目录层级。
     // Export creates the only Import input through the real Save Dialog; the test only reads fields and hierarchy.
@@ -286,6 +289,7 @@ test('composer.collection.import appends product-exported requests with fresh id
       body: Buffer.from(exportedText),
       contentType: 'application/json',
     });
+    await screenshotStep('Export经真实Save Dialog生成唯一导入文件；测试只读确认请求字段与目录层级。 / Export creates the only Import input through the real Save Dialog; the test only reads fields and hierarchy.');
 
     // 第一次Import取消，树、打开文档、目录落点和Core持久化内容必须全部不变。
     // Cancel the first Import; tree, active document, target folder, and persisted content must all remain unchanged.
@@ -306,6 +310,7 @@ test('composer.collection.import appends product-exported requests with fresh id
     await expect(getByAutomationId(page, AUTOMATION_IDS.composer.url))
       .toHaveValue('collection.e2e.invalid/first?existing=1');
     await expect(originalFolderTarget).toHaveAttribute('aria-pressed', 'true');
+    await screenshotStep('第一次Import取消，树、打开文档、目录落点和Core持久化内容必须全部不变。 / Cancel the first Import; tree, active document, target folder, and persisted content must all remain unchanged.');
 
     // 确认Import后，节点与字段行ID全部重生成，内容与层级保留且当前文档/落点不变。
     // Confirm Import; regenerate every node and field-row ID while preserving content, hierarchy, active document, and target.
@@ -347,6 +352,7 @@ test('composer.collection.import appends product-exported requests with fresh id
     await expect.poll(() => countInputsWithValue(page, 'source')).toBe(1);
     await getByAutomationId(page, AUTOMATION_IDS.composer.tab.headers).click();
     await expect.poll(() => countInputsWithValue(page, 'x-collection-e2e')).toBe(1);
+    await screenshotStep('确认Import后，节点与字段行ID全部重生成，内容与层级保留且当前文档/落点不变。 / Confirm Import; regenerate every node and field-row ID while preserving content, hierarchy, active document, and target.');
 
     // 切出再返回必须从Core恢复同一导入身份；导出快照中的字段ID不得在新树出现。
     // Remount through Core with the same imported identities; exported field IDs must never reappear.
@@ -374,6 +380,7 @@ test('composer.collection.import appends product-exported requests with fresh id
     expect(persistedImportedRequests).toHaveLength(2);
     expect(persistedImportedRequests.flatMap(fieldRowIds).some((id) =>
       exportedFieldIds.includes(id))).toBe(false);
+    await screenshotStep('切出再返回必须从Core恢复同一导入身份；导出快照中的字段ID不得在新树出现。 / Remount through Core with the same imported identities; exported field IDs must never reappear.');
 
     // 保存原始/导入节点与字段身份；fixture随后负责trace、正常Close、8888释放和profile删除。
     // Save original/imported node and field identities; the fixture then owns trace, normal Close, port release, and profile deletion.

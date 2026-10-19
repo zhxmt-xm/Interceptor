@@ -3,6 +3,7 @@ import { writeFile } from 'node:fs/promises';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 
@@ -44,6 +45,7 @@ for (const scenario of ['manual', 'truncated'] as const) {
       wireBytes: Buffer.byteLength(source), previewBytes: clipboard.length, expectedBytes: expected.length,
       previewSha256: clipboard.sha256,
     }, null, 2), 'utf8');
+    await screenshotStep('用户操作：打开自产响应并复制当前默认正文，验证1MiB以上不自动格式化。 / User actions: open the captured response and copy its default body; above 1 MiB it remains unformatted.');
 
     // 业务断言：复制与预览上限一致，完整网络正文不截断；清理由真实App退出执行。
     // Assertions: Copy obeys the preview limit while the network body stays complete; real App exit owns cleanup.
@@ -64,5 +66,6 @@ for (const scenario of ['manual', 'truncated'] as const) {
       await expect(formatButton).toBeDisabled();
     }
     expect(desktopApp.rendererPageErrors()).toEqual([]);
+    await screenshotStep('业务断言：复制与预览上限一致，完整网络正文不截断；清理由真实App退出执行。 / Assertions: Copy obeys the preview limit while the network body stays complete; real App exit owns cleanup.');
   });
 }

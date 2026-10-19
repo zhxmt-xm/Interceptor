@@ -4,7 +4,7 @@
 
 | 目录 | 职责 | 入口 |
 | --- | --- | --- |
-| `runtime/` | Electron 与 Browser Playground 的启动、证据、退出和 profile 保留 | [local-electron-driver.ts](runtime/local-electron-driver.ts)、[playground-server.ts](runtime/playground-server.ts) |
+| `runtime/` | Electron 与 Browser Playground 的启动、可选步骤截图、证据、退出和 profile 保留 | [local-electron-driver.ts](runtime/local-electron-driver.ts)、[step-screenshots.ts](runtime/step-screenshots.ts)、[playground-server.ts](runtime/playground-server.ts) |
 | `ui/` | 公共 automation 定位、Capture/Breakpoint/Playground 操作、分平台真实文件 Dialog | [automation.ts](ui/automation.ts)、[capture-workflow.ts](ui/capture-workflow.ts)、[breakpoint-workflow.ts](ui/breakpoint-workflow.ts)、[file-dialog.ts](ui/file-dialog.ts) |
 | `safety/` | 宿主进程代际、系统代理与 journal 恢复保护 | [workflow-host-safety-guard.ts](safety/workflow-host-safety-guard.ts) |
 | `agent/` | 可控的 OpenAI-compatible 流式回复、Tool Call 与模型请求证据 | [openai-compatible-lab.ts](agent/openai-compatible-lab.ts) |
@@ -26,6 +26,10 @@ profile保留策略，完整成功后删除测试profile。准备通过不等于
 文件窗口的PowerShell片段/拼接顺序断言和OpenAI lab自身的响应快照已移除。前者不能证明真实点击或窗口归属，后者只验证模拟器返回自己排入的消息；Windows原生导入/导出与Agent Tool Call继续由所属真实workflow验证。driver、lab及产品实现未因此改变，不把移除辅助断言记为Windows或Agent验收通过。
 
 ## 平台分派
+
+- `stepScreenshots`是默认关闭的测试option。`step-screenshots.ts`跟随当前测试的真实App代际，在原流程检查点保存PNG；自动fixture最先建立本次截图运行，最后在其他fixture、driver退出及宿主恢复结束后生成清单。driver只报告实际恢复结果，证据写入失败也进入原清理错误聚合，不得生成成功清单；不用图片代替业务断言。
+- macOS PNG由[window-screenshot.swift](ui/window-screenshot.swift)一次性捕获，先核对所属Main及窗口。原生文件面板在[file-dialog.ts](ui/file-dialog.ts)的共享操作边界取景，底层macOS窗口工具不依赖截图runtime；只在定位本次文件后拍Open/Save，取消则拍返回App的状态。锁屏、权限或取景失败显式失败，不录桌面、不启动视频。
+- 输出留在本次测试的`step-screenshots/`，不依赖Homepage，不提供专用导入或发布命令；采用图片前另行审查内容。普通模式仍保留原trace/final.png和正常退出门禁。
 
 - Windows文件窗口点击使用UI Automation提供的物理坐标及`SetPhysicalCursorPos`，不混用逻辑坐标；不改变系统缩放、窗口归属/前台检查、真实键鼠或提交后的文件断言。
 - Recording助手同时处理fresh profile的readiness确认与已确认后的暂停/恢复：真实点击后等待Recording或确认按钮，只有确实显示readiness才确认；不等待不存在的弹窗，不调用Preload代替用户操作。

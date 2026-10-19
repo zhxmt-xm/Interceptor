@@ -94,6 +94,8 @@ MCP 默认关闭。客户端是否兼容取决于其支持的 Streamable HTTP �
 
 完成初始化后，运行`npm start`，选择`Development / Test / Build / Release`。Desktop与Design不再询问构建模式；确认默认Yes，仍需按Enter执行。Release进入现有`npm run release`向导，启动CI前确认源码、版本与目标，构建和完整性检查通过后自动Publish，不再二次询问。原始命令继续供直接调用和CI使用。
 
+在Test下，E2E可选普通验收或逐步截图，无需手写命令参数，截图自动保存到独立目录。两种模式使用同一批workflow；截图只是测试证据，不自动发布到官网。
+
 ## 致谢
 
 Interceptor 基于 [Electron](https://www.electronjs.org/)、[Mockttp](https://github.com/httptoolkit/mockttp)、[React](https://react.dev/)、[Monaco Editor](https://microsoft.github.io/monaco-editor/) 及仓库使用的其他库构建。

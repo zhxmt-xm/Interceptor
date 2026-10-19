@@ -5,6 +5,7 @@ import {
   startRecording,
 } from '../../fixtures/ui/capture-workflow';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 test('capture.inspector.section-collapse keeps sections independent and accessible', async ({
   desktopApp,
@@ -37,6 +38,7 @@ test('capture.inspector.section-collapse keeps sections independent and accessib
 
   await expect(general).toHaveAttribute('aria-expanded', 'true');
   await expect(responseHeaders).toHaveAttribute('aria-expanded', 'true');
+  await screenshotStep('读取两个独立section的公共控件与正文关系，不依赖当前语言文案。 / Resolve two independent public section controls and bodies without localized text.');
 
   // 标题：公共最小高度一致，保留父行flex居中和内容自然增高。
   // Headings: share a minimum height while preserving flex alignment and natural content growth.
@@ -54,6 +56,7 @@ test('capture.inspector.section-collapse keeps sections independent and accessib
   const responseHeadersBody = page.locator(`[id="${responseHeadersBodyId}"]`);
   await expect(generalBody).toHaveJSProperty('hidden', false);
   await expect(responseHeadersBody).toHaveJSProperty('hidden', false);
+  await screenshotStep('标题：公共最小高度一致，保留父行flex居中和内容自然增高。 / Headings: share a minimum height while preserving flex alignment and natural content growth.');
 
   // 用户依次折叠两个section；每次只允许目标状态变化。
   // Collapse each section in turn; each action may change only its target state.
@@ -76,6 +79,7 @@ test('capture.inspector.section-collapse keeps sections independent and accessib
   await expect(generalBody).toHaveJSProperty('hidden', false);
   await expect(responseHeaders).toHaveAttribute('aria-expanded', 'false');
   await expect(responseHeadersBody).toHaveJSProperty('hidden', true);
+  await screenshotStep('用户依次折叠两个section；每次只允许目标状态变化。 / Collapse each section in turn; each action may change only its target state.');
 
   // 保存最终ARIA与正文状态；driver随后负责trace、正常Close和销毁验证。
   // Save final ARIA and body state; the driver then owns trace, graceful Close, and teardown verification.
@@ -154,4 +158,5 @@ test('capture.inspector.section-collapse keeps sections independent and accessib
       expect(cell.height).toBeGreaterThan(0);
     }
   }
+  await screenshotStep('核对真实flex行、固定文字列与弹性进度条，不以字形或自算矩形中心定义对齐。 / Verify the flex row, fixed text columns and flexible bar without glyph or calculated-center assertions.');
 });

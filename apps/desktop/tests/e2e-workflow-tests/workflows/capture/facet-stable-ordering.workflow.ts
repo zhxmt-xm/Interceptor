@@ -9,6 +9,7 @@ import {
 } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 test('capture facets keep first-seen order when a later count overtakes', async ({
   desktopApp,
@@ -40,6 +41,7 @@ test('capture facets keep first-seen order when a later count overtakes', async 
   const rows = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow);
   await expect(rows.filter({ hasText: '/e2e/facet-order/get-first' }).last()).toBeVisible();
   await expect(rows.filter({ hasText: '/e2e/facet-order/post-first' }).last()).toBeVisible();
+  await screenshotStep('先捕获 GET、再捕获 POST，建立唯一可观察的首次出现顺序。 / Capture GET before POST to establish one observable first-seen order.');
 
   // 用户展开 Method facet；断言直接读取产品 DOM，而不是在测试侧重新排序。
   // The user expands Method; assertions read product DOM without sorting in the test.
@@ -77,6 +79,7 @@ test('capture facets keep first-seen order when a later count overtakes', async 
     AutomationIdFactory.captureFacetOption('method', 'POST'),
   )).toBeVisible();
   expect(await methodOptionIds()).toEqual(expectedOrder);
+  await screenshotStep('用户展开 Method facet；断言直接读取产品 DOM，而不是在测试侧重新排序。 / The user expands Method; assertions read product DOM without sorting in the test.');
 
   // 让后出现的 POST count 反超，并证明计数更新没有移动既有 option。
   // Make the later POST count overtake and prove the count update does not move existing options.
@@ -94,12 +97,14 @@ test('capture facets keep first-seen order when a later count overtakes', async 
     orderAfterCountOvertake,
     'Facet options must stay in first-seen order after a later count overtakes.',
   ).toEqual(expectedOrder);
+  await screenshotStep('让后出现的 POST count 反超，并证明计数更新没有移动既有 option。 / Make the later POST count overtake and prove the count update does not move existing options.');
 
   // 停止记录并保存语言无关的排序证据；fixture随后验证进程、8888和系统副作用恢复。
   // Stop recording and save language-independent order evidence; the fixture then verifies teardown.
   const recording = getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle);
   await recording.click();
   await expect(recording).toHaveAttribute('aria-pressed', 'false');
+  await screenshotStep('停止记录并保存语言无关的排序证据；fixture随后验证进程、8888和系统副作用恢复。 / Stop recording and save language-independent order evidence; the fixture then verifies teardown.');
 
   // 组头与All在同一次DOM读取中核对request总数，不把方法种类数当作请求数。
   // Compare the group and All request totals in one DOM read, not the number of methods.
@@ -137,4 +142,5 @@ test('capture facets keep first-seen order when a later count overtakes', async 
     }, null, 2)),
     contentType: 'application/json',
   });
+  await screenshotStep('组头与All在同一次DOM读取中核对request总数，不把方法种类数当作请求数。 / Compare the group and All request totals in one DOM read, not the number of methods.');
 });

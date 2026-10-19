@@ -15,6 +15,7 @@ import {
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { cleanHttpsCapture, prepareHttpsCapture, rootCertificateThumbprints } from '../../fixtures/ui/https-capture';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 test('capture.playground-traffic sends Browser traffic into real Capture', async ({
   desktopApp,
@@ -40,12 +41,14 @@ test('capture.playground-traffic sends Browser traffic into real Capture', async
     await browserPage.goto(playgroundServer.url);
     await expect(browserPage.locator('main')).toHaveAttribute('data-section', 'capture');
     await expect(browserPage.locator('[data-scenario-id]')).toHaveCount(41);
+    await screenshotStep('准备：通过产品UI开启真实Recording，再用系统Edge打开完整Playground进程。 / Arrange: enable real Recording through product UI, then open the full Playground process in system Edge.');
 
     // 用户操作：在Playground选择H1 JSON并点击公开Run控件，不直接调用Lab API。
     // User action: select H1 JSON in Playground and click its public Run control without calling the Lab API directly.
     await browserPage.locator('[data-scenario-id="h1-json"]').click();
     await browserPage.locator('[data-playground-action="run"]').click();
     await expect(browserPage.locator('[data-traffic-state="complete"]')).toBeVisible();
+    await screenshotStep('用户操作：在Playground选择H1 JSON并点击公开Run控件，不直接调用Lab API。 / User action: select H1 JSON in Playground and click its public Run control without calling the Lab API directly.');
 
     // 业务断言：真实Capture接收自产H1 exchange，并在Response正文中显示origin JSON。
     // Business assertion: real Capture receives the generated H1 exchange and shows the origin JSON in Response body.
@@ -65,6 +68,7 @@ test('capture.playground-traffic sends Browser traffic into real Capture', async
       desktopApp.page,
       AUTOMATION_IDS.capture.inspector.bodyPane,
     )).toContainText('ord_42');
+    await screenshotStep('业务断言：真实Capture接收自产H1 exchange，并在Response正文中显示origin JSON。 / Business assertion: real Capture receives the generated H1 exchange and shows the origin JSON in Response body.');
 
     // 用户操作：返回Playground选择WebSocket text场景并再次点击Run。
     // User action: return to Playground, select the WebSocket text scenario, and click Run again.
@@ -72,6 +76,7 @@ test('capture.playground-traffic sends Browser traffic into real Capture', async
     await expect(browserPage.locator('[data-traffic-state]')).toHaveCount(0);
     await browserPage.locator('[data-playground-action="run"]').click();
     await expect(browserPage.locator('[data-traffic-state="complete"]')).toBeVisible();
+    await screenshotStep('用户操作：返回Playground选择WebSocket text场景并再次点击Run。 / User action: return to Playground, select the WebSocket text scenario, and click Run again.');
 
     // 业务断言：真实Capture显示自产WebSocket exchange和双向text payload。
     // Business assertion: real Capture shows the generated WebSocket exchange and bidirectional text payload.
@@ -94,6 +99,7 @@ test('capture.playground-traffic sends Browser traffic into real Capture', async
     );
     await expect.poll(() => frames.count()).toBeGreaterThanOrEqual(2);
     await expect(frames.filter({ hasText: 'hello from client' })).toHaveCount(2);
+    await screenshotStep('业务断言：真实Capture显示自产WebSocket exchange和双向text payload。 / Business assertion: real Capture shows the generated WebSocket exchange and bidirectional text payload.');
 
     // 准备：经真实产品UI开启HTTPS解密和localhost例外，仍从Playground公开按钮发送流量。
     // Arrange: enable HTTPS decryption and the localhost exception through product UI; traffic still starts at the public Playground button.
@@ -119,6 +125,7 @@ test('capture.playground-traffic sends Browser traffic into real Capture', async
         expect(response.status()).toBe(200);
         const result: TrafficScenarioResult = await response.json();
         await expect(browserPage.locator('[data-traffic-state="failed"]')).toBeVisible();
+        await screenshotStep('用户操作：选择场景并Run，读取这次真实HTTP返回值，不直接调用Lab或产品API。 / User action: select the scenario and Run, observing its real HTTP response without calling Lab or product APIs.');
 
         // 协议证据：真实接收字节与hash保真，POST不重放，独立连接可以恢复。
         // Protocol evidence: retain actual bytes and hash, do not replay the POST, and recover over a separate connection.
@@ -146,6 +153,7 @@ test('capture.playground-traffic sends Browser traffic into real Capture', async
         const protocolEvidence = browserPage.locator('[data-response-detail] pre').first();
         await expect(protocolEvidence).toContainText(expectedHash);
         await expect(protocolEvidence).toContainText('"differentOriginSession": true');
+        await screenshotStep('协议证据：真实接收字节与hash保真，POST不重放，独立连接可以恢复。 / Protocol evidence: retain actual bytes and hash, do not replay the POST, and recover over a separate connection.');
 
         // 业务断言：原Capture行在收尾后保留200与256 KiB，实际Headers和正文可读，恢复请求另有一行。
         // Product assertions: keep the original 200/256 KiB Capture row with readable headers/body and a separate recovery row.
@@ -169,6 +177,7 @@ test('capture.playground-traffic sends Browser traffic into real Capture', async
         const recoveryRow = captureRows.filter({ hasText: `${requestPath}/recovered` });
         await expect(recoveryRow).toHaveCount(1);
         for (const value of ['h2', 'GET', '200']) await expect(recoveryRow).toContainText(value);
+        await screenshotStep('业务断言：原Capture行在收尾后保留200与256 KiB，实际Headers和正文可读，恢复请求另有一行。 / Product assertions: keep the original 200/256 KiB Capture row with readable headers/body and a separate recovery row.');
 
         // 证据：保存可人工核对的Browser与产品截图，以及原始协议结果。
         // Evidence: save the Browser/product screenshots and raw protocol result for manual comparison.
@@ -178,8 +187,10 @@ test('capture.playground-traffic sends Browser traffic into real Capture', async
         await writeFile(evidencePath, JSON.stringify(result, null, 2), 'utf8');
         await testInfo.attach(`${scenarioId}.json`, { path: evidencePath, contentType: 'application/json' });
         await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.close).click();
+        await screenshotStep('证据：保存可人工核对的Browser与产品截图，以及原始协议结果。 / Evidence: save the Browser/product screenshots and raw protocol result for manual comparison.');
       });
     }
+    await screenshotStep('准备：经真实产品UI开启HTTPS解密和localhost例外，仍从Playground公开按钮发送流量。 / Arrange: enable HTTPS decryption and the localhost exception through product UI; traffic still starts at the public Playground button.');
 
     // Evidence：保存真实Browser页面、Renderer状态和无page error事实。
     // Evidence: retain the real Browser page, Renderer state, and zero-page-error fact.

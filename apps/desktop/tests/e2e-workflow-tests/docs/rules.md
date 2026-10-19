@@ -1,26 +1,20 @@
 # Rules Workflows
 
-## 教程逐步骤录制
+## 原流程与可选步骤截图
 
-`guidebook-header.workflow.ts`在真实Release从空树创建`Guide test header`，依次填写Host `127.0.0.1`、Path `/guide/rules/order`和请求Header `x-interceptor-guide: rules-demo`，启用、Apply后由外部客户端产生匹配与非匹配请求，核对源站实际Header、命中与Capture详情，再停用并Apply。每个操作步骤保留独立原生截图与视频位置；不通过Store、Preload或业务API创建规则。
+只保留原Rules workflow。必要的差集补到已有场景，不把整套教程改名或追加为另一批test。
 
-使用独立教程录制配置；本流程不代替其他matcher/action及原生导入导出验收。结束后正式Close和宿主guard必须证明代理、进程及8888恢复。
+- `root-toolbar.workflow.ts`保留空树、根命令与目录断言，继续使用刚创建的规则核对request/response Header set/append/remove、Query set/remove、Status、Synthetic额外Header、Delay实际阈值、Block两模式与停用恢复、Map Remote和Map Local。Map Local文件只能来自同轮产品Save；仅改Content-Encoding保持原字节，显式Body替换才验证gzip及Content-Length。
 
-补充实录由`guidebook-actions.workflow.ts`逐个核对Query、Body、Status、Synthetic、Delay、Block、Map Remote和Map Local，后者必须先用产品Save body生成输入文件。`guidebook-matchers.workflow.ts`构造全部八类条件并用真实GET/POST核对AND正反例；`guidebook-organization.workflow.ts`核对可见顺序导致的真实Header覆盖、目录拖动、Export、Import取消与追加。它们保存独立步骤图和真实输入值，不把未执行的组合归为已通过。
+- `hierarchy-menus-status.workflow.ts`复用原层级、校验、持久化、命中与导航，补八类AND条件的真实正反例、contains/Aa/exact/regex/MIME wildcard、排序覆盖、搜索、目录重命名/折叠以及非最后规则和空目录删除。
 
-macOS原生文件选择沿用共享fixture：先回读完整GoTo路径，再真实双击唯一匹配的自产文件/目录建议项，使用原生Save/Open或Cancel按钮收尾；不发送关闭GoTo的Return，不更改系统输入法或应用语言。实际导出文件、导入预览、取消零写入和退出恢复仍由每条workflow独立核验。
+- 当前Release允许Apply无效正则`[`但恒不匹配；最后规则删除后没有Apply入口仍是既有边界，不构造备用规则伪装修复。
 
-`guidebook-response-evidence.workflow.ts`补录独立的`Guide response and body`示例：由空白区域菜单创建，只匹配`127.0.0.1`与`/guide/response-evidence`；响应Header `x-guide-list`依次append `two`与remove，客户端核对原值`one`的保留及移除。随后通过UI改为请求Body，发送`{"message":"guide-original"}`并替换为`{"message":"guide-final"}`，逐步录制Original/Final、Copy、Fullscreen、原生Save body和效果标记跳转。响应Body另用`{"message":"guide-response-final"}`，明确核对Original不可用；最后停用并Apply，以新请求证明恢复。每步保留原生图和影片位置，保存文件必须由产品产生，正常Close及宿主guard核对代理、CA、进程和8888。
+- `body-effect-evidence.workflow.ts`保留Original/Final、最终写入者、Text/File和Header effect；HTTPS跨scheme/host/port映射复用`capture/tls-scenarios.workflow.ts`的真实TLS连接。
 
-`guidebook-tree.workflow.ts`实录三级目录、第四级禁用、空规则校验、目录重命名/搜索/折叠、规则菜单跳Capture及Header效果返回。`Guide nested priority`与`Guide root priority`实际比较后写覆盖，再删除非最后一条规则与已空目录并Apply，验证剩余规则仍命中；最后一条保留停用，不添加无业务作用的备用规则或宣称空树删除已修复。全程使用自有Host/Path，正常Close及宿主guard核对退出恢复。
+- `mcp/streamable-http.workflow.ts`在原第二写入者步骤核对未Apply本地草稿、冲突、Core实际remote结果与显式Reload；不直接写Store。原`import-tree`、`tools-import`、`tools-export`继续验证文件与身份。
 
-`guidebook-matching-modes.workflow.ts`在同一`Guide matching modes`规则中实录contains、Aa大小写、exact、regex及无效`[`的实际行为，再用Response Header动作验证`application/*`的JSON正例与text/plain反例。当前Release会保存无效正则并恒不匹配，不伪造语法诊断或把“已应用”当作输入正确。每次Apply后用带公开`x-guide-case`的真实请求区分结果，不额外给被测Path添加query；在Capture检查同一请求再返回编辑。正则/大小写控件只通过已存在的匹配字段及其三枚按钮操作，不给Release补隐藏属性或直接改Store。
-
-`guidebook-response-controls.workflow.ts`补录Synthetic的额外Header、Delay/Block/Synthetic各自停用后的实际恢复，明确操作reset与close两种模式。编码部分先只改Response `content-encoding:gzip`并证明原始字节没有被压缩，再添加显式Body替换，核对真实gzip字节、自动更新的原Content-Length和Capture解码正文；不把只改Header描述成编码转换。所有动作只作用于自有前缀，最后停用Apply并正常Close。
-
-`guidebook-conflict.workflow.ts`通过正式UI创建初始规则，随后保留未Apply的local草稿；已配置的本机官方MCP SDK发起`rules_replace_tree`，用户真实Ask允许后写入remote版本。核对草稿保留、冲突状态、Core实际新请求使用remote，之后显式Reload并基于最新revision编辑merged、Apply和验证流量。Client凭据在录制前复制到内存且不展示，不注入Store、不假装外部商业Host；最后停用规则、关闭MCP并正常Close。
-
-`guidebook-routing.workflow.ts`把自有HTTPS localhost输入经Map Remote改到另一HTTP 127.0.0.1端口与路径，复用真实TLS socket读取客户端响应，并独立核对目标origin，不要求已被绕过的原origin再收到请求。停用后原HTTPS端点对未配置的例子路径恢复404，不冒充业务200。Map Local先用本轮目录中未创建的文件名得到真实404，再改成同流程Save body产生的JSON文件并验证完整字节；不预造输入、不调用个人服务或删除日常CA。最后停用规则、清理本轮TLS设置并正常Close。
+命令、输出清单和显式导入边界见[套件说明](../README.md#trace-与证据)。已有公开PNG及历史验收记录保持原来源，新的运行不会自动替换它们；本节不把未经执行的平台或分支记为通过。
 
 本文件定义 Rules 工作区的完整 E2E 流程。每条 workflow 都独立启动 Electron、独占 profile/trace，并通过真实 Rules UI、Preload、Core RuleStore 与 Proxy data plane 验证。
 

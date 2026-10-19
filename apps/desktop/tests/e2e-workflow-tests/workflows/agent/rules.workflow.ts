@@ -18,6 +18,7 @@ import {
   LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
@@ -485,6 +486,7 @@ test('agent.tools.rules reads hits and replaces the complete Rule tree', async (
       desktopApp.page,
       AutomationIdFactory.agentToolResult('rules-hits-initial'),
     )).toHaveAttribute('data-rule-total-hits', '1');
+    await screenshotStep('用户操作与业务断言：渐进发现五项Rules Tool，并读取真实嵌套树、revision、hit与typed摘要。 / User actions and assertions: progressively discover the five Rules Tools and read the real nested tree, revision, hit, and typed summaries.');
 
     // 用户操作：Ask下Deny完整替换；metadata来自当前Core树，Deny不推进revision也不改变真实effect。
     // User action: deny a complete replacement in Ask; metadata comes from the current Core tree, and denial changes neither revision nor real effect.
@@ -526,6 +528,7 @@ test('agent.tools.rules reads hits and replaces the complete Rule tree', async (
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.revision))
       .toHaveAttribute('data-revision', String(firstRevision));
     await expectRuleEffect(desktopApp, loopbackLab, 'denied', INITIAL_HEADER_VALUE);
+    await screenshotStep('用户操作：Ask下Deny完整替换；metadata来自当前Core树，Deny不推进revision也不改变真实effect。 / User action: deny a complete replacement in Ask; metadata comes from the current Core tree, and denial changes neither revision nor real effect.');
 
     // 用户操作与业务断言：Allow沿正式replace推进revision，Rules Renderer由Main事件重载，真实effect随之更新。
     // User action and assertion: Allow advances revision through the formal replace, Main reloads the Rules Renderer, and the real effect updates.
@@ -578,6 +581,7 @@ test('agent.tools.rules reads hits and replaces the complete Rule tree', async (
       'rules-hits-updated',
       ruleId,
     )).toBe(3);
+    await screenshotStep('用户操作与业务断言：Allow沿正式replace推进revision，Rules Renderer由Main事件重载，真实effect随之更新。 / User action and assertion: Allow advances revision through the formal replace, Main reloads the Rules Renderer, and the real effect updates.');
 
     // 用户操作：Auto用最新完整树替换且不显示问询；随后stale revision稳定失败并保持Auto effect。
     // User action: Auto replaces the latest complete tree without approval; a stale revision then fails stably and preserves the Auto effect.
@@ -614,6 +618,7 @@ test('agent.tools.rules reads hits and replaces the complete Rule tree', async (
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.revision))
       .toHaveAttribute('data-revision', String(latestRevision));
     await expectRuleEffect(desktopApp, loopbackLab, 'stale', AUTO_HEADER_VALUE);
+    await screenshotStep('用户操作：Auto用最新完整树替换且不显示问询；随后stale revision稳定失败并保持Auto effect。 / User action: Auto replaces the latest complete tree without approval; a stale revision then fails stably and preserves the Auto effect.');
 
     // 用户操作：Settings关闭全部五项优先于Auto；schema移除、旧调用均unknown_tool且Rule保持。
     // User action: disabling all five in Settings overrides Auto; schemas disappear, previous calls are unknown, and the Rule stays unchanged.
@@ -657,6 +662,7 @@ test('agent.tools.rules reads hits and replaces the complete Rule tree', async (
       .toHaveAttribute('data-revision', String(latestRevision));
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName))
       .toHaveValue(AUTO_RULE_NAME);
+    await screenshotStep('用户操作：Settings关闭全部五项优先于Auto；schema移除、旧调用均unknown_tool且Rule保持。 / User action: disabling all five in Settings overrides Auto; schemas disappear, previous calls are unknown, and the Rule stays unchanged.');
 
     // 重启与销毁：同profile恢复Rule、审批metadata、Auto与关闭项且零重放，再经公开UI恢复设置。
     // Restart and teardown: the same profile restores the Rule, approval metadata, Auto, and disabled Tools with zero replay, then public UI restores settings.

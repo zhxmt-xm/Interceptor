@@ -9,6 +9,7 @@ import { promisify } from 'node:util';
 
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 
@@ -96,6 +97,7 @@ test('settings.upstream.windows preserves Manual after native WPAD and PAC failu
         attemptedMode: mode, route: await getByAutomationId(page, ids.currentRoute).getAttribute('data-upstream-mode'),
         error: await error.textContent(), upstreamConnections: targets.length,
       });
+      await screenshotStep('业务断言：失败不改变保存模式、实际路线或WinINet，后续请求仍经过本轮Manual上游。 / Business assertions: failure preserves the mode, route and WinINet, and later requests still traverse the Manual upstream.');
 
       // 证据：保留原生前提、真实路线及错误画面；不把负向流程记作DNS/DHCP成功发现。
       // Evidence: retain the native precondition, actual route and error screen, without claiming successful DNS/DHCP discovery.
@@ -115,6 +117,7 @@ test('settings.upstream.windows preserves Manual after native WPAD and PAC failu
     await getByAutomationId(page, ids.openSettings).click();
     await expect(getByAutomationId(page, ids.mode.manual)).toBeChecked();
     await expect(getByAutomationId(page, ids.currentRoute)).toHaveAttribute('data-upstream-mode', 'manual');
+    await screenshotStep('用户操作：通过公共readiness和上游编辑入口应用Manual，先证明原路线实际可用。 / User actions: enter Recording and apply Manual through public controls, first proving the original route works.');
   } finally {
     // 清理：只关闭本轮服务；标准fixture点击产品Close并验证进程、8888及完整WinINet恢复。
     // Cleanup: close only this workflow's servers; the standard fixture uses product Close and verifies processes, port 8888 and WinINet.

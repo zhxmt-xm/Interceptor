@@ -4,6 +4,7 @@ import type { Locator, TestInfo } from '@playwright/test';
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 const APP_CONTAINER_ROW_PREFIX = 'settings.app-containers.row.';
 
@@ -118,6 +119,7 @@ test('settings.app-containers.ordering keeps enabled rows first through filterin
       expect(Math.abs(layout.recommended.centerDelta)).toBeLessThanOrEqual(1 / layout.pixelRatio);
     }
   }
+  await screenshotStep('准备：通过正式导航打开真实 Windows AppContainer 枚举，不修改任何 exemption。 / Arrange: open the real Windows AppContainer enumeration through public navigation without changing exemptions.');
 
   // 用户操作：用真实 SID 片段缩小结果，过滤结果必须保持完整列表中的相对顺序。
   // User action: narrow by a real SID fragment; filtered rows must preserve full-list relative order.
@@ -130,6 +132,7 @@ test('settings.app-containers.ordering keeps enabled rows first through filterin
   await expect.poll(() => readRows(rows)).toEqual(expectedRows);
   const filteredRows = await readRows(rows);
   expectEnabledFirst(filteredRows);
+  await screenshotStep('用户操作：用真实 SID 片段缩小结果，过滤结果必须保持完整列表中的相对顺序。 / User action: narrow by a real SID fragment; filtered rows must preserve full-list relative order.');
 
   // 业务断言：清空搜索后逐项恢复原始顺序，期间没有触发开关或 UAC。
   // Business assertion: clearing search restores the exact order without switches or UAC.
@@ -138,6 +141,7 @@ test('settings.app-containers.ordering keeps enabled rows first through filterin
   const restoredRows = await readRows(rows);
   expect(restoredRows).toEqual(initialRows);
   expect(desktopApp.rendererPageErrors()).toEqual([]);
+  await screenshotStep('业务断言：清空搜索后逐项恢复原始顺序，期间没有触发开关或 UAC。 / Business assertion: clearing search restores the exact order without switches or UAC.');
 
   // 证据与销毁：保留三阶段 SID/状态；fixture 负责 trace、正常 Close、进程与 8888 验证。
   // Evidence and teardown: retain all three SID/state phases; the fixture owns trace, graceful Close, processes, and 8888.

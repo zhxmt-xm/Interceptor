@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { isCertificateTrusted, rootCertificateThumbprints, sharedCertificateDirectory, sharedCertificateFileNames } from '../../fixtures/ui/https-capture';
 
@@ -69,6 +70,7 @@ startupTest('settings.certificates.shared-startup reuses a trusted CA across fre
     expect(await isCertificateTrusted(firstCertificate!.thumbprint)).toBe(true);
     await expect(stat(path.join(desktopApp.userDataDirectory, 'certificates', 'root-cert.pem'))).rejects.toMatchObject({ code: 'ENOENT' });
     if (certificateBaseline.certificate) expect(firstCertificate).toEqual(certificateBaseline.certificate);
+    await screenshotStep('准备：首代App正常启动，经公开文件与Settings UI核验产品已生成/授信CA。 / Arrange: verify the startup-created and trusted CA through its public file and Settings UI.');
 
     // 用户操作：正常退出后使用全新profile重启，不点击Generate或Install。
     // User actions: quit normally and relaunch with a fresh profile without Generate or Install.
@@ -92,6 +94,7 @@ startupTest('settings.certificates.shared-startup reuses a trusted CA across fre
     expect(await readSharedCertificate()).toEqual(firstCertificate);
     expect(await isCertificateTrusted(firstCertificate!.thumbprint)).toBe(true);
     await expect(stat(path.join(secondGeneration.userDataDirectory, 'certificates', 'root-cert.pem'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await screenshotStep('业务断言：第二代保持同一指纹和文件mtime，MITM意图仍属于新profile。 / Business assertions: the second generation keeps the fingerprint and file mtimes while MITM preference remains profile-local.');
 
     // 证据：只记录公开指纹、文件元数据与两代profile，不读取或导出私钥。
     // Evidence: retain only the public fingerprint, file metadata and profile paths, never private key bytes.

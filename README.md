@@ -94,6 +94,8 @@ Code, documentation, translations and focused bug reports are welcome. Start wit
 
 After setup, run `npm start` and choose Development, Test, Build or Release. Desktop and Design start without build-mode questions; confirmation defaults to Yes but still waits for Enter. Release opens the existing `npm run release` wizard: confirm the source, version and targets before CI, then successful builds are verified and published automatically without another prompt. Existing commands remain available for direct use and CI.
 
+Under Test, E2E offers normal validation or step screenshots with automatic output directories, without composing command-line arguments. Both modes use the same workflows; screenshots are test evidence, not an automatic website publication.
+
 ## Acknowledgements
 
 Interceptor builds on [Electron](https://www.electronjs.org/), [Mockttp](https://github.com/httptoolkit/mockttp), [React](https://react.dev/) and [Monaco Editor](https://microsoft.github.io/monaco-editor/), alongside the other libraries used in this repository.

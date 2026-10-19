@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { copyMcpClientConfiguration, openMcpSettings, resumeRecording } from '../../fixtures/ui/mcp-workflow';
@@ -97,6 +98,7 @@ test(`mcp.current-host ${phase} uses the current Host and a retained isolated pr
     expect(prepared).toEqual({ workflow: 'mcp.current-host', clientId, endpoint, tokenHash });
     await getByAutomationId(page, AutomationIdFactory.mcpClientAsk(clientId)).click();
     await expect(row).toHaveAttribute('data-execution-mode', 'ask');
+    await screenshotStep('准备：创建或恢复同一测试Client，不从Store注入凭据或复制业务状态。 / Arrange: create or resume the same test Client without injecting credentials or business state.');
 
     // 用户操作：准备自产流量，当前Agent负责正式Host配置、查询和MCP调用，本workflow不构造SDK Client。
     // User actions: generate owned traffic; the current Agent configures its Host and calls MCP, without a test SDK Client.
@@ -115,6 +117,7 @@ test(`mcp.current-host ${phase} uses the current Host and a retained isolated pr
     await expect(requests).toContainText(requestPath);
     await desktopApp.writeEvidence(testInfo);
     await publishPhase('connect-query-then-deny-stop');
+    await screenshotStep('用户操作：准备自产流量，当前Agent负责正式Host配置、查询和MCP调用，本workflow不构造SDK Client。 / User actions: generate owned traffic; the current Agent configures its Host and calls MCP, without a test SDK Client.');
 
     // 业务断言：真实Host先后触发Deny和Allow，UI裁决决定真实Recording，不以模型总结代替。
     // Business assertion: the real Host triggers Deny and Allow; actual UI verdicts govern Recording.
@@ -129,6 +132,7 @@ test(`mcp.current-host ${phase} uses the current Host and a retained isolated pr
     await getByAutomationId(page, AUTOMATION_IDS.mcp.approval.allow).click();
     await expect(recording).toHaveAttribute('aria-pressed', 'false');
     await resumeRecording(desktopApp);
+    await screenshotStep('业务断言：真实Host先后触发Deny和Allow，UI裁决决定真实Recording，不以模型总结代替。 / Business assertion: the real Host triggers Deny and Allow; actual UI verdicts govern Recording.');
 
     // 用户操作：通过真实Settings切换Auto，当前Host再次执行相同Tool。
     // User actions: switch to Auto through real Settings, then let the current Host call the same Tool again.
@@ -141,6 +145,7 @@ test(`mcp.current-host ${phase} uses the current Host and a retained isolated pr
     await expect(recording).toHaveAttribute('aria-pressed', 'false', { timeout: HOST_STEP_TIMEOUT });
     await expect(approval).toHaveCount(0);
     await resumeRecording(desktopApp);
+    await screenshotStep('用户操作：通过真实Settings切换Auto，当前Host再次执行相同Tool。 / User actions: switch to Auto through real Settings, then let the current Host call the same Tool again.');
 
     // 业务断言：当前Agent继续适用场景，最后真实调用capture_clear结束这一代Host验收。
     // Business assertion: the current Agent exercises applicable scenarios and calls capture_clear last.
@@ -169,6 +174,7 @@ test(`mcp.current-host ${phase} uses the current Host and a retained isolated pr
     }, null, 2), 'utf8');
     await publishPhase('completed-remove-host-configuration');
     completed = true;
+    await screenshotStep('证据与清理：真实撤销本轮凭据、关闭MCP，fixture负责App正常退出及完整宿主恢复。 / Evidence and cleanup: revoke this credential and stop MCP; the fixture verifies App shutdown and host restoration.');
   } finally {
     if (completed) await rm(configurationPath, { force: true });
   }

@@ -11,6 +11,7 @@ import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/auto
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { cancelFileDialog, submitFileDialogPath } from '../../fixtures/ui/file-dialog';
@@ -173,6 +174,21 @@ async function readHar(filePath: string): Promise<{ text: string; entries: Recor
   return { text, entries: document.log.entries, hash: createHash('sha256').update(bytes).digest('hex') };
 }
 
+async function saveHarFromDialog(desktopApp: LocalElectronApplicationDriver, file: string): Promise<Awaited<ReturnType<typeof readHar>>> {
+  await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.transfer.start).click();
+  await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), file);
+  await expect.poll(async () => {
+    try { return (await readHar(file)).entries.length; }
+    catch (error) {
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return -1;
+      throw error;
+    }
+  }).toBeGreaterThanOrEqual(0);
+  const close = getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.transfer.close);
+  if (await close.isVisible()) await close.click();
+  return readHar(file);
+}
+
 function verifyFullHar(entries: Record<string, unknown>[]): void {
   expect(entries).toHaveLength(2);
   for (const entry of entries) {
@@ -208,7 +224,7 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
 
 test('capture.tools.har-transfer exports and imports real HAR files through Agent and MCP', async ({ desktopApp, httpTrafficRunner, openAiCompatibleLab }, testInfo) => {
   test.skip(!['win32', 'darwin'].includes(process.platform), 'Native HAR workflow requires Windows or macOS.');
-  test.setTimeout(300_000);
+  test.setTimeout(420_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'capture.tools.har-transfer' });
   const { page } = desktopApp;
   const directory = await mkdtemp(path.join(os.tmpdir(), 'interceptor-har-tools-'));
@@ -270,6 +286,7 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     const redactedResponse = redactedHar.entries[0]!.response;
     if (!isRecord(redactedResponse) || !isRecord(redactedResponse.content)) throw new Error('Redacted HAR omitted content metadata.');
     expect(redactedResponse.content).not.toHaveProperty('text');
+    await screenshotStep('Agent Export：Deny与原生Cancel无任务，Allow保存完整HAR，Auto筛选导出保留明确脱敏选择。 / Agent Export: Deny and native Cancel create no job; Allow saves a complete HAR and Auto preserves explicit filtering and redaction.');
 
     // Agent Import：拒绝/原生取消不改变Capture，Clear后仅选择本流程真实导出的HAR恢复数据。
     // Agent Import: denial and native cancellation leave Capture unchanged; after Clear, import only the HAR exported by this same workflow.
@@ -281,6 +298,7 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     expect(await finishAgentCall(page, openAiCompatibleLab, 'har-import-cancel')).toEqual({ ok: true, value: { started: false } });
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('har-import-cancel'))).toHaveAttribute('data-summary-kind', 'importCanceled');
     expect((await captureItems(client)).map((entry) => String(entry.id)).sort()).toEqual([...originalIds].sort());
+    await screenshotStep('Agent Import：拒绝/原生取消不改变Capture，Clear后仅选择本流程真实导出的HAR恢复数据。 / Agent Import: denial and native cancellation leave Capture unchanged; after Clear, import only the HAR exported by this same workflow.');
 
     // 暂停真实录制后再Clear/Import，避免系统背景流量混入后续all范围验证。
     // Pause recording before Clear/Import so system traffic cannot enter later all-scope assertions.
@@ -299,6 +317,7 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     await getByAutomationId(page, AUTOMATION_IDS.agent.panel.close).click();
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
     await expect(getByAutomationId(page, AutomationIdFactory.captureRequestRow(importedIds[0]!))).toBeVisible();
+    await screenshotStep('暂停真实录制后再Clear/Import，避免系统背景流量混入后续all范围验证。 / Pause recording before Clear/Import so system traffic cannot enter later all-scope assertions.');
 
     // 独立权限与MCP：Agent撤权不影响MCP，Auto仍经原生Save/Open；再次导入追加记录而非清空。
     // Independent permissions and MCP: Agent revocation leaves MCP enabled; Auto still uses native Save/Open and another import appends without clearing.
@@ -327,6 +346,7 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     await waitForCompletedJob(client, startedJob(mcpValue(mcpImport), 'har-import'));
     await expect.poll(async () => (await captureItems(client!)).length).toBe(4);
     await expect(getByAutomationId(page, AUTOMATION_IDS.mcp.approval.root)).toHaveCount(0);
+    await screenshotStep('独立权限与MCP：Agent撤权不影响MCP，Auto仍经原生Save/Open；再次导入追加记录而非清空。 / Independent permissions and MCP: Agent revocation leaves MCP enabled; Auto still uses native Save/Open and another import appends without clearing.');
 
     // IPC原入口：从Capture菜单导出，再导入同流程文件；完成后由统一通知更新列表。
     // Original IPC entry: export from Capture, import a file from this workflow, and refresh through the shared completion notice.
@@ -354,6 +374,89 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     }).toBe(4);
     const uiHar = await readHar(uiFile);
     expect(uiHar.text).not.toContain(SECRET);
+
+    // UI范围：已有四条记录中筛出两条并选中一条，分别核对真实文件而不是仅看选项。
+    // UI scopes: filter two of the four records and select one, verifying actual files rather than option appearance.
+    const closeProgress = getByAutomationId(page, AUTOMATION_IDS.capture.transfer.close);
+    if (await closeProgress.isVisible()) await closeProgress.click();
+    const openUiExport = async () => {
+      await getByAutomationId(page, AUTOMATION_IDS.capture.exportMenu).click();
+      await getByAutomationId(page, AUTOMATION_IDS.capture.exportHar).click();
+    };
+    await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(`${SOURCE_PATH}text`);
+    const textRows = page.locator('[data-automation-id^="capture.request-row."]').filter({ hasText: `${SOURCE_PATH}text` });
+    await expect(textRows).toHaveCount(2);
+    await textRows.first().click();
+    for (const [scope, count] of [['filter', 2], ['selected', 1]] as const) {
+      await openUiExport();
+      await getByAutomationId(page, scope === 'filter'
+        ? AUTOMATION_IDS.capture.transfer.scopeFilter : AUTOMATION_IDS.capture.transfer.scopeSelected).click();
+      const exported = await saveHarFromDialog(desktopApp, path.join(directory, `ui-${scope}.har`));
+      expect(exported.entries).toHaveLength(count);
+      for (const entry of exported.entries) expect(entry.request).toMatchObject({ url: httpTrafficRunner.url(`${SOURCE_PATH}text`) });
+      await screenshotStep(`HAR ${scope}范围实际导出${count}条 / HAR ${scope} actually exports ${count} entries`);
+    }
+
+    // 隐私：全局默认和单次覆盖相互独立；仅使用本轮自产的测试凭据。
+    // Privacy: global defaults and per-export overrides stay independent; use only this workflow's own test credentials.
+    const privacy = AUTOMATION_IDS.settings.privacy;
+    const openPrivacy = async () => {
+      await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
+      await getByAutomationId(page, AUTOMATION_IDS.settings.section.privacy).click();
+    };
+    await openPrivacy();
+    for (const id of [privacy.maskAuthorization, privacy.maskCookies, privacy.warnUnmasked]) {
+      await expect(getByAutomationId(page, id)).toHaveAttribute('aria-checked', 'true');
+      await getByAutomationId(page, id).click();
+    }
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+    const uiPrivacyHashes: string[] = [];
+    for (const mode of ['override', 'plain', 'stripped'] as const) {
+      await openUiExport();
+      await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.scopeSelected).click();
+      const authorization = getByAutomationId(page, AUTOMATION_IDS.capture.transfer.maskAuthorization);
+      const cookies = getByAutomationId(page, AUTOMATION_IDS.capture.transfer.maskCookies);
+      await expect(authorization).not.toBeChecked();
+      await expect(cookies).not.toBeChecked();
+      if (mode !== 'plain') await authorization.click();
+      if (mode === 'stripped') {
+        await cookies.click();
+        await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.stripBodies).click();
+      }
+      const exported = await saveHarFromDialog(desktopApp, path.join(directory, `ui-${mode}.har`));
+      expect(exported.entries).toHaveLength(1);
+      const message = exported.entries[0]?.request;
+      const response = exported.entries[0]?.response;
+      if (!isRecord(message) || !Array.isArray(message.headers) || !isRecord(response) || !isRecord(response.content)) {
+        throw new Error('The privacy export omitted request Headers or response content.');
+      }
+      const headers = new Map(message.headers.map((header: unknown) => {
+        if (!isRecord(header) || typeof header.name !== 'string' || typeof header.value !== 'string') {
+          throw new Error('The privacy export included an invalid Header.');
+        }
+        return [header.name.toLowerCase(), header.value];
+      }));
+      if (mode === 'plain') {
+        expect(headers.get('authorization')).toContain(SECRET);
+        expect(headers.get('cookie')).toContain(SECRET);
+      } else {
+        expect(headers.get('authorization')).toBe('[REDACTED]');
+        if (mode === 'stripped') {
+          expect(exported.text).not.toContain(SECRET);
+          expect(response.content).not.toHaveProperty('text');
+        } else expect(headers.get('cookie')).toContain(SECRET);
+      }
+      uiPrivacyHashes.push(exported.hash);
+      await screenshotStep(`核对${mode}导出文件中的实际隐私结果 / Verify the actual privacy result in the ${mode} export`);
+    }
+    expect((await readHar(path.join(directory, 'ui-override.har'))).hash).toBe(uiPrivacyHashes[0]);
+    await openPrivacy();
+    for (const id of [privacy.maskAuthorization, privacy.maskCookies, privacy.warnUnmasked]) {
+      await expect(getByAutomationId(page, id)).toHaveAttribute('aria-checked', 'false');
+      await getByAutomationId(page, id).click();
+    }
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+    await getByAutomationId(page, AUTOMATION_IDS.capture.clearSearch).click();
     await getByAutomationId(page, AUTOMATION_IDS.capture.importMenu).click();
     await getByAutomationId(page, AUTOMATION_IDS.capture.importHar).click();
     await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start).click();
@@ -369,11 +472,15 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     for (const name of TOOL_NAMES) await expect(client.callTool({ name, arguments: {} })).rejects.toMatchObject({ code: -32602 });
     await client.close();
     client = null;
+    await screenshotStep('IPC原入口：从Capture菜单导出，再导入同流程文件；完成后由统一通知更新列表。 / Original IPC entry: export from Capture, import a file from this workflow, and refresh through the shared completion notice.');
 
     // 证据与重启：模型结果无文件信息或敏感头，保存文件hash，确认请求和导入导出不会跨代重放。
     // Evidence and restart: model results contain no file information or sensitive headers; retain file hashes and prove transfers never replay across generations.
     const fileNames = (await readdir(directory)).sort();
-    expect(fileNames).toEqual(['complete.har', 'mcp.har', 'redacted.har', 'ui.har']);
+    expect(fileNames).toEqual([
+      'complete.har', 'mcp.har', 'redacted.har', 'ui-filter.har', 'ui-override.har',
+      'ui-plain.har', 'ui-selected.har', 'ui-stripped.har', 'ui.har',
+    ]);
     for (const modelRequest of openAiCompatibleLab.requestsForAssertions()) {
       const text = JSON.stringify(modelRequest);
       expect(text).not.toContain(SECRET);
@@ -405,6 +512,7 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
       sourceCount: 2, firstImportCount: 2, appendedImportCount: 4, fullHarHash: fullHar.hash, redactedHarHash: redactedHar.hash,
       uiExportCount: 4, uiImportCount: 6, uiHarHash: uiHar.hash, sharedImportNotification: true,
       allFilterSelectedScopes: true, nativeSaveOpenCancellation: true, fullBodiesVerified: true, redactionVerified: true,
+      uiFilterCount: 2, uiSelectedCount: 1, uiPrivacyHashes, perExportOverridePreservesDefaults: true,
       independentRevocation: true, restartModelRequests: 0, restartOriginRequests: 0, restartFileOperations: 0,
     }, null, 2), 'utf8');
     await testInfo.attach('har-transfer.json', { path: evidencePath, contentType: 'application/json' });

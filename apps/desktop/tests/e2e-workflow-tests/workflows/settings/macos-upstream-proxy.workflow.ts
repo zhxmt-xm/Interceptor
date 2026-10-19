@@ -11,6 +11,7 @@ import type { TestInfo } from '@playwright/test';
 import type { SystemProxyJournalRecord } from '@interceptor/platform-capabilities/system-proxy/interfaces/index';
 import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES } from '../../../../src/shared/automation-ids';
 import { expect, type LocalElectronApplicationDriver, test as workflowTest } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { disableClashxSystemProxy, enableClashxSystemProxy, requireReadyClashx } from '../../fixtures/ui/macos-clashx';
 
@@ -112,6 +113,7 @@ test('settings.proxy.upstream preserves the external system upstream while Inter
     restoredThroughUi = true;
     expect(desktopApp.rendererPageErrors()).toEqual([]);
     desktopApp.releasePreservedUserData();
+    await screenshotStep('用户恢复：通过Settings Restore恢复外部应用配置，不由测试直接写系统代理。 / User restoration: restore the external application\'s configuration through Settings, never by test-side proxy writes.');
   } finally {
     // 证据与清理：仅保存上游端口、基线hash和实际结果；fixture负责正常Close和完整宿主恢复。
     // Evidence and cleanup: retain only the upstream port, baseline hash and actual results; the fixture owns normal Close and full host restoration.

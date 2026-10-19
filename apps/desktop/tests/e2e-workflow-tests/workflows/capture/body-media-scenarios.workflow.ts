@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { submitFileDialogPath } from '../../fixtures/ui/file-dialog';
@@ -108,11 +109,14 @@ test('capture.scenarios.body-media previews images and hex and saves media witho
             throw error;
           }
         }).toBe(expected.hex);
+        await screenshotStep('原生保存：真实点击唯一Save并操作系统对话框，只读核对产品生成文件的独立预期字节。 / Native export: click Save and use the real system dialog, then read the product-generated file against independent expected bytes.');
       }
       evidence.push({ scenarioId: expected.id, bytes: expected.bytes, verification: expected.kind });
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
+      await screenshotStep('产品断言：PNG必须真实解码；二进制按实际字节显示Hex；音视频仅显示MIME和保存动作。 / Product assertions: PNG decodes, binary bytes appear in Hex, and audio/video expose MIME and Save without players.');
     });
   }
+  await screenshotStep('准备：真实UI开启Recording；正文由已有场景经网络产生，不预造Capture输入。 / Arrange: enable Recording through UI; existing scenarios create bodies through the network without seeding Capture.');
 
   // 证据与清理：产品无page error；fixture保存trace并验证原生对话框、进程、8888及宿主恢复。
   // Evidence and cleanup: require zero page errors; fixtures retain traces and verify native dialogs, processes, port 8888, and host restoration.

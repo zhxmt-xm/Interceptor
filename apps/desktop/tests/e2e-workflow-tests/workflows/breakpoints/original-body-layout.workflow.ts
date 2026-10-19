@@ -2,6 +2,7 @@ import { writeFile } from 'node:fs/promises';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { createRequestBreakpointRule } from '../../fixtures/ui/breakpoint-workflow';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
@@ -25,6 +26,7 @@ test('breakpoints.original-body keeps captured content bounded while preserving 
     void response.catch(() => undefined);
     const row = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow).filter({ hasText: path });
     await row.click();
+    await screenshotStep('准备：真实UI创建请求断点，客户端发送完整且可见的原正文。 / Arrange: create a request breakpoint through UI and send its original body over the real proxy.');
 
     // 用户操作与断言：原正文只读可拖拽，保留完整Copy；未编辑Continue不能改变字节。
     // User actions and assertions: the original preview is readonly and resizable; Continue keeps the original bytes.
@@ -41,6 +43,7 @@ test('breakpoints.original-body keeps captured content bounded while preserving 
     await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyMode.raw).click();
     await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy).click();
     await expect.poll(() => page.evaluate(async () => (await navigator.clipboard.readText()).length)).toBe(2 * 1024 * 1024);
+    await screenshotStep('用户操作与断言：原正文只读可拖拽，保留完整Copy；未编辑Continue不能改变字节。 / User actions and assertions: the original preview is readonly and resizable; Continue keeps the original bytes.');
   } finally {
     // 清理：真实Continue释放挂起请求，fixture按正常退出恢复宿主。
     // Cleanup: release the pending request through Continue and let the fixture restore the host on normal exit.
@@ -50,5 +53,6 @@ test('breakpoints.original-body keeps captured content bounded while preserving 
       expect((await response).statusCode).toBe(200);
       expect(httpTrafficRunner.observation(path)?.body.equals(Buffer.from(body))).toBe(true);
     }
+    await screenshotStep('清理：真实Continue释放挂起请求，fixture按正常退出恢复宿主。 / Cleanup: release the pending request through Continue and let the fixture restore the host on normal exit.');
   }
 });

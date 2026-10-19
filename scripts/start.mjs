@@ -127,24 +127,38 @@ async function chooseWorkflow(workspaces) {
   const features = (await readdir(workflowRoot, { withFileTypes: true }))
     .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
   while (true) {
-    const feature = await choose('E2E：选择功能', [
-      { name: '全部功能', value: all },
-      ...features.map((name) => ({ name, value: name })),
+    const mode = await choose('E2E：选择运行方式', [
+      { name: '普通验收（不生成步骤图）', value: 'standard' },
+      { name: '逐步截图（同时执行业务断言）', value: 'screenshots' },
     ]);
-    if (feature === back) return;
-    const workflows = feature === all ? [] : (await readdir(path.join(workflowRoot, feature)))
-      .filter((file) => file.endsWith('.workflow.ts')).sort();
-    const workflow = feature === all ? all : await choose(`${feature}：选择 workflow`, [
-      { name: '该功能的全部 workflow', value: all },
-      ...workflows.map((name) => ({ name, value: name })),
-    ]);
-    if (workflow === back) continue;
-    const filter = feature === all ? [] : [`workflows/${feature}/${workflow === all ? '' : workflow}`];
-    return {
-      title: `E2E · ${feature === all ? '全部功能' : feature}`,
-      commands: [npmCommand('test:e2e:workflow', desktop, filter)],
-      notices: ['自动准备测试环境后运行所选流程。', ...appNotices],
-    };
+    if (mode === back) return;
+    while (true) {
+      const feature = await choose('E2E：选择功能', [
+        { name: '全部功能', value: all },
+        ...features.map((name) => ({ name, value: name })),
+      ]);
+      if (feature === back) break;
+      const workflows = feature === all ? [] : (await readdir(path.join(workflowRoot, feature)))
+        .filter((file) => file.endsWith('.workflow.ts')).sort();
+      const workflow = feature === all ? all : await choose(`${feature}：选择 workflow`, [
+        { name: '该功能的全部 workflow', value: all },
+        ...workflows.map((name) => ({ name, value: name })),
+      ]);
+      if (workflow === back) continue;
+      const filter = feature === all ? [] : [`workflows/${feature}/${workflow === all ? '' : workflow}`];
+      return {
+        title: `E2E · ${mode === 'screenshots' ? '逐步截图' : '普通验收'} · ${feature === all ? '全部功能' : feature}`,
+        commands: [npmCommand('test:e2e:workflow', desktop, [...(mode === 'screenshots' ? ['--screenshots'] : []), ...filter])],
+        notices: [
+          '默认自动准备测试环境；已指定签名App时沿现有产物入口运行。',
+          ...(mode === 'screenshots' ? [
+            '自动新建apps/desktop/test-results/workflow-screenshots/下的独立运行目录，开始时显示实际路径。',
+            '只生成原workflow的截图证据，不绑定或自动写入官网。',
+          ] : ['保留原trace和final.png，不生成步骤截图，不清理独立截图目录。']),
+          ...appNotices,
+        ],
+      };
+    }
   }
 }
 
@@ -281,6 +295,7 @@ async function main() {
     console.log('npm start');
     console.log('Development / Test / Build / Release → 目标或必要范围 → 确认执行');
     console.log('Desktop / Design 选择后直接启动；构建准备自动完成，不询问缓存模式。');
+    console.log('Test → E2E可选普通验收或逐步截图；截图自动保存到独立运行目录。');
     console.log('执行摘要分列显示，确认默认 Yes，仍需按 Enter；输入 n 取消。');
     console.log('低频工具保留原命令；Release 启动 npm run release，继续完成发版向导。');
     console.log('↑/↓ 选择，Enter 确认；选择“返回上一级”返回，Ctrl+C 退出。');

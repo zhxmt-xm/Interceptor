@@ -9,6 +9,7 @@ import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/cli
 import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { cancelFileDialog, submitFileDialogPath } from '../../fixtures/ui/file-dialog';
 import { automaticallyExecuteMcpClientTools } from '../../fixtures/ui/settings-workflow';
@@ -240,6 +241,7 @@ test('rules.tools.export saves persisted Rules through native dialogs without mo
     await waitForTurn(desktopApp.page);
     expect(await readExport(autoPath)).toEqual(saved);
     await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolApproval('export-auto'))).toHaveCount(0);
+    await screenshotStep('保存与断言：Ask Allow 和 Auto 都经真实 Save Dialog 导出 Core 已保存树，保留身份/层级/enabled。 / Saving and assertions: Ask Allow and Auto both export the persisted Core tree through real Save Dialogs, preserving IDs, hierarchy, and enabled states.');
 
     // 草稿隔离：未 Apply 的 UI 编辑不被 Tool 导出或覆盖；UI 自身导出仍保存当前草稿。
     // Draft isolation: unapplied UI edits are neither exported nor overwritten by the Tool; UI export still saves the current draft.
@@ -261,6 +263,7 @@ test('rules.tools.export saves persisted Rules through native dialogs without mo
       expect(serialized).not.toContain(directory.replaceAll('\\', '\\\\'));
       expect(serialized).not.toContain('x-export-enabled');
     }
+    await screenshotStep('草稿隔离：未 Apply 的 UI 编辑不被 Tool 导出或覆盖；UI 自身导出仍保存当前草稿。 / Draft isolation: unapplied UI edits are neither exported nor overwritten by the Tool; UI export still saves the current draft.');
 
     // 撤权与重启：关闭 Agent 导出后旧 Chat 被拒绝；重启恢复历史但不发新 Model 请求或再次导出。
     // Revocation and restart: disabling Agent export rejects stale Chat calls; restarting restores history without new Model requests or exports.
@@ -275,6 +278,7 @@ test('rules.tools.export saves persisted Rules through native dialogs without mo
     await waitForTurn(desktopApp.page);
     expect(resultForCall(openAiCompatibleLab, 'export-disabled')).toMatchObject({ ok: false, error: { code: 'unknown_tool' } });
     expect((await readdir(directory)).length).toBe(4);
+    await screenshotStep('撤权与重启：关闭 Agent 导出后旧 Chat 被拒绝；重启恢复历史但不发新 Model 请求或再次导出。 / Revocation and restart: disabling Agent export rejects stale Chat calls; restarting restores history without new Model requests or exports.');
 
     // MCP 交互：Agent 撤权后，独立 Ask Client 仍可导出；拒绝、允许保存和 Auto 原生取消共用正式命令。
     // MCP interaction: after Agent revocation, the independent Ask Client can still export; denial, allowed saving, and Auto native cancellation share the formal command.
@@ -298,6 +302,7 @@ test('rules.tools.export saves persisted Rules through native dialogs without mo
     await cancelFileDialog(desktopApp.nativeFileDialogOwner());
     expect(readMcpToolValue(await canceledCall)).toEqual({ exported: false });
     await expect(approval).toHaveCount(0);
+    await screenshotStep('MCP 交互：Agent 撤权后，独立 Ask Client 仍可导出；拒绝、允许保存和 Auto 原生取消共用正式命令。 / MCP interaction: after Agent revocation, the independent Ask Client can still export; denial, allowed saving, and Auto native cancellation share the formal command.');
 
     // MCP 撤权：现有连接不再披露或执行导出；没有新增文件，关闭客户端后再销毁 Electron。
     // MCP revocation: the existing connection can no longer discover or execute export; no new files appear, and the Client closes before Electron teardown.

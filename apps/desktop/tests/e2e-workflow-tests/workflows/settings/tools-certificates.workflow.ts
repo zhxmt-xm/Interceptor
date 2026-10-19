@@ -7,6 +7,7 @@ import type { Page, TestInfo } from '@playwright/test';
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { expect, LocalElectronApplicationDriver } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { certificateLifecycleTest as test } from '../../fixtures/runtime/certificate-lifecycle-driver';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { certificateWaitOptions, removeCreatedSharedCertificate, rootCertificateThumbprints as rootFingerprints, sharedCertificateDirectory } from '../../fixtures/ui/https-capture';
@@ -225,6 +226,7 @@ test('settings.tools.certificates shares certificate lifecycle and viewing acros
     await callAgentTool(desktopApp.page, openAiCompatibleLab, 'regenerate-trusted', TOOL_NAMES[0], { fails: true });
     expect(await certificateIdentity(desktopApp)).toBe(installedIdentity);
     expect(await rootFingerprints()).toEqual([...rootsBefore, installedIdentity!].sort());
+    await screenshotStep('用户操作与业务断言：Ask拒绝不能生成CA，Allow通过正式Main操作生成且刷新挂载面板。 / User actions and assertions: Ask denial cannot create a CA; Allow generates it through Main and refreshes the mounted panel.');
 
     // 原生窗口：打开并关闭本轮Explorer与Viewer，MMC由独立workflow验收。
     // Native windows: open and close this workflow's Explorer and viewer; MMC has an independent workflow.
@@ -244,6 +246,7 @@ test('settings.tools.certificates shares certificate lifecycle and viewing acros
     expect(await rootFingerprints()).toEqual(rootsBefore);
     expect(await certificateIdentity(desktopApp)).toBeNull();
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.certificates.install)).toBeDisabled();
+    await screenshotStep('原生窗口：打开并关闭本轮Explorer与Viewer，MMC由独立workflow验收。 / Native windows: open and close this workflow\'s Explorer and viewer; MMC has an independent workflow.');
 
     // MCP：产品UI创建独立Client，Ask拒绝六项不产生副作用，Auto依次验证相同正式owner。
     // MCP: create a Client through UI; Ask denials have no effects and Auto exercises the same real owners.
@@ -277,6 +280,7 @@ test('settings.tools.certificates shares certificate lifecycle and viewing acros
     await callMcpTool(client, desktopApp.page, TOOL_NAMES[3]);
     expect(await rootFingerprints()).toEqual(rootsBefore);
     expect(await certificateIdentity(desktopApp)).toBeNull();
+    await screenshotStep('MCP：产品UI创建独立Client，Ask拒绝六项不产生副作用，Auto依次验证相同正式owner。 / MCP: create a Client through UI; Ask denials have no effects and Auto exercises the same real owners.');
 
     // 撤权和重启：旧调用无效；保留未受信任CA，启动只补授信，不重放Agent请求。
     // Revocation and restart: reject stale calls; startup trusts the retained CA without replaying Agent requests.
@@ -418,6 +422,7 @@ test.describe('certificate operation conflicts', () => {
       await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete).click({ timeout: 5_000 });
       await expect(getByAutomationId(page, AUTOMATION_IDS.platform.operationConflict))
         .toHaveAttribute('data-operation', 'certificate.install', { timeout: 5_000 });
+      await screenshotStep('用户操作：同一次授权未结算时，另一个MCP Delete和实际UI Delete均拒绝且材料不变。 / User actions: during the same pending authorization, reject both MCP and UI Delete without changing material.');
 
       // 业务断言与证据：明确取消原生授信后，拒绝过的Delete与Quit不得重放。
       // Business assertions and evidence: after native authorization is cancelled, rejected Delete and Quit requests must not replay.
@@ -437,6 +442,7 @@ test.describe('certificate operation conflicts', () => {
           materialRetained: true, authorizationCancelled: true, deferredDelete: false })),
         contentType: 'application/json',
       });
+      await screenshotStep('业务断言与证据：明确取消原生授信后，拒绝过的Delete与Quit不得重放。 / Business assertions and evidence: after native authorization is cancelled, rejected Delete and Quit requests must not replay.');
     } catch (error) {
       workflowError = error;
     } finally {

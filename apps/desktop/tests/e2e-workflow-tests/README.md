@@ -423,26 +423,24 @@ test('composer sends a request', async ({ desktopApp, httpTrafficRunner }) => {
 
 ## Trace 与证据
 
-教程媒体使用独立的`playwright.guidebook.config.ts`选择`guidebook-*.workflow.ts`。这些是真实App步骤复验与录制，不进入普通全量E2E，避免CI在没有原生录屏前提时误触发；普通业务契约和用例不被跳过或替换。每个步骤核对实际UI/流量，再保存真实窗口图、视频时间与相同示例数据，退出仍由原driver/宿主guard验收。
+日常使用`npm start → Test → E2E 用户流程测试`，先选“普通验收”或“逐步截图”，再选功能/workflow并确认；不需要手写截图参数。截图模式自动在`apps/desktop/test-results/workflow-screenshots/<run>/`创建独立运行目录并显示路径，普通测试不会清空这些截图。两种模式运行同一份业务步骤和断言；普通模式保留原trace、final.png及退出恢复证据，不生成`step-screenshots/`。
 
-macOS 15+录制前编译`fixtures/ui/macos-guide-recorder.swift`为本地验收可执行文件，通过`INTERCEPTOR_GUIDE_RECORDER`选择；`INTERCEPTOR_GUIDE_FFMPEG`选择已安装的视频编码器，`INTERCEPTOR_E2E_MACOS_APP_PATH`选择已核验的实际Release。它们不进入App生产包，不读取或改变产品状态：
+直接调用和CI仍可使用`--screenshots`。不传`--output`时同样自动建立独立目录；显式传入则沿用指定输出位置。命令从仓库根目录执行：
 
 ```sh
-xcrun swiftc -parse-as-library tests/e2e-workflow-tests/fixtures/ui/macos-guide-recorder.swift \
-  -o test-results/guide-recorder
-INTERCEPTOR_GUIDE_RECORDER="$PWD/test-results/guide-recorder" \
-INTERCEPTOR_GUIDE_FFMPEG="<ffmpeg绝对路径>" \
-INTERCEPTOR_E2E_MACOS_APP_PATH="<已核验Release的App绝对路径>" \
-npx playwright test --config tests/e2e-workflow-tests/playwright.guidebook.config.ts
+npm run test:e2e:workflow --workspace @interceptor/desktop -- \
+  --screenshots workflows/composer/body-formatting.workflow.ts \
+  --output /absolute/path/to/a-new-run
 ```
 
-以上命令从Desktop目录执行。原始视频、trace、系统路径和metadata留在私有验收目录；发布前检查隐私、逐步骤对应、字幕与25MiB静态资源上限。录屏只选择本轮Main进程的唯一App窗口ID，原生Open/Save只选择该App拥有的面板。不录整个显示器、桌面区域、其他App或麦克风；不得在窗口选择失败时回退成整屏/区域录制，也不把未录到的原生窗口算通过。
+`run.mjs`通过上述npm script运行，消费`--screenshots`并在需要时补充独立输出目录，其余参数交给原Playwright配置；使用npm提供的CLI路径逐参数启动Node，不交给Windows shell解释正则或含空格路径。默认先执行已有prepare；macOS设置`INTERCEPTOR_E2E_MACOS_APP_PATH`时使用该签名App并跳过prepare。直接运行Playwright时可设置测试环境变量`INTERCEPTOR_E2E_STEP_SCREENSHOTS=1`并自行指定输出目录；它只配置测试fixture，不进入产品。
 
-ScreenCaptureKit可能不写入静止画面的尾部重复帧。编码使用最后一个真实帧保留实际录制期间的阅读停顿，并以录制停止时间裁定总长；不添加新状态、动作或其他窗口。字幕与步骤时间仍来自同一次录制，成片时长应在20fps单帧舍入内一致，最后一个步骤与字幕必须实际可播放。保留旧原始录屏后可按同一参数重新编码，不为修正尾部时长重跑或伪造原操作。
-
-窗口选择使用全部Space的窗口清单，严格匹配本轮Main PID、普通窗口层及该Renderer实际外窗尺寸，排除同PID的菜单栏辅助窗口，再要求唯一App窗口；不以当前Space可见性猜测App是否存在，也不主动切Space或前置窗口。录制开始、每步操作前及截图前均复用解锁guard；屏幕中途锁定时该录制失败并保留证据，不发布冻结或缺失画面，不回退到桌面录制。
-
-步骤PNG与影片统一由同一原生录制进程使用ScreenCaptureKit单窗口过滤；PNG通过序号对应的snapshot命令由`SCScreenshotManager`按窗口实际点像素比例生成，去除窗口阴影，不另启一个录制器进程截图。原生Open/Save仍选本轮App拥有的面板。旧`screencapture -l`在Space切换时可能无法读取有效窗口，不能因此转成整屏截图或使用Renderer替代图。
+- workflow在已完成的操作/断言块后调用`screenshotStep('中文 / English')`。一项可包含同一目的下的多次输入；不是拦截每次click，也不会给任意`test.step()`自动取景。新的用户步骤应在原workflow中明确标记，不新增教程副本。
+- 每个测试输出`step-screenshots/step-001.png`等原始PNG和`manifest.json`；清单记录相对workflow、标题、App版本、平台、实际语言/主题、窗口种类、尺寸、字节数和SHA-256。它只在原App清理及宿主guard结束后落盘；失败或恢复未通过不能标为`passed`。
+- macOS 14+首次使用时以现有Xcode工具链编译`fixtures/ui/window-screenshot.swift`，由`SCScreenshotManager`一次性捕获所属窗口，不启动持续录屏或FFmpeg。每次核对Main PID/代际、唯一窗口及解锁状态，不回退为整屏或其他App。
+- 原生Save/Open在真实文件路径已定位后单独截图；取消的截图记录回到App后的状态，不取景尚未定位的个人目录。普通模式仍走相同的原生确认/取消操作。
+- Windows普通App步骤使用真实Renderer截图，不宣称包含原生边框；原生文件面板的截图模式尚不支持，明确报错。Windows正常无截图workflow保持原入口，完整实机复验仍按Windows矩阵跟踪。
+- 原始截图是私有测试证据，不绑定、复制到Homepage或上传；不再提供独立Guidebook制作/导入工具或菜单。使用图片前仍需核对原图、标题、示例、版本和隐私，只采用已经通过且宿主恢复完成的运行。
 
 每条workflow独立保留：
 

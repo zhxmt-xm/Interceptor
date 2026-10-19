@@ -9,6 +9,7 @@ import type { RuleNode } from '@interceptor/core-protocol';
 import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { cancelFileDialog, submitFileDialogPath } from '../../fixtures/ui/file-dialog';
 import { automaticallyExecuteMcpClientTools } from '../../fixtures/ui/settings-workflow';
@@ -231,6 +232,7 @@ test('rules.tools.import appends product-exported Rules through the shared confi
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.rules).click();
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.revision)).toHaveAttribute('data-revision', '1');
     expect(await exportTree(desktopApp, path.join(directory, 'after-cancel.json'))).toEqual(original);
+    await screenshotStep('拒绝与取消：先验证 Tool Deny，再验证真实 Open 取消和共享预览取消，全部不得持久化。 / Denial and cancellation: verify Tool Deny, native Open cancellation, and shared-preview cancellation without persistence.');
 
     // 确认：使用同一文件和原确认 Dialog，立即追加并持久化全新身份，完整保留目录与 enabled。
     // Confirmation: use the same file and original confirmation Dialog to append and persist fresh identities, preserving folders and enabled states.
@@ -244,6 +246,7 @@ test('rules.tools.import appends product-exported Rules through the shared confi
     const twice = await exportTree(desktopApp, path.join(directory, 'after-allow.json'));
     verifyAppend(original, twice, 2);
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.revision)).toHaveAttribute('data-revision', '2');
+    await screenshotStep('确认：使用同一文件和原确认 Dialog，立即追加并持久化全新身份，完整保留目录与 enabled。 / Confirmation: use the same file and original confirmation Dialog to append and persist fresh identities, preserving folders and enabled states.');
 
     // 草稿与 Auto：原本未 Apply 的草稿仍被保留，并与重复导入节点按原 UI 语义一起原子持久化。
     // Drafts and Auto: preserve the unapplied draft and atomically persist it with repeated import nodes under the original UI semantics.
@@ -259,6 +262,7 @@ test('rules.tools.import appends product-exported Rules through the shared confi
     verifyAppend(original, threeTimes, 3);
     expect(threeTimes[0]?.name).toBe('Preserved import draft');
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.revision)).toHaveAttribute('data-revision', '3');
+    await screenshotStep('草稿与 Auto：原本未 Apply 的草稿仍被保留，并与重复导入节点按原 UI 语义一起原子持久化。 / Drafts and Auto: preserve the unapplied draft and atomically persist it with repeated import nodes under the original UI semantics.');
 
     // Agent 撤权：旧 Chat 不再执行；随后经产品 UI 创建的 MCP Client 验证独立权限和相同导入确认。
     // Agent revocation: stale Chat calls stop executing; a Client created through product UI then verifies independent MCP permission and the same confirmation flow.
@@ -300,6 +304,7 @@ test('rules.tools.import appends product-exported Rules through the shared confi
     const finalTree = await exportTree(desktopApp, path.join(directory, 'final-tree.json'));
     verifyAppend(original, finalTree, 4);
     expect(finalTree[0]?.name).toBe('Preserved import draft');
+    await screenshotStep('Agent 撤权：旧 Chat 不再执行；随后经产品 UI 创建的 MCP Client 验证独立权限和相同导入确认。 / Agent revocation: stale Chat calls stop executing; a Client created through product UI then verifies independent MCP permission and the same confirmation flow.');
 
     // 重启与证据：恢复完整树和两列撤权，不重发 Model 请求；产物只保留哈希与业务结论。
     // Restart and evidence: restore the complete tree and both revoked permissions without new Model requests; retain only hashes and business outcomes.

@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { certificateLifecycleTest as test } from '../../fixtures/runtime/certificate-lifecycle-driver';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { removeCreatedSharedCertificate, rootCertificateThumbprints, sharedCertificateDirectory } from '../../fixtures/ui/https-capture';
@@ -52,11 +53,13 @@ test('settings.certificates.cancel-trust rolls back the new CA when helper autho
   const certificate = new X509Certificate(await readFile(path.join(sharedCertificateDirectory(), 'root-cert.pem')));
   const thumbprint = certificate.fingerprint.replaceAll(':', '');
   expect(rootsBefore).not.toContain(thumbprint);
+  await screenshotStep('准备：保存系统证书集合，通过真实UI生成本轮CA。 / Arrange: retain the system certificate set and generate this run\'s CA through real UI.');
 
   // 用户操作：Install后仅取消本轮Main启动的helper所发起的系统窗口。
   // User actions: install and cancel only the system window requested by this Main generation's helper child.
   const requester = await cancelMacosCertificateTrust(page, desktopApp.nativeFileDialogOwner());
   await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.mitmToggle)).toHaveAttribute('aria-checked', 'false');
+  await screenshotStep('用户操作：Install后仅取消本轮Main启动的helper所发起的系统窗口。 / User actions: install and cancel only the system window requested by this Main generation\'s helper child.');
 
   // 业务断言与证据：产品撤回新增CA，记录真实前台helper身份和完整集合恢复。
   // Business assertions and evidence: the product rolls back its new CA; retain the real foreground helper identity and exact set restoration.
@@ -81,6 +84,7 @@ test('settings.certificates.cancel-trust rolls back the new CA when helper autho
     '[platform-capabilities] certificate.trust requesting system authorization')).toHaveLength(1);
   expect(authorizationMessages.some((message) => message.includes('automatic authorization'))).toBe(false);
   desktopApp.releasePreservedUserData();
+  await screenshotStep('清理：经产品Delete删除本地材料，fixture正常Close并验证宿主恢复。 / Cleanup: delete local material through the product; the fixture verifies normal Close and host restoration.');
 });
 
 test('settings.certificates.helper-trust installs and removes distinct CAs through the same native helper', async ({ desktopApp, certificateRootsBeforeStartup }, testInfo) => {
@@ -121,6 +125,7 @@ test('settings.certificates.helper-trust installs and removes distinct CAs throu
       certificates.push(evidence);
       await installMacosCertificateThroughHelper(page, desktopApp.nativeFileDialogOwner(), certificatePath);
       expect(await readTrustAuthorizationRule()).toEqual(ruleBefore);
+      await screenshotStep('用户操作：Generate/Install由产品执行，禁止Main另起security授信命令。 / User actions: generate and install through the product; Main must not launch a separate security trust command.');
 
       // 业务断言：系统真实信任本轮CA，复用原helper，MITM不被安装动作开启。
       // Business assertions: the system trusts this CA, the original helper is reused, and installation does not enable MITM.
@@ -137,6 +142,7 @@ test('settings.certificates.helper-trust installs and removes distinct CAs throu
       evidence.removed = true;
       await getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete).click();
       await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.delete)).toBeHidden();
+      await screenshotStep('业务断言：系统真实信任本轮CA，复用原helper，MITM不被安装动作开启。 / Business assertions: the system trusts this CA, the original helper is reused, and installation does not enable MITM.');
     }
   } catch (error) {
     workflowError = error;
@@ -164,4 +170,5 @@ test('settings.certificates.helper-trust installs and removes distinct CAs throu
   }
   expect(authorizationMessages.some((message) => message.includes('automatic authorization'))).toBe(false);
   desktopApp.releasePreservedUserData();
+  await screenshotStep('准备：记录系统证书和已就绪helper，只经产品UI生成本轮CA。 / Arrange: record the system certificate set and ready helper; generate each CA only through product UI.');
 });

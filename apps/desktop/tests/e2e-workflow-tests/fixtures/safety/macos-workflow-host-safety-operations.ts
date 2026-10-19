@@ -55,7 +55,7 @@ JSON.stringify({
       throw new Error('macOS desktop session inspection returned an invalid result.');
     }
     if (!state.loginDone || state.screenLocked) {
-      throw new Error('Unlock the macOS desktop before running real Electron workflows or packaged smoke; no App has been launched.');
+      throw new Error('Unlock the macOS desktop before launching or capturing real Electron workflows or packaged smoke.');
     }
   }
 

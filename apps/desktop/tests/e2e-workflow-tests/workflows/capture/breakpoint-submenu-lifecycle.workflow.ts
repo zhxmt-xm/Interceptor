@@ -13,6 +13,7 @@ import {
 } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 interface GeometryBox {
   readonly x: number;
@@ -75,6 +76,7 @@ test('capture breakpoint submenu preserves its parent lifecycle', async ({
       y: Math.max(1, rowBox!.height / 2),
     },
   });
+  await screenshotStep('准备真实Capture行，并在行右边界打开context menu以强制测试贴边翻转。 / Arrange a real Capture row and open its context menu at the right edge to force overflow flipping.');
 
   // Hover展开时父菜单和二级菜单必须共存；二级菜单在右边界向左翻转且不越界。
   // Hover must keep parent and child mounted together; the child flips left at the right boundary without overflow.
@@ -122,6 +124,7 @@ test('capture breakpoint submenu preserves its parent lifecycle', async ({
     expect(box.x + box.width).toBeLessThanOrEqual(appBox!.x + appBox!.width);
     expect(box.y + box.height).toBeLessThanOrEqual(appBox!.y + appBox!.height);
   }
+  await screenshotStep('Hover展开时父菜单和二级菜单必须共存；二级菜单在右边界向左翻转且不越界。 / Hover must keep parent and child mounted together; the child flips left at the right boundary without overflow.');
 
   // 指针可进入二级菜单；回到根菜单只关闭二级，再次hover可重新打开。
   // The pointer can enter the child; returning to the parent closes only the child, and hover reopens it.
@@ -130,6 +133,7 @@ test('capture breakpoint submenu preserves its parent lifecycle', async ({
   await expect(rootMenu).toBeVisible();
   await breakpointTrigger.hover();
   await expect(endpoint).toBeVisible();
+  await screenshotStep('指针可进入二级菜单；回到根菜单只关闭二级，再次hover可重新打开。 / The pointer can enter the child; returning to the parent closes only the child, and hover reopens it.');
 
   // Escape与outside click都必须销毁整棵菜单，而不是留下任一portal。
   // Escape and outside click must dismiss the whole menu tree without leaving either portal.
@@ -143,6 +147,7 @@ test('capture breakpoint submenu preserves its parent lifecycle', async ({
   await getByAutomationId(page, AUTOMATION_IDS.app.statusbar).click();
   await expect(rootMenu).not.toBeVisible();
   await expect(breakpointSubmenu).not.toBeVisible();
+  await screenshotStep('Escape与outside click都必须销毁整棵菜单，而不是留下任一portal。 / Escape and outside click must dismiss the whole menu tree without leaving either portal.');
 
   // 保存语言无关的共存与翻转证据；fixture随后验证销毁和系统代理恢复。
   // Save language-neutral coexistence and flip evidence; the fixture then verifies teardown and proxy restoration.

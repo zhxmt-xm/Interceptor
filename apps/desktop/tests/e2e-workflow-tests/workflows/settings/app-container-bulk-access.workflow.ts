@@ -11,6 +11,7 @@ import {
 } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 const execFileAsync = promisify(execFile);
 
@@ -298,6 +299,7 @@ test('settings.app-containers.bulk-access enables, disables, and restores exempt
     expect(enableButton.scrollWidth).toBeLessThanOrEqual(Math.ceil(enableButton.width));
     expect(disableButton.scrollHeight).toBeLessThanOrEqual(Math.ceil(disableButton.height));
     expect(enableButton.scrollHeight).toBeLessThanOrEqual(Math.ceil(enableButton.height));
+    await screenshotStep('准备：打开真实 AppContainer 面板；Disable all 入口必须在任何系统写入前存在。 / Arrange: open the real AppContainer panel; Disable all must exist before any system mutation.');
 
     // 取消验证：Enable all dialog 报告准确数量，Cancel 不发系统命令。
     // Cancellation: Enable all reports the exact count and Cancel emits no system command.
@@ -320,6 +322,7 @@ test('settings.app-containers.bulk-access enables, disables, and restores exempt
       initialSnapshot.exemptSids,
     );
     expect(evidence.cancelPreservedInitial).toBe(true);
+    await screenshotStep('取消验证：Enable all dialog 报告准确数量，Cancel 不发系统命令。 / Cancellation: Enable all reports the exact count and Cancel emits no system command.');
 
     // Enable all：一个产品命令完成集合并集与读回校验，枚举外 exemption 保留。
     // Enable all: one product command performs the union and read-back while preserving outside exemptions.
@@ -349,6 +352,7 @@ test('settings.app-containers.bulk-access enables, disables, and restores exempt
     const disabledSnapshot = await readSystemSnapshot(desktopApp.desktopDirectory);
     expect(sameSids(disabledSnapshot.exemptSids, outsideExemptions)).toBe(true);
     evidence.disabled = setEvidence(disabledSnapshot.exemptSids);
+    await screenshotStep('Disable all：对称命令只移除当前枚举 SID，枚举外 exemption 逐项保留。 / Disable all: the symmetric command removes only current SIDs and preserves every outside exemption.');
 
     // 恢复：只通过正式单项 UI 重新启用测试前项，最终 OS 集合必须逐项相同。
     // Restore: re-enable initial items only through public single-item UI; the final OS set must match exactly.

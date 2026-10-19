@@ -11,6 +11,7 @@ import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/auto
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { submitFileDialogPath } from '../../fixtures/ui/file-dialog';
@@ -222,6 +223,7 @@ test('capture.tools.transfer-jobs queries and cancels real file jobs without exp
     await expect.poll(async () => publicJob(mcpValue(await client!.callTool({ name: TOOL_NAMES[0], arguments: { jobId: completedJobId } }))).state).toBe('completed');
     const completed = publicJob(mcpValue(await client.callTool({ name: TOOL_NAMES[0], arguments: { jobId: completedJobId } })));
     const fileHash = createHash('sha256').update(await readFile(completedFile)).digest('hex');
+    await screenshotStep('真实完成任务：MCP调用正式Diagnostics Export，原生Save产生文件；Get取得同一Core任务的终态。 / Real completed job: MCP invokes the product Diagnostics export, native Save creates the file, and Get observes its Core-owned terminal state.');
 
     // Agent边界：查询无需审批，Deny不更改任务，Allow与Auto对终态取消幂等，未知任务保持null。
     // Agent boundaries: Get needs no approval; Deny changes nothing, Allow/Auto cancellation is idempotent for terminal jobs, and unknown jobs stay null.
@@ -240,6 +242,7 @@ test('capture.tools.transfer-jobs queries and cancels real file jobs without exp
     expect(await callAgent(page, openAiCompatibleLab, 'transfer-missing', TOOL_NAMES[0], { jobId: `missing-${completedJobId}` })).toEqual({ ok: true, value: { job: null } });
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('transfer-missing'))).toHaveAttribute('data-summary-kind', 'transferJobMissing');
     await getByAutomationId(page, AUTOMATION_IDS.agent.panel.close).click();
+    await screenshotStep('Agent边界：查询无需审批，Deny不更改任务，Allow与Auto对终态取消幂等，未知任务保持null。 / Agent boundaries: Get needs no approval; Deny changes nothing, Allow/Auto cancellation is idempotent for terminal jobs, and unknown jobs stay null.');
 
     // 运行中取消：真实大响应经代理录制，由UI导出Archive；MCP Ask先Deny再Allow，只取消目标并清理文件。
     // Active cancellation: capture a real large response through the proxy and export an Archive through UI; MCP Ask first denies then allows cancellation and verifies target-only cleanup.
@@ -295,6 +298,7 @@ test('capture.tools.transfer-jobs queries and cancels real file jobs without exp
     await verifyCanceledArchive(page, client, automaticJobId, directory);
     expect(publicJob(mcpValue(await client.callTool({ name: TOOL_NAMES[0], arguments: { jobId: completedJobId } })))).toEqual(completed);
     expect(createHash('sha256').update(await readFile(completedFile)).digest('hex')).toBe(fileHash);
+    await screenshotStep('Auto与隔离：第二个真实Archive使用Auto取消，已完成文件/任务不变，未留下临时输出或后台worker。 / Auto and isolation: cancel a second real Archive in Auto mode, keeping the completed job/file unchanged and leaving no temporary output or background worker.');
 
     // 独立撤权：Agent与MCP各自关闭两项，旧Chat和旧连接均拒绝后续调用而不产生文件操作。
     // Independent revocation: disable both Tools separately for Agent and MCP; existing chats/connections reject later calls without file operations.
@@ -312,6 +316,7 @@ test('capture.tools.transfer-jobs queries and cancels real file jobs without exp
     for (const name of TOOL_NAMES) await expect(client.callTool({ name, arguments: { jobId: completedJobId } })).rejects.toMatchObject({ code: -32602 });
     await client.close();
     client = null;
+    await screenshotStep('独立撤权：Agent与MCP各自关闭两项，旧Chat和旧连接均拒绝后续调用而不产生文件操作。 / Independent revocation: disable both Tools separately for Agent and MCP; existing chats/connections reject later calls without file operations.');
 
     // 运行中退出：不先取消Archive，由平台driver发送真实窗口关闭快捷键并等待文件清理与Core/Worker退出。
     // Shutdown while running: use the platform driver's native window-close shortcut without cancelling the Archive first, then wait for cleanup and exit.

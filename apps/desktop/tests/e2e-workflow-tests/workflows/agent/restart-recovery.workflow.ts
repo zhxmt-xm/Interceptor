@@ -9,6 +9,7 @@ import {
   LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const phrase = (...parts: readonly string[]): string => parts.join(' ');
@@ -37,21 +38,28 @@ interface RecoveryEvidence {
 }
 
 /** Configure a keyless local model through the real Settings UI. */
-async function configureProvider(page: Page, openAiCompatibleLab: OpenAiCompatibleLab): Promise<void> {
+async function configureProvider(
+  page: Page, openAiCompatibleLab: OpenAiCompatibleLab,
+  profileName = 'Recovery lab', modelId = 'recovery-model',
+): Promise<string> {
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
   await getByAutomationId(page, AUTOMATION_IDS.agent.models.add).click();
   await getByAutomationId(page, AUTOMATION_IDS.agent.models.addCustom).click();
-  await getByAutomationId(page, AUTOMATION_IDS.agent.provider.profileName).fill('Recovery lab');
+  await getByAutomationId(page, AUTOMATION_IDS.agent.provider.profileName).fill(profileName);
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.baseUrl)
     .fill(openAiCompatibleLab.baseUrl('recovery'));
-  await getByAutomationId(page, AUTOMATION_IDS.agent.provider.modelId).fill('recovery-model');
+  await getByAutomationId(page, AUTOMATION_IDS.agent.provider.modelId).fill(modelId);
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.contextWindow).fill('131072');
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.maximumOutput).fill('8192');
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.testConnection).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.agent.provider.connectionStatus))
     .toHaveAttribute('data-status', 'verified');
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.save).click();
+  const row = page.locator('[data-automation-id^="agent.model.row."]').filter({ hasText: profileName });
+  const id = await row.getAttribute('data-automation-id');
+  if (!id?.startsWith('agent.model.row.')) throw new Error('The configured Provider omitted its identity.');
+  return id.slice('agent.model.row.'.length);
 }
 
 /** Create one Chat, send one message and wait for its exact answer. */
@@ -142,7 +150,7 @@ test('agent.chat.restart-recovery restores isolated Chats without replaying mode
   try {
     // 准备：产品UI配置Provider并打开Panel；敏感Transcript进入DOM前停止trace快照。
     // Arrange: configure through product UI and open the Panel; stop trace snapshots before sensitive Transcript content enters DOM.
-    await configureProvider(desktopApp.page, openAiCompatibleLab);
+    const firstProvider = await configureProvider(desktopApp.page, openAiCompatibleLab);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.panel.toggle).click();
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.panel.root))
       .toHaveAttribute('data-agent-provider', 'configured');
@@ -167,12 +175,27 @@ test('agent.chat.restart-recovery restores isolated Chats without replaying mode
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.chat.confirm).click();
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.chat.selector)).toBeFocused();
 
+    // 模型选择：全局默认只影响新Chat，当前Chat的模型仍由自己的选择决定。
+    // Model selection: the global default affects new Chats; each existing Chat keeps its own selection.
+    const secondProvider = await configureProvider(desktopApp.page, openAiCompatibleLab, 'Recovery alternate', 'recovery-alternate');
+    await getByAutomationId(desktopApp.page, AutomationIdFactory.agentModelSetDefault(secondProvider)).click();
+    const panel = getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.panel.root);
+    await expect(panel.getByRole('button').filter({ hasText: 'Recovery lab' })).toBeVisible();
+    await panel.getByRole('button').filter({ hasText: 'Recovery lab' }).click();
+    await desktopApp.page.getByRole('option').filter({ hasText: 'Recovery alternate' }).click();
+    await panel.getByRole('button').filter({ hasText: 'Recovery alternate' }).click();
+    await desktopApp.page.getByRole('option').filter({ hasText: 'Recovery lab' }).click();
+    await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentModelRow(secondProvider)))
+      .toHaveAttribute('data-default', 'true');
+    await screenshotStep('当前Chat模型与全局默认相互独立 / Keep the current Chat model independent from the global default');
+
     chatBId = await createChatAndComplete(
       desktopApp.page,
       openAiCompatibleLab,
       CHAT_B_PROMPT,
       CHAT_B_ANSWER,
     );
+    await expect(panel.getByRole('button').filter({ hasText: 'Recovery alternate' })).toBeVisible();
     expect(chatBId).not.toBe(chatAId);
     await openChatCommand(desktopApp.page, AUTOMATION_IDS.agent.chat.rename);
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.chat.title))
@@ -180,6 +203,7 @@ test('agent.chat.restart-recovery restores isolated Chats without replaying mode
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.chat.cancel).click();
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.chat.selector)).toBeFocused();
     firstGenerationRequestCount = openAiCompatibleLab.evidence().length;
+    await screenshotStep('用户操作：创建并完成Chat A，使用正式菜单重命名；再创建并完成当前Chat B。 / User actions: create and complete Chat A, rename it through the real menu, then create and complete current Chat B.');
 
     // 重启：第一代完整销毁；同一profile恢复Provider、A/B顺序、当前B，且不自动重放Model Call。
     // Restart: fully destroy generation one; the same profile restores Provider, A/B order and current B without replay.
@@ -220,6 +244,8 @@ test('agent.chat.restart-recovery restores isolated Chats without replaying mode
       AutomationIdFactory.agentSessionOption(chatAId),
     ).click();
     await expect(restoredRoot).toHaveAttribute('data-session-id', chatAId);
+    await expect(getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.panel.root)
+      .getByRole('button').filter({ hasText: 'Recovery lab' })).toBeVisible();
     openAiCompatibleLab.enqueueTurn({
       textChunks: [CHAT_A_FOLLOW_UP_ANSWER],
       usage: {
@@ -236,6 +262,7 @@ test('agent.chat.restart-recovery restores isolated Chats without replaying mode
     const followUpRequest = openAiCompatibleLab.requestsForAssertions().at(-1);
     expect(JSON.stringify(followUpRequest?.messages)).toContain(CHAT_A_PROMPT);
     expect(JSON.stringify(followUpRequest?.messages)).not.toContain(CHAT_B_PROMPT);
+    await screenshotStep('证据边界：恢复状态验证后关闭菜单并停止trace，再让A继续；请求不得包含B历史。 / Evidence boundary: close the menu and stop trace after recovery checks, then continue A without sending B history.');
 
     // 用户操作：正式选择并删除B；创建空C再删除，A与Provider必须保持完整。
     // User actions: select and delete B; create and delete empty C while A and Provider remain intact.
@@ -262,11 +289,35 @@ test('agent.chat.restart-recovery restores isolated Chats without replaying mode
       .toHaveAttribute('data-agent-provider', 'configured');
     finalRequestCount = openAiCompatibleLab.evidence().length;
     expect(relaunchedApp.rendererPageErrors()).toEqual([]);
+    await screenshotStep('用户操作：正式选择并删除B；创建空C再删除，A与Provider必须保持完整。 / User actions: select and delete B; create and delete empty C while A and Provider remain intact.');
+
+    // 运行中删除：真实流式HTTP必须取消；随后删除最后模型回到未配置面板。
+    // Running deletion: cancel the actual streaming HTTP; removing the last model returns to the unconfigured panel.
+    openAiCompatibleLab.enqueueTurn({ textChunks: ['Owned response before Chat deletion.'], holdOpen: true });
+    await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.chat.new).click();
+    await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.message.input).fill('Delete this owned streaming example.');
+    await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.message.send).click();
+    await expect(getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.turn.stop)).toBeVisible();
+    await openChatCommand(relaunchedApp.page, AUTOMATION_IDS.agent.chat.delete);
+    await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.chat.confirm).click();
+    await expect.poll(() => openAiCompatibleLab.evidence().at(-1)?.aborted).toBe(true);
+    await expect(restoredRoot).toHaveAttribute('data-session-id', chatAId);
+    await screenshotStep('删除运行中Chat会取消真实模型连接 / Deleting a running Chat cancels the actual model connection');
+    await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
+    await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.settings.section.agent).click();
+    for (const providerId of [secondProvider, firstProvider]) {
+      await getByAutomationId(relaunchedApp.page, AutomationIdFactory.agentModelRemove(providerId)).click();
+      await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.removeProvider.confirm).click();
+    }
+    await expect(getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.configure)).toBeVisible();
+    finalRequestCount = openAiCompatibleLab.evidence().length;
+    await screenshotStep('删除最后模型后显示未配置状态 / Show the unconfigured state after removing the last model');
 
     // Evidence/teardown：关闭含Transcript的Panel后恢复trace，并保存两代销毁证据。
     // Evidence/teardown: close the Transcript Panel before resuming trace and save both generations' destroy evidence.
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.panel.close).click();
     await relaunchedApp.startTrace(testInfo);
+    await screenshotStep('Evidence/teardown：关闭含Transcript的Panel后恢复trace，并保存两代销毁证据。 / Evidence/teardown: close the Transcript Panel before resuming trace and save both generations\' destroy evidence.');
   } catch (error) {
     workflowError = error;
   } finally {

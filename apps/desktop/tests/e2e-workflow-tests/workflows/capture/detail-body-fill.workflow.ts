@@ -5,6 +5,7 @@ import {
   startRecording,
 } from '../../fixtures/ui/capture-workflow';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 test('capture.detail-body-fill uses the available Inspector height end to end', async ({
   desktopApp,
@@ -43,6 +44,7 @@ test('capture.detail-body-fill uses the available Inspector height end to end', 
   const bodyPane = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane);
   await expect(bodyView).toBeVisible();
   await expect(bodyPane).toBeVisible();
+  await screenshotStep('通过用户使用的同一 Inspector 交互打开响应正文。 / Open the response body through the same Inspector interaction users perform.');
 
   // Prove the response pane consumes the available Inspector height end to end.
   // 验证响应正文 pane 从头到尾占满 Inspector 的可用高度。
@@ -155,6 +157,7 @@ test('capture.detail-body-fill uses the available Inspector height end to end', 
     () => scroll.evaluate((element) => element.scrollTop),
   ).toBeGreaterThan(beforeOuterScroll);
   const afterOuterScroll = await scroll.evaluate((element) => element.scrollTop);
+  await screenshotStep('将 Monaco 滚到下边界，再验证下一次滚轮会交接给 Inspector。 / Scroll Monaco to its lower boundary, then prove the next wheel reaches Inspector.');
 
   // Retain geometry and both outer scroll positions as workflow evidence.
   // 保留几何数据和两次外层滚动位置作为 workflow 证据。

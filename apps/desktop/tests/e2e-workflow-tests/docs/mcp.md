@@ -1,18 +1,18 @@
 # MCP Workflows
 
-## 教程调用生命周期补录
+## 原流程与可选步骤截图
 
-`guidebook-tool-lifecycle.workflow.ts`使用官方SDK与产品创建的Ask Client，真实取消尚待审批的暂停请求；Recent/Trace从真实返回值关联，不编造traceId。Diagnostics Export分别Deny、Allow后原生Cancel和实际保存/查任务；Auto长Composer请求由自有origin保持，撤销Client时核对真实socket中断与旧身份拒绝。只展示App侧控件及相关原生面板，配置凭据不录制，不冒充商业Host设置页。
+MCP截图复用原真实SDK/Host流程；App侧图片不冒充外部商业Host配置页。
 
-`guidebook-endpoint-reconnect.workflow.ts`在第一代创建真实Client并保存Server开启状态，正常关闭后由自有进程占用旧端口；第二代真实Change endpoint后重新复制当前配置，用同一Client身份在新地址完成SDK发现与查询。第二代证据为`endpoint-reopened`；这补齐本机新地址通信，不扩成商业Host配置UI或版本升级兼容性。
+- `streamable-http.workflow.ts`保持各协议的手工凭据、发现/查询、Ask/Auto、取消、轮换、撤权与正常重启，补Rules本地草稿冲突及撤销Client时真实在途Composer socket取消。
 
-## 教程逐步骤录制
+- `protocol-support.workflow.ts`保留Server关闭/开启时的协议说明，并在同一流程的下一代占用原endpoint，验证实际冲突、显式Change endpoint、同一Client凭据和新地址查询。
 
-`guidebook-client.workflow.ts`通过实际Release开启Server、创建`Guide local client`、Copy config，再由明确标注的官方SDK演示客户端执行真实查询、Ask Deny/Allow、模式切换、撤销和停用。配置内容读取复用已有脱敏trace边界，视频不展示token，metadata只含公开endpoint和名称；最后清理本轮剪贴板凭据并正常退出。
+- Diagnostics原生文件Tool由`diagnostics/tools-queries-export.workflow.ts`及原Agent流程验证，不再单独维护媒体流程。
 
-每个操作有独立原生截图和视频位置，不把演示SDK客户端当作真实VS Code、Claude或远端connector验收。实际Host配置窗口、凭据轮换等未录步骤仍保留缺口。
+- `browser-playground-cors`与`current-host`的真实外部边界保留；尚无环境的Host不得被本地SDK结果代替。
 
-当前主录制补充了凭据轮换、旧配置拒绝、新配置重新查询与运行期`EADDRINUSE`后结束已知占用再重试。`guidebook-endpoint.workflow.ts`正常关闭首代App，保留本轮profile，测试端占用其旧endpoint后启动第二代；只在真实`endpoint-conflict`界面点击Change endpoint，并记录新旧公开地址。两代都保留退出证据，测试listener完整关闭，不将手动Enable失败时的disabled/error界面冒充重启恢复入口。
+命令、输出清单和显式导入边界见[套件说明](../README.md#trace-与证据)。已有公开PNG及历史验收记录保持原来源，新的运行不会自动替换它们；本节不把未经执行的平台或分支记为通过。
 
 本文件定义外部MCP Host接入Interceptor Desktop的真实E2E流程。确定性回归使用官方MCP Client，
 `current-host`使用当前开发Agent所在的真实Host；两者都使用产品UI创建的配置，不直接构造Client记录、

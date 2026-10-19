@@ -4,6 +4,7 @@ import { writeFile } from 'node:fs/promises';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 
@@ -89,6 +90,7 @@ test('capture.scenarios.websocket captures directional text binary and controlle
         await bodyView.screenshot({ path: testInfo.outputPath(`websocket-tree-${state}.png`) });
         return layout;
       };
+      await screenshotStep('用户操作：通过自产连接和公开控件打开JSON消息的Tree，不注入正文或Store。 / User actions: open Tree through this captured connection and public controls without injecting body or Store state.');
 
       // 业务断言与证据：先记录实际可见高度，再核对展开/折叠及原文复制，空白面板不能算通过。
       // Assertions and evidence: save the real visible height before checking expansion and raw Copy; an empty pane cannot pass.
@@ -109,6 +111,7 @@ test('capture.scenarios.websocket captures directional text binary and controlle
       await disclosure.click();
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy).click();
       await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(payload);
+      await screenshotStep('业务断言与证据：先记录实际可见高度，再核对展开/折叠及原文复制，空白面板不能算通过。 / Assertions and evidence: save the real visible height before checking expansion and raw Copy; an empty pane cannot pass.');
 
       // 全屏与清理：同一Tree仍有MIME/Save与Header Copy，关闭后保留Tree及展开内容。
       // Fullscreen and cleanup: the same Tree keeps MIME/Save and header Copy, then returns to the expanded inline Tree.
@@ -132,6 +135,7 @@ test('capture.scenarios.websocket captures directional text binary and controlle
       await expect(frames).toHaveCount(2);
       evidence.push({ scenarioId: 'websocket-compact-json-tree', exchangeId, sent: 1, received: 1 });
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
+      await screenshotStep('全屏与清理：同一Tree仍有MIME/Save与Header Copy，关闭后保留Tree及展开内容。 / Fullscreen and cleanup: the same Tree keeps MIME/Save and header Copy, then returns to the expanded inline Tree.');
     } finally {
       if (!client.isClosed()) await client.closeGracefully(1000, 'workflow-cleanup');
     }
@@ -209,6 +213,7 @@ test('capture.scenarios.websocket captures directional text binary and controlle
           await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(payload);
           await frame.click();
         }
+        await screenshotStep('业务断言：固定文本或Hex同时显示在消息行与真实Copy结果中，不能串方向或串连接。 / Product assertions: fixed text or Hex matches both frame previews and actual Copy results without mixing directions or connections.');
       }
       await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.directionAll).click();
       await expect(frames).toHaveCount(expected.sent.length + expected.received.length);
@@ -234,6 +239,7 @@ test('capture.scenarios.websocket captures directional text binary and controlle
       }
       evidence.push({ scenarioId: expected.id, exchangeId, sent: expected.sent.length, received: expected.received.length });
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
+      await screenshotStep('产品操作：选择本轮101行，通过公开Messages与方向筛选查看真实捕获的数据消息。 / Product actions: select this 101 row and use public Messages and direction controls to inspect captured data messages.');
     });
   }
 

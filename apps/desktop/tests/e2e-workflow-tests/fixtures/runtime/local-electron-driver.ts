@@ -46,6 +46,7 @@ import {
 import { WindowsWorkflowHostSafetyOperations } from '../safety/windows-workflow-host-safety-operations';
 import { MacosWorkflowHostSafetyOperations } from '../safety/macos-workflow-host-safety-operations';
 import { shouldPreserveWorkflowProfile } from './workflow-profile-retention';
+import { finishStepScreenshots, recordScreenshotHostRestoration, startStepScreenshots, useScreenshotDriver } from './step-screenshots';
 
 const DEFAULT_CAPTURE_PORT = 8888;
 const E2E_DESKTOP_DIRECTORY_ENV = 'INTERCEPTOR_E2E_DESKTOP_DIRECTORY';
@@ -54,6 +55,10 @@ const workflowHostSafetyGuardByTestInfo = new WeakMap<TestInfo, WorkflowHostSafe
 const dismissTlsCompatibilityByTestInfo = new WeakMap<TestInfo, boolean>();
 
 interface LocalWorkflowFixtures {
+  /** Capture explicit user-operation steps without changing the tested behavior. */
+  stepScreenshots: boolean;
+  /** Finalize screenshot evidence after the remaining test fixtures have finished. */
+  stepScreenshotEvidence: void;
   allowSharedCertificateInitialization: boolean;
   dismissTlsCompatibilityDialogs: boolean;
   waitForStartupReady: boolean;
@@ -243,7 +248,7 @@ export class LocalElectronApplicationDriver {
       if (dismissTlsCompatibilityByTestInfo.get(testInfo) !== false) {
         await registerTlsCompatibilityDismissal(page);
       }
-      return new LocalElectronApplicationDriver(
+      const driver = new LocalElectronApplicationDriver(
         application,
         page,
         desktopDirectory,
@@ -253,6 +258,8 @@ export class LocalElectronApplicationDriver {
         options.evidencePrefix ?? '',
         workflowHostSafetyGuard,
       );
+      useScreenshotDriver(testInfo, driver);
+      return driver;
     } catch (error) {
       testInfo.annotations.push({
         type: 'preserved-user-data',
@@ -317,6 +324,7 @@ export class LocalElectronApplicationDriver {
       const driver = new LocalElectronApplicationDriver(null, page, desktopDirectory, userDataDirectory,
         mainProcessId, null, options.evidencePrefix ?? '', workflowHostSafetyGuard, { browser, process: child, outputPath, owner });
       driver.mainOutput = output;
+      useScreenshotDriver(testInfo, driver);
       return driver;
     } catch (error) {
       await mkdir(testInfo.outputDir, { recursive: true });
@@ -677,14 +685,26 @@ end tell
     }
   }
 
-  /** Read the primary BrowserWindow state from Electron Main for UI assertions. */
+  /** Read the owned primary window through the driver's native platform boundary. */
   async windowState(): Promise<DesktopWindowState> {
     if (!this.application) {
-      const session = await this.context.newCDPSession(this.page);
-      try {
-        const { bounds } = await session.send('Browser.getWindowForTarget');
-        return { minimized: bounds.windowState === 'minimized', maximized: bounds.windowState === 'maximized', visible: bounds.windowState !== 'minimized' };
-      } finally { await session.detach(); }
+      const available = await this.page.evaluate(() => ({ width: screen.availWidth, height: screen.availHeight }));
+      const output = await this.runMacosWindowScript(`
+const size = window.size();
+JSON.stringify({
+  minimized: attribute(window, "AXMinimized") === true,
+  maximized: size[0] === ${available.width} && size[1] === ${available.height},
+  visible: owned.visible() && attribute(window, "AXMinimized") !== true
+});
+`);
+      const state: unknown = JSON.parse(output);
+      if (typeof state !== 'object' || state === null
+        || !('minimized' in state) || typeof state.minimized !== 'boolean'
+        || !('maximized' in state) || typeof state.maximized !== 'boolean'
+        || !('visible' in state) || typeof state.visible !== 'boolean') {
+        throw new Error('The owned macOS window returned invalid state.');
+      }
+      return { minimized: state.minimized, maximized: state.maximized, visible: state.visible };
     }
     return this.application.evaluate(({ BrowserWindow }) => {
       const [mainWindow] = BrowserWindow.getAllWindows();
@@ -699,12 +719,12 @@ end tell
   /** Restore and focus the primary BrowserWindow after a minimize assertion. */
   async restoreWindow(): Promise<void> {
     if (!this.application) {
-      const session = await this.context.newCDPSession(this.page);
-      try {
-        const { windowId } = await session.send('Browser.getWindowForTarget');
-        await session.send('Browser.setWindowBounds', { windowId, bounds: { windowState: 'normal' } });
-      } finally { await session.detach(); }
-      await this.page.bringToFront();
+      await this.runMacosWindowScript(`
+const minimized = window.attributes.whose({ name: "AXMinimized" })()[0];
+if (!minimized) throw new Error("The owned window omitted AXMinimized");
+minimized.value = false;
+owned.frontmost = true;
+`);
       return;
     }
     await this.application.evaluate(({ BrowserWindow }) => {
@@ -714,6 +734,30 @@ end tell
       mainWindow?.focus();
     });
     await this.page.bringToFront();
+  }
+
+  /** Restrict native window assertions and restoration to this exact workflow Main. */
+  private async runMacosWindowScript(operation: string): Promise<string> {
+    const owner = this.nativeFileDialogOwner();
+    const identity = await MacosWorkflowHostSafetyOperations.readProcessIdentity(owner.processId);
+    if (identity.processStartedAt !== owner.processStartedAt) {
+      throw new Error('The workflow window owner changed generation.');
+    }
+    await MacosWorkflowHostSafetyOperations.assertDesktopUnlocked();
+    const { stdout } = await execFileAsync('/usr/bin/osascript', ['-l', 'JavaScript', '-e', `
+const matches = Application("System Events").applicationProcesses.whose({ unixId: ${owner.processId} })();
+if (matches.length !== 1) throw new Error("The workflow-owned App is unavailable");
+const owned = matches[0];
+function attribute(element, name) {
+  const values = element.attributes.whose({ name })();
+  return values.length ? values[0].value() : null;
+}
+const windows = owned.windows().filter(window => !["save-panel", "open-panel"].includes(attribute(window, "AXIdentifier")));
+if (windows.length !== 1) throw new Error("Expected one workflow-owned main window");
+const window = windows[0];
+${operation}
+`], { encoding: 'utf8', timeout: 10_000 });
+    return stdout;
   }
 
   /** Click the product Close control and wait for Electron's terminal close event. */
@@ -1260,6 +1304,12 @@ events.keyCode(12, { using: ["command down"] });
 }
 
 export const test = base.extend<LocalWorkflowFixtures>({
+  stepScreenshots: [false, { option: true }],
+  stepScreenshotEvidence: [async ({ stepScreenshots }, use, testInfo) => {
+    startStepScreenshots(testInfo, stepScreenshots);
+    try { await use(); }
+    finally { await finishStepScreenshots(testInfo); }
+  }, { auto: true }],
   allowSharedCertificateInitialization: [false, { option: true }],
   dismissTlsCompatibilityDialogs: [true, { option: true }],
   waitForStartupReady: [true, { option: true }],
@@ -1315,7 +1365,12 @@ export const test = base.extend<LocalWorkflowFixtures>({
         } catch (error) {
           cleanupError = error;
         }
-        await driver.writeEvidence(testInfo).catch(() => undefined);
+        try {
+          await driver.writeEvidence(testInfo);
+        } catch (error) {
+          cleanupError = cleanupError === undefined ? error
+            : new AggregateError([cleanupError, error], 'Application cleanup and evidence writing both failed.');
+        }
         try { await driver.forceCleanup(); }
         catch (error) {
           cleanupError = cleanupError === undefined ? error
@@ -1350,8 +1405,9 @@ export const test = base.extend<LocalWorkflowFixtures>({
       }
       dismissTlsCompatibilityByTestInfo.delete(testInfo);
     }
-    const errors = [workflowError, cleanupError, hostSafetyError]
+    const errors: unknown[] = [workflowError, cleanupError, hostSafetyError]
       .filter((error) => error !== undefined);
+    recordScreenshotHostRestoration(testInfo, hostSafetyError === undefined && workflowHostSafetyGuard !== null);
     if (errors.length === 1) {
       throw errors[0];
     }

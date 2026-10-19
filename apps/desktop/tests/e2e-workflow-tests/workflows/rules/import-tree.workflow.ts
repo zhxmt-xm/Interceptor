@@ -16,6 +16,7 @@ import {
   getByAutomationIdPrefix,
 } from '../../fixtures/ui/automation';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { WorkflowProcessIdentity } from '../../fixtures/safety/workflow-host-safety-guard';
 import { submitFileDialogPath } from '../../fixtures/ui/file-dialog';
 
@@ -130,6 +131,7 @@ test('rules.import-tree appends a product-exported tree without reusing identiti
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.rules).click();
     const importRules = getByPublicAutomationId(page, IMPORT_IDS.toolbar);
     await expect(importRules).toBeVisible();
+    await screenshotStep('先锁定新能力入口；旧提交必须在这里因真实产品缺口取得Red。 / Lock the new capability first; the old commit must become Red here on the real product gap.');
 
     // 通过真实Rules UI创建两条完整规则和一层目录，再把第二条拖入目录并Apply。
     // Build two complete Rules and one folder through the real UI, then drag the second Rule into it and Apply.
@@ -173,6 +175,7 @@ test('rules.import-tree appends a product-exported tree without reusing identiti
       .toHaveAttribute('data-state', 'applied');
     await expect(getByAutomationId(page, AUTOMATION_IDS.rules.status.revision))
       .toHaveAttribute('data-revision', '1');
+    await screenshotStep('通过真实Rules UI创建两条完整规则和一层目录，再把第二条拖入目录并Apply。 / Build two complete Rules and one folder through the real UI, then drag the second Rule into it and Apply.');
 
     // Export必须经真实Save Dialog落盘；测试只在产品写完后只读解析同一JSON。
     // Export must write through the real Save Dialog; the test only reads the same JSON after the product writes it.
@@ -200,6 +203,7 @@ test('rules.import-tree appends a product-exported tree without reusing identiti
       body: Buffer.from(exportedText),
       contentType: 'application/json',
     });
+    await screenshotStep('Export必须经真实Save Dialog落盘；测试只在产品写完后只读解析同一JSON。 / Export must write through the real Save Dialog; the test only reads the same JSON after the product writes it.');
 
     // 第一次Import在确认Dialog取消，树身份、顺序与Core revision必须保持不变。
     // Cancel the first Import preview; tree identity, ordering, and Core revision must remain unchanged.
@@ -221,6 +225,7 @@ test('rules.import-tree appends a product-exported tree without reusing identiti
       .toEqual([originalFolderId]);
     await expect(getByAutomationId(page, AUTOMATION_IDS.rules.status.revision))
       .toHaveAttribute('data-revision', '1');
+    await screenshotStep('第一次Import在确认Dialog取消，树身份、顺序与Core revision必须保持不变。 / Cancel the first Import preview; tree identity, ordering, and Core revision must remain unchanged.');
 
     // 再次Import并确认，验证追加位置、全新ID、enabled沿用、目录层级与原子持久化。
     // Import again and confirm, proving append order, fresh IDs, preserved enabled state, hierarchy, and atomic persistence.
@@ -256,6 +261,7 @@ test('rules.import-tree appends a product-exported tree without reusing identiti
     )).toHaveCount(1);
     await expect(getByAutomationId(page, AUTOMATION_IDS.rules.status.revision))
       .toHaveAttribute('data-revision', '2');
+    await screenshotStep('再次Import并确认，验证追加位置、全新ID、enabled沿用、目录层级与原子持久化。 / Import again and confirm, proving append order, fresh IDs, preserved enabled state, hierarchy, and atomic persistence.');
 
     // Reload Renderer后必须从Core恢复同一批身份；随后重复导入仍只能追加全新节点。
     // Reload Renderer to restore the same identities from Core, then repeat Import and require another fresh append.
@@ -283,6 +289,7 @@ test('rules.import-tree appends a product-exported tree without reusing identiti
     expect(new Set([...finalFolderIds, ...finalRuleIds]).size).toBe(9);
     await expect(getByAutomationId(page, AUTOMATION_IDS.rules.status.revision))
       .toHaveAttribute('data-revision', '3');
+    await screenshotStep('Reload Renderer后必须从Core恢复同一批身份；随后重复导入仍只能追加全新节点。 / Reload Renderer to restore the same identities from Core, then repeat Import and require another fresh append.');
 
     // 保存三代身份与revision证据；fixture随后负责trace、正常Close、8888释放和profile删除。
     // Save three generations of identity and revision evidence; the fixture then owns trace, normal Close, port release, and profile deletion.

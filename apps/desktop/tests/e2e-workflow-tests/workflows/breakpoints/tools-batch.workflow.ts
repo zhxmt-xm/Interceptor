@@ -10,6 +10,7 @@ import { automaticallyExecuteMcpClientTools } from '../../fixtures/ui/settings-w
 import { createRequestBreakpointRule } from '../../fixtures/ui/breakpoint-workflow';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import type { ProxiedWebSocketClient, WebSocketTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
@@ -245,6 +246,7 @@ test('breakpoints.tools.batch scopes Agent and MCP batch commands to real pendin
     const firstQueueKey = await holdWebSocketFrames(page, firstProxiedWebSocketClient, firstPath, firstMessages);
     const secondQueueKey = await holdWebSocketFrames(page, secondProxiedWebSocketClient, secondPath, secondMessages);
     await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('5');
+    await screenshotStep('自产队列：UI建立两条HTTP Rule；两条WebSocket连接依次配置，不伪造多活动配置。 / Product-owned queues: create two HTTP Rules through UI and configure two WebSocket connections in sequence, without inventing multiple active configurations.');
 
     // Agent审批与Rule范围：Deny不解队，Allow只原样放行同Rule两项，不能采用草稿或触碰其他队列。
     // Agent approval and Rule scope: Deny preserves every pending item; Allow forwards only the two matching Rule members, without applying drafts or touching other queues.
@@ -258,6 +260,7 @@ test('breakpoints.tools.batch scopes Agent and MCP batch commands to real pendin
     await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('3');
     expect(loopbackLab.observation(putFirst.requestPath)).toBeUndefined();
     for (const message of [...firstMessages, ...secondMessages]) expect(webSocketLab.hasMessage(message)).toBe(false);
+    await screenshotStep('Agent审批与Rule范围：Deny不解队，Allow只原样放行同Rule两项，不能采用草稿或触碰其他队列。 / Agent approval and Rule scope: Deny preserves every pending item; Allow forwards only the two matching Rule members, without applying drafts or touching other queues.');
 
     // Agent Auto与队列隔离：丢弃HTTP、放行A、丢弃B；空目标返回0，其他队列不受影响。
     // Agent Auto and queue isolation: drop HTTP, continue A, then drop B; empty targets return zero without affecting another queue.
@@ -277,6 +280,7 @@ test('breakpoints.tools.batch scopes Agent and MCP batch commands to real pendin
     for (const message of secondMessages) expect(webSocketLab.hasMessage(message)).toBe(false);
     await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('');
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolApproval('batch-drop-http'))).toHaveCount(0);
+    await screenshotStep('Agent Auto与队列隔离：丢弃HTTP、放行A、丢弃B；空目标返回0，其他队列不受影响。 / Agent Auto and queue isolation: drop HTTP, continue A, then drop B; empty targets return zero without affecting another queue.');
 
     // 双授权：Agent撤权不影响MCP；MCP使用同一三条命令，并在独立Ask/Auto下验证HTTP与WebSocket隔离。
     // Independent permissions: Agent revocation leaves MCP enabled; MCP uses the same three commands and verifies HTTP/WebSocket isolation under its own Ask/Auto mode.

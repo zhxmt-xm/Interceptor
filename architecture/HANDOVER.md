@@ -1,7 +1,7 @@
 # Task List
 
-> Tracked commit: `46526f67`
-> Homepage guidebook: `6b6db73`
+> Tracked commit: `2489eab4`
+> Homepage guidebook: `6ac3e17`
 
 ## 维护规则
 
@@ -39,18 +39,25 @@
   - 目标：把已完成本地制作的官网部署到免费Cloudflare静态托管，先限制为本人或明确允许的成员访问，再按用户确认决定公开。源码仓库继续保持private，不要求购买域名或启用付费服务。
   - 当前：本地官网行为、素材来源与验证保留在[官网架构](../../Interceptor-Homepage/docs/architecture.md#真实首页素材)，[同一item改动说明](../../Interceptor-Homepage/commit-changes/202610141539_ui_homepage_initial-progress.html#homepage-real-media-20261017)保留前后画面。尚无已验收的线上URL，账号授权和访问保护需要确认，不将先前OAuth失败等同于当前认证状态。
   - 步骤：按[受限部署约定](../../Interceptor-Homepage/docs/deployment.md#待执行受限部署与线上验收)先确认实际账号、保护范围与全部正式/预览地址，再连接本人的GitHub官网仓库或授权Wrangler部署；`Cloudflare account`必须确实限定账号成员，不能只选择项目所属账号。不得创建临时公开部署、擅自影响其他应用或靠网址未公布代替访问控制。
-  - 验收：首页与教程深链/刷新、真实404、静态缓存、原图、视频播放/拖动与Range响应；获准账号能访问，匿名及未授权账号不能绕过保护，包括直接资源和预览地址。保留实际URL与浏览器证据，核对国内外线路和Google Fonts依赖，不承诺免费默认域名在大陆稳定快速。
+  - 验收：首页与教程深链/刷新、真实404、静态缓存、步骤索引及原图；获准账号能访问，匿名及未授权账号不能绕过保护，包括直接资源和预览地址。保留实际URL与浏览器证据，核对国内外线路和Google Fonts依赖，不承诺免费默认域名在大陆稳定快速。
   - 入口边界：下载、GitHub与feedback仍受私有产品仓库权限限制，需确认目标访客可用的入口；上线不会自动获得匿名下载权限。App iframe、主题语言衔接与登录会话转由item 16跟踪，不由普通网页可嵌入替代；正式公开、域名及任何付费操作另行确认。
 
-- **16. Guidebook 跨平台与隔离场景补录、App接入 · blocked / 待确认 · 承接原item 9剩余范围**
-  - 目标：在已交付的本机Guidebook和阅读器基础上，补齐尚无真实环境的功能步骤图/视频与App入口；不是仅剩Windows，也不重新录制已核对的本机场景。
-  - 教程约定：逐功能点保留用途、平台前提、真实操作、预期结果和限制；每个操作步骤对应原生App图及影片时间，示例名称和值与同一录制一致。相似测试归纳成用户场景，不把fixture、内部故障注入或验收日志变成操作步骤。
-  - 环境缺口：Windows/AppContainer/UAC与对应安装恢复；隔离首次CA/证书生命周期；真实DNS/DHCP WPAD网络；实际外部MCP Host、模型凭据与服务授权；更新下载、校验、安装及系统原生流程。需要用户提供对应环境和操作授权，本机结果不能替代。
+- **16. Guidebook 跨平台与隔离场景补图、App接入 · blocked / 待确认 · 承接原item 9剩余范围**
+  - 目标：在已交付的本机Guidebook和阅读器基础上，补齐尚无真实环境的功能步骤图与App入口；不是仅剩Windows，也不重新制作已核对的本机场景。
+  - 教程约定：逐功能点保留用途、平台前提、真实操作、预期结果和限制；每个操作步骤对应真实App图，示例名称和值与同一次运行一致。原workflow通过[可选截图模式](../apps/desktop/tests/e2e-workflow-tests/README.md#trace-与证据)输出PNG，素材使用前独立审核，不再维护专用Guidebook制作/导入链路或要求视频；相似测试归纳成用户场景，不把fixture、内部故障注入或验收日志变成操作步骤。
+  - 环境缺口：Windows/AppContainer/UAC与对应安装恢复及原生文件面板截图；隔离首次CA/证书生命周期；真实DNS/DHCP WPAD网络；实际外部MCP Host、模型凭据与服务授权；更新下载、校验、安装及系统原生流程。需要用户提供对应环境和操作授权，本机结果不能替代。
   - App入口：此前的暂停继续有效。先完成item 15受限官网地址和访问会话验收，再经用户确认截图方案，实现无边框iframe、浏览器打开、主题/语言衔接、滚动与加载错误；不承诺离线阅读，不向远程页面暴露Preload或业务IPC。
   - 安全与版本：保留当前App语言，翻译只在独立i18n流程验证；只录本次App及其原生面板，先定位自有文件目录，不录桌面、其他应用、个人流量或凭据。保持日常CA和系统配置，不绕过锁屏/UAC/Gatekeeper，不以强杀替代恢复，不新增私有教程npm包或registry依赖。
   - Release限制：空Rules树删除后的Apply入口和受测Upgrade未进入pending等行为已如实说明；产品修复需要独立授权及对应Release，不用备用规则、隐藏API、篡改发布包或截图伪造功能。
-  - 下一步：确认并取得一种可用环境，沿[功能映射](../../Interceptor-Homepage/docs/guidebook-coverage.md)与[规格索引](../apps/desktop/tests/e2e-workflow-tests/docs/README.md)逐项操作、补图/字幕并验证正常退出、8888释放与宿主恢复；再推进下一个可执行环境。未提供环境或未解除暂停时保持blocked，不自动缩范围。
+  - 下一步：确认并取得一种可用环境，沿[功能映射](../../Interceptor-Homepage/docs/guidebook-coverage.md)与[规格索引](../apps/desktop/tests/e2e-workflow-tests/docs/README.md)逐项操作、补图并验证正常退出、8888释放与宿主恢复；再推进下一个可执行环境。未提供环境或未解除暂停时保持blocked，不自动缩范围。
   - 已有基础：[教程目录](../../Interceptor-Homepage/guidebook/README.md)、[读取/媒体/恢复记录](../../Interceptor-Homepage/docs/guidebook.md)及两个仓库原有改动报告保留。当前本地预览为`http://127.0.0.1:4175/guide`；停止后在Homepage运行`npm run dev`恢复。后续修改按影响范围复验，不覆盖旧结果。
+
+## 验证证据
+
+- Start截图入口：[真实TTY验收](../apps/desktop/test-results/start-screenshots-20261019/verification.json)覆盖`npm start → Test → E2E`的普通/逐步截图、返回与取消；两次均运行原Composer格式化workflow，不手写截图参数。
+  - 截图自动进入独立运行目录，7张PNG的尺寸及SHA-256符合清单；普通运行不生成步骤图，保留原trace/final.png，前次截图运行的31个文件逐字节不变。两代均正常Close、Main/Core退出，宿主guard通过，8888实际bind/close可用；没有强杀。
+  - 目标为既有签名macOS Release `0.1.1-alpha.1`；本次未重跑默认prepare/build或Windows。原92个workflow文件集合保持，65个Guidebook专用workflow及制作/导入入口已移除；官网图文和PNG保留。当前说明见[截图约定](../apps/desktop/tests/e2e-workflow-tests/README.md#trace-与证据)；此前官网Browser结论保持其原快照范围，未由本次CLI验收覆盖。
+  - 提交前Desktop与Homepage typecheck、限定diff及CLI语法检查通过；Homepage lint无错误，两份内嵌原图的HTML超过Biome大小上限而跳过，其中本项说明已直接用Browser检查1360/390宽度、6张原图、全部展开状态与红框位置。两仓只维护[同一份改动说明](../../Interceptor-Homepage/commit-changes/202610192304_ui_guidebook_step-images.html)，不恢复其他任务已删除的历史报告。
 
 ## 验收约束
 

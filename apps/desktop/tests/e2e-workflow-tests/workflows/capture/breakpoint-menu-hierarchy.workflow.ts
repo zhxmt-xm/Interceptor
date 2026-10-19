@@ -12,6 +12,7 @@ import {
 } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 /** 从公开Capture row automation ID提取Core exchange ID。 */
 async function exchangeId(row: Locator): Promise<string> {
@@ -49,6 +50,7 @@ test('capture.breakpoint-menu-hierarchy aligns Block and Breakpoint labels', asy
   await expect(row).toBeVisible();
   const capturedExchangeId = await exchangeId(row);
   await row.click({ button: 'right' });
+  await screenshotStep('真实Recording与显式代理请求创建一个可打开右键菜单的Capture行。 / Create one Capture row for a real context-menu interaction through Recording and an explicit proxy request.');
 
   // 直接比较语义label左缘；不同DOM层级会稳定暴露约7.4px偏移，不能用截图肉眼代替。
   // Compare semantic-label left edges directly; distinct DOM levels expose the stable ~7.4 px offset without visual guessing.
@@ -76,6 +78,7 @@ test('capture.breakpoint-menu-hierarchy aligns Block and Breakpoint labels', asy
   expect(blockBox).not.toBeNull();
   expect(breakpointBox).not.toBeNull();
   const labelLeftDelta = Math.abs(blockBox!.x - breakpointBox!.x);
+  await screenshotStep('直接比较语义label左缘；不同DOM层级会稳定暴露约7.4px偏移，不能用截图肉眼代替。 / Compare semantic-label left edges directly; distinct DOM levels expose the stable ~7.4 px offset without visual guessing.');
 
   // 同组重排不能破坏Ant原生hover submenu；endpoint项仍由公开动态ID定位。
   // Regrouping must preserve Ant's native hover submenu and its public endpoint identity.
@@ -85,6 +88,7 @@ test('capture.breakpoint-menu-hierarchy aligns Block and Breakpoint labels', asy
     AutomationIdFactory.captureCreateBreakpoint(capturedExchangeId, 'endpoint'),
   )).toBeVisible();
   await page.keyboard.press('Escape');
+  await screenshotStep('同组重排不能破坏Ant原生hover submenu；endpoint项仍由公开动态ID定位。 / Regrouping must preserve Ant\'s native hover submenu and its public endpoint identity.');
 
   // 保存几何证据；fixture随后正常Close并验证Main/Core、8888与系统代理恢复。
   // Save geometry evidence; the fixture then verifies normal Close, Main/Core, port 8888, and proxy restoration.

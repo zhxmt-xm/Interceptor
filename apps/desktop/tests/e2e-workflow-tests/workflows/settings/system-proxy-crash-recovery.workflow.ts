@@ -7,6 +7,7 @@ import {
   LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 interface SystemProxyJournalRecord {
   /** Complete WinINet snapshot captured before takeover. */
@@ -100,6 +101,7 @@ test('loads a crashed system proxy journal across application generations', asyn
     evidence.firstGenerationOwned = !desktopApp.matchesSystemProxyEvidence(firstJournal.record.original, firstJournal.record.owned);
     expect(evidence.firstGenerationOwned).toBe(true);
     desktopApp.assertSystemProxyJournalFields(firstJournal.record);
+    await screenshotStep('代理接管后保留原始配置 / Preserve original settings after proxy takeover');
 
     // 异常退出：终止A后再顺序启动B，不存在两个App并发。
     // Abrupt exit: terminate A before B starts; two Apps never run concurrently.
@@ -121,6 +123,7 @@ test('loads a crashed system proxy journal across application generations', asyn
     expect(evidence.secondGenerationLoadedOwned).toBe(true);
     expect(evidence.sharedJournalPathUsed).toBe(true);
     expect(secondGeneration.rendererPageErrors()).toEqual([]);
+    await screenshotStep('异常退出后新App恢复同一代理记录 / Recover the same proxy journal in the next App');
 
     // Evidence/teardown：B正常关闭，外层guard复核完整宿主状态。
     // Evidence/teardown: B closes normally and the outer guard verifies all host state.

@@ -11,6 +11,7 @@ import {
   type LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 const CURRENT_MCP_PROTOCOL = '2026-07-28';
 
@@ -148,6 +149,7 @@ test('mcp.browser-playground-cors connects a current-protocol Browser client', a
     const clientId = (await clientRow.getAttribute('data-client-id')) ?? '';
     await expect(clientRow).toHaveAttribute('data-execution-mode', 'ask');
     const configuration = await copyConfiguration(desktopApp, testInfo, clientId);
+    await screenshotStep('准备：通过真实产品UI开启MCP，并创建一个默认Ask的Browser Client。 / Arrange: enable MCP and create a default-Ask Browser Client through real product UI.');
 
     // 外部交互：系统Edge加载独立loopback origin，并从真实Browser发出CORS请求。
     // External interaction: system Edge loads a separate loopback origin and sends real Browser CORS requests.
@@ -226,6 +228,7 @@ test('mcp.browser-playground-cors connects a current-protocol Browser client', a
     expect((await allowedCall).status).toBe(200);
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle))
       .toHaveAttribute('aria-pressed', 'false');
+    await screenshotStep('业务断言：query直接读取Core；change在Ask下分别由Developer拒绝和允许。 / Business assertion: query reads Core directly; Ask-mode change is rejected and approved by the Developer.');
 
     // 清理：恢复Recording，撤销Client并关闭MCP；fixture继续验证完整销毁与系统副作用恢复。
     // Cleanup: restore Recording, revoke the Client, and disable MCP; the fixture verifies full teardown and side-effect recovery.
@@ -236,6 +239,7 @@ test('mcp.browser-playground-cors connects a current-protocol Browser client', a
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.server.enable).click();
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.server.root))
       .toHaveAttribute('data-server-state', 'disabled');
+    await screenshotStep('清理：恢复Recording，撤销Client并关闭MCP；fixture继续验证完整销毁与系统副作用恢复。 / Cleanup: restore Recording, revoke the Client, and disable MCP; the fixture verifies full teardown and side-effect recovery.');
   } finally {
     await browser?.close();
   }

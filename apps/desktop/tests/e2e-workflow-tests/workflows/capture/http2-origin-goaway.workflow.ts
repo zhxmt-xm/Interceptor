@@ -5,6 +5,7 @@ import { PassThrough } from 'node:stream';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { createResponseBreakpointRule } from '../../fixtures/ui/breakpoint-workflow';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
@@ -72,6 +73,7 @@ test('capture.http2-origin-goaway drains a paused response before retiring its u
     expect(originSessions).toHaveLength(1);
     expect(received.bytes).toBe(0);
     const rowId = await row.getAttribute('data-automation-id');
+    await screenshotStep('准备：复用共享CA，通过真实UI只配置本轮TLS例外与响应断点。 / Arrange: reuse the shared CA and configure only this workflow\'s TLS exception and response breakpoint through UI.');
 
     // 用户操作：源站正常GOAWAY并发完正文后，真实点击原样放行。
     // User action: continue unmodified only after the origin gracefully closes and finishes its response.
@@ -115,6 +117,7 @@ test('capture.http2-origin-goaway drains a paused response before retiring its u
       await expect(getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
         .filter({ hasText: nextPath })).toHaveCount(1);
       await page.screenshot({ path: testInfo.outputPath('origin-goaway-complete.png') });
+      await screenshotStep('业务断言：同一响应完整结束，保留正文、trailer及原Capture身份。 / Business assertions: finish the same response with complete bytes, trailers and its original Capture identity.');
     } finally {
       // 证据：失败也记录真实字节和结束状态，不用清理时的EOF冒充成功。
       // Evidence: retain actual byte and end state on failure; never count cleanup EOF as success.

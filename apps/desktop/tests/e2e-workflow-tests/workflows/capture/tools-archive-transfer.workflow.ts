@@ -12,6 +12,7 @@ import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/auto
 import type { HttpTrafficRunner, WebSocketTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { cancelFileDialog, submitFileDialogPath } from '../../fixtures/ui/file-dialog';
@@ -301,6 +302,7 @@ test('capture.tools.archive-transfer exports and imports native archives through
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), agentAutoFile);
     await waitForCompletedJob(client, startedJob((await finishAgentCall(page, openAiCompatibleLab, 'archive-export-auto')).value, 'archive-export'));
     await readArchiveHash(agentAutoFile);
+    await screenshotStep('Agent：两项Deny和原生Cancel不产生文件任务，Allow与Auto仍使用真实Save/Open。 / Agent: denial and native cancellation create no file job; Allow and Auto retain the real Save/Open dialogs.');
 
     // 原生往返：经产品UI Clear后导入同流程归档，核对新身份、完整正文和WebSocket消息。
     // Native round trip: clear through product UI, import the owned archive and verify new identities, complete bodies and WebSocket messages.
@@ -323,6 +325,7 @@ test('capture.tools.archive-transfer exports and imports native archives through
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completeFile);
     await waitForCompletedJob(client, startedJob((await finishAgentCall(page, openAiCompatibleLab, 'archive-import-auto')).value, 'archive-import'));
     await expect.poll(async () => (await captureItems(client!)).length).toBe(4);
+    await screenshotStep('原生往返：经产品UI Clear后导入同流程归档，核对新身份、完整正文和WebSocket消息。 / Native round trip: clear through product UI, import the owned archive and verify new identities, complete bodies and WebSocket messages.');
 
     // 双列授权与MCP：关闭Agent后，MCP独立验证Ask拒绝/允许、原生取消、Auto与追加导入。
     // Independent permissions and MCP: revoke Agent access, then verify MCP Ask decisions, native cancellation, Auto and append-only imports.
@@ -368,6 +371,7 @@ test('capture.tools.archive-transfer exports and imports native archives through
     await waitForCompletedJob(client, startedJob(await mcpNativeCall(desktopApp, client, TOOL_NAMES[1], completeFile, 'auto'), 'archive-import'));
     await expect.poll(async () => (await captureItems(client!)).length).toBe(8);
     await expect(getByAutomationId(page, AUTOMATION_IDS.mcp.approval.root)).toHaveCount(0);
+    await screenshotStep('双列授权与MCP：关闭Agent后，MCP独立验证Ask拒绝/允许、原生取消、Auto与追加导入。 / Independent permissions and MCP: revoke Agent access, then verify MCP Ask decisions, native cancellation, Auto and append-only imports.');
 
     // 原IPC入口：菜单导出/导入复用同一Main方法，新增记录通过统一通知出现在已挂载Capture。
     // Original IPC entry: menu export/import use the same Main methods and completion notifications update the mounted Capture view.
@@ -433,6 +437,7 @@ test('capture.tools.archive-transfer exports and imports native archives through
     for (const name of TOOL_NAMES) await expect(client.callTool({ name, arguments: {} })).rejects.toMatchObject({ code: -32602 });
     await client.close();
     client = null;
+    await screenshotStep('原IPC入口：菜单导出/导入复用同一Main方法，新增记录通过统一通知出现在已挂载Capture。 / Original IPC entry: menu export/import use the same Main methods and completion notifications update the mounted Capture view.');
 
     // 证据与重启：只记录hash与计数，检查双列权限持久化及Model、origin、文件任务零重放。
     // Evidence and restart: retain only hashes and counts, verify permission persistence and zero replay of Model, origin or file operations.

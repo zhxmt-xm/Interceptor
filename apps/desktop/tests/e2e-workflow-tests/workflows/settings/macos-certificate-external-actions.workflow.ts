@@ -6,6 +6,7 @@ import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/cli
 
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { rootCertificateThumbprints, sharedCertificateDirectory } from '../../fixtures/ui/https-capture';
 import {
@@ -81,6 +82,7 @@ test('settings.certificates.external-actions reveals and views the shared public
       await verifyAndCloseCertificateWindow(kind, before, certificateDirectory, ownedWindows);
       completedActions.push(kind);
     }
+    await screenshotStep('用户操作：经MCP请求和产品Ask审批打开Finder及证书详情，核对本轮公开证书。 / User actions: open Finder and certificate details through MCP and product Ask approval, verifying this run\'s public certificate.');
 
     // 业务断言：查看未修改公开CA，系统证书集和MITM保持不变。
     // Business assertions: viewing preserves the public CA, the system certificate set and MITM state.
@@ -90,6 +92,7 @@ test('settings.certificates.external-actions reveals and views the shared public
     await getByAutomationId(page, AUTOMATION_IDS.settings.section.certificates).click();
     await expect(getByAutomationId(page, AUTOMATION_IDS.settings.certificates.mitmToggle)).toHaveAttribute('aria-checked', 'false');
     expect(desktopApp.rendererPageErrors()).toEqual([]);
+    await screenshotStep('业务断言：查看未修改公开CA，系统证书集和MITM保持不变。 / Business assertions: viewing preserves the public CA, the system certificate set and MITM state.');
   } catch (error) {
     workflowError = error;
   } finally {
@@ -112,6 +115,7 @@ test('settings.certificates.external-actions reveals and views the shared public
       preexistingWindowCount: windowsBefore.length,
       cleanupSucceeded: cleanupErrors.length === 0,
     }, null, 2), 'utf8');
+    await screenshotStep('证据与清理：仅关闭本轮证书窗口，保留共享CA；fixture负责App退出和完整宿主恢复。 / Evidence and cleanup: close only this run\'s certificate windows and preserve the shared CA; the fixture verifies App exit and host restoration.');
   }
   if (workflowError && cleanupErrors.length) throw new AggregateError([workflowError, ...cleanupErrors], 'Certificate external actions and cleanup failed.');
   if (workflowError) throw workflowError;

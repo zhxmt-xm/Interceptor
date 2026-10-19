@@ -7,6 +7,7 @@ import { generateCACertificate } from 'mockttp';
 
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { cleanHttpsCapture, prepareHttpsCapture, rootCertificateThumbprints } from '../../fixtures/ui/https-capture';
@@ -111,6 +112,7 @@ test('settings.tls-compatibility selects patterns from real failed TLS handshake
     await expect.poll(() => hostList.evaluate(element => element.scrollTop)).toBe(0);
     await hostList.press('End');
     await expect(hostRow(hosts.at(-1)!)).toBeInViewport({ ratio: 0.9 });
+    await screenshotStep('用户流程：本地CONNECT承载测试SNI，真实证书拒绝经Core/Main事件打开兼容性弹窗。 / User flow: local CONNECT carries test-owned SNI; real certificate rejection opens the dialog through Core/Main events.');
 
     // 业务断言：全部取消时不能保存，精确host与父域wildcard只按用户勾选持久化。
     // Product assertions: no selection disables Save; persist only the exact host and parent wildcard chosen by the user.
@@ -141,6 +143,7 @@ test('settings.tls-compatibility selects patterns from real failed TLS handshake
       await expect(getByAutomationId(page, AutomationIdFactory.tlsPassthroughHost(host))).toHaveCount(0);
     }
     await expect(getByAutomationId(page, AutomationIdFactory.tlsPassthroughHost(`*.${suffix}`))).toHaveCount(0);
+    await screenshotStep('业务断言：全部取消时不能保存，精确host与父域wildcard只按用户勾选持久化。 / Product assertions: no selection disables Save; persist only the exact host and parent wildcard chosen by the user.');
 
     // 再次真实提示：Not now不增加pattern，已保存选择在页面重开后保持。
     // A second real prompt: Not now adds no pattern, and saved choices survive reopening Settings.
@@ -157,6 +160,7 @@ test('settings.tls-compatibility selects patterns from real failed TLS handshake
     for (const pattern of selectedPatterns) {
       await expect(getByAutomationId(page, AutomationIdFactory.tlsPassthroughHost(pattern))).toBeVisible();
     }
+    await screenshotStep('再次真实提示：Not now不增加pattern，已保存选择在页面重开后保持。 / A second real prompt: Not now adds no pattern, and saved choices survive reopening Settings.');
 
     // 证据：只保存自产host、实际TLS错误、行尺寸和零应用字节，不读取或修改Renderer Store。
     // Evidence: retain test-owned hosts, actual TLS errors, geometry and zero application bytes without accessing Renderer Store.
@@ -190,6 +194,7 @@ test('settings.tls-compatibility selects patterns from real failed TLS handshake
     await cleanHttpsCapture(desktopApp).catch((error: unknown) => cleanupErrors.push(error));
     try { expect(await rootCertificateThumbprints()).toEqual(rootsBefore); } catch (error) { cleanupErrors.push(error); }
     if (cleanupErrors.length === 0) desktopApp.releasePreservedUserData();
+    await screenshotStep('清理：正式UI删除本轮pattern、卸载CA和关闭MITM；fixture核验进程、8888与完整宿主恢复。 / Cleanup: remove this run\'s patterns and CA and stop MITM through UI; fixtures verify processes, 8888 and host restoration.');
   }
   if (workflowError && cleanupErrors.length > 0) throw new AggregateError([workflowError, ...cleanupErrors], 'TLS compatibility and cleanup failed.');
   if (workflowError) throw workflowError;

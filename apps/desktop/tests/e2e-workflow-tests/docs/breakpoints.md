@@ -1,55 +1,20 @@
 # Breakpoints Workflows
 
-## 教程逐步骤录制
+## 原流程与可选步骤截图
 
-`guidebook-request.workflow.ts`在正式Release中按真实UI建立`Guide request breakpoint`，Host限制为`127.0.0.1`且Path包含`/guide/breakpoints`。对自产POST依次演示Text替换`{"message":"edited-by-guide"}`、原样放行`{"message":"original"}`和Drop；源站及客户端分别核对修改、保留和拒绝，截图与视频复用同一组值。每步图和字幕由原生窗口录制器产生，不用设计稿。
+逐步PNG由原断点流程生成，HTTP和WebSocket仍保留各自数据面断言与真实连接。
 
-完成后停用并Apply，原driver验证代理、Core及8888恢复。此流程不证明File、响应阶段或WebSocket步骤已配图，不能以本片覆盖未实际录制的分支。
+- `execute-edited`、`body-file-preview`及`original-body-layout`保留Headers、Text/File、Original与编码/framing；文件必须由产品Save生成。
 
-`guidebook-manager.workflow.ts`补录Endpoint快捷创建后的Undo、管理器全局Break on match和单条规则开关，以及真实客户端abort后的pending解除。只使用自有endpoint，不创建覆盖其他本机服务的host级暂停；再次发送取得新ID，分别放行请求和响应，再在管理器停用该规则并核对Rules已应用状态。撤销不冒充普通Rules空树删除，客户端结束也不冒充超时自动放行；所有客户端、App和宿主按真实退出收尾。
+- `queue-commands`、`queue-stepping`、`queue-isolation`及`lifecycle-release`保留选择、背压、HTTP/WS独立队列、批量继续/丢弃、客户端结束和正常退出释放。
 
-`guidebook-mixed-queues.workflow.ts`补HTTP request/response的`http`队列与已建立连接`ws:*`队列的独立性。仅使用`/guide/mixed/`自产路径，先建立Both消息断点连接，再准备狭窄Rules；连续产生HTTP Head、响应Queued、一条Sent帧和一条源站Received帧。两方向可同时等待，同方向后续读取受前一帧背压影响，不用两个Sent模拟双项队列。真实Release中的WebSocket Upgrade即使有该狭窄GET规则也直接建立连接，没有pending；必须录实际结果，不把契约中的预期Upgrade排队伪造成已实现，也不修改发布包来通过。HTTP队首输入不提交草稿，Continue queue原样处理两个HTTP成员而保留WS等待；再Drop WS queue，Sent不抵达源站、Received不抵达该客户端。最后新建一个HTTP与一个WS等待项，录像停在真实Close之前，实际正常Close必须取消连接且不转发等待内容；状态/网络/进程证据不能用关闭前图片代替。每一步都保留原生窗口图与视频时间，不注入pending、草稿或模拟发送结果。
+- `websocket-close.workflow.ts`保留38px历史/暂停布局及close-code编辑，补Both双向、非空消息明确替换为空Text、独立返回方向和真实ping/pong逐个放行。关闭连接的两端结果按各自真实事实描述。
 
-`guidebook-request-variants.workflow.ts`在Apply前为POST规则添加自有Path范围，以本流程真实Save body生成JSON和binary两个替换文件；分别演示请求Header-only、HTTP头阶段的空Text、JSON File、binary File，再将同一规则改为响应阶段并只编辑状态202。头阶段快照不含完整body与Capture另有可读原文预览是不同事实，不能按某张预览图推断快照内容。逐例核对源站/客户端实际字节，文件不是预造输入；最后停用Apply并释放所有等待项，正常Close验收。
+- 快捷规则、Undo及菜单复用Capture原断点菜单流程；Agent/MCP批量仍由原Tool流程负责，不再保留教程副本。
 
-`guidebook-websocket-controls.workflow.ts`在同一真实连接先选择Both，明确把非空message改为空Text，验证源站收到零字节且返回方向仍独立暂停；再分别放行真实ping与pong。关闭示例通过UI改为仅Sent close，把发往源站的1000改为1001而保持reason，同时如实记录客户端连接收到的确认仍为1000，不把两段连接的关闭码混为同一个结果。控制帧不伪造成数据消息，HTTP空Text保持原文也不套用到WebSocket；最后无pending并正常Close。
+- 受测Release的Upgrade排队边界不改写，也不靠隐藏API生成pending。截图不能代替断点释放、进程退出和8888释放证据。
 
-### 响应 Header、Text 与 File
-
-`guidebook-response.workflow.ts`只录真实Release中的响应断点，不重复普通请求断点教程。
-
-1. 独立profile启动真实App、trace及loopback origin，等待Core、8888和Recording。通过Rules UI准备`Guide response breakpoint`，Host为`127.0.0.1`、Method为`POST`、Path包含`/guide/response`；初始仍为request阶段。
-2. 从同一origin取得`/guide/response/source`，在Capture选中该GET并打开Response。正文为公开的`file-from-product`及`guide-response-001`。真实点击Save body，在原生Save面板保存`guide-response.json`；截图必须包含该面板与文件名，只读比较导出文件和客户端收到的完整字节。
-3. 在Rules中打开阶段选项、选择response并Apply，回到Capture。发送`/guide/response/header-only`，确认源站已收到`{"request":"guide-response"}`，客户端尚未完成且Capture为Head；这是响应头阶段暂停，不要求原始响应正文已可预览。
-4. 选中响应，明确保持Body Off，只将`x-guide-response`改成`header-only-guide`。Forward edited后客户端Header改变，完整正文仍为`{"message":"origin-response","orderId":"guide-response-001"}`，源站收到的请求字节不变。
-5. 下一条`/guide/response/text`切到Text，输入`{"message":"text-from-guide","orderId":"guide-response-001"}`后Forward edited；核对客户端完整响应字节及源站实际请求。
-6. 下一条`/guide/response/file`切到File，经真实Open面板选择步骤2的文件。折叠响应头，为完整文件预览留出空间；分别保留原生选择图、文件名/大小/可读预览图以及Forward edited后的图。客户端响应必须逐字节等于产品保存的文件，不能由测试写入替换文件。
-7. 逐步停用规则并Apply，保存每步PNG、视频/VTT、步骤与示例值、客户端及源站证据。原driver点击`shell.window.close`，验证Main/Renderer/Core/Worker退出、8888释放、完整宿主代理及日常CA保持，再删除profile及关闭origin；不修改App语言。
-
-### HTTP 队列与批量操作
-
-`guidebook-queue.workflow.ts`通过真实客户端建立HTTP队列；不预造pending或注入草稿。
-
-1. 独立profile、trace、真实App和loopback origin就绪后启用Recording，通过Rules UI准备`Guide POST queue`与`Guide PUT queue`，均限制Host `127.0.0.1`，Method分别为`POST`/`PUT`。录制展示两条实际规则后回到Capture，筛选自产`/guide/queue`路径。
-2. 依次发送`post-a`、`post-b`、`put-a`，正文分别为`{"order":"POST-A","source":"original"}`、`{"order":"POST-B","source":"original"}`、`{"order":"PUT-A","source":"original"}`。逐条截取Head、Queued和pending数量；公开DOM的`data-queue-key`必须为`http`。
-3. 在Head切到Text，输入`{"order":"POST-A","source":"draft-not-submitted"}`。分别选择两个Queued项，确认只读详情、没有Forward edited，再回到Head核对草稿仍在；源站此时未收到这三条请求。
-4. 展开批量菜单并单独执行Continue rule，只放行两条POST，且发送原始正文而不是未提交草稿；PUT仍等待并成为Head。分别核对客户端完成、实际origin字节和剩余数1。
-5. 增加`put-b`后展开菜单、执行Drop queue。两条PUT均报连接错误且不抵达origin，HTTP队列清空；已经放行的POST结果不变。
-6. 再建立`post-c`与`put-c`，展开菜单、执行Continue queue。两种Method均原样抵达origin并完成，证明Queue范围不是单一Rule；公开pending与badge清空。
-7. 逐步停用两条规则并Apply，保存逐步PNG、视频/VTT、步骤与示例值、origin及客户端结果。原driver正常Close，验证所有App进程及8888释放、完整代理与CA恢复，再删除profile并关闭origin。失败素材不作为产品Red或教程通过证据。
-
-### WebSocket 文本消息
-
-`guidebook-websocket.workflow.ts`只使用一条`/guide/websocket/text`真实连接，不扩展ping/pong/close断点。
-
-1. 独立profile启动真实App与trace，等待Core/8888，启用Recording；创建真实WebSocket origin/client，经8888建立连接。选中自产路径，打开Messages、断点设置，逐步选择Sent与默认Message并启用；其他帧选项保持未选中。
-2. 发送公开文本`{"type":"chat","message":"hello-original"}`，截取暂停帧和原文。Continue unmodified后源站及echo客户端收到相同字节。
-3. 发送`{"type":"chat","message":"edit-this"}`，选择Text、输入`{"type":"chat","message":"edited-by-guide"}`并Forward edited；源站与echo客户端只收到替换文本。再发送`{"type":"chat","message":"do-not-forward"}`并Drop，确认源站与客户端均未收到。
-4. 停用Sent设置，再打开设置、选择Received并启用Message。从origin依次发送`server-original`、`server-edit-this`、`server-do-not-forward`三个同结构JSON文本，分别演示Continue unmodified、Text替换为`server-edited-by-guide`及Drop；暂停时客户端尚未收到，放行后按完整文本核对。
-5. 停用连接断点，用`{"type":"chat","message":"after-disabled"}`完成无暂停echo，证明连接仍然可用、被Drop的消息未延迟转发。正常关闭示例连接并核对origin关闭码1000。
-6. 保存每个真实操作后的PNG、视频/VTT、公开示例和双端结果。原driver点击产品Close，验证Main/Renderer/Core/Worker退出、8888释放、宿主代理和日常CA保持，再删除profile并关闭origin；不切换App语言，不调用Preload/Store业务API。
-
-以上三组的origin端口、exchangeId和ruleId由实际运行产生；固定文件名、路径、Header与payload必须与截图及字幕一致。录制仅选择本轮App或其原生文件面板，不把App灰色遮罩当作文件窗口。
+命令、输出清单和显式导入边界见[套件说明](../README.md#trace-与证据)。已有公开PNG及历史验收记录保持原来源，新的运行不会自动替换它们；本节不把未经执行的平台或分支记为通过。
 
 本文件定义 Capture 内嵌 Breakpoint 能力的完整 E2E 流程。产品没有独立 Breakpoints workspace：配置入口是 Capture workbar manager，命中与编辑入口是 paused Capture 行及其 Inspector。每条 workflow 独立启动 Electron、独占 profile/trace，并通过真实 Rules breakpoint action、Core queue 和客户端连接验证。
 

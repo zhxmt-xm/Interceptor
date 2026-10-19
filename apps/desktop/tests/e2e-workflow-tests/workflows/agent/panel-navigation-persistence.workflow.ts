@@ -4,6 +4,7 @@ import type { Page, TestInfo } from '@playwright/test';
 import { AUTOMATION_IDS, type AutomationId } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 
 interface PanelGeometryEvidence {
   readonly step: string;
@@ -64,6 +65,7 @@ test('agent.panel.navigation-persistence keeps the unconfigured side panel acros
   expect(viewport).toEqual({ width: 1600, height: 900 });
   const closedMainBox = await getByAutomationId(page, AUTOMATION_IDS.app.main).boundingBox();
   expect(closedMainBox).not.toBeNull();
+  await screenshotStep('准备：fresh profile 已完成真实 App/Core/listener readiness，Agent 初始关闭且窗口为 1600×900。 / Arrange: a fresh profile passed real App/Core/listener readiness; Agent starts closed in a 1600×900 window.');
 
   // 用户操作：从 Header 显式打开 Agent，fresh profile 只能呈现诚实的未配置态。
   // User action: explicitly open Agent from the Header; a fresh profile may only show the honest unconfigured state.
@@ -75,6 +77,7 @@ test('agent.panel.navigation-persistence keeps the unconfigured side panel acros
     'capture:open',
   );
   await expect(getByAutomationId(page, AUTOMATION_IDS.agent.chat.new)).toBeDisabled();
+  await screenshotStep('用户操作：从 Header 显式打开 Agent，fresh profile 只能呈现诚实的未配置态。 / User action: explicitly open Agent from the Header; a fresh profile may only show the honest unconfigured state.');
 
   // 用户操作：唯一配置出口深链 Settings > Agent，导航不得关闭或替换 Panel。
   // User action: the sole configuration exit deep-links to Settings > Agent without closing or replacing the Panel.
@@ -89,6 +92,7 @@ test('agent.panel.navigation-persistence keeps the unconfigured side panel acros
     geometryEvidence,
     'settings:agent',
   );
+  await screenshotStep('用户操作：唯一配置出口深链 Settings > Agent，导航不得关闭或替换 Panel。 / User action: the sole configuration exit deep-links to Settings > Agent without closing or replacing the Panel.');
 
   // 业务断言：跨全部 Workspace 往返时 Panel 保持打开、固定宽度且不获得隐式页面 Context。
   // Business assertion: every workspace round trip preserves the fixed Panel and never injects implicit page context.
@@ -108,6 +112,7 @@ test('agent.panel.navigation-persistence keeps the unconfigured side panel acros
     page,
     AUTOMATION_IDS.settings.section.agent,
   )).toHaveAttribute('aria-current', 'page');
+  await screenshotStep('业务断言：跨全部 Workspace 往返时 Panel 保持打开、固定宽度且不获得隐式页面 Context。 / Business assertion: every workspace round trip preserves the fixed Panel and never injects implicit page context.');
 
   // 用户操作：Panel Close 与全局 toggle 是唯二关闭入口，关闭后 Main 释放完整 440px track。
   // User action: Panel Close and the global toggle are the only close commands; Main reclaims the 440px track.
@@ -125,6 +130,7 @@ test('agent.panel.navigation-persistence keeps the unconfigured side panel acros
   );
   await getByAutomationId(page, AUTOMATION_IDS.agent.panel.toggle).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.agent.panel.root)).toHaveCount(0);
+  await screenshotStep('用户操作：Panel Close 与全局 toggle 是唯二关闭入口，关闭后 Main 释放完整 440px track。 / User action: Panel Close and the global toggle are the only close commands; Main reclaims the 440px track.');
 
   // 证据与销毁：附加语言无关几何；fixture 随后保存 trace/screenshot并验证完整销毁。
   // Evidence and teardown: attach language-neutral geometry; the fixture then retains trace/screenshot and proves destruction.

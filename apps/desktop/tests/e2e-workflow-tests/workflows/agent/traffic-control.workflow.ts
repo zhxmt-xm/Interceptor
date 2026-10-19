@@ -17,6 +17,7 @@ import {
   LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const phrase = (...parts: readonly string[]): string => parts.join(' ');
@@ -357,6 +358,30 @@ test('agent.tools.traffic-control synchronizes Recording and Capture cleanup', a
     )).toHaveCount(0);
     await expect(recording).toHaveAttribute('aria-pressed', 'true');
     await setExecutionMode(desktopApp.page, 'ask');
+    await screenshotStep('用户操作：capture_start_recording在Ask下分别Deny/Allow，再在Auto下无问询执行，Capture toggle始终同步。 / User actions: capture_start_recording is denied and allowed in Ask, then runs without a prompt in Auto while the toggle stays synchronized.');
+
+    // Tool完成后Stop：取消后续模型解释，不撤销已经允许的暂停操作。
+    // Stop after Tool completion: cancel the later explanation without undoing the allowed pause.
+    openAiCompatibleLab.enqueueToolCall({ callId: 'stop-after-tool', name: 'capture_stop_recording', arguments: {} });
+    openAiCompatibleLab.enqueueTurn({ textChunks: ['The owned pause has completed.'], holdOpen: true });
+    await sendMessage(desktopApp.page, 'Pause recording, then explain until stopped.');
+    await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolApproval('stop-after-tool')))
+      .toHaveAttribute('data-approval-status', 'pending');
+    await getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolAllow('stop-after-tool')).click();
+    await expect(recording).toHaveAttribute('aria-pressed', 'false');
+    await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.session.transcript)).toContainText('The owned pause has completed.');
+    await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.turn.stop).click();
+    await expect(sessionRoot).toHaveAttribute('data-turn-status', 'cancelled');
+    await expect.poll(() => openAiCompatibleLab.evidence().at(-1)?.aborted).toBe(true);
+    await expect(recording).toHaveAttribute('aria-pressed', 'false');
+    await screenshotStep('Stop模型回复不撤销已完成的暂停 / Stopping the model response does not undo a completed pause');
+    openAiCompatibleLab.enqueueTurn({ textChunks: ['Explanation only; Recording remains paused.'] });
+    await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.turn.retry).click();
+    await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
+    await expect(recording).toHaveAttribute('aria-pressed', 'false');
+    await screenshotStep('Retry只解释时不重复执行业务动作 / An explanation-only Retry does not repeat the business action');
+    await recording.click();
+    await expect(recording).toHaveAttribute('aria-pressed', 'true');
 
     // 准备与断言：真实GET建立row、selection、method facet和Rule hit，Clear的动态影响必须匹配当前storage。
     // Arrange and assert: a real GET creates a row, selection, method facet, and Rule hit; Clear must describe current storage counts.
@@ -517,6 +542,7 @@ test('agent.tools.traffic-control synchronizes Recording and Capture cleanup', a
     )).toHaveCount(0);
     await expect(rows).toHaveCount(0);
     await expect(recording).toHaveAttribute('aria-pressed', 'true');
+    await screenshotStep('用户操作与业务断言：Allow和Auto都经同一reset清空所有镜像，且清空后Recording继续接收新流量。 / User actions and assertions: Allow and Auto share one reset for every mirror, and Recording accepts new traffic after each clear.');
 
     // 用户操作：关闭两项后schema和执行均拒绝；保留的row与暂停态证明没有触达业务命令。
     // User actions: disabling both removes their schemas and rejects execution; the retained row and paused state prove no business command ran.
@@ -560,6 +586,7 @@ test('agent.tools.traffic-control synchronizes Recording and Capture cleanup', a
     expect(disabledErrorCodes).toEqual(['unknown_tool', 'unknown_tool']);
     await expect(recording).toHaveAttribute('aria-pressed', 'false');
     await expect(preservedCapture.row).toBeVisible();
+    await screenshotStep('用户操作：关闭两项后schema和执行均拒绝；保留的row与暂停态证明没有触达业务命令。 / User actions: disabling both removes their schemas and rejects execution; the retained row and paused state prove no business command ran.');
 
     // 重启与销毁：同profile恢复Auto和关闭项且零重放，再经公开UI恢复设置并完整审计两代进程。
     // Restart and teardown: the same profile restores Auto and disabled Tools with zero replay, then public UI restores settings and audits both generations.

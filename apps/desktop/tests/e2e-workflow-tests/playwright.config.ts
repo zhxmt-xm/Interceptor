@@ -1,13 +1,13 @@
 import path from 'node:path';
 
 import { defineConfig } from '@playwright/test';
+import type { StepScreenshotOptions } from './fixtures/runtime/step-screenshots';
 
 const desktopDirectory = path.resolve(__dirname, '../..');
 
-export default defineConfig({
+export default defineConfig<StepScreenshotOptions>({
   testDir: path.join(__dirname, 'workflows'),
   testMatch: '**/*.workflow.ts',
-  testIgnore: '**/guidebook-*.workflow.ts',
   outputDir: path.join(desktopDirectory, 'test-results/e2e-workflow-tests'),
   preserveOutput: 'always',
   fullyParallel: false,
@@ -35,12 +35,13 @@ export default defineConfig({
   use: {
     trace: 'off',
     screenshot: 'off',
+    stepScreenshots: process.env.INTERCEPTOR_E2E_STEP_SCREENSHOTS === '1',
   },
   ...(process.platform === 'darwin' ? {
     projects: [
       {
         name: 'macos',
-        testIgnore: ['**/capture/detail-body-fill.workflow.ts', '**/guidebook-*.workflow.ts'],
+        testIgnore: ['**/capture/detail-body-fill.workflow.ts'],
         use: { viewport: { width: 1600, height: 900 } },
       },
       {

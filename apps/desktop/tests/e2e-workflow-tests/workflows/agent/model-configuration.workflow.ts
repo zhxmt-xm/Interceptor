@@ -12,6 +12,7 @@ import {
   LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type {
   OpenAiCompatibleLab,
   OpenAiCompatibleObservation,
@@ -126,6 +127,7 @@ test('agent.settings.model-configuration persists verified redacted Providers', 
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.section.agent).click();
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.models.list))
       .toHaveAttribute('data-model-count', '0');
+    await screenshotStep('准备：fresh profile进入Settings > Agent，只能看到诚实空列表。 / Arrange: a fresh profile opens Settings > Agent with an honest empty list.');
 
     // 用户操作：配置带Key Provider；修改已验证字段必须使Save重新禁用。
     // User actions: configure a keyed Provider; changing a verified field must disable Save again.
@@ -184,6 +186,7 @@ test('agent.settings.model-configuration persists verified redacted Providers', 
       .fill('keyed-model-edited');
     await testAndSave(desktopApp.page);
     expect(await providerIds(desktopApp.page)).toEqual(firstGenerationProviderIds);
+    await screenshotStep('业务断言：default切换不重排；编辑已有项时Key不回到Renderer，keep仍可真实重测。 / Business assertions: default changes do not reorder; editing never returns the key to Renderer and keep can retest.');
 
     // 重启：同一profile恢复顺序、脱敏状态与default，且启动不自动请求Model。
     // Restart: the same profile restores order, redaction and default without an automatic Model request.
@@ -234,6 +237,7 @@ test('agent.settings.model-configuration persists verified redacted Providers', 
       modelId: 'keyed-model-edited',
       authorizationConfigured: false,
     });
+    await screenshotStep('用户操作：显式移除已存Key并重新Test；同一endpoint不得再收到Authorization。 / User actions: explicitly remove the saved key and retest; the endpoint must no longer receive Authorization.');
 
     // 用户操作：删除default后首项接管；删除最后一项回到未配置态。
     // User actions: removing the default promotes the first model; removing the last returns to unconfigured.
@@ -254,6 +258,7 @@ test('agent.settings.model-configuration persists verified redacted Providers', 
     await expect(getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.models.list))
       .toHaveAttribute('data-model-count', '0');
     expect(relaunchedApp.rendererPageErrors()).toEqual([]);
+    await screenshotStep('用户操作：删除default后首项接管；删除最后一项回到未配置态。 / User actions: removing the default promotes the first model; removing the last returns to unconfigured.');
   } catch (error) {
     workflowError = error;
   } finally {

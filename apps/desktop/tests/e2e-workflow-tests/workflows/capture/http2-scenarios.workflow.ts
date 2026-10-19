@@ -6,6 +6,7 @@ import { PassThrough } from 'node:stream';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { cleanHttpsCapture, prepareHttpsCapture, rootCertificateThumbprints } from '../../fixtures/ui/https-capture';
@@ -62,6 +63,7 @@ test('capture.scenarios.http2 captures decrypted H2 headers trailers and body', 
     await expect(body).toContainText('"path": "/playground/h2-json"');
     const originalRowId = await row.getAttribute('data-automation-id');
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.close).click();
+    await screenshotStep('业务断言：同一Capture行正确显示H2，真实Headers与trailer保留线上协议值。 / Product assertions: the Capture row shows H2 and its actual Headers and trailer retain the wire values.');
 
     // 多流Range：同一真实H2连接的两条响应在结束前可见，Clear或单流取消不影响其余传输。
     // Multi-stream ranges: show two in-flight responses on one real H2 connection; Clear and one-stream cancellation leave other traffic intact.
@@ -221,6 +223,7 @@ test('capture.scenarios.http2 captures decrypted H2 headers trailers and body', 
           const evidencePath = testInfo.outputPath(`h2-ranges-${action}.json`);
           await writeFile(evidencePath, JSON.stringify({ action, sameClientSession: true, beforeAction, finalStates, sessionStates }, null, 2), 'utf8');
           await testInfo.attach(`h2-ranges-${action}.json`, { path: evidencePath, contentType: 'application/json' });
+          await screenshotStep('用户操作与数据面：Clear从产品按钮发起；客户端控制RST_STREAM、SETTINGS或正常GOAWAY。 / User action and data plane: click the product Clear button; the client controls RST_STREAM, SETTINGS or graceful GOAWAY.');
         } finally {
           for (const { responseStream } of responses) responseStream.destroy();
           session.destroy();
@@ -313,6 +316,7 @@ test('capture.scenarios.http2 captures decrypted H2 headers trailers and body', 
           await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyPane)).toContainText('a'.repeat(64));
           await desktopApp.page.screenshot({ path: testInfo.outputPath(`h2-error-goaway-${direction}-partial-body.png`) });
           await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.close).click();
+          await screenshotStep('数据面与产品断言：保留真实200和已收字节，区分Node EOF与完整正文，不伪造UI协议字段。 / Data plane and product assertions: retain the actual 200 and captured bytes; Node EOF is not a complete body or a fabricated UI protocol event.');
 
           // 恢复：新连接发独立请求，源站次数及原行保持，不能重放先前POST。
           // Recovery: issue an independent request over a new connection and keep the original row and single POST attempt.

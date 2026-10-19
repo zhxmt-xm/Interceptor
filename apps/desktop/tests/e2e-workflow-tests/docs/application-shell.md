@@ -1,22 +1,18 @@
 # Application 与 Shell Workflows
 
-## 教程逐步骤录制
+## 原流程与可选步骤截图
 
-### 官网功能素材
+工作区和窗口只由原流程产生截图，不再保留独立Guidebook录制脚本。
 
-`guidebook-homepage-media.workflow.ts`只负责item 10首页的真实发布App素材，不替代item 9逐步骤教程，也不回写其媒体目录。
+- `application/core-restart.workflow.ts`继续验证Core代际、临时Capture与系统代理恢复，不把普通导航混入故障恢复。
 
-- 准备：使用已核对SHA-256的Release App、独立profile和loopback源站，保持App语言；端口8888必须空闲，禁止附着其他会话的App。记录本profile原主题，不修改日常CA或其他应用。
-- 操作：通过真实UI启用Capture，产生`/showcase/`范围的JSON流量；创建并Apply一条狭窄Header规则、核对源站命中；挂起一条POST、编辑正文并Forward；在Composer发送本轮请求；配置无Key本地演示模型并完成Agent对话；开启MCP并创建独立演示Client。
-- 截图：每个功能都通过正式主题菜单分别切到light/dark，确认相同业务状态后只截本轮App原生窗口，保留完整界面和原始字节。首页总览复用Capture原图，不着色、拼接或使用设计fixture冒充真实产品。Agent明确为本地确定性演示，不声称商业模型能力；MCP画面只展示本机设置，不展示凭据。
-- 断言与证据：真实响应、规则改写字节、断点转发结果、Composer响应和Agent已完成状态必须成立；记录两套主题原图、发布来源、示例值、语言、native-window录制及trace。
-- 清理：撤销MCP Client并停止Server，恢复本profile原主题，保留App语言；由driver正常Close并核对Main/Core/Worker退出、8888释放、系统代理与CA基线恢复。无法取得原生桌面权限或端口被其他App占用时停止，不改用整屏录制或强杀。
+- `settings/navigation.workflow.ts`覆盖工作区往返、Settings末次分组、侧栏、四主题与原主题恢复、只读语言菜单和真实Maximize/Restore/Minimize。最小化时不截桌面，只对恢复后的同一App窗口取景；原生窗口读取/恢复归平台driver。
 
-`guidebook-workspace.workflow.ts`在实际Release中录制侧栏展开、各workspace、四主题与恢复、语言菜单只读查看、Agent面板打开和关闭；不更改当前语言，不将主题/语言设计稿当作产品。每步原生截图与视频时间绑定，录制前通过正式筛选隐藏非演示流量，结束沿用真实Close和完整宿主恢复。
+- `agent/panel-navigation-persistence.workflow.ts`保留空态Configure深链、面板跨工作区和关闭；Composer保存及重启归Composer原流程，偏好持久化归Settings原流程。
 
-`guidebook-navigation.workflow.ts`补录Settings末次分组保留、Agent空态Configure深链及面板跨workspace保持，两种关闭入口分别操作。只打开主题菜单不改变主题，调整本轮真实窗口到1280×800后恢复；从Capture底栏Upstream浮层进入指定设置分组，离开再返回核对保留新位置，最后验证新请求。它不是首次CA/UAC或异常readiness实录，不因正常路径没有弹窗而制造异常，不改变App语言或日常CA，最后正常Close验证代理和进程恢复。
+- 首页已有浅深原图保持不变。新的截图来自所属功能的原workflow，不额外维护一个首页专用业务脚本。
 
-`guidebook-window-controls.workflow.ts`只补自绘窗口控件，不重复前一条分栏/尺寸录制。先进入Settings避免背景流量出镜；通过真实Maximize/Restore按钮改变窗口，以本次PID和启动身份限定原生Accessibility窗口，读取尺寸与`AXMinimized`。最大化尺寸按该窗口的可用屏幕范围核对，恢复后核对原尺寸；不使用签名App未提供的CDP `Browser.getWindowForTarget`。最后先记录Minimize入口，再实际点击并确认minimized；按现有`shell.window.controls`契约由测试侧只恢复/show/focus同一窗口，不改业务状态。最小化期间不捕获桌面/Dock，恢复工具调用不冒充系统Dock操作的影像证据。逐步清单明确“按钮图在实际点击之前”，视频包含真实点击时段，状态证据与图片分别保存。保持App主题/语言，最终正常Close核对所有进程、8888和宿主恢复。
+命令、输出清单和显式导入边界见[套件说明](../README.md#trace-与证据)。已有公开PNG及历史验收记录保持原来源，新的运行不会自动替换它们；本节不把未经执行的平台或分支记为通过。
 
 本文件定义 Application 生命周期和共享 Shell 的完整 E2E 步骤。每条 workflow 独立启动 Electron、独占 profile/trace，并只检查与本流程相关的起始状态。
 

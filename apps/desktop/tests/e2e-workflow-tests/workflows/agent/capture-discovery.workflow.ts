@@ -17,6 +17,7 @@ import {
   LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const REQUEST_PATH = '/agent-e2e/capture';
@@ -300,6 +301,7 @@ test('agent.tools.capture-discovery discovers, executes and restores query Tools
     ).filter({ hasText: REQUEST_PATH }).last();
     await expect(row).toBeVisible();
     evidence.exchangeId = await exchangeId(row);
+    await screenshotStep('准备：经真实Settings配置本地Provider，再从Capture UI开始Recording并通过8888产生一条真实流量。 / Arrange: configure the local Provider through Settings, start Recording in Capture and create real traffic through 8888.');
 
     // 用户操作：本地Model依次发现能力并调用四个query Tool；所有输入都来自产品UI与真实Capture。
     // User actions: the local Model discovers capabilities and calls four query Tools using only UI and real Capture input.
@@ -429,6 +431,7 @@ test('agent.tools.capture-discovery discovers, executes and restores query Tools
       AutomationIdFactory.agentToolResult('call-detail'),
     )).toContainText(`GET ${REQUEST_PATH} · 200`);
     expect(desktopApp.rendererPageErrors()).toEqual([]);
+    await screenshotStep('业务断言：首次只披露discover_tools；发现后披露全部已接Capture schema，仍只调用本workflow拥有的四项query。 / Business assertions: initially disclose only discovery, then every connected Capture schema while calling only this workflow\'s four queries.');
 
     // 重启：完整销毁第一代；同一profile恢复Tool轨迹和回答，启动不得重放Model或Tool调用。
     // Restart: fully destroy generation one; restore Tool history and the answer without replaying Model or Tool calls.
@@ -494,6 +497,7 @@ test('agent.tools.capture-discovery discovers, executes and restores query Tools
       relaunchedApp.page,
       AutomationIdFactory.agentToolCall('disabled-storage'),
     )).toHaveAttribute('data-tool-status', 'failed');
+    await screenshotStep('用户操作：关闭capture_get_storage_status后新建Chat；discovery与下一次schema都移除它，直接猜测调用得到unknown_tool。 / User actions: disable capture_get_storage_status in a new Chat; discovery and schemas omit it and a guessed call returns unknown_tool.');
 
     // 用户操作：重新开启后再新建Chat，discovery与下一次schema必须恢复capture_get_storage_status。
     // User actions: re-enable the Tool, then prove a new Chat discovers and receives its schema again.
@@ -518,6 +522,7 @@ test('agent.tools.capture-discovery discovers, executes and restores query Tools
     expect(evidence.restoredDiscoveryNames).toEqual(CAPTURE_TOOL_NAMES);
     expect(requestToolNames(restoredRequests[1]!)).toEqual(evidence.disclosedToolNames);
     expect(relaunchedApp.rendererPageErrors()).toEqual([]);
+    await screenshotStep('用户操作：重新开启后再新建Chat，discovery与下一次schema必须恢复capture_get_storage_status。 / User actions: re-enable the Tool, then prove a new Chat discovers and receives its schema again.');
 
     // 证据与销毁：只附加协议ID、schema名和请求hash；关闭含Transcript的Panel后恢复trace并完整销毁。
     // Evidence and teardown: attach only protocol IDs, schema names and request hashes; hide Transcript before tracing teardown.
@@ -531,6 +536,7 @@ test('agent.tools.capture-discovery discovers, executes and restores query Tools
     });
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.panel.close).click();
     await relaunchedApp.startTrace(testInfo);
+    await screenshotStep('证据与销毁：只附加协议ID、schema名和请求hash；关闭含Transcript的Panel后恢复trace并完整销毁。 / Evidence and teardown: attach only protocol IDs, schema names and request hashes; hide Transcript before tracing teardown.');
   } catch (error) {
     workflowError = error;
   } finally {

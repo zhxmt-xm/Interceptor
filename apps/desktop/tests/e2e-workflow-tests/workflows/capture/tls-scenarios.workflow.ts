@@ -1,17 +1,19 @@
 import { X509Certificate } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
+import { request } from 'node:http';
 import path from 'node:path';
 
 import { chromium, type Browser } from '@playwright/test';
 
-import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
+import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
+import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { cleanHttpsCapture, prepareHttpsCapture, rootCertificateThumbprints, sharedCertificateDirectory } from '../../fixtures/ui/https-capture';
 
 test('capture.scenarios.tls distinguishes opaque tunnels from decrypted H1 and H2 bodies', async ({
-  desktopApp, trafficLab,
+  desktopApp, trafficLab, httpTrafficRunner,
 }, testInfo) => {
   test.setTimeout(180_000);
   desktopApp.preserveUserDataOnFailure();
@@ -44,6 +46,7 @@ test('capture.scenarios.tls distinguishes opaque tunnels from decrypted H1 and H
     await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.response)).toHaveCount(0);
     await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane)).toHaveCount(0);
     evidence.push({ scenarioId: passthrough.id, protocol: 'tls', row: await tunnelRow.getAttribute('data-automation-id') });
+    await screenshotStep('准备与未解密流量：fresh profile只开启Recording，原生TLS握手不得产生伪造HTTP正文。 / Arrange and opaque traffic: enable only Recording on a fresh profile; a native TLS handshake must not create fake HTTP bodies.');
 
     // 打开并取消HTTPS设置：共享CA已就绪，取消不改变未解密状态。
     // Open and cancel HTTPS setup: the shared CA is ready, but cancellation must preserve opaque traffic.
@@ -59,6 +62,7 @@ test('capture.scenarios.tls distinguishes opaque tunnels from decrypted H1 and H
     await expect(setup).toHaveCount(0);
     await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane)).toHaveCount(0);
     await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
+    await screenshotStep('打开并取消HTTPS设置：共享CA已就绪，取消不改变未解密状态。 / Open and cancel HTTPS setup: the shared CA is ready, but cancellation must preserve opaque traffic.');
 
     // 用户操作：复用共享CA，经真实Certificates UI启用MITM，不重复生成或安装。
     // User actions: reuse the shared CA and enable MITM through Certificates UI without regenerating or installing it.
@@ -93,8 +97,72 @@ test('capture.scenarios.tls distinguishes opaque tunnels from decrypted H1 and H
         for (const value of ['https', 'localhost', String(tlsTrafficRunner.port), 'TLS']) await expect(inspector).toContainText(value);
         evidence.push({ scenarioId: expected.id, protocol: expected.protocol, row: await row.getAttribute('data-automation-id') });
         await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
+        await screenshotStep('业务断言：选择真正解密的HTTP行，Response显示origin JSON，TLS页保留目标和协议事实。 / Product assertions: select the decrypted HTTP row, inspect origin JSON in Response, and verify target/protocol facts in TLS.');
       });
     }
+    await screenshotStep('用户操作：复用共享CA，经真实Certificates UI启用MITM，不重复生成或安装。 / User actions: reuse the shared CA and enable MITM through Certificates UI without regenerating or installing it.');
+
+    // 路由：原HTTPS请求经正式Map Remote改到本轮HTTP端口，停用后恢复原源站。
+    // Routing: map the original HTTPS request to this workflow's HTTP port and restore its origin after disabling.
+    const mappingPrefix = '/e2e/rules/tls-mapping';
+    const targetPath = '/e2e/rules/mapped-http';
+    httpTrafficRunner.respondWith(targetPath, { body: 'owned-http-mapping-result' });
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.rules).click();
+    await getByAutomationId(page, AUTOMATION_IDS.rules.toolbar.create).click();
+    const ruleRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.ruleRow).last();
+    const automationId = await ruleRow.getAttribute('data-automation-id');
+    if (!automationId?.startsWith(AUTOMATION_ID_PREFIXES.ruleRow)) throw new Error('The mapping Rule omitted its identity.');
+    const ruleId = automationId.slice(AUTOMATION_ID_PREFIXES.ruleRow.length);
+    const action = (name: string) => getByAutomationId(page, AutomationIdFactory.ruleActionField(ruleId, 0, name));
+    await getByAutomationId(page, AUTOMATION_IDS.rules.editorName).fill('E2E HTTPS to HTTP mapping');
+    await getByAutomationId(page, AutomationIdFactory.ruleMatcherField(ruleId, 0, 'value')).fill('localhost');
+    await getByAutomationId(page, AUTOMATION_IDS.rules.addCondition).click();
+    await getByAutomationId(page, AUTOMATION_IDS.rules.conditionOption.path).click();
+    await getByAutomationId(page, AutomationIdFactory.ruleMatcherField(ruleId, 1, 'value')).fill(mappingPrefix);
+    await action('remove').click();
+    await getByAutomationId(page, AUTOMATION_IDS.rules.addAction).click();
+    await getByAutomationId(page, AUTOMATION_IDS.rules.actionOption.mapRemote).click();
+    const card = action('remove').locator('../..');
+    await card.getByRole('combobox').click();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await card.locator('input:not([readonly]):not([type="number"])').nth(0).fill('127.0.0.1');
+    await card.locator('input[type="number"]').fill(String(httpTrafficRunner.port));
+    await card.locator('input:not([readonly]):not([type="number"])').nth(1).fill(targetPath);
+    await getByAutomationId(page, AUTOMATION_IDS.rules.editorEnabled).click();
+    await getByAutomationId(page, AUTOMATION_IDS.rules.apply).click();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.rules.status.state)).toHaveAttribute('data-state', 'applied');
+    const mappedRequest = async (suffix: string) => {
+      const socket = await tlsTrafficRunner.openHttp1Socket(desktopApp.capturePort());
+      try {
+        return await new Promise<{ status: number | undefined; body: string }>((resolve, reject) => {
+          const outgoing = request({
+            createConnection: () => socket, hostname: 'localhost', port: tlsTrafficRunner.port,
+            method: 'GET', path: `${mappingPrefix}/${suffix}`, headers: { connection: 'close' },
+          }, incoming => {
+            const chunks: Buffer[] = [];
+            incoming.on('data', chunk => chunks.push(Buffer.from(chunk)));
+            incoming.once('error', reject);
+            incoming.once('aborted', () => reject(new Error('The owned mapped response was aborted.')));
+            incoming.once('end', () => resolve({ status: incoming.statusCode, body: Buffer.concat(chunks).toString('utf8') }));
+          });
+          outgoing.setTimeout(10_000, () => outgoing.destroy(new Error('The owned mapped request timed out.')));
+          outgoing.once('error', reject);
+          outgoing.end();
+        });
+      } finally {
+        socket.destroy();
+      }
+    };
+    expect(await mappedRequest('enabled')).toEqual({ status: 200, body: 'owned-http-mapping-result' });
+    expect(httpTrafficRunner.observation(targetPath)?.method).toBe('GET');
+    await screenshotStep('HTTPS输入真实到达指定HTTP目标 / HTTPS input reaches the specified HTTP destination');
+    await getByAutomationId(page, AUTOMATION_IDS.rules.editorEnabled).click();
+    await getByAutomationId(page, AUTOMATION_IDS.rules.apply).click();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.rules.status.state)).toHaveAttribute('data-state', 'applied');
+    expect((await mappedRequest('disabled')).status).toBe(404);
+    await screenshotStep('停用映射后恢复原HTTPS端点 / Restore the original HTTPS endpoint after disabling mapping');
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
 
     // 浏览器信任：使用系统Edge默认HTTPS校验，不指定CA或忽略证书错误。
     // Browser trust: use system Edge's default HTTPS validation without a supplied CA or ignored certificate errors.
@@ -163,6 +231,7 @@ test('capture.scenarios.tls distinguishes opaque tunnels from decrypted H1 and H
         });
       }
     });
+    await screenshotStep('浏览器信任：使用系统Edge默认HTTPS校验，不指定CA或忽略证书错误。 / Browser trust: use system Edge\'s default HTTPS validation without a supplied CA or ignored certificate errors.');
 
     // 证据：保存三种场景的公开行身份与协议，Renderer必须无错误。
     // Evidence: retain all three public scenario identities/protocols and require zero Renderer errors.
