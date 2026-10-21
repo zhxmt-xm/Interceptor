@@ -2,7 +2,6 @@
 import { describeReadonlyBody, padReadonlyText } from '../../../../design-vite/src/fixtures/readonlyBodyData.ts';
 
 export const viewport = { width: 1600, height: 900 };
-export const designShotsDir = 'design-vite/shots';
 
 const GRPC_LONG_MESSAGE = 'catalog-stream-4281\n' + JSON.stringify({
   requestId: 'catalog-stream-4281',
@@ -179,7 +178,11 @@ const SETTINGS_PROXY_TARGETS = [
     designSelector: '.srow:has(.scap > b:text-is("Address")) .mono2',
     appSelector: 'div:has(> div > b:text-is("Address")) > div > span:text-is("127.0.0.1:8888")',
   },
-  'System Proxy',
+  {
+    name: 'System Proxy',
+    designSelector: '.spanel[data-settings-panel="proxy"] .sgroup > .gh:text-is("System Proxy")',
+    appSelector: 'div:has(> div > div > b:text-is("Automatic routing")) > div:text-is("System Proxy")',
+  },
   'Owned by Interceptor',
   'Current configuration',
   'Bypass',
@@ -203,18 +206,39 @@ const CAPTURE_FILTER_CLEAR_TARGETS = [
   },
 ];
 
+const DIAGNOSTICS_FILTER_TARGETS = ['Process', 'Level', 'Outcome'].map(name => ({
+  name,
+  designSelector: `.dtoolbar > .fchip:text-is("${name}")`,
+  appSelector: `button:text-is("${name}")`,
+}));
+
+const CAPTURE_NAV_TARGET = {
+  name: 'Capture',
+  designSelector: '.side [data-nav="capture"] > .txt',
+  appSelector: '[data-automation-id="shell.workspace.capture"] :text-is("Capture")',
+  compareText: true,
+  stateSelectors: {
+    selected: { design: '.nav.on > .txt', app: '[aria-current="page"] > span' },
+  },
+};
+
+const TLS_TUNNEL_TAB_TARGET = {
+  name: 'TLS tunnel',
+  designSelector: '.tabs[data-tabs="insp"] > [data-tab="tunnel"]',
+  appSelector: '[data-automation-id="capture.inspector.tab.tunnel"]',
+};
+
 const INITIAL_VIEWS = ['light', 'dark'].map((theme) => ({
     id: theme === 'dark' ? 'capture-dark' : 'capture',
     theme,
     mitmActive: false,
     designState: { view: 'capture', theme, sidebar: 'expanded', detail: 'open' },
-    designShot: `${theme}/capture/inspector-sidebar-expanded.png`,
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickText', text: '/user', index: 0 },
     ],
     targets: [
-      'Capture',
+      CAPTURE_NAV_TARGET,
       'Rules & Map',
       'Composer',
       {
@@ -243,9 +267,16 @@ const INITIAL_VIEWS = ['light', 'dark'].map((theme) => ({
         styleKeys: ['fontSize', 'fontWeight', 'lineHeight', 'color', 'backgroundColor'],
       },
       { name: 'Filter panel', parity: 'capture-filter-panel' },
-      { name: 'Filter groups', parity: 'capture-filter-groups' },
+      { name: 'Filter groups', parity: 'capture-filter-groups', scroll: true },
       { name: 'Filter item all', parity: 'capture-filter-item-all' },
-      { name: 'Filter item', parity: 'capture-filter-item' },
+      {
+        name: 'Filter item',
+        parity: 'capture-filter-item',
+        appSelector: '[data-parity="capture-filter-item"]:has-text("Microsoft Edge")',
+        stateSelectors: {
+          pressed: { design: '.fitem.on', app: '[aria-pressed="true"]' },
+        },
+      },
       {
         name: 'Filter search',
         designSelector: '.listbar-search .omni',
@@ -253,21 +284,48 @@ const INITIAL_VIEWS = ['light', 'dark'].map((theme) => ({
         styleKeys: ['borderTopWidth', 'borderRadius', 'backgroundColor'],
       },
       ...CAPTURE_FILTER_CLEAR_TARGETS,
-      { name: 'List app header', parity: 'capture-list-app-header' },
-      { name: 'List app cell', parity: 'capture-list-app-cell' },
+      { name: 'List app header', parity: 'capture-list-app-header', visible: false },
+      {
+        name: 'List app cell', parity: 'capture-list-app-cell',
+        appSelector: '[data-automation-id^="capture.request-row."][aria-pressed="true"] [data-parity="capture-list-app-cell"]',
+      },
       { name: 'List app cell unknown', parity: 'capture-list-app-cell-unknown' },
-      { name: 'List path cell', parity: 'capture-list-path-cell' },
-      { name: 'List host cell', parity: 'capture-list-host-cell' },
+      {
+        name: 'List path cell', parity: 'capture-list-path-cell',
+        appSelector: '[data-automation-id^="capture.request-row."][aria-pressed="true"] [data-parity="capture-list-path-cell"]',
+        stateSelectors: {
+          selected: { design: '.row.sel [data-parity="capture-list-path-cell"]', app: '[aria-pressed="true"] [data-parity="capture-list-path-cell"]' },
+        },
+      },
+      {
+        name: 'List host cell', parity: 'capture-list-host-cell',
+        appSelector: '[data-automation-id^="capture.request-row."][aria-pressed="true"] [data-parity="capture-list-host-cell"]',
+      },
       { name: 'List status header', parity: 'capture-list-status-header' },
-      { name: 'List status cell', parity: 'capture-list-status-cell' },
+      {
+        name: 'List status cell', parity: 'capture-list-status-cell',
+        appSelector: '[data-automation-id^="capture.request-row."][aria-pressed="true"] [data-parity="capture-list-status-cell"]',
+      },
       { name: 'List protocol header', parity: 'capture-list-proto-header' },
-      { name: 'List protocol cell', parity: 'capture-list-proto-cell' },
+      {
+        name: 'List protocol cell', parity: 'capture-list-proto-cell',
+        appSelector: '[data-automation-id^="capture.request-row."][aria-pressed="true"] [data-parity="capture-list-proto-cell"]',
+      },
       { name: 'List type header', parity: 'capture-list-type-header' },
-      { name: 'List type cell', parity: 'capture-list-type-cell' },
+      {
+        name: 'List type cell', parity: 'capture-list-type-cell',
+        appSelector: '[data-automation-id^="capture.request-row."][aria-pressed="true"] [data-parity="capture-list-type-cell"]',
+      },
       { name: 'List size header', parity: 'capture-list-size-header' },
-      { name: 'List size cell', parity: 'capture-list-size-cell' },
+      {
+        name: 'List size cell', parity: 'capture-list-size-cell',
+        appSelector: '[data-automation-id^="capture.request-row."][aria-pressed="true"] [data-parity="capture-list-size-cell"]',
+      },
       { name: 'List time header', parity: 'capture-list-time-header' },
-      { name: 'List time cell', parity: 'capture-list-time-cell' },
+      {
+        name: 'List time cell', parity: 'capture-list-time-cell',
+        appSelector: '[data-automation-id^="capture.request-row."][aria-pressed="true"] [data-parity="capture-list-time-cell"]',
+      },
       {
         name: 'Status endpoint',
         designSelector: '.capture-endpoint',
@@ -343,14 +401,14 @@ function httpBreakpointView(theme, { variant, phase, body }) {
     }] : []),
     isResponse ? 'Response headers' : 'Request headers',
     {
-      name: 'Header name input',
-      designSelector: '.headerFieldsEditorRows input[aria-label="Header name"]',
-      appSelector: 'input[data-automation-id^="breakpoints.header."][data-automation-id$=".name"]',
+      name: 'First header name input',
+      designSelector: ':nth-match(.headerFieldsEditorRows:visible input[aria-label="Header name"], 1)',
+      appSelector: ':nth-match(input[data-automation-id^="breakpoints.header."][data-automation-id$=".name"]:visible, 1)',
     },
     {
-      name: 'Header value input',
-      designSelector: '.headerFieldsEditorRows input[aria-label="Header value"]',
-      appSelector: 'input[data-automation-id^="breakpoints.header."][data-automation-id$=".value"]',
+      name: 'First header value input',
+      designSelector: ':nth-match(.headerFieldsEditorRows:visible input[aria-label="Header value"], 1)',
+      appSelector: ':nth-match(input[data-automation-id^="breakpoints.header."][data-automation-id$=".value"]:visible, 1)',
     },
     'Original body',
     ...(body !== 'loading' ? [{
@@ -408,7 +466,6 @@ function httpBreakpointView(theme, { variant, phase, body }) {
       breakpointBody: designBody,
       breakpointFile: body === 'file' ? 'valid' : 'none',
     },
-    designShot: `${theme}/capture/breakpoint-${variant}.png`,
     pausedBreakpoints: true,
     pausedBreakpointPhase: phase,
     breakpointBodyState: `${phase}-${body === 'loading' ? 'loading' : 'ready'}`,
@@ -522,7 +579,6 @@ const HTTP_READONLY_BODY_VIEWS = ['light', 'dark'].flatMap((theme) => [
       breakpointState: 'request', breakpointBody: 'ready', breakpointFile: 'none',
       bodyRemainderSample: 'long', bodyRemainderNotice: notice,
     },
-    designShot: `${theme}/capture/breakpoint-request-${variant}.png`,
     designActions,
     rendererActions,
     targets,
@@ -549,7 +605,6 @@ const BREAKPOINT_QUEUE_VIEWS = ['light', 'dark'].flatMap((theme) => {
         breakpointBody: 'loading',
         breakpointQueueSelection: 'http-head',
       },
-      designShot: `${theme}/capture/breakpoint-queue-head.png`,
       pausedBreakpoints: true,
       breakpointBodyState: 'request-loading',
       rendererActions: [{ type: 'clickText', text: '/checkout' }],
@@ -575,7 +630,6 @@ const BREAKPOINT_QUEUE_VIEWS = ['light', 'dark'].flatMap((theme) => {
         breakpointState: 'queue',
         breakpointQueueSelection: 'http-queued',
       },
-      designShot: `${theme}/capture/breakpoint-queue-queued.png`,
       pausedBreakpoints: true,
       rendererActions: [{ type: 'clickText', text: '/v1/token' }],
       targets: [
@@ -593,7 +647,6 @@ const BREAKPOINT_QUEUE_VIEWS = ['light', 'dark'].flatMap((theme) => {
         breakpointState: 'queue',
         breakpointQueueSelection: 'http-head',
       },
-      designShot: `${theme}/capture/breakpoint-queue-menu.png`,
       pausedBreakpoints: true,
       designActions: [
         { type: 'clickRole', role: 'button', name: 'Queue actions' },
@@ -658,7 +711,6 @@ const upstreamViews = ['light', 'dark', 'warm', 'ember'].flatMap(theme =>
           upstreamConfig: config, upstreamDraft: { ...UPSTREAM_CONFIG, mode },
           upstreamOperation: 'idle', upstreamApplyRequested: false, upstreamApplyError: '', upstreamHealth: 'ready',
         },
-        designShot: `${theme}/upstream/${surface}-${mode}-${phase}.png`,
         targets: [
           { name: 'Upstream editor', parity: 'upstream-editor', styleKeys: ['fontSize', 'color'] },
           { name: 'Current route row', parity: 'upstream-current-route', styleKeys: ['display', 'alignItems', 'padding', 'backgroundColor', 'borderRadius'] },
@@ -704,7 +756,6 @@ const upstreamStateViews = ['light', 'dark', 'warm', 'ember'].flatMap(theme =>
           upstreamOperation: state === 'discovering' ? 'discovering' : 'idle',
           upstreamApplyError: state === 'failed' ? 'discovery' : '',
         },
-        designShot: `${theme}/upstream/${surface}-wpad-${state}.png`,
         targets: [
           ...wpad.targets.map(target => target.name === 'Apply button'
             ? { ...target, designSelector: `[data-parity="upstream-editor"] button:text-is("${state === 'discovering' ? 'Discovering…' : 'Retry'}")` }
@@ -724,7 +775,6 @@ const upstreamStateViews = ['light', 'dark', 'warm', 'ember'].flatMap(theme =>
           ...manual.designState, upstreamHealth: 'unreachable',
           upstreamConfig: { ...UPSTREAM_CONFIG, mode: 'manual', host: 'proxy.gateway.department.example.test', port: '3128' },
         },
-        designShot: `${theme}/upstream/${surface}-long-unreachable.png`,
       },
     ];
   }),
@@ -751,7 +801,6 @@ export const views = [
           mcpClientLabel: mcpState === 'disabled' ? '' : 'VS Code',
           mcpClientExecutionMode: 'ask',
         },
-        designShot: `${theme}/agent-models/${variant}.png`,
         rendererActions: [
           { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
           { type: 'clickText', text: 'Agent' },
@@ -771,13 +820,13 @@ export const views = [
     ...[false, true].map(resized => ({
       id: `capture-message-grpc-${theme}${resized ? '-resized' : ''}`,
       theme,
+      freshDesign: true,
       mitmActive: false,
       grpcMessageSource: GRPC_LONG_MESSAGE,
       designState: {
         view: 'capture', theme, sidebar: 'collapsed', overlay: '', detail: 'open',
         scene: 'grpc', tab: 'grpc', grpcMessageSource: GRPC_LONG_MESSAGE,
       },
-      designShot: `${theme}/capture/inspector-grpc-long-text${resized ? '-resized' : ''}.png`,
       designActions: [
         { type: 'clickRole', role: 'radio', name: 'Text' },
         ...(resized ? [{ type: 'resizeVertical', selector: '.grpcpayload [data-monaco]', delta: -120 }] : []),
@@ -818,7 +867,6 @@ export const views = [
         view: 'capture', theme, sidebar: 'collapsed', overlay: '', detail: 'open',
         scene: 'websocket', tab: 'messages',
       },
-      designShot: `${theme}/capture/inspector-websocket.png`,
       rendererActions: [
         { type: 'clickText', text: '/socket' },
         { type: 'clickText', text: 'Messages' },
@@ -860,7 +908,6 @@ export const views = [
           agentPanel: 'open',
           agentProvider: 'unconfigured',
         },
-        designShot: `${theme}/agent-models/panel-unconfigured.png`,
         rendererActions: [
           { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
         ],
@@ -891,7 +938,6 @@ export const views = [
           agentProvider: 'configured',
           agentChat: 'checkout',
         },
-        designShot: `${theme}/agent-panel/capture-open.png`,
         rendererActions: [
           { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
         ],
@@ -924,7 +970,6 @@ export const views = [
           agentChat: 'checkout',
           agentToolTrace: 'capture',
         },
-        designShot: `${theme}/agent-models/panel-capture-tools.png`,
         rendererActions: [
           { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
         ],
@@ -954,7 +999,6 @@ export const views = [
           agentChat: 'checkout',
           agentToolTrace: 'body-messages',
         },
-        designShot: `${theme}/agent-models/panel-body-message-tools.png`,
         rendererActions: [
           { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
         ],
@@ -986,7 +1030,6 @@ export const views = [
           agentExecutionMode: 'auto',
           agentToolTrace: 'breakpoints',
         },
-        designShot: `${theme}/agent-models/panel-breakpoint-tools.png`,
         rendererActions: [
           { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
         ],
@@ -1021,7 +1064,6 @@ export const views = [
           agentToolApproval: 'allowed',
           agentToolApprovalName: 'composer_send_request',
         },
-        designShot: `${theme}/agent-models/panel-composer-tools.png`,
         rendererActions: [
           { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
         ],
@@ -1045,7 +1087,6 @@ export const views = [
         agentModels: 'configured',
         agentSessionState: 'collection',
         designState: { view: 'composer', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured', agentToolTrace: 'collection' },
-        designShot: `${theme}/agent-models/panel-collection-tools.png`,
         rendererActions: [
           { type: 'clickRole', role: 'button', name: 'Expand folder', index: 0 },
           { type: 'clickText', text: 'Create repo' },
@@ -1070,7 +1111,6 @@ export const views = [
           view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
           agentExecutionMode: 'ask', agentToolApproval: approval, agentToolApprovalName: 'composer_replace_collection', agentToolTrace: '',
         },
-        designShot: `${theme}/agent-models/panel-collection-${approval}.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1093,7 +1133,6 @@ export const views = [
           view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open',
           agentProvider: 'configured', agentChat: 'checkout', agentExecutionMode: 'ask', agentToolTrace: 'settings',
         },
-        designShot: `${theme}/agent-models/panel-settings-tools.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1127,7 +1166,6 @@ export const views = [
           agentExecutionMode: 'ask',
           agentToolTrace: 'diagnostics',
         },
-        designShot: `${theme}/agent-models/panel-diagnostics-tools.png`,
         rendererActions: [
           { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
         ],
@@ -1161,7 +1199,6 @@ export const views = [
           agentChat: 'checkout',
           agentToolTrace: 'rules',
         },
-        designShot: `${theme}/agent-models/panel-rules-tools.png`,
         rendererActions: [
           { type: 'clickAutomation', automationId: 'shell.workspace.rules' },
           { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
@@ -1193,7 +1230,6 @@ export const views = [
           agentToolApproval: 'allowed',
           agentToolApprovalName: 'rules_replace_tree',
         },
-        designShot: `${theme}/agent-models/panel-rules-result.png`,
         rendererActions: [
           { type: 'clickAutomation', automationId: 'shell.workspace.rules' },
           { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
@@ -1224,7 +1260,6 @@ export const views = [
           agentToolApprovalName: 'capture_stop_recording',
           agentToolTrace: '',
         },
-        designShot: `${theme}/agent-models/panel-tool-approval.png`,
         rendererActions: [
           { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
         ],
@@ -1243,7 +1278,6 @@ export const views = [
           view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
           agentChat: 'checkout', agentToolTrace: 'transfer-jobs', agentToolApproval: '', agentExecutionMode: 'ask',
         },
-        designShot: `${theme}/agent-models/panel-transfer-jobs.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1262,7 +1296,6 @@ export const views = [
           view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
           agentExecutionMode: 'ask', agentToolApproval: stage, agentToolApprovalName: 'capture_cancel_transfer_job', agentToolTrace: '',
         },
-        designShot: `${theme}/agent-models/panel-transfer-cancel-${stage}.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1290,7 +1323,6 @@ export const views = [
           agentHarExportStarted: stage !== 'canceled', agentHarImportStarted: stage !== 'canceled', agentToolTrace: '',
           agentArchiveExportStarted: stage !== 'canceled', agentArchiveImportStarted: stage !== 'canceled',
         },
-        designShot: `${theme}/agent-models/panel-${format}-${direction}-${stage}.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1316,7 +1348,6 @@ export const views = [
           agentExecutionMode: 'ask', agentToolApproval: stage === 'pending' ? 'pending' : 'allowed',
           agentToolApprovalName: 'capture_export_body', agentBodyExportStarted: stage !== 'canceled', agentToolTrace: '',
         },
-        designShot: `${theme}/agent-models/panel-body-export-${stage}.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1343,7 +1374,6 @@ export const views = [
           agentExecutionMode: 'ask', agentToolApproval: stage === 'pending' ? 'pending' : 'allowed',
           agentToolApprovalName: 'diagnostics_export', agentDiagnosticsExportStarted: stage !== 'canceled', agentToolTrace: '',
         },
-        designShot: `${theme}/agent-models/panel-diagnostics-export-${stage}.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1370,7 +1400,6 @@ export const views = [
           agentExecutionMode: 'ask', agentToolApproval: stage,
           agentToolApprovalName: `breakpoints_${action.replaceAll('-', '_')}`, agentToolTrace: '',
         },
-        designShot: `${theme}/agent-models/panel-breakpoints_${action.replaceAll('-', '_')}-${stage}.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1398,7 +1427,6 @@ export const views = [
           agentToolApprovalName: `composer_${action}_collection`, agentToolTrace: '',
           agentCollectionExported: stage !== 'canceled', agentCollectionImported: stage !== 'canceled',
         },
-        designShot: `${theme}/agent-models/panel-collection-${action}-${stage}.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1427,7 +1455,6 @@ export const views = [
           agentExecutionMode: 'ask', agentToolApproval: stage === 'pending' ? 'pending' : 'allowed',
           agentToolApprovalName: 'rules_import', agentRulesImported: stage !== 'canceled', agentToolTrace: '',
         },
-        designShot: `${theme}/agent-models/panel-rules-import-${stage}.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1456,7 +1483,6 @@ export const views = [
           agentExecutionMode: 'ask', agentToolApproval: stage === 'pending' ? 'pending' : 'allowed',
           agentToolApprovalName: 'rules_export', agentRulesExported: stage !== 'canceled', agentToolTrace: '',
         },
-        designShot: `${theme}/agent-models/panel-rules-export-${stage}.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1484,7 +1510,6 @@ export const views = [
           view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
           agentExecutionMode: 'ask', agentToolApproval: approval, agentToolApprovalName: name, agentToolTrace: '',
         },
-        designShot: `${theme}/agent-models/panel-${name}-${approval}.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1513,7 +1538,6 @@ export const views = [
           view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
           agentExecutionMode: 'ask', agentToolApproval: approval, agentToolApprovalName: name, agentToolTrace: '',
         },
-        designShot: `${theme}/agent-models/panel-${name}-${approval}.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1544,7 +1568,6 @@ export const views = [
           view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
           agentExecutionMode: 'ask', agentToolApproval: approval, agentToolApprovalName: name, agentToolTrace: '',
         },
-        designShot: `${theme}/agent-models/panel-${name}-${approval}.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1570,7 +1593,6 @@ export const views = [
           view: 'capture', theme, sidebar: 'collapsed', agentPanel: 'open', agentProvider: 'configured',
           agentExecutionMode: 'ask', agentToolApproval: approval, agentToolApprovalName: name, agentToolTrace: '',
         },
-        designShot: `${theme}/agent-models/panel-${name}-${approval}.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1599,7 +1621,6 @@ export const views = [
           agentExecutionMode: 'ask', agentToolApproval: approval,
           agentToolApprovalName: `settings_${action}_system_proxy`, agentToolTrace: '',
         },
-        designShot: `${theme}/agent-models/panel-system-proxy-${action}-${approval}.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1630,7 +1651,6 @@ export const views = [
           agentToolApprovalName: 'capture_clear',
           agentToolTrace: '',
         },
-        designShot: `${theme}/agent-models/panel-tool-result.png`,
         rendererActions: [
           { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
         ],
@@ -1658,7 +1678,6 @@ export const views = [
           agentToolApproval: '',
           agentToolTrace: '',
         },
-        designShot: `${theme}/agent-models/panel-auto.png`,
         rendererActions: [
           { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
         ],
@@ -1683,7 +1702,6 @@ export const views = [
           agentProvider: 'configured',
           agentChat: 'new',
         },
-        designShot: `${theme}/agent-panel/new-chat.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1709,7 +1727,6 @@ export const views = [
           agentMessage: 'Explain invalid_grant.',
           agentTurnState: turnState,
         },
-        designShot: `${theme}/agent-panel/turn-${turnState}.png`,
         rendererActions: [{ type: 'clickAutomation', automationId: 'agent.panel.toggle' }],
         targets: [
           { name: 'Agent panel', parity: 'agent-panel' },
@@ -1735,7 +1752,6 @@ export const views = [
           agentProvider: 'configured',
           agentUsagePanel: 'open',
         },
-        designShot: `${theme}/agent-panel/session-usage.png`,
         rendererActions: [
           { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
           { type: 'hoverSelector', selector: '[data-automation-id="agent.context"]' },
@@ -1759,14 +1775,17 @@ export const views = [
           agentProvider: 'configured',
           agentChatMenu: 'open',
         },
-        designShot: `${theme}/agent-panel/chat-menu.png`,
         rendererActions: [
           { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
           { type: 'clickAutomation', automationId: 'agent.chat.selector' },
         ],
         targets: [
           { name: 'Chat menu', parity: 'agent-chat-menu' },
-          'Checkout failures',
+          {
+            name: 'Checkout failures',
+            designSelector: '[data-parity="agent-chat-menu"] :text-is("Checkout failures")',
+            appSelector: '[data-parity="agent-chat-menu"] :text-is("Checkout failures")',
+          },
           'New chat',
           'Rename current chat',
           'Delete current chat',
@@ -1784,7 +1803,6 @@ export const views = [
           agentProvider: 'configured',
           agentModelMenu: 'open',
         },
-        designShot: `${theme}/agent-models/panel-model-menu.png`,
         rendererActions: [
           { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
           { type: 'clickSelector', selector: '[data-parity="agent-model-select"]' },
@@ -1825,7 +1843,6 @@ export const views = [
           agentProvider: 'configured',
           agentChatDialog: dialogMode,
         },
-        designShot: `${theme}/agent-panel/${dialogMode}-chat.png`,
         rendererActions: [
           { type: 'clickAutomation', automationId: 'agent.panel.toggle' },
           { type: 'clickAutomation', automationId: 'agent.chat.selector' },
@@ -1853,7 +1870,6 @@ export const views = [
           settings: 'agent',
           agentProvider: 'unconfigured',
         },
-        designShot: `${theme}/agent-models/settings-agent-unconfigured.png`,
         rendererActions: [
           { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
           { type: 'clickText', text: 'Agent' },
@@ -1875,7 +1891,6 @@ export const views = [
         id: `settings-agent-provider-menu${suffix}`,
         theme,
         rendererNav: 'Settings',
-        designShot: `${theme}/agent-models/settings-provider-menu.png`,
         designState: {
           view: 'settings',
           theme,
@@ -1922,7 +1937,6 @@ export const views = [
           settings: 'agent',
           agentProvider: 'configured',
         },
-        designShot: `${theme}/agent-models/settings-agent.png`,
         rendererActions: [
           { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
           { type: 'clickText', text: 'Agent' },
@@ -1933,12 +1947,12 @@ export const views = [
           {
             name: 'Configured models section',
             designSelector: '.modelSettingsSection',
-            appSelector: '[data-automation-id="agent.models.list"] > section',
+            appSelector: '[data-automation-id="agent.models.list"] > section:has([data-automation-id="agent.model.row.provider-deepseek"])',
           },
           {
             name: 'Configured models header',
             designSelector: '.modelSettingsSectionHeader',
-            appSelector: '[data-automation-id="agent.models.list"] > section > header',
+            appSelector: '[data-automation-id="agent.models.list"] > section:has([data-automation-id="agent.model.row.provider-deepseek"]) > header',
           },
           {
             name: 'DeepSeek model row',
@@ -1984,13 +1998,17 @@ export const views = [
           agentToolSearch: 'settings_', agentDisabledTools: ['settings_get_certificate_status'],
           mcpDisabledTools: ['settings_get_tls_passthrough'],
         },
-        designShot: `${theme}/agent-models/settings-tool-capabilities-settings.png`,
+        designActions: [
+          { type: 'clickSelector', selector: '[data-parity="agent-model-settings"] h2' },
+        ],
         rendererActions: [
           { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
           { type: 'clickText', text: 'Agent' },
           { type: 'fillAutomation', automationId: 'agent.tools.search', value: 'settings_' },
           { type: 'clickAutomation', automationId: 'agent.tools.agent.settings_get_certificate_status' },
           { type: 'clickAutomation', automationId: 'agent.tools.mcp.settings_get_tls_passthrough' },
+          // Return to the same reading position after a tool toggle scrolls into view.
+          { type: 'clickSelector', selector: '[data-parity="agent-model-settings"] h2' },
         ],
         targets: [
           { name: 'Agent settings', parity: 'agent-model-settings' },
@@ -2022,16 +2040,19 @@ export const views = [
           agentToolSearch: 'exchange',
           agentDisabledTools: ['capture_get_exchange'],
         },
-        designShot: `${theme}/agent-models/settings-tool-capabilities-filtered.png`,
+        designActions: [
+          { type: 'clickSelector', selector: '[data-parity="agent-model-settings"] h2' },
+        ],
         rendererActions: [
           { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
           { type: 'clickText', text: 'Agent' },
           { type: 'clickAutomation', automationId: 'agent.tools.agent.capture_get_exchange' },
           { type: 'fillAutomation', automationId: 'agent.tools.search', value: 'exchange' },
+          { type: 'clickSelector', selector: '[data-parity="agent-model-settings"] h2' },
         ],
         targets: [
           { name: 'Agent settings', parity: 'agent-model-settings' },
-          { name: 'Tool capabilities', parity: 'agent-tool-capabilities' },
+          { name: 'Tool capabilities panel', parity: 'agent-tool-capabilities' },
           {
             name: 'Filtered Tool row',
             designSelector: '[data-tool-capability="capture_get_exchange"]',
@@ -2060,7 +2081,6 @@ export const views = [
           mcpClientLabel: 'VS Code',
           mcpClientExecutionMode: 'ask',
         },
-        designShot: `${theme}/agent-models/settings-mcp-running.png`,
         rendererActions: [
           { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
           { type: 'clickText', text: 'Agent' },
@@ -2104,7 +2124,6 @@ export const views = [
           mcpEndpointAssigned: true,
           mcpClientLabel: 'VS Code',
         },
-        designShot: `${theme}/agent-models/settings-mcp-conflict.png`,
         rendererActions: [
           { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
           { type: 'clickText', text: 'Agent' },
@@ -2137,7 +2156,6 @@ export const views = [
           mcpEndpointAssigned: true,
           mcpClientDialog: 'add',
         },
-        designShot: `${theme}/agent-models/settings-mcp-add-client.png`,
         rendererActions: [
           { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
           { type: 'clickText', text: 'Agent' },
@@ -2173,7 +2191,6 @@ export const views = [
           mcpClientLabel: 'VS Code',
           mcpClientDialog: 'regenerate',
         },
-        designShot: `${theme}/agent-models/settings-mcp-regenerate.png`,
         rendererActions: [
           { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
           { type: 'clickText', text: 'Agent' },
@@ -2200,7 +2217,6 @@ export const views = [
           sidebar: 'collapsed',
           mcpToolApproval: 'pending',
         },
-        designShot: `${theme}/agent-models/mcp-tool-approval.png`,
         targets: [
           {
             name: 'MCP Tool approval',
@@ -2227,7 +2243,6 @@ export const views = [
           agentProviderDialogMode: 'add',
           agentProviderDialogTarget: '',
         },
-        designShot: `${theme}/agent-models/settings-custom-dialog.png`,
         rendererActions: [
           { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
           { type: 'clickText', text: 'Agent' },
@@ -2257,7 +2272,8 @@ export const views = [
           },
           {
             name: 'Provider field control',
-            parity: 'model-provider-field-control',
+            designSelector: 'label:has(> span:text-is("Profile name")) > [data-parity="model-provider-field-control"]',
+            appSelector: 'label:has([data-automation-id="agent.provider.profile-name"]) > [data-parity="model-provider-field-control"]',
             styleKeys: [],
           },
           'OpenAI-compatible provider',
@@ -2295,7 +2311,6 @@ export const views = [
           agentProviderDialogMode: 'edit',
           agentProviderDialogTarget: 'deepseek',
         },
-        designShot: `${theme}/agent-models/settings-deepseek-dialog.png`,
         rendererActions: [
           { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
           { type: 'clickText', text: 'Agent' },
@@ -2355,7 +2370,6 @@ export const views = [
           agentProviderDialogMode: 'edit',
           agentProviderDialogTarget: 'qwen',
         },
-        designShot: `${theme}/agent-models/settings-custom-edit-dialog.png`,
         rendererActions: [
           { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
           { type: 'clickText', text: 'Agent' },
@@ -2406,7 +2420,6 @@ export const views = [
           agentProvider: 'configured',
           agentRemoveModelTarget: 'qwen',
         },
-        designShot: `${theme}/agent-models/settings-remove-model.png`,
         rendererActions: [
           { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
           { type: 'clickText', text: 'Agent' },
@@ -2436,7 +2449,6 @@ export const views = [
       view: 'capture', theme, sidebar: 'collapsed', overlay: '', detail: 'open',
       scene: 'websocket', tab: 'messages', breakpointState: '', websocketMessagesState: messageState,
     },
-    designShot: `${theme}/capture/websocket-messages-${messageState}.png`,
     rendererActions: [{ type: 'clickText', text: '/socket' }, { type: 'clickText', text: 'Messages' }],
     targets: [
       { name: 'Inspector host', parity: 'capture-inspector-host' },
@@ -2457,7 +2469,6 @@ export const views = [
       scene: 'websocket',
       tab: 'messages',
     },
-    designShot: `${theme}/capture/inspector-websocket.png`,
     rendererActions: [
       { type: 'clickText', text: '/socket' },
       { type: 'clickText', text: 'Messages' },
@@ -2486,7 +2497,6 @@ export const views = [
     id: `statusbar-upstream-down${theme === 'dark' ? '-dark' : ''}`,
     theme,
     designState: { view: 'capture', theme, sidebar: 'collapsed', upstreamHealth: 'unreachable' },
-    designShot: `${theme}/capture/statusbar-upstream-down.png`,
     upstreamDown: true,
     mitmActive: false,
     targets: [
@@ -2529,7 +2539,6 @@ export const views = [
           websocketBreakpointDirection: 'both',
           websocketBreakpointFrames: ['message'],
         },
-        designShot: `${theme}/capture/websocket-breakpoint-setup.png`,
         rendererActions: [
           ...rendererOpenMessages,
           { type: 'clickRole', role: 'button', name: 'Enable message breakpoint' },
@@ -2564,7 +2573,6 @@ export const views = [
           websocketBreakpointDirection: 'both',
           websocketBreakpointFrames: ['message'],
         },
-        designShot: `${theme}/capture/websocket-breakpoint-enabled.png`,
         rendererActions: [
           ...rendererOpenMessages,
           { type: 'clickRole', role: 'button', name: 'Enable message breakpoint' },
@@ -2596,7 +2604,6 @@ export const views = [
           websocketMessageDirection: 'sent',
           websocketMessagePayload: 'text',
         },
-        designShot: `${theme}/capture/websocket-breakpoint-queue-head.png`,
         pausedWebSocketBreakpoint: true,
         rendererActions: [{ type: 'clickText', text: '/socket' }],
         targets: [
@@ -2632,14 +2639,13 @@ export const views = [
           websocketMessageDirection: 'sent',
           websocketMessagePayload: 'text',
         },
-        designShot: `${theme}/capture/websocket-breakpoint-queue-head.png`,
         pausedWebSocketBreakpoint: true,
         rendererActions: [{ type: 'clickText', text: '/socket' }],
         targets: [
           {
             name: 'WebSocket history row',
             designSelector: '.wsrows > .wsrow:first-child',
-            appSelector: '[data-automation-id^="capture.websocket.frame."]',
+            appSelector: '[data-automation-id="capture.websocket.frame.ws-fixture.1"]',
             styleKeys: ['height', 'borderBottomWidth'],
           },
           {
@@ -2691,7 +2697,6 @@ export const views = [
           websocketMessageDirection: 'sent',
           websocketMessagePayload: 'text',
         },
-        designShot: `${theme}/capture/websocket-breakpoint-queue-queued.png`,
         pausedWebSocketBreakpoint: true,
         rendererActions: [
           { type: 'clickText', text: '/socket' },
@@ -2735,7 +2740,6 @@ export const views = [
           bodyRuleEffect,
           breakpointState: '',
         },
-        designShot: `${theme}/capture/body-effect-${bodyRuleEffect}.png`,
         rendererActions: [
           { type: 'clickText', text: '/user' },
           { type: 'clickText', text: response ? 'Response' : 'Request' },
@@ -2767,14 +2771,13 @@ export const views = [
       detail: 'open',
       tab: 'request',
     },
-    designShot: `${theme}/capture/inspector-request-expanded.png`,
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickText', text: '/user' },
       { type: 'clickText', text: 'Request' },
     ],
     targets: [
-      'Capture',
+      CAPTURE_NAV_TARGET,
       'Local traffic',
       {
         name: 'Request line heading',
@@ -2820,7 +2823,6 @@ export const views = [
       detail: 'open',
       tab: 'timing',
     },
-    designShot: `${theme}/capture/inspector-timing.png`,
     rendererActions: [
       { type: 'clickText', text: '/user' },
       { type: 'clickText', text: 'Timing' },
@@ -2861,8 +2863,8 @@ export const views = [
       sidebar: 'expanded',
       tab: 'cookies',
     },
-    designShot: 'light/capture/inspector-cookies.png',
     rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickText', text: '/user' },
       { type: 'clickText', text: 'Cookies' },
     ],
@@ -2884,7 +2886,9 @@ export const views = [
       scene: 'grpc',
       tab: 'grpc',
     },
-    designShot: `${theme}/capture/inspector-grpc.png`,
+    designActions: [
+      { type: 'clickRole', role: 'radio', name: 'Hex' },
+    ],
     rendererActions: [
       { type: 'clickText', text: '/orders.v1.OrderService/Watch' },
       { type: 'clickText', text: 'Messages' },
@@ -2914,13 +2918,12 @@ export const views = [
       scene: 'tunnel',
       tab: 'tunnel',
     },
-    designShot: 'light/capture/inspector-tunnel.png',
     rendererActions: [{ type: 'clickText', text: 'accounts.google.com' }],
     targets: [
       INSPECTOR_METHOD_TARGET,
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       { name: 'Inspector status', parity: 'capture-inspector-status' },
-      'TLS tunnel',
+      TLS_TUNNEL_TAB_TARGET,
       TLS_TUNNEL_NOTICE_TITLE_TARGET,
       'Decrypt HTTPS (MITM)',
       TLS_PASSTHROUGH_VALUE_TARGET,
@@ -2939,13 +2942,12 @@ export const views = [
       scene: 'tunnel',
       tab: 'tunnel',
     },
-    designShot: 'dark/capture/inspector-tunnel.png',
     rendererActions: [{ type: 'clickText', text: 'accounts.google.com' }],
     targets: [
       INSPECTOR_METHOD_TARGET,
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       { name: 'Inspector status', parity: 'capture-inspector-status' },
-      'TLS tunnel',
+      TLS_TUNNEL_TAB_TARGET,
       TLS_TUNNEL_NOTICE_TITLE_TARGET,
       'Decrypt HTTPS (MITM)',
       TLS_PASSTHROUGH_VALUE_TARGET,
@@ -2965,12 +2967,11 @@ export const views = [
       tab: 'tunnel',
       mitm: 'active',
     },
-    designShot: 'light/capture/inspector-tunnel-mitm-active.png',
     rendererActions: [{ type: 'clickText', text: 'accounts.google.com' }],
     targets: [
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       { name: 'Inspector status', parity: 'capture-inspector-status' },
-      'TLS tunnel',
+      TLS_TUNNEL_TAB_TARGET,
       TLS_TUNNEL_NOTICE_TITLE_TARGET,
       { name: 'View passthrough pattern', parity: 'tls-tunnel-view-passthrough' },
       'MITM active',
@@ -2991,12 +2992,11 @@ export const views = [
       tab: 'tunnel',
       mitm: 'active',
     },
-    designShot: 'dark/capture/inspector-tunnel-mitm-active.png',
     rendererActions: [{ type: 'clickText', text: 'accounts.google.com' }],
     targets: [
       { name: 'Inspector host', parity: 'capture-inspector-host' },
       { name: 'Inspector status', parity: 'capture-inspector-status' },
-      'TLS tunnel',
+      TLS_TUNNEL_TAB_TARGET,
       TLS_TUNNEL_NOTICE_TITLE_TARGET,
       { name: 'View passthrough pattern', parity: 'tls-tunnel-view-passthrough' },
       'MITM active',
@@ -3017,7 +3017,6 @@ export const views = [
       tab: 'tunnel',
       mitm: 'active',
     },
-    designShot: 'light/capture/inspector-tunnel-mitm-active.png',
     rendererActions: [{ type: 'clickText', text: 'accounts.google.com' }],
     targets: [
       { name: 'View passthrough pattern', parity: 'tls-tunnel-view-passthrough' },
@@ -3042,7 +3041,6 @@ export const views = [
       tlsPassthroughTargetSequence: 1,
       tlsPassthroughTargetExpires: false,
     },
-    designShot: `${theme}/settings/tls-passthrough-target.png`,
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickText', text: 'afdfp-rdgateway-r0.wvd.microsoft.com' },
@@ -3068,8 +3066,8 @@ export const views = [
       tab: 'tunnel',
       https: 'fresh',
     },
-    designShot: 'light/https-setup/dialog.png',
     rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickText', text: 'accounts.google.com' },
       { type: 'clickRole', role: 'button', name: 'Decrypt HTTPS (MITM)' },
     ],
@@ -3099,8 +3097,8 @@ export const views = [
       tab: 'tunnel',
       https: 'fresh',
     },
-    designShot: 'dark/https-setup/dialog.png',
     rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickText', text: 'accounts.google.com' },
       { type: 'clickRole', role: 'button', name: 'Decrypt HTTPS (MITM)' },
     ],
@@ -3126,8 +3124,8 @@ export const views = [
       tab: 'tunnel',
       https: 'ready',
     },
-    designShot: 'light/https-setup/ready.png',
     rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickText', text: 'accounts.google.com' },
       { type: 'clickRole', role: 'button', name: 'Decrypt HTTPS (MITM)' },
       { type: 'clickRole', role: 'button', name: 'Generate' },
@@ -3154,8 +3152,8 @@ export const views = [
       overlay: 'import-export',
       transfer: 'har-export',
     },
-    designShot: 'light/import-export/export-har.png',
     rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       {
         type: 'clickText',
         text: '/user',
@@ -3207,8 +3205,8 @@ export const views = [
       overlay: 'import-export',
       transfer: 'har-export',
     },
-    designShot: 'dark/import-export/export-har.png',
     rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickText', text: '/user' },
       {
         type: 'clickRole',
@@ -3258,7 +3256,6 @@ export const views = [
       overlay: '',
       fileMenu: menu,
     },
-    designShot: `${theme}/capture/${menu}-menu.png`,
     rendererActions: [
       { type: 'clickAutomation', automationId: `capture.${menu}-menu` },
     ],
@@ -3300,16 +3297,20 @@ export const views = [
       view: 'capture',
       theme: 'light',
       sidebar: 'expanded',
+      detail: 'open',
+      scene: 'http',
+      bodyKind: 'json',
       requestMenu: '',
     },
-    designShot: 'light/capture/request-rule-menu.png',
     designActions: [
-      { type: 'contextMenuSelector', selector: '.list-scroll .row', index: 0 },
+      { type: 'contextMenuSelector', selector: '.list-scroll .row[data-capture-row="http"]', position: { x: 28, y: 26 } },
+      { type: 'assertInsideViewport', selector: '.ant-dropdown:visible' },
     ],
     rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickText', text: '/user' },
-      // 选中后 Inspector 打开，path 列被压缩到 0 宽而不可点，改用同一行的 method 徽章右键。
-      { type: 'contextMenuText', text: 'GET', index: 0 },
+      { type: 'contextMenuSelector', selector: '[data-automation-id="capture.request-row.http-1"]', position: { x: 28, y: 26 } },
+      { type: 'assertInsideViewport', selector: '.ant-dropdown:visible' },
     ],
     targets: [
       {
@@ -3329,16 +3330,20 @@ export const views = [
       view: 'capture',
       theme: 'light',
       sidebar: 'collapsed',
+      detail: 'open',
+      scene: 'http',
+      bodyKind: 'form',
       requestMenu: '',
       breakpointState: '',
     },
-    designShot: 'light/capture/breakpoint-create-menu.png',
     designActions: [
-      { type: 'contextMenuSelector', selector: '.list-scroll .row', index: 0 },
-      { type: 'mouseOverSelector', selector: '.ant-dropdown-menu-submenu-title' },
+      { type: 'contextMenuSelector', selector: '.list-scroll .row:has-text("/common/oauth2/v2.0/token")', position: { x: 28, y: 26 } },
+      { type: 'assertInsideViewport', selector: '.ant-dropdown:visible' },
+      { type: 'hoverSelector', selector: '.ant-dropdown-menu-submenu-title' },
+      { type: 'assertInsideViewport', selector: '.ant-dropdown:visible, .ant-dropdown-menu-submenu-popup:visible' },
     ],
     rendererActions: [
-      { type: 'contextMenuText', text: 'POST', index: 0 },
+      { type: 'contextMenuSelector', selector: '[data-automation-id="capture.request-row.http-2"]', position: { x: 28, y: 26 } },
       {
         type: 'assertSelectorVisible',
         selector: '[data-automation-id="capture.create-rule.http-2.header"]',
@@ -3376,9 +3381,9 @@ export const views = [
   {
     id: 'capture-request-menu-dismiss',
     theme: 'light',
-    designState: { view: 'capture', theme: 'light', sidebar: 'collapsed' },
-    designShot: 'light/capture/framed.png',
-    designActions: [{ type: 'hoverText', text: 'Application' }],
+    designState: { view: 'capture', theme: 'light', sidebar: 'collapsed', detail: 'open', bodyKind: 'form' },
+    designActions: [{ type: 'clickText', text: 'Application' }],
+    captureSessionIds: ['http-1', 'tls-tunnel', 'http-2', 'http-3', 'http-4'],
     rendererActions: [
       { type: 'contextMenuText', text: 'POST', index: 0 },
       { type: 'hoverText', text: 'Breakpoint' },
@@ -3399,7 +3404,6 @@ export const views = [
       detail: 'open',
       ruleFilter: 'rule-auth',
     },
-    designShot: 'light/capture/rule-filter-auth.png',
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickRole', role: 'button', name: 'Expand folder', index: 1 },
@@ -3431,9 +3435,8 @@ export const views = [
       filterGroup: 'rule',
       ruleOptions: 'empty',
     },
-    designShot: 'light/capture/rule-filter-disabled.png',
     rendererActions: [
-      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+      { type: 'clickRole', role: 'button', name: 'Application' },
       { type: 'clickRole', role: 'button', name: 'Rule' },
     ],
     targets: [
@@ -3454,7 +3457,6 @@ export const views = [
       tab: 'response',
       bodyPreview: 'limited',
     },
-    designShot: `${theme}/capture/body-limited.png`,
     rendererActions: [
       { type: 'clickText', text: '/user' },
       { type: 'clickText', text: 'Response' },
@@ -3476,8 +3478,8 @@ export const views = [
       },
       {
         name: 'Limited body note',
-        designSelector: '.bodynote:visible',
-        appSelector: '[data-parity="capture-body-view"] > div:has(> svg)',
+        designSelector: '.bodynote[data-note="limited"]:visible',
+        appSelector: '[data-parity="capture-body-view"] > div:has(> svg):has-text("Showing the first")',
         styleKeys: ['fontSize', 'fontWeight', 'lineHeight', 'padding', 'gap', 'backgroundColor'],
       },
     ],
@@ -3496,7 +3498,6 @@ export const views = [
       tab: 'response',
       bodyPreview: 'media',
     },
-    designShot: `${theme}/capture/body-media.png`,
     rendererActions: [
       { type: 'clickText', text: '/user' },
       { type: 'clickText', text: 'Response' },
@@ -3528,8 +3529,10 @@ export const views = [
       sidebar: 'expanded',
       overlay: 'proxy-not-ready',
     },
-    designShot: 'light/proxy-not-ready/dialog.png',
-    rendererActions: OPEN_RUNTIME_PROXY_READINESS_ACTIONS,
+    rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+      ...OPEN_RUNTIME_PROXY_READINESS_ACTIONS,
+    ],
     targets: [
       'Proxy not ready',
       'System Proxy off',
@@ -3550,8 +3553,8 @@ export const views = [
       overlay: '',
       settings: 'proxy',
     },
-    designShot: 'light/settings/proxy.png',
     rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       ...OPEN_RUNTIME_PROXY_READINESS_ACTIONS,
       { type: 'clickRole', role: 'button', name: 'Proxy & Listener' },
     ],
@@ -3565,6 +3568,7 @@ export const views = [
       {
         id: `rules-breakpoint-action${suffix}`,
         theme,
+        breakpointManagerRules: true,
         rendererNav: 'Rules & Map',
         designState: {
           view: 'rules',
@@ -3573,7 +3577,6 @@ export const views = [
           overlay: '',
           ruleBreakpointAction: 'visible',
         },
-        designShot: `${theme}/rules/breakpoint-action.png`,
         rendererActions: [
           { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
           { type: 'clickAutomation', automationId: 'rules.row.rule-checkout' },
@@ -3592,8 +3595,10 @@ export const views = [
       theme,
       rendererNav: 'Rules & Map',
       designState: { view: 'rules', theme, sidebar: 'expanded', overlay: 'rules-import' },
-      designShot: `${theme}/rules/import-confirm.png`,
-      rendererActions: [{ type: 'clickRole', role: 'button', name: 'Import rules' }],
+      rendererActions: [
+        { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+        { type: 'clickRole', role: 'button', name: 'Import rules' },
+      ],
       targets: RULES_IMPORT_TARGETS,
     },
     {
@@ -3602,8 +3607,10 @@ export const views = [
       rendererNav: 'Rules & Map',
       fileOperationDelayMs: 5_000,
       designState: { view: 'rules', theme, sidebar: 'expanded', overlay: 'rules-import-loading' },
-      designShot: `${theme}/rules/import-loading.png`,
-      rendererActions: [{ type: 'clickRole', role: 'button', name: 'Import rules' }],
+      rendererActions: [
+        { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+        { type: 'clickRole', role: 'button', name: 'Import rules' },
+      ],
       targets: [{
         name: 'File busy panel',
         designSelector: '.fileBusyPanel',
@@ -3616,8 +3623,10 @@ export const views = [
       rendererNav: 'Rules & Map',
       fileOperationDelayMs: 5_000,
       designState: { view: 'rules', theme, sidebar: 'expanded', overlay: 'rules-export-loading' },
-      designShot: `${theme}/rules/export-loading.png`,
-      rendererActions: [{ type: 'clickRole', role: 'button', name: 'Export rules' }],
+      rendererActions: [
+        { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+        { type: 'clickRole', role: 'button', name: 'Export rules' },
+      ],
       targets: [{
         name: 'File busy panel',
         designSelector: '.fileBusyPanel',
@@ -3630,12 +3639,12 @@ export const views = [
     theme,
     rendererNav: 'Rules & Map',
     designState: { view: 'rules', theme, sidebar: 'expanded', overlay: '' },
-    designShot: `${theme}/rules/action-tag-overflow.png`,
     designActions: [{
       type: 'hoverSelector',
       selector: '[data-action-overflow="true"] .actionTagOverflow',
     }],
     rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       ...EXPAND_RULE_TREE_ACTIONS,
       {
         type: 'hoverSelector',
@@ -3686,8 +3695,8 @@ export const views = [
       ruleList: 'tree-url',
       pop: true,
     },
-    designShot: 'light/rules/add-action.png',
     rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       ...EXPAND_RULE_TREE_ACTIONS,
       { type: 'clickRole', role: 'button', name: 'Add action' },
     ],
@@ -3710,8 +3719,8 @@ export const views = [
       ruleList: 'tree-url',
       ruleSelect: 'open',
     },
-    designShot: 'light/rules/select-dropdown.png',
     rendererActions: [
+      { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       ...EXPAND_RULE_TREE_ACTIONS,
       { type: 'clickRole', role: 'combobox', name: 'Condition field' },
     ],
@@ -3728,7 +3737,6 @@ export const views = [
     theme,
     rendererNav: 'Composer',
     designState: { view: 'composer', theme, sidebar: 'expanded' },
-    designShot: `${theme}/composer/framed.png`,
     designActions: [
       { type: 'clickSelector', selector: '.ccol [data-grp="github-repos"] .citem:has-text("Create repo")' },
       { type: 'hoverSelector', selector: '.app' },
@@ -3788,12 +3796,12 @@ export const views = [
       },
       {
         name: 'Headers tab',
-        designSelector: '[data-ctab="headers"]',
+        designSelector: '.tabs[data-tabs="creq"] > [data-ctab="headers"]',
         appSelector: '[data-automation-id="composer.tab.headers"]',
       },
       {
         name: 'Response body tab',
-        designSelector: '[data-crtab="body"]',
+        designSelector: '.tabs[data-tabs="cresp"] > [data-crtab="body"]',
         appSelector: '[data-automation-id="composer.response-tab.body"]',
       },
       '201 Created',
@@ -3805,8 +3813,10 @@ export const views = [
       theme,
       rendererNav: 'Composer',
       designState: { view: 'composer', theme, sidebar: 'expanded', overlay: 'composer-import' },
-      designShot: `${theme}/composer/import-confirm.png`,
-      rendererActions: [{ type: 'clickRole', role: 'button', name: 'Import collection' }],
+      rendererActions: [
+        { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+        { type: 'clickRole', role: 'button', name: 'Import collection' },
+      ],
       targets: COMPOSER_IMPORT_TARGETS,
     },
     {
@@ -3815,8 +3825,10 @@ export const views = [
       rendererNav: 'Composer',
       fileOperationDelayMs: 5_000,
       designState: { view: 'composer', theme, sidebar: 'expanded', overlay: 'composer-import-loading' },
-      designShot: `${theme}/composer/import-loading.png`,
-      rendererActions: [{ type: 'clickRole', role: 'button', name: 'Import collection' }],
+      rendererActions: [
+        { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+        { type: 'clickRole', role: 'button', name: 'Import collection' },
+      ],
       targets: [{
         name: 'File busy panel',
         designSelector: '.fileBusyPanel',
@@ -3829,8 +3841,10 @@ export const views = [
       rendererNav: 'Composer',
       fileOperationDelayMs: 5_000,
       designState: { view: 'composer', theme, sidebar: 'expanded', overlay: 'composer-export-loading' },
-      designShot: `${theme}/composer/export-loading.png`,
-      rendererActions: [{ type: 'clickRole', role: 'button', name: 'Export collection' }],
+      rendererActions: [
+        { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+        { type: 'clickRole', role: 'button', name: 'Export collection' },
+      ],
       targets: [{
         name: 'File busy panel',
         designSelector: '.fileBusyPanel',
@@ -3843,7 +3857,6 @@ export const views = [
     theme,
     rendererNav: 'Composer',
     designState: { view: 'composer', theme, sidebar: 'expanded' },
-    designShot: `${theme}/composer/collection-folder-selected.png`,
     designActions: [
       {
         type: 'clickSelector',
@@ -3911,7 +3924,6 @@ export const views = [
       sidebar: 'expanded',
       composerResponseTab: 'headers',
     },
-    designShot: 'light/composer/response-headers.png',
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickRole', role: 'button', name: 'Collapse folder', index: 2 },
@@ -3942,7 +3954,6 @@ export const views = [
     theme,
     rendererNav: 'Settings',
     designState: { view: 'settings', theme, sidebar: 'expanded', settings: 'certificates' },
-    designShot: `${theme}/settings/framed.png`,
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickAutomation', automationId: 'settings.section.certificates' },
@@ -3973,7 +3984,6 @@ export const views = [
     designState: { view: 'settings', theme, sidebar: 'collapsed', settings: 'storage', mitm: 'inactive',
       storageStatus: state === 'unavailable' ? 'unavailable' : 'ready', storageOperation: 'idle',
       storageCleared: state === 'empty', storageConfirming: state === 'confirm' },
-    designShot: `${theme}/settings/${state === 'ready' ? 'storage' : `storage-${state}`}.png`,
     rendererActions: [
       { type: 'clickAutomation', automationId: 'settings.section.storage' },
       ...(state === 'confirm' ? [{ type: 'clickAutomation', automationId: 'settings.storage.clear' }] : []),
@@ -4009,7 +4019,6 @@ export const views = [
       sidebar: 'expanded',
       settings: 'proxy',
     },
-    designShot: 'light/settings/proxy.png',
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickText', text: 'Proxy & Listener' },
@@ -4026,7 +4035,6 @@ export const views = [
       sidebar: 'expanded',
       settings: 'proxy',
     },
-    designShot: 'dark/settings/proxy.png',
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickText', text: 'Proxy & Listener' },
@@ -4044,7 +4052,6 @@ export const views = [
       settings: 'app-containers',
       appContainers: 'ready',
     },
-    designShot: `${theme}/settings/app-containers.png`,
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickText', text: 'AppContainer access' },
@@ -4078,8 +4085,8 @@ export const views = [
       'S-1-15-2-1910091885-1573563583-1104941280-2418270861-3411158377-2822700936-2990310272',
       {
         name: 'AppContainer switch',
-        designSelector: '[data-app-container-toggle]',
-        appSelector: '[role="switch"]',
+        designSelector: '[data-app-container-toggle][data-container-name="Microsoft AAD Broker Plugin"]',
+        appSelector: '[data-exempt]:has(b:text-is("Microsoft AAD Broker Plugin")) [role="switch"]',
         styleKeys: ['backgroundColor', 'borderRadius', 'opacity'],
       },
       'Disable all',
@@ -4100,7 +4107,6 @@ export const views = [
         appContainers: 'ready',
         overlay: 'app-container-enable-all',
       },
-      designShot: `${theme}/settings/app-container-enable-all.png`,
       rendererActions: [
         { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
         { type: 'clickText', text: 'AppContainer access' },
@@ -4126,7 +4132,6 @@ export const views = [
         appContainers: 'ready',
         overlay: 'app-container-disable-all',
       },
-      designShot: `${theme}/settings/app-container-disable-all.png`,
       rendererActions: [
         { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
         { type: 'clickText', text: 'AppContainer access' },
@@ -4158,7 +4163,6 @@ export const views = [
       tlsPatterns: TLS_COMPATIBILITY_EVENTS.map((event) => event.host),
       tlsCompatibility: '',
     },
-    designShot: 'light/tls-compatibility/after-add.png',
     rendererActions: [
       { type: 'clickText', text: 'TLS passthrough' },
       { type: 'emitTlsCompatibility', events: TLS_COMPATIBILITY_EVENTS },
@@ -4166,11 +4170,11 @@ export const views = [
     ],
     targets: [
       'Passthrough host patterns',
-      {
-        name: 'TLS host rows',
-        designSelector: '[data-tls-host-pattern]',
-        appSelector: '[data-parity^="tls-host-"]',
-      },
+      ...TLS_COMPATIBILITY_EVENTS.map(({ host }) => ({
+        name: `TLS host ${host}`,
+        designSelector: `[data-tls-host-pattern="${host}"]`,
+        appSelector: `[data-parity="tls-host-${host}"]`,
+      })),
     ],
   },
   ...['light', 'dark'].map((theme) => ({
@@ -4186,7 +4190,6 @@ export const views = [
       tlsPatterns: ['*.wvd.microsoft.com'],
       tlsCompatibility: '',
     },
-    designShot: `${theme}/settings/tls-passthrough.png`,
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickText', text: 'TLS passthrough' },
@@ -4225,7 +4228,6 @@ export const views = [
       tlsCompatibility: 'closed',
       tlsCompatibilityHosts: TLS_COMPATIBILITY_EVENTS.map((event) => event.host),
     },
-    designShot: `${theme}/tls-compatibility/dialog.png`,
     targets: [
       'TLS interception may be incompatible',
       'The following hosts failed during intercepted TLS handshakes. Each host is preselected on its own; pick a wildcard instead if the whole domain should skip interception.',
@@ -4235,20 +4237,20 @@ export const views = [
       },
       {
         name: 'TLS compatibility hostname',
-        designSelector: '.tls-compatibility-copy > code',
+        designSelector: '[data-parity="tls-compatibility-host-rdweb.wvd.microsoft.com"] .tls-compatibility-copy > code',
         appSelector: '[data-parity="tls-compatibility-host-rdweb.wvd.microsoft.com"] > div > code',
         styleKeys: ['fontSize', 'fontWeight', 'lineHeight'],
       },
       {
         name: 'TLS compatibility reason',
-        designSelector: '.tls-compatibility-copy > span',
+        designSelector: '[data-parity="tls-compatibility-host-rdweb.wvd.microsoft.com"] .tls-compatibility-copy > span',
         appSelector: '[data-parity="tls-compatibility-host-rdweb.wvd.microsoft.com"] > div > span',
         styleKeys: ['fontSize', 'fontWeight', 'lineHeight'],
       },
       {
         name: 'TLS compatibility pattern',
-        designSelector: '.tls-pattern-choice',
-        appSelector: '[data-parity="tls-compatibility-host-rdweb.wvd.microsoft.com"] label',
+        designSelector: '[data-parity="tls-compatibility-host-rdweb.wvd.microsoft.com"] label:has-text("rdweb.wvd.microsoft.com")',
+        appSelector: '[data-parity="tls-compatibility-host-rdweb.wvd.microsoft.com"] label:has-text("rdweb.wvd.microsoft.com")',
         styleKeys: ['gap', 'alignItems'],
       },
       {
@@ -4277,7 +4279,6 @@ export const views = [
         settings: 'updates',
         update: updateState,
       },
-      designShot: `${theme}/settings/updates-${updateState}.png`,
       rendererActions: [
         { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
         { type: 'clickText', text: 'Updates' },
@@ -4287,7 +4288,12 @@ export const views = [
         'Version',
         'Delivery',
         'Current application',
-        '0.1.0',
+        {
+          name: 'Current application version',
+          designSelector: '.srow:has(> .scap > b:text-is("Current application")) > .sctl > span:text-is("0.1.0")',
+          appSelector: 'div:has(> div > b:text-is("Current application")) > div > span:text-is("0.1.0")',
+          compareText: true,
+        },
         {
           name: 'Latest GitHub release',
           designSelector: 'b:text-is("Latest GitHub release")',
@@ -4358,7 +4364,6 @@ export const views = [
       detail: 'closed',
       breakpoints: 'off',
     },
-    designShot: 'light/capture/breakpoints-off.png',
     targets: [
       {
         name: 'Breakpoint toolbar button',
@@ -4387,7 +4392,6 @@ export const views = [
       breakpoints: 'on',
       breakpointPanel: 'open',
     },
-    designShot: 'light/capture/breakpoint-manager.png',
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Breakpoint manager' },
     ],
@@ -4399,7 +4403,11 @@ export const views = [
       'Breakpoint rules',
       'Checkout endpoint',
       'Token API',
-      'View rule',
+      {
+        name: 'View Checkout endpoint rule',
+        designSelector: '[data-manager-rule="checkout"] .break-rule-open',
+        appSelector: 'div:has(> div > b:text-is("Checkout endpoint")) > button:has-text("View rule")',
+      },
     ],
   },
   ...['light', 'dark'].map((theme) => ({
@@ -4415,7 +4423,6 @@ export const views = [
       detail: 'closed',
       breakpointMessage: 'created',
     },
-    designShot: `${theme}/capture/breakpoint-created-message.png`,
     designActions: [
       { type: 'hoverText', text: 'Breakpoint created' },
     ],
@@ -4448,7 +4455,6 @@ export const views = [
     id: 'breakpoint-created-message-undo',
     theme: 'light',
     designState: { view: 'rules', theme: 'light', sidebar: 'expanded' },
-    designShot: 'light/rules/framed.png',
     rendererActions: [
       { type: 'contextMenuText', text: 'GET', index: 0 },
       { type: 'hoverSelector', selector: '.ant-dropdown-menu-submenu-title' },
@@ -4466,21 +4472,17 @@ export const views = [
     theme: 'light',
     rendererNav: 'Diagnostics',
     designState: { view: 'diagnostics', theme: 'light', sidebar: 'expanded' },
-    designShot: 'light/diagnostics/framed.png',
     rendererActions: [{ type: 'clickRole', role: 'button', name: 'Toggle sidebar' }],
     targets: [
       'core · core:echo',
       'main · rules:apply',
-      'Process',
-      'Level',
-      'Outcome',
+      ...DIAGNOSTICS_FILTER_TARGETS,
     ],
   },
   {
     id: 'shell-v2-capture-dark',
     theme: 'dark',
     designState: { view: 'capture', theme: 'dark', sidebar: 'expanded', detail: 'open' },
-    designShot: 'dark/capture/inspector-sidebar-expanded.png',
     rendererActions: [
       { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
       { type: 'clickText', text: '/user' },
@@ -4495,7 +4497,6 @@ export const views = [
     id: 'shell-v2-capture-collapsed',
     theme: 'light',
     designState: { view: 'capture', theme: 'light', sidebar: 'collapsed', detail: 'open' },
-    designShot: 'light/capture/inspector-sidebar-collapsed.png',
     rendererActions: [
       { type: 'clickText', text: '/user' },
     ],
@@ -4509,7 +4510,7 @@ export const views = [
     ['rules', 'Rules & Map', 'Rules', ['Rule set applied', 'Stub /v1/user']],
     ['composer', 'Composer', 'Composer', ['Protocol', 'Send']],
     ['settings', 'Settings', 'Settings', ['Root Certificate Authority']],
-    ['diagnostics', 'Diagnostics', 'Diagnostics', ['Process', 'Level', 'Outcome']],
+    ['diagnostics', 'Diagnostics', 'Diagnostics', DIAGNOSTICS_FILTER_TARGETS],
   ].map(([feature, rendererNav, title, featureTargets]) => ({
     id: `shell-v2-${feature}-dark`,
     theme: 'dark',
@@ -4521,9 +4522,6 @@ export const views = [
       ...(feature === 'settings' ? { settings: 'certificates' } : {}),
       ...(feature === 'rules' ? { ruleList: 'tree-url' } : {}),
     },
-    designShot: feature === 'rules'
-      ? 'dark/rules/tree-url.png'
-      : `dark/${feature}/framed.png`,
     designActions: feature === 'composer'
       ? [
           { type: 'clickSelector', selector: '.ccol [data-grp="github-repos"] .citem:has-text("Create repo")' },
@@ -4531,7 +4529,7 @@ export const views = [
         ]
       : [],
     rendererActions: feature === 'rules'
-      ? EXPAND_RULE_TREE_ACTIONS
+      ? [{ type: 'clickRole', role: 'button', name: 'Toggle sidebar' }, ...EXPAND_RULE_TREE_ACTIONS]
       : feature === 'composer'
         ? [
             { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
@@ -4579,7 +4577,7 @@ export const views = [
             },
             {
               name: 'Response body tab',
-              designSelector: '[data-crtab="body"]',
+              designSelector: '.tabs[data-tabs="cresp"] > [data-crtab="body"]',
               appSelector: '[data-automation-id="composer.response-tab.body"]',
             },
             '201 Created',

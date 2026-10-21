@@ -105,7 +105,7 @@ describe('WebSocket payload title', () => {
     ['server-to-client', 1, 'Received text'],
     ['client-to-server', 2, 'Sent binary'],
     ['server-to-client', 2, 'Received binary'],
-  ] as const)('renders %s opcode %s as %s', async (direction, opcode, title) => {
+  ] as const)('preserves the %s opcode %s title %s', async (direction, opcode, title) => {
     const instance = i18next.createInstance();
     await instance.init({
       resources,
@@ -124,6 +124,7 @@ describe('WebSocket payload title', () => {
       }),
     ));
     expect(markup).toContain(`<b>${title}</b>`);
+    expect(markup).toContain('<span>4 B · message 1</span>');
     expect(markup).not.toContain('capture.text');
   });
 });

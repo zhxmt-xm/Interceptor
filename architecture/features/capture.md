@@ -310,6 +310,7 @@ Playground手动入口：Capture Lab的HTTP分组提供`h2-error-goaway-client`�
 
 - WebSocket加载、空结果和错误信息使用116px最小高度的flex居中区域、12px字体和`--text-3`，长信息换行。只有控制帧时，数据消息数为0。
 - WebSocket消息行使用38px高度、五列、10.5px mono和自然行高；gRPC消息行同为38px高度、10.5px字号及`line-height: normal`。
+- gRPC的1px底边保留在虚拟行外层，消息按钮自身高38px；Capture工具栏也保留原底边。WebSocket暂停编辑器的“原消息保持不变”提示保留17px行高，不为消除设计微差改变原App排版。
 - WebSocket载荷由外层消息行展开/收起，保留方向、Text/Binary类型、大小、消息序号和Copy元数据行；内部不再增加独立折叠标题。
 - `BodyViewer`仅在`compact && !fullscreen`时让`JsonTreeView`按内容定高，普通和全屏Tree填充容器；Tree行高22px，长内容可滚到末行。
 - Tree Copy与Raw使用原文，Pretty使用格式化JSON，Hex Copy生成完整16字节dump。Hex显示按容器及实际`1ch`排布并保留滚动；全屏仍提供MIME与Save。
@@ -366,6 +367,7 @@ Playground手动入口：Capture Lab的HTTP分组提供`h2-error-goaway-client`�
 #### Compact正文高度
 
 - Compact CodeViewer与设计Monaco的box/message使用`getContentHeight()`加宿主实际上下边框，不重复预留横向滚动条空间；字号12px、行高20px、上下padding13px。
+- 初次挂载仍同步确定高度；后续内容尺寸与ResizeObserver通知合并到下一动画帧再改写宿主高度和调用Monaco layout，避免在观察器交付中再次触发布局。卸载取消未执行的帧；限高、用户拖拽恢复和字体/换行后的重算规则不变。
 - PayloadEditor的Original body和WebSocket暂停容器按内容定高，不额外增加底部预留或固定最小高度；普通查看器仍填充容器。
 
 ##### 普通消息正文限高与拖拽

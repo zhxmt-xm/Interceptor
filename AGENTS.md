@@ -46,7 +46,7 @@
 | [design-vite/README.md](design-vite/README.md) | 修改设计稿、添加设计场景或生成设计截图时 |
 | [apps/desktop/tests/e2e-workflow-tests/README.md](apps/desktop/tests/e2e-workflow-tests/README.md)、[规格索引](apps/desktop/tests/e2e-workflow-tests/docs/README.md)及对应功能规格 | 修改用户流程，准备、执行或验收真实 E2E |
 | [apps/desktop/tests/packaged-smoke/README.md](apps/desktop/tests/packaged-smoke/README.md) | 修改或执行最终打包产物的启动、安全、资源与退出验证时 |
-| [apps/desktop/tests/visual-parity/README.md](apps/desktop/tests/visual-parity/README.md) | 验证或修复产品 UI 与设计稿的几何、字体和像素差异时 |
+| [apps/desktop/tests/visual-parity/README.md](apps/desktop/tests/visual-parity/README.md) | 验证或修复产品 UI 与设计稿的元素几何、样式和状态差异时 |
 | 所属 module 的 README | 修改 Core 或 package 中的模块职责、entry point、依赖或内部结构时 |
 | [apps/playground/README.md](apps/playground/README.md) | 开发 Playground，或进行协议流量与 MCP 人工验收时 |
 | [README.md](README.md) | 配置开发环境、安装依赖、运行或调试应用、查找常用命令时 |
@@ -210,9 +210,10 @@
 	- 确认时用清单列出每处改动的页面、组件、具体位置和内容，并提供对应的改动前后截图；新设计提供拟议效果截图。
 	- 未确认前只做方案预览，不改产品 UI 或正式设计基准。
 - 创建、修改、评审 UI 设计时，使用 `.github/skills/ui-design-mockup/`。
-	- 设计变化时同步设计稿和 `shots/`。
+	- 设计变化时同步设计源码；评审截图作为本地产物保留，不维护提交到 Git 的全量截图基准。
 - 实现现有设计或修复还原差异时，使用 `.github/skills/ui-parity-check/`。
-	- 设计未变，不修改设计稿或基准截图，更不能改基准掩盖产品偏差。
+	- 设计未变，不修改设计源码，更不能改设计掩盖产品偏差。
+	- parity 由独立命令严格比较声明的元素数据，不依赖 Agent，不读取或生成截图；不使用容差或整体偏移补偿。报告写入忽略目录，缺失、歧义、测量不稳定和执行错误不能算通过。
 	- 布局、间距、尺寸、颜色、字体、圆角和状态按设计一比一实现，不因工具限制接受近似。
 - 新设计先检查 Ant Design v6：官方 props → ConfigProvider tokens → `classNames`/`styles`。
 	- Ant Design 无法精确匹配时，自写组件和独立 CSS Modules；不修改 `.ant-*` 私有 DOM。
@@ -300,7 +301,7 @@
 - Handover 开头写跟踪的 commit hash。
 - 所有未完成任务放在一份平铺列表，标明待实现、进行中、待验证、待确认、待验收或 `blocked`。
 	- 不另拆“已完成”“worktree”“主任务”“下一动作”等任务列表。
-	- 开始和推进 item 时，及时更新当前步骤、具体文件、已验证范围、剩余验证和阻塞，不能只把进度写进 feature 文档或 HTML。
+	- 开始和推进 item 时，及时更新当前步骤、具体文件、已验证范围、剩余验证和阻塞，不能只把进度写进 feature 文档。
 	- 实现和验证的小步骤留在所属 item 下，不临时拆成新的 item；整个 item 完成后删除该条，证据保留在验证章节和对应 feature 文档。
 - 运行约束、验证命令、维护说明单独成节，不写成待办。
 - 重排文档时保留已有事实、证据、命令、风险和维护说明。
@@ -330,6 +331,7 @@
 ### 提交边界
 
 - 提交须有用户授权，不擅自创建分支。
+	- 已提交记录的更正和历史整理按用户明确授权执行，不擅自改写已推送历史。
 - 以用户已授权的 Handover item 为提交边界，一个 item 一个 commit，不混入其他工作项。
 	- 功能约定、前置测试证据、实现、Green、验收证据和完成状态一起提交。
 	- 所需实现、测试和验收完成后再提交；只有用户明确要求时才保存中间进度。
@@ -337,41 +339,6 @@
 	- 确需拆分或调整已授权 item 时，先说明边界并取得用户明确确认；不夹带无关清理、改名或格式化，不拆散同一功能的实现和必需测试。
 - 每次 commit 成功后立即尝试 push 当前分支；用户要求暂缓推送时除外。
 	- push 失败时记录原因和恢复命令，再继续其他可执行的已授权 item，不以网络失败停止整轮任务。
-
-### Commit 改动说明
-
-- 每个 item 只保留一份 `commit-changes/YYYYMMDDHHmm_类别_feature_简述.html`，不按子步骤或单次修复新增 HTML，不创建索引或图片目录。
-	- 时间使用本地时区、精确到分钟，例如 `202609101748_ui_breakpoints_header-effect.html`；同名冲突追加 `_02`，生成后不随提交时间改名。
-	- CSS 和截图全部内嵌，单个 HTML 可独立离线打开；不外联图片，不含凭据或敏感数据。
-	- 报告与该 item 的代码同一次提交；后续修订继续更新同一份 HTML，不为报告另建 commit，不要求报告写本次 commit ID。已提交记录的更正和历史整理按用户明确授权执行，不擅自改写已推送历史。
-- HTML 只说明 change：位置、改前、改后、原因与影响，以及必要的前后截图。
-	- 只列实际涉及的大类，测试代码的改动随所属功能归类。
-	- 验证命令、unit/integration/E2E/parity 结果、证据、遗留、阻塞和任务状态放 Handover，详细证据链接对应 feature 文档；HTML 不重复这些内容。
-
-| 大类 | 范围 |
-| --- | --- |
-| UI (`ui`) | 设计稿、Renderer、页面、组件和交互 |
-| Main (`main`) | Electron Main、Preload、IPC 和窗口 |
-| Core (`core`) | 代理、协议、worker、存储和数据面 |
-| Agent/MCP (`agent-mcp`) | Agent、模型、Tool、MCP 与授权 |
-| 工程与文档 (`docs`) | 构建、依赖、测试设施、脚本、CI 和文档 |
-
-文件名使用主要大类的括号内标识；`feature` 和简述用简短英文小写，多词用 `-` 连接。
-
-- UI 改动写清页面、组件、具体位置，直接展示同主题、尺寸和状态的前后截图；标明设计预览或产品截图。
-	- 所有对比直接展开，不使用 `details/summary`、手风琴或其他折叠控件。
-	- 在前后图的对应位置用红框标出变化，并配简短的差异说明；不能只放两张图让读者自行寻找。
-	- 红框可用报告内的标注层或派生标注图，不修改原始验收截图、设计基准或产品画面；截图没有可见像素变化时如实说明实际变化的布局数值，不伪造视觉差异。
-	- 新设计仍需先确认。缺改前截图时如实说明，不伪造；纯文档改动不放无关 UI 图。
-- 报告打开检查图片、红框位置、全部展开状态和宽窄屏排版；失败、受阻、跳过和未运行的验证在 Handover 分别说明，不改写历史结果。
-- 按以下简短模板编写，不要求 JSON Schema 或额外机器数据：
-
-```text
-提交：标题、时间
-摘要：这次解决了什么
-改动：按大类列位置、改前、改后、原因与影响
-UI 对比：前后实际截图，标明产品或设计预览；全部展开、红框定位变化、简短说明（有 UI 改动时）
-```
 
 ### 执行任务清单
 

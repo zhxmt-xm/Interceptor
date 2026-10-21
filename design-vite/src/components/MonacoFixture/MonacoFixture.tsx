@@ -72,6 +72,7 @@ export function MonacoFixture({ language, preset, resizable = false, source, ...
     const unregister = registerMonacoFixture(editorInstance);
     let contentSizeDisposable: monaco.IDisposable | undefined;
     let viewportObserver: ResizeObserver | undefined;
+    let resizeFrame: number | undefined;
     if (preset === 'box' || preset === 'message') {
       let appliedHeight: number | undefined;
       let requestedHeight: number | undefined;
@@ -114,9 +115,16 @@ export function MonacoFixture({ language, preset, resizable = false, source, ...
         appliedHeight = height;
         editorInstance.layout();
       };
-      contentSizeDisposable = editorInstance.onDidContentSizeChange(resize);
+      const scheduleResize = (): void => {
+        if (resizeFrame !== undefined) return;
+        resizeFrame = requestAnimationFrame(() => {
+          resizeFrame = undefined;
+          resize();
+        });
+      };
+      contentSizeDisposable = editorInstance.onDidContentSizeChange(scheduleResize);
       if (resizable) {
-        viewportObserver = new ResizeObserver(resize);
+        viewportObserver = new ResizeObserver(scheduleResize);
         viewportObserver.observe(host);
       }
       resize();
@@ -125,6 +133,7 @@ export function MonacoFixture({ language, preset, resizable = false, source, ...
       unregister();
       viewportObserver?.disconnect();
       contentSizeDisposable?.dispose();
+      if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
       if (resizable) {
         host.style.minHeight = '';
         host.style.maxHeight = '';

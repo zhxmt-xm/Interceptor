@@ -30,7 +30,7 @@ description: 'Create and iterate high-fidelity UI design mockups for the Interce
 2. **样式写在同名 `*.module.css`**：`vite.config.ts` 配了 `generateScopedName: '[local]'` 以保留语义类名，所以**全局 class 仍可能串扰**——新增类名前先 grep 是否撞名。令牌与 reset 在 `src/styles/`。
 3. **状态全部经 typed `DesignState`**：人点击 UI 与 `window.__setState(patch)` 驱动同一套状态，不允许只为截图加一条假路径。新增场景就往 `DesignState` 加字段，并在 `state/utils.ts` 的 `INITIAL_DESIGN_STATE` 给默认值。
 4. **图标一律用 `lucide-react`**：经 `src/fixtures/FixtureIcon.tsx` 的 `ICON_BY_ID` 映射。不手写 SVG sprite、不内联自定义 icon。lucide 没有完全对应的图形时，选语义最近的 lucide 图标，不要自己画。
-5. **生成**：先用`node design-vite/shoot.mjs --out-dir="<独立目录>"`生成候选，不直接清理正式`shots/`。两趟——framed（唯一 `1600×900` 应用态）+ full（注入 CSS 展开所有滚动区，把隐藏内容也截全）。初始化及重载必须确认Inter/JetBrains Mono各字重的FontFace实际加载，不能只等待`document.fonts.ready`；字体失败停止生成，不保存fallback基准。截图覆盖每个 feature × 浅/深 + 关键折叠 + 当前 overlay。比较时用`compare-shots.mjs <基准目录> --current-dir="<候选目录>" --out-dir="<独立差异目录>"`，评审后再同步正式图。主题/语言 switcher 场景另由 `node design-vite/shoot-scenes.mjs` 生成。
+5. **生成**：用`node design-vite/shoot.mjs --out-dir="<独立目录>"`按本次受影响场景生成评审图，不清理历史证据目录。两趟——framed（唯一`1600×900`应用态）+ full（注入CSS展开滚动区）。初始化及重载确认Inter/JetBrains Mono各字重的FontFace实际加载，字体失败停止，不用fallback冒充确认效果。按需使用`compare-shots.mjs <原评审目录> --current-dir="<候选目录>" --out-dir="<独立差异目录>"`；主题/语言switcher由`shoot-scenes.mjs`生成。PNG及差异图只保留在被忽略的本地目录，评审后同步设计源码，不提交全量截图。README的少量展示图独立维护，不是parity基准。
 6. **评审**：用 `view_image` 逐张查看，按用户反馈改组件后重跑，直到定稿。
 
 ## 关键陷阱（务必遵守，均已踩过）
@@ -44,7 +44,7 @@ description: 'Create and iterate high-fidelity UI design mockups for the Interce
 - **CSS Grid 的 `1fr` 轨道默认 `min-width:auto`，会被 `nowrap` 文本（host/URL）撑破导致整页横向溢出**。所有可能被撑破的 `1fr` 写成 `minmax(0,1fr)`；容器加 `overflow:hidden` 兜底。
 - **VS Code 内置浏览器的 page 句柄频繁失效**（`Page ... not found`）。→ 截图走**终端脚本**，用 `chromium.launch({ channel: 'msedge' })`（系统 Edge，免下载），比 `open_browser_page` + `run_playwright_code` 稳。
 - 字体走 Google Fonts CDN（`Inter` + `JetBrains Mono`）。**不要换成 `@fontsource-variable` 的可变字体**，字重渲染与 CDN 静态字重对不上。
-- **改完要验证有没有改坏别的**：改动前把 `design-vite/shots/` 另存一份，改完重出后 `node design-vite/tools/compare-shots.mjs <另存目录>`。百分比会骗人（侧栏图标全丢时只报约 1%），必须看 `shots-diff/` 里的差异图。
+- **改完要验证有没有改坏别的**：按受影响场景检查设计交互，必要时用本轮前后评审图手工比较；百分比不能替代具体差异检查。本地旧图、预览图与差异图不进入Git。产品还原使用独立的纯数据parity，不依赖这些图，也不要求Agent参与运行。
 
 ## 参考
 

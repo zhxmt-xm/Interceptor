@@ -83,7 +83,7 @@ npm start
 - Unit/Integration测试先构建Core，再以`--no-file-parallelism`运行所选范围；E2E先选择普通验收或逐步截图，再选功能/workflow，自动prepare，不再追问构建方式。截图模式仍执行原业务断言，自动新建`apps/desktop/test-results/workflow-screenshots/<run>/`并输出实际路径；普通测试不清理该独立目录。
 - 不提供Guidebook专用workflow、制作或导入菜单。步骤图只是原E2E的可选产物，不绑定Homepage；采用截图作为文档素材前仍须审核隐私、版本和步骤内容。
 - Packaged smoke自动打包后运行；Artifact audit先打包再审计资源，不启动Desktop。不要与其他构建、开发实例或依赖产物的测试并行。
-- Parity只选择现有视图，保留其主题、尺寸和阈值，不修改设计基准。Watch、Browser专项、截图/图片对比、报告查看、单独Core/native构建等低频操作继续使用下文原始命令，不占用常用菜单。
+- Parity只选择现有视图，自动准备两个页面、采集声明元素、严格逐项比较并生成报告；无需Agent、模型凭据或先运行截图命令。保留主题与尺寸，不修改设计源码来掩盖差异；退出码0/1/2分别表示通过、差异和执行错误。报告在`apps/desktop/test-results/visual-parity/`，不进入Git。Watch、Browser专项、手工设计截图/图片对比、报告查看、单独Core/native构建等低频操作继续使用下文原始命令。
 - 原生启动和打包只在相应平台可选。启动App或真实验收前会提示系统代理、证书授权和正常退出要求；向导不替代系统授权或恢复检查。
 - Release调用现有`npm run release`，不复制发版逻辑；需要已安装并登录`gh`。启动CI前确认发版计划，CI及完整性检查通过后自动Publish，不再二次询问。
 - 原始命令继续保留，CI与非交互环境直接调用它们；也可直接运行`npm run release`进入同一向导。
@@ -205,7 +205,7 @@ npm run compare --workspace @interceptor/design-vite -- $baselineDir capture
 **注意**
 
 - 截图和交互测试使用系统 Edge，无需额外安装 Playwright 浏览器。
-- 截图会更新 `design-vite/shots/`，仅在设计发生变化时运行；不要为修复产品还原偏差而修改基准。
+- 手工截图输出到被Git忽略的`design-vite/shots/`或指定目录，用于设计评审，不是parity输入；不提交全量截图，不为修复产品还原偏差而修改设计源码。
 - 组件与 token 以 [设计系统](../design-vite/design-system.md) 为准，截图输出与完整规则见 [设计稿指南](../design-vite/README.md)。
 
 <br>
@@ -376,7 +376,7 @@ node apps/desktop/tests/visual-parity/parity.mjs
 
 - 功能 UI 改动：运行受影响的视图、主题与状态。
 - 共享外壳、全局样式或 design token 改动：运行全量。
-- 该套件使用 fake Preload，只验证几何、字体和像素，不能替代真实 E2E。
+- 该套件使用fake Preload和正常UI操作，严格比较声明元素的几何、样式、文本和状态，不采集图片；不能证明所有绘制内容一致，也不能替代真实E2E。
 
 定向参数见 [parity 指南](../apps/desktop/tests/visual-parity/README.md)，全部测试层级与门禁见 [测试架构](platform/testing.md)。
 

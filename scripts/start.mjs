@@ -172,7 +172,11 @@ async function chooseParity() {
   return {
     title: `Parity · ${view === all ? '全部视图' : view}`,
     commands: [nodeCommand('apps/desktop/tests/visual-parity/parity.mjs', view === all ? [] : [`--view=${view}`])],
-    notices: ['使用已有场景、主题和尺寸，不修改设计基准。', '只验证视觉还原，不等同于真实 E2E。'],
+    notices: [
+      '自动准备设计与Renderer页面并严格比较元素数据，不需要Agent或截图。',
+      '使用已有场景、主题和尺寸；差异或执行错误均非零退出，不等同于真实E2E。',
+      '结果保存在apps/desktop/test-results/visual-parity/的JSON与Markdown报告。',
+    ],
   };
 }
 

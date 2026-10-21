@@ -1,686 +1,257 @@
-# Desktop Visual Parity
+# Desktop Data Parity
 
-本目录包含 Interceptor Desktop Renderer 的设计一致性验证工具。它把真实 React Renderer 与 `design-vite/` 设计 SPA 驱动到同一状态，生成截图、像素差异图和逐元素几何报告，用于定位布局、尺寸、字体和颜色偏差。
+独立运行的设计还原检查：Playwright 打开设计 SPA 和真实 React Renderer，按场景配置采集元素数据，由 Node 逐项严格比较并生成报告。
 
-Parity 只负责视觉一致性，不替代行为、协议或运行时测试。
+- 不需要 Agent、模型凭据或外部 MCP Host。Agent 可以读取报告，但不参与执行或判定。
+- 不读取设计截图，不生成 Renderer 截图，不运行图片比较。
+- 只验证声明的目标和字段，不代表整页绘制内容、原生窗口或业务 E2E 已通过。
+- 使用前阅读 [ui-parity-check](../../../../.github/skills/ui-parity-check/SKILL.md)。设计方案制作仍使用 [ui-design-mockup](../../../../.github/skills/ui-design-mockup/SKILL.md)。
 
-## 配套 Skills
+## 入口与运行前提
 
-开始创建、修改或排查 parity 场景前，Agent 必须先读取：
+在仓库根目录的普通终端运行：
 
-```text
-.github/skills/ui-parity-check/SKILL.md
+```sh
+npm start
 ```
 
-`ui-parity-check` Skill 定义：
+选择 `Test → Parity 设计还原检查 → 视图或全部视图 → 确认`。之后页面准备、场景操作、采集、比较、报告和资源退出均由命令完成，不需要先启动两个页面服务或运行截图脚本。
 
-- 何时必须运行 parity；
-- fake Preload + 真实 UI 交互的强制边界；
-- 禁止在业务 Renderer 注入 fixture / DEV setter；
-- 几何与 pixel diff 的收敛流程；
-- 新增场景时的配置约定。
+CI 和其他非交互调用使用同一 runner：
 
-本 README 则记录当前 harness 的具体实现、目录、配置 DSL、fixture 维护和故障排查。两者需要同步：工作流规则变化先更新 Skill，再更新本 README 和 harness。
-
-若任务仍处于设计稿创建或视觉方案探索阶段，应使用：
-
-```text
-.github/skills/ui-design-mockup/SKILL.md
+```sh
+node apps/desktop/tests/visual-parity/parity.mjs
+node apps/desktop/tests/visual-parity/parity.mjs --view=capture,capture-dark
+node apps/desktop/tests/visual-parity/parity.mjs --help
 ```
 
-职责边界：
+- 需要已安装的项目依赖和系统 Microsoft Edge。开发依赖使用 Playwright 和 Vite，不需要 Desktop 的图片比较依赖。
+- Edge 缺失时，按实际平台通过 `npx playwright install msedge` 安装；不能用其他浏览器的结果冒充同一环境。
+- 浏览器使用 headless Edge 和 `--no-proxy-server`，不前置窗口、不操作系统键鼠、不修改宿主代理或证书。
+- 父进程只准备一次Renderer Vite服务`5199`及设计preview，所有批次复用本次服务；浏览器仍按批次隔离。
+- 设计侧由[design-preview.mjs](../../../../design-vite/tools/design-preview.mjs)构建到本次独占临时目录，再启动preview；退出时清理本次目录，不读写共享`design-vite/dist`，避免其他构建替换动态模块。
+- 端口占用时明确失败，不静默换端口，不停止其他任务拥有的进程。
 
-| 阶段 | Skill | 产物 |
-| --- | --- | --- |
-| 设计/改稿 | `ui-design-mockup` | `design-vite/` 与设计 PNG |
-| React 实现后的视觉验收 | `ui-parity-check` | Renderer PNG、diff PNG、`parity-report.md` |
+## 文件与职责
 
-不要用 parity harness 代替设计过程，也不要用设计 SPA 截图代替真实 Renderer 验收。
+| 文件 | 职责 |
+| --- | --- |
+| [parity.mjs](parity.mjs) | 参数校验、页面生命周期、操作、数据采集、比较、分批汇总和报告 |
+| [parity.config.mjs](parity.config.mjs) | 场景、主题、设计状态、Renderer 操作、唯一目标与比较字段 |
+| [report.mjs](report.mjs) | 中文摘要、按文件整理的具体差异与位置；不改变比较或退出判定 |
+| [fake-interceptor.mjs](fake-interceptor.mjs) | 完整 fake Preload API 和可序列化测试数据 |
+| `../../test-results/visual-parity/report.json` | 完整机器可读结果，保留每个场景的覆盖计数与全部异常 |
+| `../../test-results/visual-parity/report.md` | 中文结论、检查范围、相关文件及具体差异；完整原始记录与日志在JSON |
 
-## 目录结构
+报告属于本地生成物，由 `test-results/` 忽略规则排除，不进入 Git。旧截图目录和旧的套件根级报告不再作为输入或输出。
 
-```text
-apps/desktop/tests/visual-parity/
-├─ README.md                # 本文档
-├─ parity.mjs               # Playwright/Vite parity harness
-├─ parity.config.mjs        # 场景、交互和对比元素配置
-├─ fake-interceptor.mjs     # 完整 fake window.interceptor + 测试夹具
-├─ parity-report.md         # 最近一次运行生成的 Markdown 汇总
-└─ renderer-shots/          # Renderer 截图和 pixel diff PNG
-```
-
-设计基准位于：
-
-```text
-design-vite/
-├─ src/                       # Vite + React + CSS Modules 设计稿
-├─ tools/design-preview.mjs   # build + preview，harness 直接调用
-├─ icons/                     # fake Preload 复用的真实应用图标
-└─ shots/<theme>/<feature>/*.png
-```
-
-## 为什么使用 Fake Preload
-
-Renderer 在产品中只能通过 Preload 暴露的 `window.interceptor` 窄 API 获取数据。Parity 必须验证这条真实组件数据路径，不能在业务组件里加入：
-
-- `import.meta.env.DEV` 测试数据分支；
-- parity fixture import；
-- `window.__setView`、`window.__setTheme` 等测试 setter；
-- 只为截图存在的 React state 注入口。
-
-Harness 在 `page.goto()` 之前使用 Playwright `addInitScript` 注入 fake `window.interceptor`。因此 Renderer 启动后仍执行正常的数据加载逻辑：
-
-```mermaid
-sequenceDiagram
-    participant H as parity.mjs
-    participant P as Playwright Page
-    participant F as fake-interceptor.mjs
-    participant R as React Renderer
-    participant D as design-vite
-
-    H->>P: addInitScript(fake interceptor + fixture)
-    H->>P: goto(Vite Renderer)
-    P->>F: 安装 window.interceptor
-    R->>F: querySessions / getRules / readBody / ...
-    F-->>R: 稳定、可序列化测试数据
-    H->>R: 通过真实按钮/输入框建立场景
-    H->>D: window.__setState(designState)
-    H->>P: 截图 + 测量元素
-    H->>H: pixel diff + geometry report
-```
-
-这种边界有三个好处：
-
-1. 业务 Renderer 不知道 parity 的存在。
-2. 测试覆盖正常的 Preload API 使用路径和加载状态。
-3. Fixture、场景和生成产物都留在测试目录，删除 parity 不会影响产品代码。
-
-HTTP断点fixture按真实头部挂起契约设置`bodyAvailable: false`，即使Capture详情已有可读原文，也不能把它当作断点snapshot正文。空Text态仍应显示`Using original`；WebSocket持有完整payload的snapshot继续使用`bodyAvailable: true`。
-
-Tunnel详情的`HTTPS content is encrypted`与请求列表行文案重复；该场景须用显式selector配对详情callout的标题，并按文字范围测量，不能让裸文本匹配退到列表行。只修配对范围，不改变产品、设计基准或几何阈值。
-
-DeepSeek弹窗的`Endpoint`标签显式限定在双方dialog内，避免使用页面级同名文本配对。
-
-Settings协议说明覆盖四主题的Off/Running/Port unavailable，明暗场景继续覆盖Provider与Client弹窗。
-复用设计页时先清理MCP Server/Client/弹窗、Tool搜索与独立开关，再应用当前场景；不能让上一场景的
-Client、筛选或确认遮罩改变下一场景的高度和点击目标。只运行实际parity，不新增截图工具自身的测试。
-
-普通消息高度场景位于`capture-message-*`：四主题gRPC长Text的初始/真实拖矮状态与WebSocket短Pretty；`resizeVertical`通过鼠标拖拽右下角，不改DOM高度。fake Preload的`grpcMessageSource`只替换该fixture的消息字节和相邻envelope偏移，设计source采用文本前缀加JSON，避免合法JSON被产品正常探测为Pretty而与Text设计不一致。不修改产品探测、预览上限或copy语义。已批准默认gRPC Hex/Tree/全屏及Composer继续使用原设计，HTTP正文见下段。
-
-HTTP正文新增`breakpoint-readonly-*`六场景×浅/深：长Original/File/Text、手动格式化、截断、图片超限。`readonlyData: { sample, notice }`经`design-vite/src/fixtures/readonlyBodyData.ts`转为可序列化字节描述，fake Preload在内存构造实际数据，再按正常`readBody`/`pickBreakpointBodyFile`契约返回Uint8Array。总大小、预览长度和truncated由同一真实字节源派生；不以几KiB正文配假MiB长度，不设置产品Store或新增产品参数。Original仍为JSON高亮，File仍plaintext；通过真实点击Original折叠、Text/File、Choose file和受控输入建立状态。`pressLabel`/`typeLabel`仅驱动已有输入控件；`freshDesign`为这些独立流程重建已加载字体的设计页，避免上一场景的折叠状态泄漏。
-
-## 整体架构
+## 执行流程
 
 ```mermaid
 flowchart LR
-    subgraph HARNESS["Visual Parity Harness"]
-      RUNNER["parity.mjs<br/>启动 · 驱动 · 采集 · 报告"]
-      CONFIG["parity.config.mjs<br/>场景 · UI actions · targets"]
-      FAKE["fake-interceptor.mjs<br/>完整 fake Preload API · fixtures"]
-    end
-
-    subgraph DESIGN["Design Side"]
-      DESIGN_SPA["design-vite SPA<br/>window.__setState"]
-      DESIGN_DOM["Design DOM<br/>bounding/style"]
-      DESIGN_PNG["design-vite/shots<br/>基线 PNG"]
-    end
-
-    subgraph RENDERER["Implementation Side"]
-      VITE["Vite Renderer Server"]
-      APP["真实 React Renderer"]
-      APP_DOM["Renderer DOM<br/>bounding/style"]
-      APP_PNG["Renderer Screenshot"]
-    end
-
-    CONFIG --> RUNNER
-    FAKE -->|"addInitScript before goto"| APP
-    RUNNER -->|"__setState"| DESIGN_SPA
-    RUNNER -->|"真实 click/fill/select"| APP
-    VITE --> APP
-    DESIGN_SPA --> DESIGN_DOM
-    APP --> APP_DOM
-    APP --> APP_PNG
-
-    DESIGN_DOM --> GEOMETRY["DOM ↔ DOM<br/>dx/dy/dw/dh + font"]
-    APP_DOM --> GEOMETRY
-    DESIGN_PNG --> PIXELS["PNG ↔ PNG<br/>pixelmatch"]
-    APP_PNG --> PIXELS
-
-    GEOMETRY --> REPORT["parity-report.md"]
-    PIXELS --> REPORT
-    PIXELS --> DIFF["renderer-shots/*-diff.png"]
+  CONFIG["场景配置"] --> RUNNER["Node runner"]
+  RUNNER --> DESIGN["design-vite SPA"]
+  RUNNER --> RENDERER["真实 React Renderer"]
+  FAKE["fake Preload"] --> RENDERER
+  DESIGN --> EXPECTED["声明目标的 DOM 数据"]
+  RENDERER --> ACTUAL["声明目标的 DOM 数据"]
+  EXPECTED --> COMPARE["严格逐项比较"]
+  ACTUAL --> COMPARE
+  COMPARE --> REPORT["JSON / Markdown"]
 ```
 
-Harness 同时运行两条独立但互补的比较管线。它不会把 HTML element 的 bounding box 与 PNG 做比较。
+1. 校验视图、范围、输出路径和目标配置。空选择、未知视图、重复 ID/目标名不能成功。
+2. 启动 Vite、Edge 和设计 preview。没有模型调用，也不启动真实 Electron Main/Core。
+3. 设计侧通过 `window.__setState()` 和 `designActions` 建立状态。
+4. Renderer 在导航前安装 fake `window.interceptor`，正常调用 Preload 契约，再通过导航、点击、填写、选择等 UI 操作建立状态。
+5. 等待字体实际加载和场景操作完成，核对视口、内容画布、主题及配置声明的侧栏状态，再采集声明目标；在两秒内等待相邻帧数据稳定，不与设计值比较来挑选读数。仍不稳定记为`unstable`；测量请求超过五秒、字体任务超过三十秒明确报错。
+6. 比较位置、尺寸、声明样式和状态，记录缺失、歧义、读取错误及全部字段差异。
+7. 关闭本次 BrowserContext、Edge、Vite 和设计 preview，写报告并返回退出码。
 
-## 对比原理
+超过五个视图时按每批五个视图异步运行同一脚本的子进程，限制内存峰值。父进程继续提供两个页面服务，不能同步阻塞等待子进程而使HTTP服务停顿。每批开始和结束都有明确进度；不重复构建设计稿或重启Vite。Renderer每个场景使用独立BrowserContext；设计页按现有重置规则复用，遇到场景错误则为下一场景重新准备设计页。
 
-### 1. 图片对图片：PNG ↔ PNG
+普通数据差异不会中止余下可运行批次。初始化、批次协议或进程失败导致无法继续时，报告保留已完成部分并列出 `unrun`，不能算通过。父进程使用本次唯一临时结果文件，不复用历史结果。
 
-输入：
+## 比较契约
 
-```text
-Renderer 实际截图
-        vs
-design-vite/shots/<theme>/<feature>/<variant>.png
-```
+### 相同逻辑元素
 
-Harness 使用 `pixelmatch` 逐像素比较：
+- 不比较整棵 DOM 树，不要求两边组件库、class 或内部层级一致。
+- 字符串目标先查精确文本；设计侧确定 button/text 语义，Renderer 测量相同语义。没有文字候选时才按适用的精确 button role 定位。
+- 候选 DOM 节点先去重，再要求唯一匹配。重复可见元素产生 `ambiguous`，不选择第一个掩盖歧义。
+- 重复按钮、列表行或容器必须在配置中明确范围。Capture 列表的指定字段定位到实际选中的请求行，不把任意一行当成该行。
+- Header name/value目标明确检查可见编辑列表的第一行，名称与selector都声明这一语义，不是采集器遇到歧义后自动选第一项。模型、更新、聊天菜单、断点管理器、Composer页签等按对应容器或控件标识定位；TLS host集合按三个具体host逐行检查。
+- 默认目标应存在且可见；隐藏或不存在的预期必须显式声明。
+- 空布局锚点可以声明 `visible: false`，仍按其实际布局盒测量；不能为了绕过真实 missing 临时把目标改成隐藏。
 
-- 输出不同像素数量和百分比；
-- 生成紫色差异图 `renderer-shots/<view>-<theme>-diff.png`；
-- 覆盖整个视图，包括未列入 targets 的背景、边框、阴影和内容。
+### 数据与精度
 
-Pixel diff 的优势是覆盖全面；限制是会受到以下因素影响：
-
-- 字体抗锯齿；
-- 操作系统字体 metrics；
-- subpixel rendering；
-- Design SPA 的 1px 画布边框；
-- GPU/SwiftShader；
-- 阴影和半透明混合。
-
-因此 pixel diff 是全局诊断信号，不单独作为严格门禁。
-
-### 2. 元素对元素：Design DOM ↔ Renderer DOM
-
-Harness 同时打开两个实时页面：
-
-```text
-Design SPA DOM
-       vs
-React Renderer DOM
-```
-
-对 `parity.config.mjs` 中每个 target，在两边分别调用：
-
-```js
-element.getBoundingClientRect()
-getComputedStyle(element)
-```
-
-比较字段：
-
-| 字段 | 含义 |
+| 类别 | 内容 |
 | --- | --- |
-| `dx` | 元素相对页面根节点的横向位置差 |
-| `dy` | 元素相对页面根节点的纵向位置差 |
-| `dw` | 元素宽度差 |
-| `dh` | 元素高度差 |
-| `fontSize` | 字号差异 |
-| `fontWeight` | 字重差异 |
-| `color` | 文本颜色差异 |
+| `geometry` | 相对内容画布根的 `x/y/width/height`，单位为 CSS px |
+| `style` | 默认 `fontFamily/fontSize/fontWeight/letterSpacing/color`，或目标指定的 `styleKeys` |
+| `state` | `present/visible`，以及明确声明的 DOM/ARIA 状态或双方状态 selector |
+| `text` | 声明 `compareText` 的文本内容 |
+| `scroll` | 声明滚动检查的 `clientWidth/clientHeight/scrollWidth/scrollHeight/scrollLeft/scrollTop` |
 
-这里的 bounding box 是 **DOM 与 DOM** 比较，不与图片比较。Design PNG 只参与上一条 pixel pipeline。
+- 使用浏览器实际布局和 `getComputedStyle()`，不比较 CSS 源代码表达形式。
+- 正常验收两侧浏览器视口和内容画布都是`1600×900`；设计页去除画布外评审留白及额外卡片border/radius/shadow，画布从视口原点开始，不再额外扩大设计浏览器视口。两边坐标各自相对内容画布原点。
+- 不计算或扣除全部目标的中位偏移，不按误差自动移动页面。
+- 场景可用`captureSessionIds`限定fake Preload的初始请求及录制计数；未设置时保持完整fixture。`capture-request-menu-dismiss`使用5条请求匹配设计Application计数，保留POST菜单关闭操作，不通过修改按钮宽度消除数据差异。
+- 原始数值严格相等才通过。没有 1px 容差或统一 epsilon，`0.25px` 等亚像素差异也失败。
+- 显示和 JSON 保存不把非零小数差异四舍五入成 `0.0`。
+- `lineHeight` 等字段只有配置明确声明时才比较，不虚构 `normal` 对应的 px。
+- 不导出全部 CSS。布局容器、控件边框、背景、阴影等按相应目标的职责显式配置。
+- 不同的字体族声明会作为真实数据差异报告，不自行认为字体或 fallback 列表等价。
 
-### 系统性偏移扣除
+### 覆盖边界
 
-Design PNG 保留带边框的 1600×900 画布用于像素对比；几何测量页会注入样式移除 `.app` 的 border/radius/shadow，让 Design 与真实 Renderer 都使用完整 1600×900 内容盒，避免边框同时造成约 1px 位置差和 2px 可用宽高差。
+元素数据一致不能证明 SVG 路径、Canvas 绘制内容或字体栅格化一致。未声明的目标和字段不计入覆盖。原生窗口、协议、Main/Core 业务及系统恢复仍需真实 E2E。
 
-Harness 对全部匹配 target 的位置差求中位数：
+数据差异不能自动归因为产品错误：先区分场景不一致、定位错误、实际设计差异与环境错误；不得用修改设计、产品样式、删除目标或放宽判定来隐藏结果。
 
-$$
-o_x = \operatorname{median}(x_{renderer} - x_{design})
-$$
+### 场景前提
 
-$$
-o_y = \operatorname{median}(y_{renderer} - y_{design})
-$$
+- 设计与Renderer分别核对实际视口、默认画布边界、主题及声明的侧栏状态；失败记录为`design-scene`或`renderer-scene`错误，不继续输出该场景的元素差异。
+- 侧栏通过配置中的真实UI操作建立，不在采集器中自动切换来补救错误配置。
+- 右键菜单定位到同一逻辑请求行，以相同的行内`position`触发；主菜单与子菜单使用现有`assertInsideViewport`明确检查可见区域。两侧均应完成定位后再比较，不把Ant离屏初始化位置当作有效布局，也不通过移动弹层或合成悬停掩盖问题。
+- Tool能力开关和搜索操作可能自动滚动内容；对应场景在两侧真实点击同一标题，回到一致的阅读起点再测量，不根据差值反推或补偿滚动。
+- 设计专用dock与评审留白不属于产品画布，采集前隐藏dock，避免其按钮拦截正文右下角的真实拖拽。gRPC拖拽场景使用`freshDesign`隔离上一个场景的手动高度；普通gRPC场景通过真实Hex控件恢复初始视图，不保留前一场景的Text状态。
+- 场景错误保留原始日志，中文报告优先展示执行问题，指明失败侧和具体场景ID并链接配置；未比较的目标不计入`checked`，其余场景继续执行。
 
-然后计算每个元素的真实局部偏差：
-
-$$
-\Delta x = x_{renderer} - x_{design} - o_x
-$$
-
-$$
-\Delta y = y_{renderer} - y_{design} - o_y
-$$
-
-宽高差无需扣除系统偏移：
-
-$$
-\Delta w = w_{renderer} - w_{design}, \qquad
-\Delta h = h_{renderer} - h_{design}
-$$
-
-这能滤掉画布整体平移，同时保留单个组件真实的 spacing/size 偏差。
-
-## 执行时序
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant H as parity.mjs
-    participant V as Vite Renderer Server
-    participant D as Design SPA Page
-    participant P as Renderer Page
-    participant F as Fake Interceptor
-    participant O as Report / PNG Output
-
-    H->>V: createServer + listen(5199)
-    H->>D: startDesignPreview + goto
-    loop 每个 parity view
-      H->>D: window.__setState(designState)
-      H->>P: browser.newPage()
-      H->>P: addInitScript(installFakeInterceptor, fixture)
-      H->>P: goto Vite Renderer
-      P->>F: 安装 window.interceptor
-      P->>F: 正常调用 query/status/detail/body APIs
-      F-->>P: 返回稳定 DTO/bytes
-      H->>P: Sidebar click / row click / fill / select
-      H->>D: 等待字体和布局稳定
-      H->>P: 等待异步状态稳定
-      H->>P: screenshot
-      H->>D: 收集 targets bounding/style
-      H->>P: 收集 targets bounding/style
-      H->>H: pixelmatch Design PNG ↔ Renderer PNG
-      H->>H: 比较 Design DOM ↔ Renderer DOM
-      H->>O: 写 screenshot / diff PNG / report rows
-      H->>P: close page
-    end
-    H->>O: 写 Overall/View/Element Markdown tables
-    H->>V: close
-```
-
-每个 parity case 使用独立 Renderer page，避免 Zustand、React state、定时轮询、选中项或表单内容泄漏到下一场景。
-
-## 与设计稿的关系
-
-### Design SPA
-
-`design-vite/` 是视觉单一事实来源，用于设计和截图基线。它不是产品实现，也不访问 Core。
-
-### Visual Parity
-
-本目录启动 Vite Renderer，注入 fake Preload，通过正常 UI 交互建立状态，然后与 Design SPA 对比。
-
-它回答：
-
-- 实现是否与设计稿几何一致？
-- 哪个元素偏了多少像素？
-- 字号、字重或颜色是否漂移？
-- 整张视图有多少像素不同？
-
-## 运行前提
-
-从仓库根目录执行命令。
-
-需要：
-
-- 已安装项目依赖；
-- 系统 Microsoft Edge；
-- `playwright-core`、`pixelmatch`、`pngjs`、`vite`（项目 dev dependencies）。
-
-若 Edge 未安装到 Playwright 可识别位置：
-
-```powershell
-npx playwright install msedge
-```
-
-## 运行命令
-
-运行全部配置场景：
-
-```powershell
-node apps/desktop/tests/visual-parity/parity.mjs
-```
-
-只运行一个场景：
-
-```powershell
-node apps/desktop/tests/visual-parity/parity.mjs --view=capture-websocket
-```
-
-当前场景 ID 由 `parity.config.mjs` 的 `views[].id` 定义。
-
-## 一次运行做什么
-
-1. 以 programmatic Vite server 启动 Desktop Renderer。
-2. 启动系统 Edge。
-3. 用 `design-vite/tools/design-preview.mjs` 构建并启动设计稿 preview server，然后打开它。
-4. 对每个 parity case 创建独立 Renderer page，避免视图状态互相污染。
-5. 在页面导航前注入 fake `window.interceptor` 与主题 localStorage。
-6. 通过 Sidebar、列表行、按钮、Select 和 Input 等真实 UI 操作建立场景。
-7. 用 `window.__setState()` 驱动 Design SPA 到对应状态。
-8. 截取 Renderer PNG。
-9. 与设计基准 PNG 做 pixel diff。
-10. 对配置目标读取 `getBoundingClientRect()` 和字体样式。
-11. 自动计算并扣除系统性画布偏移。
-12. 在终端打印结果，并生成 `parity-report.md`。
-
-## 配置文件
-
-配置位于 `parity.config.mjs`。
-
-基础结构：
+## 场景配置
 
 ```js
 {
-  id: 'capture-websocket',
+  id: 'capture',
   theme: 'light',
-  designState: {
-    view: 'capture',
-    theme: 'light',
-    sidebar: 'expanded',
-    scene: 'websocket',
-    tab: 'messages',
-  },
-  designShot: 'light/capture/inspector-websocket.png',
-  rendererNav: 'Capture',
+  designState: { view: 'capture', theme: 'light', sidebar: 'expanded', detail: 'open' },
   rendererActions: [
-    { type: 'clickText', text: 'realtime.example.com' },
-    { type: 'clickText', text: '{"buildId":8431,"state":"running"}' },
+    { type: 'clickRole', role: 'button', name: 'Toggle sidebar' },
+    { type: 'clickText', text: '/user', index: 0 },
   ],
   targets: [
-    'realtime.example.com',
-    'Connected',
-    'Messages',
+    {
+      name: 'Capture',
+      designSelector: '.side [data-nav="capture"] > .txt',
+      appSelector: '[data-automation-id="shell.workspace.capture"] :text-is("Capture")',
+      compareText: true,
+      stateSelectors: {
+        selected: { design: '.nav.on > .txt', app: '[aria-current="page"] > span' },
+      },
+    },
   ],
 }
 ```
 
-### `id`
+- `id`：唯一场景 ID，用于完整 ID 过滤、报告和批次校验。
+- `theme`：在导航前写入产品正常读取的主题配置；保留当前 `light/dark/warm/ember` 场景。
+- `designState`：传给设计 SPA 的已有 typed state。
+- `designActions`：需要真实交互才能进入的设计状态，复用操作实现。
+- `rendererNav`：可选，通过 `Workspaces` navigation 的真实按钮进入功能；Capture 为默认页。
+- `rendererActions`：正常页面 UI 操作，不提供产品测试 setter。
+- `targets`：字符串，或有唯一 `name` 的对象。对象需要双方 selector 或共同 `parity` 标识；可以为其中一侧覆盖 selector。
 
-场景唯一标识。用于：
+### 目标选项
 
-- `--view=<id>`过滤，多个完整ID可用逗号分隔；
-- Renderer 截图文件名；
-- 报告中的 View 列。
+| 选项 | 含义 |
+| --- | --- |
+| `styleKeys` | 需要比较的 computed style 属性；未知或不可读取属性报错 |
+| `measureText` | 用 DOM Range 测量文字范围，保留字体样式；不用于按钮命中区或替代 flex 对齐 |
+| `compareText` | 比较实际文本 |
+| `present: false` | 明确期望两边都不存在该目标 |
+| `visible: false` | 目标必须存在，但期望没有可见面积或处于隐藏状态 |
+| `stateKeys` | 声明 `disabled/checked/selected/expanded/pressed/focused` 状态 |
+| `stateSelectors` | 相同状态在 design/app 两侧对应的原生 CSS selector，由目标自身执行 `matches()` |
+| `scroll: true` | 比较声明区域的内容、可视尺寸和滚动位置 |
 
-### `theme`
+`stateKeys` 优先读取适用的原生布尔属性，否则读取 ARIA。没有对应属性时明确报错，不能默认为 false；设计与产品使用不同状态标记时，显式提供 `stateSelectors`。状态 selector 是原生 CSS，不支持 Playwright 的 `:text-is()` 等扩展。
 
-Renderer 主题。Harness 在页面初始化前写入 `interceptor.theme` localStorage，产品代码按正常启动路径读取。
+### 支持的操作
 
-### `designState`
+- `clickText/clickRole/clickSelector/clickAutomation`：按声明的文本、role、selector 或公共 automation ID 点击。
+- `contextMenuText/contextMenuSelector`：右键。
+- `hoverText/hoverSelector/mouseOverSelector`：对应已有 hover 或 mouseover 交互。
+- `fillLabel/pressLabel/typeLabel/fillAutomation/selectLabel`：驱动真实输入与 Select；不改 Store。
+- `resizeVertical`：用鼠标拖拽现有正文控件右下角，不改 DOM 高度。
+- `assertTextHidden/assertSelectorVisible/assertInsideViewport`：检查现有状态；弹层视口断言同时采样可见性及四边范围，在五秒内等待稳定。
+- `emitTlsCompatibility/emitCaptureEvents`：仅从 fake Preload 的测试事件入口发送正常契约事件。
 
-传给 Design SPA 的 `window.__setState()`。可包含 `view`、`theme`、`sidebar`、`tab`、`scene`、`overlay` 等设计状态。
+操作中的 `index` 保留原有明确顺序语义；它不是采集目标发生歧义时的自动回退。
 
-### `designShot`
+## Fixture 与状态隔离
 
-相对于 `design-vite/shots/` 的基准 PNG。存在时启用 pixel diff；省略时仍会做逐元素几何比较。
+- Renderer 不 import parity 文件，不加入 DEV fixture、通用命令或测试后门。
+- fake API 覆盖完整 `InterceptorDesktopApi` 意图面。接口变化时同时更新产品正常链路与 fake，再验证受影响产品测试和 parity。
+- 数据可序列化、ID/时间固定；字节由同一真实数据源构造，不能用几 KiB 正文伪造 MiB 长度。
+- 保留 Core/Capture/Exchange、HTTP 正文、WebSocket、gRPC、Storage、Certificate、Rules、Composer、Breakpoint、Diagnostics、Probe 等现有 fixture。
+- 不包含真实凭据、证书、个人路径或真实用户流量。
+- HTTP 断点按头部挂起契约使用 `bodyAvailable: false`；Capture 原文可读不等于断点 snapshot 正文可用。WebSocket 完整 payload snapshot 仍使用 `bodyAvailable: true`。
+- Tunnel 详情标题不能匹配到列表的重复文案；DeepSeek `Endpoint` 限定到双方 dialog。只修定位范围，不改产品或设计。
+- MCP/Client、Tool 搜索、开关和弹窗状态在复用设计页前重置；显式场景值优先，不能遗留上一场景遮罩。
+- `capture-message-*` 保留四主题 gRPC 长 Text 初始/拖矮与 WebSocket Pretty。`grpcMessageSource` 只替换消息字节及 envelope 偏移；不改产品探测、预览限制或复制行为。
+- `breakpoint-readonly-*` 保留 Original/File/Text、手动格式化、截断与图片超限。`readonlyData` 使用设计侧 `readonlyBodyData.ts` 的字节描述，经 fake 正常 `readBody/pickBreakpointBodyFile` 返回。按真实点击、输入进入状态；需要隔离时使用 `freshDesign`。
 
-### `rendererNav`
+## 输出与退出
 
-可选。通过 `Workspaces` navigation 内的真实按钮切换 Renderer view，例如：
-
-```js
-rendererNav: 'Rules & Map'
+```sh
+node apps/desktop/tests/visual-parity/parity.mjs --view=capture \
+  --out-dir=apps/desktop/test-results/visual-parity-local
 ```
 
-Capture 是默认 view，可省略。
+- `--out-dir` 指定默认报告目录；`--report` 和 `--result-json` 可分别指定文件，不能指向同一文件。
+- 每次只更新明确的报告文件，不递归清空输出目录。临时批次文件在读取后逐个清理。
+- `--viewport=widthxheight` 保留对 Renderer viewport 的诊断覆盖；正常验收使用场景的默认 `1600×900`。改变 Renderer 尺寸不意味着修改已确认的设计画布。
+- `--slice=start:end` 用于同一 runner 的分批执行，空范围和越界范围报错。
+- 内部`--renderer-url/--design-url`由父进程成对传递，仅在带`--slice`的子批次接受无凭据、无额外路径或参数的HTTP loopback URL；普通用户与start菜单不需要提供，也不能用外部服务替代设计源码。
+- `--inspect-popover/--inspect-select` 保留显式诊断输出，不改变正常比较。
 
-### `rendererActions`
+JSON保留`version/startedAt/finishedAt/pid/platform/node/browser/viewport/selectedViews/views/errors/summary`。场景增加`feature`和已核对的`conditions.design/renderer`，记录实际视口、画布、主题及侧栏状态；浏览器控制台error/warning按场景写入`logs`，页面准备期间的日志保留在根级`logs`。异常保留原始值并附带`styleFiles/files`；`overview/locations`给出中文结论及文件分组。成功目标只计数，不重复存入异常列表。`summary.issues`是全部异常条数，`differences`只计数据差异，缺失、歧义、不稳定和错误另计。
 
-按顺序执行的 UI 动作。当前支持：
+异常保留 `view/theme/target/kind/property/expected/actual`，按需包含 `side/delta`。类别包括 `geometry/style/state/text/scroll/missing/ambiguous/unstable/error`。环境、场景与清理错误另保留 stage 和原始消息。
 
-#### 点击精确文本
+| 退出码 | 含义 |
+| --- | --- |
+| `0` | 所有选定场景及声明目标已检查，严格相等，无执行错误 |
+| `1` | 有数据差异、缺失、歧义或不稳定测量 |
+| `2` | 配置、测量读取、初始化、场景执行、资源清理、批次或报告生成错误 |
+| `130` / `143` | SIGINT / SIGTERM中断；保留已取得的结果与未执行范围，关闭本次资源 |
 
-```js
-{ type: 'clickText', text: 'realtime.example.com', index: 0 }
-```
+终端和可读报告使用中文，说明检查范围、有没有问题、哪里有问题和相关文件。每条差异写清设计值与Renderer值；几何差异标明向哪边偏移、宽/窄或高/矮多少，不舍入亚像素差异。字体列表只多了相同前缀时直接说明额外声明的字体，不把声明差异说成实际选用了另一字体。
 
-#### 点击 ARIA role
+Markdown按文件分组，逐条列出“页面/控件/主题”和“具体差异”，不再只写“位置不一致”等笼统类别。只有文件、字段、原始期望值/实际值、差值及所属侧均一致时才合并位置；不同控件的数据不会混为一条。终端最多展示10条具体差异，其余见报告。路径和控件标识保留原文，完整场景ID、原始数据及日志仍在JSON中。
 
-```js
-{ type: 'clickRole', role: 'button', name: 'Send', index: 0 }
-```
+文件定位读取Renderer页面中Vite提供的CSS Modules来源，并匹配实际控件或最近容器的样式规则；库拥有的portal外壳可定位到最近的产品内容组件。状态和文本问题在同名组件确实存在时链接到TSX，否则保留样式文件。这里只提供关联文件作为定位入口，不自动认定根因。源码无法确定时明确显示“源码位置未确定”并链接场景配置，不猜测文件。
+页面运行错误没有可确认的源码位置时，报告指明失败侧和场景ID，并链接场景配置；不把采集器文件误标成产品错误的来源。
 
-#### 填写 label 对应输入
+构建警告原文保留在JSON的`warnings`中，避免终端出现大段第三方提示；构建错误仍进入`errors`并使检查失败，不隐藏错误。面向人的结论、问题类型和页面名称使用中文，文件路径、控件标识与原始日志不翻译。
 
-```js
-{
-  type: 'fillLabel',
-  label: 'Request URL',
-  value: 'https://api.github.com/user/repos',
-  index: 0,
-}
-```
+Parity的Vite服务关闭浏览器日志向构建logger的重复转发，改由Playwright在所属页面采集。`console.error`可能是场景预期的业务失败提示，必须保留但不据此判断构建失败；未处理的JavaScript异常以及没有异常对象的浏览器`ErrorEvent`仍按所属侧记录页面错误并退出2，不忽略ResizeObserver错误。关闭页面前停止诊断采集，避免把正常退出的资源取消当作新页面故障。
 
-#### 选择原生 Select
+子进程不重复打印报告。报告只在结束、错误或中断收尾时生成，不把正在运行的部分结果标记为已结束。报告不可写时输出明确错误并非零结束。
 
-```js
-{
-  type: 'selectLabel',
-  label: 'Method',
-  value: 'POST',
-  index: 0,
-}
-```
+## 定位差异
 
-`index` 默认为 `0`，用于处理同名元素。
+- 大量相同方向的位置差可能是容器或状态问题，不能整体减掉差值。
+- 后续元素的纵向差递增时，检查上游高度、gap 和文字换行。
+- 宽度、字体声明或字距不同，检查实际字体及该控件布局，不自动接受亚像素差异。
+- `ambiguous`：收窄到明确容器、逻辑控件或已选择的记录，不使用随机第一项。
+- `missing`：核对文字/selector、数据、交互完成状态及可见性。
+- `unstable`：核对布局、字体、异步内容或动画时刻，不挑更接近设计的读数。
+- 字体错误：检查 Google Fonts 或本地字体资源和现有网络环境，不能用 fallback 证明一致。
+- Preload 方法缺失、持续 Loading：修正 fake 与正式契约的一致性，不在产品增加回退分支。
+- 只关闭本次拥有的服务；端口被其他任务占用时协调运行时间。
+- Linux 的字体与布局结果只作为该环境的诊断；不能冒充 Windows/macOS 权威验收。
 
-#### 等待弹层进入视口
+## 添加场景与验收
 
-```js
-{ type: 'assertInsideViewport', selector: '[data-parity="agent-model-menu"]' }
-```
+1. 先取得已确认的设计源码状态，不需要保存或提交 PNG 基准。
+2. 复用/补充正式 API 所需的可序列化 fixture，声明设计状态与正常 Renderer 操作。
+3. 配置稳定唯一的逻辑目标、字段与必要状态。
+4. 运行该场景，读取数据报告；工具/配置问题在所属文件修正。
+5. 真实产品或设计差异单列，未经授权不改 UI，不删除目标、不放宽严格判定。
+6. 共享 harness 或配置规则变更后运行完整既有场景，覆盖四主题；不能用单个 Capture 结果替代全量。
+7. 在旧截图目录不可用时验证实际运行和零 PNG 输出；保留本地原始资料，不建立额外 worktree。
+8. 工具与 fixture 不新增 unit/integration/Browser“测试的测试”，直接运行既有场景；产品业务测试和真实 E2E 的要求不变。
 
-每次采样同时检查可见元素和四边范围，由Playwright在5秒内等待定位稳定。不能先等待可见、再单独测量：弹层重定位期间可能暂时不可见。始终要求至少一个可见元素且所有可见元素完全位于viewport内；永久消失或持续越界仍失败。
-
-新增动作类型时，应扩展 `parity.mjs` 的 `applyRendererActions()`，不要在 Renderer 中增加测试 hook。
-
-### `targets`
-
-需要逐元素比较的可见文本列表。Harness 在 Design 和 Renderer 中分别执行精确文本定位。
-
-目标应尽量：
-
-- 可见且稳定；
-- 在当前场景唯一；
-- 覆盖页面关键锚点、列表行、工具条和详情内容；
-- 避免时间、随机 ID、倒计时等动态文本。
-
-文本不适合做唯一标识时，可在设计与产品两侧增加有产品语义的可访问名称。只有确实无法通过可访问语义定位时，才考虑相同的 `data-parity` 标识。
-
-纯文字标签可以显式设置`measureText: true`，通过DOM `Range`测量文字边界，而不是用于占位的flex元素宽度。例如：
-
-```js
-{ name: 'Capture header', parity: 'window-header-title', measureText: true }
-```
-
-该选项只适用于未裁切的文字标签，不用于按钮命中区、面板、滚动或省略状态；这些仍按元素盒子测量。字体样式比较、1px阈值与整页pixel diff不变，未设置该选项的target保持原有行为。Capture侧栏场景还必须按Renderer默认收起态显式决定是否点击Toggle sidebar，不能靠整体偏移补偿掩盖两侧状态不一致。
-
-## Fake Interceptor
-
-`fake-interceptor.mjs` 包含：
-
-- `fakeInterceptorFixture`：所有数据驱动视图的稳定夹具；
-- `installFakeInterceptor()`：导航前安装完整 fake API。
-
-Fake 应覆盖 `InterceptorDesktopApi` 的完整意图面，即使某个场景只使用其中一部分。这避免出现“对象存在但方法缺失”导致视图挂载失败。
-
-当前夹具覆盖：
-
-- Core process status；
-- Capture status、session page、exchange detail；
-- WebSocket frame page、payload range 和 breakpoint toggle；
-- gRPC request/response message metadata、raw payload range 和 trailers；
-- Storage usage；
-- Certificate status 和 insecure hosts；
-- Rules / validation / hit counts；
-- Composer response；
-- Breakpoint queue / resolve / configure；
-- Diagnostics records；
-- Connection probe。
-
-### Fixture 规则
-
-- 必须是可序列化数据；`addInitScript` 参数会跨 Playwright 边界传输。
-- `Uint8Array` 在 fixture 常量中建议存为 number array，fake 方法返回时再构造。
-- 时间戳固定，避免截图和排序漂移。
-- ID 固定，便于 detail/body/frame 关联。
-- 大正文只提供 UI 所需的最小字节，不能把完整生产样本塞入 parity。
-- 数据应接近设计稿内容，否则 pixel diff 会混入无意义文本差异。
-- 不包含真实 token、证书、用户路径或其他敏感数据。
-
-## 输出
-
-### Renderer 截图
-
-```text
-renderer-shots/<view>-<theme>.png
-```
-
-Harness 全量运行前会清空并重建 `renderer-shots/`；使用 `--view=<id>` 时只删除并重建该场景的 screenshot/diff，保留其他场景产物，便于局部迭代。
-
-### Pixel diff
-
-```text
-renderer-shots/<view>-<theme>-diff.png
-```
-
-紫色区域表示不同像素。Pixel diff 包含字体抗锯齿、平台字体渲染和设计画布 1px 边框造成的噪声，因此它适合观察整体，不应单独作为严格门禁。
-
-### Markdown 报告
-
-```text
-parity-report.md
-```
-
-每次运行覆盖该文件，包含三部分。
-
-#### Overall Summary
-
-- 总体结论；
-- 运行视图数；
-- 平均 pixel diff；
-- targets / matched / missing / flagged；
-- 最大几何差；
-- 最差 View / Element。
-
-#### View Summary
-
-每个场景的：
-
-- Pixel diff；
-- 目标数；
-- 匹配数；
-- 缺失数；
-- Flagged 数；
-- 最大 geometry delta。
-
-#### Element Geometry
-
-每个目标的：
-
-- `dx`：横向位置差；
-- `dy`：纵向位置差；
-- `dw`：宽度差；
-- `dh`：高度差；
-- Max delta；
-- 字体样式差异；
-- `ok` / `flagged` / `app missing` / `design missing`。
-
-## 如何解读几何差
-
-Harness 的几何页先移除 Design SPA 卡片边框，再计算所有匹配目标的系统性中位偏移并从每个元素的 `dx/dy` 中扣除。PNG 像素 diff 仍保留原始 1px 设计边框；几何报告不应再把这层边框误报成位置或宽高错误。
-
-Flag 条件：
-
-- 任一 `|dx|`、`|dy|`、`|dw|`、`|dh| >= 1px`；或
-- `fontSize`、`fontWeight`、`color` 任一不同。
-
-常见判断：
-
-- 大量元素 `dx/dy` 同方向相同数值：可能是未被系统偏移吸收的容器问题。
-- 后续元素 `dy` 逐渐增大：通常是某个上游元素高度或 gap 不一致。
-- 只有 `dw` 不同：优先检查字体宽度、padding、grid track。
-- `dh` 约 1px：常见于字体 metrics 或 line-height。
-- Pixel diff 高但几何基本一致：优先考虑字体抗锯齿、颜色或阴影。
-
-## 添加一个场景
-
-1. 先在 `design-vite/` 完成并截图设计状态。
-2. 在 `fake-interceptor.mjs` 加入真实 API 所需夹具。
-3. 在 `parity.config.mjs` 添加 view case。
-4. 用 `rendererNav` 和 `rendererActions` 通过正常 UI 建立状态。
-5. 选择稳定、唯一、覆盖关键区域的 targets。
-6. 运行单场景：
-
-```powershell
-node apps/desktop/tests/visual-parity/parity.mjs --view=<id>
-```
-
-7. 查看终端、`parity-report.md`、Renderer 截图与 diff PNG。
-8. 修正产品 CSS/结构后重复运行，直到关键元素差异收敛。
-9. 最后运行全部场景，防止共享组件回归。
-
-## 更新 Preload API 时
-
-当 `InterceptorDesktopApi` 增删方法：
-
-1. 更新产品 `shared/desktop-api.ts`；
-2. 更新 Preload / Main / Core 正常链路；
-3. 更新 `fake-interceptor.mjs` 的同名方法；
-4. 运行 Desktop typecheck、相关单测和 visual parity。
-
-Parity fake 不应定义产品不存在的通用命令或后门。
-
-## 故障排查
-
-### 设计字体不可用
-
-Harness在设计页初始化时逐字重加载Inter与JetBrains Mono，确认得到已加载的FontFace后再重新计算Monaco字体。
-`document.fonts.ready`即使下载失败也会结束等待，不能单独作为字体成功证据。`Design font unavailable`或字体下载错误属于环境失败；检查Google Fonts访问及既有网络配置后复跑，不以fallback字体、放宽1px阈值或改设计PNG消除差异。
-
-### `window.interceptor` 方法不存在
-
-确认 `installFakeInterceptor` 实现了最新 `InterceptorDesktopApi`，并且 `addInitScript` 在 `goto` 之前调用。
-
-### 页面一直显示 Loading
-
-检查对应 fake 方法是否 resolve，以及返回 DTO 字段是否完整。不要在业务组件中增加 parity fallback。
-
-### strict mode violation
-
-Playwright locator 命中多个元素。优先：
-
-- 限定到 navigation / main / panel；
-- 使用 ARIA role + exact name；
-- 在 action 中指定 `index`。
-
-不要用脆弱的深层 CSS selector 规避。
-
-### `app missing` / `design missing`
-
-- 检查目标文本是否完全一致；
-- 检查场景交互是否真正完成；
-- 检查异步数据是否已加载；
-- 检查文本是否重复并被 `.first()` 选错。
-
-### Vite 端口 5199 被占用
-
-停止残留 parity/Vite 进程后重试。Harness 使用 `strictPort: true`，不会静默换端口。
-
-### Edge 启动失败
-
-安装或更新 Edge：
-
-```powershell
-npx playwright install msedge
-```
-
-### Linux 输出与基线差异较大
-
-Linux 字体渲染、字重、subpixel 和 SwiftShader 与 Windows/macOS 不同。Linux parity 用作诊断参考，权威视觉验收应在 Windows/macOS 运行。
-
-## 维护边界
-
-必须保持：
-
-- Parity harness、配置、fake API、fixture、报告和截图只在本目录。
-- 业务 Renderer 不 import 本目录任何文件。
-- 不在产品代码中加入 parity 专用 DEV 分支或 setter。
-- Renderer 场景通过正常 UI 交互建立。
-- 数据通过 `window.interceptor` 意图 API 注入。
-- 设计视觉仍以 `design-vite/` 和 `design-vite/design-system.md` 为准。
-- Parity 报告是诊断输出，不自动掩盖已知差异，也不以 pixel diff 单值替代人工判断。
-
-## 参考
-
-- Parity Skill：`.github/skills/ui-parity-check/SKILL.md`
-- Design Skill：`.github/skills/ui-design-mockup/SKILL.md`
-- 设计系统：`design-vite/design-system.md`
-- 设计 SPA：`design-vite/`
-- Renderer API：`apps/desktop/src/shared/desktop-api.ts`
+设计源码、规范与手工设计评审工具继续保留。手工截图和两份设计图比较不是此命令的运行前提，也不能替代严格数据检查或真实 E2E。

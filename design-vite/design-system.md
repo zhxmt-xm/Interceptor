@@ -13,7 +13,7 @@
   仅用于准确标识服务，不改形、不暗示合作；Custom / unknown Provider 使用 Lucide Bot fallback。品牌商标权
   不因图标数据许可而转移，新增品牌时仍需复核对应 brand guideline。
 - 字体:`Inter`(界面) + `JetBrains Mono`(URL、header、数值等技术文本);数值列用 `font-variant-numeric: tabular-nums`。
-  - Inter按400/450/500/600/700离散字重注册，控件仍使用各自550/640等既有声明，由浏览器按相同规则匹配。Renderer复用现有依赖的相同WOFF2离线提供；不混用连续100–900注册造成字宽差异。
+  - 设计侧Inter按400/450/500/600/700、JetBrains Mono按400/500/600离散字重注册，控件仍使用各自550/640等既有声明。Renderer以现有依赖的WOFF2离线提供，Inter保留离散注册，JetBrains Mono按用户确认保留原可变字重注册与字符子集；分别核对实际FontFace和度量，不因设计差异自动改App。
 
 ## 颜色 Token
 
@@ -49,6 +49,7 @@
 
 - 字号:base `13`,列表 `12.5`,分组标签 `10.5`(大写 + `letter-spacing .05–.07em` + `--text-3`),mono `11–11.5`,品牌名 `14.5/640`。
 - 字重:常规 `450–500`,强调 `550–600`,标签 `650`。
+- 设计主布局未单独声明的行高使用`normal`，由实际字体度量决定；编辑器等已有固定行高的控件保留各自规范。Renderer按用户确认保留原App的`1.23`，两者差异由parity如实记录，不自动覆盖App。
 - 对比:key/次要文本用 `--text-2`,值/主内容用 `--text`(Inspector 尤其保证对比);host 用 `--text-2`(不用主色,避免过重)。
 
 ## 尺寸与间距

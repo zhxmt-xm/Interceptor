@@ -1,13 +1,13 @@
 # Task List
 
-> Tracked commit: `2489eab4`
+> Tracked commit: `b91df45f`
 > Homepage guidebook: `6ac3e17`
 
 ## 维护规则
 
 - Handover只记录未完成任务的目标、当前阻塞、下一步和必要运行约束。
 - 禁止记录执行时间线、尝试次数、测试数字、失败重试、提交推送过程、完成总结或证据流水。
-- 任务完成后立即从本文件删除；稳定行为写入`architecture/features/`或`architecture/platform/`，改动说明写入对应`commit-changes/`文件。
+- 任务完成后立即从本文件删除；稳定行为写入`architecture/features/`或`architecture/platform/`。
 
 - **11. README 与 GitHub 仓库介绍优化 · 待实现**
   - 目标：用简单、直接、清楚的图文或视频说明 App 的用途和价值，覆盖每个重要 feature，同时让 GitHub 仓库介绍包含足够准确的产品与搜索信息。

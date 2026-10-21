@@ -13,8 +13,8 @@ Interceptor brings traffic inspection, request replay, response mocking and AI-a
 [Downloads](https://github.com/zhxmt-xm/Interceptor/releases) | [Features](#features) | [Quick Start](#quick-start) | [Feedback](https://github.com/zhxmt-xm/Interceptor/issues)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="design-vite/shots/dark/capture/framed.png">
-  <img src="design-vite/shots/light/capture/framed.png" alt="Interceptor Capture workspace with application filters and HTTP traffic" width="1600">
+  <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-capture-dark.png">
+  <img src="architecture/assets/readme-capture-light.png" alt="Interceptor Capture workspace with application filters and HTTP traffic" width="1600">
 </picture>
 
 *Capture workspace design preview with sample traffic, not a screenshot of a released build.*

@@ -2,7 +2,7 @@
 // Opens index.html once, drives it via window.__setState(), captures the .app element.
 // Two passes: framed (1600x900 app state) and full (scroll areas expanded so nothing hides).
 // Run from repo root:  node design-vite/shoot.mjs
-import { chromium } from '@playwright/test';
+import { chromium, expect } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
@@ -36,6 +36,18 @@ const onlyVariant = process.argv
 const onlyTheme = process.argv
   .find((argument) => argument.startsWith('--theme='))
   ?.split('=')[1];
+const previewUrlArgument = process.argv
+  .find((argument) => argument.startsWith('--preview-url='))
+  ?.slice('--preview-url='.length);
+let previewUrl;
+if (previewUrlArgument !== undefined) {
+  const url = new URL(previewUrlArgument);
+  if (url.protocol !== 'http:' || !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)
+    || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+    throw new Error('--preview-url must be a root HTTP loopback URL without credentials, query or hash');
+  }
+  previewUrl = url.href;
+}
 
 // Every shot declares { feature, theme, variant, state, full? }.
 // Output path is shots/<theme>/<feature>/<variant>.png so light and dark stay separated.
@@ -804,7 +816,7 @@ if (!onlyVariant) {
 }
 await mkdir(shotsRoot, { recursive: true });
 
-const designPreview = await startDesignPreview(dir);
+const designPreview = previewUrl ? null : await startDesignPreview(dir);
 let browser;
 try {
 browser = await chromium.launch({ channel: 'msedge', headless: true });
@@ -831,10 +843,29 @@ async function prepareDesignPage() {
   await page.waitForTimeout(250);
 }
 
-await page.goto(designPreview.url, { waitUntil: 'load', timeout: 120_000 });
+await page.goto(previewUrl ?? designPreview.url, { waitUntil: 'load', timeout: 120_000 });
 await prepareDesignPage();
 
 const app = page.locator('.app');
+async function waitForRequestMenu(includeSubmenu = false) {
+  const selectors = ['.ant-dropdown', ...(includeSubmenu ? ['.ant-dropdown-menu-submenu-popup'] : [])];
+  for (const selector of selectors) {
+    const menu = page.locator(selector).filter({ visible: true });
+    await menu.waitFor({ state: 'visible', timeout: 5_000 });
+    await expect.poll(() => menu.evaluate(element => {
+      const canvas = document.querySelector('.app').getBoundingClientRect();
+      const rect = element.getBoundingClientRect();
+      return {
+        insideCanvas: rect.left >= canvas.left && rect.top >= canvas.top
+          && rect.right <= canvas.right && rect.bottom <= canvas.bottom,
+        opaque: getComputedStyle(element).opacity === '1',
+        animating: element.getAnimations({ subtree: true }).some(animation => animation.playState === 'running'),
+      };
+    }), { message: `Request menu must settle inside the design canvas: ${selector}`, timeout: 5_000 })
+      .toEqual({ insideCanvas: true, opaque: true, animating: false });
+  }
+}
+
 async function shoot(list) {
   let previousInteraction = '';
   for (const s of list) {
@@ -942,7 +973,8 @@ async function shoot(list) {
     await page.evaluate(({ interaction, modelMenuOpen }) => {
       document.body.classList.toggle(
         'menu-interaction-shot',
-        interaction === 'breakpoint-menu'
+        interaction === 'request-menu'
+          || interaction === 'breakpoint-menu'
           || interaction === 'breakpoint-queue-menu'
           || interaction === 'websocket-breakpoint-setup'
           || interaction === 'provider-menu'
@@ -1064,13 +1096,11 @@ async function shoot(list) {
       || s.interaction === 'breakpoint-menu'
     ) {
       await page.locator('.list-scroll .row').filter({ visible: true }).first().click({ button: 'right' });
+      await waitForRequestMenu();
     }
     if (s.interaction === 'breakpoint-menu') {
-      await page.evaluate(() => {
-        document.querySelector('.ant-dropdown-menu-submenu-title')
-          ?.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-      });
-      await page.waitForTimeout(300);
+      await page.locator('.ant-dropdown-menu-submenu-title').filter({ visible: true }).hover();
+      await waitForRequestMenu(true);
     }
     if (s.interaction === 'websocket-breakpoint-setup') {
       await page.waitForTimeout(300);
@@ -1225,5 +1255,5 @@ await shoot(fullShots);
 console.log(`\nDone — ${selectedShots.length} shots → ${shotsRoot}`);
 } finally {
   await browser?.close();
-  await designPreview.close();
+  await designPreview?.close();
 }

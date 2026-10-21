@@ -32,11 +32,30 @@ vi.mock('../../monacoSetup', () => ({
   monaco: { editor: { create: () => fixture.editor } }, VIEWER_OPTIONS: {}, formatMonacoModel: vi.fn(),
 }));
 
+const animationFrames = new Map<number, FrameRequestCallback>();
+let nextFrameId = 0;
+
+function flushAnimationFrame(): void {
+  const callbacks = [...animationFrames.values()];
+  animationFrames.clear();
+  callbacks.forEach(callback => callback(0));
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   fixture.references.length = 0;
   fixture.effects.length = 0;
   fixture.editor.getContentHeight.mockReturnValue(86);
+  animationFrames.clear();
+  nextFrameId = 0;
+  vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+    const id = nextFrameId++;
+    animationFrames.set(id, callback);
+    return id;
+  }));
+  vi.stubGlobal('cancelAnimationFrame', vi.fn((id: number) => {
+    animationFrames.delete(id);
+  }));
 });
 
 afterEach(() => vi.unstubAllGlobals());
@@ -53,6 +72,7 @@ describe('Compact CodeViewer content height', () => {
     expect(host.style.height).toBe(`${86 + borderWidth * 2}px`);
     fixture.editor.getContentHeight.mockReturnValue(94);
     fixture.editor.onDidContentSizeChange.mock.calls[0]![0]();
+    flushAnimationFrame();
     expect(host.style.height).toBe(`${94 + borderWidth * 2}px`);
     expect(fixture.editor.layout).toHaveBeenCalledTimes(2);
     (cleanup as () => void)();
@@ -94,15 +114,23 @@ describe('Resizable message CodeViewer', () => {
     const component = CodeViewer as unknown as { render(props: CodeViewerProps, ref: null): unknown };
     component.render({ value: 'message', language: 'plaintext', compact: true, resizable: true }, null);
     fixture.references[0]!.current = host;
+    const notifyResize = () => changes.forEach(callback => callback());
     return {
       host, scroll, changes, disconnect,
       hide: () => { visible = false; },
       show: () => { visible = true; },
       start: () => fixture.effects[0]!(),
-      resize: () => changes.forEach(callback => callback()),
+      notifyResize,
+      resize: () => {
+        notifyResize();
+        flushAnimationFrame();
+      },
       resizePrecedingSection: (height: number) => {
         precedingHeight = height;
-        if (observed.has(precedingSection)) changes.forEach(callback => callback());
+        if (observed.has(precedingSection)) {
+          notifyResize();
+          flushAnimationFrame();
+        }
       },
     };
   }
@@ -121,6 +149,7 @@ describe('Resizable message CodeViewer', () => {
     expect(view.host.style.height).toBe('128px');
     fixture.editor.getContentHeight.mockReturnValue(166);
     fixture.editor.onDidContentSizeChange.mock.calls[0]![0]();
+    flushAnimationFrame();
     expect(view.host.style.height).toBe('168px');
     expect(view.host.style.maxHeight).toBe('441px');
   });
@@ -162,6 +191,42 @@ describe('Resizable message CodeViewer', () => {
     expect(view.host.style.height).toBe('48px');
     view.resizePrecedingSection(0);
     expect(view.host.style.height).toBe('106px');
+  });
+
+  it('defers and coalesces resize and content-size notifications outside observer delivery', () => {
+    const view = mount(126);
+    view.start();
+    fixture.editor.getContentHeight.mockReturnValue(166);
+
+    view.notifyResize();
+    fixture.editor.onDidContentSizeChange.mock.calls[0]![0]();
+    view.notifyResize();
+
+    expect(view.host.style.height).toBe('128px');
+    expect(fixture.editor.layout).toHaveBeenCalledOnce();
+    expect(requestAnimationFrame).toHaveBeenCalledOnce();
+    expect(animationFrames.size).toBe(1);
+
+    flushAnimationFrame();
+    expect(view.host.style.height).toBe('168px');
+    expect(fixture.editor.layout).toHaveBeenCalledTimes(2);
+    expect(animationFrames.size).toBe(0);
+  });
+
+  it('cancels pending content sizing when the viewer unmounts', () => {
+    const view = mount(126);
+    const cleanup = view.start();
+    view.notifyResize();
+    expect(requestAnimationFrame).toHaveBeenCalledOnce();
+
+    if (!cleanup) throw new Error('Expected CodeViewer cleanup');
+    cleanup();
+    expect(cancelAnimationFrame).toHaveBeenCalledWith(0);
+    expect(animationFrames.size).toBe(0);
+
+    flushAnimationFrame();
+    expect(fixture.editor.layout).toHaveBeenCalledOnce();
+    expect(fixture.editor.dispose).toHaveBeenCalledOnce();
   });
 });
 

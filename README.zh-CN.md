@@ -13,8 +13,8 @@ Interceptor 将流量检查、请求重放、响应模拟和 AI 辅助调试整�
 [下载](https://github.com/zhxmt-xm/Interceptor/releases) | [功能](#功能) | [快速上手](#快速上手) | [反馈](https://github.com/zhxmt-xm/Interceptor/issues)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="design-vite/shots/dark/capture/framed.png">
-  <img src="design-vite/shots/light/capture/framed.png" alt="Interceptor Capture 工作区，包含应用筛选和 HTTP 流量列表" width="1600">
+  <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-capture-dark.png">
+  <img src="architecture/assets/readme-capture-light.png" alt="Interceptor Capture 工作区，包含应用筛选和 HTTP 流量列表" width="1600">
 </picture>
 
 *Capture 工作区设计预览，使用示例流量，并非已发布版本的截图。*

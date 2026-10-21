@@ -9,6 +9,8 @@
 
 `app/App.tsx` 持有 `themeMode`（light/warm/dark/ember）、Settings section 与全局 `agentPanelOpen`，消费 i18next 当前语言，并直接拥有全高侧栏 + 46px Window Header + `main` + 30px `footer` 的 Grid；按 `ViewId` 注入对应 feature 的 main/statusbar。Agent 打开时 Grid 增加最大 `440px` 右栏，Header 与 footer 跨越 main + Agent 两列，main 同步缩窄而不被覆盖。Grid 以 `minmax(440px,1fr)` 优先保留 main；最小 `880px` 窗口且 Sidebar 展开时 Agent 收缩为 `220px`，不切换 overlay。`app/Sidebar.tsx` 负责导航与底部主题/语言切换器，不再保留单独的 `AppShell` 转发层。Sidebar 的 feature 导航只表达位置与当前选中态，不显示任何业务 badge；待处理数量和告警必须留在对应 feature 的 workbar、内容区或 statusbar。
 
+App主布局保留`line-height: 1.23`；HTTPS、文件传输、导入确认和Settings配置/确认弹窗的body同样保留`1.23`，共享Segmented选项保留`line-height: 1`。这些细微排版以用户确认的原App为准；parity如实报告与设计稿的差异，不为消除差异自动改成`normal`或扩展产品修改范围。
+
 ## 2. 冷启动加载界面
 
 Main先显示启动窗口，再准备平台组件与共享CA。`ApplicationStartup`通过`getStartupStage/onStartupStageChange`读取`platform/certificate/ready`；准备期间只挂载BootScreen和WindowControls，ready后挂载业务App。
@@ -44,6 +46,9 @@ HTTP breakpoint 仍使用整面板 `BreakpointInspector`，两条路径只共享
 ## 5. 共享组件库
 
 `components/` 是扁平库，每个组件独立子目录（`Component.tsx` + `Component.module.css`）；含 Flyout（portal 锚定弹层）、ThemeSwitcher、LanguageSwitcher（侧栏底部）。`Tabs` 在容器放不下时把尾部项收进 `…` Flyout（隐藏测量层 + `ResizeObserver`），保证面板头高度固定。
+
+- Flyout统一使用Ant Popover的排版、定位、视口避让、触发、关闭和动画；Rules菜单、断点管理器及文件菜单均沿用原定位方式与默认间距。不增加CSS Anchor分支或修改第三方取整逻辑，顶部消息也沿用AntApp默认位置。
+- Inter在`styles/fonts.css`中按离散字重注册；JetBrains Mono由`main.tsx`导入原有`@fontsource-variable/jetbrains-mono/wght.css`，保留可变字重和完整字符覆盖。Monaco与原App一致，字体栈优先使用已注册的`JetBrains Mono Variable`。
 
 - `IconButton`可按调用点提供`--icon-button-hover-background`与`--icon-button-hover-color`，未提供仍使用`--hover`/`--text`。WebSocket消息断点用它保持armed黄色和Ant默认text按钮反馈，不改变共享默认主题；禁用态仍不响应hover。
 - `IconButton`统一padding为0、内部Lucide图标不收缩；`inline`档为18px按钮/14px图标/5px圆角，`Kv`只选择档位并控制行hover显隐，不能由调用方缩小按钮后留下浏览器默认padding。

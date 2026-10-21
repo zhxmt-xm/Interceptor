@@ -1,6 +1,6 @@
 # Interceptor Design
 
-产品 UI 的**设计稿工作区**。所有 feature 合并在单个可交互的 Vite + React SPA 里，内含可渲染的设计稿、截图脚本与导出图，作为落地代码的一比一还原依据。
+产品 UI 的**设计稿工作区**。所有 feature 合并在单个可交互的 Vite + React SPA 里，已确认的源码与design token是落地还原依据。截图脚本保留供手工设计评审，导出图不作为产品parity输入，也不整批提交Git。
 
 ## 目录约定
 
@@ -13,9 +13,9 @@ design-vite/
 ├── icons/                   # 从系统提取的真实应用图标位图（visual-parity 也直接读它）
 ├── shoot.mjs                # Playwright 截图：framed + full（滚动全展开）
 ├── shoot-scenes.mjs         # 当前主题 switcher 的场景截图
-├── shots/                   # 当前设计截图：light/dark feature 矩阵 + scenes
+├── shots/                   # Git忽略的本地评审截图：主题/feature/scene
 ├── tools/
-│   ├── design-preview.mjs   # build + preview，返回本地 URL，截图与 parity 共用
+│   ├── design-preview.mjs   # 独占临时构建 + preview，退出清理；截图与parity共用
 │   ├── compare-shots.mjs    # 两个 shots 目录的逐像素回归对比
 │   └── check-react.mjs      # 打开一个 URL 并报告运行时错误
 └── src/
@@ -123,7 +123,8 @@ node design-vite/tools/compare-shots.mjs design-vite/shots --current-dir="$env:T
 
 `settings-provider-menu`通过Add provider打开已有类型菜单，等待真实可见后截取含portal的画面，下一场景重载清理菜单内部状态；不省略弹层来生成“菜单截图”。
 
-`--out-dir`将完整目录结构写入指定位置，不触碰默认`shots/`；使用新的独立目录预览和比较，再同步已确认的设计图。未指定`--variant`时仍会清理输出目录中本次选中的feature子目录，不复用历史证据目录。截图使用headless Edge，初始化及页面重载都先核对Inter/JetBrains Mono的FontFace实际加载；字体失败直接退出，浏览器和preview在失败时也关闭。
+尚未确认的设计修正可通过`--preview-url=http://127.0.0.1:<port>/`连接本次拥有的独立候选预览，配合`--variant`和独立`--out-dir`生成前后评审图，不先改正式设计源码。只接受无凭据、查询和片段的HTTP loopback根地址；该服务由调用方关闭，截图命令只关闭自己创建的浏览器。不提供此参数时仍自行构建、启动并关闭设计preview。
+候选脚本可向`startDesignPreview(root, plugins)`传入本次构建的Vite源码转换plugin；源码转换只作用于独占临时构建，不写回原文件，也不能覆盖该helper拥有的输出目录与清理流程。正常截图和parity不传入plugin。
 
 `compare-shots.mjs` 是回归工具：改动前先把 `shots/` 另存一份，改完重出再拿它当基线对比，差异图写到 `shots-diff/`。**百分比会骗人**（侧栏图标全丢时只报约 1%），必须看差异图；**多张图差异值完全相同，说明是同一个公共元素，不是多个独立缺陷**。
 
@@ -138,13 +139,18 @@ node design-vite/shoot.mjs --feature=capture --variant=inspector-grpc-long-text 
 node design-vite/shoot.mjs --feature=capture --variant=inspector-grpc-long-text-full --out-dir=design-vite/out/body-compact-shots
 ```
 
-比较候选图时可用`--current-dir`指定生成目录、`--out-dir`指定独立差异目录，默认目录和比较算法不变。这样可以在覆盖正式`shots/`前检查新增、尺寸变化和像素差异；比较有差异时退出码为1，必须查看具体变化，不能直接算通过。
+比较候选图时可用`--current-dir`指定生成目录、`--out-dir`指定独立差异目录，默认目录和比较算法不变。该工具只比较本地前后评审图；差异时退出码为1，必须查看具体变化，不能算作产品parity通过，也不把产物提交Git。
 
+`request-rule-menu`和`breakpoint-create-menu`保留菜单的真实动画，主菜单与子菜单都进入设计画布且动画结束后再截图；子菜单通过真实hover展开。菜单缺失或仍在离屏初始化位置时明确失败，不能输出一张没有菜单的成功截图。
+
+`--out-dir`将完整目录结构写入指定位置，不触碰默认`shots/`；使用新的独立目录预览和比较，确认后同步设计源码。PNG是本地评审产物，不提交全量图片。未指定`--variant`时仍会清理输出目录中本次选中的feature子目录，不复用历史证据目录。截图使用headless Edge，初始化及页面重载都先核对Inter/JetBrains Mono的FontFace实际加载；字体失败直接退出，浏览器和preview在失败时也关闭。
 截图依赖已随仓库存在的 `@playwright/test` + 系统 Edge（`channel: 'msedge'`），无需额外安装浏览器。不在每次小改后重出全量截图；只在用户明确要求或一个设计里程碑结束时生成并评审。
 
 ## HTTP正文设计（2026-09-28已确认）
 
 HTTP `PayloadEditor`的Original正文与File预览正式使用内容/可用空间限高、内滚与原生vertical resize，不保留默认关闭的候选开关。File预览无内层边框，采用`12px/20px`和上下`13px`padding，预览上方保留完整文件用途说明。Text说明条强调编辑value不受只读预览上限裁剪，现有受控Ant `Input.TextArea`、`autoSize: { minRows: 4, maxRows: 8 }`及字体不变；不设`maxLength`。`contentKind:'message'`保留WebSocket断点原设计；普通gRPC/WebSocket、Hex/Tree、全屏和Composer填充不变。
+截图与parity使用的`design-preview.mjs`为每次预览创建独占临时构建目录，关闭服务后删除，不覆盖共享`dist/`；并行预览不会替换另一个页面正在加载的动态模块。手工`npm run build/preview`仍使用自身命令的正常产物，与这些临时预览分开。
+
 
 ```js
 window.__setState({
@@ -157,13 +163,13 @@ window.__setState({
 - `bodyRemainderSample: current / long / invalid-json`与`bodyRemainderNotice: none / auto-format / manual-format / truncated / image-limit`只是typed设计输入，导航时重置，不是产品参数。默认`current/none`没有常驻auto-format提示。`invalid-json + manual-format`供真实点击Format检查通用失败提示，保留原文；不显示解析器错误或增加新控件。
 - `BodyRemainderPreview`按传入的`PayloadPreviewMetadata.totalBytes / previewBytes / truncated`动态生成大小和提示。完整≤1 MiB自动格式化、1–2 MiB手动、截断禁用、图片独立16 MiB；自动格式化的说明只出现在显式`auto-format`设计态。提示复用既有样式；Format失败在同位置显示`Formatting failed. The original content is unchanged.`。
 - Original提示位于现有工具栏下、Monaco上，按真实MIME保留JSON语法高亮；File依次为文件头、完整文件说明、格式化/截断提示、无框plaintext Monaco。`src/fixtures/readonlyBodyData.ts`生成真实UTF-8或图片文件字节，设计和parity共用同一字节描述；总大小来自真实字节数，截断正文确实为前2 MiB，不再用几KiB样例冒充MiB预览。图片超限不挂载正文；仍不代替真实文件IO、网络、保存/发送或Core验收。
-- `shoot.mjs`提供六个浅/深场景：`breakpoint-request-original-long / breakpoint-request-file-long / breakpoint-request-text-long / breakpoint-request-file-manual / breakpoint-request-file-truncated / breakpoint-request-file-image-limit`。它们通过实际点击收起Original、选择Text/File、Choose file、填入Text来进入状态；新场景旁的JSON记录state/source/actions与实际尺寸。先用`--out-dir`检查，再只同步这些PNG；`shots/`不需要复制旁边的运行记录。
+- `shoot.mjs`提供六个浅/深场景：`breakpoint-request-original-long / breakpoint-request-file-long / breakpoint-request-text-long / breakpoint-request-file-manual / breakpoint-request-file-truncated / breakpoint-request-file-image-limit`。它们通过实际点击收起Original、选择Text/File、Choose file、填入Text来进入状态；旁边的JSON记录state/source/actions与实际尺寸。用`--out-dir`检查并保留本轮评审产物，不提交PNG或运行记录。
 
 ## 相关
 
 - Updates已按2026-09-30确认稿移除GitHub access、Private和账号文案，正式fixture直接保留Version、Delivery和原更新状态，不再使用`updatesWithoutSignIn`候选或`githubAuth`设计态。`updates-checking/available/downloading/downloaded/up-to-date/failed/unsupported`覆盖现有浅深色更新场景。
 - 生成/迭代设计稿的完整流程与陷阱见 `ui-design-mockup` skill（`.github/skills/ui-design-mockup/`）。
-- React 实现与设计稿的几何/像素一致性验证见 `apps/desktop/tests/visual-parity/`，它直接驱动本 SPA 的 preview server。
+- React实现与设计稿的元素几何、样式、文本和状态验证见[Data Parity](../apps/desktop/tests/visual-parity/README.md)。它直接驱动本SPA的preview和真实Renderer页面，独立严格比较并生成数据报告，不需要Agent、保存的PNG或预先运行截图脚本。
 - SPA 内含的 feature 视图（均有 light/dark，截图存于 `shots/`）：
   - **capture** — 左侧筛选分栏 + 捕获列表 + Inspector + 两道 splitter；Breakpoint 已作为流量状态并入此视图（workbar manager、paused rows、Request/Response editor、future-traffic notice）
   - **rules** — 统一规则（Matcher + Rewrite / Map Local / Map Remote / Block / Breakpoint action）

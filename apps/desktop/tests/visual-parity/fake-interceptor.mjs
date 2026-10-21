@@ -1054,6 +1054,7 @@ export const fakeInterceptorFixture = {
 export function installFakeInterceptor({
   fixture,
   theme,
+  captureSessionIds = null,
   freshProfile = false,
   htmlBody = false,
   largeBody = false,
@@ -2752,6 +2753,11 @@ export function installFakeInterceptor({
   window.__appContainerDisableAllCalls = 0;
   window.localStorage.setItem('interceptor.theme', theme);
   window.localStorage.setItem('interceptor.language', 'en');
+  if (captureSessionIds) {
+    fixture.capture.sessions = fixture.capture.sessions.filter((session) =>
+      captureSessionIds.includes(session.id));
+    fixture.capture.captureStatus.capturedExchanges = fixture.capture.sessions.length;
+  }
   if (tlsTunnelHost) {
     fixture.capture.sessions = fixture.capture.sessions.map((session) =>
       session.id === 'tls-tunnel' ? { ...session, host: tlsTunnelHost } : session);

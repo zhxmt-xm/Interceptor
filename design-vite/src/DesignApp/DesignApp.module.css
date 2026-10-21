@@ -10,7 +10,7 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-   --font-ui: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+   --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
    --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
    --icon-button-size: 30px;
    --icon-button-icon-size: 15px;

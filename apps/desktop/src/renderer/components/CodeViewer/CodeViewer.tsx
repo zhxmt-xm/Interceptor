@@ -110,6 +110,7 @@ export const CodeViewer = forwardRef<CodeViewerHandle, CodeViewerProps>(function
     editorRef.current = editor;
     let appliedHeight: number | undefined;
     let requestedHeight: number | undefined;
+    let resizeFrame: number | undefined;
     let scrollContainer = resizable && compact ? host.parentElement : null;
     while (scrollContainer && !/auto|scroll/.test(getComputedStyle(scrollContainer).overflowY)) {
       scrollContainer = scrollContainer.parentElement;
@@ -137,8 +138,15 @@ export const CodeViewer = forwardRef<CodeViewerHandle, CodeViewerProps>(function
       appliedHeight = height;
       editor.layout();
     };
-    const sizeListener = compact ? editor.onDidContentSizeChange(hugContent) : null;
-    const observer = resizable && compact && scrollContainer ? new ResizeObserver(hugContent) : null;
+    const scheduleContentResize = (): void => {
+      if (resizeFrame !== undefined) return;
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = undefined;
+        hugContent();
+      });
+    };
+    const sizeListener = compact ? editor.onDidContentSizeChange(scheduleContentResize) : null;
+    const observer = resizable && compact && scrollContainer ? new ResizeObserver(scheduleContentResize) : null;
     if (observer && scrollContainer) {
       observer.observe(scrollContainer);
       // Earlier sections can move the preview without resizing it or its scroll viewport.
@@ -159,6 +167,7 @@ export const CodeViewer = forwardRef<CodeViewerHandle, CodeViewerProps>(function
     return () => {
       sizeListener?.dispose();
       observer?.disconnect();
+      if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
       if (resizable) {
         host.style.minHeight = '';
         host.style.maxHeight = '';

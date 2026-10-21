@@ -217,7 +217,7 @@ function syncFixture(root: HTMLElement, state: DesignState): void {
       : 'breakpoint-request';
   const target = (state.breakpointState && rows.find((row) => row.dataset.captureRow === breakpointRow))
     || (state.scene !== 'http' && rows.find((row) => row.dataset.captureRow === state.scene))
-    || rows.find((row) => row.dataset.body === state.bodyKind)
+    || rows.find((row) => row.dataset.body === state.bodyKind && !row.classList.contains('breakpoint-row'))
     || rows.find((row) => row.dataset.captureRow === 'http');
   rows.forEach((row) => row.classList.toggle('sel', row === target));
   const dockState: Readonly<Record<string, string>> = {

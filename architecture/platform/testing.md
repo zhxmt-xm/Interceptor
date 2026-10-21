@@ -9,7 +9,7 @@
 | 单元 / 集成 | 各 workspace 的 `tests/` | Vitest（`environment: node`） | 纯逻辑、真实 worker_threads、真实 `node:sqlite`、真实 HTTP/2 |
 | E2E workflow | `apps/desktop/tests/e2e-workflow-tests/` | Windows `_electron.launch()`；macOS未打包Electron+Renderer CDP，可显式选择签名产物 | 从真实 App UI 出发的端到端 workflow |
 | Packaged smoke | `apps/desktop/tests/packaged-smoke/` | 最终 package + CDP | 打包产物的综合验证 |
-| 设计一致性 | `apps/desktop/tests/visual-parity/` | 测试目录内 fake Preload | Renderer 与 `design-vite/` 的几何/像素一致性 |
+| 设计一致性 | `apps/desktop/tests/visual-parity/` | 独立Node命令、测试目录内fake Preload | Renderer与`design-vite/`声明元素的几何、样式、状态严格一致性，不依赖Agent或截图 |
 | 人工验收工具 | `apps/playground/` | Browser手动点击 + Node Traffic Lab | 最新MCP全部详情、逐Tool人工结论与可控协议流量；不替代任何自动层 |
 
 各层职责独立，不能互相替代。
@@ -54,9 +54,13 @@ macOS常驻helper独立于每条workflow的Main/Core，不作为它们的子进�
 
 - 普通E2E的Renderer DOM操作、原生文件面板关闭后的页面断言、窗口尺寸准备和产品Close均不主动前置App。窗口准备只等待并调整真实窗口，不以`frontmost`促使窗口出现；原生Open/Save、系统授权、原生快捷键和最小化恢复专项才由所属driver核对进程代际后取得焦点。产品正常启动显示窗口的行为不变，不增加后台模式或测试专用产品参数。
 - parity使用显式`headless:true`、`--no-proxy-server`的Edge和`windowsHide:true`的Node子进程，不创建可见测试窗口，不调用系统键鼠、前置或置顶。直连仅用于parity浏览器，避免设计/font请求经过被测系统代理，不改App或宿主代理设置。页面内的Playwright DOM操作不需要OS前台焦点；真实Electron窗口恢复、Open/Save和UAC不属于这一层，用户暂停时保留原用例，等待明确通知后执行。
-- parity设计页先逐字重加载`Inter`和`JetBrains Mono`并确认得到已加载的FontFace，再重新计算Monaco字体。`document.fonts.ready`本身不代表下载成功；字体不可用时直接报错，不使用fallback生成布局结论，不更换字体或调整像素阈值。
+- parity设计页先逐字重加载`Inter`和`JetBrains Mono`并确认得到已加载的FontFace，再重新计算Monaco字体；Renderer也核对实际使用的自定义字体。`document.fonts.ready`本身不代表下载成功；字体不可用时直接报错，不使用fallback生成布局结论，不更换字体或放宽严格比较。
 - parity设计页在同一批次复用，每个场景先清理`overlay: ''`、`mcpToolApproval: ''`并重置`mitm: 'inactive'`，再应用自身`designState`；显式浮层和active场景优先。明暗“MITM Tunnel→普通Capture”、“Composer Export loading→选中目录”及MCP审批后的Composer不能残留上一场景的遮罩。不新增工具自身单测，不改变产品MITM或文件操作。
-- 字符串parity目标先以设计侧确定测量对象：设计实际为button时，Renderer也量同名可见button，否则两边仍量文字节点。同名按钮优先选择文字内容完全匹配的按钮，避免Cancel误配右上角同名图标；必要时为重复按钮使用明确的footer selector。显式selector与`measureText`不变，不放宽原几何及样式阈值；几何差值用于定位产品/设计差异，不代替实际flex布局规则验收。
+- 字符串parity目标先以设计侧确定button/text测量语义，双方候选节点去重后必须唯一；缺失或歧义明确记录，不挑第一项。重复控件在配置中限定容器、已选择记录或既有标识；保留必要的`measureText`，不以文字边界代替实际flex对齐规则。
+- parity采集原始相对内容画布的几何、声明样式与DOM/ARIA状态。只去除设计页额外卡片装饰，不从目标差值推算或扣除整体偏移；任何非零数值差异均报告，没有1px容差或epsilon。两秒内无法取得相邻帧一致数据、读取错误及未检查范围不能算通过，不等待数值接近设计来隐藏偏差。
+- 正常parity的设计与Renderer浏览器视口均为1600×900，设计画布外评审留白在测量前移除。每侧核对实际视口、画布、主题及声明的侧栏状态，JSON保留`conditions`；菜单使用同一逻辑记录与行内触发位置，并分别检查弹层进入可视区域。场景条件不满足时按所属侧记录场景错误，不把离屏初始化位置或不同侧栏状态生成的差值归为产品布局问题；不通过自动补切侧栏、移动弹层或丢弃目标来凑一致。
+- `npm start → Test → Parity`与直接CLI运行同一套独立采集、比较、报告流程，不需要模型凭据、外部Agent或MCP。报告默认在`apps/desktop/test-results/visual-parity/`；中文报告按文件绑定具体控件/主题和差异，写清设计值、Renderer值及偏移/增减，不只给“不一致”标签。只合并字段、原始值等均相同的差异，不混淆位置；终端最多列10条具体差异，完整记录和日志在JSON中。关联文件来自实际CSS Modules规则，只是定位入口，不能自动判为根因；未定位时明确说明并给出场景配置。退出码0为通过、1为差异/缺失/歧义/不稳定、2为配置/执行/清理/报告错误；不代表未配置元素、绘制内容或真实E2E通过。
+- parity的浏览器console error/warning按所属场景保留为`logs`，不经Vite转发后误标成构建错误；预期业务失败不自动改变退出码。未处理的JS异常和浏览器ErrorEvent仍进入所属侧的页面错误，不忽略ResizeObserver等运行问题；页面关闭前停止采集，正常退出取消不冒充新错误。
 - **Proxy Core 全套必须 `--no-file-parallelism`**。大压缩流、真实文件 I/O 与随机端口并行会产生 5 秒假超时；与 desktop 并行运行时 `proxy/tests/integration/h2.test.ts` 会假失败。
 - **禁止并行运行 `build:core` 与依赖 `dist` 的集成测试**。`build.mjs` 每次先递归删除 `dist`，而真实代理集成测试运行时依赖该目录，并行会导致瞬时 `ECONNRESET`。必须构建完成后再顺序跑测试。
 - 集成测试用 `describe.skipIf(!existsSync(workerBundle))` 保护，worker bundle 不存在时整体跳过。
@@ -86,9 +90,21 @@ npm run test --workspace @interceptor/mcp-server
 node apps/desktop/tests/visual-parity/parity.mjs
 ```
 
-完整 parity 在 `1600×900`、`deviceScaleFactor=2` 下按每批 5 个 view 启动独立 Edge 子进程；每个 view
-使用独立BrowserContext，以限制内存峰值，不改变单场景状态、断言或像素算法。browser、Vite与design preview
-统一在`finally`关闭，失败不得遗留测试server。
+完整parity在`1600×900`、`deviceScaleFactor=2`下按每批5个view启动独立Edge子进程；每个view使用独立BrowserContext以限制内存峰值，不改变单场景状态或严格数据判定。父进程只准备一次Renderer Vite和设计preview，异步等待子批次并持续报告进度；设计构建使用本次独占临时目录，退出清理，不依赖其他构建可覆盖的共享dist。
+
+普通差异继续汇总余下批次；环境错误不能继续时明确记录未运行范围。browser、Vite与design preview统一在`finally`关闭，关闭失败写入错误报告，不得吞掉后声称通过。SIGINT/SIGTERM分别以130/143退出并清理本次资源。最终报告不混入运行中的中间状态，生成报告与批量截图不进入Git，手工设计评审和真实E2E的截图机制保持独立。
+
+App视觉基准已按用户确认恢复为视觉对齐前的实现，不再为消除设计差异调整产品：
+
+- [源码恢复核对](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/app-led-revert/final-scope-verification.json)覆盖43个Renderer实现/样式文件和15个语言资源文件，均与改前源码逐字节一致；菜单统一恢复Ant Popover，JetBrains Mono恢复原可变字重注册，断点数量恢复原普通文字。具体行为见[Renderer说明](renderer.md)。
+- [相关产品测试](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/app-led-revert/final-green-tests.log)为11个文件、126项通过，[Desktop typecheck](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/app-led-revert/final-typecheck.log)通过；恢复前的目标Red分别保留在[细微排版](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/app-led-revert/red-tests.log)和[字体/数量文字](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/app-led-revert/three-groups-red-tests.log)中。
+- [全场景数据报告](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/app-led-revert/all-scenes/report.md)覆盖534/534场景、4137/4137目标；缺失、歧义、不稳定和执行错误均为0。保留2305条差异（2293条几何、12条样式，几何差值绝对值最大4px），结果仍为`differences`，不能称为设计一致性通过，也不把78个相关文件当作78个产品故障。
+  - [输入与来源记录](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/app-led-revert/resume-inputs.json)核对734份输入及Node、Edge版本；汇总暂停前完整285个场景与恢复后249个场景。中断批次重新执行，原中断报告保留；这是同一有效基准下的完整覆盖，不是一次连续运行。
+  - [收尾核对](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/app-led-revert/final-verification.json)确认源码、保留修复与Git staged mode/blob未变，5199在IPv4/IPv6均已释放。本层未启动真实Electron/Main/Core，未改宿主代理或证书，不作为业务E2E或最终打包验收。
+- 已确认的比较准备修正继续保留：设计请求菜单不因`key`变化重建，普通Body行选择排除隐藏断点行，设计字体栈移除未注册的Inter Variable前缀；两侧编辑器的后续ResizeObserver通知合并到动画帧，卸载取消回调。独立数据parity、原始精度和全部目标不变，未采用后续未批准的设计同步候选。
+  - ResizeObserver修复的前置[两个Red](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/resize-observer-fix/unit-red.log)、[四文件60项Green](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/resize-observer-fix/related-unit-green.log)与[原始全量记录](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/resize-observer-fix/full-verification.json)保留。该历史阶段覆盖534场景、4125/4137目标，观察器错误从3降至0，原始5175条元素差异与场景条件逐项未变；38个故障场景目标复验无运行错误，两个当时未确认设计菜单的前提错误仍使整体状态为`error`，不冒充当前最终结果。
+  - [比较条件与日志归因记录](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/parity-comparison-audit/full-page-diagnostics-verification.json)保留修复前5条错误的归属：两个未就绪设计菜单使12个目标未比较，其余三条为ResizeObserver错误。两次全量原始差异一致，727份受测源码未变，8个预期WPAD失败日志按场景保留、构建错误为0。该阶段的[修正预览](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/parity-comparison-audit/review/)是历史材料，不表示仍等待同一轮确认；原始失败证据未覆盖。
+  - [中文具体差异验收](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/parity-specific-differences/)保存实际CLI、原始报告与分组核对：`upstream-settings-system-editing-light`的8个目标产生12条差异、0执行错误，报告调整前后`views`和`summary`完全相同；精度、方向、字体声明、状态值、分组和文件链接均已检查。上述历史运行均正常关闭自有服务并释放5199，未启动真实Electron或操作宿主代理、证书，不作为业务E2E。
 
 涉及 Main / Preload / IPC / Fuses / CSP / 打包边界时追加：
 

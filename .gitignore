@@ -7,8 +7,9 @@ playwright-report/
 test-results/
 blob-report/
 shots-diff/
-design-vite/shots/**/breakpoint-request-*.json
-apps/desktop/tests/visual-parity/renderer-shots/*.png
+/design-vite/shots/
+/apps/desktop/tests/visual-parity/renderer-shots/
+/apps/desktop/tests/visual-parity/parity-report.md
 *.log
 .env
 .env.*

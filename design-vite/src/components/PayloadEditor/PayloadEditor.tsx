@@ -197,7 +197,7 @@ export function PayloadEditor({
         ) : (
           <div className={styles.payloadEditorUsingOriginal}>
             <Check aria-hidden="true" size={13} />
-            <span>The original {payloadName} will be forwarded unchanged.</span>
+            <span>{`The original ${payloadName} will be forwarded unchanged.`}</span>
           </div>
         )}
       </CollapsibleSection>
