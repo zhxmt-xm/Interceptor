@@ -11,6 +11,7 @@ import {
 } from 'electron';
 
 import {
+  type AndroidStatusResult,
   type CoreCommand,
   type CoreResultForCommand,
   type DiagnosticIngestPayload,
@@ -177,6 +178,11 @@ export class CoreRuntime {
   /** 将Core成功导入通知交给Main，跨Core重启保留。 */
   onCaptureImported(listener: () => void): void {
     this.coreRpcClient.onCaptureImported(listener);
+  }
+
+  /** 将Core实际入口快照交给Main；设备管理另行结合Core代际，不推断VPN状态。 */
+  onAndroidStatusChange(listener: (status: AndroidStatusResult['payload']) => void): void {
+    this.coreRpcClient.onAndroidStatusChange(listener);
   }
 
   /**

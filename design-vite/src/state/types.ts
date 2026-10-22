@@ -124,6 +124,8 @@ export interface AgentProviderProfileState {
 }
 
 export interface DesignState {
+  readonly androidPreview: boolean;
+  readonly androidConnection: 'disconnected' | 'pairing' | 'connected' | 'error';
   readonly homepageGuidePreview: boolean;
   readonly homepageGuidePage: 'resources' | 'overview' | 'capture';
   readonly homepageGuideSearchPreview: boolean;

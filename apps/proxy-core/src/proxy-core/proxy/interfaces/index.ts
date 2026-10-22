@@ -55,6 +55,8 @@ export interface WebSocketBridgeMessage {
   readonly timestamp: number;
   readonly content: Buffer;
   readonly isBinary: boolean;
+  /** 所属连接终止时取消当前或尚未开始的消息决定。 */
+  readonly signal: AbortSignal;
   /** 仅 close 帧：对端给出的 close code。 */
   readonly closeCode?: number;
 }
@@ -81,8 +83,6 @@ export interface WebSocketBridgeOptions {
    */
   readonly upstreamProxy?: () => UpstreamProxyConfig | null;
   readonly onError?: (error: Error) => void;
-  /** 任一对端未发送close frame便异常断开时，释放该连接的数据面等待。 */
-  readonly onAbnormalDisconnect?: (streamId: string) => void;
   /**
    * 上游 Upgrade 失败时回调（streamId 即 request.id）。
    * Mockttp 对这条路径只发 completed `response`，Capture 为避免全量缓冲已退订，
@@ -94,6 +94,8 @@ export interface WebSocketBridgeOptions {
 export interface WebSocketPair {
   readonly downstream: WebSocket;
   readonly upstream: WebSocket;
+  /** 两方向消息共用该连接的取消所有权。 */
+  readonly abortController: AbortController;
 }
 
 export interface PendingWebSocketCapture {
@@ -118,6 +120,8 @@ export type ResponsePhase =
 export interface TrackedExchange {
   /** 分配的 Exchange id。 */
   readonly exchangeId: string;
+  /** 请求创建时所属Session，收尾不读取可能已切换的当前Session。 */
+  readonly sessionId: string;
   /** 创建时固定的 capture generation；Clear 后旧代际事件全部丢弃。 */
   readonly generation: number;
   /** 客户端请求开始时间。 */

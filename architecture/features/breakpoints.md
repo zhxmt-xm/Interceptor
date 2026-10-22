@@ -21,9 +21,9 @@ Breakpoints 在真实转发路径上**挂起**请求或响应，等待用户放�
 
 | 参与者 | 职责 |
 | --- | --- |
-| `RuleService` | 遇到 `breakpoint` action 时调用 `awaitBreakpoint` |
+| `RuleService` | HTTP调用`awaitBreakpoint`；`evaluateWebSocketMessage`统一WS匹配、快照、编辑与取消 |
 | `BreakpointQueue` | 持有 pending registry，提供 suspend/resolve/三条批量命令/list/closeAll |
-| `WebSocketBridge` | WebSocket 帧转发前调用 `pauseWebSocketMessage`，覆盖 message / ping / pong / close |
+| `WebSocketBridge` | 拥有每对socket的AbortSignal，经Proxy调用共享决定后转发message / ping / pong / close |
 | `CoreApplication` | 路由 `breakpoint.*` 命令 |
 | Renderer `useBreakpoints` | 订阅 `breakpoint.pending` 变更信号，刷新列表并提交解决方案 |
 
@@ -48,6 +48,14 @@ stateDiagram-v2
 suspension；WebSocket异常断开时解除该连接`ws:<exchangeId>`队列的全部pending，已收到的graceful close
 frame仍保留给用户编辑。`closeAll()` 将当前进程的全部等待结果结算为 `aborted`。Rules、
 WebSocket setup、Protocol、导入校验与MCP工具均不包含 timeout 字段，也不存在旧格式识别或迁移路径。
+
+Android的HTTP协议副本已接CoreApplication与Capture；其请求/响应决定复用同一HTTP队列，但每次求值使用独立内部ID，
+不能用设备自报ID取消本机或其他设备的请求。取消既要释放已有pending，也要阻止当前请求或响应
+求值在异步继续后创建下一个断点；Android实际网络取消仍需双端cancel/ack，Core队列释放不等于手机已停止。
+
+WS共享求值的`aborted`表示该次suspension已释放，不能自行推断整条连接已取消。连接仍active时，
+Android HttpChannel与Proxy将该条消息映射为drop；连接owner发起取消后则停止后续决定，继续各自的关闭/取消协议。
+Android正式WS capability与native/TLS双端lab已验证；这不代表系统VpnService或完整手机UI流程，边界仍受Android Handover约束。
 
 ## 4. 调用流程
 
@@ -141,35 +149,44 @@ sequenceDiagram
     participant Origin
 
     Client->>Bridge: 应用消息 / ping / pong / close
-    Bridge->>Proxy: interceptWebSocketMessage
+    Bridge->>Proxy: interceptWebSocketMessage + AbortSignal
+    opt 应用message且已录制
+        Proxy->>Proxy: 开始保存Capture frame
+    end
+    Proxy->>Engine: evaluateWebSocketMessage + 配置 + 保存Promise
     alt 未启用或不在配置内
-        Proxy->>Proxy: 异步写入Capture frame
+        Engine-->>Proxy: bypass，不等待保存Promise
         Proxy-->>Bridge: forward 原样
     else 方向与帧类别都命中
-        opt 应用message
-            Proxy->>Proxy: 写入Capture并取得frame sequence
-        end
-        Proxy->>Engine: pauseWebSocketMessage(snapshot)
+        Engine->>Engine: 等待frame sequence并构造快照
         Engine->>Queue: suspend('websocket', ws:exchangeId, undefined, snapshot)
         Queue-->>Engine: outcome
         alt dropped
+            Engine-->>Proxy: drop
             Proxy-->>Bridge: drop
         else edited
-            Note over Proxy: binary 用 hex 解析<br/>text 用 utf8<br/>close 另带 closeCode
+            Note over Engine: binary 用 hex 解析<br/>text 用 utf8<br/>close 另带 closeCode
+            Engine-->>Proxy: replace
             Proxy-->>Bridge: forward 编辑后内容
         else continued
+            Engine-->>Proxy: bypass
             Proxy-->>Bridge: forward 原内容
         end
     end
     Bridge->>Origin: 转发、丢弃或关闭
 ```
 
-WebSocket 断点是**当前连接的临时开关**，与 HTTP 的 break-on-match 正交：`pauseWebSocketMessage`
+WebSocket 断点是**当前连接的临时开关**，与 HTTP 的 break-on-match 正交：`evaluateWebSocketMessage`
 不再检查 `breakpointsEnabled`，开关完全归 `ProxyService.webSocketBreakpointSettings`。
 配置里的 `exchangeId` 把断点锁在发起它的那条连接上，UI 说的 “Pause messages on this connection”
 就是字面意思；其他连接的帧不受影响，`websocket.frames` 也只在 exchangeId 匹配时才报告该配置。
 启用必须给出完整配置（`exchangeId` / `direction` / `frames`），因此不存在“开了但不知道拦什么”的中间态。
 ping / pong / close 与应用消息走同一条方向内串行链，断点 await 不会打乱到达顺序。
+
+每对真实socket拥有一个AbortController，异常断开、bridge停止或双端都结束时解除当前等待；
+已排队但未处理的帧不再创建断点。共享决定在等待Capture时也能立即取消，并在Continue之后再次
+核对signal，不把迟到继续当作可转发结果。Android WS已通过正式通道复用同一业务方法，
+native/TLS双端组件已有证据，但仍不代表VpnService、Main设备管理或手机UI用户流程已完成。
 
 Renderer 不把 WebSocket pause 替换成另一套全屏 Inspector。pending 到达后自动切到该连接的 Messages tab，
 保留已转发帧并为每个 pending 追加 head / queued row；只有队首下方挂载 Original / Replacement message

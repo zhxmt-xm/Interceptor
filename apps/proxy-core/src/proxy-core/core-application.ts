@@ -1,6 +1,10 @@
 import process from 'node:process';
+import { randomUUID } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 
 import type {
+  AndroidStartCommand,
+  AndroidStatusResult,
   CoreCommand,
   CoreError,
   CoreResult,
@@ -15,11 +19,15 @@ import {
   HEARTBEAT_INTERVAL_MS,
   dataDir,
   clientAppHelperPath,
+  appVersion,
 } from './constants';
 import { CoreDiagnostics } from './core-diagnostics';
 import { ClientAppService } from './client-app/entry';
 import { ComposerService } from './composer/entry';
 import { HttpMessageService } from './http-message/entry';
+import { HttpInterceptionService } from './http-interception/entry';
+import { AndroidIngressService } from './android-ingress/entry';
+import { HttpRecording } from './android-ingress/internal/http-recording';
 import { TlsProbeService } from './tls-probe/entry';
 import {
   CoreCommandError,
@@ -62,7 +70,7 @@ export interface CoreApplicationOptions {
   diagnosticsService?: DiagnosticsService;
   /** 显式代理服务；缺省时 proxy.start/stop 返回 internal，proxy.status 返回未监听。 */
   proxyService?: ProxyService;
-  /** 捕获事件有界合并队列；ProxyService 写入，CoreApplication 按背压窗口 push 给 Main。 */
+  /** Proxy与Android共用的捕获事件队列，CoreApplication按背压窗口push给Main。 */
   captureEventQueue?: CaptureEventQueue;
   /** 断点状态机；rule-engine 挂起、breakpoint.resolve handler 解挂，退出时确定性关闭。 */
   breakpointQueue?: BreakpointQueue;
@@ -95,6 +103,14 @@ export class CoreApplication implements CoreRpcHost {
   private readonly workspaceService: WorkspaceService | null;
   private readonly diagnosticsService: DiagnosticsService | null;
   private readonly proxyService: ProxyService | null;
+  /** 单设备HTTP协议副本入口，仅由显式命令监听。 */
+  private readonly androidIngressService: AndroidIngressService | null;
+  /** Android入口本次拥有的Capture Session，与设备wire session分开。 */
+  private androidCaptureSessionId: string | null = null;
+  /** 入口启停与Clear串行化，退出前等待已接受清理，GC不撞上另一入口启动。 */
+  private ingressOperation: Promise<void> = Promise.resolve();
+  /** 上一次成功发送的Android快照，只用于通知去重。 */
+  private lastAndroidStatus: AndroidStatusResult['payload'] | null = null;
   private readonly captureEventQueue: CaptureEventQueue | null;
   private readonly breakpointQueue: BreakpointQueue | null;
   private readonly ruleService: RuleService | null;
@@ -210,6 +226,15 @@ export class CoreApplication implements CoreRpcHost {
     this.captureService?.attachDiagnostics(this.coreDiagnostics);
     this.ruleService?.attachDiagnostics(this.coreDiagnostics);
     this.clientAppService.attachDiagnostics(this.coreDiagnostics);
+    this.androidIngressService = this.captureService && this.captureEventQueue && this.ruleService
+      ? new AndroidIngressService(
+          new HttpInterceptionService(this.ruleService, this.httpMessageService),
+          this.ruleService,
+          () => this.proxyService?.webSocketBreakpointSettings ?? null,
+          () => this.createAndroidRecording(),
+          this.coreDiagnostics,
+        )
+      : null;
     this.coreRpcServer = new CoreRpcServer(this);
     this.transferService.onCompleted((kind) => {
       if (kind === 'har-import' || kind === 'archive-import') {
@@ -217,6 +242,100 @@ export class CoreApplication implements CoreRpcHost {
         this.flushCaptureEvents();
       }
     });
+  }
+
+  /** 在每条新副本WSS接纳时固定录制状态，不从设备wire身份推导Capture Session。 */
+  private createAndroidRecording(): HttpRecording {
+    const sessionId = this.androidCaptureSessionId;
+    if (!this.captureService || !this.captureEventQueue || sessionId === null) {
+      throw new Error('Android capture session is not active.');
+    }
+    return new HttpRecording(this.captureService, this.captureEventQueue, {
+      sessionId, recording: this.captureService.isRecording && !this.captureCleanupInProgress,
+    }, this.coreDiagnostics);
+  }
+
+  /** 为显式Android入口创建独立Session，失败或取消时释放本次资源。 */
+  private async startAndroidIngress(
+    options: AndroidStartCommand['payload'], abortSignal: AbortSignal,
+  ): Promise<AndroidStatusResult> {
+    const androidIngressService = this.androidIngressService;
+    if (!androidIngressService) {
+      throw commandError({ code: 'internal', message: 'Android inspection is not available.', retryable: false });
+    }
+    return this.withCapture(async captureService => {
+      abortSignal.throwIfAborted();
+      this.assertIngressCanStart();
+      if (this.androidCaptureSessionId !== null) {
+        throw commandError({ code: 'conflict', message: 'Android inspection is already active.', retryable: false });
+      }
+      const sessionId = `session-${randomUUID()}`;
+      this.androidCaptureSessionId = sessionId;
+      try {
+        await captureService.ensureSession({
+          id: sessionId, name: 'Android capture', startedAt: Date.now(), captureMode: 'android-usb', appVersion,
+        });
+        abortSignal.throwIfAborted();
+        this.assertIngressCanStart();
+        await this.coreDiagnostics.action('android.start', () => androidIngressService.start(options));
+        abortSignal.throwIfAborted();
+        this.assertIngressCanStart();
+        return { type: 'android.status', payload: this.androidStatus() };
+      } catch (error) {
+        try {
+          await androidIngressService.stop();
+          await captureService.cleanup({ kind: 'session', sessionId });
+          this.androidCaptureSessionId = null;
+        } catch (cleanupError) {
+          throw new AggregateError([error, cleanupError], 'Android startup and cleanup failed.');
+        }
+        throw error;
+      }
+    });
+  }
+
+  /** 先撤销控制和排空录制，再解除Session归属；不改动全局录制意图。 */
+  private async stopAndroidIngress(): Promise<AndroidStatusResult> {
+    const androidIngressService = this.androidIngressService;
+    if (androidIngressService) {
+      await this.coreDiagnostics.action('android.stop', () => androidIngressService.stop());
+    }
+    this.androidCaptureSessionId = null;
+    await this.collectStoppedIngressBodies();
+    return { type: 'android.status', payload: this.androidStatus() };
+  }
+
+  /** Main查询和状态通知共用同一真实快照，不包含配对或数据通道凭据。 */
+  private androidStatus(): AndroidStatusResult['payload'] {
+    const ingress = this.androidIngressService?.status() ?? {
+      listening: false, connected: false, host: null, port: null,
+    };
+    return {
+      ...ingress,
+      recording: ingress.listening && this.captureService?.isRecording === true,
+      captureSessionId: ingress.listening ? this.androidCaptureSessionId : null,
+    };
+  }
+
+  /** 已开始退出的Core不再接受排队后的入口启动。 */
+  private assertIngressCanStart(): void {
+    if (this.stopping) {
+      throw commandError({ code: 'cancelled', message: 'Core is stopping.', retryable: false });
+    }
+  }
+
+  /** 只在所有入口都已排空后GC，不能删除另一来源刚提交但尚未绑定的正文。 */
+  private async collectStoppedIngressBodies(): Promise<void> {
+    if (!this.proxyService?.status().listening && this.androidCaptureSessionId === null) {
+      await this.captureService?.collectUnreferencedBodies();
+    }
+  }
+
+  /** 启停串行；调用方仍取得原失败，拒绝结果只解除下一条操作的等待。 */
+  private queueIngressOperation<T>(operation: () => Promise<T>): Promise<T> {
+    const running = this.ingressOperation.then(operation);
+    this.ingressOperation = running.then(() => undefined, () => undefined);
+    return running;
   }
 
   /**
@@ -262,6 +381,11 @@ export class CoreApplication implements CoreRpcHost {
    * 调用方：Main 发来的 shutdown 消息或 SIGINT/SIGTERM；重复调用保持幂等。
    */
   stop(): void {
+    this.stopIngressAndExit(0);
+  }
+
+  /** 正常关闭和RPC故障都先排空入口，失败不能冒充成功退出。 */
+  private stopIngressAndExit(code: number): void {
     if (this.stopping) {
       return;
     }
@@ -269,7 +393,13 @@ export class CoreApplication implements CoreRpcHost {
     this.coreDiagnostics.info('core.stopping');
     this.clearHeartbeat();
     this.coreRpcServer.close('shutdown');
-    void this.shutdown();
+    void this.shutdown(code).catch((error: unknown) => {
+      this.coreDiagnostics.error('core.shutdown-failed', {
+        errorCode: error instanceof Error ? error.name : 'unknown',
+      });
+      this.parentPort.postMessage({ type: 'fatal', message: 'Core shutdown failed.' });
+      this.requestExit(1);
+    });
   }
 
   /**
@@ -602,22 +732,30 @@ export class CoreApplication implements CoreRpcHost {
           }
           this.captureCleanupInProgress = true;
           try {
-            const requestedScope = toCleanupScope(command.payload);
-            const activeSessionId = requestedScope.kind === 'all'
-              ? (await this.proxyService?.prepareCaptureReset()) ?? null
-              : null;
-            if (requestedScope.kind === 'all') {
-              this.captureEventQueue?.reset();
-            }
-            const cleanupScope: CleanupScope = activeSessionId
-              ? { kind: 'all-except-session', sessionId: activeSessionId }
-              : requestedScope;
-            return {
-              type: 'capture.status',
-              payload: await this.coreDiagnostics.action('capture.cleanup', () =>
-                captureService.cleanup(cleanupScope),
-              ),
-            };
+            return await this.queueIngressOperation(async () => {
+              const requestedScope = toCleanupScope(command.payload);
+              const proxySessionId = requestedScope.kind === 'all'
+                ? (await this.proxyService?.prepareCaptureReset()) ?? null
+                : this.proxyService?.status().sessionId ?? null;
+              const activeSessionIds = [proxySessionId, this.androidCaptureSessionId]
+                .filter((sessionId): sessionId is string => sessionId !== null);
+              if (requestedScope.kind === 'session' && activeSessionIds.includes(requestedScope.sessionId)) {
+                throw commandError({ code: 'conflict', retryable: true,
+                  message: 'An active capture session cannot be deleted. Clear all captures or stop its ingress first.' });
+              }
+              if (requestedScope.kind === 'all') {
+                this.captureEventQueue?.reset();
+              }
+              const cleanupScope: CleanupScope = requestedScope.kind === 'all' && activeSessionIds.length > 0
+                ? { kind: 'all-except-sessions', sessionIds: activeSessionIds }
+                : requestedScope;
+              return {
+                type: 'capture.status',
+                payload: await this.coreDiagnostics.action('capture.cleanup', () =>
+                  captureService.cleanup(cleanupScope),
+                ),
+              };
+            });
           } finally {
             this.captureCleanupInProgress = false;
           }
@@ -697,19 +835,27 @@ export class CoreApplication implements CoreRpcHost {
           payload: { job: await this.transferService.cancel(command.payload.jobId) },
         };
       case 'proxy.start':
-        return this.withProxy(async (proxyService) => {
+        return this.queueIngressOperation(() => this.withProxy(async (proxyService) => {
+          abortSignal.throwIfAborted();
+          this.assertIngressCanStart();
           await this.captureService?.initialize();
           await this.coreDiagnostics.action('proxy.start', () =>
             proxyService.start({ port: command.payload.port }),
           );
           return { type: 'proxy.status', payload: proxyService.status() };
-        });
+        }));
       case 'proxy.stop':
-        return this.withProxy(async (proxyService) => {
+        return this.queueIngressOperation(() => this.withProxy(async (proxyService) => {
           await this.coreDiagnostics.action('proxy.stop', () => proxyService.stop());
-          await this.captureService?.collectUnreferencedBodies();
+          await this.collectStoppedIngressBodies();
           return { type: 'proxy.status', payload: proxyService.status() };
-        });
+        }));
+      case 'android.start':
+        return this.queueIngressOperation(() => this.startAndroidIngress(command.payload, abortSignal));
+      case 'android.stop':
+        return this.queueIngressOperation(() => this.stopAndroidIngress());
+      case 'android.status':
+        return { type: 'android.status', payload: this.androidStatus() };
       case 'proxy.status':
         return {
           type: 'proxy.status',
@@ -1107,6 +1253,8 @@ export class CoreApplication implements CoreRpcHost {
     const rpcPort = readRpcPort(event);
     if (rpcPort) {
       this.coreRpcServer.attach(rpcPort);
+      this.inFlightEventBatches.clear();
+      this.lastAndroidStatus = null;
       return;
     }
     if (isRecord(event.data) && event.data.type === 'shutdown') {
@@ -1154,11 +1302,15 @@ export class CoreApplication implements CoreRpcHost {
         proxyService?.drainTlsCompatibilityEvents(EVENT_DRAIN_BATCH) ?? [];
       const breakpointsChanged = this.breakpointQueue?.drainChangeNotice() ?? false;
       const captureImported = this.captureImportPending;
+      const currentAndroidStatus = this.androidIngressService ? this.androidStatus() : undefined;
+      const androidStatus = currentAndroidStatus && !isDeepStrictEqual(currentAndroidStatus, this.lastAndroidStatus)
+        ? currentAndroidStatus : undefined;
       if (
         batch.length === 0
         && tlsCompatibilityEvents.length === 0
         && !breakpointsChanged
         && !captureImported
+        && !androidStatus
       ) {
         return;
       }
@@ -1176,6 +1328,7 @@ export class CoreApplication implements CoreRpcHost {
         tlsCompatibilityEvents,
         breakpointsChanged,
         captureImported,
+        androidStatus,
       );
       if (batchSequence === null) {
         for (const event of events) {
@@ -1189,6 +1342,7 @@ export class CoreApplication implements CoreRpcHost {
       }
       this.clientAppService.markAppsDelivered(clientApps);
       this.captureImportPending = false;
+      if (androidStatus) this.lastAndroidStatus = androidStatus;
       this.inFlightEventBatches.add(batchSequence);
     }
   }
@@ -1208,7 +1362,7 @@ export class CoreApplication implements CoreRpcHost {
    * 调用方：CoreRpcServer 连接失效时。
    */
   handleRpcFatalError(_reason: string): void {
-    this.requestExit(1);
+    this.stopIngressAndExit(1);
   }
 
   /**
@@ -1223,23 +1377,31 @@ export class CoreApplication implements CoreRpcHost {
   }
 
   /** 等待传输、代理、临时 Capture 与 Diagnostics 退出后再确认 stopped。 */
-  private async shutdown(): Promise<void> {
-    await Promise.allSettled([
+  private async shutdown(code: number): Promise<void> {
+    const ingressResults = await this.queueIngressOperation(() => Promise.allSettled([
       this.transferService.cancelAll(),
       this.proxyService?.stop(),
+      this.androidIngressService?.stop(),
       this.http2ClientService.stop(),
-    ]);
-    await Promise.allSettled([
+    ]));
+    const ingressErrors: unknown[] = ingressResults.flatMap(result => result.status === 'rejected' ? [result.reason] : []);
+    if (ingressErrors.length > 0) throw new AggregateError(ingressErrors, 'Core ingress shutdown failed.');
+    this.androidCaptureSessionId = null;
+    const storageResults = await Promise.allSettled([
       this.captureService?.dispose(),
       this.diagnosticsService?.close(),
     ]);
     this.workspaceService?.dispose();
-    this.parentPort.postMessage({
-      type: 'stopped',
-      pid: process.pid,
-      timestamp: this.timestamp(),
-    });
-    this.requestExit(0);
+    const storageErrors: unknown[] = storageResults.flatMap(result => result.status === 'rejected' ? [result.reason] : []);
+    if (storageErrors.length > 0) throw new AggregateError(storageErrors, 'Core storage shutdown failed.');
+    if (code === 0) {
+      this.parentPort.postMessage({
+        type: 'stopped',
+        pid: process.pid,
+        timestamp: this.timestamp(),
+      });
+    }
+    this.requestExit(code);
   }
 
   /**

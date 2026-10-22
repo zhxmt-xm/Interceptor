@@ -40,6 +40,7 @@ const INITIAL_UPSTREAM_CONFIG: UpstreamDesignConfig = {
 };
 
 export const INITIAL_DESIGN_STATE: DesignState = {
+  androidPreview: false, androidConnection: 'disconnected',
   homepageGuidePreview: false, homepageGuidePage: 'overview',
   homepageGuideSearchPreview: false, homepageGuideSearchOpen: false, homepageGuideSearchQuery: '',
   homepageGuideOutlinePreview: false, homepageGuideOutlineActive: '',
@@ -98,6 +99,8 @@ export function reduceDesignState(state: DesignState, patch: DesignStatePatch): 
   if (patch.view !== undefined) {
     next = {
       ...next,
+      androidPreview: patch.androidPreview ?? false,
+      androidConnection: patch.androidConnection ?? 'disconnected',
       homepageGuidePreview: patch.homepageGuidePreview ?? false,
       homepageGuidePage: patch.homepageGuidePage ?? 'overview',
       homepageGuideSearchPreview: patch.homepageGuideSearchPreview ?? false,

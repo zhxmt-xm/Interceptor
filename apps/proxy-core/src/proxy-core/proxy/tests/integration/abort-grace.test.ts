@@ -195,7 +195,7 @@ describe('ExchangeTracker aborted body grace period', () => {
 
   it('lets an existing aborted capture drain while Recording is paused', async () => {
     exchangeTracker.abortExchange(abort());
-    exchangeTracker.setRecording(false);
+    captureService.pauseRecording();
     exchangeTracker.beginRequest({ ...request, id: 'not-recorded' });
     exchangeTracker.appendResponseBody(body('late while paused'));
     await vi.advanceTimersByTimeAsync(1001);

@@ -2,6 +2,7 @@ import {
   CORE_PROTOCOL_VERSION,
   parseMainToCoreMessage,
   type CaptureExchangeEvent,
+  type AndroidStatusResult,
   type ClientAppIdentity,
   type CoreCommand,
   type CoreError,
@@ -366,6 +367,7 @@ export class CoreRpcServer {
     tlsCompatibilityEvents: readonly TlsCompatibilityEvent[] = [],
     breakpointsChanged = false,
     captureImported = false,
+    androidStatus?: AndroidStatusResult['payload'],
   ): number | null {
     const rpcConnection = this.rpcConnection;
     if (
@@ -373,7 +375,8 @@ export class CoreRpcServer {
       (events.length === 0
         && tlsCompatibilityEvents.length === 0
         && !breakpointsChanged
-        && !captureImported)
+        && !captureImported
+        && !androidStatus)
     ) {
       return null;
     }
@@ -389,6 +392,7 @@ export class CoreRpcServer {
         : {}),
       ...(breakpointsChanged ? { breakpointsChanged: true } : {}),
       ...(captureImported ? { captureImported: true } : {}),
+      ...(androidStatus ? { androidStatus } : {}),
     });
     return delivered ? batchSequence : null;
   }

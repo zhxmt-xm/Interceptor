@@ -652,7 +652,7 @@ describe('CoreApplication', () => {
       'cleanup',
     ]);
     expect(cleanupScopes).toEqual([
-      { kind: 'all-except-session', sessionId: 'active-session' },
+      { kind: 'all-except-sessions', sessionIds: ['active-session'] },
     ]);
     expect(eventQueueResets).toBe(1);
   });

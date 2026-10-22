@@ -19,4 +19,4 @@
 - `iconv-lite`：Text charset 编码。
 - `http-encoding`：单层 content coding；多层顺序由本模块控制。
 
-- 被依赖：`proxy/`、`composer/`
+- 被依赖：`proxy/`、`composer/`、`http-interception/`

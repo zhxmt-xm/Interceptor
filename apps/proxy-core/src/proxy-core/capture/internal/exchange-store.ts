@@ -100,6 +100,7 @@ export class ExchangeStore {
     this.storeBodyEffect(patch.responseBodyEffect);
     const exchange: ExchangeInput = {
       ...record.exchange,
+      ...(patch.protocol !== undefined ? { protocol: patch.protocol } : {}),
       ...(patch.state !== undefined ? { state: patch.state } : {}),
       ...(patch.requestMime !== undefined
         ? { requestMime: patch.requestMime }
@@ -365,9 +366,9 @@ export class ExchangeStore {
 
     if (scope.kind === 'all') {
       this.sessions.clear();
-    } else if (scope.kind === 'all-except-session') {
+    } else if (scope.kind === 'all-except-sessions') {
       for (const id of this.sessions.keys()) {
-        if (id !== scope.sessionId) {
+        if (!scope.sessionIds.includes(id)) {
           this.sessions.delete(id);
         }
       }
@@ -673,9 +674,9 @@ export class ExchangeStore {
     if (scope.kind === 'all') {
       return this.sessions.size;
     }
-    if (scope.kind === 'all-except-session') {
+    if (scope.kind === 'all-except-sessions') {
       return Array.from(this.sessions.keys()).filter(
-        (id) => id !== scope.sessionId,
+        (id) => !scope.sessionIds.includes(id),
       ).length;
     }
     return this.sessions.has(scope.sessionId) ? 1 : 0;
@@ -687,7 +688,7 @@ export class ExchangeStore {
     scope: CleanupScope,
   ): boolean {
     return scope.kind === 'all'
-      || scope.kind === 'all-except-session'
+      || scope.kind === 'all-except-sessions'
       || exchange.sessionId === scope.sessionId;
   }
 

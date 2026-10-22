@@ -35,7 +35,7 @@ Handover只列未完成任务、当前阻塞和运行约束；完成项从任务
 | 文档 | 覆盖范围 | Core 模块 | Renderer 模块 |
 | --- | --- | --- | --- |
 | [features/capture.md](features/capture.md) | 流量捕获、Exchange 生命周期、正文存储与预览渲染矩阵、事件推送、客户端应用归属、筛选分栏 | `proxy/`、`capture/`、`client-app/` | `features/capture/`、`components/BodyViewer/` |
-| [features/android.md](features/android.md) | Android USB 接入架构方案（未实现）：VpnService/TUN、adb、设备来源与 PC 规则复用 | 拟新增 `android-ingress/`；复用 `proxy/`、`rules/`、`capture/` | 拟复用 Capture；设备入口待设计 |
+| [Android repo：USB 接入架构](https://github.com/zhxmt-xm/Interceptor-Android/blob/main/architecture/features/usb-capture.md) | 独立 Android repo 的唯一方案及中间实现：协议副本、native/DNS、VpnService/TUN目标与USB；完整App和真机链路未完成 | `android-ingress/`、`http-interception/`；复用 `rules/`、`capture/` | 拟复用 Capture；设备入口待设计 |
 | [features/rules.md](features/rules.md) | 规则模型、编译、执行、证据采集、热更新 | `rules/` | `features/rules/` |
 | [features/breakpoints.md](features/breakpoints.md) | 请求/响应/WebSocket 断点挂起与编辑 | `rules/internal/breakpoint-queue.ts` | `features/breakpoints/` |
 | [features/composer.md](features/composer.md) | 手工构造请求、连接探测 | `composer/`、`tls-probe/` | `features/composer/` |

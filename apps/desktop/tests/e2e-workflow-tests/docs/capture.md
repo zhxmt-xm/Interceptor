@@ -445,6 +445,8 @@ Playground不是直接构造Core状态的测试后门；真实Browser点击自�
 
 Stop只暂停记录，不停止listener或系统代理，不删除旧记录；录制决定以HTTP请求/WebSocket握手开始时状态为准。暂停期间流量继续转发，Resume不能为旧的未录制连接创建孤立消息、正文或等待者；恢复后的新请求继续在同一Core代际追加。退出必须恢复系统代理及进程资源。
 
+Core录制所有权调整时，先后运行本流程与`capture.clear-facets`，核对本机HTTP/WebSocket边界没有变化。Android与本机共用录制开关、独立Session及Clear/退出的Core验收使用真实mTLS协议peer；尚无手机UI入口时不将这些组件测试登记为Android真实E2E。
+
 <a id="capture-proxy-readiness-resolve"></a>
 ## `capture.proxy-readiness.resolve`
 

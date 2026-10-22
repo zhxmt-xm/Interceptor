@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `22b4cabd`
+> Tracked commit: `104c90ca`
 > Homepage guidebook: `d2b37ee`
 
 ## 维护规则
@@ -16,11 +16,31 @@
   - 下一步：先完成渠道与帖子清单，再按顺序逐项备稿、核对发布规则、确认最终内容与账号授权并发布；正式外发使用已交付教程及 item 11、15 已就绪的资料与入口，未验收场景继续按 item 16 保留边界，本轮仅登记待办，不操作外部账号或对外发布。
   - 验收：每个选定渠道都有最终稿、素材和实际发布链接，并处理发布后的有效问题与反馈；发布链接及反馈记录保存在对应推广材料中，不把草稿算作已发布。账号、平台规则或人工操作阻塞时说明原因，继续其他可执行渠道。
 
-- **14. Android USB 流量接入 · 待确认 · 本轮仅授权架构文档**
+- **14. Android USB 流量接入 · 进行中 · 独立仓库开发已授权**
+  - 保存边界：用户已明确授权将当前Android/PC实现保存为中间进度commit，不等于Item 14完成；Android源码已保存于[`f6dddad`](https://github.com/zhxmt-xm/Interceptor-Android/commit/f6dddadb9d40d5e7e5e7a46169a7396b4d15555e)。本次不纳入其他会话的教程、MCP、启动脚本或item22。最新系统DNS取消接线仍有平台/Private DNS待验项，完整App、真机与原生授权边界不改变。
   - 目标：Android 使用`VpnService`创建并读写TUN，经USB/`adb reverse`接入PC；每台手机作为带Android图标的虚拟App，复用PC的Rules、Breakpoints和Capture。
   - 范围：仅USB，不做局域网、无线adb或云中继；不把TUN当作VPN之外的可选补充，不以无VPN显式代理替代系统流量接管。
-  - 当前步骤：[架构方案](features/android.md)已记录双端职责、映射隔离、协议、来源、证书、断线与实施验收边界；未引入依赖、修改产品或执行真机验收，不代表功能可用。
-  - 下一步：先确认TUN库与Android平台范围、异常断线和非DNS UDP策略、adb交付方式及具体UI；取得实现授权后补workflow规格和所需前置Red，再进入单设备闭环。
+  - 当前协议能力：HTTP/WS正式控制、共享RuleService/Capture、握手/压缩、逐stream H2业务及双侧TLS ALPN已通过对应组件与真实native双端lab；H2已核对断点隔离、原始正文/trailers、提前响应、GOAWAY不重放和RST录制。边界见[正式H2联调](../../Interceptor-Android/architecture/platform/testing.md#正式native-h2双端lab)与[WS联调](../../Interceptor-Android/architecture/platform/testing.md#正式native-ws与tls压缩ws双端验收)，不代表VpnService、真实USB或完整App交付。
+  - 当前可执行步骤：明文H2、PC改地址及[API26/API35与当前产物复核](../../Interceptor-Android/architecture/platform/testing.md#最低api26与当前h2产物复核)已收束，含API35正常堆完整容量、双APK审计与本轮资源清理；两平台测试源站模式明确区分，不冒充系统VpnService或真实USB，arm64/16KiB系统仍未验。下一步全局native flow接收/协议分发与Network/DNS生命周期；非HTTP/UDP和VPN断线策略仍需明确，UI及原生授权约束不变。Conscrypt保持独立上下文和Android信任策略，原执行器类名因Rename Symbol不可用且替代方式未获确认暂保留，不复制决定业务或添加兼容包装。
+    - Android `OriginNetwork`源站socket生命周期已按目标Red接入，共同HTTP执行器可取消失效Network上的HTTP/H2/WS及pending PC决定；synthetic和回环控制不受影响。[调用方回归、实际API26/API35、双端lab、当前产物与清理](../../Interceptor-Android/architecture/platform/testing.md#源站network丢失与业务取消)已核对。下一段为DNS主动取消和全局native接入；非HTTP/UDP、UI与VPN断线策略仍未视为获批，完整App/E2E状态不改变。
+    - [Android本地DNS](../../Interceptor-Android/architecture/platform/testing.md#android本地dns与native-udptcp进行中)已验证原目标UDP/TCP、native IPv4/IPv6、客户端TCP FIN/pipelining与取消；相关HTTP/WS、完整容量、API26/API35、双端lab、当前产物及清理已核对。下一步系统getAllByName主动取消、Private DNS与全局native/TUN接线，不默认批准未知TCP/UDP直连或阻断，完整App状态不改变。
+    - [系统DNS取消边界](../../Interceptor-Android/architecture/platform/testing.md#系统dns取消边界待决定)已用实际API26/API35核对：PC及时收到取消、迟到解析结果不出站，但同步系统查询可能延迟收尾；不能记主动取消已实现。公开可取消DNS API从29提供，需确认最低版本/旧平台停止体验后再改架构；未擅自改resolver、强停线程或报告虚假停止，当前为待决定。
+      - 当前已保存API29+普通域名公开取消接线；IP/hosts、搜索域、mDNS、NAT64及旧平台保留系统语义，API29对IPv6-only Network保守走系统入口。目标Red与API35阶段运行已有，提交前编译/JVM/lint通过；剩余API26/API29、Private DNS与名称解析矩阵仍待验证，见[中间进度边界](../../Interceptor-Android/architecture/platform/testing.md#item-14中间进度提交边界)，不将全部DNS标为可立即取消。
+  - 当前步骤：私有[Interceptor-Android](https://github.com/zhxmt-xm/Interceptor-Android)已保存独立工程与唯一[架构方案](../../Interceptor-Android/architecture/features/usb-capture.md)，本地为`/Users/zhxmt/Desktop/Interceptor-Android`；本仓库不再维护方案副本。v2协议副本、HTTP/WS/H2、Android本地DNS及源站生命周期保留各自组件证据，PC仅返回决定；旧TCP/DNS中继与FIN失败保留为历史，不再作为接入方向。native bridge和双端lab不等于实际VpnService、首次配对或Main设备生命周期，Android单页设计仍待确认；首轮须交付真实TUN、USB、PC规则/断点与手机响应，不以lab或局部传输链替代。
+  - 下一步：`CoreApplication`显式Android命令、共用录制开关、多Session Clear、Main RPC与退出排空已完成代码和组件验证；协议/Core/Desktop typecheck、本地package/产物审计/签名及真实双端组件回归通过，当前为“Core接线代码完成 · 待App验收”。真实Electron前置停在platform且Close超时；当前开发入口和新包的helper部署只读检查均为outdated，原生更新授权暂不可确认，不能默认批准或绕过检查。待用户可在正常App原生窗口确认授权后，重新协调8888独占窗口，执行相关workflow与packaged smoke；不占用其他会话的App窗口或修改其缓存包。身份参数不进入Renderer或Tool，不自动开启listener。ADB设备生命周期、来源、手机UI与VPN断线策略仍缺，详见Android repo的[Handover](../../Interceptor-Android/architecture/HANDOVER.md)。
+    - 用户已明确确认协议副本方案：Android负责实际TCP/TLS/HTTP/WS及源站连接；PC只接收HTTP/WS副本并返回bypass、修改、构造响应或中断决定，不接收原始TCP、不修改Mockttp、不重复请求源站。每阶段决定、应用确认及双向取消见[双端协议](../../Interceptor-Android/architecture/features/inspection-protocol.md)。Core/Main RPC、正式Capture和native HTTP/WS已有对应层级证据；Main设备管理、完整设备生命周期、H2和产品UI仍缺，不能写手机功能完成。双端旧TCP/DNS入口/客户端已删除，保留历史证据，不保留兼容转发。
+    - [AndroidIngressService](../apps/proxy-core/src/proxy-core/android-ingress/entry.ts)直接拥有v2 mTLS控制/HTTP协议副本listener，拒绝旧TCP/DNS路径；短期凭据、配额、心跳、取消和录制收尾沿用已验组件，不要求本机ProxyService监听。CoreApplication与Main RPC已接线；请求/响应断点关联真实Capture ID，暂停流量不伪造记录。组件证据及App阻塞见[Core接线验证](../../Interceptor-Android/architecture/platform/testing.md#core命令录制与退出接线)。正式配对、Android来源与设备生命周期仍未完成，不把打包审计或旧十五场景当作完整手机验收。
+    - 原TCP入口联调曾发现上传FIN早于响应时返回空响应，独立[原始TCP前置回归](../apps/proxy-core/src/proxy-core/proxy/tests/integration/tcp-ingress.test.ts)与已保存证据保留。禁止以Mockttp patch解决本项；移除旧入口不当作历史FIN已修复。
+    - 原始TCP接入方向已停止：旧独立定位的FIN Red保留为历史证据，不以修改Mockttp解决，也不把删除旧适配当作修复。Android新协议层仍须验证半关闭；新方案要求请求与响应生命周期独立，上传结束不取消等待响应。
+    - Android本地HTTP/1读取已使用Netty公开codec实现并接入真实双端lab：保留headers顺序/大小写，PC放行后从实际Android socket输入增量发送源站和正文副本。TLS/H2/WS仍在完整引擎接线阶段，Go标准库/Gorilla能力probe不算正式引擎；具体边界见[协议读取验证](../../Interceptor-Android/architecture/platform/testing.md#android-http1增量读取与协议引擎准入)。
+    - HTTP副本的`body.end`必须明确携带独立`trailers`，PC消费/记录后才确认；双端lab已验证实际源站trailers经Android原样送到PC，以及replacement不沿用原正文声明。仍待正式MITM/VPN、Capture及Main/Core装配；UI和断线策略尚无明确确认，未视为默认批准，证据边界见[trailers验证](../../Interceptor-Android/architecture/platform/testing.md#http-trailers双端传输)。
+    - Android单笔HTTP/1编排已接到产品`Http1ExchangeExecutor`，源站TLS、请求replacement、提前响应部分上传、synthetic、取消和本地连接复用在真实PC lab验证；不再由androidTest重写请求业务。`body.stopped/discard`不放宽正常end完整性，request/response replacement共用窗口并正确处理迟到ACK；网络取消携带close/reset给连接所有者。证据与最低版本限制见[HTTP/1请求执行](../../Interceptor-Android/architecture/platform/testing.md#http1请求执行与提前响应结算)。
+    - native读停止和上传中客户端RST已接HTTP executor；TLS/SNI通过产品TlsServerConnection直接处理native字节流，SNI域名触发PC规则及响应断点后，加密返回手机客户端。NativeTcpConnection已拥有主动reset与peer失败通知，PC reset在普通HTTP/TLS产生真实RST，客户端断开可取消尚未读取正文的请求断点；发布状态与启动/关闭交错亦已验证，见[关闭通知](../../Interceptor-Android/architecture/platform/testing.md#native主动reset与断开通知)。仍待生产连接分发、Host/target与原网络目标分离、Network/DNS、H2/WS与VpnService，再替换旧entry并接Main/Core/Capture；首次配对、无界响应replacement原文取消及真实TUN闭环未验收，见[Native输入](../../Interceptor-Android/architecture/platform/testing.md#native输入停止与完整http交互)与[TLS边界](../../Interceptor-Android/architecture/platform/testing.md#native-tlssni字节流与pc联调)。
+    - PC HttpRecording已接正式CaptureService/队列，实际应用正文、BodyRuleEffect原文、应用确认后的规则审计、停止前缀、取消及Recording/Clear均已取得真实存储/WSS/Android验证，见[正式录制](../../Interceptor-Android/architecture/platform/testing.md#正式pc-capture录制与android联调)。这仍是组件与lab装配，CoreApplication/Main、Android来源图标和产品UI未接线。
+    - Android已分开HTTP URL/Host与原IP/端口/TLS名称；未改scheme/host/port保持原目标，显式改地址才重新解析。Host/request-target恢复与原始路径字节保留已接产品，native TLS场景证明PC按HTTP authority命中规则、源站仍收到原SNI，见[目标恢复](../../Interceptor-Android/architecture/platform/testing.md#http-authority与原始request-target恢复)。当前待接生产native连接分发与Network/DNS，不改未确认的手机UI、系统VPN断线或非HTTP策略。
+    - Http1NativeConnection已接管单连接HTTP/HTTPS循环及停止，原native场景不再由lab拼接执行器。HTTP复用、提前响应、断点RST、TLS/SNI/Host和reset已通过产品类及正式Capture验证，见[连接编排](../../Interceptor-Android/architecture/platform/testing.md#native-httphttps连接编排)。当前小步骤已完成验证与清理，整体仍待全局接收/协议分发、Network/DNS、Main/Core/VpnService和UI授权；不扩展新模块来推迟本步骤收尾。
+    - Android已补HTTP/1响应writer与独立Keystore MITM CA；本地CA TLS输入经过PC规则/断点后，实际TLS client收到修改后的202和正文。只有CA/协议组件与跨端lab已验证，尚无VPN/native flow装配、系统CA安装或完整MITM listener，见[响应与CA验证](../../Interceptor-Android/architecture/platform/testing.md#android-http1响应与本地mitm-ca)。
+    - DNS已实现控制会话鉴权的独立WSS、原始UDP查询及截断后的TCP重查，Android native UDP association复用同一业务客户端；验证边界见[DNS测试说明](../../Interceptor-Android/architecture/platform/testing.md#dns-wss与native-udp验证)。不将DNS lab通过当作VpnService或系统流量接管已完成。
   - 验收约束：必须使用真实Android设备与Electron验证规则、断点、协议及退出恢复；USB授权、VPN授权和CA信任分别处理，未验证的分支不得算作支持。
 
 - **15. Cloudflare 受限部署与线上验收 · 待确认**

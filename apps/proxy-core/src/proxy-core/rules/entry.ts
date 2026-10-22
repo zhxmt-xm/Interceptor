@@ -14,10 +14,12 @@ import {
   type RuleAction,
   type RuleDefinition,
   type RuleSet,
+  type WebSocketBreakpointSettings,
 } from '@interceptor/core-protocol';
 
 import { ActionExecutor } from './internal/action-executor';
 import { BreakpointQueue } from './internal/breakpoint-queue';
+import { WEBSOCKET_BREAKPOINT_RULE_NAME } from './internal/constants';
 import type { DiagnosticsRecorder } from '../core-diagnostics';
 import type {
   BreakpointOutcome,
@@ -33,6 +35,8 @@ import type {
   RuleServiceOptions,
   RuleHeaderEffect,
   RuleHitRecord,
+  WebSocketEvaluation,
+  WebSocketMessageInput,
 } from './interfaces';
 import * as RuleUtils from './utils';
 
@@ -53,9 +57,9 @@ export class RuleService {
   private readonly options: RuleServiceOptions;
   /** 请求与响应 action 执行器。 */
   private readonly actionExecutor: ActionExecutor;
-  /** 正在异步执行普通 action、尚未完成 request 评估的 Mockttp request ID。 */
+  /** 正在请求或响应求值的内部request ID，用于取消后阻止后续断点。 */
   private readonly evaluatingRequestIds = new Set<string>();
-  /** 评估期间已收到客户端 abort、后续不得再创建 suspension 的 request ID。 */
+  /** 求值期间已收到abort、后续不得再创建suspension的request ID。 */
   private readonly abortedRequestIds = new Set<string>();
   /** 断点队列溢出等数据面事件的诊断汇。 */
   private diagnostics: DiagnosticsRecorder | null = null;
@@ -142,11 +146,59 @@ export class RuleService {
     return abortedCount;
   }
 
-  /**
-   * 显式 WebSocket 帧断点；由 Proxy bridge 在转发前调用。
-   * 开关归 ProxyService 的 WebSocket 断点配置，与 HTTP 的 break-on-match 正交。
-   */
-  async pauseWebSocketMessage(
+  /** 两种协议入口共用WS选中、快照、人工决定和取消，不执行网络操作。 */
+  async evaluateWebSocketMessage(
+    message: WebSocketMessageInput,
+    settings: WebSocketBreakpointSettings | null,
+    captureFrameSequence: Promise<number | undefined>,
+    signal: AbortSignal,
+  ): Promise<WebSocketEvaluation> {
+    if (signal.aborted) return { kind: 'aborted' };
+    const exchangeId = message.exchangeId;
+    if (!settings || exchangeId === undefined || settings.exchangeId !== exchangeId
+      || !RuleUtils.matchesWebSocketBreakpoint(settings, message)) return { kind: 'bypass' };
+    const observed = { ...message, content: Buffer.from(message.content) };
+    let interrupt!: () => void;
+    const interrupted = new Promise<undefined>(resolve => { interrupt = () => resolve(undefined); });
+    const abort = () => {
+      this.abortWebSocketBreakpoints(exchangeId);
+      interrupt();
+    };
+    signal.addEventListener('abort', abort, { once: true });
+    try {
+      const webSocketFrameSequence = await Promise.race([captureFrameSequence, interrupted]);
+      if (signal.aborted) return { kind: 'aborted' };
+      const outcome = await this.pauseWebSocketMessage({
+        ruleName: WEBSOCKET_BREAKPOINT_RULE_NAME[observed.frame],
+        exchangeId, url: observed.url, direction: observed.direction, frame: observed.frame,
+        ...(webSocketFrameSequence !== undefined ? { webSocketFrameSequence } : {}),
+        ...(observed.frame === 'message' ? { opcode: observed.isBinary ? 2 : 1 } as const : {}),
+        bodyFormat: observed.isBinary ? 'hex' : 'text',
+        headers: [],
+        bodyAvailable: true,
+        body: observed.isBinary ? RuleUtils.toHexString(observed.content) : observed.content.toString('utf8'),
+        ...(observed.closeCode !== undefined ? { closeCode: observed.closeCode } : {}),
+      }, `ws:${exchangeId}`);
+      if (signal.aborted || outcome.state === 'aborted') return { kind: 'aborted' };
+      if (outcome.state === 'dropped') return { kind: 'drop' };
+      if (outcome.state === 'edited' && outcome.edit
+        && (outcome.edit.body !== undefined || outcome.edit.closeCode !== undefined)) {
+        const closeCode = outcome.edit.closeCode ?? observed.closeCode;
+        return {
+          kind: 'replace',
+          content: outcome.edit.body === undefined ? observed.content
+            : observed.isBinary ? RuleUtils.parseHexString(outcome.edit.body) : Buffer.from(outcome.edit.body, 'utf8'),
+          ...(closeCode !== undefined ? { closeCode } : {}),
+        };
+      }
+      return { kind: 'bypass' };
+    } finally {
+      signal.removeEventListener('abort', abort);
+    }
+  }
+
+  /** WS帧断点与HTTP break-on-match正交，使用同一个人工等待队列。 */
+  private async pauseWebSocketMessage(
     snapshot: BreakpointSnapshot,
     queueKey: BreakpointQueueKey,
   ): Promise<BreakpointOutcome> {
@@ -296,6 +348,26 @@ export class RuleService {
    * 响应阶段评估：按序应用匹配规则的响应侧 action；断点 drop 阻断，其余继续。
    */
   async evaluateResponse(
+    context: MatchContext,
+    state: MutableResponseState,
+    requestId?: string,
+    exchangeId?: string,
+  ): Promise<ResponseEvaluation> {
+    if (requestId !== undefined) {
+      this.evaluatingRequestIds.add(requestId);
+    }
+    try {
+      return await this.evaluateResponseState(context, state, requestId, exchangeId);
+    } finally {
+      if (requestId !== undefined) {
+        this.evaluatingRequestIds.delete(requestId);
+        this.abortedRequestIds.delete(requestId);
+      }
+    }
+  }
+
+  /** 在取消保护范围内执行响应action、编辑和延后的断点。 */
+  private async evaluateResponseState(
     context: MatchContext,
     state: MutableResponseState,
     requestId?: string,

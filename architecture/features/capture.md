@@ -34,7 +34,7 @@ Capture 绝不等待请求或响应完成才建立记录。实现位于 `proxy/i
 | Renderer | Desktop | 应用事件到 Zustand，按需拉详情 |
 | Origin | 外部 | 真实源站 |
 
-**ProxyService 是每个请求的唯一协调者**，因为只有它同时处在事件订阅和规则执行两条路径上。
+**ProxyService 是本机显式代理请求的唯一协调者**，因为它同时处在Mockttp事件订阅和规则执行两条路径上。Android协议副本由HttpChannel协调PC决定、HttpRecording记录实际应用结果；实际网络仍归Android，不能借Capture让PC重复请求源站。
 
 `ProxyService` 用 `mockttp` 的 `getLocal()` 作显式代理，**只绑 loopback**，由 `proxy.start` / `proxy.stop` / `proxy.status` 三个命令显式控制；Renderer 的 Capture bootstrap 在 Core running 后自动调用 `proxy.start(8888)`。未配置解密时 CONNECT 走字节直通（见 5.2）。Core 运行时依赖（Mockttp 的 WASM / 原生插件、`ws`）不内联进 bundle，随包策略见 [../platform/release.md](../platform/release.md)。
 
@@ -1203,8 +1203,8 @@ sequenceDiagram
     Note over Queue: 丢弃尚未 drain 的事件，<br/>避免清空后旧数据仍被推给 UI
 
     alt 仍有活动 Session
-        App->>Storage: cleanup(all-except-session)
-        Note over Storage: 保留当前 Session 壳，<br/>Exchange 与 Body 归零
+        App->>Storage: cleanup(all-except-sessions)
+        Note over Storage: 保留全部活动 Session 壳，<br/>Exchange 与 Body 归零
     else 未在监听
         App->>Storage: cleanup(all)
     end
@@ -1221,9 +1221,11 @@ sequenceDiagram
 继续写入旧exchange/body。随后`captureEventQueue.reset()`丢弃已入队但未推送的事件，最后才真正执行
 `capture.cleanup`；三步顺序不可换。
 
-**活动 Session 会被保留。** `prepareCaptureReset()` 在代理仍在监听时返回当前 `sessionId`，
-scope 随之收窄为 `all-except-session`——Exchange 与 Body 全部归零，但 Session 壳保留，
-录制得以无缝继续。只有未在监听时才是真正的 `cleanup(all)`。
+**活动 Session 会被保留。** `prepareCaptureReset()`在代理仍在监听时返回当前`sessionId`，
+Core同时收集Android入口拥有的独立Session，使用`all-except-sessions { sessionIds }`——Exchange与
+Body全部归零，但所有活动Session壳保留。没有活动入口时才使用`cleanup(all)`。保留壳也必须撤销
+尚未收到请求头的旧采集，迟到请求不能重建记录；`scope: session`若命中入口仍拥有的Session，返回
+`conflict`且不删除数据。入口启停与Clear串行，退出先等待已接受的Clear，再释放存储。
 
 **判定规则：以请求开始时的状态为准。**
 
@@ -1650,6 +1652,16 @@ Core decode接收调用方的输出预算：文本2 MiB、图片16 MiB，不以�
 **预览截断不等于数据丢失。** 预览上限只作用于Inspector单次拉取的字节数，不截断Core保存的正文；存储写入仍受6.3节的积压及磁盘错误边界约束。
 超出时 UI 明确显示预览大小与完整大小，用户可经 **Save body**（`body.export.start`）把完整编码正文
 流式写到自选文件，该路径不受预览上限限制。
+
+## 与当前实现的差异：Android 协议副本录制
+
+- Core命令与组件接线已实现并通过关联回归：CaptureService持有唯一录制开关，Proxy与Android各保留自己的Session。两端复用现有暂停/恢复意图，Android启动不隐式恢复录制；Clear清空全部内容并保留所有活动Session壳，不保留壳下旧请求。既有本机HTTP/WebSocket录制边界已有组件基线与最终Green；本轮真实Electron前置被platform启动阶段阻塞，仍待App验收。
+- Android的HttpRecording已连接正式CaptureService和CaptureEventQueue；真实Android lab核对HTTP/WS/H2的Capture记录、正文与规则证据，不再仅依赖观测回调，当前范围见[双端验证](../../../Interceptor-Android/architecture/platform/testing.md#正式native-h2双端lab)。CoreApplication已注册显式设备命令，Main仅完成RPC映射/状态订阅；ADB管理、Android来源和手机UI仍待接线，不代表产品已经可以接管手机。
+- 请求头到达就以Core新ID创建Exchange，wire exchangeId不作为全局存储ID。规则效果在Android应用确认后发布；Final来自Android的applied正文副本，不使用PC拟发送的replacement内容代替。
+- 同一Exchange的request/response各有独立Original与Final writer；读接口只选Final/当前展示writer。Original按现有BodyRuleEffect绑定；没有正文替换时消费后丢弃额外Original副本，不另留不可查询的Blob。缺失原文明确为unavailable，不将停止前缀或存储失败当完整原文。
+- metadata、规则审计、Final trailers、停止前缀与取消已有组件覆盖；停止/中断正文保留可读前缀并标记truncated。录制暂停不取消网络；Clear按明确Session同步撤销旧建档资格，再等待IO。正文写入失败保留不可用状态并输出诊断，不谎报保存成功。
+- 请求/响应断点都关联实际Capture ID；未录制的交互仍进入断点，但snapshot不带不存在的记录身份。Core停止Android入口会取消对应pending并等待记录结算；全Core退出及RPC失联先排空所有来源再dispose，失败返回fatal/非零退出，不发布成功stopped。
+- 验证顺序已覆盖真实Capture/文件IO目标Red、同组及现有Proxy调用方Green、真实WSS与Android lab；109项相关测试及Core typecheck通过。上述后端验证不代替Main/Core装配、Android来源图标、Renderer/Electron用户流程或真实VPN。
 
 ## 11. 验证边界
 

@@ -8,7 +8,7 @@ import type { CaptureEvent, PendingCaptureEvent } from '../interfaces';
 /**
  * Core 内非阻塞、按 Exchange 合并的捕获事件队列。
  *
- * 数据面（ProxyService）通过 enqueue 投递事件，永不阻塞；对同一 Exchange 的重复
+ * 数据面（ProxyService、HttpRecording）通过 enqueue 投递事件，永不阻塞；对同一 Exchange 的重复
  * Progress 合并为一条（保留首次 sequence 保证顺序稳定，摘要取最新），不因队列大小
  * 淘汰任何 Exchange。消费者通过 drain 批量取走并按 sequence 递增排序。
  *

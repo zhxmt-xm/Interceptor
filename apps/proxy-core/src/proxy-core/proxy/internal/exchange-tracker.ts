@@ -65,8 +65,6 @@ export class ExchangeTracker {
   private sessionId: string | null = null;
   /** 当前 capture 代际；Clear 时递增。 */
   private generation = 0;
-  /** 是否正在记录新流量。 */
-  private recording = true;
   /** 当前代际已创建的 Exchange 总数。 */
   private captured = 0;
   /** 可选结构化诊断汇。 */
@@ -89,11 +87,6 @@ export class ExchangeTracker {
     this.sessionId = sessionId;
   }
 
-  /** 设置是否记录新流量；已在途 Exchange 不受影响。 */
-  setRecording(enabled: boolean): void {
-    this.recording = enabled;
-  }
-
   /** 当前进行中的 Exchange 数量；供测试与诊断。 */
   get activeCount(): number {
     return this.entries.size;
@@ -112,7 +105,7 @@ export class ExchangeTracker {
    * 未在记录时返回 undefined —— 这次请求根本不会有 Capture 行可指。
    */
   exchangeIdFor(requestId: string): string | undefined {
-    if (!this.recording || !this.sessionId) {
+    if (!this.captureService.isRecording || !this.sessionId) {
       return undefined;
     }
     const entry = this.entries.get(requestId);
@@ -135,7 +128,7 @@ export class ExchangeTracker {
   beginRequest(request: InitiatedRequest): void {
     const reservedExchangeId = this.reservedExchangeIds.get(request.id);
     this.reservedExchangeIds.delete(request.id);
-    if (!this.recording || !this.sessionId || this.entries.has(request.id)) {
+    if (!this.captureService.isRecording || !this.sessionId || this.entries.has(request.id)) {
       return;
     }
     const startedAt = request.timingEvents?.startTime ?? Date.now();
@@ -148,6 +141,7 @@ export class ExchangeTracker {
     );
     const entry: TrackedExchange = {
       exchangeId: reservedExchangeId ?? `ex-${ProxyUtils.cryptoRandomId()}`,
+      sessionId: this.sessionId,
       generation: this.generation,
       startedAt,
       secure: target.scheme === 'https' || target.scheme === 'wss',
@@ -199,7 +193,7 @@ export class ExchangeTracker {
 
     const exchange: ExchangeInput = {
       id: entry.exchangeId,
-      sessionId: this.sessionId,
+      sessionId: entry.sessionId,
       method: entry.method,
       scheme: target.scheme,
       ...(target.hostname !== undefined ? { host: target.hostname } : {}),
@@ -399,7 +393,7 @@ export class ExchangeTracker {
     const settled = new Promise<void>((done) => { resolve = done; });
     const capture: AbortedExchangeCapture = { entry, timer: null, finalizer: null, settled, resolve };
     this.abortedCapturesByRequestId.set(request.id, capture);
-    this.captureService.retainBodyCapture(entry.exchangeId, () => {
+    this.captureService.retainBodyCapture(entry.exchangeId, entry.sessionId, () => {
       const discarded = this.removeAbortedCapture(request.id);
       if (discarded) void discarded.entry.tail.then(discarded.resolve);
     });
@@ -565,7 +559,7 @@ export class ExchangeTracker {
 
   /** 直接登记一条已完成的 Exchange（CONNECT 隧道）。 */
   async trackTunnel(exchange: ExchangeInput): Promise<string | null> {
-    if (!this.recording || !this.sessionId) {
+    if (!this.captureService.isRecording || !this.sessionId) {
       return null;
     }
     const generation = this.generation;

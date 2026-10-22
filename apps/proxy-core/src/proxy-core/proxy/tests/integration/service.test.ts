@@ -2046,7 +2046,7 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     }
   });
 
-  it('aborts pending websocket frames when the client disconnects abnormally', async () => {
+  it('aborts pending and queued websocket frames when the client disconnects abnormally', async () => {
     await proxyService.stop();
     const breakpointQueue = new BreakpointQueue();
     proxyService = new ProxyService(
@@ -2059,6 +2059,9 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
     const origin = getLocal();
     await origin.forAnyWebSocket().thenEcho();
     await origin.start();
+    const { WebSocket } = await import('ws');
+    const emitted = vi.spyOn(WebSocket.prototype, 'emit');
+    const queuedContent = Buffer.from('queued-before-disconnect');
     let socket: net.Socket | undefined;
     try {
       socket = await openProxiedWebSocket(
@@ -2072,10 +2075,16 @@ describe('ProxyService (Mockttp explicit proxy)', () => {
       });
       sendWebSocketFrame(socket, 1, Buffer.from('disconnect-before-continue'));
       await expect.poll(() => breakpointQueue.size).toBe(1);
+      sendWebSocketFrame(socket, 1, queuedContent);
+      await expect.poll(() => emitted.mock.calls.some(([event, content]) =>
+        event === 'message' && Buffer.isBuffer(content) && content.equals(queuedContent))).toBe(true);
 
       socket.destroy();
       await expect.poll(() => breakpointQueue.size).toBe(0);
+      await new Promise<void>(resolve => setImmediate(resolve));
+      expect(breakpointQueue.size).toBe(0);
     } finally {
+      emitted.mockRestore();
       socket?.destroy();
       await origin.stop();
     }

@@ -22,6 +22,15 @@ Rules 负责在真实转发路径上**干预**流量，并向 Capture 提供可�
 - Rules 的执行**不受 Recording 开关影响**。暂停记录时规则依然作用于真实流量，只是不产生 Capture 记录。
 - 规则不提供throttle：头部阶段不能控制正文流的传输速率，限速需要独立的流控制能力。
 
+### Android协议副本接入（Core已接线，待App验收）
+
+Android持有真实HTTP(S)/WS(S)连接，PC通过`HttpInterceptionService`复用同一`RuleService`
+与`HttpMessageService`返回协议级决定，不连接源站或修改Mockttp。决定明确区分bypass、
+intercept、respond、abort与本地已取消；delay交由Android执行，正文为keep或编码后的replacement。
+该入口不改桌面`ProxyService`现有执行路径，停止Recording也不能省略规则决定。
+双端schema及应用确认以[通信协议](../../../Interceptor-Android/architecture/features/inspection-protocol.md)为准。
+请求和响应求值都必须在取消后拒绝创建后续断点；仅解除当前pending而允许下一断点挂起不算完成取消。
+
 ## 2. 领域模型
 
 ### 2.0 Rules Export Tool

@@ -96,6 +96,14 @@ DHCP和端到端验收仍按Settings的能力边界跟踪，不把读取缓存�
 Core停止时注销订阅、取消待执行检查并等待已观察session关闭，再发送`stopped`；Main、Renderer、入站
 server session和只握手TLS探测不受该策略管理。
 
+`CoreApplication`另行拥有唯一[AndroidIngressService](../../apps/proxy-core/src/proxy-core/android-ingress/README.md)，
+通过`android.start/stop/status`显式管理v2回环mTLS入口，不启动本机Proxy，也不向源站发送手机业务请求。
+身份只由可信Main提供；CoreRpcClient/CoreRuntime已注册typed结果与`onAndroidStatusChange`，变化快照沿
+现有背压event batch发送，不含pin、私钥或数据token。该Core/Main RPC接线已有组件验证；ADB管理、
+正式配对、Renderer手机入口与完整进程验收不由组件结果代替。
+正常关闭和RPC故障都等待入口、断点及Capture收尾，再释放存储；清理失败报告fatal并非零退出，
+不发送成功stopped。入口与Capture清理共用的先后边界见[Recording生命周期](storage.md#4-recording-生命周期)。
+
 `AgentRuntime` 是 Main 内长期存活的 Agent domain 组合根，拥有 Provider registry、Credential、Session、Turn、
 History、Context、Usage、Streaming 请求与有序事件。Main 只注册可信 Renderer intent、注入 `userData`、
 `safeStorage`、`fetch`与动态`AgentToolSource`，并把已持久化的 Session event 广播给 Renderer。

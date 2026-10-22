@@ -10,7 +10,7 @@ import type {
   TransferProgressListener,
   TransferResult,
 } from '../transfer/interfaces';
-import type { CaptureBodySide, CaptureBodySnapshot, ExchangePatch } from './interfaces';
+import type { CaptureBodySide, CaptureBodySnapshot, CaptureBodyWriterSlot, ExchangePatch } from './interfaces';
 import type {
   CaptureSessionInput,
   CaptureArchiveSnapshot,
@@ -25,6 +25,7 @@ import type {
   WebSocketFrameInput,
   WebSocketFramePage,
   WebSocketFrameQuery,
+  WebSocketFrameDirection,
 } from './interfaces';
 import { BodyStore } from './internal/body-store';
 import type { BodyWriter } from './internal/body-writer';
@@ -42,19 +43,38 @@ export class CaptureService {
   private readonly exchangeStore = new ExchangeStore();
   /** 当前 Core 代际的内存+spill 正文。 */
   private readonly bodyStore = new BodyStore();
-  /** 正文写入器，网络终态及Final替换都不提前移除清理所有权。 */
-  private readonly bodyWritersByExchangeId = new Map<string, Partial<Record<CaptureBodySide, BodyWriter>>>();
-  /** 仍允许接收迟到正文的采集所有者；删除记录时同步取消其等待。 */
-  private readonly pendingBodyCapturesByExchangeId = new Map<string, () => void>();
+  /** HTTP展示/Original与两个WS方向共用清理所有权，槽位数量固定。 */
+  private readonly bodyWritersByExchangeId = new Map<
+    string, Partial<Record<CaptureBodyWriterSlot, BodyWriter>>
+  >();
+  /** 采集所有者携带Session归属，建档前也能按清理范围同步取消。 */
+  private readonly pendingBodyCapturesByExchangeId = new Map<string, { sessionId: string; onDiscard: () => void }>();
   /** 已接受的Exchange/side读取，清理前等待其释放正文句柄。 */
   private readonly pendingBodyReads = new Set<Promise<Buffer>>();
   private ready: Promise<void> | null = null;
+  /** 所有实时来源共用的录制意图，不表示任何网络listener的开关。 */
+  private recording = true;
   /** 可选结构化诊断汇。 */
   private diagnostics: DiagnosticsRecorder | null = null;
 
   /** 注入诊断汇；调用方：CoreApplication 装配后。 */
   attachDiagnostics(sink: DiagnosticsRecorder): void {
     this.diagnostics = sink;
+  }
+
+  /** 新交互读取当前录制意图；已有交互保留接纳时的决定。 */
+  get isRecording(): boolean {
+    return this.recording;
+  }
+
+  /** 恢复后续交互的录制，不补录已忽略的请求或连接。 */
+  resumeRecording(): void {
+    this.recording = true;
+  }
+
+  /** 暂停新记录，不改变规则、网络转发或已有记录的收尾。 */
+  pauseRecording(): void {
+    this.recording = false;
   }
 
   /**
@@ -87,8 +107,8 @@ export class CaptureService {
   }
 
   /** 保留终态正文的读取与清理所有权，即使首个writer尚未创建。 */
-  retainBodyCapture(exchangeId: string, onDiscard: () => void): void {
-    this.pendingBodyCapturesByExchangeId.set(exchangeId, onDiscard);
+  retainBodyCapture(exchangeId: string, sessionId: string, onDiscard: () => void): void {
+    this.pendingBodyCapturesByExchangeId.set(exchangeId, { sessionId, onDiscard });
   }
 
   /** 正文已封口且写入结束后解除关联，不以网络state代替采集结束。 */
@@ -104,9 +124,27 @@ export class CaptureService {
 
   /** 创建 push 式增量正文写入器；调用方：Proxy 消费 body-data 事件。 */
   createBodyWriter(exchangeId: string, side: CaptureBodySide): BodyWriter {
+    return this.createTrackedBodyWriter(exchangeId, side);
+  }
+
+  /** 独立记录Original副本，不替换同侧的当前展示/Final writer。 */
+  createOriginalBodyWriter(exchangeId: string, side: CaptureBodySide): BodyWriter {
+    return this.createTrackedBodyWriter(exchangeId, `original-${side}`);
+  }
+
+  /** WS每方向只保留当前writer，与HTTP正文共用Clear和退出清理所有权。 */
+  createWebSocketBodyWriter(exchangeId: string, direction: WebSocketFrameDirection): BodyWriter {
+    return this.createTrackedBodyWriter(exchangeId, `websocket-${direction}`);
+  }
+
+  /** 所有正文writer在同一Exchange下登记，Clear/Dispose统一排空。 */
+  private createTrackedBodyWriter(
+    exchangeId: string,
+    key: CaptureBodyWriterSlot,
+  ): BodyWriter {
     const bodyWriter = this.bodyStore.createWriter();
     const bodyWriters = this.bodyWritersByExchangeId.get(exchangeId) ?? {};
-    bodyWriters[side] = bodyWriter;
+    bodyWriters[key] = bodyWriter;
     this.bodyWritersByExchangeId.set(exchangeId, bodyWriters);
     return bodyWriter;
   }
@@ -221,14 +259,17 @@ export class CaptureService {
    */
   async cleanup(scope: CleanupScope): Promise<CaptureStatusReport> {
     const result = this.exchangeStore.cleanup(scope);
-    await Promise.allSettled(this.pendingBodyReads);
     const pendingExchangeIds = new Set([
       ...this.bodyWritersByExchangeId.keys(),
       ...this.pendingBodyCapturesByExchangeId.keys(),
     ]);
-    await this.abortBodyWriters([...pendingExchangeIds]
-      .filter((exchangeId) => this.exchangeStore.getExchangeDetail(exchangeId) === null));
-    if (scope.kind === 'all' || scope.kind === 'all-except-session') {
+    const aborting = this.abortBodyWriters([...pendingExchangeIds].filter(exchangeId => {
+      const capture = this.pendingBodyCapturesByExchangeId.get(exchangeId);
+      if (!capture) return this.exchangeStore.getExchangeDetail(exchangeId) === null;
+      return scope.kind !== 'session' || capture.sessionId === scope.sessionId;
+    }));
+    await Promise.all([aborting, Promise.allSettled(this.pendingBodyReads)]);
+    if (scope.kind === 'all' || scope.kind === 'all-except-sessions') {
       await this.bodyStore.reset();
     } else {
       await this.bodyStore.collectGarbage(result.referencedBlobHashes);
@@ -240,13 +281,14 @@ export class CaptureService {
   private async abortBodyWriters(exchangeIds: Iterable<string>): Promise<void> {
     const pending: Promise<void>[] = [];
     for (const exchangeId of exchangeIds) {
-      const cancelCapture = this.pendingBodyCapturesByExchangeId.get(exchangeId);
+      const capture = this.pendingBodyCapturesByExchangeId.get(exchangeId);
       this.pendingBodyCapturesByExchangeId.delete(exchangeId);
-      cancelCapture?.();
+      capture?.onDiscard();
       const bodyWriters = this.bodyWritersByExchangeId.get(exchangeId);
       this.bodyWritersByExchangeId.delete(exchangeId);
-      if (bodyWriters?.request) pending.push(bodyWriters.request.abort());
-      if (bodyWriters?.response) pending.push(bodyWriters.response.abort());
+      if (bodyWriters) {
+        for (const bodyWriter of Object.values(bodyWriters)) pending.push(bodyWriter.abort());
+      }
     }
     await Promise.all(pending);
   }
@@ -318,11 +360,11 @@ export class CaptureService {
   /** 释放全部临时 Capture/Body。 */
   async dispose(): Promise<void> {
     this.exchangeStore.clear();
-    await Promise.allSettled(this.pendingBodyReads);
-    await this.abortBodyWriters(new Set([
+    const aborting = this.abortBodyWriters(new Set([
       ...this.bodyWritersByExchangeId.keys(),
       ...this.pendingBodyCapturesByExchangeId.keys(),
     ]));
+    await Promise.all([aborting, Promise.allSettled(this.pendingBodyReads)]);
     await this.bodyStore.dispose();
   }
 }

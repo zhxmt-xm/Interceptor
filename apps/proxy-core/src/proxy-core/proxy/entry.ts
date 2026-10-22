@@ -46,7 +46,6 @@ import type {
   WebSocketBridgeMessage,
 } from './interfaces';
 import type { CaptureEventQueue } from './internal/capture-event-queue';
-import { WEBSOCKET_BREAKPOINT_RULE_NAME } from './internal/constants';
 import { ExchangeTracker } from './internal/exchange-tracker';
 import { TlsCompatibilityEventQueue } from './internal/tls-compatibility-event-queue';
 import { WebSocketBridge } from './internal/websocket-bridge';
@@ -81,8 +80,6 @@ export class ProxyService {
   private host = DEFAULT_PROXY_HOST;
   private sessionId: string | null = null;
   private capturedExchanges = 0;
-  /** 是否正在记录；暂停时监听器继续转发但不再持久化/推送新 Exchange。 */
-  private recording = true;
   /** 当前 WebSocket 断点配置；null 表示未启用。 */
   private webSocketBreakpoint: WebSocketBreakpointSettings | null = null;
   private tlsConfig: ProxyTlsConfig = {
@@ -180,7 +177,7 @@ export class ProxyService {
     const listening = this.server !== null || this.rebuilding;
     return {
       listening,
-      recording: this.recording && listening,
+      recording: this.captureService.isRecording && listening,
       host: this.address?.host ?? null,
       port: this.address?.port ?? null,
       sessionId: this.sessionId,
@@ -368,12 +365,6 @@ export class ProxyService {
           errorCode: error.name,
         });
       },
-      onAbnormalDisconnect: (streamId) => {
-        const exchangeId = this.exchangeTracker.exchangeIdFor(streamId);
-        if (exchangeId !== undefined) {
-          this.ruleService?.abortWebSocketBreakpoints(exchangeId);
-        }
-      },
       onUpgradeFailed: (streamId, error) => {
         this.exchangeTracker.failWebSocketUpgrade(
           streamId,
@@ -424,8 +415,7 @@ export class ProxyService {
    * 调用方：proxy.setRecording command handler 与 start()——暂停后再次 Start 等价于 Resume。
    */
   resumeRecording(): void {
-    this.recording = true;
-    this.exchangeTracker.setRecording(true);
+    this.captureService.resumeRecording();
     this.diagnostics?.info('proxy.recording-resumed');
   }
 
@@ -435,8 +425,7 @@ export class ProxyService {
    * 调用方：proxy.setRecording command handler。
    */
   pauseRecording(): void {
-    this.recording = false;
-    this.exchangeTracker.setRecording(false);
+    this.captureService.pauseRecording();
     this.diagnostics?.info('proxy.recording-paused');
   }
 
@@ -517,7 +506,7 @@ export class ProxyService {
 
   private registerCaptureListeners(server: Mockttp): void {
     void server.on('tls-passthrough-opened', (tunnel: TlsPassthroughEvent) => {
-      if (!this.recording) {
+      if (!this.captureService.isRecording) {
         return;
       }
       const capture = this.trackCapture(this.captureTunnelOpened(tunnel)).catch((error: unknown) => {
@@ -769,62 +758,17 @@ export class ProxyService {
     };
     const settings = this.webSocketBreakpoint;
     const exchangeId = await this.exchangeTracker.whenExchangeReady(message.streamId);
-    if (
-      !settings
-      || !this.ruleService
-      || exchangeId === null
-      || settings.exchangeId !== exchangeId
-      || !ProxyUtils.matchesWebSocketBreakpoint(settings, message)
-    ) {
-      if (message.frame === 'message' && exchangeId !== null) {
-        void this.captureWebSocketMessage(message, exchangeId);
-      }
-      return forwardUnchanged;
-    }
-    const webSocketFrameSequence = message.frame === 'message'
-      ? await this.captureWebSocketMessage(message, exchangeId)
-      : undefined;
-    const bodyFormat = message.isBinary ? 'hex' : 'text';
-    const body = message.isBinary
-      ? ProxyUtils.toHexString(message.content)
-      : message.content.toString('utf8');
-    const outcome = await this.ruleService.pauseWebSocketMessage({
-      ruleName: WEBSOCKET_BREAKPOINT_RULE_NAME[message.frame],
-      exchangeId,
-      url: message.url,
-      direction: message.direction,
-      frame: message.frame,
-      ...(webSocketFrameSequence !== undefined ? { webSocketFrameSequence } : {}),
-      ...(message.frame === 'message' ? { opcode: message.isBinary ? 2 : 1 } as const : {}),
-      bodyFormat,
-      headers: [],
-      // 消息断点持有完整 payload，与头部阶段的 HTTP 断点不同。
-      bodyAvailable: true,
-      body,
-      ...(message.closeCode !== undefined ? { closeCode: message.closeCode } : {}),
-    }, `ws:${exchangeId}`);
-    if (outcome.state === 'dropped' || outcome.state === 'aborted') {
-      return { action: 'drop' as const };
-    }
-    if (
-      outcome.state === 'edited' &&
-      outcome.edit !== undefined &&
-      (outcome.edit.body !== undefined || outcome.edit.closeCode !== undefined)
-    ) {
-      return {
-        action: 'forward' as const,
-        content: outcome.edit.body === undefined
-          ? message.content
-          : message.isBinary
-            ? ProxyUtils.parseHexString(outcome.edit.body)
-            : Buffer.from(outcome.edit.body, 'utf8'),
-        isBinary: message.isBinary,
-        ...(outcome.edit.closeCode !== undefined
-          ? { closeCode: outcome.edit.closeCode }
-          : message.closeCode !== undefined ? { closeCode: message.closeCode } : {}),
-      };
-    }
-    return forwardUnchanged;
+    if (message.signal.aborted) return { action: 'drop' as const };
+    const frameSequence = message.frame === 'message' && exchangeId !== null
+      ? this.captureWebSocketMessage(message, exchangeId) : Promise.resolve(undefined);
+    if (!this.ruleService) return forwardUnchanged;
+    const result = await this.ruleService.evaluateWebSocketMessage({
+      ...message, ...(exchangeId === null ? {} : { exchangeId }),
+    }, settings, frameSequence, message.signal);
+    if (result.kind === 'drop' || result.kind === 'aborted') return { action: 'drop' as const };
+    if (result.kind === 'bypass') return forwardUnchanged;
+    return { action: 'forward' as const, content: result.content, isBinary: message.isBinary,
+      ...(result.closeCode !== undefined ? { closeCode: result.closeCode } : {}) };
   }
 
   /**

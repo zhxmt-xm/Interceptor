@@ -63,6 +63,7 @@ export class WebSocketBridge {
   /** 终止所有活动连接并清空 bridge 状态。 */
   close(): void {
     for (const pair of this.pairs) {
+      pair.abortController.abort();
       pair.downstream.terminate();
       pair.upstream.terminate();
     }
@@ -182,47 +183,47 @@ export class WebSocketBridge {
     downstream: WebSocket,
     upstream: WebSocket,
   ): void {
-    const pair = { downstream, upstream };
+    const pair = { downstream, upstream, abortController: new AbortController() };
     this.pairs.add(pair);
     let clientTail = Promise.resolve();
     let serverTail = Promise.resolve();
-    let abnormalDisconnectHandled = false;
     const abortAbnormalDisconnect = (): void => {
-      if (abnormalDisconnectHandled) {
+      if (pair.abortController.signal.aborted) {
         return;
       }
-      abnormalDisconnectHandled = true;
-      this.options.onAbnormalDisconnect?.(request.id);
+      pair.abortController.abort();
       downstream.terminate();
       upstream.terminate();
       this.pairs.delete(pair);
     };
     // 控制帧与应用消息共用方向内的串行链，避免断点 await 打乱到达顺序。
     const queueClient = (run: () => Promise<void>): void => {
-      clientTail = clientTail.then(run).catch((error: unknown) => this.failPair(pair, error));
+      clientTail = clientTail.then(() => pair.abortController.signal.aborted ? undefined : run())
+        .catch((error: unknown) => this.failPair(pair, error));
     };
     const queueServer = (run: () => Promise<void>): void => {
-      serverTail = serverTail.then(run).catch((error: unknown) => this.failPair(pair, error));
+      serverTail = serverTail.then(() => pair.abortController.signal.aborted ? undefined : run())
+        .catch((error: unknown) => this.failPair(pair, error));
     };
 
     downstream.on('message', (data, isBinary) => {
-      queueClient(() => this.forwardMessage(request, upstream, 'client-to-server', data, isBinary));
+      queueClient(() => this.forwardMessage(request, upstream, 'client-to-server', data, isBinary, pair.abortController.signal));
     });
     upstream.on('message', (data, isBinary) => {
-      queueServer(() => this.forwardMessage(request, downstream, 'server-to-client', data, isBinary));
+      queueServer(() => this.forwardMessage(request, downstream, 'server-to-client', data, isBinary, pair.abortController.signal));
     });
 
     downstream.on('ping', (data) => {
-      queueClient(() => this.forwardControl(request, upstream, 'client-to-server', 'ping', data));
+      queueClient(() => this.forwardControl(request, upstream, 'client-to-server', 'ping', data, pair.abortController.signal));
     });
     upstream.on('ping', (data) => {
-      queueServer(() => this.forwardControl(request, downstream, 'server-to-client', 'ping', data));
+      queueServer(() => this.forwardControl(request, downstream, 'server-to-client', 'ping', data, pair.abortController.signal));
     });
     downstream.on('pong', (data) => {
-      queueClient(() => this.forwardControl(request, upstream, 'client-to-server', 'pong', data));
+      queueClient(() => this.forwardControl(request, upstream, 'client-to-server', 'pong', data, pair.abortController.signal));
     });
     upstream.on('pong', (data) => {
-      queueServer(() => this.forwardControl(request, downstream, 'server-to-client', 'pong', data));
+      queueServer(() => this.forwardControl(request, downstream, 'server-to-client', 'pong', data, pair.abortController.signal));
     });
 
     downstream.on('close', (code, reason) => {
@@ -230,19 +231,20 @@ export class WebSocketBridge {
         abortAbnormalDisconnect();
         return;
       }
-      queueClient(() => this.forwardClose(request, upstream, 'client-to-server', code, reason));
+      queueClient(() => this.forwardClose(request, upstream, 'client-to-server', code, reason, pair.abortController.signal));
     });
     upstream.on('close', (code, reason) => {
       if (code === 1006) {
         abortAbnormalDisconnect();
         return;
       }
-      queueServer(() => this.forwardClose(request, downstream, 'server-to-client', code, reason));
+      queueServer(() => this.forwardClose(request, downstream, 'server-to-client', code, reason, pair.abortController.signal));
     });
     downstream.on('error', (error) => this.failPair(pair, error));
     upstream.on('error', (error) => this.failPair(pair, error));
     const cleanup = (): void => {
       if (downstream.readyState === WebSocket.CLOSED && upstream.readyState === WebSocket.CLOSED) {
+        pair.abortController.abort();
         this.pairs.delete(pair);
       }
     };
@@ -256,6 +258,7 @@ export class WebSocketBridge {
     direction: WebSocketMessageDirection,
     data: RawData,
     isBinary: boolean,
+    signal: AbortSignal,
   ): Promise<void> {
     const decision = await this.options.intercept({
       streamId: request.id,
@@ -265,6 +268,7 @@ export class WebSocketBridge {
       timestamp: Date.now(),
       content: ProxyUtils.toBuffer(data),
       isBinary,
+      signal,
     });
     if (decision.action === 'drop' || target.readyState !== WebSocket.OPEN) {
       return;
@@ -278,6 +282,7 @@ export class WebSocketBridge {
     direction: WebSocketMessageDirection,
     frame: 'ping' | 'pong',
     data: Buffer,
+    signal: AbortSignal,
   ): Promise<void> {
     const decision = await this.options.intercept({
       streamId: request.id,
@@ -287,6 +292,7 @@ export class WebSocketBridge {
       timestamp: Date.now(),
       content: ProxyUtils.toBuffer(data),
       isBinary: true,
+      signal,
     });
     if (decision.action === 'drop') {
       return;
@@ -300,6 +306,7 @@ export class WebSocketBridge {
     direction: WebSocketMessageDirection,
     code: number,
     reason: Buffer,
+    signal: AbortSignal,
   ): Promise<void> {
     const decision = await this.options.intercept({
       streamId: request.id,
@@ -310,6 +317,7 @@ export class WebSocketBridge {
       content: ProxyUtils.toBuffer(reason),
       isBinary: false,
       closeCode: code,
+      signal,
     });
     if (decision.action === 'drop') {
       return;
@@ -320,9 +328,10 @@ export class WebSocketBridge {
   /** 归一化连接错误、终止双方并移除活动 pair。 */
   private failPair(pair: WebSocketPair, error: unknown): void {
     const normalized = error instanceof Error ? error : new Error(String(error));
-    this.options.onError?.(normalized);
+    pair.abortController.abort();
     pair.downstream.terminate();
     pair.upstream.terminate();
     this.pairs.delete(pair);
+    this.options.onError?.(normalized);
   }
 }

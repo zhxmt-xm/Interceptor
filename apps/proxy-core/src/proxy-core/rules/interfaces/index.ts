@@ -5,6 +5,7 @@ import type {
   CaptureHeaderRuleEffect,
   RuleDefinition,
   WebSocketBreakpointFrame,
+  WebSocketFrameDirection,
 } from '@interceptor/core-protocol';
 
 /** HTTP header 多值集合，形态兼容 Mockttp headers。 */
@@ -111,6 +112,24 @@ export interface BreakpointOutcome {
   readonly edit?: BreakpointEdit;
 }
 
+/** WS内容副本和已有Capture关联，不携带socket或源站执行能力。 */
+export interface WebSocketMessageInput {
+  readonly exchangeId?: string;
+  readonly url: string;
+  readonly direction: WebSocketFrameDirection;
+  readonly frame: WebSocketBreakpointFrame;
+  readonly content: Uint8Array;
+  readonly isBinary: boolean;
+  readonly closeCode?: number;
+}
+
+/** 本机bridge和Android副本共用的决定，协议端各自执行转发或取消。 */
+export type WebSocketEvaluation =
+  | { readonly kind: 'bypass' }
+  | { readonly kind: 'drop' }
+  | { readonly kind: 'aborted' }
+  | { readonly kind: 'replace'; readonly content: Uint8Array; readonly closeCode?: number };
+
 export interface PendingBreakpointInfo {
   readonly id: string;
   readonly phase: BreakpointPhase;
@@ -122,7 +141,7 @@ export interface PendingBreakpointInfo {
 }
 
 export interface PendingBreakpointEntry extends PendingBreakpointInfo {
-  /** HTTP suspension 所属的 Mockttp request ID；WebSocket 消息断点缺省。 */
+  /** HTTP suspension所属的内部request ID；本机与协议副本各自独立，WS消息缺省。 */
   readonly requestId?: string;
   readonly settle: (outcome: BreakpointOutcome) => void;
 }

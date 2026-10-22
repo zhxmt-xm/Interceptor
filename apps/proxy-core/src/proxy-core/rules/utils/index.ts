@@ -19,6 +19,7 @@ import type {
   RuleAction,
   RuleMatcher,
   StringMatchMode,
+  WebSocketBreakpointSettings,
 } from '@interceptor/core-protocol';
 
 import type {
@@ -29,7 +30,27 @@ import type {
   MutableResponseState,
   RequestMatchInput,
   RuleHeaderEffect,
+  WebSocketMessageInput,
 } from '../interfaces';
+
+/** 将二进制payload转为既有的空格分隔hex编辑格式。 */
+export function toHexString(bytes: Uint8Array): string {
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join(' ');
+}
+
+/** 严格解释二进制编辑，非法输入不能静默放行。 */
+export function parseHexString(value: string): Buffer {
+  const compact = value.replace(/\s+/g, '');
+  if (compact.length % 2 !== 0 || !/^[0-9a-f]*$/i.test(compact)) {
+    throw new Error('Edited binary WebSocket payload must be hexadecimal bytes.');
+  }
+  return Buffer.from(compact, 'hex');
+}
+
+/** WS配置只匹配选中的方向与帧类别。 */
+export function matchesWebSocketBreakpoint(settings: WebSocketBreakpointSettings, message: WebSocketMessageInput): boolean {
+  return (settings.direction === 'both' || settings.direction === message.direction) && settings.frames.includes(message.frame);
+}
 
 /**
  * 把单个 RuleMatcher 编译为判定函数；正则在编译期预构建，非法正则退化为恒不匹配。

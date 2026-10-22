@@ -116,6 +116,9 @@ export interface ExchangeInput {
 
 export type WebSocketFrameDirection = "client-to-server" | "server-to-client";
 
+/** 每个Exchange只有固定HTTP槽位及两个WS方向槽位，不按消息数增长。 */
+export type CaptureBodyWriterSlot = CaptureBodySide | `original-${CaptureBodySide}` | `websocket-${WebSocketFrameDirection}`;
+
 /** WebSocket 应用消息子记录；payload 先写 BodyStore，再绑定到帧 metadata。 */
 export interface WebSocketFrameInput {
   readonly direction: WebSocketFrameDirection;
@@ -212,7 +215,7 @@ export interface CaptureArchiveSnapshot {
 
 export type CleanupScope =
   | { readonly kind: "all" }
-  | { readonly kind: "all-except-session"; readonly sessionId: string }
+  | { readonly kind: "all-except-sessions"; readonly sessionIds: readonly string[] }
   | { readonly kind: "session"; readonly sessionId: string };
 
 export interface CleanupResult {
@@ -243,6 +246,7 @@ export interface RuleHitCount {
  */
 export interface ExchangePatch {
   readonly id: string;
+  readonly protocol?: ExchangeInput["protocol"];
   readonly state?: ExchangeInput["state"];
   readonly requestMime?: string;
   readonly requestSentAt?: number;

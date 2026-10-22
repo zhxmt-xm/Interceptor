@@ -13,7 +13,7 @@
 
 ## 2. 模块组织约定
 
-`apps/proxy-core/src/proxy-core/<module>/` 下当前有 archive / capture / client-app / composer / diagnostics / grpc / har / proxy / rules / tls-probe / transfer / workspace。
+`apps/proxy-core/src/proxy-core/<module>/` 下包含 android-ingress / archive / capture / client-app / composer / diagnostics / grpc / har / http-interception / http-message / proxy / rules / tls-probe / transfer / workspace。
 
 每个模块以真实的 `entry.ts` 门面为根，**Service 类直接写在 `entry.ts` 里**，且一个模块只导出一个 `<模块名>Service`。模块目录下只有 `entry.ts`、`README.md` 和子目录：
 
@@ -56,6 +56,11 @@
 - **Start**（含首次 bootstrap）经 `proxy.start` 恢复 `recording=true`；若未监听则先启动 listener，显式换端口时在同会话迁移监听端口。
 - **Clear**清理Capture/Body，并遵守[Transfer互斥规则](../features/transfer.md#clear与文件任务)，不能绕过运行中的文件任务。
 
+录制意图只保存在CaptureService，ProxyService、ExchangeTracker和Android副本读取同一状态。Android入口
+显式启动并拥有独立`android-usb` Session，不因启动设备而覆盖暂停。Core的全量Clear保留所有活动Session
+元数据，但仍清除其旧记录与等待建档的采集；单独删除入口仍拥有的Session返回conflict。入口启停与
+Clear串行，Core退出先等已接受Clear及全部来源收尾，停止时GC只在所有入口排空后运行。
+
 系统代理只在应用退出与紧急修复时由 Main 恢复。Core 退出自然释放临时数据。`proxy.status` 同时上报 `listening` 与 `recording`，Renderer 的 `capturing` 取 `recording`。
 
 ## 5. 正文边界
@@ -69,6 +74,10 @@ gRPC在途预览通过`CaptureService.getExchangeBodySnapshot/readExchangeBodyRa
 `ExchangeTracker`跟踪全部已接受但未完成的存储操作，终态记录离开活动Map后仍可排空；`ProxyService.prepareCaptureReset()`在推进generation后先等待这批操作，再允许Capture清理文件。正文commit失败时writer结束且不可读，两侧commit与Exchange终态分别收尾。
 
 HTTP中断后，网络终态立即发布，Tracker固定保留1000ms迟到观测窗口并计入`settle()`责任；窗口不因数据或重复abort延期。CaptureService保留独立的writer读取/清理所有权，窗口内没有writer的一侧也不误报采集完成。截止后经一次`setImmediate`封口，再排空写入、提交hash、解除关联；Clear/Session删除/Dispose与Proxy退出优先取消窗口并按删除或保留语义完成资源回收。该宽限是尽力保留已观察部分，不继续网络读取，也不是Mockttp已精确排空的证明。
+
+`CaptureService.createOriginalBodyWriter(exchangeId, side)`提供独立Original槽位，不改变既有Final/当前writer的快照与range读取。Original与Final共用Exchange的清理所有权；Clear、Session删除及Dispose排空四个writer的队列后再清理spill，不能通过覆盖单侧writer丢掉另一份正文的释放责任。Android的HttpRecording已在协议lab中使用正式CaptureService，CoreApplication/Main装配仍未完成。
+
+采集等待通过`retainBodyCapture(exchangeId, sessionId, onDiscard)`登记明确Session。Clear在第一次异步等待前撤销被删除范围的采集资格，再等待已接受的读取和writer收尾；待建档记录不因删除其他Session而被误取消。Proxy使用TrackedExchange创建时固定的Session归属，Android使用当前Recording所有者提供的Session，不从手机wire sessionId推导。
 
 ## 6. 构建产物
 

@@ -85,12 +85,13 @@ function nextTick(): Promise<void> {
 
 describe('ExchangeTracker client application attribution', () => {
   it('does not create an exchange-ready waiter while recording is paused', async () => {
+    const recordingExchangeCaptureService = new RecordingExchangeCaptureService();
     const exchangeTracker = new ExchangeTracker(
-      new RecordingExchangeCaptureService(),
+      recordingExchangeCaptureService,
       new RecordingCaptureEventQueue(),
     );
     exchangeTracker.setSession('session-1');
-    exchangeTracker.setRecording(false);
+    recordingExchangeCaptureService.pauseRecording();
     let settled = false;
 
     void exchangeTracker.whenExchangeReady('websocket-paused').then((exchangeId) => {
@@ -109,9 +110,9 @@ describe('ExchangeTracker client application attribution', () => {
       new RecordingCaptureEventQueue(),
     );
     exchangeTracker.setSession('session-1');
-    exchangeTracker.setRecording(false);
+    recordingExchangeCaptureService.pauseRecording();
     exchangeTracker.beginRequest(loopbackRequest('websocket-paused'));
-    exchangeTracker.setRecording(true);
+    recordingExchangeCaptureService.resumeRecording();
     let settled = false;
 
     void exchangeTracker.whenExchangeReady('websocket-paused').then((exchangeId) => {
@@ -134,7 +135,7 @@ describe('ExchangeTracker client application attribution', () => {
     const reservedExchangeId = exchangeTracker.exchangeIdFor('websocket-recorded');
     expect(reservedExchangeId).toEqual(expect.any(String));
     exchangeTracker.beginRequest(loopbackRequest('websocket-recorded'));
-    exchangeTracker.setRecording(false);
+    recordingExchangeCaptureService.pauseRecording();
 
     await expect(exchangeTracker.whenExchangeReady('websocket-recorded')).resolves.toBe(reservedExchangeId);
     expect(recordingExchangeCaptureService.exchanges[0]?.id).toBe(reservedExchangeId);

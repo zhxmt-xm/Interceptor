@@ -63,6 +63,24 @@ design-vite/
 
 ## 命令
 
+### Android USB 单页候选
+
+`src/features/AndroidPreview/`为独立Android App的首轮连接页拟议效果，不是桌面产品页面；默认关闭，不替换既有设计基准或正式`shots/`。
+
+- 顶部标识、中部VPN/通道状态与电脑身份指纹、底部连接/停止按钮；不把PC的Rules、Breakpoints和Capture搬到手机。
+- 未连接、首次配对、接管中和连接中断均由同一typed state驱动；按钮可切换演示状态，不发起网络或系统授权。
+- 断线页展示保留VPN阻断与手动停止恢复的候选，仍需与用户确认产品策略。
+- 新页面无改前产品截图。正式Android UI、设计定稿和通信简化均未获确认，不据此实施产品界面。
+
+```js
+window.__setState({
+  view: 'playground',
+  androidPreview: true,
+  androidConnection: 'pairing', // disconnected / pairing / connected / error
+  theme: 'light',
+});
+```
+
 ### Homepage 教程阅读候选
 
 `src/features/HomepageGuidePreview/`保留官网Guidebook入口、目录和Capture样章的早期版式候选，不另建官网设计应用。候选默认关闭，不改变既有App设计或正式`shots/`；当前Homepage已在独立仓库接入Markdown阅读路由，此处不替代官网实现。

@@ -297,8 +297,8 @@ describe('ExchangeStore', () => {
     ]);
 
     const result = exchangeStoreFixture.exchangeStore.cleanup({
-      kind: 'all-except-session',
-      sessionId: 's1',
+      kind: 'all-except-sessions',
+      sessionIds: ['s1'],
     });
     expect(result).toMatchObject({ removedSessions: 0, removedExchanges: 1 });
     expect(result.referencedBlobHashes).toEqual([]);
@@ -309,6 +309,23 @@ describe('ExchangeStore', () => {
       databaseBytes: 0,
     });
     expect(exchangeStoreFixture.exchangeStore.countRuleHits()).toEqual([]);
+  });
+
+  it('retains every active session shell while clearing all sources and removing stopped sessions', () => {
+    const exchangeStore = exchangeStoreFixture.exchangeStore;
+    for (const id of ['android', 'stopped']) {
+      exchangeStore.ensureSession({ id, name: id, startedAt: 2_000, captureMode: 'android-usb', appVersion: '0.0.0' });
+    }
+    exchangeStore.appendExchanges([
+      exchangeStoreFixture.exchange('local'),
+      exchangeStoreFixture.exchange('android-request', { sessionId: 'android' }),
+      exchangeStoreFixture.exchange('old-request', { sessionId: 'stopped' }),
+    ]);
+    expect(exchangeStore.cleanup({ kind: 'all-except-sessions', sessionIds: ['s1', 'android'] }))
+      .toMatchObject({ removedSessions: 1, removedExchanges: 3, referencedBlobHashes: [] });
+    expect(exchangeStore.getStorageStats()).toMatchObject({ sessionCount: 2, exchangeCount: 0, bodyRefCount: 0 });
+    expect(exchangeStore.cleanup({ kind: 'session', sessionId: 's1' }).removedSessions).toBe(1);
+    expect(exchangeStore.cleanup({ kind: 'session', sessionId: 'android' }).removedSessions).toBe(1);
   });
 
   it('exposes unique rule ids on summary and detail after recording hits', () => {

@@ -132,6 +132,87 @@ describe('CaptureService temporary lifecycle', () => {
     await captureService.dispose();
   });
 
+  it.each([
+    { side: 'request', bytes: 32 },
+    { side: 'request', bytes: 4 * 1024 * 1024 },
+    { side: 'response', bytes: 32 },
+    { side: 'response', bytes: 4 * 1024 * 1024 },
+  ] as const)('keeps $bytes-byte $side Original separate from the current Final writer', async ({ side, bytes }) => {
+    const captureService = new CaptureService();
+    await captureService.initialize();
+    try {
+      await captureServiceFixture.seedCapture(captureService);
+      await captureService.appendExchanges([{ id: 'dual-body', sessionId: 'session-1', method: 'POST',
+        url: 'https://api.test/dual-body', protocol: 'h1', startedAt: 3, state: 'response-streaming' }]);
+      const finalWriter = captureService.createBodyWriter('dual-body', side);
+      const originalWriter = captureService.createOriginalBodyWriter('dual-body', side);
+      const finalBody = Buffer.alloc(bytes, 0x66);
+      const originalBody = Buffer.alloc(bytes, 0x6f);
+      finalWriter.write(finalBody);
+      originalWriter.write(originalBody);
+
+      await expect(captureService.getExchangeBodySnapshot('dual-body', side)).resolves.toMatchObject({
+        encodedSize: bytes, available: true, complete: false, bodyHash: undefined,
+      });
+      expect((await captureService.readExchangeBodyRange('dual-body', side, 0, bytes)).equals(finalBody)).toBe(true);
+      expect((await originalWriter.readRange(0, bytes)).equals(originalBody)).toBe(true);
+      const originalResult = await originalWriter.finalize();
+      const finalResult = await finalWriter.finalize();
+      expect(originalResult?.hash).not.toBe(finalResult?.hash);
+      expect(originalResult?.size).toBe(bytes);
+      expect(finalResult?.size).toBe(bytes);
+      expect((await captureService.readBodyRange(originalResult!.hash, 0, bytes)).equals(originalBody)).toBe(true);
+      expect((await captureService.readBodyRange(finalResult!.hash, 0, bytes)).equals(finalBody)).toBe(true);
+    } finally {
+      await captureService.dispose();
+    }
+  });
+
+  it.each(['all', 'session', 'dispose'] as const)('drains HTTP and both WebSocket writers before %s cleanup', async (operation) => {
+    const captureService = new CaptureService();
+    await captureService.initialize();
+    try {
+      await captureServiceFixture.seedCapture(captureService);
+      await captureService.appendExchanges([{ id: 'dual-cleanup', sessionId: 'session-1', method: 'POST',
+        url: 'https://api.test/dual-cleanup', protocol: 'h1', startedAt: 3, state: 'response-streaming' }]);
+      const bodyWriters = [
+        captureService.createBodyWriter('dual-cleanup', 'request'),
+        captureService.createBodyWriter('dual-cleanup', 'response'),
+        captureService.createOriginalBodyWriter('dual-cleanup', 'request'),
+        captureService.createOriginalBodyWriter('dual-cleanup', 'response'),
+        captureService.createWebSocketBodyWriter('dual-cleanup', 'client-to-server'),
+        captureService.createWebSocketBodyWriter('dual-cleanup', 'server-to-client'),
+      ];
+      const bodySize = 4 * 1024 * 1024;
+      for (const [index, bodyWriter] of bodyWriters.entries()) {
+        bodyWriter.write(Buffer.alloc(bodySize, 0x61 + index));
+        await expect(bodyWriter.snapshot()).resolves.toMatchObject({
+          encodedSize: bodySize, available: true, complete: false,
+        });
+      }
+      expect(await fs.readdir(locations.captureTemp)).toHaveLength(6);
+      expect(await captureService.readExchangeBodyRange('dual-cleanup', 'request', 0, 32)).toEqual(Buffer.alloc(32, 0x61));
+      expect(await captureService.readExchangeBodyRange('dual-cleanup', 'response', 0, 32)).toEqual(Buffer.alloc(32, 0x62));
+      const reading = bodyWriters.map((bodyWriter) => bodyWriter.readRange(bodySize - 32, 32));
+      const clearing = operation === 'dispose' ? captureService.dispose()
+        : captureService.cleanup(operation === 'all' ? { kind: 'all' } : { kind: 'session', sessionId: 'session-1' });
+      for (const [index, read] of reading.entries()) {
+        await expect(read).resolves.toEqual(Buffer.alloc(32, 0x61 + index));
+      }
+      await clearing;
+      for (const bodyWriter of bodyWriters) {
+        await expect(bodyWriter.snapshot()).resolves.toMatchObject({ complete: true, available: false });
+      }
+      if (operation === 'dispose') {
+        await expect(fs.stat(locations.captureTemp)).rejects.toMatchObject({ code: 'ENOENT' });
+      } else {
+        expect(await fs.readdir(locations.captureTemp)).toEqual([]);
+      }
+    } finally {
+      await captureService.dispose();
+    }
+  });
+
   it('waits for an accepted final body range read before Clear removes its spill', async () => {
     const captureService = new CaptureService();
     await captureService.initialize();

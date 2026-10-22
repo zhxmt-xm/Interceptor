@@ -6,7 +6,7 @@ import zlib from 'node:zlib';
 import type { CompletedRequest, ProxySetting } from 'mockttp';
 import WebSocket, { type RawData } from 'ws';
 
-import type { UpstreamProxyConfig, WebSocketBreakpointSettings } from '@interceptor/core-protocol';
+import type { UpstreamProxyConfig } from '@interceptor/core-protocol';
 
 import type {
   HeaderBag,
@@ -15,7 +15,6 @@ import type {
   SyntheticResponseInit,
 } from '../../rules/interfaces';
 import type { HeaderInput, HeaderKind } from '../../capture/interfaces';
-import type { WebSocketBridgeMessage } from '../interfaces';
 import { SUPPORTED_ENCODINGS } from '../internal/constants';
 import type {
   DecodeResult,
@@ -520,20 +519,6 @@ export function toWallClockTimestamp(
   return Math.round(startTime + Math.max(0, eventTimestamp - startTimestamp));
 }
 
-/** 将二进制 payload 转为可编辑空格分隔 hex。 */
-export function toHexString(bytes: Uint8Array): string {
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(' ');
-}
-
-/** 严格解析用户编辑的十六进制 payload。 */
-export function parseHexString(value: string): Buffer {
-  const compact = value.replace(/\s+/g, '');
-  if (compact.length % 2 !== 0 || !/^[0-9a-f]*$/i.test(compact)) {
-    throw new Error('Edited binary WebSocket payload must be hexadecimal bytes.');
-  }
-  return Buffer.from(compact, 'hex');
-}
-
 /** 生成单进程内足够唯一的捕获实体 ID 后缀。 */
 export function cryptoRandomId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -681,15 +666,4 @@ export function closePeer(
   } else {
     socket.close();
   }
-}
-
-/** 判断一帧是否落在当前 WebSocket 断点配置的方向与帧类别内。 */
-export function matchesWebSocketBreakpoint(
-  settings: WebSocketBreakpointSettings,
-  message: WebSocketBridgeMessage,
-): boolean {
-  if (settings.direction !== 'both' && settings.direction !== message.direction) {
-    return false;
-  }
-  return settings.frames.includes(message.frame);
 }

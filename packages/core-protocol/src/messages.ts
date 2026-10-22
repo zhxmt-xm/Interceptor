@@ -413,6 +413,25 @@ export interface ProxyStatusCommand {
   payload: Record<string, never>;
 }
 
+/** Main确认设备身份后显式启动；私钥和pin不进入Renderer或Tool参数。 */
+export interface AndroidStartCommand {
+  type: 'android.start';
+  payload: {
+    identity: { key: string; cert: string };
+    devicePin: string;
+  };
+}
+
+export interface AndroidStopCommand {
+  type: 'android.stop';
+  payload: Record<string, never>;
+}
+
+export interface AndroidStatusCommand {
+  type: 'android.status';
+  payload: Record<string, never>;
+}
+
 /**
  * 暂停/恢复捕获记录。暂停时监听器与系统代理保持运行、流量继续转发，
  * 仅停止持久化与推送新 Exchange；恢复后继续在同一会话追加。
@@ -568,6 +587,9 @@ export type CoreCommand =
   | ProxyStartCommand
   | ProxyStopCommand
   | ProxyStatusCommand
+  | AndroidStartCommand
+  | AndroidStopCommand
+  | AndroidStatusCommand
   | ProxySetRecordingCommand
   | ProxySetUpstreamCommand
   | UpstreamGetSettingsCommand
@@ -1032,6 +1054,22 @@ export interface ProxyStatusResult {
   };
 }
 
+/** 入口监听和已完成hello的设备控制连接分别报告，不包含传输凭据。 */
+export interface AndroidIngressStatus {
+  listening: boolean;
+  connected: boolean;
+  host: '127.0.0.1' | null;
+  port: number | null;
+}
+
+export interface AndroidStatusResult {
+  type: 'android.status';
+  payload: AndroidIngressStatus & {
+    recording: boolean;
+    captureSessionId: string | null;
+  };
+}
+
 /** 当前 TLS 运行态：是否持有可用 CA，以及是否正在解密。 */
 export interface TlsStateResult {
   type: 'tls.state';
@@ -1090,13 +1128,15 @@ export type CoreResult =
   | CaptureStatusResult
   | TransferJobResult
   | ProxyStatusResult
+  | AndroidStatusResult
   | TlsStateResult
   | TlsInsecureHostsResult
   | TlsDecryptionPreferenceResult
   | UpstreamSettingsResult;
 
 export type CoreResultForCommand<T extends CoreCommand> =
-  T extends UpstreamGetSettingsCommand | UpstreamApplySettingsCommand ? UpstreamSettingsResult
+  T extends AndroidStartCommand | AndroidStopCommand | AndroidStatusCommand ? AndroidStatusResult
+    : T extends UpstreamGetSettingsCommand | UpstreamApplySettingsCommand ? UpstreamSettingsResult
     : T extends EchoCommand ? EchoResult
     : T extends SessionsQueryCommand ? SessionsPageResult
       : T extends SessionsDetailCommand ? SessionsDetailResult
@@ -1360,6 +1400,8 @@ export interface CoreEventBatch {
   events: CaptureExchangeEvent[];
   /** Capture导入已完成；接收方重新查询summaries，不传文件信息。 */
   captureImported?: boolean;
+  /** Android入口、控制连接或录制状态变化后的公开快照。 */
+  androidStatus?: AndroidStatusResult['payload'];
   /** TLS compatibility signals are global settings events, not Capture exchanges. */
   tlsCompatibilityEvents?: TlsCompatibilityEvent[];
   /**

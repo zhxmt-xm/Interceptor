@@ -636,7 +636,7 @@ describe('ProxyService HTTP/2 (Mockttp MITM)', () => {
       const activeSessionId = await proxyService.prepareCaptureReset();
       expect(activeSessionId).not.toBeNull();
       captureEventQueue.reset();
-      await activeCaptureService.cleanup({ kind: 'all-except-session', sessionId: activeSessionId! });
+      await activeCaptureService.cleanup({ kind: 'all-except-sessions', sessionIds: [activeSessionId!] });
       await expect(activeCaptureService.status()).resolves.toMatchObject({ exchangeCount: 0, bodyCount: 0, blobBytes: 0 });
     }
     if (ending === 'cancel') {

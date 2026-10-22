@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   CORE_PROTOCOL_VERSION,
   parseCoreToMainMessage,
+  type AndroidStatusResult,
   type CaptureExchangeEvent,
   type ClientAppIdentity,
   type CoreCommand,
@@ -68,6 +69,9 @@ export class CoreRpcClient {
     'proxy.start': 'proxy.status',
     'proxy.stop': 'proxy.status',
     'proxy.status': 'proxy.status',
+    'android.start': 'android.status',
+    'android.stop': 'android.status',
+    'android.status': 'android.status',
     'proxy.setRecording': 'proxy.status',
     'proxy.setUpstream': 'proxy.status',
     'upstream.getSettings': 'upstream.settings',
@@ -101,6 +105,8 @@ export class CoreRpcClient {
   private breakpointsChangedListener: (() => void) | null = null;
   /** Capture成功导入后通知Main刷新所有Renderer。 */
   private captureImportedListener: (() => void) | null = null;
+  /** Core实际Android入口状态，跨Core重启保留订阅。 */
+  private androidStatusChangeListener: ((status: AndroidStatusResult['payload']) => void) | null = null;
   /** 单条 Core 消息无法关联/解析时的诊断监听器；不代表连接失效。 */
   private protocolIssueListener: CoreRpcProtocolIssueListener | null = null;
 
@@ -161,6 +167,11 @@ export class CoreRpcClient {
   /** 注册Capture导入通知，跨Core重启保留订阅。 */
   onCaptureImported(listener: () => void): void {
     this.captureImportedListener = listener;
+  }
+
+  /** 注册Android入口快照，不从Capture数据或RPC连接状态推断手机VPN状态。 */
+  onAndroidStatusChange(listener: (status: AndroidStatusResult['payload']) => void): void {
+    this.androidStatusChangeListener = listener;
   }
 
   /** 注册单消息协议问题监听器；问题只影响该消息或对应 request。 */
@@ -305,6 +316,13 @@ export class CoreRpcClient {
     } catch (error) {
       this.reportProtocolIssue(
         `Capture import consumer failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    try {
+      if (batch.androidStatus) this.androidStatusChangeListener?.(batch.androidStatus);
+    } catch (error) {
+      this.reportProtocolIssue(
+        `Android status consumer failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
     try {

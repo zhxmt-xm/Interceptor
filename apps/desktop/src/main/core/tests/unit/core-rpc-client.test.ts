@@ -1,5 +1,7 @@
 import {
   CORE_PROTOCOL_VERSION,
+  type AndroidStatusResult,
+  type CoreCommand,
   type CoreToMainMessage,
   type MainToCoreMessage,
 } from '@interceptor/core-protocol';
@@ -60,6 +62,69 @@ afterEach(() => {
 });
 
 describe('CoreRpcClient', () => {
+  it.each(['android.start', 'android.stop', 'android.status'] as const)(
+    'matches the typed Android response for %s',
+    async type => {
+      const coreRpcClient = new CoreRpcClient();
+      const fakeRpcPort = new FakeRpcPort();
+      coreRpcClient.attach(fakeRpcPort);
+      const command: CoreCommand = type === 'android.start'
+        ? { type, payload: { identity: { key: 'test-key', cert: 'test-cert' }, devicePin: 'test-pin' } }
+        : { type, payload: {} };
+      const result: AndroidStatusResult = { type: 'android.status', payload: {
+        listening: false, connected: false, host: null, port: null, recording: false, captureSessionId: null,
+      } };
+      const pending = coreRpcClient.request(command, { requestId: 'android-request', traceId: 'android-trace' });
+      const received = expect(pending).resolves.toEqual(result);
+      fakeRpcPort.receive({ kind: 'response', protocolVersion: CORE_PROTOCOL_VERSION,
+        requestId: 'android-request', traceId: 'android-trace', ok: true, result });
+      await received;
+      coreRpcClient.close();
+    },
+  );
+
+  it('delivers Android status independently of Capture and retains the consumer across Core replacement', () => {
+    const coreRpcClient = new CoreRpcClient();
+    const first = new FakeRpcPort();
+    const second = new FakeRpcPort();
+    const listener = vi.fn();
+    coreRpcClient.onAndroidStatusChange(listener);
+    coreRpcClient.attach(first);
+    const androidStatus: AndroidStatusResult['payload'] = {
+      listening: true, connected: true, host: '127.0.0.1', port: 49000,
+      recording: false, captureSessionId: 'android-capture',
+    };
+    first.receive({ kind: 'event-batch', protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 1, events: [], androidStatus });
+    expect(listener).toHaveBeenCalledExactlyOnceWith(androidStatus);
+    expect(first.sent).toEqual([{ kind: 'event-ack', protocolVersion: CORE_PROTOCOL_VERSION, batchSequence: 1 }]);
+    coreRpcClient.attach(second);
+    first.receive({ kind: 'event-batch', protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 2, events: [], androidStatus });
+    expect(listener).toHaveBeenCalledTimes(1);
+    second.receive({ kind: 'event-batch', protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 1, events: [], androidStatus: { ...androidStatus, connected: false } });
+    expect(listener).toHaveBeenLastCalledWith({ ...androidStatus, connected: false });
+    expect(listener).toHaveBeenCalledTimes(2);
+    coreRpcClient.close();
+  });
+
+  it('reports an Android consumer failure and still acknowledges the event window', () => {
+    const coreRpcClient = new CoreRpcClient();
+    const fakeRpcPort = new FakeRpcPort();
+    const issue = vi.fn();
+    coreRpcClient.onProtocolIssue(issue);
+    coreRpcClient.onAndroidStatusChange(() => { throw new Error('android-consumer-failed'); });
+    coreRpcClient.attach(fakeRpcPort);
+    fakeRpcPort.receive({ kind: 'event-batch', protocolVersion: CORE_PROTOCOL_VERSION,
+      batchSequence: 7, events: [], androidStatus: {
+        listening: false, connected: false, host: null, port: null, recording: false, captureSessionId: null,
+      } });
+    expect(issue).toHaveBeenCalledWith(expect.stringContaining('android-consumer-failed'));
+    expect(fakeRpcPort.sent).toEqual([{ kind: 'event-ack', protocolVersion: CORE_PROTOCOL_VERSION, batchSequence: 7 }]);
+    coreRpcClient.close();
+  });
+
   it('attaches a port without an extra handshake', () => {
     const coreRpcClient = new CoreRpcClient();
     const fakeRpcPort = new FakeRpcPort();
