@@ -69,7 +69,7 @@
 
 ## 验证证据
 
-- Rules标题无框：[前置差异](../../../Users/zhang/.copilot/session-state/12b79f71-ccdb-4a1c-92e1-9fe1541fd0fd/files/rules-title-borderless-red-final/report.md)与[最终数据parity](../../../Users/zhang/.copilot/session-state/12b79f71-ccdb-4a1c-92e1-9fe1541fd0fd/files/rules-title-green-final/report.md)覆盖四主题的默认、hover、focus、长名称和失焦，以及Rules相关场景；Rules Store基线、Desktop/Design typecheck通过。本次产品仅改CSS，未改重命名、键盘事件或保存契约，不新增或重跑真实E2E；原workflow保持不变，不将本轮结果冒充Main/Core退出或宿主恢复证据。用户已有App及8888监听保持原状，parity自有服务已退出。改动说明见[无框标题](../commit-changes/202610230007_ui_rules_borderless-title.html)。
+- Rules标题无框：[前置差异](../../../Users/zhang/.copilot/session-state/12b79f71-ccdb-4a1c-92e1-9fe1541fd0fd/files/rules-title-borderless-red-final/report.md)与[最终数据parity](../../../Users/zhang/.copilot/session-state/12b79f71-ccdb-4a1c-92e1-9fe1541fd0fd/files/rules-title-green-final/report.md)覆盖四主题的默认、hover、focus、长名称和失焦，以及Rules相关场景；Rules Store基线、Desktop/Design typecheck通过。本次产品仅改CSS，未改重命名、键盘事件或保存契约，不新增或重跑真实E2E；原workflow保持不变，不将本轮结果冒充Main/Core退出或宿主恢复证据。用户已有App及8888监听保持原状，parity自有服务已退出。
 
 - README图文：[素材来源](assets/readme-media.json)、[文档与媒体核对](../../../.copilot/session-state/5e6be39b-a22a-4e7d-8a4b-8f5424099e40/files/item11/documentation-verification.json)、[双语主题与尺寸预览](../../../.copilot/session-state/5e6be39b-a22a-4e7d-8a4b-8f5424099e40/files/item11/browser-verification.json)及[GitHub渲染核对](../../../.copilot/session-state/5e6be39b-a22a-4e7d-8a4b-8f5424099e40/files/item11/github-markdown-verification.json)。只验证文档与已有素材，不替代产品E2E或官网访问验收；官网入口同步归item 15，私有仓库访问限制保留。
 
@@ -80,7 +80,7 @@
 - Start截图入口：[真实TTY验收](../apps/desktop/test-results/start-screenshots-20261019/verification.json)覆盖`npm start → Test → E2E`的普通/逐步截图、返回与取消；两次均运行原Composer格式化workflow，不手写截图参数。
   - 截图自动进入独立运行目录，7张PNG的尺寸及SHA-256符合清单；普通运行不生成步骤图，保留原trace/final.png，前次截图运行的31个文件逐字节不变。两代均正常Close、Main/Core退出，宿主guard通过，8888实际bind/close可用；没有强杀。
   - 目标为既有签名macOS Release `0.1.1-alpha.1`；本次未重跑默认prepare/build或Windows。原92个workflow文件集合保持，65个Guidebook专用workflow及制作/导入入口已移除；官网图文和PNG保留。当前说明见[截图约定](../apps/desktop/tests/e2e-workflow-tests/README.md#trace-与证据)；此前官网Browser结论保持其原快照范围，未由本次CLI验收覆盖。
-  - 提交前Desktop与Homepage typecheck、限定diff及CLI语法检查通过；Homepage lint无错误，两份内嵌原图的HTML超过Biome大小上限而跳过，其中本项说明已直接用Browser检查1360/390宽度、6张原图、全部展开状态与红框位置。两仓只维护[同一份改动说明](../../Interceptor-Homepage/commit-changes/202610192304_ui_guidebook_step-images.html)，不恢复其他任务已删除的历史报告。
+  - 提交前Desktop与Homepage typecheck、限定diff及CLI语法检查通过；Homepage lint无错误，两份内嵌原图的HTML超过Biome大小上限而跳过，其中本项说明已直接用Browser检查1360/390宽度、6张原图、全部展开状态与红框位置。该阶段的截图对照保留在[历史记录](../../Interceptor-Homepage/commit-changes/202610192304_ui_guidebook_step-images.html)，不作为报告生成或维护要求。
 
 ## 验收约束
 
