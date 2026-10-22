@@ -78,6 +78,7 @@
 
 .payloadEditorOriginalCode {
   min-height: 76px;
+  margin: 0;
   padding: 13px 12px;
   overflow: auto;
   border: 1px solid var(--border-2);
@@ -142,6 +143,10 @@
 
 .payloadEditorUsingOriginal > svg {
   color: var(--green);
+}
+
+.payloadEditorUsingOriginal[data-content-kind="message"] > span {
+  line-height: 17px;
 }
 
 .payloadEditorChooseFile {

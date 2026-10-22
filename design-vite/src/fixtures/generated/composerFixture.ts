@@ -4218,7 +4218,15 @@ export const composerFixture: FixtureNode = {
                         },
                         {
                           "type": "text",
-                          "value": "201 Created"
+                          "value": "201"
+                        },
+                        {
+                          "type": "text",
+                          "value": " "
+                        },
+                        {
+                          "type": "text",
+                          "value": "Created"
                         }
                       ]
                     },

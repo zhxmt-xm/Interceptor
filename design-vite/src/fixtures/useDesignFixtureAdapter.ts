@@ -88,35 +88,26 @@ function positionPopovers(root: HTMLElement): void {
       popover.style.bottom = 'auto';
     }
   }
-  const positionInEditor = (triggerSelector: string, popoverSelector: string, open: boolean, matchWidth = false): void => {
-    const trigger = root.querySelector<HTMLElement>(triggerSelector);
-    const popover = root.querySelector<HTMLElement>(popoverSelector);
-    const editor = root.querySelector<HTMLElement>('.reditor');
-    if (!trigger || !popover || !editor || !open) return;
-    const triggerRect = trigger.getBoundingClientRect();
+  const ruleSelectTrigger = root.querySelector<HTMLElement>('[data-rule-select-trigger]');
+  const ruleSelectPopover = root.querySelector<HTMLElement>('.rule-select-pop');
+  const editor = root.querySelector<HTMLElement>('.reditor');
+  if (ruleSelectTrigger && ruleSelectPopover && editor && root.dataset.ruleSelect === 'open') {
+    const triggerRect = ruleSelectTrigger.getBoundingClientRect();
     const editorRect = editor.getBoundingClientRect();
     const gap = 4;
-    if (matchWidth) {
-      const below = triggerRect.bottom + gap + popover.offsetHeight <= appRect.bottom;
-      popover.style.top = `${below ? triggerRect.bottom - editorRect.top + gap : triggerRect.top - editorRect.top - popover.offsetHeight - gap}px`;
-      popover.style.left = `${triggerRect.left - editorRect.left}px`;
-      popover.style.width = `${triggerRect.width}px`;
-    } else {
-      const right = triggerRect.right + gap + popover.offsetWidth <= appRect.right;
-      popover.style.left = `${right ? triggerRect.right - editorRect.left + gap : triggerRect.left - editorRect.left - popover.offsetWidth - gap}px`;
-      const top = triggerRect.top - editorRect.top + (triggerRect.height - popover.offsetHeight) / 2;
-      popover.style.top = `${Math.min(Math.max(top, appRect.top - editorRect.top), appRect.bottom - editorRect.top - popover.offsetHeight)}px`;
-    }
-  };
-  positionInEditor('#addaction', '.apop', root.dataset.view === 'rules' && root.classList.contains('showpop'));
-  positionInEditor('[data-rule-select-trigger]', '.rule-select-pop', root.dataset.ruleSelect === 'open', true);
+    const below = triggerRect.bottom + gap + ruleSelectPopover.offsetHeight <= appRect.bottom;
+    ruleSelectPopover.style.top = `${below ? triggerRect.bottom - editorRect.top + gap : triggerRect.top - editorRect.top - ruleSelectPopover.offsetHeight - gap}px`;
+    ruleSelectPopover.style.left = `${triggerRect.left - editorRect.left}px`;
+    ruleSelectPopover.style.width = `${triggerRect.width}px`;
+  }
   const panel = root.querySelector<HTMLElement>('.break-manager');
   const trigger = root.querySelector<HTMLElement>('.breakctl');
   if (panel && trigger && root.dataset.breakpointPanel === 'open' && panel.offsetParent) {
     const parentRect = panel.offsetParent.getBoundingClientRect();
     const triggerRect = trigger.getBoundingClientRect();
-    panel.style.left = `${Math.min(triggerRect.left, appRect.right - panel.offsetWidth - 8) - parentRect.left}px`;
-    panel.style.top = `${triggerRect.bottom - parentRect.top + 6}px`;
+    // Match the App's body-portal pixel grid before converting to this containing block.
+    panel.style.left = `${Math.floor(Math.min(triggerRect.left, appRect.right - panel.offsetWidth - 8)) - parentRect.left}px`;
+    panel.style.top = `${Math.floor(triggerRect.bottom + 4) - parentRect.top}px`;
   }
 }
 
@@ -306,7 +297,6 @@ export function useDesignFixtureAdapter(
       if (closest(event.target, '.header-sidebar-toggle-v2')) return patch({ sidebar: root.classList.contains('collapsed') ? 'expanded' : 'collapsed' });
       const fileTrigger = closest(event.target, '[data-file-trigger]');
       if (fileTrigger) return patch({ fileMenu: root.dataset.fileMenu === fileTrigger.dataset.fileTrigger ? '' : fileTrigger.dataset.fileTrigger ?? '' });
-      if (closest(event.target, '#addaction')) return patch({ pop: !root.classList.contains('showpop') });
       if (closest(event.target, '[data-rule-select-trigger]')) return patch({ ruleSelect: root.dataset.ruleSelect === 'open' ? '' : 'open' });
       const theme = closest(event.target, '[data-themeset]')?.dataset.themeset as DesignState['theme'] | undefined;
       if (theme) return patch({ theme });
@@ -349,7 +339,11 @@ export function useDesignFixtureAdapter(
         const stateLabel = pendingAppContainerToggle.closest('.sctl')?.querySelector<HTMLElement>('.appcontainer-state');
         if (stateLabel) stateLabel.textContent = enabled ? 'Enabled' : 'Off';
         const count = root.querySelector<HTMLElement>('[data-app-container-enabled-count]');
-        if (count) count.textContent = String(root.querySelectorAll('[data-app-container-toggle].on').length);
+        if (count) {
+          const enabledCount = root.querySelectorAll('[data-app-container-toggle].on').length;
+          const totalCount = root.querySelectorAll('[data-app-container-toggle]').length;
+          count.textContent = `${enabledCount} enabled · ${totalCount} containers`;
+        }
         pendingAppContainerToggle = null;
         return patch({ overlay: '' });
       }
@@ -419,7 +413,8 @@ export function useDesignFixtureAdapter(
         const enabled = breakRuleToggle.classList.toggle('on');
         breakRuleToggle.setAttribute('aria-checked', String(enabled));
         breakRuleToggle.closest('.break-manager-rule')?.classList.toggle('off', !enabled);
-        const count = root.querySelector<HTMLElement>('.break-enabled-count'); if (count) count.textContent = String(root.querySelectorAll('.break-rule-toggle.on').length);
+        const count = root.querySelector<HTMLElement>('.break-enabled-count');
+        if (count) count.textContent = `${root.querySelectorAll('.break-rule-toggle.on').length} enabled · 0 paused`;
         return;
       }
       if (closest(event.target, '.break-manager [data-breakpoint-custom]')) return patch({ view: 'rules', breakpointPanel: '' });

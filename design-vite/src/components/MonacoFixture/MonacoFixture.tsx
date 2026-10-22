@@ -59,7 +59,7 @@ export function MonacoFixture({ language, preset, resizable = false, source, ...
       selectionHighlight: false,
       matchBrackets: 'never',
       bracketPairColorization: { enabled: false },
-      fontFamily: '"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace',
+      fontFamily: '"JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace',
       fontSize: geometry.fontSize,
       lineHeight: geometry.lineHeight,
       padding: { top: geometry.padding, bottom: geometry.padding },

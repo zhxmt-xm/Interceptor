@@ -1,0 +1,10 @@
+.rulesEditorActionsPopover {
+  width: 250px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
+
+.rulesEditorActionsPopover .po-t {
+  padding-bottom: 5px;
+  font-size: 10px;
+}

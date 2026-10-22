@@ -35,7 +35,7 @@ export function AgentSessionUsage(): React.JSX.Element {
         />
         <span className={styles.agentContextCopy}>
           <b>Context</b>
-          <code>2.3% · 23k / 1M</code>
+          <code>{2.3}% · {'23k'} / {'1M'}</code>
         </span>
       </button>
       {open && (

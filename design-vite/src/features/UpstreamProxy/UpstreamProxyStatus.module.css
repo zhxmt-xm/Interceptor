@@ -12,6 +12,6 @@
 .upstreamQuickHeader h3 { margin: 0; font-size: 13px; font-weight: 650; }
 .upstreamQuickHeader p { margin: 5px 0 0; color: var(--text-3); font-size: 11px; }
 .upstreamQuickBody { min-height: 0; overflow-y: auto; padding: 0 16px 14px; }
-.upstreamSettingsLink { display: flex; align-items: center; justify-content: space-between; flex: 0 0 auto; width: 100%; padding: 11px 16px; border: 0; border-top: 1px solid var(--border); border-radius: 0 0 12px 12px; background: var(--panel-2); color: var(--text-2); font-family: var(--font-ui); font-size: 11px; cursor: pointer; }
+.upstreamSettingsLink { display: flex; align-items: center; justify-content: space-between; flex: 0 0 auto; width: 100%; padding: 11px 16px; border: 0; border-top: 1px solid var(--border); border-radius: 0 0 12px 12px; background: var(--panel-2); color: var(--text-2); font-family: var(--font-ui); font-size: 11px; line-height: 1.23; cursor: pointer; }
 .upstreamSettingsLink:hover:not(:disabled) { color: var(--accent); background: var(--accent-soft); }
 .upstreamSettingsLink:disabled { color: var(--text-3); cursor: not-allowed; }

@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `ef3a4681`
+> Tracked commit: `f1cfff64`
 > Homepage guidebook: `9c104e0`
 
 ## 维护规则

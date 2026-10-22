@@ -87,6 +87,7 @@
 .agentSessionUsagePopover dl {
   display: flex;
   gap: 5px;
+  margin: 0;
   padding: 8px 0;
   flex-direction: column;
 }
@@ -94,6 +95,7 @@
 .agentSessionUsagePopover dt,
 .agentSessionUsagePopover dd,
 .agentSessionUsagePopover small {
+  margin: 0;
   color: var(--text-3);
   font-family: var(--font-mono);
   font-size: 9px;

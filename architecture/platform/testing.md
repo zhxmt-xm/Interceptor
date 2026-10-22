@@ -106,6 +106,28 @@ App视觉基准已按用户确认恢复为视觉对齐前的实现，不再为�
   - [比较条件与日志归因记录](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/parity-comparison-audit/full-page-diagnostics-verification.json)保留修复前5条错误的归属：两个未就绪设计菜单使12个目标未比较，其余三条为ResizeObserver错误。两次全量原始差异一致，727份受测源码未变，8个预期WPAD失败日志按场景保留、构建错误为0。该阶段的[修正预览](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/parity-comparison-audit/review/)是历史材料，不表示仍等待同一轮确认；原始失败证据未覆盖。
   - [中文具体差异验收](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/parity-specific-differences/)保存实际CLI、原始报告与分组核对：`upstream-settings-system-editing-light`的8个目标产生12条差异、0执行错误，报告调整前后`views`和`summary`完全相同；精度、方向、字体声明、状态值、分组和文件链接均已检查。上述历史运行均正常关闭自有服务并释放5199，未启动真实Electron或操作宿主代理、证书，不作为业务E2E。
 
+设计稿按上述固定App基准同步，Rules菜单正式落地前的小差异验证如下：
+
+- 设计入口复用已有Ant reset，主行高与对应局部行高、默认段落/列表间距、普通计数及文本分段、菜单间距和分隔线归属按App同步。字体来源与注册方式不变，不修改Renderer或比较规则来消除差异。
+- [菜单落地前的完整覆盖报告](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/current-small/report.md)覆盖534/534场景、4137/4137目标；2305条差异降至3条，均属于Rules的Add action菜单位置/高度。缺失、歧义、不稳定和执行错误均为0；该阶段仍为`differences`，不是全量通过。
+  - 来源为[第二轮全量](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/full-02/report.md)中未受影响的532个场景，加上[Proxy标题与设置导航复验](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/proxy-title-final/report.md)的2个场景、6个目标。不是一次连续运行；原始全量的5条差异报告保留，不混入未批准候选的结果。
+  - [适用性核对](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/current-small/verification.json)确认734份输入中733份逐字节未变，唯一后续改动严格限定为`.proxy-ready-dialog > .dlghead > b`的18px行高；未改通用弹窗标题。App保持不变，原场景记录逐项保留，5199在IPv4/IPv6均已释放。
+- [Design typecheck](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/final-small-typecheck.log)通过；Proxy弹窗的[浅色](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/proxy-title-shots/light/proxy-not-ready/dialog.png)与[深色](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/proxy-title-shots/dark/proxy-not-ready/dialog.png)设计图已生成并检查，标题、图标、正文和按钮布局正常。设计截图与独立数据parity分开执行，没有新增设计工具自身测试；本轮未启动真实Electron/Main/Core，也未操作系统代理或证书，不作为业务E2E。
+- Rules菜单的[三方评审](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/rules-candidate/index.html)已获用户确认并落地：修复编辑器裁切并同步App的Popover、组标题与动作图标。以下候选记录保留为历史评审证据，不代替正式源码的最终验证。
+  - [候选类型与交互补验](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/rules-validation-04/result.json)使用仓库已有TypeScript 7.0.2的内存文件接口检查虚拟组件及修改后的源文件，配置、全局、语法、绑定与语义诊断均为0；该次检查只在内存修正CSS Modules class拼接类型，没有落盘或变更依赖。正式实现已包含此修正。
+  - 明暗主题均先取得harness稳定帧，再核对10个动作的命中；菜单与App同为`782 / 413 / 250 / 486.5625`，Breakpoint不再被裁切。触发按钮、Escape和外部点击均能关闭，缩小到`1280×700`后菜单仍完整进入视口，全部动作可命中；[设计与App截图](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/rules-validation-04/images/)已检查。
+  - 原设计与候选的动作条目都只作静态示意：点击Rewrite header后仍为2张动作卡片且菜单不关闭；App会新增动作并关闭。这是保留原设计能力，不算新增动作业务流程通过，也未为本项扩建设计编辑器。
+  - 候选通过[独立CLI定向复验](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/rules-validation-04/official/report.md)：`rules-add-action,rules-select-dropdown`共2个场景、2个目标，0差异及执行问题；只证明已声明字段一致。734份正式输入未变，自有Renderer、两个设计preview与浏览器均关闭，三个动态端口重新绑定成功；菜单落地前的完整报告保留当时的3条差异。
+- Rules正式源码的[Design typecheck](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/applied-typecheck.log)与[交互及定向检查](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/rules-applied-validation-02/result.json)通过，不使用Vite源码转换或虚拟组件：明暗菜单的几何与App严格一致，10项动作均可命中，触发按钮、Escape、外部点击关闭及`1280×700`边界避让通过；设计动作条目仍保留上述静态示意能力。原CLI对`rules-add-action,rules-select-dropdown`的2场景2目标为零差异，737份输入未变，两个自有页面服务及浏览器退出，端口重新绑定成功。
+  - [首次正式诊断记录](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/rules-applied-validation/result.json)捕获开场动画中的缩放尺寸，未算通过；手工交互检查随后按既有菜单截图准备方式等待真实动画结束，再调用原harness采样。没有关闭产品动画、修改parity判定或补偿几何读数；定向结果不能替代全量验证。
+
+设计稿按App基准同步的最终验收：
+
+- [正式源码全量报告](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/full-applied/report.md)为一次连续运行：534/534场景、4137/4137目标，差异、缺失、歧义、不稳定和执行错误均为0，退出码0；本项差异记录由2305降至0，没有删除目标或放宽比较规则。
+- [输入与退出核对](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/full-applied-verification.json)确认737份输入逐字节未变，Renderer视觉基准不变，Node为`v24.21.0`、Edge为`155.0.4283.62`；5199在IPv4/IPv6均已释放。
+- 为隔离并行会话的未提交Android设计和Core改动，[提交候选类型检查](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/item21-commit/typecheck-index.json)直接使用独立Git index中的源文件，125个根文件、1164个依赖源文件为0诊断，不写工作区或实际index；[提交候选parity](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/item21-commit/parity-index/report.md)在Capture、Add action和Rule Select共3场景44目标上严格零差异，737份工作区输入未变，自有服务与浏览器退出。
+- 本轮仅同步设计稿及相关说明，没有修改Rules业务或Renderer，也没有运行真实Electron/Main/Core、操作宿主代理或证书；上述结果不替代真实业务E2E。全量报告不读取或生成PNG，手工设计评审截图单独保留在本地。
+
 涉及 Main / Preload / IPC / Fuses / CSP / 打包边界时追加：
 
 ```powershell

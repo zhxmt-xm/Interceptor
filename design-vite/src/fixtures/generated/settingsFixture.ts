@@ -1225,25 +1225,13 @@ export const settingsFixture: FixtureNode = {
                   "type": "element",
                   "tag": "span",
                   "attributes": {
-                    "class": "settings-count"
+                    "class": "settings-count",
+                    "data-app-container-enabled-count": ""
                   },
                   "children": [
                     {
-                      "type": "element",
-                      "tag": "b",
-                      "attributes": {
-                        "data-app-container-enabled-count": ""
-                      },
-                      "children": [
-                        {
-                          "type": "text",
-                          "value": "0"
-                        }
-                      ]
-                    },
-                    {
                       "type": "text",
-                      "value": " enabled · 4 containers"
+                      "value": "0 enabled · 4 containers"
                     }
                   ]
                 },

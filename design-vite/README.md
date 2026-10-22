@@ -55,6 +55,12 @@ design-vite/
 - `upstreamPopoverOpen` 控制同一快捷浮层，Open in Settings 保留草稿并定位到对应区域。
 - WPAD系统模式、DHCP和产品E2E的实际能力以[Settings](../architecture/features/settings.md#upstream-request-adapter)为准；设计交互不替代真实网络验收。
 
+## Rules 菜单
+
+- `RulesActionPopover`使用既有`pop`状态控制Add action菜单；真实点击和`window.__setState()`驱动同一组件。
+- 菜单沿用App的Ant Popover定位与边界避让，挂到`.app`而不是编辑器内；Breakpoint等末项不会被编辑器裁切。触发按钮、Escape和外部点击均可关闭。
+- 菜单内容继续来自`rulesFixture`，保留已有动作的静态示意；本次不扩展动作编辑或规则执行。Rule Select保持独立的原有定位与状态。
+
 ## 命令
 
 ### Homepage 教程阅读候选

@@ -49,7 +49,7 @@
 
 - 字号:base `13`,列表 `12.5`,分组标签 `10.5`(大写 + `letter-spacing .05–.07em` + `--text-3`),mono `11–11.5`,品牌名 `14.5/640`。
 - 字重:常规 `450–500`,强调 `550–600`,标签 `650`。
-- 设计主布局未单独声明的行高使用`normal`，由实际字体度量决定；编辑器等已有固定行高的控件保留各自规范。Renderer按用户确认保留原App的`1.23`，两者差异由parity如实记录，不自动覆盖App。
+- 设计主布局与用户确认的原App一致，使用`1.23`行高；Capture列表行、表头、Inspector方法/URL及协议消息行分别保留`normal`局部行高。设计入口复用现有Ant Design reset的控件继承规则，编辑器等固定行高保持各自规范；不以像素位移补偿排版。
 - 对比:key/次要文本用 `--text-2`,值/主内容用 `--text`(Inspector 尤其保证对比);host 用 `--text-2`(不用主色,避免过重)。
 
 ## 尺寸与间距
@@ -199,6 +199,7 @@
 - loading:与 Core 交互的异步操作(录制开关、导入/导出提交、HTTPS 安装、诊断修复等)在进行中显示旋转 spinner 并阻断重复触发;只替换图标、不改按钮文案。
 - tooltip:所有图标按钮统一用 **Ant Design Tooltip** 承载名称提示(取代原生 `title`),`0.4s` 延迟;禁用态用 `disabledTooltip` 说明禁用原因(如无流量可导出)。
 - dropdown:Rules 的 `Add condition` / `Add action` 使用 Ant Design Popover `placement="right"` + `autoAdjustOverflow`：优先紧贴按钮右侧并垂直居中，右侧不足时自动翻到左侧，垂直不足时只做边界位移。面板自然高度不滚动；仅当内容高于 `100vh - 16px` 时内部滚动。Select 选项行高 `34px`，列表按内容自然增高到 `320px`，超过后才滚动。
+  - 设计稿的`Add action`由`RulesActionPopover`承载并挂到`.app`，不受编辑器裁切；面板宽`250px`、padding `7px`、圆角`12px`，分组标题`10px`且底部padding `5px`。Rewrite body、Synthetic、Block分别使用Lucide的FileText、Reply、Ban；触发按钮、Escape和外部点击负责关闭，不保留旧菜单的手算定位。
 
 ## 与落地代码的关系
 

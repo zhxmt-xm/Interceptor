@@ -235,19 +235,8 @@ export const statusbarFixture: FixtureNode = {
               },
               "children": [
                 {
-                  "type": "element",
-                  "tag": "b",
-                  "attributes": {},
-                  "children": [
-                    {
-                      "type": "text",
-                      "value": "2"
-                    }
-                  ]
-                },
-                {
                   "type": "text",
-                  "value": " requests paused"
+                  "value": "2 requests paused"
                 }
               ]
             },

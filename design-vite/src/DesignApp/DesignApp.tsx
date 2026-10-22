@@ -50,7 +50,6 @@ function DesignAppContent(): React.JSX.Element {
   );
   const messageConfig = useMemo(() => ({
     getContainer: () => rootRef.current ?? document.body,
-    top: 10,
     styles: { list: { position: 'absolute' as const } },
   }), []);
 

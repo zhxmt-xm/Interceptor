@@ -57,8 +57,8 @@ export function WebSocketMessagePayload(): React.JSX.Element | null {
   return createPortal(
     <div className={styles.webSocketMessagePayload}>
       <div className={styles.webSocketMessagePayloadHeader}>
-        <b>Received text</b>
-        <span className={styles.webSocketMessagePayloadCount}>54 B · message 3</span>
+        <b>{'Received'} {'text'}</b>
+        <span className={styles.webSocketMessagePayloadCount}>{'54 B'} · {'message 3'}</span>
         <IconButton
           label="Copy payload"
           icon={<Copy aria-hidden="true" />}

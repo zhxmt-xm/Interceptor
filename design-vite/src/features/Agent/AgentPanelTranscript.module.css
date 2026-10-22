@@ -69,6 +69,12 @@
   font-size: 10px;
 }
 
+.agentAssistantResponse p,
+.agentAssistantResponse ul,
+.agentAssistantResponse ol {
+  margin: 0;
+}
+
 .agentAssistantResponse ul {
   display: flex;
   gap: 4px;
@@ -135,4 +141,3 @@
   width: 11px;
   height: 11px;
 }
-

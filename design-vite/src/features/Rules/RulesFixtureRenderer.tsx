@@ -9,6 +9,7 @@ import type { FixtureElementNode, FixtureNode } from '../../fixtures/FixtureNode
 import { useDesignState } from '../../state/useDesignState';
 import { BreakpointAction } from './BreakpointAction';
 import { RuleActionTags } from './RuleActionTags';
+import { RulesActionPopover } from './RulesActionPopover';
 
 const OVERFLOW_ACTIONS = [
   { kind: 'rewrite', label: 'Rewrite' },
@@ -32,6 +33,10 @@ function fixtureText(node: FixtureNode): string {
 export function RulesFixtureRenderer({ node }: RulesFixtureRendererProps): ReactNode {
   const { state } = useDesignState();
   const renderRulesElement: FixtureElementRenderer = (element, children) => {
+    if (hasClass(element, 'apop')) return null;
+    if (element.attributes.id === 'addaction') {
+      return <RulesActionPopover>{children}</RulesActionPopover>;
+    }
     if (element.attributes['data-rule-id'] === 'token') return null;
     if (hasClass(element, 'vnote')) return null;
     if (element.attributes['data-action-overflow'] === 'true') {

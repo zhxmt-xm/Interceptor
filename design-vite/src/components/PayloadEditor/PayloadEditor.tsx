@@ -195,7 +195,7 @@ export function PayloadEditor({
             </div>
           )
         ) : (
-          <div className={styles.payloadEditorUsingOriginal}>
+          <div className={styles.payloadEditorUsingOriginal} data-content-kind={contentKind}>
             <Check aria-hidden="true" size={13} />
             <span>{`The original ${payloadName} will be forwarded unchanged.`}</span>
           </div>

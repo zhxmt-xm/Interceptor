@@ -4292,24 +4292,13 @@ export const captureFixture: FixtureNode = {
                             {
                               "type": "element",
                               "tag": "span",
-                              "attributes": {},
+                              "attributes": {
+                                "class": "break-enabled-count"
+                              },
                               "children": [
                                 {
-                                  "type": "element",
-                                  "tag": "b",
-                                  "attributes": {
-                                    "class": "break-enabled-count"
-                                  },
-                                  "children": [
-                                    {
-                                      "type": "text",
-                                      "value": "2"
-                                    }
-                                  ]
-                                },
-                                {
                                   "type": "text",
-                                  "value": " enabled · 0 paused"
+                                  "value": "2 enabled · 0 paused"
                                 }
                               ]
                             }

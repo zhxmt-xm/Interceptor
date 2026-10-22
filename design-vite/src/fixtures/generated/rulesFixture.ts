@@ -3372,7 +3372,7 @@ export const rulesFixture: FixtureNode = {
                       "type": "element",
                       "tag": "use",
                       "attributes": {
-                        "href": "#i-file"
+                        "href": "#i-file-text"
                       },
                       "children": []
                     }
@@ -3605,7 +3605,7 @@ export const rulesFixture: FixtureNode = {
                       "type": "element",
                       "tag": "use",
                       "attributes": {
-                        "href": "#i-arrow"
+                        "href": "#i-reply"
                       },
                       "children": []
                     }
@@ -3747,7 +3747,7 @@ export const rulesFixture: FixtureNode = {
                       "type": "element",
                       "tag": "use",
                       "attributes": {
-                        "href": "#i-slash"
+                        "href": "#i-ban"
                       },
                       "children": []
                     }
