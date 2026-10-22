@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `f1cfff64`
+> Tracked commit: `8b61748f`
 > Homepage guidebook: `9c104e0`
 
 ## 维护规则
@@ -56,6 +56,7 @@
 
 - 教程编号图文、English App图片与原页预览：[验证说明](../../Interceptor-Homepage/docs/guidebook.md#当前图片调整目标)覆盖中英14章、1136张不同英文图和0张旧图；[最终Browser](../../../.copilot/session-state/1d972f24-fe28-435a-8aa3-c05fc62af77f/files/english-guidebook/guidebook-final-browser.json)34项全部通过，build/typecheck与限定Biome通过。[原图/标注核对](../../../.copilot/session-state/1d972f24-fe28-435a-8aa3-c05fc62af77f/files/english-guidebook/published-image-verification.json)保留完整字节、自然尺寸、全部原显式锚点及双语图序。
   - [早期布局对照](../../Interceptor-Homepage/commit-changes/202610202002_ui_guidebook_operation-guides.html)保留正文、外壳与目录的变化；维护说明不进入读者正文。最后相关Main/Core正常退出、宿主恢复与8888释放已验证，App窗口已归还Android会话；临时4176已释放，原4175预览保持。Windows、独立环境和App嵌入仍由item 16跟踪，本项不部署。
+  - 截图合成器的`sharp@0.35.5`仅作为Desktop开发依赖，清单与对应锁文件已补齐；[依赖闭包核对](../../../.copilot/session-state/1d972f24-fe28-435a-8aa3-c05fc62af77f/files/english-guidebook/sharp-followup-index-verification.json)确认只包含该依赖的30项锁记录，排除Android/Core条目。Desktop typecheck与[原生PNG完整像素往返](../../../.copilot/session-state/1d972f24-fe28-435a-8aa3-c05fc62af77f/files/english-guidebook/sharp-followup-native-verification.json)通过；受测源码及工作区依赖字节未变，不以本次依赖检查替代此前真实workflow验收。
 
 - Start截图入口：[真实TTY验收](../apps/desktop/test-results/start-screenshots-20261019/verification.json)覆盖`npm start → Test → E2E`的普通/逐步截图、返回与取消；两次均运行原Composer格式化workflow，不手写截图参数。
   - 截图自动进入独立运行目录，7张PNG的尺寸及SHA-256符合清单；普通运行不生成步骤图，保留原trace/final.png，前次截图运行的31个文件逐字节不变。两代均正常Close、Main/Core退出，宿主guard通过，8888实际bind/close可用；没有强杀。
