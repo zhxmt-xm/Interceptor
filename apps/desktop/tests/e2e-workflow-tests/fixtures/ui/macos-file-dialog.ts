@@ -57,10 +57,10 @@ export async function prepareMacosFileDialogPath(
     message: 'The macOS Go to Folder sheet did not open',
   }).toBe(true);
   const navigationPath = initial.save ? path.dirname(targetPath) : targetPath;
-  await pasteMacosFileDialogText(owner, navigationPath);
-  await expect.poll(async () => (await readMacosFileDialog(owner)).navigationPath, {
+  await typeMacosFileDialogText(owner, navigationPath);
+  await expect.poll(async () => (await readMacosFileDialog(owner)).navigationPath === navigationPath, {
     message: 'The macOS Go to Folder path was not entered completely',
-  }).toBe(navigationPath);
+  }).toBe(true);
   // Return can crash the native panel's Chinese input-method context while GoTo closes.
   const navigationClick = await sendMacosFileDialogKeys(owner, `
 if (identifier(target) !== "GoToWindow") throw new Error("The owned Go to Folder sheet is unavailable");
@@ -112,10 +112,10 @@ pressKey(123, $.kCGEventFlagMaskCommand | $.kCGEventFlagMaskShift);
     if (selectedName.nameFieldSelection !== selectedName.nameFieldValue) {
       throw new Error('The macOS Save file name was not fully selected.');
     }
-    await pasteMacosFileDialogText(owner, path.basename(targetPath), false);
-    await expect.poll(async () => (await readMacosFileDialog(owner)).nameFieldValue, {
+    await typeMacosFileDialogText(owner, path.basename(targetPath), false);
+    await expect.poll(async () => (await readMacosFileDialog(owner)).nameFieldValue === path.basename(targetPath), {
       message: 'The macOS Save file name was not entered completely',
-    }).toBe(path.basename(targetPath));
+    }).toBe(true);
   }
 }
 
@@ -257,15 +257,13 @@ function clickNativeButton(buttonId) {
 ${script}`);
 }
 
-async function pasteMacosFileDialogText(owner: WorkflowProcessIdentity, value: string, selectAll = true): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const child = execFile('/usr/bin/pbcopy', [], { timeout: 5_000 }, (error) => error ? reject(error) : resolve());
-    child.stdin!.end(Buffer.from(value, 'utf8'));
-  });
+async function typeMacosFileDialogText(owner: WorkflowProcessIdentity, value: string, selectAll = true): Promise<void> {
   await sendMacosFileDialogKeys(owner, `
 ${selectAll ? 'pressKey(0, $.kCGEventFlagMaskCommand);' : ''}
-pressKey(9, $.kCGEventFlagMaskCommand);
 `);
+  await execFileAsync('/usr/bin/xcrun', [
+    'swift', path.join(__dirname, 'type-macos-text.swift'), String(owner.processId), value,
+  ], { timeout: 15_000, encoding: 'utf8' });
 }
 
 async function runMacosDialogScript(owner: WorkflowProcessIdentity, script: string): Promise<string> {

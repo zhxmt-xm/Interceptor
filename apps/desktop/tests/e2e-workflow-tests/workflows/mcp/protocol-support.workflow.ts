@@ -3,7 +3,7 @@ import net from 'node:net';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
-import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
+import { recordScreenshotExample, screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { copyMcpClientConfiguration, openMcpSettings } from '../../fixtures/ui/mcp-workflow';
 
@@ -96,6 +96,7 @@ test('mcp.settings.protocol-support remains visible when the server is off or ru
   const clientId = await desktopApp.page.locator('[data-automation-id^="mcp.client.row."]').getAttribute('data-client-id');
   if (!clientId) throw new Error('The endpoint Client omitted its identity.');
   const original = await copyMcpClientConfiguration(desktopApp, testInfo, clientId);
+  recordScreenshotExample('initial-mcp-endpoint', original.url);
   await screenshotStep('保存原endpoint和Client后正常关闭 / Close normally after saving the original endpoint and Client');
   await desktopApp.stopTrace(testInfo);
   await desktopApp.closeGracefully();
@@ -129,6 +130,7 @@ test('mcp.settings.protocol-support remains visible when the server is off or ru
       highlights: [{ target: getByAutomationId(restarted.page, AutomationIdFactory.mcpClientCopyConfiguration(clientId)), label: '1' }],
     });
     const current = await copyMcpClientConfiguration(restarted, testInfo, clientId);
+    recordScreenshotExample('reconnected-mcp-endpoint', current.url);
     expect(current.url).not.toBe(original.url);
     expect(current.token === original.token).toBe(true);
     await testInfo.attach('mcp-endpoints', {

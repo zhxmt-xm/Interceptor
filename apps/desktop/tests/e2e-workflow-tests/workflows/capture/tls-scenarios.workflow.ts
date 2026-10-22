@@ -8,7 +8,7 @@ import { chromium, type Browser } from '@playwright/test';
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { CAPTURE_FACET_IDS } from '../../../../src/renderer/features/capture/constants';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
-import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
+import { recordScreenshotExample, screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { submitFileDialogPath } from '../../fixtures/ui/file-dialog';
@@ -46,6 +46,7 @@ test('capture.scenarios.tls distinguishes opaque tunnels from decrypted H1 and H
     const tunnelResult = await trafficLab.run(passthrough.id, passthrough.defaultDraft, desktopApp.capturePort());
     expect(tunnelResult).toMatchObject({ state: 'complete', protocol: 'tls', response: { statusCode: 200, bodyBytes: 0 } });
     const tlsTrafficRunner = await trafficLab.getTlsTrafficRunner();
+    recordScreenshotExample('tls-origin', `https://localhost:${tlsTrafficRunner.port}/`);
     expect(tlsTrafficRunner.applicationByteCount()).toBe(0);
     const tunnelRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow).filter({ hasText: 'localhost' });
     await expect(tunnelRow).toHaveCount(1);

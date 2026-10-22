@@ -46,7 +46,7 @@ import {
 import { WindowsWorkflowHostSafetyOperations } from '../safety/windows-workflow-host-safety-operations';
 import { MacosWorkflowHostSafetyOperations } from '../safety/macos-workflow-host-safety-operations';
 import { shouldPreserveWorkflowProfile } from './workflow-profile-retention';
-import { finishStepScreenshots, recordScreenshotHostRestoration, startStepScreenshots, useScreenshotDriver } from './step-screenshots';
+import { finishStepScreenshots, recordScreenshotExample, recordScreenshotHostRestoration, startStepScreenshots, useScreenshotDriver } from './step-screenshots';
 
 const DEFAULT_CAPTURE_PORT = 8888;
 const E2E_DESKTOP_DIRECTORY_ENV = 'INTERCEPTOR_E2E_DESKTOP_DIRECTORY';
@@ -1429,6 +1429,7 @@ export const test = base.extend<LocalWorkflowFixtures>({
   trafficLab: async ({}, use) => {
     const trafficLab = await TrafficLab.start();
     try {
+      recordScreenshotExample('http-origin', trafficLab.httpTrafficRunner.url('/'));
       await use(trafficLab);
     } finally {
       await trafficLab.close();
@@ -1443,13 +1444,16 @@ export const test = base.extend<LocalWorkflowFixtures>({
   openAiCompatibleLab: async ({}, use) => {
     const openAiCompatibleLab = await OpenAiCompatibleLab.start();
     try {
+      recordScreenshotExample('model-origin', openAiCompatibleLab.baseUrl('keyed'));
       await use(openAiCompatibleLab);
     } finally {
       await openAiCompatibleLab.close();
     }
   },
   tlsTrafficRunner: async ({ trafficLab }, use) => {
-    await use(await trafficLab.getTlsTrafficRunner());
+    const tlsTrafficRunner = await trafficLab.getTlsTrafficRunner();
+    recordScreenshotExample('tls-origin', `https://localhost:${tlsTrafficRunner.port}/`);
+    await use(tlsTrafficRunner);
   },
   playgroundServer: async ({}, use, testInfo) => {
     const playgroundServer = await PlaygroundServer.start();

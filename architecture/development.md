@@ -81,7 +81,7 @@ npm start
 - 命令顺序执行，任一步失败立即停止后续步骤并以非零状态退出，不自动重试或忽略失败。正常结束后回到主菜单。
 - Desktop使用`npm run dev`自动准备运行所需文件；Design直接启动开发预览。菜单不再提供“沿用已有Core”或不同预览模式。
 - Unit/Integration测试先构建Core，再以`--no-file-parallelism`运行所选范围；E2E先选择普通验收或逐步截图，再选功能/workflow，自动prepare，不再追问构建方式。截图模式仍执行原业务断言，自动新建`apps/desktop/test-results/workflow-screenshots/<run>/`并输出实际路径；普通测试不清理该独立目录。
-- 不提供Guidebook专用workflow、制作或导入菜单。步骤图只是原E2E的可选产物，不绑定Homepage；采用截图作为文档素材前仍须审核隐私、版本和步骤内容。
+- 不提供Guidebook专用workflow。普通逐步截图仍只生成原E2E证据；全部教程图片的发布由下述独立菜单操作显式触发，不把每次测试自动变成跨仓写入。
 - Packaged smoke自动打包后运行；Artifact audit先打包再审计资源，不启动Desktop。不要与其他构建、开发实例或依赖产物的测试并行。
 - Parity只选择现有视图，自动准备两个页面、采集声明元素、严格逐项比较并生成报告；无需Agent、模型凭据或先运行截图命令。保留主题与尺寸，不修改设计源码来掩盖差异；退出码0/1/2分别表示通过、差异和执行错误。报告在`apps/desktop/test-results/visual-parity/`，不进入Git。Watch、Browser专项、手工设计截图/图片对比、报告查看、单独Core/native构建等低频操作继续使用下文原始命令。
 - 原生启动和打包只在相应平台可选。启动App或真实验收前会提示系统代理、证书授权和正常退出要求；向导不替代系统授权或恢复检查。
@@ -93,6 +93,18 @@ npm start
 ```powershell
 npm start -- --help
 ```
+
+### 全部教程截图与Homepage发布
+
+入口为`npm start → Test → E2E → 全部教程截图并发布 Homepage`。本地只需要Interceptor仓库和已登录的`gh`，不需要clone或准备Homepage目录。当前完整验收范围以[Handover item 22](HANDOVER.md)为准。
+
+- `gh auth login`使用对`zhxmt-xm/Interceptor-Homepage`有写入权限的账号；脚本通过GitHub API读取远端`main`、图片映射和必要文稿，不读取本地Homepage、不复制整个仓库，也不操作Interceptor的index或分支。
+- 复用原workflow，不创建截图专用测试；一次执行远端`guidebook/screenshot-publication.json`登记的全部测试和检查点。清单给每个发布图片固定身份，明确原测试、检查点、目标文件及同源变体，不根据文件序号、图片相似度或LLM猜测用途。
+- 原测试必须完整通过，实际App版本、平台、语言、窗口尺寸、红框和操作序列符合登记契约，所有代际正常退出且宿主恢复。运行缺项、重复身份或不匹配均失败，不沿用旧图补足。
+- 新运行先保存在`apps/desktop/test-results/guidebook-publications/<run>/`；完整校验后按固定路径准备图片、来源、尺寸和明确锚点内的双语端口替换。只验证模式不上传或更新远端。
+- 发布通过GitHub Git Data API上传变化的blob、以Homepage原`main`为父创建commit，最后以`force:false`推进它的`main`。上传或测试失败不更新分支；远端`main`中途变化立即停止，不覆盖其他提交。记录上传进度，完整证据且输入未变时可通过同一菜单“继续发布”恢复。
+- Homepage已有网站CI会在`main`更新后自动运行，本入口不新增或等待另一套Actions流程，不运行本地Homepage构建，不自动部署。终端区分截图已保存、候选commit已创建、远端已更新，不把上传了blob或创建了未发布commit当作推送成功。
+- 不创建其他worktree、clone或分支，不修改remote、不强推、不改写历史。共享系统代理、8888、原生授权及退出恢复仍遵守原E2E约定。
 
 ### Desktop
 

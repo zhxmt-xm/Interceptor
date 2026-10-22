@@ -7,7 +7,7 @@ import { PassThrough } from 'node:stream';
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { CAPTURE_FACET_IDS } from '../../../../src/renderer/features/capture/constants';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
-import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
+import { recordScreenshotExample, screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { cleanHttpsCapture, prepareHttpsCapture, rootCertificateThumbprints } from '../../fixtures/ui/https-capture';
@@ -110,6 +110,7 @@ test('capture.scenarios.http2 captures decrypted H2 headers trailers and body', 
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.close).click();
 
     const tlsTrafficRunner = await trafficLab.getTlsTrafficRunner();
+    recordScreenshotExample('tls-origin', `https://localhost:${tlsTrafficRunner.port}/`);
 
     // 单流过程：同一GET先收到两段，再结束；完整Copy不能由另一请求或预览片段代替。
     // Single-stream progress: receive two parts of the same GET before ending; verify its complete Copy rather than another request or a preview.

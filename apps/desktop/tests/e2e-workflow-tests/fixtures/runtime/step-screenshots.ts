@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -44,6 +45,8 @@ interface ScreenshotRun {
   overheadMs: number;
   readonly steps: StepImage[];
   readonly directory: string;
+  readonly workflowSha256: string;
+  readonly examples: Record<string, string>;
 }
 
 const runs = new WeakMap<TestInfo, ScreenshotRun>();
@@ -58,6 +61,8 @@ export function startStepScreenshots(testInfo: TestInfo, enabled: boolean): void
     overheadMs: 0,
     steps: [],
     directory: testInfo.outputPath('step-screenshots'),
+    workflowSha256: createHash('sha256').update(readFileSync(testInfo.file)).digest('hex'),
+    examples: {},
   });
 }
 
@@ -71,6 +76,24 @@ export function useScreenshotDriver(testInfo: TestInfo, driver: LocalElectronApp
 export function recordScreenshotHostRestoration(testInfo: TestInfo, restored: boolean): void {
   const run = runs.get(testInfo);
   if (run) run.hostRestored = restored;
+}
+
+/** Bind a public, test-owned loopback address without persisting credentials or query values. */
+export function recordScreenshotExample(key: string, address: string): void {
+  const run = runs.get(playwrightTest.info());
+  if (!run) return;
+  const url = new URL(address);
+  if (!/^[a-z][a-z0-9-]*$/.test(key)
+    || !['http:', 'https:', 'ws:', 'wss:'].includes(url.protocol)
+    || !['127.0.0.1', 'localhost'].includes(url.hostname)
+    || url.username || url.password) {
+    throw new Error(`Screenshot example ${key} must be a test-owned loopback URL without credentials.`);
+  }
+  const value = `${url.protocol}//${url.host}${url.pathname}`;
+  if (run.examples[key] !== undefined && run.examples[key] !== value) {
+    throw new Error(`Screenshot example ${key} changed identity; use separate keys for independent endpoints.`);
+  }
+  run.examples[key] = value;
 }
 
 /** Mark a completed user-operation step after its existing business assertions. */
@@ -235,6 +258,9 @@ export async function finishStepScreenshots(testInfo: TestInfo): Promise<void> {
       }
       appVersion = manifest.version;
     }
+    if (createHash('sha256').update(await readFile(testInfo.file)).digest('hex') !== run.workflowSha256) {
+      throw new Error('The workflow source changed during screenshot capture.');
+    }
     const passed = testInfo.status === 'passed' && run.hostRestored;
     const manifest = {
       schemaVersion: 1,
@@ -244,6 +270,8 @@ export async function finishStepScreenshots(testInfo: TestInfo): Promise<void> {
       status: passed ? 'passed' : 'failed',
       hostRestored: run.hostRestored,
       screenshotOverheadMs: run.overheadMs,
+      workflowSha256: run.workflowSha256,
+      examples: run.examples,
       steps: run.steps,
     };
     const file = path.join(run.directory, 'manifest.json');

@@ -14,7 +14,7 @@ import { generateCACertificate } from 'mockttp';
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { parseMacosSystemProxySnapshot } from '../../../../../../packages/platform-capabilities/src/helper/macos/utils';
 import { expect, LocalElectronApplicationDriver, test as workflowTest } from '../../fixtures/runtime/local-electron-driver';
-import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
+import { recordScreenshotExample, screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 
@@ -200,6 +200,8 @@ test('settings.upstream applies shared Manual PAC and Direct routes and reloads 
   const { page } = desktopApp;
   const ids = AUTOMATION_IDS.upstream;
   const marker = randomUUID();
+  recordScreenshotExample('upstream-proxy', `http://127.0.0.1:${upstreamLab.proxyPort}/`);
+  recordScreenshotExample('pac-origin', `http://127.0.0.1:${upstreamLab.originPort}/proxy.pac`);
 
   // 准备：真实App已启动，fixture拥有回环源站、上游和PAC，不写产品配置文件。
   // Arrange: the real App is running; the fixture owns loopback origin, proxy and PAC without seeding product settings.

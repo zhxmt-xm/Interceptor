@@ -6,7 +6,7 @@ import { PassThrough } from 'node:stream';
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { CAPTURE_FACET_IDS } from '../../../../src/renderer/features/capture/constants';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
-import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
+import { recordScreenshotExample, screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { createResponseBreakpointRule } from '../../fixtures/ui/breakpoint-workflow';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
@@ -48,6 +48,7 @@ test('capture.http2-origin-goaway drains a paused response before retiring its u
     const scenario = trafficLab.scenarios().find((item) => item.id === 'h2-json');
     if (!scenario || scenario.defaultDraft.kind !== 'http') throw new Error('Missing H2 traffic draft.');
     const tlsTrafficRunner = await trafficLab.getTlsTrafficRunner();
+    recordScreenshotExample('tls-origin', `https://localhost:${tlsTrafficRunner.port}/`);
     session = await tlsTrafficRunner.openHttp2Session(desktopApp.capturePort());
     session.on('error', (error) => received.errors.push(error.message));
     const completed = tlsTrafficRunner.runHttp2({

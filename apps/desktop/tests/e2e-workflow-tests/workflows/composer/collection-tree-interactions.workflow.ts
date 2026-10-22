@@ -15,7 +15,7 @@ import {
   getByAutomationIdPrefix,
 } from '../../fixtures/ui/automation';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
-import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
+import { recordScreenshotExample, screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 
 async function automationSuffix(locator: Locator, prefix: string): Promise<string> {
@@ -86,6 +86,7 @@ async function verifyRequestAuthentication(page: Page): Promise<void> {
     await once(origin, 'listening');
     const address = origin.address();
     if (!address || typeof address === 'string') throw new Error('The owned authentication origin has no TCP port.');
+    recordScreenshotExample('authentication-origin', `http://127.0.0.1:${address.port}/e2e/composer/auth`);
     await getByAutomationId(page, AUTOMATION_IDS.composer.url).fill(`127.0.0.1:${address.port}/e2e/composer/auth`);
     await screenshotStep('填写自有认证接口地址，尚未发送 / Enter the owned authentication endpoint before sending', {
       highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.composer.url), label: '1' }],

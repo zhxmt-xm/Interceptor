@@ -1,7 +1,7 @@
 # Task List
 
-> Tracked commit: `104c90ca`
-> Homepage guidebook: `d2b37ee`
+> Tracked commit: `de46fad8`
+> Homepage guidebook: `5c026b3`
 
 ## 维护规则
 
@@ -60,6 +60,12 @@
   - Release限制：空Rules树删除后的Apply入口和受测Upgrade未进入pending等行为已如实说明；产品修复需要独立授权及对应Release，不用备用规则、隐藏API、篡改发布包或截图伪造功能。
   - 下一步：确认并取得一种可用环境，沿[功能映射](../../Interceptor-Homepage/docs/guidebook-coverage.md)与[规格索引](../apps/desktop/tests/e2e-workflow-tests/docs/README.md)逐项操作、补图并验证正常退出、8888释放与宿主恢复；再推进下一个可执行环境。未提供环境或未解除暂停时保持blocked，不自动缩范围。
   - 已有基础：[教程目录](../../Interceptor-Homepage/guidebook/README.md)、[读取/媒体/恢复记录](../../Interceptor-Homepage/docs/guidebook.md)及两个仓库原有改动报告保留。当前本地预览为`http://127.0.0.1:4175/guide`；停止后在Homepage运行`npm run dev`恢复。后续修改按影响范围复验，不覆盖旧结果。
+
+- **22. npm start 全部教程截图与Homepage自动发布 · 代码完成 · 待完整验收**
+  - 目标：本地只有Interceptor仓库时，从`npm start → Test → E2E`运行全部登记截图，使用当前`gh`权限直接更新Homepage GitHub的对应文件和`main`，不依赖本地Homepage、LLM或额外clone/worktree。
+  - 当前步骤：已将[发布入口](../scripts/guidebook-publish.mjs)改为读取远端持久映射、运行原workflow、核对截图与实际示例值，再通过[GitHub API](../scripts/guidebook-github.mjs)限定创建commit/非强制更新分支。远端清单已就位，真实Start菜单不再要求本地Homepage；同一API已用于清单和说明的实际跨仓提交，未上传未验新图。取消本地同步和新增Actions验收链，只保留已有网站CI在更新后运行；普通测试和单项截图不变。
+  - 提交边界：按用户明确要求，完成最小类型/语法、菜单取消、映射及远端提交核对后先保存代码，暂缓完整重拍发布验收；不修改或提交其他会话的Item14、MCP文档或Homepage覆盖文档。
+  - 验证边界：原本地模式全量在HAR处停止；已修复共享剪贴板干扰，原HAR真实流程单独通过。尚未取得新远端入口的完整截图到`main`发布证据，保持代码完成待验收，不以独立来源或最小检查冒充全量通过。发布时仍严格拒绝失败、缺图、错误版本、未恢复宿主及远端分支冲突。
 
 ## 验证证据
 

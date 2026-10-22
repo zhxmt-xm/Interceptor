@@ -24,7 +24,7 @@ import {
   LocalElectronApplicationDriver,
   test,
 } from '../../fixtures/runtime/local-electron-driver';
-import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
+import { recordScreenshotExample, screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 
 const MCP_PROTOCOL_VERSIONS = ['2025-06-18', '2025-11-25', '2026-07-28'] as const;
@@ -330,6 +330,7 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
         .getAttribute('data-endpoint') ?? '';
       expect(endpoint).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/mcp$/);
       expect(new URL(endpoint).port).not.toBe('8888');
+      recordScreenshotExample('mcp-endpoint', endpoint);
       await screenshotStep('开启MCP Server并读取独立endpoint / Enable MCP Server and inspect its separate endpoint', {
         highlights: [
           { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.server.enable), label: '1' },

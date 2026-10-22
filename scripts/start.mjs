@@ -3,7 +3,7 @@ import { glob, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { parseArgs, styleText } from 'node:util';
 
-import { confirm, select } from '@inquirer/prompts';
+import { confirm, input, select } from '@inquirer/prompts';
 import stringWidth from 'string-width';
 import wrapAnsi from 'wrap-ansi';
 
@@ -130,8 +130,14 @@ async function chooseWorkflow(workspaces) {
     const mode = await choose('E2E：选择运行方式', [
       { name: '普通验收（不生成步骤图）', value: 'standard' },
       { name: '逐步截图（同时执行业务断言）', value: 'screenshots' },
+      { name: '全部教程截图并发布 Homepage', value: 'guidebook', disabled: process.platform !== 'darwin' ? '当前教程清单使用已验证的macOS原生窗口' : false },
     ]);
     if (mode === back) return;
+    if (mode === 'guidebook') {
+      const task = await chooseGuidebookPublication();
+      if (task) return task;
+      continue;
+    }
     while (true) {
       const feature = await choose('E2E：选择功能', [
         { name: '全部功能', value: all },
@@ -160,6 +166,47 @@ async function chooseWorkflow(workspaces) {
       };
     }
   }
+}
+
+async function chooseGuidebookPublication() {
+  console.log('通过当前gh账号读取Homepage的main及截图映射，不需要本地Homepage仓库。');
+  const { readRemotePublication } = await import('./guidebook-publish.mjs');
+  const { plan } = readRemotePublication();
+  const source = await choose('教程截图：选择来源', [
+    { name: '重新拍摄全部登记截图', value: 'capture' },
+    { name: '继续发布已经完整通过的本地截图', value: 'resume' },
+  ]);
+  if (source === back) return;
+  const location = await input(source === 'capture' ? {
+    message: `已签名的 Interceptor ${plan.appVersion} .app 路径`,
+    ...(process.env.INTERCEPTOR_E2E_MACOS_APP_PATH ? { default: process.env.INTERCEPTOR_E2E_MACOS_APP_PATH } : {}),
+    required: true,
+  } : {
+    message: '完整通过的截图发布目录（含 publication.json）',
+    required: true,
+  });
+  const publish = await confirm({
+    message: '全部校验通过后自动 commit 并 push Homepage？',
+    default: true,
+  });
+  return {
+    title: `${publish ? '发布' : '只验证'}全部教程截图 · ${plan.sources.length}条原测试 · ${plan.repository}/${plan.branch}`,
+    commands: [nodeCommand('scripts/guidebook-publish.mjs', [
+      source === 'capture' ? '--app' : '--resume', path.resolve(location),
+      ...(!publish ? ['--verify-only'] : []),
+    ])],
+    notices: [
+      `使用English App ${plan.appVersion}，逐条运行清单中的全部原workflow，不拍设计稿或创建测试副本。`,
+      '固定映射逐项核对截图、来源、红框及正文动态示例；缺图、步骤改变、失败或宿主未恢复均停止。',
+      '拍摄期间自动操作真实窗口和原生文件面板，请保持桌面解锁，不要同时操作其他应用。',
+      publish
+        ? `全部截图及映射通过后，使用GitHub API提交到 ${plan.repository}/${plan.branch}；不提交App代码、不新建分支或强推。`
+        : '只生成完整截图集并核对映射，不上传图片、不创建commit、不更新远端。',
+      '需要gh已登录且有Homepage写入权限；远端main中途变化立即停止，不clone、不操作本机Git暂存区。',
+      'Homepage已有网站CI在更新main后自动运行，本命令不新增或等待另一套Actions流程。',
+      ...appNotices,
+    ],
+  };
 }
 
 async function chooseParity() {
@@ -299,7 +346,8 @@ async function main() {
     console.log('npm start');
     console.log('Development / Test / Build / Release → 目标或必要范围 → 确认执行');
     console.log('Desktop / Design 选择后直接启动；构建准备自动完成，不询问缓存模式。');
-    console.log('Test → E2E可选普通验收或逐步截图；截图自动保存到独立运行目录。');
+    console.log('Test → E2E可选普通验收、逐步截图或全部教程截图并发布Homepage；最后一项按固定清单验收后自动commit/push。');
+    console.log('教程发布直接使用gh调用GitHub API；不需要本地Homepage仓库，不clone或推送App分支。');
     console.log('执行摘要分列显示，确认默认 Yes，仍需按 Enter；输入 n 取消。');
     console.log('低频工具保留原命令；Release 启动 npm run release，继续完成发版向导。');
     console.log('↑/↓ 选择，Enter 确认；选择“返回上一级”返回，Ctrl+C 退出。');
