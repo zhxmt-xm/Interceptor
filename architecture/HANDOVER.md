@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `7b9bd40c`
+> Tracked commit: `3181a324`
 > Homepage guidebook: `20e4d1d`
 
 ## 维护规则
@@ -16,11 +16,11 @@
   - 下一步：先完成渠道与帖子清单，再按顺序逐项备稿、核对发布规则、确认最终内容与账号授权并发布；正式外发使用已交付教程及 item 11、15 已就绪的资料与入口，未验收场景继续按 item 16 保留边界，本轮仅登记待办，不操作外部账号或对外发布。
   - 验收：每个选定渠道都有最终稿、素材和实际发布链接，并处理发布后的有效问题与反馈；发布链接及反馈记录保存在对应推广材料中，不把草稿算作已发布。账号、平台规则或人工操作阻塞时说明原因，继续其他可执行渠道。
 
-- **14. Android USB 流量接入 · 暂停 · 代码与验收未全部完成**
-  - 暂停指令：用户要求记录完整进度、提交后停止；本次仅保存现有代码/测试及交接，不继续实现或启动新验收。恢复须获得新的继续指令，不能把中间commit标作完整手机功能。
+- **14. Android USB 流量接入 · 进行中 · 系统DNS续验**
+  - 当前步骤：用户已要求继续item 14；从Android `6d5cc18`恢复系统DNS语义与取消验证，先补实际非VPN Network就绪门禁，再核对API26/API29/API35及资源释放。UI、未知流量、VPN断线策略与原生授权仍须明确确认，不把中间commit或组件验收标作完整手机功能。
   - 当前基线：PC协议副本接入及Core/Main装配已在`de46fad8`保存并推送；Android工程基线为`f6dddadb`。HTTP/1、TLS/明文H2、WS及压缩、本地DNS UDP/TCP、源站Network生命周期、Rules/Breakpoints/Capture已有对应组件证据；主流程仍未接系统VpnService/真实USB。
   - 暂停快照：Android新增测试与完整交接已另存并推送为[`6d5cc18`](https://github.com/zhxmt-xm/Interceptor-Android/commit/6d5cc18)，产品代码仍为上述工程基线；后续恢复以该快照和本item为准。
-  - 最新增量：Android仅新增真实系统DNS语义/取消测试并完成目标APK编译；API29+取消产品接线仍来自已提交基线。API35普通目标因activeNetwork为null停在fixture前提，产品断言未执行；官方API29 AVD已建立但未运行。本轮环境失败及已完成的模拟器清理见[暂停证据](../../Interceptor-Android/architecture/platform/testing.md#系统dns语义续验与暂停交接)，不把启动或编译成功记为运行通过。
+  - 当前DNS修正：Android已补实际Network就绪门禁；OriginDnsQuery正在收尾主Looper迟到回调导致崩溃、API29 Executor终止早于Thread实际退出两个边界。当前实现仍需API26/API29/API35最终复验；Private DNS尚未取得已验证provider地址，不能计为通过。暂停前仅测试编译及网络前提失败的事实见[暂停证据](../../Interceptor-Android/architecture/platform/testing.md#系统dns语义续验与暂停交接)，不混作产品Green。
   - 完整剩余：
     - 系统DNS取消与API26/API29、成功回答/hosts/搜索域/mDNS/NAT64/Private DNS矩阵；旧平台延迟停止，以及无界响应replacement原文取消仍待验证。
     - 全局native分发、Network选择/切换、真实TUN IPv4/IPv6/DNS、VpnService、前台通知和完整退出恢复。
@@ -56,7 +56,7 @@
 
 - **15. Cloudflare 受限部署与线上验收 · 待确认**
   - 目标：把已完成本地制作的官网部署到免费Cloudflare静态托管，先限制为本人或明确允许的成员访问，再按用户确认决定公开。源码仓库继续保持private，不要求购买域名或启用付费服务。
-  - 当前：本地官网行为、素材来源与验证保留在[官网架构](../../Interceptor-Homepage/docs/architecture.md#真实首页素材)，[同一item改动说明](../../Interceptor-Homepage/commit-changes/202610141539_ui_homepage_initial-progress.html#homepage-real-media-20261017)保留前后画面。尚无已验收的线上URL，账号授权和访问保护需要确认，不将先前OAuth失败等同于当前认证状态。
+  - 当前：本地官网行为、素材来源与验证保留在[官网架构](../../Interceptor-Homepage/docs/architecture.md#真实首页素材)。尚无已验收的线上URL，账号授权和访问保护需要确认，不将先前OAuth失败等同于当前认证状态。
   - 步骤：按[受限部署约定](../../Interceptor-Homepage/docs/deployment.md#待执行受限部署与线上验收)先确认实际账号、保护范围与全部正式/预览地址，再连接本人的GitHub官网仓库或授权Wrangler部署；`Cloudflare account`必须确实限定账号成员，不能只选择项目所属账号。不得创建临时公开部署、擅自影响其他应用或靠网址未公布代替访问控制。
   - 验收：首页与教程深链/刷新、真实404、静态缓存、步骤索引及原图；获准账号能访问，匿名及未授权账号不能绕过保护，包括直接资源和预览地址。保留实际URL与浏览器证据，核对国内外线路和Google Fonts依赖，不承诺免费默认域名在大陆稳定快速。
   - 入口边界：下载、GitHub与feedback仍受私有产品仓库权限限制，需确认目标访客可用的入口；上线不会自动获得匿名下载权限。App iframe、主题语言衔接与登录会话转由item 16跟踪，不由普通网页可嵌入替代；正式公开、域名及任何付费操作另行确认。
@@ -74,7 +74,7 @@
   - 安全与版本：保留当前App语言，翻译只在独立i18n流程验证；只录本次App及其原生面板，先定位自有文件目录，不录桌面、其他应用、个人流量或凭据。保持日常CA和系统配置，不绕过锁屏/UAC/Gatekeeper，不以强杀替代恢复，不新增私有教程npm包或registry依赖。
   - Release限制：空Rules树删除后的Apply入口和受测Upgrade未进入pending等行为已如实说明；产品修复需要独立授权及对应Release，不用备用规则、隐藏API、篡改发布包或截图伪造功能。
   - 下一步：确认并取得一种可用环境，沿[功能映射](../../Interceptor-Homepage/docs/guidebook-coverage.md)与[规格索引](../apps/desktop/tests/e2e-workflow-tests/docs/README.md)逐项操作、补图并验证正常退出、8888释放与宿主恢复；再推进下一个可执行环境。未提供环境或未解除暂停时保持blocked，不自动缩范围。
-  - 已有基础：[教程目录](../../Interceptor-Homepage/guidebook/README.md)、[读取/媒体/恢复记录](../../Interceptor-Homepage/docs/guidebook.md)及两个仓库原有改动报告保留。当前本地预览为`http://127.0.0.1:4175/guide`；停止后在Homepage运行`npm run dev`恢复。后续修改按影响范围复验，不覆盖旧结果。
+  - 已有基础：[教程目录](../../Interceptor-Homepage/guidebook/README.md)与[读取/媒体/恢复记录](../../Interceptor-Homepage/docs/guidebook.md)保留。当前本地预览为`http://127.0.0.1:4175/guide`；停止后在Homepage运行`npm run dev`恢复。后续修改按影响范围复验，不覆盖旧结果。
 
 ## 验证证据
 

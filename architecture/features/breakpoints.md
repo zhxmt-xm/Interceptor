@@ -135,6 +135,7 @@ File模式未选文件时显示112px最小高度的居中容器和32px高的Uplo
 
 - 暂停说明、方向和队列按钮由同一层flex容器设置`align-items: center`；phase内图标和文字使用相同规则，不使用baseline或像素位移。
 - WebSocket Replacement标题按既有PayloadEditor设计为36px，模式控件28px加标题下padding8px；折叠图标使用13px控件规格，不用30px的sm按钮撑到38px。
+- Off提示保持完整译文，文字行高沿用现有17px；图标与文字由flex容器使用`align-items: center`垂直居中。
 - 暂停上下文使用normal行高、126px队首滚动区和38px消息分隔；queued及普通列表不套用队首高度，Tree/MIME/Save功能保持。
 - 消息断点入口按已有设计保持30×30px、1px透明边框、默认`--text`；默认hover取Ant Button的`colorFillTertiary`，启用后hover保留黄色。`IconButton`只增加可选hover CSS变量，未提供时默认值不变；不提高选择器特异性覆盖共享样式。
 

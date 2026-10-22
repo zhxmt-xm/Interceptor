@@ -205,11 +205,16 @@ node design-vite/tools/compare-shots.mjs design-vite/shots --current-dir="$env:T
 `inspector-sidebar-*`生成指定主题、侧栏状态的Headers详情图，`rule-filter-auth`生成选中Auth Rule的详情图。`--variant`按完整名称筛选，多个名称可用逗号分隔；`--theme`按完整名称筛选。指定`--variant`时不清理同目录的其他截图，不省略它来补单张基准。
 
 `settings-provider-menu`通过Add provider打开已有类型菜单，等待真实可见后截取含portal的画面，下一场景重载清理菜单内部状态；不省略弹层来生成“菜单截图”。
+`request-rule-menu`和`breakpoint-create-menu`保留菜单的真实动画，主菜单与子菜单都进入设计画布且动画结束后再截图；子菜单通过真实hover展开。菜单缺失或仍在离屏初始化位置时明确失败，不能输出一张没有菜单的成功截图。
+
+`--out-dir`将完整目录结构写入指定位置，不触碰默认`shots/`；使用新的独立目录预览和比较，确认后同步设计源码。PNG是本地评审产物，不提交全量图片。未指定`--variant`时仍会清理输出目录中本次选中的feature子目录，不复用历史证据目录。截图使用headless Edge，初始化及页面重载都先核对Inter/JetBrains Mono的FontFace实际加载；字体失败直接退出，浏览器和preview在失败时也关闭。
 
 尚未确认的设计修正可通过`--preview-url=http://127.0.0.1:<port>/`连接本次拥有的独立候选预览，配合`--variant`和独立`--out-dir`生成前后评审图，不先改正式设计源码。只接受无凭据、查询和片段的HTTP loopback根地址；该服务由调用方关闭，截图命令只关闭自己创建的浏览器。不提供此参数时仍自行构建、启动并关闭设计preview。
 候选脚本可向`startDesignPreview(root, plugins)`传入本次构建的Vite源码转换plugin；源码转换只作用于独占临时构建，不写回原文件，也不能覆盖该helper拥有的输出目录与清理流程。正常截图和parity不传入plugin。
 
 `compare-shots.mjs` 是回归工具：改动前先把 `shots/` 另存一份，改完重出再拿它当基线对比，差异图写到 `shots-diff/`。**百分比会骗人**（侧栏图标全丢时只报约 1%），必须看差异图；**多张图差异值完全相同，说明是同一个公共元素，不是多个独立缺陷**。
+
+截图与parity使用的`design-preview.mjs`为每次预览创建独占临时构建目录，关闭服务后删除，不覆盖共享`dist/`；并行预览不会替换另一个页面正在加载的动态模块。手工`npm run build/preview`仍使用自身命令的正常产物，与这些临时预览分开。
 
 2026-09-27已确认的gRPC/WebSocket普通展开消息compact Monaco按组件传入`resizable`，全屏禁用，不保留全局候选开关。初始高度为内容高度与所属滚动容器可用空间的较小值，短正文自然高度；右下角使用CSS `resize: vertical`，滚轮到正文边界后继续滚外层。窗口变小会clamp，恢复后还原用户拖高；隐藏初始化、字体加载与换行重排不能误作用户resize。`12px/20px`、上下`13px`padding、实际边框、控件与Copy保持不变。2026-09-28确认的HTTP Original/File样式见下节；Hex、Tree、全屏、普通WebSocket断点及Composer保持各自既有布局。
 
@@ -224,16 +229,11 @@ node design-vite/shoot.mjs --feature=capture --variant=inspector-grpc-long-text-
 
 比较候选图时可用`--current-dir`指定生成目录、`--out-dir`指定独立差异目录，默认目录和比较算法不变。该工具只比较本地前后评审图；差异时退出码为1，必须查看具体变化，不能算作产品parity通过，也不把产物提交Git。
 
-`request-rule-menu`和`breakpoint-create-menu`保留菜单的真实动画，主菜单与子菜单都进入设计画布且动画结束后再截图；子菜单通过真实hover展开。菜单缺失或仍在离屏初始化位置时明确失败，不能输出一张没有菜单的成功截图。
-
-`--out-dir`将完整目录结构写入指定位置，不触碰默认`shots/`；使用新的独立目录预览和比较，确认后同步设计源码。PNG是本地评审产物，不提交全量图片。未指定`--variant`时仍会清理输出目录中本次选中的feature子目录，不复用历史证据目录。截图使用headless Edge，初始化及页面重载都先核对Inter/JetBrains Mono的FontFace实际加载；字体失败直接退出，浏览器和preview在失败时也关闭。
 截图依赖已随仓库存在的 `@playwright/test` + 系统 Edge（`channel: 'msedge'`），无需额外安装浏览器。不在每次小改后重出全量截图；只在用户明确要求或一个设计里程碑结束时生成并评审。
 
 ## HTTP正文设计（2026-09-28已确认）
 
 HTTP `PayloadEditor`的Original正文与File预览正式使用内容/可用空间限高、内滚与原生vertical resize，不保留默认关闭的候选开关。File预览无内层边框，采用`12px/20px`和上下`13px`padding，预览上方保留完整文件用途说明。Text说明条强调编辑value不受只读预览上限裁剪，现有受控Ant `Input.TextArea`、`autoSize: { minRows: 4, maxRows: 8 }`及字体不变；不设`maxLength`。`contentKind:'message'`保留WebSocket断点原设计；普通gRPC/WebSocket、Hex/Tree、全屏和Composer填充不变。
-截图与parity使用的`design-preview.mjs`为每次预览创建独占临时构建目录，关闭服务后删除，不覆盖共享`dist/`；并行预览不会替换另一个页面正在加载的动态模块。手工`npm run build/preview`仍使用自身命令的正常产物，与这些临时预览分开。
-
 
 ```js
 window.__setState({

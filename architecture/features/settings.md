@@ -475,7 +475,6 @@ macOS DHCP客户端实际取得租约并成为主网络，Option 252指向本轮
 本轮命令、Red/Green、真实App代际与恢复结果见[实现证据](/Users/zhxmt/.copilot/session-state/bda43480-2b1f-4f42-8883-5c58d667f62a/files/mockttp-adapter-implementation-20261008.json)；
 环境阻塞不能作为通过，也不补造此前缺失的整体功能真实E2E前置证据；
 初始实现、后续故障修复和最终网络验收分别记录，不合并成不存在的完整历史TDD链路。
-UI位置、编辑/Apply状态和Main/Core改动见[单文件改动说明](../../commit-changes/202610082241_ui_upstream-proxy_settings-and-routing.html)。
 当前完整Renderer/设计稿一致性结果见[parity记录](/Users/zhxmt/.copilot/session-state/bda43480-2b1f-4f42-8883-5c58d667f62a/files/upstream-full-parity-delivery-20261009.json)；
 检查保留原设计基准，几何、字体和交互状态与实际协议验收分别记录。
 
@@ -760,8 +759,6 @@ Windows原生发现与共享业务接入已实现；定向unit/integration、本
   [临时文件清理](C:/Users/zhang/.copilot/session-state/e25d9c46-b5b8-421a-a43d-7f8c9ef1fc72/files/item13-hyperv/temporary-cleanup.json)
   移除guest磁盘、镜像副本、转移运行时和临时凭据，保留官方来源清单、脚本及全部证据。
   用户已启用的Hyper-V保持，不更改日常网卡的DNS、网关或代理。
-
-位置、改前/改后及实际产品错误反馈截图见[单文件改动说明](../../commit-changes/202610121828_main_wpad_windows-native-discovery.html)。
 
 官方依据：
 [WinHttpDetectAutoProxyConfigUrl](https://learn.microsoft.com/en-us/windows/win32/api/winhttp/nf-winhttp-winhttpdetectautoproxyconfigurl)、
