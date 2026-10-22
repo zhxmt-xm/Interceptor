@@ -1,7 +1,7 @@
 # Task List
 
-> Tracked commit: `aa1520f3`
-> Homepage guidebook: `815591b`
+> Tracked commit: `7b9bd40c`
+> Homepage guidebook: `20e4d1d`
 
 ## 维护规则
 
@@ -76,15 +76,9 @@
   - 下一步：确认并取得一种可用环境，沿[功能映射](../../Interceptor-Homepage/docs/guidebook-coverage.md)与[规格索引](../apps/desktop/tests/e2e-workflow-tests/docs/README.md)逐项操作、补图并验证正常退出、8888释放与宿主恢复；再推进下一个可执行环境。未提供环境或未解除暂停时保持blocked，不自动缩范围。
   - 已有基础：[教程目录](../../Interceptor-Homepage/guidebook/README.md)、[读取/媒体/恢复记录](../../Interceptor-Homepage/docs/guidebook.md)及两个仓库原有改动报告保留。当前本地预览为`http://127.0.0.1:4175/guide`；停止后在Homepage运行`npm run dev`恢复。后续修改按影响范围复验，不覆盖旧结果。
 
-- **22. npm start 全部教程截图与Homepage自动发布 · 进行中 · 定向验收，全量已停止**
-  - 目标：本地只有Interceptor仓库时，从`npm start → Test → E2E`运行全部登记截图，使用当前`gh`权限直接更新Homepage GitHub的对应文件和`main`，不依赖本地Homepage、LLM或额外clone/worktree。
-  - 当前步骤：已将[发布入口](../scripts/guidebook-publish.mjs)改为读取远端持久映射、运行原workflow、核对截图与实际示例值，再通过[GitHub API](../scripts/guidebook-github.mjs)限定创建commit/非强制更新分支。远端清单已就位，真实Start菜单不再要求本地Homepage；同一API已用于清单和说明的实际跨仓提交，未上传未验新图。取消本地同步和新增Actions验收链，只保留已有网站CI在更新后运行；普通测试和单项截图不变。
-  - 当前步骤：实现已随`72f54c6b`提交，远端清单已就位；当前收尾聚焦发布工具，不再重复整套App流程。真实Start读取远端及取消、无登录拒绝、真实失败截图拒绝、部分批次恢复拒绝、无变化不建commit和过期远端基线拒绝均已核对；已完成的小规模GitHub API提交不能代替全部图片发布验收。
-  - 当前修正：Homepage现有CI发现图片元数据格式错误；[发布脚本](../scripts/guidebook-publish.mjs)已使用与Homepage相同版本的Biome生成JSON，并同步已有分组尺寸清单。[截图输入核对](../scripts/guidebook-capture.mjs)补入依赖清单及Playground源码摘要，防止恢复时复用不再适用的证据。真实已完成来源的生成文件、双语端口替换、原文/图片链接保留及重复生成一致性已定向核对，修正后的类型、语法与格式检查通过；正在保存本项修正。
-  - 运行状态：全量截图已经停止，不再启动下一条；已完成来源有独立通过与退出恢复记录，最后中断的队列隔离流程未产生最终清单，不能计为通过。[中断后状态核对](../../../.copilot/session-state/1d972f24-fe28-435a-8aa3-c05fc62af77f/files/english-guidebook/item22-interrupted-batch-status.json)确认当前无本轮App/runner及8888监听，正式helper读取的系统代理不再指向8888，shared journal不存在；这些当前状态不冒充中断流程的正常退出验收。
-  - 剩余边界：本轮不再重跑整套App流程，也不上传部分截图。完整截图到`main`的单次全链路及大量图片上传后的远端CI仍未取得通过证据，条目保留进行中，不因定向检查通过改成全量完成。不放宽业务或图片门槛，不混入Item14/16及其他会话修改；执行期间约每五分钟汇报已通过、失败/中断和剩余动作，不把等待写成完成。
-
 ## 验证证据
+
+- 教程远端发布工具：[使用与验收边界](development.md#全部教程截图与homepage发布)覆盖`npm start`入口、明确映射、失败停止和GitHub API限定提交；[代表性真实图片提交](https://github.com/zhxmt-xm/Interceptor-Homepage/commit/09c2ded2ecd588d013bf6a92c4f7bc086fce0c8b)及[远端文件核对](../../../.copilot/session-state/1d972f24-fe28-435a-8aa3-c05fc62af77f/files/english-guidebook/representative-publication/remote-verification.json)保留完整来源、双语值与精确文件边界。发布器核对远端SHA成功后即结束，不等待既有网站CI。该验收不等于单次60条App全量回归通过，失败/中断及独立CI结果保留；本轮App与测试端口无残留，未强推或改写并发历史。
 
 - Rules标题无框：[前置差异](../../../Users/zhang/.copilot/session-state/12b79f71-ccdb-4a1c-92e1-9fe1541fd0fd/files/rules-title-borderless-red-final/report.md)与[最终数据parity](../../../Users/zhang/.copilot/session-state/12b79f71-ccdb-4a1c-92e1-9fe1541fd0fd/files/rules-title-green-final/report.md)覆盖四主题的默认、hover、focus、长名称和失焦，以及Rules相关场景；Rules Store基线、Desktop/Design typecheck通过。本次产品仅改CSS，未改重命名、键盘事件或保存契约，不新增或重跑真实E2E；原workflow保持不变，不将本轮结果冒充Main/Core退出或宿主恢复证据。用户已有App及8888监听保持原状，parity自有服务已退出。
 

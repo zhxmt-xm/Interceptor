@@ -96,7 +96,7 @@ npm start -- --help
 
 ### 全部教程截图与Homepage发布
 
-入口为`npm start → Test → E2E → 全部教程截图并发布 Homepage`。本地只需要Interceptor仓库和已登录的`gh`，不需要clone或准备Homepage目录。当前完整验收范围以[Handover item 22](HANDOVER.md)为准。
+入口为`npm start → Test → E2E → 全部教程截图并发布 Homepage`。本地只需要Interceptor仓库和已登录的`gh`，不需要clone或准备Homepage目录；发布工具的定向及代表性来源验收见下文，不等同于重新验收全部App功能。
 
 - `gh auth login`使用对`zhxmt-xm/Interceptor-Homepage`有写入权限的账号；脚本通过GitHub API读取远端`main`、图片映射和必要文稿，不读取本地Homepage、不复制整个仓库，也不操作Interceptor的index或分支。
 - 复用原workflow，不创建截图专用测试；一次执行远端`guidebook/screenshot-publication.json`登记的全部测试和检查点。清单给每个发布图片固定身份，明确原测试、检查点、目标文件及同源变体，不根据文件序号、图片相似度或LLM猜测用途。
@@ -107,6 +107,13 @@ npm start -- --help
 - 发布通过GitHub Git Data API上传变化的blob、以Homepage原`main`为父创建commit，最后以`force:false`推进它的`main`。上传或测试失败不更新分支；远端`main`中途变化立即停止，不覆盖其他提交。记录上传进度，完整证据且输入未变时可通过同一菜单“继续发布”恢复。
 - Homepage已有网站CI会在`main`更新后自动运行，本入口不新增或等待另一套Actions流程，不运行本地Homepage构建，不自动部署。终端区分截图已保存、候选commit已创建、远端已更新，不把上传了blob或创建了未发布commit当作推送成功。
 - 不创建其他worktree、clone或分支，不修改remote、不强推、不改写历史。共享系统代理、8888、原生授权及退出恢复仍遵守原E2E约定。
+
+#### 发布工具验收范围
+
+- 清单的60条指56个原workflow文件中的测试场景，包含1838个截图检查点；目前14章双语教程引用1136张不同图片。一个测试会覆盖多次操作和图片，`i/60`不是教程内容完成百分比。
+- 定向验收覆盖真实Start菜单与取消、权限/失败来源/部分批次/过期基线拒绝、无变化不创建commit，以及真实来源生成后的图片/端口绑定、原文保留和重复生成一致性。
+- 一组完整通过的Agent模型来源已通过同一发布函数更新Homepage：[实际提交](https://github.com/zhxmt-xm/Interceptor-Homepage/commit/09c2ded2ecd588d013bf6a92c4f7bc086fce0c8b)、[候选Browser与恢复核对](../../../.copilot/session-state/1d972f24-fe28-435a-8aa3-c05fc62af77f/files/english-guidebook/representative-publication/candidate-accepted.json)、[远端父提交/文件摘要核对](../../../.copilot/session-state/1d972f24-fe28-435a-8aa3-c05fc62af77f/files/english-guidebook/representative-publication/remote-verification.json)。这不是绕过正式入口全量门禁的新模式，也不把单次60条中断记录记为通过。
+- 本轮不等待既有网站CI作为发布门禁；其独立失败状态见[Homepage验收说明](../../Interceptor-Homepage/docs/guidebook.md#npm-start整本截图发布)。没有重跑全部60条App场景，也没有删除账户artifact或改变CI规则来凑Green。
 
 ### Desktop
 
