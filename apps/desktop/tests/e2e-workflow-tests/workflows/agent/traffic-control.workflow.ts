@@ -282,6 +282,16 @@ test('agent.tools.traffic-control synchronizes Recording and Capture cleanup', a
     await configureProvider(desktopApp.page, openAiCompatibleLab);
     const ruleId = await createHeaderRule(desktopApp.page);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
+    await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter).fill('/e2e/agent/traffic-control');
+    const expandedFacetToggles: Locator[] = [];
+    const facetToggles = desktopApp.page.locator('[data-automation-id^="capture.filter.toggle."]');
+    for (let index = 0; index < await facetToggles.count(); index += 1) {
+      const toggle = facetToggles.nth(index);
+      if (await toggle.getAttribute('aria-expanded') === 'true') {
+        expandedFacetToggles.push(toggle);
+        await toggle.click();
+      }
+    }
     await startRecording(desktopApp);
     const recording = getByAutomationId(
       desktopApp.page,
@@ -367,9 +377,18 @@ test('agent.tools.traffic-control synchronizes Recording and Capture cleanup', a
     await sendMessage(desktopApp.page, 'Pause recording, then explain until stopped.');
     await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolApproval('stop-after-tool')))
       .toHaveAttribute('data-approval-status', 'pending');
+    await screenshotStep('允许暂停后再继续模型解释 / Approve the pause before continuing the model explanation', {
+      highlights: [{ target: getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolAllow('stop-after-tool')), label: '1' }],
+    });
     await getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolAllow('stop-after-tool')).click();
     await expect(recording).toHaveAttribute('aria-pressed', 'false');
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.session.transcript)).toContainText('The owned pause has completed.');
+    await screenshotStep('暂停已经完成，Stop只取消仍在生成的解释 / The pause is complete and Stop only cancels the ongoing explanation', {
+      highlights: [
+        { target: recording, label: '1' },
+        { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.turn.stop), label: '2' },
+      ],
+    });
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.turn.stop).click();
     await expect(sessionRoot).toHaveAttribute('data-turn-status', 'cancelled');
     await expect.poll(() => openAiCompatibleLab.evidence().at(-1)?.aborted).toBe(true);
@@ -382,6 +401,9 @@ test('agent.tools.traffic-control synchronizes Recording and Capture cleanup', a
     await screenshotStep('Retry只解释时不重复执行业务动作 / An explanation-only Retry does not repeat the business action');
     await recording.click();
     await expect(recording).toHaveAttribute('aria-pressed', 'true');
+    await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.clearSearch).click();
+    await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter)).toHaveValue('');
+    for (const toggle of expandedFacetToggles) await toggle.click();
 
     // 准备与断言：真实GET建立row、selection、method facet和Rule hit，Clear的动态影响必须匹配当前storage。
     // Arrange and assert: a real GET creates a row, selection, method facet, and Rule hit; Clear must describe current storage counts.

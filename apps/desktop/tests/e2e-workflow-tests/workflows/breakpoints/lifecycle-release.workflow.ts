@@ -30,6 +30,12 @@ test('breakpoints.lifecycle-release aborts all pending traffic on shutdown', asy
 
   // Arrange: enable one real WebSocket breakpoint, then create a POST-only HTTP breakpoint Rule.
   // 准备：启用真实WebSocket断点，再通过产品UI创建只匹配POST的HTTP断点规则。
+  await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill('/e2e/lifecycle-release-');
+  const facetToggles = page.locator('[data-automation-id^="capture.filter.toggle."]');
+  for (let index = 0; index < await facetToggles.count(); index += 1) {
+    const toggle = facetToggles.nth(index);
+    if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+  }
   await startRecording(desktopApp);
   const disconnectClient = await webSocketLab.openThroughProxy(
     desktopApp.capturePort(),
@@ -42,7 +48,7 @@ test('breakpoints.lifecycle-release aborts all pending traffic on shutdown', asy
   await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.messages).click();
   await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointToggle).click();
   await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointEnable).click();
-  await createRequestBreakpointRule(page, 'E2E lifecycle release', 'POST');
+  await createRequestBreakpointRule(page, 'E2E lifecycle release', 'POST', '/e2e/lifecycle-release-');
   await screenshotStep('准备：启用真实WebSocket断点，再通过产品UI创建只匹配POST的HTTP断点规则。 / Arrange: enable one real WebSocket breakpoint, then create a POST-only HTTP breakpoint Rule.');
 
   // Arrange pending traffic: neither HTTP nor WebSocket may reach origin while no user command runs.
@@ -75,6 +81,7 @@ test('breakpoints.lifecycle-release aborts all pending traffic on shutdown', asy
   await expect(pendingRows).toHaveCount(0);
   await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('1');
   expect(webSocketLab.hasMessage(disconnectPayload)).toBe(false);
+  await screenshotStep('客户端断开只解除所属WebSocket等待 / A client disconnect releases only its WebSocket pending items');
 
   // Arrange shutdown lifecycle: create a second real connection and hold one new frame.
   // 准备Core关闭生命周期：建立第二条真实连接并再次挂起一帧。
@@ -107,6 +114,12 @@ test('breakpoints.lifecycle-release aborts all pending traffic on shutdown', asy
 
   // Act: product Close must release Core/RPC lifecycle state as aborted and close both clients.
   // 操作：产品Close必须以aborted释放Core/RPC生命周期状态，并关闭两个客户端。
+  await screenshotStep('有等待项时通过App Close正常退出 / Exit normally through App Close while items are pending', {
+    highlights: [
+      { target: getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager), label: '1' },
+      { target: getByAutomationId(page, AUTOMATION_IDS.shell.window.close), label: '2' },
+    ],
+  });
   await desktopApp.captureFinalScreenshot(testInfo);
   await desktopApp.stopTrace(testInfo);
   await desktopApp.closeGracefully();

@@ -11,11 +11,12 @@ import tls from 'node:tls';
 import { promisify } from 'node:util';
 import { generateCACertificate } from 'mockttp';
 
-import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
+import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { parseMacosSystemProxySnapshot } from '../../../../../../packages/platform-capabilities/src/helper/macos/utils';
 import { expect, LocalElectronApplicationDriver, test as workflowTest } from '../../fixtures/runtime/local-electron-driver';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
-import { getByAutomationId } from '../../fixtures/ui/automation';
+import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
 
 interface UpstreamLab {
   readonly originPort: number;
@@ -202,6 +203,22 @@ test('settings.upstream applies shared Manual PAC and Direct routes and reloads 
 
   // 准备：真实App已启动，fixture拥有回环源站、上游和PAC，不写产品配置文件。
   // Arrange: the real App is running; the fixture owns loopback origin, proxy and PAC without seeding product settings.
+  await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+  await startRecording(desktopApp);
+  await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(marker);
+  const facetToggles = page.locator('[data-automation-id^="capture.filter.toggle."]');
+  for (let index = 0; index < await facetToggles.count(); index += 1) {
+    const toggle = facetToggles.nth(index);
+    if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+  }
+  const showCapturedRequest = async (requestPath: string, title: string): Promise<void> => {
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+    const row = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
+      .filter({ hasText: requestPath });
+    await expect(row).toBeVisible();
+    await row.click();
+    await screenshotStep(title, { highlights: [{ target: row, label: '1' }] });
+  };
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.upstream).click();
   await expect(getByAutomationId(page, ids.currentRoute)).toHaveAttribute('data-upstream-mode', 'system');
@@ -210,8 +227,25 @@ test('settings.upstream applies shared Manual PAC and Direct routes and reloads 
   // 用户操作：草稿取消不改路线；Manual通过两个入口共用的Apply生效。
   // User actions: cancelling a draft keeps the route; Manual is applied through the shared settings operation.
   await getByAutomationId(page, ids.mode.direct).check();
+  await screenshotStep('选择Direct草稿但尚未应用 / Select a Direct draft without applying it', {
+    highlights: [{ target: getByAutomationId(page, ids.discard), label: '1' }],
+  });
   await getByAutomationId(page, ids.discard).click();
   await expect(getByAutomationId(page, ids.currentRoute)).toHaveAttribute('data-upstream-mode', 'system');
+  await screenshotStep('Discard后仍使用System路线 / Retain the System route after Discard');
+  await getByAutomationId(page, ids.mode.manual).check();
+  await getByAutomationId(page, ids.host).fill('127.0.0.1');
+  await getByAutomationId(page, ids.port).fill(String(upstreamLab.proxyPort));
+  await screenshotStep('填写真实Manual上游的Host和Port / Enter the actual Manual upstream Host and Port', {
+    highlights: [
+      { target: getByAutomationId(page, ids.host), label: '1' },
+      { target: getByAutomationId(page, ids.port), label: '2' },
+      { target: getByAutomationId(page, ids.apply), label: '3' },
+    ],
+  });
+  await getByAutomationId(page, ids.discard).click();
+  await expect(getByAutomationId(page, ids.currentRoute)).toHaveAttribute('data-upstream-mode', 'system');
+  await screenshotStep('放弃Manual草稿，当前System路线不变 / Discard the Manual draft without changing the System route');
   await getByAutomationId(page, ids.mode.manual).check();
   await getByAutomationId(page, ids.host).fill('127.0.0.1');
   await getByAutomationId(page, ids.port).fill(String(upstreamLab.proxyPort));
@@ -226,34 +260,76 @@ test('settings.upstream applies shared Manual PAC and Direct routes and reloads 
   expect(await requestThroughCapture(desktopApp.capturePort(), `http://127.0.0.1:${upstreamLab.originPort}${manualPath}`))
     .toBe(`upstream-e2e:${manualPath}`);
   await expect.poll(() => upstreamLab.proxiedTargets.length).toBeGreaterThan(0);
-  await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+  await showCapturedRequest(manualPath, '查看实际通过Manual上游的请求 / Inspect the request sent through the Manual upstream');
   await expect(getByAutomationId(page, ids.trigger)).toHaveAttribute('data-upstream-mode', 'manual');
   await getByAutomationId(page, ids.trigger).click();
+  await screenshotStep('从Capture打开当前Manual快捷设置 / Open the current Manual route from Capture');
   await getByAutomationId(page, ids.mode.pac).check();
   const pacUrl = `http://127.0.0.1:${upstreamLab.originPort}/proxy.pac`;
   await getByAutomationId(page, ids.pacUrl).fill(pacUrl);
+  await screenshotStep('填写快捷PAC草稿，可取消而不改变Manual路线 / Enter a PAC shortcut draft that can be cancelled without changing Manual', {
+    highlights: [
+      { target: getByAutomationId(page, ids.pacUrl), label: '1' },
+      { target: getByAutomationId(page, ids.close), label: '2' },
+    ],
+  });
+  await getByAutomationId(page, ids.close).click();
+  await expect(getByAutomationId(page, ids.popover)).not.toBeVisible();
+  await getByAutomationId(page, ids.trigger).click();
+  await expect(getByAutomationId(page, ids.mode.manual)).toBeChecked();
+  await screenshotStep('取消后重新打开快捷设置，仍为Manual / Reopen the shortcut after cancellation and retain Manual');
+  await getByAutomationId(page, ids.mode.pac).check();
+  await getByAutomationId(page, ids.pacUrl).fill(pacUrl);
+  await screenshotStep('填写PAC草稿并找到Open in Settings / Enter a PAC draft and locate Open in Settings', {
+    highlights: [
+      { target: getByAutomationId(page, ids.pacUrl), label: '1' },
+      { target: getByAutomationId(page, ids.openSettings), label: '2' },
+    ],
+  });
   await getByAutomationId(page, ids.openSettings).click();
   await expect(getByAutomationId(page, ids.pacUrl)).toHaveValue(pacUrl);
   await expect(getByAutomationId(page, ids.currentRoute)).toHaveAttribute('data-upstream-mode', 'manual');
+  await screenshotStep('Settings保留同一PAC草稿，当前路线尚未改变 / Settings retains the same PAC draft without changing the active route', {
+    highlights: [
+      { target: getByAutomationId(page, ids.pacUrl), label: '1' },
+      { target: getByAutomationId(page, ids.apply), label: '2' },
+    ],
+  });
+  await getByAutomationId(page, ids.discard).click();
+  await expect(getByAutomationId(page, ids.currentRoute)).toHaveAttribute('data-upstream-mode', 'manual');
+  await screenshotStep('在Settings放弃PAC草稿，保留Manual路线 / Discard the PAC draft in Settings and retain Manual');
+  await getByAutomationId(page, ids.mode.pac).check();
+  await getByAutomationId(page, ids.pacUrl).fill(pacUrl);
   await getByAutomationId(page, ids.apply).click();
   await expect(getByAutomationId(page, ids.currentRoute)).toHaveAttribute('data-upstream-mode', 'pac');
+  await screenshotStep('Apply后Current route显示PAC / Current route shows PAC after Apply');
   const beforePac = upstreamLab.proxiedTargets.length;
   const pacPath = `/pac-${marker}`;
   expect(await requestThroughCapture(desktopApp.capturePort(), `http://127.0.0.1:${upstreamLab.originPort}${pacPath}`))
     .toBe(`upstream-e2e:${pacPath}`);
   await expect.poll(() => upstreamLab.proxiedTargets.length).toBeGreaterThan(beforePac);
+  await showCapturedRequest(pacPath, '查看PAC选择PROXY的请求 / Inspect the request for which PAC selects PROXY');
   const beforeDirect = upstreamLab.proxiedTargets.length;
   const bypassPath = `/pac-direct-${marker}`;
   expect(await requestThroughCapture(desktopApp.capturePort(), `http://localhost:${upstreamLab.originPort}${bypassPath}`))
     .toBe(`upstream-e2e:${bypassPath}`);
   expect(upstreamLab.proxiedTargets.length).toBe(beforeDirect);
+  await showCapturedRequest(bypassPath, '查看PAC选择DIRECT的localhost请求 / Inspect the localhost request for which PAC selects DIRECT');
+  await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
+  await getByAutomationId(page, AUTOMATION_IDS.settings.section.upstream).click();
   await getByAutomationId(page, ids.mode.direct).check();
+  await screenshotStep('选择Direct并准备应用 / Select Direct before applying the route', {
+    highlights: [{ target: getByAutomationId(page, ids.apply), label: '1' }],
+  });
   await getByAutomationId(page, ids.apply).click();
   await expect(getByAutomationId(page, ids.currentRoute)).toHaveAttribute('data-upstream-mode', 'direct');
   await screenshotStep('业务断言：实际连接经过上游，PAC分别选择代理和DIRECT，不以按钮文案代替网络结果。 / Business assertions: real traffic crosses the proxy; PAC selects proxy and DIRECT independently of UI labels.');
 
   // 证据与用户重启：经产品Close退出，同一profile回载真实SQLite偏好。
   // Evidence and user restart: exit through product Close, then reload the real SQLite preference from the same profile.
+  await screenshotStep('保存Direct路线后正常关闭App / Close the App normally after saving the Direct route', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.shell.window.close), label: '1' }],
+  });
   await desktopApp.stopTrace(testInfo);
   await desktopApp.closeGracefully();
   const restartedApp = await LocalElectronApplicationDriver.launch(testInfo, {
@@ -262,11 +338,24 @@ test('settings.upstream applies shared Manual PAC and Direct routes and reloads 
   try {
     await restartedApp.waitUntilReady();
     await expect(getByAutomationId(restartedApp.page, ids.trigger)).toHaveAttribute('data-upstream-mode', 'direct');
+    await startRecording(restartedApp);
+    await getByAutomationId(restartedApp.page, AUTOMATION_IDS.capture.keywordFilter).fill(marker);
     const restartPath = `/restart-${marker}`;
     expect(await requestThroughCapture(restartedApp.capturePort(), `http://127.0.0.1:${upstreamLab.originPort}${restartPath}`))
       .toBe(`upstream-e2e:${restartPath}`);
     expect(upstreamLab.proxiedTargets.length).toBe(beforeDirect);
     expect(upstreamLab.paths).toEqual([manualPath, pacPath, bypassPath, restartPath]);
+    await getByAutomationId(restartedApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
+    await getByAutomationId(restartedApp.page, AUTOMATION_IDS.settings.section.upstream).click();
+    await expect(getByAutomationId(restartedApp.page, ids.currentRoute)).toHaveAttribute('data-upstream-mode', 'direct');
+    await screenshotStep('真实重启后保留Direct路线 / Retain the Direct route after a real restart');
+    await getByAutomationId(restartedApp.page, ids.mode.system).check();
+    await screenshotStep('需要恢复原出口时选择System并Apply / Select System and Apply to return to the original upstream settings', {
+      highlights: [{ target: getByAutomationId(restartedApp.page, ids.apply), label: '1' }],
+    });
+    await getByAutomationId(restartedApp.page, ids.apply).click();
+    await expect(getByAutomationId(restartedApp.page, ids.currentRoute)).toHaveAttribute('data-upstream-mode', 'system');
+    await screenshotStep('确认Current route已经回到System / Confirm Current route has returned to System');
     await restartedApp.captureFinalScreenshot(testInfo);
     await writeFile(testInfo.outputPath('upstream-routing.json'), JSON.stringify({
       manual: true, pacProxy: true, pacDirect: true, directAfterRestart: true,

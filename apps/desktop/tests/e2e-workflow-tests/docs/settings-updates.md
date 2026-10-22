@@ -5,14 +5,17 @@
 原Settings workflow直接输出步骤图，不保留视频专用配置。
 
 - `navigation`保留全部section和深链，并检查Shell主题/语言菜单和实际窗口操作；`helper-startup`、`system-proxy-crash-recovery`继续保持真实代际与恢复。
+  - `tools-system-proxy`的并发冲突流程先通过正式UI执行Restore、显式代理请求、Enable与Pause，验证恢复系统路由不关闭listener、Pause不等于Restore；之后原MCP并发/显式重试断言不变，最后等待真实UI Restore完成。示例仅显示自产`/e2e/system-proxy/ui/`请求。
 
 - `proxy-mitm-persistence`、`tls-compatibility`、`capture/tls-scenarios`及`capture/navigate-tls-passthrough`共同验证已具备CA时的解密/透传；首次CA、Windows原生和隔离网络前提不变。
+  - `tls-compatibility`补无选择时的禁用保存、精确host与父域通配勾选、Not now及移除本轮范围的检查点；保留真实证书拒绝、独立客户端CA、零应用字节与完整系统信任恢复，不使用系统全局关闭校验来制造素材。
 
-- `upstream-settings`、`macos-upstream-proxy`与WPAD原流程保留真实路由、草稿和失败时原配置；不配置外部个人服务。
+- `upstream-settings`、`macos-upstream-proxy`与WPAD原流程保留真实路由、草稿和失败时原配置；不配置外部个人服务。共享Manual/PAC/Direct流程在真实UI开启Recording、用自产请求标记限定Keyword并收起无关分组后，分别记录未Apply草稿、Discard、Host/Port、Apply、Capture快捷入口、Open in Settings、PROXY/DIRECT请求和正常关闭后的重启状态；图片之外仍核对源站与上游实际流量，不能凭选中模式判断路线生效。
 
-- `tools-preferences`保持独立偏好与导出草稿继承；实际HAR单次覆盖/未遮罩/去正文由`capture/tools-har-transfer`核对文件。`storage-refresh-clear`保留Refresh与清理确认。
+- `tools-preferences`保持独立偏好与导出草稿继承；实际HAR单次覆盖/未遮罩/去正文由`capture/tools-har-transfer`核对文件。`storage-refresh-clear`保留Refresh与清理确认，并记录自产路径筛选、选中记录/暂停、Refresh与用量、Cancel/确认、清理计数归零、恢复Recording、新记录及Capture反向清理；不改原正文身份、全部用量或空状态断言。
+  - 非语言`tools-preferences`只沿用初始语言，补三个独立Privacy开关、已打开HAR草稿不随默认值改变、重开读取新值与正常重启后回载。重启前通过Composer UI新建并命名`Workspace retained request`，不Send；同次运行的临时Capture用于对照，重启后检查Collection名称/URL保留、旧Capture消失且源站没有自动请求，最后通过UI恢复原Privacy与主题。语言专项保持独立，不为截图更改语言。
 
-- `updates-check`只验证实际可用/unsupported/失败重试，截图不代表下载、校验或安装成功。所有平台未验收项继续保持原状态。
+- `updates-check`只验证实际可用/unsupported/失败重试，记录Check now入口与实际终态；截图不代表下载、校验或安装成功。所有平台未验收项继续保持原状态。
 
 命令、输出清单和显式导入边界见[套件说明](../README.md#trace-与证据)。已有公开PNG及历史验收记录保持原来源，新的运行不会自动替换它们；本节不把未经执行的平台或分支记为通过。
 

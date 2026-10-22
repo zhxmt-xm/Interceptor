@@ -118,6 +118,20 @@ async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Prom
 async function captureArchiveSource(desktopApp: LocalElectronApplicationDriver, loopbackLab: HttpTrafficRunner, client: Client): Promise<void> {
   await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
   await startRecording(desktopApp);
+  await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
+  await getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.section.proxy).click();
+  await getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.proxy.restore).click();
+  await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.proxy.enable)).toBeEnabled();
+  await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
+  if (await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.clear).isEnabled()) {
+    await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.clear).click();
+  }
+  await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter).fill('/e2e/transfer-jobs/');
+  const facetToggles = desktopApp.page.locator('[data-automation-id^="capture.filter.toggle."]');
+  for (let index = 0; index < await facetToggles.count(); index += 1) {
+    const toggle = facetToggles.nth(index);
+    if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+  }
   const requestPath = '/e2e/transfer-jobs/large-source';
   loopbackLab.respondWith(requestPath, { headers: { 'content-type': 'application/octet-stream' }, body: randomBytes(BODY_BYTES) });
   const bytes = await new Promise<number>((resolve, reject) => {
@@ -138,26 +152,51 @@ async function captureArchiveSource(desktopApp: LocalElectronApplicationDriver, 
     const value = mcpValue(await client.callTool({ name: 'capture_get_storage_status', arguments: {} }));
     return isRecord(value) ? Number(value.blobBytes) : 0;
   }, { timeout: 30_000 }).toBeGreaterThanOrEqual(BODY_BYTES);
+  const captured = mcpValue(await client.callTool({ name: 'capture_list_exchanges', arguments: { limit: 100 } }));
+  if (!isRecord(captured)) throw new Error('Transfer source query omitted its result.');
+  expect(captured.items, 'The archive must contain only the owned large response.').toHaveLength(1);
+  const sourceRow = desktopApp.page.locator('[data-automation-id^="capture.request-row."]')
+    .filter({ hasText: requestPath });
+  await screenshotStep('准备可以取消的大正文归档 / Prepare a large-body archive that can be cancelled', {
+    highlights: [{ target: sourceRow, label: '1' }],
+  });
 }
 
 async function startArchiveFromUi(desktopApp: LocalElectronApplicationDriver, destination: string): Promise<string> {
   const { page } = desktopApp;
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
   await getByAutomationId(page, AUTOMATION_IDS.capture.exportMenu).click();
+  await screenshotStep('从Export启动Native Archive / Start Native Archive from Export', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.saveArchive), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.capture.saveArchive).click();
+  await screenshotStep('阅读归档提示后选择保存位置 / Read the archive warning before choosing a save location', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start).click();
   await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), destination);
   const progress = getByAutomationId(page, 'capture.transfer.progress');
   await expect(progress).toHaveAttribute('data-transfer-job-state', 'running');
   const jobId = await progress.getAttribute('data-transfer-job-id');
   if (!jobId) throw new Error('Product progress omitted jobId.');
+  await screenshotStep('运行中的Archive任务及Cancel入口 / Inspect the running Archive job and its Cancel action', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.transfer.cancel), label: '1' }],
+  });
+  await expect(progress).toHaveAttribute('data-transfer-job-state', 'running');
   return jobId;
 }
 
-async function verifyCanceledArchive(page: Page, client: Client, jobId: string, directory: string): Promise<void> {
+async function waitForCanceledArchiveCleanup(client: Client, jobId: string, directory: string): Promise<void> {
   await expect.poll(async () => publicJob(mcpValue(await client.callTool({ name: TOOL_NAMES[0], arguments: { jobId } }))).state).toBe('cancelled');
-  await expect(getByAutomationId(page, 'capture.transfer.progress')).toHaveAttribute('data-transfer-job-state', 'cancelled');
   await expect.poll(async () => (await readdir(directory)).sort(), { timeout: 30_000 }).toEqual(['completed.jsonl']);
+}
+
+async function verifyCanceledArchive(page: Page, client: Client, jobId: string, directory: string): Promise<void> {
+  await waitForCanceledArchiveCleanup(client, jobId, directory);
+  await expect(getByAutomationId(page, 'capture.transfer.progress')).toHaveAttribute('data-transfer-job-state', 'cancelled');
+  await screenshotStep('取消清理完成后关闭任务结果 / Close the job result after cancellation cleanup completes', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.transfer.close), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.close).click();
 }
 
@@ -299,6 +338,21 @@ test('capture.tools.transfer-jobs queries and cancels real file jobs without exp
     expect(publicJob(mcpValue(await client.callTool({ name: TOOL_NAMES[0], arguments: { jobId: completedJobId } })))).toEqual(completed);
     expect(createHash('sha256').update(await readFile(completedFile)).digest('hex')).toBe(fileHash);
     await screenshotStep('Auto与隔离：第二个真实Archive使用Auto取消，已完成文件/任务不变，未留下临时输出或后台worker。 / Auto and isolation: cancel a second real Archive in Auto mode, keeping the completed job/file unchanged and leaving no temporary output or background worker.');
+
+    // Cancel through the actual progress UI, then Clear only after cancellation cleanup has finished.
+    // 使用实际进度窗口Cancel，取消清理结束后再通过Capture清理记录。
+    const uiJobId = await startArchiveFromUi(desktopApp, path.join(directory, 'cancel-ui.iarchive'));
+    await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.cancel).click();
+    await waitForCanceledArchiveCleanup(client, uiJobId, directory);
+    await expect(getByAutomationId(page, 'capture.transfer.progress')).toHaveCount(0);
+    await expect(sourceRow).toHaveCount(1);
+    await screenshotStep('任务取消后原记录仍保留，可以再明确Clear / The original record remains after cancellation and can be explicitly cleared', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.clear), label: '1' }],
+    });
+    await getByAutomationId(page, AUTOMATION_IDS.capture.clear).click();
+    await expect(sourceRow).toHaveCount(0);
+    await screenshotStep('等待取消清理后Capture已清空 / Capture is cleared after cancellation cleanup has finished');
+    await captureArchiveSource(desktopApp, loopbackLab, client);
 
     // 独立撤权：Agent与MCP各自关闭两项，旧Chat和旧连接均拒绝后续调用而不产生文件操作。
     // Independent revocation: disable both Tools separately for Agent and MCP; existing chats/connections reject later calls without file operations.

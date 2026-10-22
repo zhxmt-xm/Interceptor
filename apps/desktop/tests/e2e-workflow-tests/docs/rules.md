@@ -14,6 +14,16 @@
 
 - `mcp/streamable-http.workflow.ts`在原第二写入者步骤核对未Apply本地草稿、冲突、Core实际remote结果与显式Reload；不直接写Store。原`import-tree`、`tools-import`、`tools-export`继续验证文件与身份。
 
+### Capture 可见结果与正文工具
+
+- 既有客户端请求、origin响应定义、规则输入和网络断言保持不变。完成原网络断言后，再通过真实Capture导航、Keyword和自产请求行检查结果；不为截图再发一条请求，不把Rules编辑器当作Capture结果图。
+- Capture请求行的公共选中属性是`aria-pressed`；再次点击已选中的行会取消选择。补图步骤先读取当前属性，仅在未选中时点击，之后仍须断言`aria-pressed=true`；不能删除选择断言或改猜其他aria属性。
+- 重复Path按当前请求的公共行ID区分；GET/POST使用协议方法区分。匹配反例必须清除Rule facet限制，不能因只显示命中项而漏掉未命中的请求。
+- Header截图显示对应request/response区块及`data-effect`来源；Query使用既有origin echo响应中的`path`证明实际改写，不把Capture保留的入站Query说成最终转发地址。Map Remote检查同一入口exchange的映射响应，不伪造第二条target Capture记录。
+- root-toolbar的正文内容通过Raw模式下正式Copy取得并逐字比较完整文本；Monaco DOM的软换行、缩进和分片不能作为响应正文。Query另行核对解析出的完整`path`及remove后的参数缺失，不通过全局剥空白修正断言。
+- 所有高亮控件或区块在截图前完整滚入视口。检查后返回进入Capture前选中的同一Rule ID，不改草稿、启用状态、条件或动作顺序。
+- 普通Body的Raw、Copy、Fullscreen和Save均操作当前选中的Original/Final。保存副本通过真实Save Dialog产生，核对完整字节后清理，不替代原File replacement步骤使用的源文件。
+
 命令、输出清单和显式导入边界见[套件说明](../README.md#trace-与证据)。已有公开PNG及历史验收记录保持原来源，新的运行不会自动替换它们；本节不把未经执行的平台或分支记为通过。
 
 本文件定义 Rules 工作区的完整 E2E 流程。每条 workflow 都独立启动 Electron、独占 profile/trace，并通过真实 Rules UI、Preload、Core RuleStore 与 Proxy data plane 验证。
@@ -50,7 +60,7 @@ Rules页面通过真实Core读取权威RuleSet；搜索只作用于视图；选�
 <a id="rules-root-toolbar"></a>
 ## `rules.root-toolbar`
 
-**状态**：passed
+**状态**：待验证（既有业务断言已通过；新增Capture可见结果步骤待真实运行）
 **策略**：shared
 
 ### Steps
@@ -60,8 +70,14 @@ Rules页面通过真实Core读取权威RuleSet；搜索只作用于视图；选�
 3. 点击`shell.workspace.rules`，确认初始tree为空，并检查`rules.toolbar.create`、`rules.toolbar.create-folder`和`rules.toolbar.export`三个命令可见；空tree时Export必须disabled。
 4. 点击`rules.toolbar.create`，等待动态`rules.row.<ruleId>`出现并被选中，确认dirty状态和detail editor可见；此时Export必须enabled。
 5. 点击`rules.toolbar.create-folder`，等待动态`rules.folder-row.<folderId>`出现，确认rule与folder都保留且新folder进入原地命名状态。
-6. 全程只使用公共`data-automation-id`、`aria-pressed`、`disabled`和DOM状态，不读取当前语言文案或翻译后的`aria-label`。
-7. 保存trace、截图、Main/Renderer日志与metadata；点击`shell.window.close`，验证Main/Core/Worker退出、8888释放、系统代理无副作用并删除profile。
+6. 通过真实UI确认Recording，在刚创建的规则填写`E2E action variants`、Host `127.0.0.1`、Path `/e2e/rules/actions`；请求Header为`x-e2e-action: from-rule`，启用并Apply。
+7. 保留request/response Header set/append/remove的原请求与origin/client断言；每次通过Capture筛选并选中该次请求，展开对应Headers区块，核对字段、值和来源标记后截图，再返回同一Rule。
+8. 保留`entry=original → entry=rewritten`以及remove的原网络断言。Capture Request展示入站Query，Response展示同一请求的origin echo `path`：分别为`/e2e/rules/actions/query-set?entry=rewritten`和`/e2e/rules/actions/query-remove`；截图后回到Rule继续。
+9. Status `418`、Synthetic `503`及其Header/Body、Delay `500`毫秒、Block reset/close和停用恢复各自在既有网络断言之后查看Capture。状态与失败查看Headers/General，Synthetic查看其响应Header与正文，Delay查看Timing；不改变原延迟阈值或阻断断言。
+10. Map Remote保留原入口到`remote-target`的origin断言，并在Capture查看该exchange的`mapped-target-body`；Map Local仍只使用同轮产品Save的`rule-map-source.json`，分别检查缺失文件`404`和修正后`200`/文件正文。
+11. 仅改`content-encoding: gzip`时查看Capture响应Header与未转换正文/解码提示；显式Body替换后查看真实解码内容及长度。保持原gzip解压、Content-Length和最终停用恢复断言。
+12. 全程只使用公共`data-automation-id`、`aria-pressed`、`disabled`、协议值及DOM状态，不使用翻译后的文案定位，也不通过API或Store注入选中项。
+13. 保存trace、步骤截图、Main/Renderer日志与metadata；点击`shell.window.close`，验证Main/Core/Worker退出、8888释放、系统代理恢复并删除profile。
 
 ### 预期效果
 
@@ -70,12 +86,13 @@ Rules根级高频命令始终在Collection toolbar可见；新建落点与现有
 ### 验收要求
 
 - 三个`rules.toolbar.*`命令及创建状态必须由真实UI验证；selector、fixture、语言、构建或环境失败不算产品故障。
+- 所有Capture截图必须能对应同次已断言的自产请求；字段改写、Query echo、状态、Timing、阻断和映射不能只保留Rules配置截图。
 - 同一workflow完成trace/evidence与销毁验证。
 
 <a id="rules-hierarchy-menus-status"></a>
 ## `rules.hierarchy-menus-status`
 
-**状态**：passed
+**状态**：待验证（既有业务断言已通过；新增匹配和顺序的Capture检查步骤待真实运行）
 **策略**：privileged UI
 
 ### Steps
@@ -88,13 +105,19 @@ Rules根级高频命令始终在Collection toolbar可见；新建落点与现有
 6. 选择一级目录，确认目录`aria-pressed=true`但`rules.editor.name`仍保留打开rule；重新选择rule后点击Apply，等待status=applied且revision增加。
 7. Reload Renderer并重新进入Rules，确认Core恢复同一目录树、rule ID/name/enabled、revision与applied状态。
 8. 测试客户端显式经8888发送匹配GET；等待动态hit count变1。rule右键Show matching requests从disabled变enabled，点击后导航Capture；展开Rule facet并确认目标rule option `aria-pressed=true`。
-9. 附加目录/rule ID、status状态、revision、hit count与导航证据；正常Close，由Main恢复系统代理，并验证Main/Core/Renderer退出、8888释放和profile删除。
+9. 在目标Rule facet下显式选中`/e2e/rules/hierarchy-status`，查看请求Header `x-rules-e2e: active`。截图后清除facet限制，点击Header的Rule来源标记返回原Rule ID，并核对选中状态。
+10. 增加Method、Path、URL、Query、request Header、Status和response MIME，与Host组成八类AND；效果动作改为response Header。保持原GET/POST网络输入与断言，每次在Capture选中对应协议方法的自产行，核对GET响应含`active`、POST无此Header。
+11. 保留contains、Aa大小写、exact、无效/有效regex和`application/*`的所有原请求及断言；每次查看该次新Capture行的response Headers并截图。相同Path的后一次请求不能误选前一次结果。
+12. 保留嵌套规则与根规则对`x-rules-e2e`的竞争输入：顺序调整前为`root`、调整后为`nested`；分别在已断言的请求中查看request Headers和来源，再返回此前打开的同一Rule。删除竞争规则后的`nested`结果也使用对应新请求检查。
+13. 保留规则名称搜索、目录rename/collapse、非最后规则删除、规则移回根级和空目录分支删除，并Apply最终树。
+14. 附加目录/rule ID、status状态、revision、hit count、Capture来源与导航证据；正常Close，由Main恢复系统代理，并验证Main/Core/Renderer退出、8888释放和profile删除。
 
 ### 验收要求
 
 - unit验证含未填写项的RuleSet调用`applyRules()`时不发出`replaceRules`。
 - 真实Electron中新建不完整rule时status=invalid且Apply禁用；selector、构建、listener、UAC或fixture失败不算产品故障。
 - 同时覆盖三级树/menu/selection/status/Apply/reload/hit/navigation流程及完整销毁。
+- AND、匹配模式和priority的Capture画面来自各自已完成的原请求，反例不能套用正例行；检查后Rule身份与编辑状态不变。
 
 ### 预期效果
 
@@ -290,7 +313,7 @@ Rule不仅能编辑和保存，也真实作用于Proxy数据面；匹配/不匹�
 <a id="rules-body-effect-evidence"></a>
 ## `rules.body-effect-evidence`
 
-**状态**：passed（Body与Header effect布局两条真实用例）
+**状态**：待验证（普通Body及Original/Final工具已验证；Header标记返回的选择检查修正后待复验）
 **策略**：native-ui + privileged UI
 
 ### Steps
@@ -298,7 +321,11 @@ Rule不仅能编辑和保存，也真实作用于Proxy数据面；匹配/不匹�
 1. 创建独立profile、trace与可记录request/response body的loopback origin，启动真实Electron并通过UI开始Recording。
 2. 通过Rules UI创建request Breakpoint；发送带非空原文的POST，经Capture选择Text replacement并Forward edited，确认origin收到Final，Capture marker绑定breakpoint rule、source=Text，默认Final，Original/Final可双向切换，marker可导航回Rules。
 3. 停用Breakpoint，通过Rules UI创建只包含Body action的request Text rule并Apply；发送明确的chunked POST，确认origin收到Final并保留chunked、没有Content-Length，Capture marker绑定普通rule，Original/Final分别可读。不再加入旧的Transfer-Encoding删除绕行，否则会把正文场景变成无framing的不同输入。
+   - 选择Original，切到Raw，Copy并读取真实剪贴板核对`{"stage":"regular-original"}`；打开Fullscreen检查同一正文，关闭后Original和Raw仍保持。
+   - 通过正文Save和真实Save Dialog保存`body-effect-regular-request-original.json`，读取完整字节核对Original；选择Final后对`{"stage":"regular-final"}`重复Raw、Copy、Fullscreen和Save，文件名为`body-effect-regular-request-final.json`。
+   - 保存并截图后仍保留所选版本；点击Body来源标记返回该普通Rule ID，再执行原停用步骤。副本不作为后续File replacement输入。
 4. 创建response Text body rule并Apply；origin返回chunked正文，确认客户端和Capture都是Final，marker绑定该rule、source=Text，Original control disabled且状态为unavailable。
+   - 只操作可用的Final，核对Raw、Copy、Fullscreen及`body-effect-regular-response-final.json`的完整内容都是`{"stage":"response-final"}`，保留Original不可用状态；截图后返回同一Rule。
 5. 同时启用普通request writer与request Breakpoint；Breakpoint Text覆盖普通writer后，确认只显示Breakpoint marker，普通writer marker不存在，Original仍是客户端入站正文。
 6. 经产品BodyViewer Save和真实Save Dialog生成唯一文件；创建response Breakpoint，File未选择时验证112px居中区域与32px高、11.5px字号的按钮并保存区域截图。通过真实Open Dialog选择同一文件，显式删除冲突的`transfer-encoding`后Forward edited，确认source=File、绝对路径未进入Renderer/evidence、客户端与Capture Final字节等于文件、Original unavailable。
 7. 同一阶段额外发送Continue unmodified与只编辑header的请求，确认原文不变且不出现body marker。
@@ -311,6 +338,7 @@ Rule不仅能编辑和保存，也真实作用于Proxy数据面；匹配/不匹�
 2. loopback请求和响应均包含普通Header；选择真实paused行，确认快照存在相应effect且value为`from-rule`。
 3. 保存每个阶段的Header区域截图与几何JSON；断言所有name/value输入框等宽，effect距value下方2px、右对齐、9px字号和12px高，普通行30px、effect行44px，行内没有横向溢出。
 4. 通过input临时修改value再恢复，通过Add/Remove增删一行；Continue unmodified放行，request在origin验证set值，response在客户端验证append值，确认布局调整未改变规则结果。
+   - 原网络断言结束后，在Capture Headers选择对应request/response区块，显示`x-effect-layout`与真实set/append来源；点击Header来源标记返回同一Rule ID，核对选中状态和editor名称，再执行原停用步骤。
 5. 两阶段均完成后停用测试规则，保存trace/metadata并正常Close；fixture验证Main/Core/Worker、8888、WinINet和journal恢复。
 
 ### 预期效果
@@ -322,6 +350,7 @@ Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original
 - 实现前同一workflow必须因`requestBodyEffect/responseBodyEffect`与Inspector marker/version controls不存在而Red，不能用selector、fixture、原生Dialog或构建失败代替。
 - unit/integration Red先于产品实现，分别锁定RuleService最终写入者、Breakpoint Text/File、Capture存储、Native Archive与HAR边界；当前实现后同一矩阵与真实Electron workflow全部Green并完成销毁证据。
 - Header布局只改变显示；修改产品CSS前先确认断点编辑/Store基线，再以真实UI几何断言验证目标差异，不把selector或环境失败算Red。
+- 正文工具和Header返回均在既有网络断言之后真实点击，不更换请求/响应输入、不改写Open/Save返回值。新增步骤真实运行前，不将旧Green或静态typecheck当作这些画面的验收结果。
 
 <a id="rules-tools-export"></a>
 ## `rules.tools.export`

@@ -4,9 +4,13 @@
 
 MCP截图复用原真实SDK/Host流程；App侧图片不冒充外部商业Host配置页。
 
-- `streamable-http.workflow.ts`保持各协议的手工凭据、发现/查询、Ask/Auto、取消、轮换、撤权与正常重启，补Rules本地草稿冲突及撤销Client时真实在途Composer socket取消。
+- `streamable-http.workflow.ts`保持各协议的手工凭据、发现/查询、Ask/Auto、取消、轮换、撤权与正常重启，补Rules本地草稿冲突及撤销Client时真实在途Composer socket取消。步骤图分别记录Server/endpoint、Client创建与复制入口、独立Tool权限、Deny/Allow和Recording、本地草稿/第二写入者/Reload、重启、轮换与撤销确认及Server关闭；不显示凭据。Capture用本流程路径Keyword并收起无关分组，权限表通过正式搜索定位，不改网络输入或协议/结果断言。
 
-- `protocol-support.workflow.ts`保留Server关闭/开启时的协议说明，并在同一流程的下一代占用原endpoint，验证实际冲突、显式Change endpoint、同一Client凭据和新地址查询。
+- `protocol-support.workflow.ts`保留Server关闭/开启时的协议说明；第一代关闭Server后由本流程listener占用保存端口，核对运行期Enable的EADDRINUSE、仍关闭、释放后原地址重试。下一代再占用原endpoint，验证独立的endpoint-conflict、显式Change endpoint、同一Client凭据和新地址查询。分别记录错误、恢复、Client与复制入口、新旧公开地址及停止，不操作未知占用者。
+
+- 修改Tool权限后先确认对应`aria-checked`与Tool capabilities的`aria-busy=false`，Client模式也等公开保存状态结束，再发下一条外部调用；不以截图耗时等待持久化，不放宽Tool发现、撤权或审批断言。
+
+- Rules冲突先保留未保存草稿，再明确Reload最新版本；随后通过正式UI重填本地合并名称/Header并Save，以新请求同时核对源站Header和Capture详情。合并步骤结束后通过同一UI恢复原示例值，再执行原断点与重启断言；不能用Reload后的远端值图片代替本地合并结果。
 
 - Diagnostics原生文件Tool由`diagnostics/tools-queries-export.workflow.ts`及原Agent流程验证，不再单独维护媒体流程。
 

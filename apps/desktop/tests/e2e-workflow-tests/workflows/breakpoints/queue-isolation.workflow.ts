@@ -8,7 +8,7 @@ import {
   getByAutomationId,
   getByAutomationIdPrefix,
 } from '../../fixtures/ui/automation';
-import { createRequestBreakpointRule } from '../../fixtures/ui/breakpoint-workflow';
+import { createRequestBreakpointRule, createResponseBreakpointRule } from '../../fixtures/ui/breakpoint-workflow';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
@@ -26,6 +26,7 @@ test('breakpoints.queue-isolation keeps HTTP and one WebSocket queue independent
   const { page } = desktopApp;
   const webSocketPath = '/e2e/queue-isolation-ws';
   const httpPath = '/e2e/queue-isolation-http';
+  const responsePath = '/e2e/queue-isolation-response';
   const clientMessage = 'client-queue-head';
   const originMessage = 'server-queue-follower';
   const sequencePendingMessage = 'sequence-pending-before-history';
@@ -61,6 +62,12 @@ test('breakpoints.queue-isolation keeps HTTP and one WebSocket queue independent
     page,
     AUTOMATION_IDS.capture.websocket.breakpointDirection.sent,
   ).click();
+  await screenshotStep('先为当前连接启用Sent消息断点 / Enable Sent messages for the current connection first', {
+    highlights: [
+      { target: getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointDirection.sent), label: '1' },
+      { target: getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointEnable), label: '2' },
+    ],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointEnable).click();
   await screenshotStep('准备：先建立真实 WebSocket 并通过产品 UI 启用断点，再创建 HTTP Rule，避免 Upgrade 被该 Rule 挂起。 / Arrange: establish the real WebSocket first, enable its product breakpoint, then create the HTTP Rule.');
 
@@ -95,8 +102,13 @@ test('breakpoints.queue-isolation keeps HTTP and one WebSocket queue independent
   // 准备主场景：停用单向配置，再通过产品UI启用双向断点。
   await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointToggle).click();
   await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointToggle).click();
+  await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointDirection.both).click();
+  await screenshotStep('为独立消息队列改选Both / Select Both for the independent message queue', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointDirection.both), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointEnable).click();
-  await createRequestBreakpointRule(page, 'E2E queue isolation');
+  await createRequestBreakpointRule(page, 'E2E queue isolation', 'POST', '/e2e/queue-isolation-');
+  await createResponseBreakpointRule(page, 'E2E queued response', responsePath);
   await screenshotStep('准备主场景：停用单向配置，再通过产品UI启用双向断点。 / Arrange the main scenario with both directions enabled.');
 
   // Arrange pending traffic: hold one HTTP request, then create ordered outbound/inbound pending frames.
@@ -112,6 +124,16 @@ test('breakpoints.queue-isolation keeps HTTP and one WebSocket queue independent
   const httpRow = await showCaptureRow(httpPath);
   await expect(httpRow).toHaveAttribute('data-queue-key', 'http');
   await expect(httpRow).toHaveAttribute('data-breakpoint-state', 'head');
+  const responseRequest = loopbackLab.requestThroughProxy(
+    desktopApp.capturePort(), responsePath,
+  ).then((result) => ({ result }), (error: unknown) => ({ error }));
+  const responseRow = await selectCaptureRow(responsePath);
+  await expect(responseRow).toHaveAttribute('data-queue-key', 'http');
+  await expect(responseRow).toHaveAttribute('data-breakpoint-state', 'queued');
+  await expect(getByAutomationId(page, AUTOMATION_IDS.breakpoints.executeEdited)).toHaveCount(0);
+  await screenshotStep('响应与请求共用HTTP队列，Queued响应只读 / Responses share the HTTP queue and a Queued response is read-only', {
+    highlights: [{ target: responseRow, label: '1' }],
+  });
 
   await selectCaptureRow(webSocketPath);
   await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.messages).click();
@@ -120,7 +142,7 @@ test('breakpoints.queue-isolation keeps HTTP and one WebSocket queue independent
   webSocketLab.sendFromOrigin(originMessage);
   await expect(pendingRows).toHaveCount(2);
 
-  await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('3');
+  await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('4');
   await screenshotStep('构造 pending：挂起一条 HTTP 请求，再按顺序制造当前连接的出站与入站帧断点。 / Arrange pending traffic: hold one HTTP request, then create ordered outbound/inbound pending frames.');
 
   // Assert filtering: direction controls filter history and pending rows without renumbering the queue.
@@ -166,6 +188,9 @@ test('breakpoints.queue-isolation keeps HTTP and one WebSocket queue independent
   await selectCaptureRow(httpPath);
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.replacement.text).click();
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.body).fill('http-draft');
+  await screenshotStep('HTTP队首先保留自己的Text草稿 / Keep the HTTP head’s own Text draft', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.breakpoints.body), label: '1' }],
+  });
 
   await selectCaptureRow(webSocketPath);
   await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.messages).click();
@@ -198,6 +223,9 @@ test('breakpoints.queue-isolation keeps HTTP and one WebSocket queue independent
 
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.replacement.text).click();
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.body).fill('websocket-draft');
+  await screenshotStep('WebSocket队首使用独立草稿 / Keep a separate draft for the WebSocket head', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.breakpoints.body), label: '1' }],
+  });
 
   await selectCaptureRow(httpPath);
   await expect(getByAutomationId(page, AUTOMATION_IDS.breakpoints.body)).toHaveValue('http-draft');
@@ -217,6 +245,9 @@ test('breakpoints.queue-isolation keeps HTTP and one WebSocket queue independent
   await expect(getByAutomationId(page, AUTOMATION_IDS.breakpoints.executeEdited)).toBeVisible();
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.queueMenu).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.breakpoints.continueQueue)).toBeVisible();
+  await screenshotStep('只原样放行当前WebSocket队列 / Continue only the current WebSocket queue unchanged', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.breakpoints.continueQueue), label: '1' }],
+  });
   await expect(getByAutomationId(page, AUTOMATION_IDS.breakpoints.dropQueue)).toBeVisible();
   await expect(getByAutomationId(page, AUTOMATION_IDS.breakpoints.continueRule)).toHaveCount(0);
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.continueQueue).click();
@@ -228,7 +259,7 @@ test('breakpoints.queue-isolation keeps HTTP and one WebSocket queue independent
   await expect(pendingRows).toHaveAttribute('data-queue-position', '1');
   await showCaptureRow(httpPath);
   await expect(httpRow).toHaveAttribute('data-breakpoint-state', 'head');
-  await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('2');
+  await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('3');
   await screenshotStep('操作：只继续 WebSocket 队列；HTTP 队列以及命令开始后产生的未来 echo 必须继续等待。 / Act: continue the WebSocket queue only; the HTTP queue and a future echo must remain pending.');
 
   // Act and assert: release the future WebSocket item, then release HTTP through its own queue head.
@@ -239,17 +270,51 @@ test('breakpoints.queue-isolation keeps HTTP and one WebSocket queue independent
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.continueQueue).click();
   await client.waitForText(clientMessage);
   await expect(pendingRows).toHaveCount(0);
-  await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('1');
+  await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('2');
 
   await selectCaptureRow(httpPath);
   await expect(getByAutomationId(page, AUTOMATION_IDS.breakpoints.body)).toHaveValue('http-draft');
+  await screenshotStep('最后单独原样放行HTTP队首 / Continue the HTTP head separately at the end', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.breakpoints.continueUnmodified), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.continueUnmodified).click();
   const httpOutcome = await httpRequest;
   expect(httpOutcome).toMatchObject({ result: { statusCode: 200 } });
   await expect.poll(() => loopbackLab.observation(httpPath)?.body.toString('utf8'))
     .toBe('http-queue');
+  await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('1');
+  await selectCaptureRow(responsePath);
+  await expect(responseRow).toHaveAttribute('data-breakpoint-state', 'head');
+  await screenshotStep('请求放行后单独继续响应队首 / Continue the response head after the request is released', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.breakpoints.continueUnmodified), label: '1' }],
+  });
+  await getByAutomationId(page, AUTOMATION_IDS.breakpoints.continueUnmodified).click();
+  await expect(responseRequest).resolves.toMatchObject({ result: { statusCode: 200 } });
   await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('');
   await screenshotStep('操作与断言：释放未来 WebSocket 项，再单独释放 HTTP 队首，证明两个逻辑队列互不阻塞。 / Act and assert: release the future WebSocket item, then release HTTP through its own queue head.');
+
+  // Drop a fresh WebSocket-only queue, then prove later normal delivery without replaying either dropped frame.
+  // 丢弃新建的纯WebSocket队列，再用后续正常消息确认两条被丢弃帧都未重放。
+  await selectCaptureRow(webSocketPath);
+  await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.messages).click();
+  client.sendText('mixed-queue-drop-sent');
+  await expect(pendingRows).toHaveCount(1);
+  webSocketLab.sendFromOrigin('mixed-queue-drop-received');
+  await expect(pendingRows).toHaveCount(2);
+  await webSocketHead.click();
+  await getByAutomationId(page, AUTOMATION_IDS.breakpoints.queueMenu).click();
+  await screenshotStep('只丢弃当前WebSocket队列 / Drop only the current WebSocket queue', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.breakpoints.dropQueue), label: '1' }],
+  });
+  await getByAutomationId(page, AUTOMATION_IDS.breakpoints.dropQueue).click();
+  await expect(pendingRows).toHaveCount(0);
+  await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.breakpointToggle).click();
+  client.sendText('mixed-queue-after-drop');
+  await client.waitForText('mixed-queue-after-drop');
+  expect(webSocketLab.hasMessage('mixed-queue-drop-sent')).toBe(false);
+  expect(client.hasText('mixed-queue-drop-received')).toBe(false);
+  await expect(getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager)).toHaveText('');
+  await screenshotStep('两个队列都已处理，停用后新消息正常到达 / Both queues are resolved and new messages arrive after disabling');
 
   // Evidence and teardown: persist both data-plane observations; shared fixture verifies process and port cleanup.
   // 证据与清理：保存双向数据面事实；共享 fixture 验证进程退出与端口释放。

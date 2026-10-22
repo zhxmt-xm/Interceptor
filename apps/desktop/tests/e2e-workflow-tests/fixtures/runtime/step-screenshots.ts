@@ -8,6 +8,10 @@ import { test as playwrightTest, type TestInfo } from '@playwright/test';
 import type { LocalElectronApplicationDriver } from './local-electron-driver';
 import { MacosWorkflowHostSafetyOperations } from '../safety/macos-workflow-host-safety-operations';
 import { macosFileDialogWindowId, showMacosFileDialogList } from '../ui/macos-file-dialog';
+import {
+  annotateScreenshot, readStableHighlightGeometry, verifyHighlightGeometry,
+  type AnnotatedScreenshot, type HighlightGeometry, type ScreenshotHighlight,
+} from './screenshot-highlights';
 
 const execute = promisify(execFile);
 
@@ -26,11 +30,18 @@ interface StepImage {
   readonly window: 'app' | 'native-dialog';
   readonly language: string;
   readonly theme: string;
+  readonly captureDurationMs: number;
+  readonly annotated?: AnnotatedScreenshot;
+}
+
+interface ScreenshotStepOptions {
+  readonly highlights?: readonly ScreenshotHighlight[];
 }
 
 interface ScreenshotRun {
   driver: LocalElectronApplicationDriver | undefined;
   hostRestored: boolean;
+  overheadMs: number;
   readonly steps: StepImage[];
   readonly directory: string;
 }
@@ -44,6 +55,7 @@ export function startStepScreenshots(testInfo: TestInfo, enabled: boolean): void
   runs.set(testInfo, {
     driver: undefined,
     hostRestored: false,
+    overheadMs: 0,
     steps: [],
     directory: testInfo.outputPath('step-screenshots'),
   });
@@ -62,12 +74,12 @@ export function recordScreenshotHostRestoration(testInfo: TestInfo, restored: bo
 }
 
 /** Mark a completed user-operation step after its existing business assertions. */
-export async function screenshotStep(title: string): Promise<void> {
+export async function screenshotStep(title: string, options: ScreenshotStepOptions = {}): Promise<void> {
   const testInfo = playwrightTest.info();
   const run = runs.get(testInfo);
   if (!run) return;
-  await playwrightTest.step(title, async () => {
-    await captureStep(testInfo, run, title, 'app');
+  await captureMeasuredStep(testInfo, run, title, async () => {
+    await captureStep(testInfo, run, title, 'app', options);
   });
 }
 
@@ -76,7 +88,7 @@ export async function screenshotNativeDialog(title: string): Promise<void> {
   const testInfo = playwrightTest.info();
   const run = runs.get(testInfo);
   if (!run) return;
-  await playwrightTest.step(title, async () => {
+  await captureMeasuredStep(testInfo, run, title, async () => {
     if (process.platform === 'darwin' && run.driver) {
       await showMacosFileDialogList(run.driver.nativeFileDialogOwner());
     }
@@ -84,9 +96,28 @@ export async function screenshotNativeDialog(title: string): Promise<void> {
   });
 }
 
+/** Account for optional capture work separately while retaining the workflow's business timeout. */
+async function captureMeasuredStep(
+  testInfo: TestInfo, run: ScreenshotRun, title: string, capture: () => Promise<void>,
+): Promise<void> {
+  const timeout = testInfo.timeout;
+  const captureTimeout = 150_000;
+  const startedAt = performance.now();
+  if (timeout !== 0) testInfo.setTimeout(timeout + captureTimeout);
+  try {
+    await playwrightTest.step(title, capture, { timeout: captureTimeout });
+  } finally {
+    const elapsed = Math.ceil(performance.now() - startedAt);
+    run.overheadMs += elapsed;
+    if (timeout !== 0) testInfo.setTimeout(timeout + elapsed);
+  }
+}
+
 async function captureStep(
   testInfo: TestInfo, run: ScreenshotRun, title: string, window: StepImage['window'],
+  options: ScreenshotStepOptions = {},
 ): Promise<void> {
+  const captureStartedAt = performance.now();
   const driver = run.driver;
   if (!driver || driver.page.isClosed()) {
     throw new Error('A screenshot step requires the workflow-owned, live App window.');
@@ -97,6 +128,8 @@ async function captureStep(
   const id = `step-${String(run.steps.length + 1).padStart(3, '0')}`;
   const image = `${id}.png`;
   const destination = path.join(run.directory, image);
+  const highlights = options.highlights ?? [];
+  let geometry: HighlightGeometry | undefined;
   await mkdir(run.directory, { recursive: true });
   if (process.platform === 'darwin') {
     await MacosWorkflowHostSafetyOperations.assertDesktopUnlocked();
@@ -129,6 +162,7 @@ JSON.stringify(matches[0].kCGWindowNumber);
       windowId = value;
     }
     const tool = await prepareScreenshotTool(testInfo);
+    if (highlights.length) geometry = await readStableHighlightGeometry(driver.page, highlights);
     await execute(tool, [String(owner.processId), String(windowId), destination], {
       timeout: 30_000, encoding: 'utf8',
     });
@@ -136,11 +170,20 @@ JSON.stringify(matches[0].kCGWindowNumber);
     if (window === 'native-dialog') {
       throw new Error('Native file-panel screenshots are not implemented on this platform.');
     }
+    if (highlights.length) geometry = await readStableHighlightGeometry(driver.page, highlights);
     await driver.page.screenshot({ path: destination, type: 'png' });
   }
   const bytes = await readFile(destination);
   if (!bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) {
     throw new Error('The step screenshot is not a PNG.');
+  }
+  let annotated: AnnotatedScreenshot | undefined;
+  if (geometry) {
+    await verifyHighlightGeometry(driver.page, highlights, geometry);
+    const annotatedImage = `${id}.annotated.png`;
+    const annotatedPath = path.join(run.directory, annotatedImage);
+    annotated = await annotateScreenshot(destination, annotatedPath, annotatedImage, geometry);
+    await testInfo.attach(`${id}-annotated`, { path: annotatedPath, contentType: 'image/png' });
   }
   run.steps.push({
     id, title, image, window, language, theme,
@@ -148,6 +191,8 @@ JSON.stringify(matches[0].kCGWindowNumber);
     sha256: createHash('sha256').update(bytes).digest('hex'),
     width: bytes.readUInt32BE(16),
     height: bytes.readUInt32BE(20),
+    captureDurationMs: Math.round(performance.now() - captureStartedAt),
+    ...(annotated ? { annotated } : {}),
   });
   await testInfo.attach(id, { path: destination, contentType: 'image/png' });
 }
@@ -198,6 +243,7 @@ export async function finishStepScreenshots(testInfo: TestInfo): Promise<void> {
       appVersion, platform: process.platform,
       status: passed ? 'passed' : 'failed',
       hostRestored: run.hostRestored,
+      screenshotOverheadMs: run.overheadMs,
       steps: run.steps,
     };
     const file = path.join(run.directory, 'manifest.json');

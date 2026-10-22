@@ -54,25 +54,43 @@ async function createCollection(page: Page): Promise<void> {
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.composer).click();
   for (const index of [1, 2]) {
     await getByAutomationId(page, AUTOMATION_IDS.composer.newRequest).click();
+    await screenshotStep(`新建第${index}条待导出请求 / Create request ${index} for export`, {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.composer.url), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.composer.url).fill(`https://collection.example.test/${index}?token=${SECRET}`);
+    await screenshotStep(`填写第${index}条请求URL，尚未发送 / Enter request ${index} URL without sending`, {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.composer.url), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.composer.headerDraft.name).fill('Authorization');
     await getByAutomationId(page, AUTOMATION_IDS.composer.headerDraft.value).fill(`Bearer ${SECRET}`);
     await getByAutomationId(page, AUTOMATION_IDS.composer.addHeader).click();
+    await screenshotStep(`添加第${index}条请求的Header / Add the Header for request ${index}`, {
+      highlights: [{ target: page.locator('input[value="Authorization"]').locator('..'), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.composer.tab.query).click();
     await getByAutomationId(page, AUTOMATION_IDS.composer.queryDraft.name).fill('tag');
     await getByAutomationId(page, AUTOMATION_IDS.composer.queryDraft.value).fill(`transfer-${index}`);
     await getByAutomationId(page, AUTOMATION_IDS.composer.addQuery).click();
+    await screenshotStep(`添加第${index}条请求的Query行 / Add the Query row for request ${index}`, {
+      highlights: [{ target: page.locator('input[value="tag"]').locator('..'), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.composer.tab.body).click();
     if (index === 1) {
       await getByAutomationId(page, AUTOMATION_IDS.composer.bodyType).click();
       await getByAutomationId(page, AUTOMATION_IDS.composer.body).click();
       await page.keyboard.press('Control+A');
       await page.keyboard.insertText(JSON.stringify({ marker: 'transfer', token: SECRET }));
+      await screenshotStep('输入第一条请求的JSON正文 / Enter the first request JSON body', {
+        highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.composer.body), label: '1' }],
+      });
     } else {
       await getByAutomationId(page, AUTOMATION_IDS.composer.bodyFormType).click();
       await getByAutomationId(page, AUTOMATION_IDS.composer.formDraft.name).fill('token');
       await getByAutomationId(page, AUTOMATION_IDS.composer.formDraft.value).fill(SECRET);
       await getByAutomationId(page, AUTOMATION_IDS.composer.addForm).click();
+      await screenshotStep('添加第二条请求的Form正文 / Add the second request Form body', {
+        highlights: [{ target: page.locator('input[value="token"]').locator('..'), label: '1' }],
+      });
     }
     await getByAutomationId(page, AUTOMATION_IDS.composer.tab.auth).click();
     await getByAutomationId(page, AUTOMATION_IDS.composer.authType).click();
@@ -80,6 +98,9 @@ async function createCollection(page: Page): Promise<void> {
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
     await getByAutomationId(page, AUTOMATION_IDS.composer.bearerToken).fill(SECRET);
+    await screenshotStep(`填写第${index}条请求的Auth字段 / Enter the Auth field for request ${index}`, {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.composer.bearerToken), label: '1' }],
+    });
   }
   const secondRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.composerCollectionRequest).last();
   await getByAutomationId(page, AUTOMATION_IDS.composer.newFolder).click();
@@ -88,8 +109,14 @@ async function createCollection(page: Page): Promise<void> {
   if (!automationId?.startsWith(AUTOMATION_ID_PREFIXES.composerCollectionFolderRename)) throw new Error('Collection folder omitted its identity.');
   await rename.fill('Transfer folder');
   await rename.press('Enter');
+  await screenshotStep('创建Transfer folder，尚未移入请求 / Create Transfer folder before moving the request', {
+    highlights: [{ target: getByAutomationId(page, AutomationIdFactory.composerCollectionFolderTarget(automationId.slice(AUTOMATION_ID_PREFIXES.composerCollectionFolderRename.length))), label: '1' }],
+  });
   await secondRow.dragTo(getByAutomationId(page, AutomationIdFactory.composerCollectionFolderTarget(automationId.slice(AUTOMATION_ID_PREFIXES.composerCollectionFolderRename.length))));
   await expect(getByAutomationId(page, AUTOMATION_IDS.composer.collection)).toHaveAttribute('data-save-state', 'saved');
+  await screenshotStep('移入请求并等待Collection保存 / Move the request and wait for Collection to save', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.composer.collection), label: '1' }],
+  });
 }
 
 async function exportFromUi(desktopApp: LocalElectronApplicationDriver, filePath: string): Promise<CollectionNode[]> {
@@ -98,6 +125,9 @@ async function exportFromUi(desktopApp: LocalElectronApplicationDriver, filePath
   await getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.exportCollection).click();
   await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), filePath);
   await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.exportBusy)).toHaveCount(0);
+  await screenshotStep('产品Export完成后返回Collection / Return to Collection after product Export completes', {
+    highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.exportCollection), label: '1' }],
+  });
   return readTree(filePath);
 }
 
@@ -145,6 +175,9 @@ async function beginCall(page: Page, openAiCompatibleLab: OpenAiCompatibleLab, c
   await getByAutomationId(page, AUTOMATION_IDS.agent.message.send).click();
   if (verdict !== undefined) {
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolApproval(callId))).toHaveAttribute('data-approval-status', 'pending');
+    await screenshotStep(`检查${name}审批，准备${verdict} / Review ${name} approval before ${verdict}`, {
+      highlights: [{ target: getByAutomationId(page, AutomationIdFactory.agentToolApproval(callId)), label: '1' }],
+    });
     await getByAutomationId(page, verdict === 'allow' ? AutomationIdFactory.agentToolAllow(callId) : AutomationIdFactory.agentToolDeny(callId)).click();
   }
 }
@@ -197,6 +230,8 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
       const closePanel = getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.panel.close);
       if (await closePanel.isVisible()) await closePanel.click();
       await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter)
+        .fill('/e2e/collection-transfer');
       await desktopApp.startTrace(testInfo);
       await desktopApp.captureFinalScreenshot(testInfo);
     }
@@ -244,18 +279,23 @@ test('composer.tools.transfer exports and imports Collections through native dia
     expect(originalRequests[1]?.bodyForm).toEqual([expect.objectContaining({ name: 'token', value: SECRET, enabled: true })]);
     expect(originalRequests.every((request) => request.query.some((row) => row.name === 'tag'))).toBe(true);
     const initialRevision = Number(await getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.collection).getAttribute('data-revision'));
-    await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
+    await screenshotStep('已导出本次Collection，尚未进行Tool文件操作 / Export the current Collection before Tool file operations', {
+      highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.collection), label: '1' }],
+    });
+    await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.composer).click();
     for (const [index, name] of [EXPORT_TOOL, IMPORT_TOOL].entries()) {
       await beginCall(desktopApp.page, openAiCompatibleLab, `deny-${index}`, name, 'deny');
       await finishCall(desktopApp.page);
       expect(resultForCall(openAiCompatibleLab, `deny-${index}`)).toMatchObject({ ok: false, error: { code: 'tool_denied' } });
+      await screenshotStep(`拒绝${name}后查看调用结果 / Inspect the result after denying ${name}`);
       await beginCall(desktopApp.page, openAiCompatibleLab, `native-cancel-${index}`, name, 'allow');
       await cancelFileDialog(desktopApp.nativeFileDialogOwner());
       await finishCall(desktopApp.page);
       expect(resultForCall(openAiCompatibleLab, `native-cancel-${index}`)).toEqual({ ok: true, value: index === 0 ? { exported: false } : { imported: false } });
+      await screenshotStep(`取消${name}原生面板后查看调用结果 / Inspect ${name} after cancelling the native panel`);
     }
     expect(await readdir(directory)).toEqual(['product-collection.json']);
-    await screenshotStep('自产输入：UI创建请求与目录并自动保存，再由产品UI导出唯一导入文件，测试只读解析。 / Product-owned input: create requests and a folder, await autosave, then export the sole import file through product UI and inspect it read-only.');
+    await screenshotStep('拒绝与取消Tool操作后，Collection文件保持不变 / Tool denial and cancellation leave the Collection files unchanged');
 
     // Ask保存与确认：导出保持完整树，导入预览取消不写，确认后立即追加且重新生成所有身份。
     // Ask saving and confirmation: export preserves the tree, preview cancellation writes nothing, and confirmation appends with fresh identities immediately.
@@ -265,13 +305,27 @@ test('composer.tools.transfer exports and imports Collections through native dia
     await finishCall(desktopApp.page);
     expect(await readTree(exportedPath)).toEqual(original);
     expect(resultForCall(openAiCompatibleLab, 'export-allow')).toEqual({ ok: true, value: { exported: true } });
+    await screenshotStep('Allow并保存后查看Collection导出结果 / Inspect Collection export after Allow and Save');
     await beginCall(desktopApp.page, openAiCompatibleLab, 'preview-cancel', IMPORT_TOOL, 'allow');
     await selectImport(desktopApp, inputPath);
+    await screenshotStep('Ask导入预览：检查内容后再取消 / Inspect the Ask import preview before cancelling', {
+      highlights: [
+        { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.dialog), label: '1' },
+        { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.cancel), label: '2' },
+      ],
+    });
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.cancel).click();
     await finishCall(desktopApp.page);
     expect(resultForCall(openAiCompatibleLab, 'preview-cancel')).toEqual({ ok: true, value: { imported: false } });
+    await screenshotStep('取消导入预览，不追加Collection / Cancel the import preview without appending to Collection');
     await beginCall(desktopApp.page, openAiCompatibleLab, 'import-allow', IMPORT_TOOL, 'allow');
     await selectImport(desktopApp, inputPath);
+    await screenshotStep('Ask导入预览：检查内容后再确认 / Inspect the Ask import preview before confirming', {
+      highlights: [
+        { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.dialog), label: '1' },
+        { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.confirm), label: '2' },
+      ],
+    });
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.confirm).click();
     await finishCall(desktopApp.page);
     expect(resultForCall(openAiCompatibleLab, 'import-allow')).toEqual({ ok: true, value: { imported: true, revision: initialRevision + 1, requestCount: 2, folderCount: 1, skippedCount: 0 } });
@@ -281,14 +335,26 @@ test('composer.tools.transfer exports and imports Collections through native dia
     // Auto仍保留原生选择与确认，重复导入只追加，不自动发送任何请求。
     // Auto still requires native selection and confirmation; repeated imports only append and never send requests.
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.executionMode.auto).click();
+    await screenshotStep('切换Auto，文件选择与导入确认仍由用户操作 / Select Auto while retaining user file selection and import confirmation', {
+      highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.executionMode.auto), label: '1' }],
+    });
     await beginCall(desktopApp.page, openAiCompatibleLab, 'import-auto', IMPORT_TOOL);
     await selectImport(desktopApp, inputPath);
+    await screenshotStep('Auto导入仍停在预览确认 / Auto import still waits at the preview confirmation', {
+      highlights: [
+        { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.dialog), label: '1' },
+        { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.confirm), label: '2' },
+      ],
+    });
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.confirm).click();
     await finishCall(desktopApp.page);
     await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolApproval('import-auto'))).toHaveCount(0);
     expect(resultForCall(openAiCompatibleLab, 'import-auto')).toEqual({ ok: true, value: {
       imported: true, revision: initialRevision + 2, requestCount: 2, folderCount: 1, skippedCount: 0,
     } });
+    await screenshotStep('Auto确认导入后再次追加Collection / Append another Collection copy after confirming Auto import', {
+      highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.collection), label: '1' }],
+    });
     await beginCall(desktopApp.page, openAiCompatibleLab, 'export-auto', EXPORT_TOOL);
     const autoPath = path.join(directory, 'after-auto.json');
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), autoPath);
@@ -315,19 +381,37 @@ test('composer.tools.transfer exports and imports Collections through native dia
     for (const name of [EXPORT_TOOL, IMPORT_TOOL]) {
       const denied = client.callTool({ name, arguments: {} });
       await expect(approval).toHaveAttribute('data-tool-name', name);
+      await screenshotStep(`检查MCP ${name}审批，准备Deny / Review MCP ${name} approval before Deny`, {
+        highlights: [{ target: approval, label: '1' }],
+      });
       await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.deny).click();
       await expect(denied).resolves.toMatchObject({ isError: true });
     }
     const imported = client.callTool({ name: IMPORT_TOOL, arguments: {} });
     await expect(approval).toHaveAttribute('data-tool-name', IMPORT_TOOL);
+    await screenshotStep('检查MCP Import审批，准备Allow / Review MCP Import approval before Allow', {
+      highlights: [{ target: approval, label: '1' }],
+    });
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.allow).click();
     await selectImport(desktopApp, inputPath);
+    await screenshotStep('MCP Allow后仍需确认导入预览 / Confirm the import preview after MCP Allow', {
+      highlights: [
+        { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.dialog), label: '1' },
+        { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.confirm), label: '2' },
+      ],
+    });
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.confirm).click();
     expect(mcpValue(await imported)).toEqual({ imported: true, revision: initialRevision + 3, requestCount: 2, folderCount: 1, skippedCount: 0 });
     await automaticallyExecuteMcpClientTools(desktopApp.page, configuredClient.clientId);
     const canceledImport = client.callTool({ name: IMPORT_TOOL, arguments: {} });
     await selectImport(desktopApp, inputPath);
     await expect(approval).toHaveCount(0);
+    await screenshotStep('MCP Auto预览仍可取消 / Cancel the preview even with MCP Auto enabled', {
+      highlights: [
+        { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.dialog), label: '1' },
+        { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.cancel), label: '2' },
+      ],
+    });
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.cancel).click();
     expect(mcpValue(await canceledImport)).toEqual({ imported: false });
     const exported = client.callTool({ name: EXPORT_TOOL, arguments: {} });
@@ -366,6 +450,15 @@ test('composer.tools.transfer exports and imports Collections through native dia
       await expect(getByAutomationId(relaunchedApp.page, AutomationIdFactory.agentToolAgentSwitch(name))).toHaveAttribute('aria-checked', 'false');
       await expect(getByAutomationId(relaunchedApp.page, AutomationIdFactory.agentToolMcpSwitch(name))).toHaveAttribute('aria-checked', 'false');
     }
+    await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.tools.search).fill('');
+    await expect(getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.mcp.server.root))
+      .toHaveAttribute('data-server-state', 'running');
+    await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.mcp.server.enable).click();
+    await expect(getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.mcp.server.root))
+      .toHaveAttribute('data-server-state', 'disabled');
+    await screenshotStep('文件操作结束后关闭本轮MCP Server / Disable the MCP Server after file operations', {
+      highlights: [{ target: getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.mcp.server.enable), label: '1' }],
+    });
     const evidencePath = testInfo.outputPath('composer-tools-transfer.json');
     await writeFile(evidencePath, JSON.stringify({
       inputHash: createHash('sha256').update(JSON.stringify(original)).digest('hex'),

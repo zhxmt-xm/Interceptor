@@ -28,6 +28,7 @@ test('settings.storage.refresh-clear presents one usage measure and shares Captu
 
   // 准备：真实POST经代理进入Capture，暂停新录制使统计不受系统背景流量影响。
   // Arrange: proxy a real POST into Capture and pause new recording to keep background traffic out of the measurement.
+  await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill('/e2e/storage/');
   await startRecording(desktopApp);
   const response = await httpTrafficRunner.requestThroughProxy(desktopApp.capturePort(), requestPath, {
     method: 'POST', body: 'storage-original-body',
@@ -36,9 +37,13 @@ test('settings.storage.refresh-clear presents one usage measure and shares Captu
   const firstRow = rows.filter({ hasText: requestPath });
   await expect(firstRow).toHaveCount(1);
   await expect(firstRow).not.toContainText('\u00b7\u00b7\u00b7');
-  await firstRow.click();
+  if (await firstRow.getAttribute('aria-pressed') !== 'true') await firstRow.click();
+  await expect(firstRow).toHaveAttribute('aria-pressed', 'true');
   await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.response).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane)).toBeVisible();
+  await screenshotStep('核对自己的记录，再暂停新录制 / Inspect the owned record before pausing new recording', {
+    highlights: [{ target: firstRow, label: '1' }, { target: recording, label: '2' }],
+  });
   const firstRowId = await firstRow.getAttribute('data-automation-id');
   await expect(recording).toHaveAttribute('aria-busy', 'false');
   await recording.click();
@@ -50,7 +55,12 @@ test('settings.storage.refresh-clear presents one usage measure and shares Captu
   const beforeClear = await usage();
   expect(beforeClear.exchanges).toBeGreaterThan(0);
   expect(beforeClear.bodies).toBeGreaterThan(0);
-  await screenshotStep('准备：真实POST经代理进入Capture，暂停新录制使统计不受系统背景流量影响。 / Arrange: proxy a real POST into Capture and pause new recording to keep background traffic out of the measurement.');
+  await screenshotStep('准备：真实POST经代理进入Capture，暂停新录制使统计不受系统背景流量影响。 / Arrange: proxy a real POST into Capture and pause new recording to keep background traffic out of the measurement.', {
+    highlights: [
+      { target: refresh, label: '1' },
+      { target: getByAutomationId(page, controls.blobBytes).locator('xpath=../..'), label: '2' },
+    ],
+  });
 
   // 布局：Refresh归属于标题，单项用量保留真实Core值，不用新增API或文案选择器。
   // Layout: Refresh belongs to the heading and the single usage measure retains Core values without extra APIs or translated selectors.
@@ -84,17 +94,36 @@ test('settings.storage.refresh-clear presents one usage measure and shares Captu
   // User actions: Cancel preserves data; confirmation clears records and bodies and resets both the list and Inspector.
   await getByAutomationId(page, controls.clear).click();
   await expect(getByAutomationId(page, controls.clearConfirm)).toBeVisible();
+  await screenshotStep('清理前阅读确认，先选择Cancel / Review Clear confirmation and choose Cancel first', {
+    highlights: [
+      { target: getByAutomationId(page, controls.clearCancel), label: '1' },
+      { target: getByAutomationId(page, controls.clearConfirm), label: '2' },
+    ],
+  });
   await page.screenshot({ path: testInfo.outputPath('storage-confirm.png') });
   await getByAutomationId(page, controls.clearCancel).click();
   expect(await usage()).toEqual(beforeClear);
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
   await expect(firstRow).toHaveAttribute('data-automation-id', firstRowId!);
   await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane)).toBeVisible();
+  await screenshotStep('取消Clear后记录和正文仍在 / Cancel preserves the record and its body', {
+    highlights: [{ target: firstRow, label: '1' }],
+  });
   await openStorage();
   await getByAutomationId(page, controls.clear).click();
+  await screenshotStep('再次请求清理后明确确认 / Explicitly confirm the new Clear request', {
+    highlights: [{ target: getByAutomationId(page, controls.clearConfirm), label: '1' }],
+  });
   await getByAutomationId(page, controls.clearConfirm).click();
   await expect.poll(usage).toEqual({ exchanges: 0, bodies: 0, bytes: 0 });
   await expect(getByAutomationId(page, controls.sessionCount)).toHaveAttribute('data-count', '1');
+  await screenshotStep('清理后正文用量和记录计数归零 / Body usage and record counts reach zero after Clear', {
+    highlights: [
+      { target: getByAutomationId(page, controls.blobBytes).locator('xpath=../..'), label: '1' },
+      { target: getByAutomationId(page, controls.exchangeCount).locator('xpath=../..'), label: '2' },
+      { target: getByAutomationId(page, controls.bodyCount).locator('xpath=../..'), label: '3' },
+    ],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
   await expect(rows).toHaveCount(0);
   await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close)).toHaveCount(0);
@@ -106,6 +135,9 @@ test('settings.storage.refresh-clear presents one usage measure and shares Captu
   await recording.click();
   await expect(recording).toHaveAttribute('aria-pressed', 'true');
   await expect(recording).toHaveAttribute('aria-busy', 'false');
+  await screenshotStep('清理后单独恢复Recording / Resume Recording explicitly after Clear', {
+    highlights: [{ target: recording, label: '1' }],
+  });
   await expect(httpTrafficRunner.requestThroughProxy(desktopApp.capturePort(), nextPath, {
     method: 'POST', body: 'storage-new-body',
   })).resolves.toMatchObject({ statusCode: 200 });
@@ -114,9 +146,15 @@ test('settings.storage.refresh-clear presents one usage measure and shares Captu
   await expect(nextRow).not.toContainText('\u00b7\u00b7\u00b7');
   const nextRowId = await nextRow.getAttribute('data-automation-id');
   expect(nextRowId).not.toBe(firstRowId);
+  await screenshotStep('恢复后由新请求生成新记录 / A new request creates a new record after resuming', {
+    highlights: [{ target: nextRow, label: '1' }],
+  });
   await expect(recording).toHaveAttribute('aria-busy', 'false');
   await recording.click();
   await expect(recording).toHaveAttribute('aria-pressed', 'false');
+  await screenshotStep('从Capture清理同一份临时数据 / Clear the same temporary data from Capture', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.clear), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.capture.clear).click();
   await expect(rows).toHaveCount(0);
   await openStorage();

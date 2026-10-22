@@ -110,6 +110,9 @@ async function selectMethod(page: Page, method: string): Promise<void> {
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Enter');
   await expect(methodSelect).toContainText(method);
+  await screenshotStep('选择POST方法，尚未发送 / Select POST without sending the request', {
+    highlights: [{ target: methodSelect, label: '1' }],
+  });
 }
 
 async function addDraftRow(
@@ -121,8 +124,17 @@ async function addDraftRow(
   value: string,
 ): Promise<void> {
   await getByPublicAutomationId(page, nameAutomationId).fill(name);
+  await screenshotStep(`填写字段名称${name} / Enter the field name ${name}`, {
+    highlights: [{ target: getByPublicAutomationId(page, nameAutomationId), label: '1' }],
+  });
   await getByPublicAutomationId(page, valueAutomationId).fill(value);
+  await screenshotStep(`填写${name}的值，尚未添加 / Enter the ${name} value before adding the row`, {
+    highlights: [{ target: getByPublicAutomationId(page, valueAutomationId), label: '1' }],
+  });
   await getByPublicAutomationId(page, confirmAutomationId).click();
+  await screenshotStep(`添加并启用字段${name} / Add and enable the ${name} field`, {
+    highlights: [{ target: page.locator(`input[value=${JSON.stringify(name)}]`).locator('..'), label: '1' }],
+  });
 }
 
 async function countInputsWithValue(page: Page, expectedValue: string): Promise<number> {
@@ -172,6 +184,9 @@ test('composer.collection.import appends product-exported requests with fresh id
     );
     await getByAutomationId(page, AUTOMATION_IDS.composer.newRequest).click();
     await expect(requestRows).toHaveCount(1);
+    await screenshotStep('新建第一条Collection请求 / Create the first Collection request', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.composer.url), label: '1' }],
+    });
     const firstRequestId = await automationSuffix(
       requestRows.first(),
       AUTOMATION_ID_PREFIXES.composerCollectionRequest,
@@ -179,7 +194,13 @@ test('composer.collection.import appends product-exported requests with fresh id
     await selectMethod(page, 'POST');
     await getByAutomationId(page, AUTOMATION_IDS.composer.url)
       .fill('collection.e2e.invalid/first?existing=1');
+    await screenshotStep('填写第一条请求的URL与已有Query / Enter the first request URL with its existing query', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.composer.url), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.composer.tab.query).click();
+    await screenshotStep('打开Query表格，URL参数不变为表格行 / Open Query without turning URL parameters into table rows', {
+      highlights: [{ target: getByPublicAutomationId(page, IMPORT_IDS.queryDraftName), label: '1' }],
+    });
     await addDraftRow(
       page,
       IMPORT_IDS.queryDraftName,
@@ -200,12 +221,18 @@ test('composer.collection.import appends product-exported requests with fresh id
 
     await getByAutomationId(page, AUTOMATION_IDS.composer.newRequest).click();
     await expect(requestRows).toHaveCount(2);
+    await screenshotStep('新建独立的第二条请求 / Create a separate second request', {
+      highlights: [{ target: requestRows.last(), label: '1' }],
+    });
     const secondRequestId = await automationSuffix(
       requestRows.last(),
       AUTOMATION_ID_PREFIXES.composerCollectionRequest,
     );
     await getByAutomationId(page, AUTOMATION_IDS.composer.url)
       .fill('collection.e2e.invalid/second');
+    await screenshotStep('填写第二条请求自己的URL / Enter the second request URL', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.composer.url), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.composer.tab.headers).click();
     await addDraftRow(
       page,
@@ -218,6 +245,9 @@ test('composer.collection.import appends product-exported requests with fresh id
 
     await getByAutomationId(page, AUTOMATION_IDS.composer.newFolder).click();
     await expect(renameFields).toHaveCount(1);
+    await screenshotStep('新建Collection目录并编辑名称 / Create a Collection folder and edit its name', {
+      highlights: [{ target: renameFields, label: '1' }],
+    });
     const originalFolderId = await automationSuffix(
       renameFields,
       AUTOMATION_ID_PREFIXES.composerCollectionFolderRename,
@@ -228,6 +258,9 @@ test('composer.collection.import appends product-exported requests with fresh id
       page,
       AutomationIdFactory.composerCollectionFolderTarget(originalFolderId),
     );
+    await screenshotStep('保存目录名称，尚未移入请求 / Save the folder name before moving a request into it', {
+      highlights: [{ target: originalFolderTarget, label: '1' }],
+    });
     await getByAutomationId(
       page,
       AutomationIdFactory.composerCollectionRequest(secondRequestId),
@@ -237,6 +270,9 @@ test('composer.collection.import appends product-exported requests with fresh id
       originalFolderTarget.locator('xpath=ancestor::section[1]'),
       AutomationIdFactory.composerCollectionRequest(secondRequestId),
     )).toHaveCount(1);
+    await screenshotStep('将第二条请求移入新目录 / Move the second request into the new folder', {
+      highlights: [{ target: getByAutomationId(page, AutomationIdFactory.composerCollectionRequest(secondRequestId)), label: '1' }],
+    });
     await page.waitForTimeout(COLLECTION_SAVE_DELAY_MS * 2);
     await screenshotStep('通过真实Composer UI创建两个带字段的请求和一层目录，并把第二个请求拖入目录。 / Create two requests with fields and one folder through the real Composer UI, then drag the second request into it.');
 
@@ -297,6 +333,9 @@ test('composer.collection.import appends product-exported requests with fresh id
       .click();
     await originalFolderTarget.click();
     await expect(originalFolderTarget).toHaveAttribute('aria-pressed', 'true');
+    await screenshotStep('导入前保留当前请求与目录落点 / Retain the active request and target folder before importing', {
+      highlights: [{ target: originalFolderTarget, label: '1' }],
+    });
     await chooseFile(page, mainProcessOwner, importCollection, IMPORT_IDS.busy, exportPath);
     await expect(getByPublicAutomationId(page, IMPORT_IDS.dialog)).toBeVisible();
     await expect(getByPublicAutomationId(page, IMPORT_IDS.fileName))
@@ -304,6 +343,12 @@ test('composer.collection.import appends product-exported requests with fresh id
     await expect(getByPublicAutomationId(page, IMPORT_IDS.requestCount)).toHaveText('2');
     await expect(getByPublicAutomationId(page, IMPORT_IDS.folderCount)).toHaveText('1');
     await expect(getByPublicAutomationId(page, IMPORT_IDS.skippedCount)).toHaveText('0');
+    await screenshotStep('检查导入预览，准备取消 / Inspect the import preview before cancelling', {
+      highlights: [
+        { target: getByPublicAutomationId(page, IMPORT_IDS.dialog), label: '1' },
+        { target: getByPublicAutomationId(page, IMPORT_IDS.cancel), label: '2' },
+      ],
+    });
     await getByPublicAutomationId(page, IMPORT_IDS.cancel).click();
     await expect(requestRows).toHaveCount(2);
     await expect(folderRows).toHaveCount(1);
@@ -315,6 +360,12 @@ test('composer.collection.import appends product-exported requests with fresh id
     // 确认Import后，节点与字段行ID全部重生成，内容与层级保留且当前文档/落点不变。
     // Confirm Import; regenerate every node and field-row ID while preserving content, hierarchy, active document, and target.
     await chooseFile(page, mainProcessOwner, importCollection, IMPORT_IDS.busy, exportPath);
+    await screenshotStep('重新打开同一文件，检查确认前的导入预览 / Reopen the same file and inspect the preview before confirming', {
+      highlights: [
+        { target: getByPublicAutomationId(page, IMPORT_IDS.dialog), label: '1' },
+        { target: getByPublicAutomationId(page, IMPORT_IDS.confirm), label: '2' },
+      ],
+    });
     await getByPublicAutomationId(page, IMPORT_IDS.confirm).click();
     await expect(getByPublicAutomationId(page, IMPORT_IDS.dialog)).toHaveCount(0);
     await expect(folderRows).toHaveCount(2);
@@ -326,6 +377,9 @@ test('composer.collection.import appends product-exported requests with fresh id
     expect(importedFolderId).toBeDefined();
     await expandFolder(page, importedFolderId!);
     await expect(requestRows).toHaveCount(4);
+    await screenshotStep('确认导入后展开追加的Collection / Expand the appended Collection after confirming import', {
+      highlights: [{ target: getByAutomationId(page, AutomationIdFactory.composerCollectionFolderTarget(importedFolderId!)), label: '1' }],
+    });
     const requestIdsAfterImport = await automationSuffixes(
       requestRows,
       AUTOMATION_ID_PREFIXES.composerCollectionRequest,
@@ -348,8 +402,17 @@ test('composer.collection.import appends product-exported requests with fresh id
     await importedFirstRow.click();
     await expect(getByAutomationId(page, AUTOMATION_IDS.composer.url))
       .toHaveValue('collection.e2e.invalid/first?existing=1');
+    await screenshotStep('打开导入的请求，检查保留的URL / Open an imported request and inspect its retained URL', {
+      highlights: [
+        { target: importedFirstRow, label: '1' },
+        { target: getByAutomationId(page, AUTOMATION_IDS.composer.url), label: '2' },
+      ],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.composer.tab.query).click();
     await expect.poll(() => countInputsWithValue(page, 'source')).toBe(1);
+    await screenshotStep('检查导入后保留的Query行 / Inspect the imported Query row', {
+      highlights: [{ target: page.locator('input[value="source"]').locator('..'), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.composer.tab.headers).click();
     await expect.poll(() => countInputsWithValue(page, 'x-collection-e2e')).toBe(1);
     await screenshotStep('确认Import后，节点与字段行ID全部重生成，内容与层级保留且当前文档/落点不变。 / Confirm Import; regenerate every node and field-row ID while preserving content, hierarchy, active document, and target.');
@@ -363,6 +426,9 @@ test('composer.collection.import appends product-exported requests with fresh id
     await expandFolder(page, importedFolderId!);
     expect(await automationSuffixes(requestRows, AUTOMATION_ID_PREFIXES.composerCollectionRequest))
       .toEqual(requestIdsAfterImport);
+    await screenshotStep('切回Composer后保留原集合与导入集合 / Retain both original and imported Collections after returning to Composer', {
+      highlights: [{ target: getByAutomationId(page, AutomationIdFactory.composerCollectionFolderTarget(importedFolderId!)), label: '1' }],
+    });
     const persistedExportPath = path.join(transferDirectory, 'collection-persisted.json');
     await chooseFile(
       page,

@@ -7,7 +7,9 @@ import type { TrafficScenarioResult } from '../../../../../playground/server/sce
 import {
   AUTOMATION_ID_PREFIXES,
   AUTOMATION_IDS,
+  AutomationIdFactory,
 } from '../../../../src/shared/automation-ids';
+import { CAPTURE_FACET_IDS } from '../../../../src/renderer/features/capture/constants';
 import {
   getByAutomationId,
   getByAutomationIdPrefix,
@@ -36,6 +38,14 @@ test('capture.playground-traffic sends Browser traffic into real Capture', async
     // 准备：通过产品UI开启真实Recording，再用系统Edge打开完整Playground进程。
     // Arrange: enable real Recording through product UI, then open the full Playground process in system Edge.
     await startRecording(desktopApp);
+    await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter).fill('/playground/h1-json');
+    // 截图准备：App只显示各自产场景，侧栏的全量facet通过正常UI折叠。
+    // Screenshot preparation: show each owned App scenario and collapse global sidebar facets through normal UI.
+    for (const facet of CAPTURE_FACET_IDS) {
+      const toggle = getByAutomationId(desktopApp.page, AutomationIdFactory.captureFacetToggle(facet));
+      if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    }
     browser = await chromium.launch({ channel: 'msedge' });
     const browserPage = await browser.newPage({ viewport: { width: 1600, height: 900 } });
     await browserPage.goto(playgroundServer.url);
@@ -72,6 +82,7 @@ test('capture.playground-traffic sends Browser traffic into real Capture', async
 
     // 用户操作：返回Playground选择WebSocket text场景并再次点击Run。
     // User action: return to Playground, select the WebSocket text scenario, and click Run again.
+    await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter).fill('/playground/ws/text');
     await browserPage.locator('[data-scenario-id="ws-text"]').click();
     await expect(browserPage.locator('[data-traffic-state]')).toHaveCount(0);
     await browserPage.locator('[data-playground-action="run"]').click();
@@ -112,6 +123,7 @@ test('capture.playground-traffic sends Browser traffic into real Capture', async
         const requestPath = `/playground/h2/error-goaway-${direction}`;
         const prefixSize = 256 * 1024;
         const expectedHash = createHash('sha256').update(Buffer.alloc(prefixSize, 0x61)).digest('hex');
+        await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter).fill(requestPath);
 
         // 用户操作：选择场景并Run，读取这次真实HTTP返回值，不直接调用Lab或产品API。
         // User action: select the scenario and Run, observing its real HTTP response without calling Lab or product APIs.
@@ -169,6 +181,9 @@ test('capture.playground-traffic sends Browser traffic into real Capture', async
         const headersBodyId = await responseHeaders.getAttribute('aria-controls');
         if (!headersBodyId) throw new Error('Response headers have no public content identity.');
         await expect(desktopApp.page.locator(`[id="${headersBodyId}"]`)).toContainText(String(prefixSize * 2));
+        await screenshotStep(`${scenarioId}在Headers核对声明的512KiB / Inspect the declared 512 KiB in Headers for ${scenarioId}`, {
+          highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.headers), label: '1' }],
+        });
         await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.response).click();
         await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyMode.default).click();
         await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyPane))
@@ -177,7 +192,9 @@ test('capture.playground-traffic sends Browser traffic into real Capture', async
         const recoveryRow = captureRows.filter({ hasText: `${requestPath}/recovered` });
         await expect(recoveryRow).toHaveCount(1);
         for (const value of ['h2', 'GET', '200']) await expect(recoveryRow).toContainText(value);
-        await screenshotStep('业务断言：原Capture行在收尾后保留200与256 KiB，实际Headers和正文可读，恢复请求另有一行。 / Product assertions: keep the original 200/256 KiB Capture row with readable headers/body and a separate recovery row.');
+        await screenshotStep(`${scenarioId}查看原POST实际捕获的256KiB部分正文 / Inspect the original POST's captured 256 KiB partial body for ${scenarioId}`, {
+          highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyMode.default), label: '1' }],
+        });
 
         // 证据：保存可人工核对的Browser与产品截图，以及原始协议结果。
         // Evidence: save the Browser/product screenshots and raw protocol result for manual comparison.

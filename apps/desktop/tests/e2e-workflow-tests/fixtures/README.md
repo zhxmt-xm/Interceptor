@@ -30,6 +30,7 @@ profile保留策略，完整成功后删除测试profile。准备通过不等于
 - `stepScreenshots`是默认关闭的测试option。`step-screenshots.ts`跟随当前测试的真实App代际，在原流程检查点保存PNG；自动fixture最先建立本次截图运行，最后在其他fixture、driver退出及宿主恢复结束后生成清单。driver只报告实际恢复结果，证据写入失败也进入原清理错误聚合，不得生成成功清单；不用图片代替业务断言。
 - macOS PNG由[window-screenshot.swift](ui/window-screenshot.swift)一次性捕获，先核对所属Main及窗口。原生文件面板在[file-dialog.ts](ui/file-dialog.ts)的共享操作边界取景，底层macOS窗口工具不依赖截图runtime；只在定位本次文件后拍Open/Save，取消则拍返回App的状态。锁屏、权限或取景失败显式失败，不录桌面、不启动视频。
 - 输出留在本次测试的`step-screenshots/`，不依赖Homepage，不提供专用导入或发布命令；采用图片前另行审查内容。普通模式仍保留原trace/final.png和正常退出门禁。
+- 可选高亮由`screenshot-highlights.ts`读取真实Locator边界，并在独立PNG上绘制红框与编号；App画面及原始PNG不变。目标不在当前窗口、未完整显示或捕获期间移动时明确失败，不使用猜测偏移；合成器仅在确有标注时加载。
 
 - Windows文件窗口点击使用UI Automation提供的物理坐标及`SetPhysicalCursorPos`，不混用逻辑坐标；不改变系统缩放、窗口归属/前台检查、真实键鼠或提交后的文件断言。
 - Recording助手同时处理fresh profile的readiness确认与已确认后的暂停/恢复：真实点击后等待Recording或确认按钮，只有确实显示readiness才确认；不等待不存在的弹窗，不调用Preload代替用户操作。

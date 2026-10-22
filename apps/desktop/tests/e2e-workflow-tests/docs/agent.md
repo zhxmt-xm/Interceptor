@@ -4,15 +4,19 @@
 
 Agent只使用原workflow与已有可控模型lab；截图模式不增加第二套模型操作或商业凭据。
 
-- `model-configuration`继续验证Test/Save、编辑后重新验证、默认配置、脱敏凭据与最后模型移除。
+- `model-configuration`继续验证Test/Save、编辑后重新验证、默认配置、脱敏凭据与最后模型移除。原步骤分别记录Custom入口、名称、Base URL、Model ID、上下文与输出上限、Test/Save前后、Set default、编辑与凭据保留/移除、重启、每次删除确认和剩余模型；凭据录入仍停用trace，截图不显示完整Key，不把已验证状态用于修改后的连接字段。
 
-- `restart-recovery.workflow.ts`在原Chat隔离/重启基础上核对全局默认与当前Chat模型独立、运行中删除取消真实HTTP、恢复后不重放和未配置面板。
+- `restart-recovery.workflow.ts`在原Chat隔离/重启基础上核对全局默认与当前Chat模型独立、运行中删除取消真实HTTP、恢复后不重放和未配置面板。使用Recording/Clear和上游模式两组自产对话，分别记录新Chat、输入、回复、Rename/Cancel、全局默认与当前模型选择、两个明确命名的会话、重启后的列表/历史、继续追问、取消/确认删除和运行中删除；取消必须保留所选Chat，所有截图仍来自真实UI。
 
-- `streaming-context`与`execution-modes`保留真实流式增量、Usage、Stop/Retry、Ask/Auto和当前Session边界。`traffic-control`补已允许Tool完成后Stop仅取消模型解释、不撤销业务结果，并先确认真实HTTP取消后再Retry。
+- `streaming-context`与`execution-modes`保留真实流式增量、Usage、Stop/Retry、Ask/Auto和当前Session边界。`streaming-context`分别记录发送、Context入口、悬停和从输入框Shift+Tab键盘聚焦后的同一用量面板、第二轮累计值、Stop前后、Retry及更新后的累计值；保留精确Token、真实HTTP取消和用户消息不重复的断言。`traffic-control`补已允许Tool完成后Stop仅取消模型解释、不撤销业务结果，并先确认真实HTTP取消后再Retry。
 
-- `settings-capabilities.workflow.ts`保留原独立开关与全部开启的重启验收，再验证全部change双列关闭、query精确保留、真实MCP拒绝及另一代App中的只读权限；不用单项关闭冒充整个入口只读。
+- `settings-capabilities.workflow.ts`保留原独立开关与全部开启的重启验收，再验证全部change双列关闭、query精确保留、真实MCP拒绝及另一代App中的只读权限；不用单项关闭冒充整个入口只读。截图覆盖搜索、Agent/MCP独立开关、重启后的关闭/恢复、Clear双列禁用、六个分组和保留的query；每次切换等待公开保存状态结束，清空搜索后继续原完整目录断言。
 
 - 各领域Tool仍在原`composer`、`diagnostics`、`rules`、`breakpoints`、`capture-discovery`等流程验证，不重复复制到教程脚本。模型内容与用量是本地测试输入，不是商业模型能力或计费证明。
+
+- `execution-modes`按当前Chat分别记录Ask/Auto、新会话默认、已挂起审批不随切换模式自动通过、Deny/Allow前后Recording、关闭Agent权限而保留MCP权限、`unknown_tool`拒绝及重启恢复。Capture用自产Keyword并收起无关分组，权限列表通过正式搜索定位；不改Tool输入、结果或业务状态断言。
+
+- `traffic-control`先在Recording/Stop/Retry步骤限定自产Keyword并收起展开的筛选分组，记录Allow、暂停已完成但解释仍在生成、Stop及Retry后的实际状态；进入原Clear/筛选统计前通过正式Clear search恢复空关键词和原分组展开状态，原完整镜像和计数断言不受截图隔离影响。
 
 命令、输出清单和显式导入边界见[套件说明](../README.md#trace-与证据)。已有公开PNG及历史验收记录保持原来源，新的运行不会自动替换它们；本节不把未经执行的平台或分支记为通过。
 

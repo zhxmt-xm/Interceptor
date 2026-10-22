@@ -158,6 +158,8 @@ gRPC 与 TLS 流量统一由 [Playground TrafficLab](../../../playground/server/
 - Playwright 通过 `getByAutomationId()` / `getByAutomationIdPrefix()` 定位；
 - Automation ID 必须落在实际接收 click/fill/press/drag 的 DOM 元素上；
 - Workflow保持应用当前语言，不自动切换；业务交互和断言不得依赖任一语言的显示文本、翻译后`aria-label`或CSS class，只使用automation ID、协议值、DOM状态属性与测试自产数据。翻译文本只在独立i18n workflow验证。
+- 需要指定新进程的初始语言环境时，显式设置`INTERCEPTOR_E2E_LOCALE`，例如`en-US`。配置使用标准Playwright `locale`与Electron [`--lang`](https://www.electronjs.org/docs/latest/api/command-line-switches#--lang)，不改系统或日常App的语言，不写localStorage/Store，也不在业务步骤中切换语言。不设置时保持原启动环境；同profile重启仍尊重用户已保存的语言选择。截图清单记录实际App语言，不能用启动参数替代语言核对。
+  - macOS同时通过进程启动的`-AppleLanguages`设置Cocoa原生控件的语言，值只在`NSArgumentDomain`生效，不使用`defaults write`或修改系统偏好。原生Save/Open仍由真实键鼠操作；实际截图必须另外核对，不能只看Renderer的`html.lang`判断原生窗口语言。
 
 动态行格式：
 
@@ -436,7 +438,9 @@ npm run test:e2e:workflow --workspace @interceptor/desktop -- \
 `run.mjs`通过上述npm script运行，消费`--screenshots`并在需要时补充独立输出目录，其余参数交给原Playwright配置；使用npm提供的CLI路径逐参数启动Node，不交给Windows shell解释正则或含空格路径。默认先执行已有prepare；macOS设置`INTERCEPTOR_E2E_MACOS_APP_PATH`时使用该签名App并跳过prepare。直接运行Playwright时可设置测试环境变量`INTERCEPTOR_E2E_STEP_SCREENSHOTS=1`并自行指定输出目录；它只配置测试fixture，不进入产品。
 
 - workflow在已完成的操作/断言块后调用`screenshotStep('中文 / English')`。一项可包含同一目的下的多次输入；不是拦截每次click，也不会给任意`test.step()`自动取景。新的用户步骤应在原workflow中明确标记，不新增教程副本。
+- 需要教学标注时传入`{ highlights: [{ target: locator, label: '1' }] }`。控件必须属于本次App且完整可见，编号为唯一正整数；工具在原图捕获前后核对真实矩形与`IntersectionObserver`的完整交集，滚动祖先裁切不能仅因矩形仍在App视口内就算可见。比例必须为`1`，不使用容差；需要空间时通过正常折叠或滚动露出控件。按实际PNG与窗口尺寸换算，不向App注入样式。输出保留`step-001.png`，另生成`step-001.annotated.png`及原图/标注图独立摘要和像素坐标。普通模式不加载合成器；原生窗口当前只输出原图，不将Renderer坐标用于原生控件。
 - 每个测试输出`step-screenshots/step-001.png`等原始PNG和`manifest.json`；清单记录相对workflow、标题、App版本、平台、实际语言/主题、窗口种类、尺寸、字节数和SHA-256。它只在原App清理及宿主guard结束后落盘；失败或恢复未通过不能标为`passed`。
+- 可选截图的实际耗时单独记入`screenshotOverheadMs`，不占用原workflow的业务总时限；每次取景最多150秒（含首次120秒原生截图器编译），结束后仅按实际经过时间补回业务预算。Locator、网络、原生操作及退出的原有超时不变，截图失败仍使原流程失败，普通模式不调整预算。
 - macOS 14+首次使用时以现有Xcode工具链编译`fixtures/ui/window-screenshot.swift`，由`SCScreenshotManager`一次性捕获所属窗口，不启动持续录屏或FFmpeg。每次核对Main PID/代际、唯一窗口及解锁状态，不回退为整屏或其他App。
 - 原生Save/Open在真实文件路径已定位后单独截图；取消的截图记录回到App后的状态，不取景尚未定位的个人目录。普通模式仍走相同的原生确认/取消操作。
 - Windows普通App步骤使用真实Renderer截图，不宣称包含原生边框；原生文件面板的截图模式尚不支持，明确报错。Windows正常无截图workflow保持原入口，完整实机复验仍按Windows矩阵跟踪。

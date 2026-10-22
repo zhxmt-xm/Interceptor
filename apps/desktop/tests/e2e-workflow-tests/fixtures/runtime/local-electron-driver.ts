@@ -208,7 +208,11 @@ export class LocalElectronApplicationDriver {
 
     try {
       application = await electron.launch({
-        args: [desktopDirectory, `--user-data-dir=${userDataDirectory}`],
+        args: [
+          desktopDirectory,
+          `--user-data-dir=${userDataDirectory}`,
+          ...(testInfo.project.use.locale ? [`--lang=${testInfo.project.use.locale}`] : []),
+        ],
         cwd: desktopDirectory,
         env: this.createLaunchEnvironment(),
         artifactsDir: testInfo.outputDir,
@@ -290,6 +294,11 @@ export class LocalElectronApplicationDriver {
     const child = spawn(executablePath, [
       ...(applicationPath ? [] : [desktopDirectory]),
       '--remote-debugging-port=0', `--user-data-dir=${userDataDirectory}`,
+      ...(testInfo.project.use.locale ? [
+        `--lang=${testInfo.project.use.locale}`,
+        '-AppleLanguages', `(${JSON.stringify(testInfo.project.use.locale)})`,
+        '-AppleLocale', testInfo.project.use.locale.replaceAll('-', '_'),
+      ] : []),
     ], { cwd: applicationPath ?? desktopDirectory, env: this.createLaunchEnvironment(), stdio: ['ignore', outputFile.fd, outputFile.fd] });
     let output = '';
     let browser: Browser | null = null;
@@ -1210,12 +1219,14 @@ events.keyCode(12, { using: ["command down"] });
     );
   }
 
-  /** Remove undefined process variables because Electron launch requires string values. */
+  /** Keep fixture locale configuration out of the App environment and omit undefined values. */
   private static createLaunchEnvironment(): Record<string, string> {
     return Object.fromEntries(
       Object.entries(process.env).filter(
         (entry): entry is [string, string] =>
-          entry[0] !== E2E_DESKTOP_DIRECTORY_ENV && entry[1] !== undefined,
+          entry[0] !== E2E_DESKTOP_DIRECTORY_ENV
+          && entry[0] !== 'INTERCEPTOR_E2E_LOCALE'
+          && entry[1] !== undefined,
       ),
     );
   }

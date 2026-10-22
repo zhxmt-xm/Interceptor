@@ -29,8 +29,14 @@ test('breakpoints.queue-stepping advances from the latest HTTP snapshot without 
 
   // Arrange: create one POST-only breakpoint and one ordinary GET row used to verify focus ownership.
   // 准备：创建只匹配POST的断点规则，并生成一条普通GET行用于验证焦点归属。
+  await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill('/e2e/queue-stepping');
+  const facetToggles = page.locator('[data-automation-id^="capture.filter.toggle."]');
+  for (let index = 0; index < await facetToggles.count(); index += 1) {
+    const toggle = facetToggles.nth(index);
+    if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+  }
   await startRecording(desktopApp);
-  await createRequestBreakpointRule(page, 'E2E queue stepping', 'POST');
+  await createRequestBreakpointRule(page, 'E2E queue stepping', 'POST', '/e2e/queue-stepping');
   const ordinaryPath = '/e2e/queue-stepping-ordinary';
   await expect(loopbackLab.requestThroughProxy(
     desktopApp.capturePort(),
@@ -131,8 +137,12 @@ test('breakpoints.queue-stepping advances from the latest HTTP snapshot without 
   await expect(rowB).not.toHaveAttribute('data-breakpoint-id');
   await expect(rowC).toHaveAttribute('data-queue-position', '2');
 
-  await rowA.click();
+  if (await rowA.getAttribute('aria-pressed') !== 'true') await rowA.click();
+  await expect(rowA).toHaveAttribute('aria-pressed', 'true');
   await expect(continueUnmodified).toBeVisible();
+  await screenshotStep('原样放行当前HTTP队首 / Continue the current HTTP head without edits', {
+    highlights: [{ target: continueUnmodified, label: '1' }],
+  });
   await continueUnmodified.click();
   await expect(outcomeA).resolves.toMatchObject({ result: { statusCode: 200 } });
   await expect(rowC).toHaveAttribute('data-breakpoint-state', 'head');

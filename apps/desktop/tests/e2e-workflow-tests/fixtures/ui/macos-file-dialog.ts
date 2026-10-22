@@ -62,7 +62,7 @@ export async function prepareMacosFileDialogPath(
     message: 'The macOS Go to Folder path was not entered completely',
   }).toBe(navigationPath);
   // Return can crash the native panel's Chinese input-method context while GoTo closes.
-  await sendMacosFileDialogKeys(owner, `
+  const navigationClick = await sendMacosFileDialogKeys(owner, `
 if (identifier(target) !== "GoToWindow") throw new Error("The owned Go to Folder sheet is unavailable");
 const requestedName = ${JSON.stringify(path.basename(navigationPath))};
 const matches = target.scrollAreas().flatMap(area => area.tables())
@@ -73,8 +73,20 @@ const matches = target.scrollAreas().flatMap(area => area.tables())
   .filter(label => label.value() === requestedName);
 if (matches.length !== 1) throw new Error("The macOS Go to Folder suggestion is not unique: " + matches.length);
 const position = matches[0].position(), size = matches[0].size();
+const diagnostic = {
+  requested: [position[0] + size[0] / 2, position[1] + size[1] / 2],
+  panelPosition: target.position(), panelSize: target.size(),
+  buttons: target.buttons().map(button => ({
+    id: identifier(button), title: button.name(), enabled: button.enabled(),
+    position: button.position(), size: button.size()
+  }))
+};
 clickAt([position[0] + size[0] / 2, position[1] + size[1] / 2], 2);
+const cursor = $.CGEventGetLocation($.CGEventCreate(null));
+diagnostic.cursor = [cursor.x, cursor.y];
+JSON.stringify(diagnostic);
 `);
+  console.info(`Native Go to Folder click: ${navigationClick}`);
   await expect.poll(async () => {
     const state = await readMacosFileDialog(owner);
     return state.visible && !state.goToVisible;
@@ -113,10 +125,10 @@ export async function cancelMacosFileDialog(owner: WorkflowProcessIdentity): Pro
     message: 'The workflow-owned macOS file dialog did not appear', timeout: 15_000,
   }).toBe(true);
   if ((await readMacosFileDialog(owner)).goToVisible) {
-    await sendMacosFileDialogKeys(owner, 'clickNativeButton("CloseButton");');
+    await sendMacosFileDialogKeys(owner, 'pressKey(53);');
     await expect.poll(async () => (await readMacosFileDialog(owner)).goToVisible).toBe(false);
   }
-  await sendMacosFileDialogKeys(owner, 'clickNativeButton("CancelButton");');
+  await sendMacosFileDialogKeys(owner, 'pressKey(53);');
   await expect.poll(async () => (await readMacosFileDialog(owner)).visible).toBe(false);
 }
 
@@ -160,8 +172,12 @@ export async function showMacosFileDialogList(owner: WorkflowProcessIdentity): P
 async function readMacosFileDialog(owner: WorkflowProcessIdentity): Promise<MacosFileDialogState> {
   const result = await runMacosDialogScript(owner, `
 function attribute(element, name) {
-  const matches = element.attributes.whose({ name: name })();
-  return matches.length > 0 ? matches[0].value() : null;
+  try {
+    const matches = element.attributes.whose({ name: name })();
+    return matches.length > 0 ? matches[0].value() : null;
+  } catch (error) {
+    throw new Error("Native file dialog could not read " + name + ": " + error.message);
+  }
 }
 const panels = ownedApp.windows().flatMap(window => [window, ...window.sheets()])
   .filter(panel => ["save-panel", "open-panel"].includes(attribute(panel, "AXIdentifier")));
@@ -185,8 +201,8 @@ if (!panel) {
   return JSON.parse(result) as MacosFileDialogState;
 }
 
-async function sendMacosFileDialogKeys(owner: WorkflowProcessIdentity, script: string): Promise<void> {
-  await runMacosDialogScript(owner, `
+async function sendMacosFileDialogKeys(owner: WorkflowProcessIdentity, script: string): Promise<string> {
+  return runMacosDialogScript(owner, `
 function identifier(element) {
   const values = element.attributes.whose({ name: "AXIdentifier" })();
   return values.length ? values[0].value() : null;
@@ -197,10 +213,15 @@ if (panels.length !== 1) throw new Error("Expected one owned file dialog, found 
   JSON.stringify(panels.map(panel => ({ identifier: identifier(panel), role: panel.role(),
     position: panel.position(), size: panel.size() }))));
 const target = panels[0].sheets().find(sheet => identifier(sheet) === "GoToWindow") ?? panels[0];
+ObjC.import("AppKit");
+const runningApp = $.NSRunningApplication.runningApplicationWithProcessIdentifier(${owner.processId});
+if (!runningApp || !runningApp.activateWithOptions($.NSApplicationActivateIgnoringOtherApps)) {
+  throw new Error("The owned native file dialog App could not be activated");
+}
 ownedApp.frontmost = true;
 const raise = target.actions.whose({ name: "AXRaise" })();
 if (raise.length === 1) raise[0].perform();
-delay(0.2);
+for (let attempt = 0; attempt < 30 && !ownedApp.frontmost(); attempt++) delay(0.1);
 if (!ownedApp.frontmost()) throw new Error("The owned file dialog did not become foreground");
 ObjC.import("CoreGraphics");
 function pressKey(code, flags = 0) {
@@ -213,13 +234,17 @@ function pressKey(code, flags = 0) {
 }
 function clickAt(coordinates, clicks = 1) {
   const point = $.CGPointMake(coordinates[0], coordinates[1]);
+  const move = $.CGEventCreateMouseEvent(null, $.kCGEventMouseMoved, point, $.kCGMouseButtonLeft);
+  $.CGEventSetFlags(move, 0);
+  $.CGEventPost($.kCGHIDEventTap, move);
+  delay(0.1);
   for (let click = 1; click <= clicks; click += 1) {
     for (const type of [$.kCGEventLeftMouseDown, $.kCGEventLeftMouseUp]) {
       const event = $.CGEventCreateMouseEvent(null, type, point, $.kCGMouseButtonLeft);
       $.CGEventSetFlags(event, 0);
       $.CGEventSetIntegerValueField(event, $.kCGMouseEventClickState, click);
       $.CGEventPost($.kCGHIDEventTap, event);
-      delay(0.05);
+      delay(0.02);
     }
   }
 }
@@ -260,8 +285,17 @@ ${script}
 async function activateMacosFileDialogOwner(owner: WorkflowProcessIdentity): Promise<void> {
   await MacosWorkflowHostSafetyOperations.assertDesktopUnlocked();
   await runMacosDialogScript(owner, `
+ObjC.import("AppKit");
+const runningApp = $.NSRunningApplication.runningApplicationWithProcessIdentifier(${owner.processId});
+if (!runningApp || !runningApp.activateWithOptions($.NSApplicationActivateIgnoringOtherApps)) {
+  throw new Error("The owned native file dialog App could not be activated");
+}
 ownedApp.frontmost = true;
-delay(0.2);
-if (!ownedApp.frontmost()) throw new Error("The native file dialog owner did not become foreground");
 `);
+  await expect.poll(async () => JSON.parse(
+    await runMacosDialogScript(owner, 'JSON.stringify(ownedApp.frontmost());'),
+  ), {
+    message: 'The native file dialog owner did not become foreground',
+    timeout: 15_000,
+  }).toBe(true);
 }

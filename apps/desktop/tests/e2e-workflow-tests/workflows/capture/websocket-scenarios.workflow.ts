@@ -3,6 +3,7 @@ import { once } from 'node:events';
 import { writeFile } from 'node:fs/promises';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
+import { CAPTURE_FACET_IDS } from '../../../../src/renderer/features/capture/constants';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
@@ -26,8 +27,16 @@ test('capture.scenarios.websocket captures directional text binary and controlle
   // 准备：通过产品UI录制，现有客户端与origin经真实代理建立各场景WebSocket。
   // Arrange: start Recording through UI; existing clients and origins establish each WebSocket through the real proxy.
   await startRecording(desktopApp);
+  // 截图准备：消息检查不需要展开全量facet，每个连接仍筛选自己的原路径。
+  // Screenshot preparation: message inspection does not need expanded global facets; filter each connection by its original path.
+  for (const facet of CAPTURE_FACET_IDS) {
+    const toggle = getByAutomationId(page, AutomationIdFactory.captureFacetToggle(facet));
+    if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  }
   await test.step('websocket-compact-json-tree', async () => {
     const requestPath = '/e2e/websocket/compact-json-tree';
+    await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(requestPath);
     const payload = JSON.stringify({ buildId: 8431, state: 'running', branch: 'main' });
     const client = await trafficLab.webSocketTrafficRunner.openThroughProxy(desktopApp.capturePort(), requestPath);
     try {
@@ -70,6 +79,9 @@ test('capture.scenarios.websocket captures directional text binary and controlle
       await codePane.screenshot({ path: testInfo.outputPath('websocket-compact-code-height.png') });
       expect(compactLayout).toMatchObject({ lineCount: 5, lineHeight: 20, fontSize: '12px' });
       expect(compactLayout.hostHeight).toBeCloseTo(compactLayout.contentHeight + compactLayout.borderHeight, 1);
+      await screenshotStep('WebSocket JSON消息的默认Pretty / Inspect the default Pretty view of the WebSocket JSON message', {
+        highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyMode.default), label: '1' }],
+      });
       const treeMode = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyMode.tree);
       await treeMode.click();
       await expect(treeMode).toHaveAttribute('aria-checked', 'true');
@@ -90,7 +102,9 @@ test('capture.scenarios.websocket captures directional text binary and controlle
         await bodyView.screenshot({ path: testInfo.outputPath(`websocket-tree-${state}.png`) });
         return layout;
       };
-      await screenshotStep('用户操作：通过自产连接和公开控件打开JSON消息的Tree，不注入正文或Store。 / User actions: open Tree through this captured connection and public controls without injecting body or Store state.');
+      await screenshotStep('WebSocket JSON消息选择Tree / Select Tree for the WebSocket JSON message', {
+        highlights: [{ target: treeMode, label: '1' }],
+      });
 
       // 业务断言与证据：先记录实际可见高度，再核对展开/折叠及原文复制，空白面板不能算通过。
       // Assertions and evidence: save the real visible height before checking expansion and raw Copy; an empty pane cannot pass.
@@ -108,10 +122,15 @@ test('capture.scenarios.websocket captures directional text binary and controlle
       expect(collapsed.rowsHeight).toBe(22);
       expect(collapsed.visibleRowsHeight).toBeGreaterThanOrEqual(collapsed.rowsHeight - 1);
       expect(collapsed.paneHeight).toBeLessThan(expanded.paneHeight);
+      await screenshotStep('折叠WebSocket消息的JSON根节点 / Collapse the JSON root in the WebSocket message', {
+        highlights: [{ target: disclosure, label: '1' }],
+      });
       await disclosure.click();
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy).click();
       await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(payload);
-      await screenshotStep('业务断言与证据：先记录实际可见高度，再核对展开/折叠及原文复制，空白面板不能算通过。 / Assertions and evidence: save the real visible height before checking expansion and raw Copy; an empty pane cannot pass.');
+      await screenshotStep('重新展开JSON根节点并复制原文 / Reopen the JSON root and copy the source', {
+        highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy), label: '1' }],
+      });
 
       // 全屏与清理：同一Tree仍有MIME/Save与Header Copy，关闭后保留Tree及展开内容。
       // Fullscreen and cleanup: the same Tree keeps MIME/Save and header Copy, then returns to the expanded inline Tree.
@@ -126,11 +145,17 @@ test('capture.scenarios.websocket captures directional text binary and controlle
       await headerButtons.first().click();
       await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(payload);
       await dialog.screenshot({ path: testInfo.outputPath('websocket-tree-fullscreen.png') });
+      await screenshotStep('WebSocket Tree全屏并复制同一消息 / Open WebSocket Tree fullscreen and copy the same message', {
+        highlights: [{ target: headerButtons.first(), label: '1' }],
+      });
       await headerButtons.nth(1).click();
       await expect(dialog).toHaveCount(0);
       await expect(treeMode).toHaveAttribute('aria-checked', 'true');
       const restored = await saveTreeLayout('restored');
       expect(restored.visibleRowsHeight).toBeGreaterThanOrEqual(restored.rowsHeight - 1);
+      await screenshotStep('关闭全屏后保留WebSocket Tree / Retain WebSocket Tree after closing fullscreen', {
+        highlights: [{ target: treeMode, label: '1' }],
+      });
       await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.directionAll).click();
       await expect(frames).toHaveCount(2);
       evidence.push({ scenarioId: 'websocket-compact-json-tree', exchangeId, sent: 1, received: 1 });
@@ -144,6 +169,7 @@ test('capture.scenarios.websocket captures directional text binary and controlle
     await test.step(expected.id, async () => {
       const scenario = trafficLab.scenarios().find((candidate) => candidate.id === expected.id);
       if (!scenario || scenario.defaultDraft.kind !== 'websocket') throw new Error(`Missing WebSocket scenario: ${expected.id}`);
+      await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(scenario.defaultDraft.path);
       const previousCloses = trafficLab.webSocketTrafficRunner.evidence().closeCodes.length;
       const result = await trafficLab.run(scenario.id, scenario.defaultDraft, desktopApp.capturePort());
       expect(result).toMatchObject({ state: 'complete', protocol: 'websocket', response: { statusCode: 101 } });
@@ -166,7 +192,13 @@ test('capture.scenarios.websocket captures directional text binary and controlle
       const framePrefix = `${AUTOMATION_ID_PREFIXES.websocketFrame}${exchangeId}.`;
       const frames = getByAutomationIdPrefix(page, framePrefix);
       await row.click();
+      await screenshotStep(`${expected.id}选择WebSocket连接 / Select the ${expected.id} WebSocket connection`, {
+        highlights: [{ target: row, label: '1' }],
+      });
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.messages).click();
+      await screenshotStep(`${expected.id}打开Messages / Open Messages for ${expected.id}`, {
+        highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.messages), label: '1' }],
+      });
       for (const [directionId, payloads] of [
         [AUTOMATION_IDS.capture.websocket.directionSent, expected.sent],
         [AUTOMATION_IDS.capture.websocket.directionReceived, expected.received],
@@ -175,6 +207,9 @@ test('capture.scenarios.websocket captures directional text binary and controlle
         await direction.click();
         await expect(direction).toHaveAttribute('aria-checked', 'true');
         await expect(frames).toHaveCount(payloads.length);
+        await screenshotStep(`${expected.id}选择${directionId === AUTOMATION_IDS.capture.websocket.directionSent ? 'Sent' : 'Received'}方向 / Select the ${directionId === AUTOMATION_IDS.capture.websocket.directionSent ? 'Sent' : 'Received'} direction for ${expected.id}`, {
+          highlights: [{ target: direction, label: '1' }],
+        });
 
         // 业务断言：固定文本或Hex同时显示在消息行与真实Copy结果中，不能串方向或串连接。
         // Product assertions: fixed text or Hex matches both frame previews and actual Copy results without mixing directions or connections.
@@ -209,11 +244,19 @@ test('capture.scenarios.websocket captures directional text binary and controlle
             await testInfo.attach(`websocket-${directionId}-title`, { path: screenshotPath, contentType: 'image/png' });
           }
           await expect(payloadTitle).not.toContainText('capture.');
+          await screenshotStep(`${expected.id}展开当前方向的消息 / Expand a message in the selected ${expected.id} direction`, {
+            highlights: [{ target: payloadTitle, label: '1' }],
+          });
           await payloadCopy.click();
           await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(payload);
+          await screenshotStep(`${expected.id}复制选中消息 / Copy the selected ${expected.id} message`, {
+            highlights: [{ target: payloadCopy, label: '1' }],
+          });
           await frame.click();
         }
-        await screenshotStep('业务断言：固定文本或Hex同时显示在消息行与真实Copy结果中，不能串方向或串连接。 / Product assertions: fixed text or Hex matches both frame previews and actual Copy results without mixing directions or connections.');
+        await screenshotStep(`${expected.id}核对当前方向的消息列表 / Review the message list for the selected ${expected.id} direction`, {
+          highlights: [{ target: direction, label: '1' }],
+        });
       }
       await getByAutomationId(page, AUTOMATION_IDS.capture.websocket.directionAll).click();
       await expect(frames).toHaveCount(expected.sent.length + expected.received.length);
@@ -238,8 +281,10 @@ test('capture.scenarios.websocket captures directional text binary and controlle
         expect(presentation.color).not.toBe('rgb(0, 0, 0)');
       }
       evidence.push({ scenarioId: expected.id, exchangeId, sent: expected.sent.length, received: expected.received.length });
+      await screenshotStep(`${expected.id}选择All查看消息结果 / Select All to inspect the ${expected.id} message results`, {
+        highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.websocket.directionAll), label: '1' }],
+      });
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
-      await screenshotStep('产品操作：选择本轮101行，通过公开Messages与方向筛选查看真实捕获的数据消息。 / Product actions: select this 101 row and use public Messages and direction controls to inspect captured data messages.');
     });
   }
 
@@ -247,6 +292,7 @@ test('capture.scenarios.websocket captures directional text binary and controlle
   // Preview boundary: a real message crosses 2 MiB; forwarding retains every byte while row previews and both Copy actions keep complete characters.
   await test.step('websocket-utf8-preview-boundary', async () => {
     const requestPath = '/e2e/websocket/utf8-preview-boundary';
+    await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(requestPath);
     const visibleText = 'w'.repeat(2 * 1024 * 1024 - 3);
     const payload = `${visibleText}\ud83d\ude42after-preview`;
     const client = await trafficLab.webSocketTrafficRunner.openThroughProxy(desktopApp.capturePort(), requestPath);

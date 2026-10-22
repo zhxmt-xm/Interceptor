@@ -1,6 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 
-import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
+import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
+import { CAPTURE_FACET_IDS } from '../../../../src/renderer/features/capture/constants';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
@@ -25,6 +26,13 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
   // 准备：从真实录制UI开始，所有正文均由本轮客户端和origin经代理产生。
   // Arrange: begin with real Recording UI and produce every body through this client's proxied origin traffic.
   await startRecording(desktopApp);
+  // 截图准备：收起全量facet值，正文场景仍使用各自原路径筛选。
+  // Screenshot preparation: collapse full-recording facet values and retain each body's original path filter.
+  for (const facet of CAPTURE_FACET_IDS) {
+    const toggle = getByAutomationId(page, AutomationIdFactory.captureFacetToggle(facet));
+    if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  }
   for (const response of RESPONSES) {
     await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(response.path);
     httpTrafficRunner.respondWith(response.path, { body: response.body,
@@ -38,6 +46,9 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
     await row.click();
     const inspectorHead = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).locator('..');
     await expect(inspectorHead).toContainText(`127.0.0.1${response.path}`);
+    await screenshotStep(`选择自产POST ${response.path} / Select the captured POST ${response.path}`, {
+      highlights: [{ target: row, label: '1' }],
+    });
     await inspectorHead.hover();
     const inspectorButtons = inspectorHead.getByRole('button');
     await expect(inspectorButtons).toHaveCount(2);
@@ -99,6 +110,9 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
     expect(COPY_HEADER_VALUE.endsWith(headerLayout.lineText!)).toBe(true);
     await headerCopy.click();
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(COPY_HEADER_VALUE);
+    await screenshotStep(`查看并复制${format}响应Header / Inspect and copy the ${format} response header`, {
+      highlights: [{ target: headerCopy, label: '1' }],
+    });
     const generalContentId = await getByAutomationId(
       page,
       AUTOMATION_IDS.capture.inspector.section.general,
@@ -172,12 +186,21 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
             queryTypography.fontSize * queryTypography.tokenLineHeight,
             2,
           );
+          await screenshotStep('查看当前POST的空Query Parameters / Inspect the current POST with no query parameters', {
+            highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.section.queryParameters), label: '1' }],
+          });
         }
+        await screenshotStep(`打开${expected.side}正文 / Open the ${expected.side} body`, {
+          highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab[expected.side]), label: '1' }],
+        });
         const rawMode = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyMode.raw);
         await rawMode.click();
         await expect(rawMode).toHaveAttribute('aria-checked', 'true');
         const bodyPane = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane);
         await expect(bodyPane).toContainText(expected.body);
+        await screenshotStep(`选择${expected.side} Raw正文 / Select Raw for the ${expected.side} body`, {
+          highlights: [{ target: rawMode, label: '1' }],
+        });
         await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.fullscreen).click();
         const dialog = page.getByRole('dialog');
         await expect(dialog).toHaveCount(1);
@@ -186,7 +209,9 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
         await expect(bodyPane).toHaveCount(1);
         await expect(dialog.locator(`[data-automation-id="${AUTOMATION_IDS.capture.inspector.bodyPane}"]`)).toContainText(expected.body);
         await expect(dialog.locator(`[data-automation-id="${AUTOMATION_IDS.capture.inspector.bodyAction.fullscreen}"]`)).toHaveCount(0);
-        await screenshotStep('用户操作：选定正文并切到Raw，再由正式Fullscreen按钮打开共享弹层。 / User actions: select the body in Raw mode, then open the shared dialog through the real Fullscreen button.');
+        await screenshotStep(`打开${expected.side}正文全屏 / Open the ${expected.side} body fullscreen`, {
+          highlights: [{ target: rawMode, label: '1' }],
+        });
 
         // 内容断言：弹层Header仅保留Copy与Close，复制原文，关闭后仍保持Raw且正文不变。
         // Content assertions: the dialog header keeps Copy and Close, copies the original body, and preserves Raw content on closing.
@@ -198,6 +223,9 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
           const bounds = await dialog.boundingBox();
           return bounds ? { width: Math.round(bounds.width), height: Math.round(bounds.height) } : null;
         }).toEqual({ width: 1060, height: 660 });
+        await screenshotStep(`在全屏复制${expected.side}原文 / Copy the original ${expected.side} body from fullscreen`, {
+          highlights: [{ target: headerButtons.nth(0), label: '1' }],
+        });
         const screenshotPath = testInfo.outputPath(`fullscreen-${expected.side}-${response.mediaType === 'text/html' ? 'html' : 'json'}.png`);
         await dialog.screenshot({ path: screenshotPath });
         await testInfo.attach(`fullscreen-${expected.side}-${response.mediaType}`, { path: screenshotPath, contentType: 'image/png' });
@@ -206,7 +234,9 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
         await expect(rawMode).toHaveAttribute('aria-checked', 'true');
         await expect(bodyPane).toHaveCount(1);
         await expect(bodyPane).toContainText(expected.body);
-        await screenshotStep('内容断言：弹层Header仅保留Copy与Close，复制原文，关闭后仍保持Raw且正文不变。 / Content assertions: the dialog header keeps Copy and Close, copies the original body, and preserves Raw content on closing.');
+        await screenshotStep(`Close返回${expected.side}详情并保留Raw / Close fullscreen and retain Raw in ${expected.side} details`, {
+          highlights: [{ target: rawMode, label: '1' }],
+        });
 
         // 模式与生命周期：再次打开切到Hex，用Escape关闭后保留Hex，再回Raw复制同一份正文。
         // Mode and lifecycle: reopen in Hex, preserve Hex after Escape, then return to Raw and copy the same captured body.
@@ -215,14 +245,22 @@ test('capture.body.fullscreen keeps captured content and mode through open copy 
         const hexMode = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyMode.hex);
         await hexMode.click();
         await expect(hexMode).toHaveAttribute('aria-checked', 'true');
+        await screenshotStep(`全屏切换${expected.side} Hex / Select Hex for the fullscreen ${expected.side} body`, {
+          highlights: [{ target: hexMode, label: '1' }],
+        });
         await page.keyboard.press('Escape');
         await expect(dialog).toHaveCount(0);
         await expect(hexMode).toHaveAttribute('aria-checked', 'true');
+        await screenshotStep(`Escape返回后保留${expected.side} Hex / Press Escape and retain Hex for the ${expected.side} body`, {
+          highlights: [{ target: hexMode, label: '1' }],
+        });
         await rawMode.click();
         await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy).click();
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(expected.body);
         evidence.push({ path: response.path, side: expected.side, bodyBytes: Buffer.byteLength(expected.body), copyVerified: true, urlCopyVerified: true, methodCopyVerified: true, modePreserved: true });
-        await screenshotStep('模式与生命周期：再次打开切到Hex，用Escape关闭后保留Hex，再回Raw复制同一份正文。 / Mode and lifecycle: reopen in Hex, preserve Hex after Escape, then return to Raw and copy the same captured body.');
+        await screenshotStep(`返回Raw并复制同一份${expected.side}正文 / Return to Raw and copy the same ${expected.side} body`, {
+          highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy), label: '1' }],
+        });
       });
     }
     await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();

@@ -151,6 +151,10 @@ test('settings.navigation keeps the active section across workspace navigation',
     page,
     AUTOMATION_IDS.shell.workspace.capture,
   )).toHaveAttribute('aria-current', 'page');
+  await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill('/e2e/workspace');
+  await screenshotStep('从侧栏进入Capture / Open Capture from the sidebar', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await expectCurrentSection(page, appContainersSection, sectionEvidence, 'after:capture');
   await screenshotStep('业务断言：从 App Containers 普通离开到 Capture 后返回，必须恢复离开前的 section。 / Business assertion: leaving App Containers for Capture and returning normally must restore the last section.');
@@ -169,6 +173,9 @@ test('settings.navigation keeps the active section across workspace navigation',
       'aria-current',
       'page',
     );
+    await screenshotStep(`从侧栏进入${workspaceId.split('.').at(-1)} / Open ${workspaceId.split('.').at(-1)} from the sidebar`, {
+      highlights: [{ target: getByAutomationId(page, workspaceId), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
     await expectCurrentSection(
       page,
@@ -197,6 +204,11 @@ test('settings.navigation keeps the active section across workspace navigation',
   try {
     for (const theme of themeNames) {
       await getByAutomationId(page, AUTOMATION_IDS.shell.theme.trigger).click();
+      if (theme === themeNames[0]) {
+        await screenshotStep('打开Theme菜单 / Open the Theme menu', {
+          highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.shell.theme.trigger), label: '1' }],
+        });
+      }
       await getByAutomationId(page, AUTOMATION_IDS.shell.theme[theme]).click();
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       await screenshotStep(`选择${theme}主题 / Select the ${theme} theme`);
@@ -224,6 +236,9 @@ test('settings.navigation keeps the active section across workspace navigation',
   }
   await expect.poll(() => page.evaluate(() => ({ width: innerWidth, height: innerHeight }))).toEqual(initialSize);
   await screenshotStep('恢复原窗口尺寸 / Restore the original window size');
+  await screenshotStep('定位窗口最小化按钮 / Locate the window minimize control', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.shell.window.minimize), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.shell.window.minimize).click();
   try {
     await expect.poll(() => desktopApp.windowState()).toMatchObject({ minimized: true });

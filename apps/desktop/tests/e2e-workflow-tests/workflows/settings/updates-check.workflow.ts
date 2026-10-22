@@ -33,6 +33,9 @@ async function verifyAnonymousUpdateCheck(
       const lastCheckedAt = await updateStatus.getAttribute('data-last-checked-at');
       const check = getByAutomationId(page, AUTOMATION_IDS.settings.updates.check);
       await expect(check).toBeEnabled();
+      await screenshotStep(`检查当前版本并手动Check now / Inspect the current version before Check now (${generation}, ${attempt + 1})`, {
+        highlights: [{ target: check, label: '1' }],
+      });
       await check.click();
       await expect.poll(() => updateStatus.getAttribute('data-last-checked-at'))
         .not.toBe(lastCheckedAt);

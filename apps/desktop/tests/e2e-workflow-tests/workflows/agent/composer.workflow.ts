@@ -219,6 +219,7 @@ test('agent.tools.composer sends direct HTTP and probes TLS with real cancellati
   await configureProvider(page, openAiCompatibleLab);
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
   await startRecording(desktopApp);
+  await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill('/e2e/agent/composer');
   await getByAutomationId(page, AUTOMATION_IDS.agent.panel.toggle).click();
   await getByAutomationId(page, AUTOMATION_IDS.agent.chat.new).click();
   const composerSessionId = await sessionRoot.getAttribute('data-session-id');
@@ -253,6 +254,9 @@ test('agent.tools.composer sends direct HTTP and probes TLS with real cancellati
   await sendMessage(page, prompts.deny);
   await expect(sessionRoot).toHaveAttribute('data-turn-status', 'waiting-for-tool-approval');
   await expect(approval('send-deny')).toContainText(deniedUrl);
+  await screenshotStep('检查Composer发送审批后选择拒绝 / Review the Composer send approval before denying', {
+    highlights: [{ target: getByAutomationId(page, AutomationIdFactory.agentToolDeny('send-deny')), label: '1' }],
+  });
   await getByAutomationId(page, AutomationIdFactory.agentToolDeny('send-deny')).click();
   await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
   expect(loopbackLab.observation(deniedPath)).toBeUndefined();
@@ -283,6 +287,9 @@ test('agent.tools.composer sends direct HTTP and probes TLS with real cancellati
   }, answers.allow);
   await sendMessage(page, prompts.allow);
   await expect(sessionRoot).toHaveAttribute('data-turn-status', 'waiting-for-tool-approval');
+  await screenshotStep('检查Composer目标与参数后允许发送 / Review the Composer target and parameters before allowing Send', {
+    highlights: [{ target: getByAutomationId(page, AutomationIdFactory.agentToolAllow('send-allow')), label: '1' }],
+  });
   await getByAutomationId(page, AutomationIdFactory.agentToolAllow('send-allow')).click();
   await expect(sessionRoot).toHaveAttribute('data-turn-status', 'completed');
   await expect.poll(() => loopbackLab.observation(allowedPath)?.method).toBe('POST');

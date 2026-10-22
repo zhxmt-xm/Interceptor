@@ -4,6 +4,7 @@ import type { ClientHttp2Session, Http2Session } from 'node:http2';
 import { PassThrough } from 'node:stream';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
+import { CAPTURE_FACET_IDS } from '../../../../src/renderer/features/capture/constants';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
@@ -37,6 +38,12 @@ test('capture.http2-origin-goaway drains a paused response before retiring its u
     // Arrange: reuse the shared CA and configure only this workflow's TLS exception and response breakpoint through UI.
     await prepareHttpsCapture(desktopApp);
     await startRecording(desktopApp);
+    await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill('/e2e/h2/origin-goaway/');
+    for (const facet of CAPTURE_FACET_IDS) {
+      const toggle = getByAutomationId(page, AutomationIdFactory.captureFacetToggle(facet));
+      if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    }
     ruleId = await createResponseBreakpointRule(page, 'Origin graceful close', requestPath);
     const scenario = trafficLab.scenarios().find((item) => item.id === 'h2-json');
     if (!scenario || scenario.defaultDraft.kind !== 'http') throw new Error('Missing H2 traffic draft.');
@@ -73,7 +80,10 @@ test('capture.http2-origin-goaway drains a paused response before retiring its u
     expect(originSessions).toHaveLength(1);
     expect(received.bytes).toBe(0);
     const rowId = await row.getAttribute('data-automation-id');
-    await screenshotStep('准备：复用共享CA，通过真实UI只配置本轮TLS例外与响应断点。 / Arrange: reuse the shared CA and configure only this workflow\'s TLS exception and response breakpoint through UI.');
+    await expect(getByAutomationId(page, AUTOMATION_IDS.settings.tlsCompatibility.hostList)).toBeHidden();
+    await screenshotStep('响应断点等待原样放行，客户端尚未收到正文 / The response breakpoint awaits Continue unmodified before the client receives its body', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.breakpoints.continueUnmodified), label: '1' }],
+    });
 
     // 用户操作：源站正常GOAWAY并发完正文后，真实点击原样放行。
     // User action: continue unmodified only after the origin gracefully closes and finishes its response.
@@ -105,7 +115,14 @@ test('capture.http2-origin-goaway drains a paused response before retiring its u
       if (await trailers.getAttribute('aria-expanded') === 'false') await trailers.click();
       const bodyId = await trailers.getAttribute('aria-controls');
       if (!bodyId) throw new Error('Missing response trailer body.');
-      await expect(page.locator(`[id="${bodyId}"]`)).toContainText(expectedHash);
+      const trailerBody = page.locator(`[id="${bodyId}"]`);
+      await expect(trailerBody).toContainText(expectedHash);
+      await trailerBody.scrollIntoViewIfNeeded();
+      await expect(trailers).toBeInViewport({ ratio: 1 });
+      await expect(trailerBody).toBeInViewport({ ratio: 1 });
+      await screenshotStep('正常GOAWAY后原样放行，完整响应trailer仍保留 / Continue after graceful GOAWAY and retain the complete response trailer', {
+        highlights: [{ target: trailers, label: '1' }],
+      });
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
       const next = await tlsTrafficRunner.runHttp2({
         ...scenario.defaultDraft, method: 'POST', path: nextPath, body: 'new-post',
@@ -114,8 +131,17 @@ test('capture.http2-origin-goaway drains a paused response before retiring its u
       expect(originSessions).toHaveLength(1);
       expect(nextSessions).toHaveLength(1);
       expect(nextSessions[0] === originSessions[0]).toBe(false);
-      await expect(getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
-        .filter({ hasText: nextPath })).toHaveCount(1);
+      const nextRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
+        .filter({ hasText: nextPath });
+      await expect(nextRow).toHaveCount(1);
+      await nextRow.click();
+      await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.response).click();
+      const raw = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyMode.raw);
+      await raw.click();
+      await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane)).toContainText(nextPath);
+      await screenshotStep('新上游连接的独立POST返回可读JSON / A separate POST on the new origin connection returns readable JSON', {
+        highlights: [{ target: raw, label: '1' }],
+      });
       await page.screenshot({ path: testInfo.outputPath('origin-goaway-complete.png') });
       await screenshotStep('业务断言：同一响应完整结束，保留正文、trailer及原Capture身份。 / Business assertions: finish the same response with complete bytes, trailers and its original Capture identity.');
     } finally {

@@ -10,6 +10,8 @@ Diagnostics只保留原`tools-queries-export.workflow.ts`，截图由同一流�
 
 - JSONL由产品导出并核对真实分类，最后回Composer重新发送成功请求。Composer网络失败可以作为正常命令结果返回，diagnostic success不等于HTTP成功。
 
+- 步骤图记录实际PAC错误与原路线、Diagnostics分类/选择/分栏/较早历史、导出入口和保存后状态；Agent记录请求、Recent/Trace结果、Deny/Allow、Save取消与导出任务，MCP记录独立审批和原生Save。原生保存位置由既有file-dialog在确认前记录，不能在未知个人目录截图。所有网络、过滤、文件内容、权限和退出断言保持原流程。
+
 - 不伪造取消/超时记录、不新增不存在的时间线展开控件，不把PNG代替原日志、文件及正常退出断言。
 
 命令、输出清单和显式导入边界见[套件说明](../README.md#trace-与证据)。已有公开PNG及历史验收记录保持原来源，新的运行不会自动替换它们；本节不把未经执行的平台或分支记为通过。

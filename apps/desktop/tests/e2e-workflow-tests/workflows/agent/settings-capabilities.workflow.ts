@@ -153,6 +153,8 @@ async function expectToolState(
     : AutomationIdFactory.agentToolMcpSwitch(toolName);
   await expect(getByAutomationId(page, automationId))
     .toHaveAttribute('aria-checked', enabled ? 'true' : 'false');
+  await expect(getByAutomationId(page, AUTOMATION_IDS.agent.tools.capabilities))
+    .toHaveAttribute('aria-busy', 'false');
 }
 
 /** Close one application generation and preserve its normal destroy evidence. */
@@ -219,33 +221,59 @@ test('agent.tools.settings-capabilities persists independent default-on switches
 
     // 用户操作：两列各关闭一项；同一行另一列和其他Tool不得联动。
     // User actions: disable one Tool in each column without changing its peer or other Tools.
+    const search = getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.tools.search);
+    await search.fill('capture_get_proxy_status');
+    await screenshotStep('搜索Tool并区分Agent与MCP两列 / Search for a Tool and distinguish Agent from MCP', {
+      highlights: [
+        { target: search, label: '1' },
+        { target: getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolAgentSwitch('capture_get_proxy_status')), label: '2' },
+        { target: getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolMcpSwitch('capture_get_proxy_status')), label: '3' },
+      ],
+    });
     await getByAutomationId(
       desktopApp.page,
       AutomationIdFactory.agentToolAgentSwitch('capture_get_proxy_status'),
     ).click();
     await expectToolState(desktopApp.page, 'capture_get_proxy_status', 'agent', false);
     await expectToolState(desktopApp.page, 'capture_get_proxy_status', 'mcp', true);
+    await screenshotStep('关闭Agent查询权限不会关闭MCP / Disabling Agent query access leaves MCP unchanged', {
+      highlights: [
+        { target: getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolAgentSwitch('capture_get_proxy_status')), label: '1' },
+        { target: getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolMcpSwitch('capture_get_proxy_status')), label: '2' },
+      ],
+    });
+    await search.fill('rules_replace_tree');
     await getByAutomationId(
       desktopApp.page,
       AutomationIdFactory.agentToolMcpSwitch('rules_replace_tree'),
     ).click();
     await expectToolState(desktopApp.page, 'rules_replace_tree', 'agent', true);
     await expectToolState(desktopApp.page, 'rules_replace_tree', 'mcp', false);
+    await screenshotStep('只关闭规则替换Tool的MCP权限 / Disable only MCP access to the rule-replacement Tool', {
+      highlights: [
+        { target: getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolAgentSwitch('rules_replace_tree')), label: '1' },
+        { target: getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolMcpSwitch('rules_replace_tree')), label: '2' },
+      ],
+    });
+    await search.fill('');
     await expectToolState(desktopApp.page, 'capture_get_exchange', 'agent', true);
     await expectToolState(desktopApp.page, 'capture_get_exchange', 'mcp', true);
     await screenshotStep('用户操作：两列各关闭一项；同一行另一列和其他Tool不得联动。 / User actions: disable one Tool in each column without changing its peer or other Tools.');
 
     // 用户操作：搜索只过滤可见行；清空与Settings往返后关闭状态仍由Main快照恢复。
     // User actions: search only filters rows; clearing it and returning to Settings retain Main state.
-    const search = getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.tools.search);
     await search.fill('diagnostics');
     await expect(getByAutomationId(
       desktopApp.page,
       AutomationIdFactory.agentToolRow('diagnostics_query'),
     )).toBeVisible();
     expect(await toolNames(desktopApp.page)).toEqual(['diagnostics_query', 'diagnostics_get_trace', 'diagnostics_get_recent', 'diagnostics_export']);
+    await screenshotStep('搜索只筛选Diagnostics行，不改变权限 / Search filters Diagnostics rows without changing access', {
+      highlights: [{ target: search, label: '1' }],
+    });
     await search.fill('');
     expect(await toolNames(desktopApp.page)).toEqual(evidence.toolNames);
+    await screenshotStep('清空搜索后逐组检查全部Tool / Clear search to inspect every Tool group');
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
     await openAgentSettings(desktopApp.page);
     await expectToolState(desktopApp.page, 'capture_get_proxy_status', 'agent', false);
@@ -271,14 +299,32 @@ test('agent.tools.settings-capabilities persists independent default-on switches
     await expectToolState(relaunchedApp.page, 'capture_get_proxy_status', 'agent', false);
     await expectToolState(relaunchedApp.page, 'rules_replace_tree', 'mcp', false);
     evidence.disabledRestored = true;
+    const restoredSearch = getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.tools.search);
+    await restoredSearch.fill('capture_get_proxy_status');
+    await screenshotStep('重启后Agent查询权限仍关闭 / Agent query access remains disabled after restart', {
+      highlights: [{ target: getByAutomationId(relaunchedApp.page, AutomationIdFactory.agentToolAgentSwitch('capture_get_proxy_status')), label: '1' }],
+    });
     await getByAutomationId(
       relaunchedApp.page,
       AutomationIdFactory.agentToolAgentSwitch('capture_get_proxy_status'),
     ).click();
+    await expectToolState(relaunchedApp.page, 'capture_get_proxy_status', 'agent', true);
+    await screenshotStep('明确恢复Agent查询权限 / Explicitly restore Agent query access', {
+      highlights: [{ target: getByAutomationId(relaunchedApp.page, AutomationIdFactory.agentToolAgentSwitch('capture_get_proxy_status')), label: '1' }],
+    });
+    await restoredSearch.fill('rules_replace_tree');
+    await screenshotStep('重启后MCP规则替换权限仍关闭 / MCP rule-replacement access remains disabled after restart', {
+      highlights: [{ target: getByAutomationId(relaunchedApp.page, AutomationIdFactory.agentToolMcpSwitch('rules_replace_tree')), label: '1' }],
+    });
     await getByAutomationId(
       relaunchedApp.page,
       AutomationIdFactory.agentToolMcpSwitch('rules_replace_tree'),
     ).click();
+    await expectToolState(relaunchedApp.page, 'rules_replace_tree', 'mcp', true);
+    await screenshotStep('明确恢复MCP规则替换权限 / Explicitly restore MCP rule-replacement access', {
+      highlights: [{ target: getByAutomationId(relaunchedApp.page, AutomationIdFactory.agentToolMcpSwitch('rules_replace_tree')), label: '1' }],
+    });
+    await restoredSearch.fill('');
     await expectToolState(relaunchedApp.page, 'capture_get_proxy_status', 'agent', true);
     await expectToolState(relaunchedApp.page, 'rules_replace_tree', 'mcp', true);
 
@@ -313,6 +359,7 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       })));
     const changes: string[] = [];
     const queries: string[] = [];
+    const readonlySearch = getByAutomationId(secondRelaunch.page, AUTOMATION_IDS.agent.tools.search);
     for (const item of kinds) {
       if (!item.name || !['query', 'change'].includes(item.kind ?? '')) {
         throw new Error('The capability row omitted its name or kind.');
@@ -320,10 +367,30 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       if (item.kind === 'query') queries.push(item.name);
       else {
         changes.push(item.name);
+        await readonlySearch.fill(item.name);
         await getByAutomationId(secondRelaunch.page, AutomationIdFactory.agentToolAgentSwitch(item.name)).click();
+        await expectToolState(secondRelaunch.page, item.name, 'agent', false);
+        if (item.name === 'capture_clear') {
+          await screenshotStep('只读配置先关闭Agent的Clear权限 / Disable Agent Clear access for read-only configuration', {
+            highlights: [
+              { target: getByAutomationId(secondRelaunch.page, AutomationIdFactory.agentToolAgentSwitch(item.name)), label: '1' },
+              { target: getByAutomationId(secondRelaunch.page, AutomationIdFactory.agentToolMcpSwitch(item.name)), label: '2' },
+            ],
+          });
+        }
         await getByAutomationId(secondRelaunch.page, AutomationIdFactory.agentToolMcpSwitch(item.name)).click();
+        await expectToolState(secondRelaunch.page, item.name, 'mcp', false);
+        if (item.name === 'capture_clear') {
+          await screenshotStep('再独立关闭MCP的Clear权限 / Disable MCP Clear access separately', {
+            highlights: [
+              { target: getByAutomationId(secondRelaunch.page, AutomationIdFactory.agentToolAgentSwitch(item.name)), label: '1' },
+              { target: getByAutomationId(secondRelaunch.page, AutomationIdFactory.agentToolMcpSwitch(item.name)), label: '2' },
+            ],
+          });
+        }
       }
     }
+    await readonlySearch.fill('');
     expect(changes.length).toBeGreaterThan(0);
     expect(queries.length).toBeGreaterThan(0);
     await getByAutomationId(secondRelaunch.page, AUTOMATION_IDS.mcp.server.enable).click();
@@ -357,6 +424,20 @@ test('agent.tools.settings-capabilities persists independent default-on switches
       }
     };
     await verifyReadOnly(secondRelaunch);
+    for (const group of TOOL_GROUP_IDS) {
+      await readonlySearch.fill(`${group}_`);
+      await screenshotStep(`检查${group}分组的只读权限 / Inspect read-only access in the ${group} group`, {
+        highlights: [{ target: readonlySearch, label: '1' }],
+      });
+    }
+    await readonlySearch.fill('capture_get_proxy_status');
+    await screenshotStep('全部change关闭后保留需要的query / Retain the required query after disabling all change Tools', {
+      highlights: [
+        { target: getByAutomationId(secondRelaunch.page, AutomationIdFactory.agentToolAgentSwitch('capture_get_proxy_status')), label: '1' },
+        { target: getByAutomationId(secondRelaunch.page, AutomationIdFactory.agentToolMcpSwitch('capture_get_proxy_status')), label: '2' },
+      ],
+    });
+    await readonlySearch.fill('');
     await screenshotStep('全部change关闭后只能发现query / Only query Tools remain discoverable after all change Tools are disabled');
     await closeGeneration(secondRelaunch, testInfo);
     activeApp = null;
@@ -368,6 +449,13 @@ test('agent.tools.settings-capabilities persists independent default-on switches
     await openAgentSettings(readonlyRelaunch.page);
     readonlyRelaunch.registerSensitiveTextForEvidenceAudit(configuration.token);
     await verifyReadOnly(readonlyRelaunch);
+    await getByAutomationId(readonlyRelaunch.page, AUTOMATION_IDS.agent.tools.search).fill('capture_clear');
+    await screenshotStep('重启后两列Clear权限仍关闭 / Clear access remains disabled in both columns after restart', {
+      highlights: [
+        { target: getByAutomationId(readonlyRelaunch.page, AutomationIdFactory.agentToolAgentSwitch('capture_clear')), label: '1' },
+        { target: getByAutomationId(readonlyRelaunch.page, AutomationIdFactory.agentToolMcpSwitch('capture_clear')), label: '2' },
+      ],
+    });
     await screenshotStep('重启后保留完整双列只读权限 / Retain the complete read-only configuration in both columns after restart');
     await getByAutomationId(readonlyRelaunch.page, AUTOMATION_IDS.mcp.server.enable).click();
     await expect(getByAutomationId(readonlyRelaunch.page, AUTOMATION_IDS.mcp.server.root)).toHaveAttribute('data-server-state', 'disabled');

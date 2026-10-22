@@ -65,6 +65,7 @@ test('agent.panel.navigation-persistence keeps the unconfigured side panel acros
   expect(viewport).toEqual({ width: 1600, height: 900 });
   const closedMainBox = await getByAutomationId(page, AUTOMATION_IDS.app.main).boundingBox();
   expect(closedMainBox).not.toBeNull();
+  await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill('/e2e/workspace');
   await screenshotStep('准备：fresh profile 已完成真实 App/Core/listener readiness，Agent 初始关闭且窗口为 1600×900。 / Arrange: a fresh profile passed real App/Core/listener readiness; Agent starts closed in a 1600×900 window.');
 
   // 用户操作：从 Header 显式打开 Agent，fresh profile 只能呈现诚实的未配置态。
@@ -77,6 +78,9 @@ test('agent.panel.navigation-persistence keeps the unconfigured side panel acros
     'capture:open',
   );
   await expect(getByAutomationId(page, AUTOMATION_IDS.agent.chat.new)).toBeDisabled();
+  await screenshotStep('打开Agent后查看配置入口 / Inspect the configuration entry in the open Agent panel', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.agent.configure), label: '1' }],
+  });
   await screenshotStep('用户操作：从 Header 显式打开 Agent，fresh profile 只能呈现诚实的未配置态。 / User action: explicitly open Agent from the Header; a fresh profile may only show the honest unconfigured state.');
 
   // 用户操作：唯一配置出口深链 Settings > Agent，导航不得关闭或替换 Panel。
@@ -106,6 +110,7 @@ test('agent.panel.navigation-persistence keeps the unconfigured side panel acros
     await expectOpenAgentPanel(page, workspaceId, geometryEvidence, `navigate:${workspaceId}`);
     await expect(getByAutomationId(page, AUTOMATION_IDS.agent.panel.root))
       .toHaveAttribute('data-agent-context', 'none');
+    await screenshotStep(`Agent保持打开时进入${workspaceId.split('.').at(-1)} / Open ${workspaceId.split('.').at(-1)} while keeping Agent open`);
   }
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await expect(getByAutomationId(
@@ -118,6 +123,7 @@ test('agent.panel.navigation-persistence keeps the unconfigured side panel acros
   // User action: Panel Close and the global toggle are the only close commands; Main reclaims the 440px track.
   await getByAutomationId(page, AUTOMATION_IDS.agent.panel.close).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.agent.panel.root)).toHaveCount(0);
+  await screenshotStep('关闭Agent面板但保持App运行 / Close Agent without closing the App');
   const reopenedMainBox = await getByAutomationId(page, AUTOMATION_IDS.app.main).boundingBox();
   expect(reopenedMainBox).not.toBeNull();
   expect(reopenedMainBox!.width - closedMainBox!.width).toBe(0);
@@ -128,6 +134,9 @@ test('agent.panel.navigation-persistence keeps the unconfigured side panel acros
     geometryEvidence,
     'settings:reopened',
   );
+  await screenshotStep('再次打开Agent并定位关闭按钮 / Reopen Agent and locate its close button', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.agent.panel.close), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.agent.panel.toggle).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.agent.panel.root)).toHaveCount(0);
   await screenshotStep('用户操作：Panel Close 与全局 toggle 是唯二关闭入口，关闭后 Main 释放完整 440px track。 / User action: Panel Close and the global toggle are the only close commands; Main reclaims the 440px track.');

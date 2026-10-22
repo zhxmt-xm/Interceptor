@@ -11,10 +11,12 @@
 - `response-section-collapse.workflow.ts`复用同一响应补Cookies、Timing/Connection、Tree/Raw/Hex、Copy、全屏及响应分栏；格式化仅由原`body-formatting.workflow.ts`维护。
 
 - `body-formatting.workflow.ts`保留HTML/JavaScript自动格式化、CSS手动Format、XML失败原文与文档缓存；新增大JSON的Copy恰为2MiB、前缀符合实际响应且Format disabled。
+  - Copy先确认真实成功反馈，再读取剪贴板并等反馈自然收起；不拍遮住内容的累计Copied提示。CSS原文、手动Format和回切恢复均通过真实键盘滚到末尾，确认`.a`规则可见后截图，不仅用剪贴板后缀代替可见结果。回切对象为同一CSS请求，不是HTML请求。
 
 - `tools-collection.workflow.ts`保留Tool读写零隐式发送，重启后仅由用户明确Send一次，检查保存的method/protocol、Header启停、Query、JSON及Auth字节。
 
 - `collection-import`与`tools-transfer`继续负责产品Export→Import、真实原生取消/确认、全新身份、Auto仍需确认及重启。截图清单只在退出及宿主恢复后形成，不再需要录像或字幕。
+  - Collection文件Tool的审批保持在Composer，不展示无关Capture流量；退出前仍回到不含测试敏感字段的Capture，并通过真实Keyword只显示本次路径范围。调用、审批、字段脱敏和文件断言保持原步骤，不清理日常数据或修改系统流量。
 
 命令、输出清单和显式导入边界见[套件说明](../README.md#trace-与证据)。已有公开PNG及历史验收记录保持原来源，新的运行不会自动替换它们；本节不把未经执行的平台或分支记为通过。
 

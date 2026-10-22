@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 
-import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
+import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
+import { CAPTURE_FACET_IDS } from '../../../../src/renderer/features/capture/constants';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
@@ -26,10 +27,16 @@ test('capture.scenarios.body-media previews images and hex and saves media witho
   // 准备：真实UI开启Recording；正文由已有场景经网络产生，不预造Capture输入。
   // Arrange: enable Recording through UI; existing scenarios create bodies through the network without seeding Capture.
   await startRecording(desktopApp);
+  for (const facet of CAPTURE_FACET_IDS) {
+    const toggle = getByAutomationId(page, AutomationIdFactory.captureFacetToggle(facet));
+    if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  }
   for (const expected of MEDIA_SCENARIOS) {
     await test.step(expected.id, async () => {
       const scenario = trafficLab.scenarios().find((candidate) => candidate.id === expected.id);
       if (!scenario || scenario.defaultDraft.kind !== 'http') throw new Error(`Missing media scenario: ${expected.id}`);
+      await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(scenario.defaultDraft.path);
       const result = await trafficLab.run(scenario.id, scenario.defaultDraft, desktopApp.capturePort());
       expect(result).toMatchObject({ state: 'complete', response: { statusCode: 200, bodyBytes: expected.bytes } });
       const row = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
@@ -53,11 +60,17 @@ test('capture.scenarios.body-media previews images and hex and saves media witho
         await expect(image).toHaveJSProperty('naturalWidth', 1);
         await expect(image).toHaveJSProperty('naturalHeight', 1);
         await testInfo.attach('png-preview', { body: await body.screenshot(), contentType: 'image/png' });
+        await screenshotStep('查看实际解码的PNG预览及68字节正文 / Inspect the decoded PNG preview and its 68-byte body', {
+          highlights: [{ target: section, label: '1' }],
+        });
       } else if (expected.kind === 'hex') {
         const hexMode = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyMode.hex);
         await expect(hexMode).toHaveAttribute('aria-checked', 'true');
         const bytes = expected.hex.match(/../g)!.join(' ');
         await expect(body).toContainText(bytes);
+        await screenshotStep(`查看${expected.id}的实际Hex字节 / Inspect the actual Hex bytes for ${expected.id}`, {
+          highlights: [{ target: hexMode, label: '1' }],
+        });
       } else {
         await expect(body).toContainText(expected.mime);
         await expect(body.locator('audio, video, iframe')).toHaveCount(0);
@@ -96,6 +109,10 @@ test('capture.scenarios.body-media previews images and hex and saves media witho
         for (const centerDelta of layout.centerDeltas) expect(Math.abs(centerDelta)).toBeLessThanOrEqual(1 / layout.pixelRatio);
         await testInfo.attach(`${expected.id}-layout`, { body: Buffer.from(JSON.stringify(layout)), contentType: 'application/json' });
         await testInfo.attach(`${expected.id}-placeholder`, { body: await body.screenshot(), contentType: 'image/png' });
+        await save.scrollIntoViewIfNeeded();
+        await screenshotStep(`查看${expected.mime}、${expected.bytes}字节和Save入口，不加载播放器 / Inspect ${expected.mime}, ${expected.bytes} bytes and Save without loading a player`, {
+          highlights: [{ target: save, label: '1' }],
+        });
         const destination = testInfo.outputPath(`${expected.id}.${expected.id === 'body-audio' ? 'wav' : 'mp4'}`);
 
         // 原生保存：真实点击唯一Save并操作系统对话框，只读核对产品生成文件的独立预期字节。
@@ -109,11 +126,18 @@ test('capture.scenarios.body-media previews images and hex and saves media witho
             throw error;
           }
         }).toBe(expected.hex);
-        await screenshotStep('原生保存：真实点击唯一Save并操作系统对话框，只读核对产品生成文件的独立预期字节。 / Native export: click Save and use the real system dialog, then read the product-generated file against independent expected bytes.');
+        await expect(body).toContainText(expected.mime);
+        await expect(section).toContainText(String(expected.bytes));
+        await expect(row).toHaveAttribute('aria-pressed', 'true');
+        await screenshotStep(`${expected.id}保存完成后仍显示原MIME与大小 / ${expected.id} retains its MIME and size after saving`, {
+          highlights: [{ target: save, label: '1' }],
+        });
       }
       evidence.push({ scenarioId: expected.id, bytes: expected.bytes, verification: expected.kind });
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
-      await screenshotStep('产品断言：PNG必须真实解码；二进制按实际字节显示Hex；音视频仅显示MIME和保存动作。 / Product assertions: PNG decodes, binary bytes appear in Hex, and audio/video expose MIME and Save without players.');
+      await screenshotStep(`关闭${expected.id}详情并保留原记录 / Close ${expected.id} details while retaining its record`, {
+        highlights: [{ target: row, label: '1' }],
+      });
     });
   }
   await screenshotStep('准备：真实UI开启Recording；正文由已有场景经网络产生，不预造Capture输入。 / Arrange: enable Recording through UI; existing scenarios create bodies through the network without seeding Capture.');

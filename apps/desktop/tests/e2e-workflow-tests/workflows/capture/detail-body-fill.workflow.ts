@@ -1,4 +1,5 @@
-import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
+import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
+import { CAPTURE_FACET_IDS } from '../../../../src/renderer/features/capture/constants';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import {
   CaptureWorkflowFixture,
@@ -19,6 +20,14 @@ test('capture.detail-body-fill uses the available Inspector height end to end', 
   // Arrange real captured traffic with enough request body lines to scroll.
   // 准备真实抓包流量，并提供足够多的请求正文行以产生滚动。
   await startRecording(desktopApp);
+  await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter).fill('/e2e/detail-body-fill');
+  // 截图准备：保留分栏宽度，仅收起与正文滚动无关的facet值。
+  // Screenshot preparation: retain pane widths and only collapse facet values unrelated to body scrolling.
+  for (const facet of CAPTURE_FACET_IDS) {
+    const toggle = getByAutomationId(desktopApp.page, AutomationIdFactory.captureFacetToggle(facet));
+    if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  }
   const requestBody = JSON.stringify({
     entries: Array.from({ length: 200 }, (_value, index) => ({
       index,
@@ -44,7 +53,9 @@ test('capture.detail-body-fill uses the available Inspector height end to end', 
   const bodyPane = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane);
   await expect(bodyView).toBeVisible();
   await expect(bodyPane).toBeVisible();
-  await screenshotStep('通过用户使用的同一 Inspector 交互打开响应正文。 / Open the response body through the same Inspector interaction users perform.');
+  await screenshotStep('打开Response正文 / Open the Response body', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.response), label: '1' }],
+  });
 
   // Prove the response pane consumes the available Inspector height end to end.
   // 验证响应正文 pane 从头到尾占满 Inspector 的可用高度。
@@ -98,6 +109,9 @@ test('capture.detail-body-fill uses the available Inspector height end to end', 
     AUTOMATION_IDS.capture.inspector.tab.request,
   ).click();
   await expect(bodyPane).toBeVisible();
+  await screenshotStep('打开含200条entries的Request正文 / Open the Request body with 200 entries', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.request), label: '1' }],
+  });
   await bodyPane.scrollIntoViewIfNeeded();
   const outerMaxScroll = await scroll.evaluate(
     (element) => element.scrollHeight - element.clientHeight,
@@ -120,6 +134,9 @@ test('capture.detail-body-fill uses the available Inspector height end to end', 
   await page.mouse.wheel(0, 600);
   await expect.poll(async () => (await verticalSlider.boundingBox())?.y ?? 0)
     .toBeGreaterThan(initialSliderBox!.y);
+  await screenshotStep('在请求正文内使用滚轮 / Use the wheel inside the request body', {
+    highlights: [{ target: scroll, label: '1' }],
+  });
 
   const [scrollbarBox, sliderBox] = await Promise.all([
     verticalScrollbar.boundingBox(),
@@ -146,6 +163,9 @@ test('capture.detail-body-fill uses the available Inspector height end to end', 
       ? Math.abs(track.y + track.height - (slider.y + slider.height))
       : Number.POSITIVE_INFINITY;
   }).toBeLessThanOrEqual(1);
+  await screenshotStep('拖动正文滚动条到下边界 / Drag the body scrollbar to its lower boundary', {
+    highlights: [{ target: scroll, label: '1' }],
+  });
 
   const beforeOuterScroll = await scroll.evaluate((element) => element.scrollTop);
   await page.mouse.move(
@@ -157,7 +177,9 @@ test('capture.detail-body-fill uses the available Inspector height end to end', 
     () => scroll.evaluate((element) => element.scrollTop),
   ).toBeGreaterThan(beforeOuterScroll);
   const afterOuterScroll = await scroll.evaluate((element) => element.scrollTop);
-  await screenshotStep('将 Monaco 滚到下边界，再验证下一次滚轮会交接给 Inspector。 / Scroll Monaco to its lower boundary, then prove the next wheel reaches Inspector.');
+  await screenshotStep('正文到底后继续滚动Inspector / Continue scrolling the Inspector after the body reaches its end', {
+    highlights: [{ target: scroll, label: '1' }],
+  });
 
   // Retain geometry and both outer scroll positions as workflow evidence.
   // 保留几何数据和两次外层滚动位置作为 workflow 证据。

@@ -4,6 +4,8 @@ import { defineConfig } from '@playwright/test';
 import type { StepScreenshotOptions } from './fixtures/runtime/step-screenshots';
 
 const desktopDirectory = path.resolve(__dirname, '../..');
+const requestedLocale = process.env.INTERCEPTOR_E2E_LOCALE;
+const locale = requestedLocale === undefined ? undefined : new Intl.Locale(requestedLocale).toString();
 
 export default defineConfig<StepScreenshotOptions>({
   testDir: path.join(__dirname, 'workflows'),
@@ -35,6 +37,7 @@ export default defineConfig<StepScreenshotOptions>({
   use: {
     trace: 'off',
     screenshot: 'off',
+    ...(locale === undefined ? {} : { locale }),
     stepScreenshots: process.env.INTERCEPTOR_E2E_STEP_SCREENSHOTS === '1',
   },
   ...(process.platform === 'darwin' ? {

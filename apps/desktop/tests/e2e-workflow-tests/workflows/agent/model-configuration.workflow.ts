@@ -44,10 +44,20 @@ async function fillProvider(
   beforeApiKey?: () => Promise<void>,
 ): Promise<void> {
   await getByAutomationId(page, AUTOMATION_IDS.agent.models.add).click();
+  await screenshotStep(`添加模型并选择Custom：${draft.profileName} / Add a model and choose Custom: ${draft.profileName}`, {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.agent.models.addCustom), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.agent.models.addCustom).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.agent.provider.dialog)).toBeVisible();
+  await screenshotStep(`打开Custom模型配置：${draft.profileName} / Open Custom model configuration: ${draft.profileName}`);
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.profileName).fill(draft.profileName);
+  await screenshotStep(`填写模型配置名称：${draft.profileName} / Enter the model profile name: ${draft.profileName}`, {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.agent.provider.profileName), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.baseUrl).fill(draft.baseUrl);
+  await screenshotStep(`填写本机模型服务地址：${draft.profileName} / Enter the local model endpoint: ${draft.profileName}`, {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.agent.provider.baseUrl), label: '1' }],
+  });
   if (draft.apiKey !== undefined) {
     await beforeApiKey?.();
     await getByAutomationId(page, AUTOMATION_IDS.agent.provider.apiKey).focus();
@@ -56,22 +66,38 @@ async function fillProvider(
     }
   }
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.modelId).fill(draft.modelId);
+  await screenshotStep(`填写Model ID：${draft.profileName} / Enter the Model ID: ${draft.profileName}`, {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.agent.provider.modelId), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.contextWindow).fill('131072');
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.maximumOutput).fill('8192');
+  await screenshotStep(`填写模型上下文与输出上限：${draft.profileName} / Enter context and output limits: ${draft.profileName}`, {
+    highlights: [
+      { target: getByAutomationId(page, AUTOMATION_IDS.agent.provider.contextWindow), label: '1' },
+      { target: getByAutomationId(page, AUTOMATION_IDS.agent.provider.maximumOutput), label: '2' },
+    ],
+  });
 }
 
 /** Test the current draft and save its one-time verification. */
 async function testAndSave(page: Page): Promise<void> {
   const save = getByAutomationId(page, AUTOMATION_IDS.agent.provider.save);
   await expect(save).toBeDisabled();
+  await screenshotStep('测试当前模型连接，尚不能Save / Test the current connection before Save becomes available', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.agent.provider.testConnection), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.testConnection).click();
   await expect(getByAutomationId(
     page,
     AUTOMATION_IDS.agent.provider.connectionStatus,
   )).toHaveAttribute('data-status', 'verified');
   await expect(save).toBeEnabled();
+  await screenshotStep('连接验证成功后可以Save / Save becomes available after a successful connection test', {
+    highlights: [{ target: save, label: '1' }],
+  });
   await save.click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.agent.provider.dialog)).toHaveCount(0);
+  await screenshotStep('在Configured models查看已保存的模型 / Inspect the saved model in Configured models');
 }
 
 /** Close one generation and retain its trace, logs and destroy metadata. */
@@ -140,9 +166,18 @@ test('agent.settings.model-configuration persists verified redacted Providers', 
     const save = getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.provider.save);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.provider.testConnection).click();
     await expect(save).toBeEnabled();
+    await screenshotStep('首次测试通过，当前字段可以保存 / The first connection test succeeds for the current fields', {
+      highlights: [{ target: save, label: '1' }],
+    });
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.provider.modelId)
       .fill('keyed-model-v2');
     await expect(save).toBeDisabled();
+    await screenshotStep('修改Model ID后需要重新Test / Changing the Model ID requires another connection test', {
+      highlights: [
+        { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.provider.modelId), label: '1' },
+        { target: save, label: '2' },
+      ],
+    });
     await testAndSave(desktopApp.page);
     await desktopApp.startTrace(testInfo);
 
@@ -164,6 +199,9 @@ test('agent.settings.model-configuration persists verified redacted Providers', 
       desktopApp.page,
       AutomationIdFactory.agentModelRow(firstProviderId),
     )).toHaveAttribute('data-default', 'true');
+    await screenshotStep('为第二个模型选择Set default / Choose Set default for the second model', {
+      highlights: [{ target: getByAutomationId(desktopApp.page, AutomationIdFactory.agentModelSetDefault(secondProviderId)), label: '1' }],
+    });
     await getByAutomationId(
       desktopApp.page,
       AutomationIdFactory.agentModelSetDefault(secondProviderId),
@@ -173,6 +211,9 @@ test('agent.settings.model-configuration persists verified redacted Providers', 
       desktopApp.page,
       AutomationIdFactory.agentModelRow(secondProviderId),
     )).toHaveAttribute('data-default', 'true');
+    await screenshotStep('默认模型已改变，配置顺序保持不变 / The default changes without reordering the models', {
+      highlights: [{ target: getByAutomationId(desktopApp.page, AutomationIdFactory.agentModelRow(secondProviderId)), label: '1' }],
+    });
 
     await getByAutomationId(
       desktopApp.page,
@@ -184,6 +225,12 @@ test('agent.settings.model-configuration persists verified redacted Providers', 
     await expect(apiKeyInput).toHaveAttribute('data-credential-last-four', '9K4Q');
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.provider.modelId)
       .fill('keyed-model-edited');
+    await screenshotStep('编辑Model ID并保留已存凭据 / Edit the Model ID while retaining the stored credential', {
+      highlights: [
+        { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.provider.modelId), label: '1' },
+        { target: apiKeyInput, label: '2' },
+      ],
+    });
     await testAndSave(desktopApp.page);
     expect(await providerIds(desktopApp.page)).toEqual(firstGenerationProviderIds);
     await screenshotStep('业务断言：default切换不重排；编辑已有项时Key不回到Renderer，keep仍可真实重测。 / Business assertions: default changes do not reorder; editing never returns the key to Renderer and keep can retest.');
@@ -191,6 +238,9 @@ test('agent.settings.model-configuration persists verified redacted Providers', 
     // 重启：同一profile恢复顺序、脱敏状态与default，且启动不自动请求Model。
     // Restart: the same profile restores order, redaction and default without an automatic Model request.
     const requestsBeforeRestart = openAiCompatibleLab.evidence().length;
+    await screenshotStep('保存模型后正常关闭App / Close the App normally after saving the models', {
+      highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.window.close), label: '1' }],
+    });
     await closeGeneration(desktopApp, testInfo, keyedApiKey);
     relaunchedApp = await LocalElectronApplicationDriver.launch(testInfo, {
       userDataDirectory: desktopApp.userDataDirectory,
@@ -208,6 +258,7 @@ test('agent.settings.model-configuration persists verified redacted Providers', 
       relaunchedApp.page,
       AutomationIdFactory.agentModelRow(secondProviderId),
     )).toHaveAttribute('data-default', 'true');
+    await screenshotStep('真实重启后保留模型顺序和默认项 / Restore model order and the default after a real restart');
 
     // 用户操作：显式移除已存Key并重新Test；同一endpoint不得再收到Authorization。
     // User actions: explicitly remove the saved key and retest; the endpoint must no longer receive Authorization.
@@ -227,6 +278,7 @@ test('agent.settings.model-configuration persists verified redacted Providers', 
       relaunchedApp.page,
       AUTOMATION_IDS.agent.provider.apiKey,
     )).toBeDisabled();
+    await screenshotStep('选择移除已存Key，输入框停用 / Choose to remove the stored key and disable its input');
     await testAndSave(relaunchedApp.page);
     await expect(getByAutomationId(
       relaunchedApp.page,
@@ -250,10 +302,18 @@ test('agent.settings.model-configuration persists verified redacted Providers', 
         relaunchedApp.page,
         AUTOMATION_IDS.agent.removeProvider.dialog,
       )).toBeVisible();
+      await screenshotStep('删除模型前核对确认窗口 / Review the confirmation before removing a model', {
+        highlights: [
+          { target: getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.removeProvider.cancel), label: '1' },
+          { target: getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.removeProvider.confirm), label: '2' },
+        ],
+      });
       await getByAutomationId(
         relaunchedApp.page,
         AUTOMATION_IDS.agent.removeProvider.confirm,
       ).click();
+      await expect(getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.removeProvider.dialog)).toHaveCount(0);
+      await screenshotStep('确认删除后查看剩余模型 / Inspect the remaining models after confirming removal');
     }
     await expect(getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.models.list))
       .toHaveAttribute('data-model-count', '0');

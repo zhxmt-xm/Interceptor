@@ -24,13 +24,23 @@ test(`breakpoints.body-preview ${fileKind} previews a product-saved file but for
   try {
     // 准备：替换文件由同一workflow通过产品Save body生成，不能在测试中写业务输入。
     // Arrange: create the replacement file through this workflow's product Save body, not a seeded file.
+    await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill('/e2e/body-file/');
+    const facetToggles = page.locator('[data-automation-id^="capture.filter.toggle."]');
+    for (let index = 0; index < await facetToggles.count(); index += 1) {
+      const toggle = facetToggles.nth(index);
+      if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+    }
     await startRecording(desktopApp);
     const sourcePath = '/e2e/body-file/source';
     httpTrafficRunner.respondWith(sourcePath, { headers: { 'content-type': 'application/json' }, body: Buffer.from(source) });
     await httpTrafficRunner.requestThroughProxy(desktopApp.capturePort(), sourcePath);
     const sourceRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow).filter({ hasText: sourcePath });
-    await sourceRow.click();
+    if (await sourceRow.getAttribute('aria-pressed') !== 'true') await sourceRow.click();
+    await expect(sourceRow).toHaveAttribute('aria-pressed', 'true');
     await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.response).click();
+    await screenshotStep('先从自己的响应保存替换文件 / Save the replacement file from an owned response first', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.save), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.save).click();
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), filePath);
     await expect.poll(async () => {
@@ -43,7 +53,7 @@ test(`breakpoints.body-preview ${fileKind} previews a product-saved file but for
 
     // 用户操作：创建POST断点，使用真实Open Dialog选择刚保存的文件。
     // User actions: create a POST breakpoint and choose the exported file through the real Open dialog.
-    await createRequestBreakpointRule(page, 'Body preview complete file', 'POST');
+    await createRequestBreakpointRule(page, 'Body preview complete file', 'POST', '/e2e/body-file/');
     const targetPath = '/e2e/body-file/target';
     const original = fileKind === 'large' ? '{"original":true}'
       : JSON.stringify({ entries: Array.from({ length: 30 }, (_, index) => ({ index, value: 'original' })) }, null, 2);
@@ -52,7 +62,11 @@ test(`breakpoints.body-preview ${fileKind} previews a product-saved file but for
     });
     void pendingRequest.catch(() => undefined);
     const row = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow).filter({ hasText: targetPath });
-    await row.click();
+    if (await row.getAttribute('aria-pressed') !== 'true') await row.click();
+    await expect(row).toHaveAttribute('aria-pressed', 'true');
+    await screenshotStep('选择需要文件替换的暂停请求 / Select the paused request for file replacement', {
+      highlights: [{ target: row, label: '1' }],
+    });
     let originalContentId: string | null = null;
     if (fileKind === 'short') {
       const originalPane = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane);
@@ -60,15 +74,19 @@ test(`breakpoints.body-preview ${fileKind} previews a product-saved file but for
       originalContentId = await originalPane.locator('xpath=ancestor::div[@id][1]').getAttribute('id');
       if (!originalContentId) throw new Error('Original body has no public section relationship.');
       await page.locator(`[aria-controls="${originalContentId}"]`).click();
+      await screenshotStep('收起Original后为File预览留出空间 / Collapse Original to make room for the File preview');
     }
     await getByAutomationId(page, AUTOMATION_IDS.breakpoints.replacement.file).click();
+    await screenshotStep('选择File模式并找到文件选择入口 / Select File mode and locate the file chooser', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.breakpoints.chooseFile), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.breakpoints.chooseFile).click();
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), filePath);
     const selected = getByAutomationId(page, AUTOMATION_IDS.breakpoints.selectedFile);
     await expect(selected).toHaveAttribute('data-file-name', 'exported-body.json');
     await expect(selected).toHaveAttribute('data-file-size', String(Buffer.byteLength(source)));
     await page.screenshot({ path: testInfo.outputPath('file-preview.png') });
-    await screenshotStep('用户操作：创建POST断点，使用真实Open Dialog选择刚保存的文件。 / User actions: create a POST breakpoint and choose the exported file through the real Open dialog.');
+    await screenshotStep('选择刚保存的文件后在App核对名称和完整大小 / Verify the selected file name and full size in the App');
 
     // 业务断言：大JSON有有限预览，Forward edited仍发送完整原文件。
     // Assertions: large JSON has a bounded preview while Forward edited sends the entire original file.
@@ -94,8 +112,8 @@ test(`breakpoints.body-preview ${fileKind} previews a product-saved file but for
         await writeFile(testInfo.outputPath('short-file-clamp.json'), JSON.stringify(current), 'utf8');
         return current.height - Math.max(current.minimum, current.available);
       }).toBeLessThanOrEqual(1);
-      await page.locator(`[aria-controls="${originalContentId}"]`).click();
       await screenshotStep('布局联动：展开前面的Original后，File必须立即按新剩余空间重算。 / Layout dependency: expanding the preceding Original must immediately update the File height.');
+      await page.locator(`[aria-controls="${originalContentId}"]`).click();
     }
     const box = await preview.boundingBox();
     if (!box) throw new Error('File preview is not visible.');
@@ -103,6 +121,7 @@ test(`breakpoints.body-preview ${fileKind} previews a product-saved file but for
     await page.mouse.down();
     await page.mouse.move(box.x + box.width - 3, box.y + box.height - 53, { steps: 10 });
     await page.mouse.up();
+    await screenshotStep('拖动File预览高度但不修改文件内容 / Resize the File preview without changing its contents');
     await preview.click({ position: { x: 90, y: 30 } });
     await page.keyboard.press('ControlOrMeta+A');
     await page.keyboard.press('ControlOrMeta+C');
@@ -117,6 +136,9 @@ test(`breakpoints.body-preview ${fileKind} previews a product-saved file but for
       return actual;
     }).toEqual({
       length: expectedPreview.length, sha256: createHash('sha256').update(expectedPreview).digest('hex'),
+    });
+    await screenshotStep('核对File后用Forward edited发送完整文件 / Forward the complete file after inspecting its preview', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.breakpoints.executeEdited), label: '1' }],
     });
     await getByAutomationId(page, AUTOMATION_IDS.breakpoints.executeEdited).click();
     const forwardedResponse = await pendingRequest;
@@ -149,6 +171,9 @@ test(`breakpoints.body-preview ${fileKind} previews a product-saved file but for
     const textInput = getByAutomationId(page, AUTOMATION_IDS.breakpoints.body);
     await textInput.fill(edited);
     expect(await textInput.evaluate(element => (element as HTMLTextAreaElement).value.length)).toBe(edited.length);
+    await screenshotStep('Text替换保留超过预览上限的完整输入 / Text replacement retains input beyond the preview limit', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.breakpoints.executeEdited), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.breakpoints.executeEdited).click();
     await pendingRequest;
     pendingRequest = null;

@@ -17,7 +17,7 @@ import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const phrase = (...parts: readonly string[]): string => parts.join(' ');
-const DENY_PROMPT = phrase('Keep capture active', 'and ask before changing it.');
+const DENY_PROMPT = phrase('Pause recording', 'after asking for my approval.');
 const DENY_ANSWER = phrase('Capture remains active', 'after denial.');
 const ALLOW_PROMPT = phrase('Pause capture', 'after explicit approval.');
 const ALLOW_ANSWER = phrase('Capture is now paused', 'after approval.');
@@ -87,6 +87,12 @@ function enqueueStop(lab: OpenAiCompatibleLab, callId: string, answer: string): 
 /** Send one user message through the current Chat. */
 async function sendMessage(page: Page, prompt: string): Promise<void> {
   await getByAutomationId(page, AUTOMATION_IDS.agent.message.input).fill(prompt);
+  await screenshotStep('填写限定范围的Tool请求并发送 / Enter and send the scoped Tool request', {
+    highlights: [
+      { target: getByAutomationId(page, AUTOMATION_IDS.agent.message.input), label: '1' },
+      { target: getByAutomationId(page, AUTOMATION_IDS.agent.message.send), label: '2' },
+    ],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.agent.message.send).click();
 }
 
@@ -103,6 +109,9 @@ async function setExecutionMode(page: Page, mode: 'ask' | 'auto'): Promise<void>
   await getByAutomationId(page, AUTOMATION_IDS.agent.executionMode[mode]).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.agent.session.root))
     .toHaveAttribute('data-tool-execution-mode', mode);
+  await screenshotStep(`选择当前Chat的${mode}模式 / Select ${mode} for the current Chat`, {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.agent.executionMode[mode]), label: '1' }],
+  });
 }
 
 /** Return one model-visible Tool Result from captured Provider history. */
@@ -189,7 +198,13 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
     // Arrange: configure a local Provider in real Settings, start Recording in Capture, then create a default-Ask Chat.
     await configureProvider(desktopApp.page, openAiCompatibleLab);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
+    await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter).fill('/e2e/agent/execution-modes');
     await startRecording(desktopApp);
+    const facetToggles = desktopApp.page.locator('[data-automation-id^="capture.filter.toggle."]');
+    for (let index = 0; index < await facetToggles.count(); index += 1) {
+      const toggle = facetToggles.nth(index);
+      if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+    }
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.panel.toggle).click();
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.chat.new).click();
     const sessionRoot = getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.session.root);
@@ -203,6 +218,7 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.chat.new).click();
     newSessionDefaultMode = await sessionRoot.getAttribute('data-tool-execution-mode') ?? '';
     expect(newSessionDefaultMode).toBe('ask');
+    await screenshotStep('新Chat默认使用Ask，不继承另一个会话的Auto / A new Chat starts in Ask instead of inheriting another Chat’s Auto');
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.chat.selector).click();
     await getByAutomationId(
       desktopApp.page,
@@ -231,12 +247,21 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
     await expect(deniedApproval).toHaveAttribute('data-tool-name', 'capture_stop_recording');
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle))
       .toHaveAttribute('aria-pressed', 'true');
+    await screenshotStep('Ask中的暂停操作先等待审批 / A pause requested in Ask first waits for approval', {
+      highlights: [
+        { target: getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolDeny('deny-stop')), label: '1' },
+        { target: getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolAllow('deny-stop')), label: '2' },
+      ],
+    });
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.rules).click();
     await expect(deniedApproval).toHaveAttribute('data-approval-status', 'pending');
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
     await expect(deniedApproval).toHaveAttribute('data-approval-status', 'pending');
     await setExecutionMode(desktopApp.page, 'auto');
     await expect(deniedApproval).toHaveAttribute('data-approval-status', 'pending');
+    await screenshotStep('切到Auto也不会批准已经等待的请求 / Switching to Auto does not approve an already pending request', {
+      highlights: [{ target: deniedApproval, label: '1' }],
+    });
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.chat.new).click();
     await expect(deniedApproval).toHaveCount(0);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.chat.selector).click();
@@ -245,6 +270,9 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
       AutomationIdFactory.agentSessionOption(firstSessionId),
     ).click();
     await expect(deniedApproval).toHaveAttribute('data-approval-status', 'pending');
+    await screenshotStep('回到原Chat，审批仍等待用户决定 / Return to the original Chat with its approval still pending', {
+      highlights: [{ target: getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolDeny('deny-stop')), label: '1' }],
+    });
     await getByAutomationId(
       desktopApp.page,
       AutomationIdFactory.agentToolDeny('deny-stop'),
@@ -262,6 +290,12 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
       ? deniedResult.error.code
       : '';
     expect(deniedErrorCode).toBe('tool_denied');
+    await screenshotStep('Deny后记录仍在开启，拒绝结果保留 / Recording remains enabled after Deny and the denied result is retained', {
+      highlights: [
+        { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle), label: '1' },
+        { target: deniedApproval, label: '2' },
+      ],
+    });
     await screenshotStep('用户操作：Ask下change Tool先进入pending；切Auto不处置它，跨Chat返回后Deny也不改变Recording。 / User actions: Ask makes the change Tool pending; switching Auto does not resolve it, and Deny after Chat switching keeps Recording.');
 
     // 用户操作：Ask中Allow执行正式stop命令；Auto下后续调用不显示问询并直接暂停Capture。
@@ -274,6 +308,9 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
       desktopApp.page,
       AutomationIdFactory.agentToolApproval('allow-stop'),
     );
+    await screenshotStep('新的暂停请求需要新的Allow / A new pause request requires its own Allow', {
+      highlights: [{ target: getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolAllow('allow-stop')), label: '1' }],
+    });
     await getByAutomationId(
       desktopApp.page,
       AutomationIdFactory.agentToolAllow('allow-stop'),
@@ -286,7 +323,16 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
     )).toHaveCount(0);
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle))
       .toHaveAttribute('aria-pressed', 'false');
+    await screenshotStep('Allow后Recording与实际暂停结果同步 / Recording reflects the actual pause after Allow', {
+      highlights: [
+        { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle), label: '1' },
+        { target: allowedApproval, label: '2' },
+      ],
+    });
     await resumeRecording(desktopApp.page);
+    await screenshotStep('通过Capture按钮恢复Recording / Resume Recording through its Capture control', {
+      highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle), label: '1' }],
+    });
     await setExecutionMode(desktopApp.page, 'auto');
     enqueueStop(openAiCompatibleLab, 'auto-stop', AUTO_ANSWER);
     await sendMessage(desktopApp.page, AUTO_PROMPT);
@@ -297,6 +343,7 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
     )).toHaveCount(0);
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle))
       .toHaveAttribute('aria-pressed', 'false');
+    await screenshotStep('Auto中的后续调用直接暂停录制 / A subsequent call in Auto pauses Recording without another approval');
     await screenshotStep('用户操作：Ask中Allow执行正式stop命令；Auto下后续调用不显示问询并直接暂停Capture。 / User actions: Allow in Ask executes the formal stop command; a later Auto call pauses Capture without an approval.');
 
     // 用户操作：Settings关闭项优先于Auto；schema移除，猜测调用返回unknown_tool且不触达Recording。
@@ -304,10 +351,17 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
     await resumeRecording(desktopApp.page);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.section.agent).click();
+    await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.tools.search).fill('capture_stop_recording');
     await getByAutomationId(
       desktopApp.page,
       AutomationIdFactory.agentToolAgentSwitch('capture_stop_recording'),
     ).click();
+    await screenshotStep('只关闭暂停录制Tool的Agent权限 / Disable only Agent access to the pause-recording Tool', {
+      highlights: [
+        { target: getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolAgentSwitch('capture_stop_recording')), label: '1' },
+        { target: getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolMcpSwitch('capture_stop_recording')), label: '2' },
+      ],
+    });
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
     const disabledOffset = openAiCompatibleLab.requestsForAssertions().length;
     enqueueStop(openAiCompatibleLab, 'disabled-stop', DISABLED_ANSWER);
@@ -322,6 +376,9 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
     expect(disabledErrorCode).toBe('unknown_tool');
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle))
       .toHaveAttribute('aria-pressed', 'true');
+    await screenshotStep('权限关闭后返回unknown_tool，Recording不变 / Disabled access returns unknown_tool without changing Recording', {
+      highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle), label: '1' }],
+    });
     await screenshotStep('用户操作：Settings关闭项优先于Auto；schema移除，猜测调用返回unknown_tool且不触达Recording。 / User actions: a Settings disable overrides Auto; schema disappears and a guessed call returns unknown_tool without touching Recording.');
 
     // 重启与销毁：恢复Auto和关闭项且零重放，随后经UI恢复Ask、Tool与Recording默认状态。
@@ -336,6 +393,7 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
     });
     for (const text of SENSITIVE_TEXTS) relaunchedApp.registerSensitiveTextForEvidenceAudit(text);
     await relaunchedApp.waitUntilReady();
+    await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.capture.keywordFilter).fill('/e2e/agent/execution-modes');
     restartRequestCount = openAiCompatibleLab.evidence().length - requestCountBeforeRestart;
     expect(restartRequestCount).toBe(0);
     await relaunchedApp.stopTrace(testInfo);
@@ -344,12 +402,19 @@ test('agent.tools.execution-modes gates change Tools per Session and persists st
       .toHaveAttribute('data-tool-execution-mode', 'auto');
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.settings.section.agent).click();
+    await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.tools.search).fill('capture_stop_recording');
     const stopRecordingSwitch = getByAutomationId(
       relaunchedApp.page,
       AutomationIdFactory.agentToolAgentSwitch('capture_stop_recording'),
     );
     await expect(stopRecordingSwitch).toHaveAttribute('aria-checked', 'false');
+    await screenshotStep('重启后保留关闭的Tool权限 / The disabled Tool permission persists after a restart', {
+      highlights: [{ target: stopRecordingSwitch, label: '1' }],
+    });
     await stopRecordingSwitch.click();
+    await screenshotStep('需要再次使用时恢复Agent权限 / Restore Agent permission when the Tool is needed again', {
+      highlights: [{ target: stopRecordingSwitch, label: '1' }],
+    });
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
     await setExecutionMode(relaunchedApp.page, 'ask');
     await resumeRecording(relaunchedApp.page);

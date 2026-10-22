@@ -66,16 +66,26 @@ async function verifyDiagnosticViews(
     await getByAutomationId(page, AUTOMATION_IDS.upstream.apply).click();
     await expect(getByAutomationId(page, AUTOMATION_IDS.upstream.error)).toBeVisible();
     await expect(getByAutomationId(page, AUTOMATION_IDS.upstream.currentRoute)).toHaveAttribute('data-upstream-mode', 'system');
+    await screenshotStep('PAC不可用时读取错误并保留原路线 / Inspect an unavailable PAC error while retaining the original route', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.upstream.error), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.upstream.discard).click();
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.diagnostics).click();
+    await screenshotStep('打开Diagnostics查看已有运行记录 / Open Diagnostics to inspect existing operation records');
     const main = getByAutomationId(page, AUTOMATION_IDS.app.main);
     const buttons = main.getByRole('button');
     const failedPhase = 'main.upstream.apply.failed';
     await buttons.nth(0).click();
     await buttons.nth(0).click();
     await expect(buttons.nth(0)).toContainText('main');
+    await screenshotStep('按main进程筛选Diagnostics / Filter Diagnostics by the main process', {
+      highlights: [{ target: buttons.nth(0), label: '1' }],
+    });
     await buttons.nth(1).click();
     await expect(buttons.nth(1)).toContainText('error');
+    await screenshotStep('将日志级别筛为error / Select error as the log level', {
+      highlights: [{ target: buttons.nth(1), label: '1' }],
+    });
     await buttons.nth(2).click();
     await buttons.nth(2).click();
     await expect(buttons.filter({ hasText: failedPhase }).last()).toBeVisible();
@@ -84,6 +94,9 @@ async function verifyDiagnosticViews(
     const detail = grid.locator(':scope > div').nth(2);
     await expect(detail).toContainText(failedPhase);
     await expect(detail).toContainText('failed');
+    await screenshotStep('选中失败的上游应用记录并阅读详情 / Select the failed upstream operation and inspect its details', {
+      highlights: [{ target: detail, label: '1' }],
+    });
     await screenshotStep('按真实main/error/failed记录查看时间线 / Inspect the timeline for an actual main/error/failed record');
     const split = await grid.locator(':scope > div').nth(1).boundingBox();
     const initial = await detail.boundingBox();
@@ -93,17 +106,22 @@ async function verifyDiagnosticViews(
     await page.mouse.move(split.x - 180, split.y + 80, { steps: 12 });
     await page.mouse.up();
     await expect.poll(async () => (await detail.boundingBox())?.width).toBeGreaterThan(initial.width + 150);
+    await screenshotStep('拖宽Diagnostics详情分栏 / Widen the Diagnostics details pane');
     for (let index = 0; index < 4; index += 1) await buttons.nth(1).click();
     for (let index = 0; index < 3; index += 1) await buttons.nth(2).click();
     for (let index = 0; index < 2; index += 1) await buttons.nth(0).click();
     await expect(buttons.nth(0)).not.toContainText(/core|main|renderer/);
     await expect(buttons.nth(1)).not.toContainText(/error|warn|info|debug/);
     await expect(buttons.nth(2)).not.toContainText(/success|failed|cancelled|timed_out/);
+    await screenshotStep('清除分类筛选后检查完整记录列表 / Inspect the full record list after clearing category filters');
     const before = await buttons.count();
     await buttons.last().click();
     await expect.poll(() => buttons.count()).toBeGreaterThan(before);
     await screenshotStep('清除筛选并加载真正的较早历史 / Clear filters and load the actual earlier history');
     const file = path.join(directory, 'lifecycle.jsonl');
+    await screenshotStep('通过Diagnostics导出按钮保存记录 / Save records through the Diagnostics export button', {
+      highlights: [{ target: buttons.nth(3), label: '1' }],
+    });
     await buttons.nth(3).click();
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), file);
     await expect.poll(async () => {
@@ -118,6 +136,7 @@ async function verifyDiagnosticViews(
       expect.objectContaining({ command: 'composer.send', outcome: 'success' }),
       expect.objectContaining({ phase: failedPhase, outcome: 'failed' }),
     ]));
+    await screenshotStep('诊断JSONL已导出，保留当前筛选和详情 / Retain the current filters and details after exporting Diagnostics JSONL');
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.composer).click();
     const recoveredPath = '/e2e/diagnostics/recovered';
     httpTrafficRunner.respondWith(recoveredPath, { body: 'diagnostics-recovered' });
@@ -187,9 +206,21 @@ async function beginAgentCall(
   openAiCompatibleLab.enqueueToolCall({ callId, name, arguments: args });
   openAiCompatibleLab.enqueueTurn({ textChunks: [ANSWER] });
   await getByAutomationId(page, AUTOMATION_IDS.agent.message.input).fill(PROMPT);
+  await screenshotStep(`填写Diagnostics请求：${name} / Enter the Diagnostics request: ${name}`, {
+    highlights: [
+      { target: getByAutomationId(page, AUTOMATION_IDS.agent.message.input), label: '1' },
+      { target: getByAutomationId(page, AUTOMATION_IDS.agent.message.send), label: '2' },
+    ],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.agent.message.send).click();
   if (verdict !== undefined) {
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolApproval(callId))).toHaveAttribute('data-approval-status', 'pending');
+    await screenshotStep(`核对Diagnostics导出审批：${verdict} / Review Diagnostics export approval: ${verdict}`, {
+      highlights: [
+        { target: getByAutomationId(page, AutomationIdFactory.agentToolDeny(callId)), label: '1' },
+        { target: getByAutomationId(page, AutomationIdFactory.agentToolAllow(callId)), label: '2' },
+      ],
+    });
     await getByAutomationId(page, verdict === 'allow' ? AutomationIdFactory.agentToolAllow(callId) : AutomationIdFactory.agentToolDeny(callId)).click();
   }
 }
@@ -328,6 +359,7 @@ test('diagnostics.tools.queries-export reads current traces and exports redacted
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('diagnostics-recent'))).toHaveAttribute('data-diagnostics-count', String(recentRecords.length));
     const composerRecords = recentRecords.filter((record) => record.command === 'composer.send');
     expect(composerRecords).toHaveLength(4);
+    await screenshotStep('读取Recent诊断结果，无需change审批 / Read Recent Diagnostics results without change approval');
     const traceId = composerRecords[0]!.traceId;
     if (typeof traceId !== 'string') throw new Error('Composer record omitted traceId.');
     await beginAgentCall(page, openAiCompatibleLab, 'diagnostics-trace', TOOL_NAMES[0], { traceId });
@@ -339,6 +371,7 @@ test('diagnostics.tools.queries-export reads current traces and exports redacted
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('diagnostics-trace'))).toHaveAttribute('data-diagnostics-count', '2');
     expect(traceRecords.every((record) => record.traceId === traceId)).toBe(true);
     expect(traceRecords.every((record) => record.command === 'composer.send')).toBe(true);
+    await screenshotStep('读取指定trace的相关记录 / Read records for the selected trace');
     await beginAgentCall(page, openAiCompatibleLab, 'diagnostics-recent-again', TOOL_NAMES[1], { limit: 200 });
     const repeated = recordsFromValue((await finishAgentCall(page, openAiCompatibleLab, 'diagnostics-recent-again')).value);
     expect(repeated.filter((record) => record.command === 'composer.send')).toEqual(composerRecords);
@@ -353,11 +386,13 @@ test('diagnostics.tools.queries-export reads current traces and exports redacted
     await beginAgentCall(page, openAiCompatibleLab, 'diagnostics-export-denied', TOOL_NAMES[2], FILTER, 'deny');
     expect(await finishAgentCall(page, openAiCompatibleLab, 'diagnostics-export-denied')).toMatchObject({ ok: false, error: { code: 'tool_denied' } });
     expect(await readdir(directory)).toEqual([]);
+    await screenshotStep('Deny后不打开Save也不生成诊断文件 / Deny opens no Save dialog and creates no Diagnostics file');
     await beginAgentCall(page, openAiCompatibleLab, 'diagnostics-export-cancel', TOOL_NAMES[2], FILTER, 'allow');
     await cancelFileDialog(desktopApp.nativeFileDialogOwner());
     expect(await finishAgentCall(page, openAiCompatibleLab, 'diagnostics-export-cancel')).toEqual({ ok: true, value: { started: false } });
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('diagnostics-export-cancel'))).toHaveAttribute('data-summary-kind', 'exportCanceled');
     expect(await readdir(directory)).toEqual([]);
+    await screenshotStep('取消Save后导出未启动 / Export does not start after cancelling Save');
     const agentFile = path.join(directory, 'agent.jsonl');
     await beginAgentCall(page, openAiCompatibleLab, 'diagnostics-export-allow', TOOL_NAMES[2], FILTER, 'allow');
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), agentFile);
@@ -366,7 +401,11 @@ test('diagnostics.tools.queries-export reads current traces and exports redacted
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('diagnostics-export-allow'))).toHaveAttribute('data-transfer-job-id', exportJobId);
     await expect(getByAutomationId(page, AutomationIdFactory.agentToolResult('diagnostics-export-allow'))).toHaveAttribute('data-transfer-job-state', 'running');
     exportedFiles.push(await readCompletedExport(agentFile));
+    await screenshotStep('确认Save后返回导出任务结果 / Return to the export job result after confirming Save');
     await getByAutomationId(page, AUTOMATION_IDS.agent.executionMode.auto).click();
+    await screenshotStep('切换Auto后文件导出仍需选择保存位置 / File exports still require a destination after switching to Auto', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.agent.executionMode.auto), label: '1' }],
+    });
     const autoFile = path.join(directory, 'auto.jsonl');
     await beginAgentCall(page, openAiCompatibleLab, 'diagnostics-export-auto', TOOL_NAMES[2], FILTER);
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), autoFile);
@@ -397,20 +436,34 @@ test('diagnostics.tools.queries-export reads current traces and exports redacted
     await expect(approval).toHaveCount(0);
     const denied = client.callTool({ name: TOOL_NAMES[2], arguments: FILTER });
     await expect(approval).toHaveAttribute('data-tool-name', TOOL_NAMES[2]);
+    await screenshotStep('MCP导出使用独立的审批窗口 / MCP export uses its independent approval dialog', {
+      highlights: [
+        { target: getByAutomationId(page, AUTOMATION_IDS.mcp.approval.deny), label: '1' },
+        { target: getByAutomationId(page, AUTOMATION_IDS.mcp.approval.allow), label: '2' },
+      ],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.mcp.approval.deny).click();
     await expect(denied).resolves.toMatchObject({ isError: true });
     const canceled = client.callTool({ name: TOOL_NAMES[2], arguments: FILTER });
     await expect(approval).toHaveAttribute('data-tool-name', TOOL_NAMES[2]);
+    await screenshotStep('允许MCP导出后再处理系统Save / Allow MCP export before handling the system Save dialog', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.mcp.approval.allow), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.mcp.approval.allow).click();
     await cancelFileDialog(desktopApp.nativeFileDialogOwner());
     expect(mcpValue(await canceled)).toEqual({ started: false });
+    await screenshotStep('MCP允许不等于文件已保存，Cancel不启动任务 / MCP approval does not save the file; Cancel starts no job');
     const mcpFile = path.join(directory, 'mcp.jsonl');
     const allowed = client.callTool({ name: TOOL_NAMES[2], arguments: FILTER });
     await expect(approval).toHaveAttribute('data-tool-name', TOOL_NAMES[2]);
+    await screenshotStep('重新审批本次MCP导出 / Approve the new MCP export request', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.mcp.approval.allow), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.mcp.approval.allow).click();
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), mcpFile);
     assertStarted(mcpValue(await allowed));
     exportedFiles.push(await readCompletedExport(mcpFile));
+    await screenshotStep('MCP导出后检查保留的客户端状态 / Inspect the retained client state after MCP export');
     await automaticallyExecuteMcpClientTools(page, configuredClient.clientId);
     const mcpAutoFile = path.join(directory, 'mcp-auto.jsonl');
     const automatic = client.callTool({ name: TOOL_NAMES[2], arguments: FILTER });

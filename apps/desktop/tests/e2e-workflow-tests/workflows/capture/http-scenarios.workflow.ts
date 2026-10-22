@@ -3,7 +3,8 @@ import { writeFile } from 'node:fs/promises';
 import { createServer, request, type ClientRequest, type IncomingMessage, type ServerResponse } from 'node:http';
 
 import { closeServer, listen } from '../../../../../playground/server/shared/traffic-utils';
-import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
+import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
+import { CAPTURE_FACET_IDS } from '../../../../src/renderer/features/capture/constants';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
@@ -25,12 +26,20 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
   // 准备：通过真实产品UI开启Recording，复用现有场景，独立定义产品期望。
   // Arrange: start Recording through product UI, reuse existing scenarios, and define product expectations independently.
   await startRecording(desktopApp);
+  // 截图准备：正常收起全量facet值，各协议阶段仅筛选本轮既有路径。
+  // Screenshot preparation: collapse global facet values normally and scope each phase to its existing owned path.
+  for (const facet of CAPTURE_FACET_IDS) {
+    const toggle = getByAutomationId(desktopApp.page, AutomationIdFactory.captureFacetToggle(facet));
+    if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  }
   const evidence: Array<{ scenarioId: string; row: string | null; requestBytes: number; responseBytes: number }> = [];
 
   for (const expected of HTTP_SCENARIOS) {
     await test.step(expected.id, async () => {
       const scenario = trafficLab.scenarios().find((candidate) => candidate.id === expected.id);
       if (!scenario || scenario.defaultDraft.kind !== 'http') throw new Error(`Missing HTTP scenario: ${expected.id}`);
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter).fill(scenario.defaultDraft.path);
 
       // 外部流量：默认Draft经真实8888发出，origin必须收到完整请求，响应必须完整返回。
       // External traffic: send the default Draft through port 8888 and require complete origin request and client response facts.
@@ -48,6 +57,9 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
       await expect(row).toHaveCount(1);
       for (const value of ['h1', expected.method, '200']) await expect(row).toContainText(value);
       await row.click();
+      await screenshotStep(`${expected.id}选择自产HTTP请求 / Select the captured ${expected.id} HTTP request`, {
+        highlights: [{ target: row, label: '1' }],
+      });
       await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.headers).click();
       for (const [sectionId, values] of [
         [AUTOMATION_IDS.capture.inspector.section.requestHeaders, ['x-playground-scenario-id', expected.id]],
@@ -59,7 +71,9 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
         if (!bodyId) throw new Error(`Missing section body: ${sectionId}`);
         for (const value of values) await expect(desktopApp.page.locator(`[id="${bodyId}"]`)).toContainText(value);
       }
-      await screenshotStep('业务断言：只出现一个自产Exchange，Headers保留场景身份与响应MIME。 / Product assertions: one generated Exchange appears and its Headers preserve the scenario identity and response MIME.');
+      await screenshotStep(`${expected.id}查看Headers / Inspect Headers for ${expected.id}`, {
+        highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.headers), label: '1' }],
+      });
 
       // 正文断言：真实点击Request/Response与Raw，核对完整上传以及每个响应分块。
       // Body assertions: click Request/Response and Raw to verify the complete upload and every response chunk.
@@ -70,6 +84,9 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
         await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyMode.raw).click();
         await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyPane))
           .toContainText(expected.requestBody);
+        await screenshotStep(`${expected.id}查看Request Raw正文 / Inspect the ${expected.id} Request body in Raw`, {
+          highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyMode.raw), label: '1' }],
+        });
       }
       await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.response).click();
       await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyMode.raw).click();
@@ -80,7 +97,9 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
       }
       evidence.push({ scenarioId: expected.id, row: await row.getAttribute('data-automation-id'),
         requestBytes: result.request!.bodyBytes, responseBytes: result.response!.bodyBytes });
-      await screenshotStep('正文断言：真实点击Request/Response与Raw，核对完整上传以及每个响应分块。 / Body assertions: click Request/Response and Raw to verify the complete upload and every response chunk.');
+      await screenshotStep(`${expected.id}查看Response Raw正文 / Inspect the ${expected.id} Response body in Raw`, {
+        highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyMode.raw), label: '1' }],
+      });
     });
   }
   await screenshotStep('准备：通过真实产品UI开启Recording，复用现有场景，独立定义产品期望。 / Arrange: start Recording through product UI, reuse existing scenarios, and define product expectations independently.');
@@ -91,6 +110,7 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
     const scenarioId = responseEnding === 'complete' ? 'sse-inflight' : `sse-${responseEnding}`;
     await test.step(scenarioId, async () => {
       const requestPath = `/e2e/http-${scenarioId}`;
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter).fill(requestPath);
       const events = [
         'event: update\ndata: {"sequence":1}\n\n',
         'event: update\ndata: {"sequence":2}\n\n',
@@ -155,6 +175,9 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
             if (!bodyId) throw new Error('Missing SSE response headers section body.');
             await expect(desktopApp.page.locator(`[id="${bodyId}"]`)).toContainText('text/event-stream');
           }
+          await screenshotStep(`${scenarioId}接收第${streamingStates.length}段，连接尚未结束 / Receive part ${streamingStates.length} of ${scenarioId} before the connection ends`, {
+            highlights: [{ target: row, label: '1' }],
+          });
         }
         await desktopApp.page.screenshot({ path: testInfo.outputPath(`${scenarioId}.png`) });
         if (responseEnding === 'complete') {
@@ -166,6 +189,9 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
           await expect(textMode).toHaveAttribute('aria-checked', 'true');
           const responseBody = getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyPane);
           for (const line of events.join('').split('\n').filter(Boolean)) await expect(responseBody).toContainText(line);
+          await screenshotStep('SSE结束后查看完整Text正文 / Inspect the complete SSE body in Text after the response ends', {
+            highlights: [{ target: textMode, label: '1' }],
+          });
         } else {
           if (responseEnding === 'client-abort') streamRequest!.destroy(new Error('SSE client aborted'));
           else originResponse!.destroy();
@@ -265,6 +291,9 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
         await row.click();
         await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.headers).click();
         await desktopApp.page.screenshot({ path: testInfo.outputPath(`upload-${uploadMode}.png`) });
+        await screenshotStep(`${uploadMode}上传尚未结束，Capture已记录4MiB / Capture has recorded 4 MiB before the ${uploadMode} upload ends`, {
+          highlights: [{ target: row, label: '1' }],
+        });
         if (uploadMode === 'client-abort') {
           uploadRequest!.destroy(new Error('Upload client aborted'));
           await expect(completedResponse).rejects.toThrow('Upload client aborted');
@@ -282,6 +311,9 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
           await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.response).click();
           await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyPane))
             .toContainText('upload-ok');
+          await screenshotStep(`${uploadMode}上传完成后查看响应 / Inspect the response after the ${uploadMode} upload completes`, {
+            highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.response), label: '1' }],
+          });
         }
         expect(originUpload!.headers[uploadMode === 'content-length' ? 'content-length' : 'transfer-encoding'])
           .toBe(uploadMode === 'content-length' ? String(expectedBytes) : 'chunked');
@@ -294,7 +326,7 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
             transferEncoding: originUpload!.headers['transfer-encoding'] ?? null,
             row: await row.textContent() } }, null, 2), 'utf8');
         await testInfo.attach(`upload-${uploadMode}.json`, { path: evidencePath, contentType: 'application/json' });
-        await keywordFilter.fill('');
+        await keywordFilter.fill('/e2e/http-');
       } finally {
         uploadRequest?.destroy();
         await completedResponse?.catch(() => undefined);
@@ -366,41 +398,66 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
           if (chunkIndex === 0) {
             await row.click();
             await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.headers).click();
+            await screenshotStep(`${scenarioId}查看首段2MiB接收进度 / Inspect the first 2 MiB received for ${scenarioId}`, {
+              highlights: [{ target: row, label: '1' }],
+            });
             if (captureAction === 'pause-resume') {
               await recording.click();
               await expect(recording).toHaveAttribute('aria-pressed', 'false');
+              await screenshotStep('长响应进行中暂停Recording / Pause Recording while a long response is in flight', {
+                highlights: [{ target: recording, label: '1' }],
+              });
             } else if (captureAction === 'clear') {
               await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.clear).click();
               await expect(row).toHaveCount(0);
+              await screenshotStep('长响应进行中Clear移除记录 / Clear the record while a long response is in flight', {
+                highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.clear), label: '1' }],
+              });
             }
           }
         }
         await desktopApp.page.screenshot({ path: testInfo.outputPath(`${scenarioId}.png`) });
+        await screenshotStep(`${scenarioId}第二段到达后的Capture状态 / Inspect Capture after the second part of ${scenarioId} arrives`, {
+          highlights: [{ target: captureAction === 'clear'
+            ? getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.clear) : row, label: '1' }],
+        });
         originResponse!.end(responseChunks[2]);
         const responseDigest = await completedResponse;
         expect(responseDigest).toBe(expectedHash.digest('hex'));
         expect(receivedBytes).toBe(6 * 1024 * 1024);
         expect(clientResponse!.complete).toBe(true);
         if (captureAction === 'clear') {
-          await keywordFilter.fill('');
           const scenario = trafficLab.scenarios().find((candidate) => candidate.id === 'h1-json');
           if (!scenario || scenario.defaultDraft.kind !== 'http') throw new Error('Missing HTTP JSON scenario.');
+          await keywordFilter.fill(scenario.defaultDraft.path);
           const result = await trafficLab.run(scenario.id, scenario.defaultDraft, desktopApp.capturePort());
           expect(result).toMatchObject({ state: 'complete', response: { statusCode: 200 } });
           const freshRow = getByAutomationIdPrefix(desktopApp.page, AUTOMATION_ID_PREFIXES.captureRequestRow)
             .filter({ hasText: scenario.defaultDraft.path });
           await expect(freshRow).toHaveCount(1);
           await expect(freshRow).toContainText('200');
+          // 旧行消失必须在匹配旧路径的搜索下验证，先等待新行因筛选而离开。
+          // Verify absence under the old path filter, waiting for the known new row to leave first.
+          await keywordFilter.fill(requestPath);
+          await expect(freshRow).toHaveCount(0);
           await expect(row).toHaveCount(0);
+          await keywordFilter.fill(scenario.defaultDraft.path);
+          await expect(freshRow).toHaveCount(1);
+          await screenshotStep('Clear后捕获新的h1-json请求 / Capture a new h1-json request after Clear', {
+            highlights: [{ target: freshRow, label: '1' }],
+          });
         } else {
           await expect(row).toHaveAttribute('data-automation-id', rowId!);
           await expect(row).toContainText('6 MB');
           await expect(row).not.toContainText('\u00b7\u00b7\u00b7');
+          await screenshotStep(`${scenarioId}完整接收6MiB / Finish receiving all 6 MiB for ${scenarioId}`, {
+            highlights: [{ target: row, label: '1' }],
+          });
           if (captureAction === 'pause-resume') {
             await recording.click();
             await expect(recording).toHaveAttribute('aria-pressed', 'true');
           }
-          await keywordFilter.fill('');
+          await keywordFilter.fill('/e2e/http-');
         }
         const evidencePath = testInfo.outputPath(`${scenarioId}.json`);
         await writeFile(evidencePath, JSON.stringify({ captureAction, rowId, downloadStates,
@@ -421,6 +478,7 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
   // Rejected upload: read captured bodies after the full 413 response without disconnecting the client to trigger finalization.
   await test.step('413-response-completion', async () => {
     const requestPath = '/e2e/http-413-capture';
+    await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter).fill(requestPath);
     const upload = Buffer.from('captured upload before rejection');
     const originChunks: Buffer[] = [];
     let originResponse: ServerResponse | undefined;
@@ -492,6 +550,7 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
   await test.step('h1-abort', async () => {
     const scenario = trafficLab.scenarios().find((candidate) => candidate.id === 'h1-abort');
     if (!scenario || scenario.defaultDraft.kind !== 'http') throw new Error('Missing HTTP abort scenario.');
+    await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter).fill(scenario.defaultDraft.path);
     const result = await trafficLab.run(scenario.id, scenario.defaultDraft, desktopApp.capturePort());
     expect(result).toMatchObject({ state: 'failed', request: { method: 'GET', path: '/playground/h1-abort' } });
     expect(result.response).toBeUndefined();
@@ -506,7 +565,9 @@ test('capture.scenarios.http captures JSON uploads streaming early responses and
     evidence.push({ scenarioId: scenario.id, row: await row.getAttribute('data-automation-id'),
       requestBytes: result.request!.bodyBytes, responseBytes: 0 });
   });
-  await screenshotStep('中断：origin真实断开连接，Capture仍保留请求且不显示成功或等待状态。 / Abort: the origin closes the real connection; Capture retains the request without a success or pending status.');
+  await screenshotStep('源站断开后检查保留的HTTP请求 / Inspect the retained HTTP request after the origin disconnects', {
+    highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.headers), label: '1' }],
+  });
 
   // 证据：保存逐场景身份与实际字节数，Renderer必须没有page error。
   // Evidence: retain each scenario identity and observed byte counts and require zero Renderer page errors.

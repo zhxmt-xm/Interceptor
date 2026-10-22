@@ -5,6 +5,7 @@ import { gzipSync } from 'node:zlib';
 
 import { grpcMessages } from '../../../../../playground/server/tls/traffic';
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
+import { CAPTURE_FACET_IDS } from '../../../../src/renderer/features/capture/constants';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
@@ -35,6 +36,13 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
     // Arrange: prepare this CA and localhost exception through Certificates UI, then start Recording through UI.
     await prepareHttpsCapture(desktopApp);
     await startRecording(desktopApp);
+    // 截图准备：分组计数仍来自全量录制，只通过正常UI收起非必要选项。
+    // Screenshot preparation: counts still use the full recording; collapse unrelated options through normal UI.
+    for (const facet of CAPTURE_FACET_IDS) {
+      const toggle = getByAutomationId(page, AutomationIdFactory.captureFacetToggle(facet));
+      if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    }
 
     // 在途消息：用共享TLS origin逐段发送envelope，完成HTTP响应前读取并复制已收齐的消息。
     // Streaming messages: send envelope fragments from the shared TLS origin and read/copy complete messages before the HTTP response ends.
@@ -42,6 +50,7 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
       const scenario = trafficLab.scenarios().find((candidate) => candidate.id === 'grpc-unary-json');
       if (!scenario || scenario.defaultDraft.kind !== 'grpc') throw new Error('Missing streaming gRPC scenario.');
       const requestPath = '/e2e/grpc/streaming';
+      await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(requestPath);
       const payloads = ['{"message":"stream-first"}', '{"message":"stream-second"}'];
       const envelopes = payloads.map((data) => grpcMessages([{ data, encoding: 'utf8', compressed: false }], 'valid'));
       const responseStream = new PassThrough();
@@ -71,6 +80,9 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
         await expect(responseSide).toHaveAttribute('aria-checked', 'true');
         const messages = getByAutomationIdPrefix(page, `${AUTOMATION_ID_PREFIXES.grpcMessage}${exchangeId}.response.`);
         await expect(messages).toHaveCount(0);
+        await screenshotStep('gRPC响应envelope未完整时没有消息 / An incomplete gRPC envelope does not yet create a message', {
+          highlights: [{ target: responseSide, label: '1' }],
+        });
 
         responseStream.write(envelopes[0]!.subarray(3));
         await expect(row).toContainText(`${envelopes[0]!.byteLength} B`);
@@ -83,6 +95,9 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
         await firstMessage.click();
         await getByAutomationId(page, AutomationIdFactory.grpcPayloadCopy(exchangeId, 'response', 0)).click();
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(payloads[0]);
+        await screenshotStep('响应未结束时展开并复制第一条gRPC消息 / Expand and copy the first gRPC message before the response ends', {
+          highlights: [{ target: getByAutomationId(page, AutomationIdFactory.grpcPayloadCopy(exchangeId, 'response', 0)), label: '1' }],
+        });
         await firstMessage.click();
 
         responseStream.write(envelopes[1]!.subarray(0, envelopes[1]!.byteLength - 2));
@@ -101,6 +116,9 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
         await secondMessage.click();
         await getByAutomationId(page, AutomationIdFactory.grpcPayloadCopy(exchangeId, 'response', 1)).click();
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(payloads[1]);
+        await screenshotStep('第二条gRPC消息收齐后展开并复制 / Expand and copy the second complete gRPC message', {
+          highlights: [{ target: getByAutomationId(page, AutomationIdFactory.grpcPayloadCopy(exchangeId, 'response', 1)), label: '1' }],
+        });
         await page.screenshot({ path: testInfo.outputPath('grpc-streaming.png') });
         const evidencePath = testInfo.outputPath('grpc-streaming.json');
         await writeFile(evidencePath, JSON.stringify({ exchangeId, expectedMessages,
@@ -111,6 +129,9 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
         await expect(completedResponse).resolves.toMatchObject({ state: 'complete', protocol: 'grpc', tls: { alpn: 'h2' },
           response: { statusCode: 200, trailers: { 'grpc-status': '0' } } });
         await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.scroll)).toContainText('grpc-status: 0');
+        await screenshotStep('gRPC响应结束后核对grpc-status / Inspect grpc-status after the gRPC response ends', {
+          highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.grpc), label: '1' }],
+        });
         await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
       } catch (error) {
         await page.screenshot({ path: testInfo.outputPath('grpc-streaming.png') });
@@ -163,9 +184,15 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
           if (captureAction === 'pause-resume') {
             await recording.click();
             await expect(recording).toHaveAttribute('aria-pressed', 'false');
+            await screenshotStep('gRPC流进行中暂停Recording / Pause Recording while the gRPC stream is in flight', {
+              highlights: [{ target: recording, label: '1' }],
+            });
           } else {
             await getByAutomationId(page, AUTOMATION_IDS.capture.clear).click();
             await expect(row).toHaveCount(0);
+            await screenshotStep('gRPC流进行中Clear移除旧记录 / Clear removes the captured record while the gRPC stream is in flight', {
+              highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.clear), label: '1' }],
+            });
           }
           responseStream.write(envelopes[1]!);
           if (captureAction === 'pause-resume') {
@@ -175,6 +202,9 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
             await message.click();
             await getByAutomationId(page, AutomationIdFactory.grpcPayloadCopy(exchangeId, 'response', 1)).click();
             await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(payloads[1]);
+            await screenshotStep('暂停后仍可复制已录制gRPC流的新消息 / Copy a new message on the already-recorded gRPC stream while paused', {
+              highlights: [{ target: getByAutomationId(page, AutomationIdFactory.grpcPayloadCopy(exchangeId, 'response', 1)), label: '1' }],
+            });
           }
           if (clientFinished) {
             await testInfo.attach(`grpc-streaming-${captureAction}-premature-end.json`, {
@@ -197,11 +227,14 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
             await expect(row).not.toContainText('\u00b7\u00b7\u00b7');
             await recording.click();
             await expect(recording).toHaveAttribute('aria-pressed', 'true');
+            await screenshotStep('gRPC响应完成后恢复Recording / Resume Recording after the gRPC response completes', {
+              highlights: [{ target: recording, label: '1' }],
+            });
             await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
           } else {
             await expect(row).toHaveCount(0);
           }
-          await keywordFilter.fill('');
+          await keywordFilter.fill('/e2e/grpc/');
           const evidencePath = testInfo.outputPath(`grpc-streaming-${captureAction}.json`);
           await writeFile(evidencePath, JSON.stringify({ captureAction, exchangeId, inFlight,
             final: { clientFinished, originEnded: responseStream.writableEnded,
@@ -260,6 +293,9 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
           await getByAutomationId(page, AutomationIdFactory.grpcPayloadCopy(exchangeId, side, 0)).click();
           await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(payloads[side][0]);
           await expect(messages).toHaveCount(1);
+          await screenshotStep(`双向gRPC复制${side}第一条完整消息 / Copy the first complete ${side} message in bidirectional gRPC`, {
+            highlights: [{ target: getByAutomationId(page, AutomationIdFactory.grpcPayloadCopy(exchangeId, side, 0)), label: '1' }],
+          });
           await firstMessage.click();
           streams[side].write(envelopes[side][1]!.subarray(-2));
           await expect(messages).toHaveCount(2);
@@ -272,6 +308,9 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
           expect(streams.response.writableEnded).toBe(false);
           streamingSides.push({ side, messageCount: await messages.count(), copiedPayloads: payloads[side],
             clientFinished, requestEnded: streams.request.writableEnded, responseEnded: streams.response.writableEnded });
+          await screenshotStep(`双向gRPC复制${side}第二条完整消息 / Copy the second complete ${side} message in bidirectional gRPC`, {
+            highlights: [{ target: getByAutomationId(page, AutomationIdFactory.grpcPayloadCopy(exchangeId, side, 1)), label: '1' }],
+          });
           await secondMessage.click();
         }
         await page.screenshot({ path: testInfo.outputPath('grpc-bidirectional-streaming.png') });
@@ -286,7 +325,7 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
           requestBytes: result.request?.bodyBytes, responseBytes: result.response?.bodyBytes }, null, 2), 'utf8');
         await testInfo.attach('grpc-bidirectional-streaming.json', { path: evidencePath, contentType: 'application/json' });
         await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
-        await keywordFilter.fill('');
+        await keywordFilter.fill('/e2e/grpc/');
       } finally {
         streams.request.end();
         streams.response.end();
@@ -298,6 +337,7 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
       await test.step(expected.id, async () => {
         const scenario = trafficLab.scenarios().find((candidate) => candidate.id === expected.id);
         if (!scenario || scenario.defaultDraft.kind !== 'grpc') throw new Error(`Missing gRPC scenario: ${expected.id}`);
+        await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(scenario.defaultDraft.path);
         const result = await trafficLab.run(scenario.id, scenario.defaultDraft, desktopApp.capturePort());
         expect(result).toMatchObject({ state: 'complete', protocol: 'grpc', tls: { alpn: 'h2' },
           response: { statusCode: 200, trailers: { 'grpc-status': expected.status } },
@@ -318,6 +358,9 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
         if (expected.status === '13') {
           await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.scroll)).toContainText('grpc-message: Playground failure');
         }
+        await screenshotStep(`${expected.id}打开gRPC页并核对状态 / Open gRPC and inspect the status for ${expected.id}`, {
+          highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.grpc), label: '1' }],
+        });
 
         for (const side of ['request', 'response'] as const) {
           const sideControl = getByAutomationId(page, side === 'request' ? AUTOMATION_IDS.capture.grpc.requestSide : AUTOMATION_IDS.capture.grpc.responseSide);
@@ -325,6 +368,9 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
           await expect(sideControl).toHaveAttribute('aria-checked', 'true');
           const messages = getByAutomationIdPrefix(page, `${AUTOMATION_ID_PREFIXES.grpcMessage}${exchangeId}.${side}.`);
           await expect(messages).toHaveCount(expected[side].length);
+          await screenshotStep(`${expected.id}选择${side}消息 / Select ${side} messages for ${expected.id}`, {
+            highlights: [{ target: sideControl, label: '1' }],
+          });
           for (const [index, text] of expected[side].entries()) {
             const declared = expected.compressed ? gzipSync(text) : Buffer.from(text);
             const captured = expected.truncated && side === 'response' ? declared.subarray(0, declared.length - 2) : declared;
@@ -336,15 +382,19 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
             await expect(message).toContainText(`${declared.length} B`);
             await expect(message).toContainText('@ 0x0005');
             await message.click();
+            await screenshotStep(`${expected.id}展开${side}消息 / Expand the ${side} message for ${expected.id}`, {
+              highlights: [{ target: message, label: '1' }],
+            });
             await getByAutomationId(page, AutomationIdFactory.grpcPayloadCopy(exchangeId, side, index)).click();
             await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(clipboard);
+            await screenshotStep(`${expected.id}复制${side}实际载荷 / Copy the actual ${side} payload for ${expected.id}`, {
+              highlights: [{ target: getByAutomationId(page, AutomationIdFactory.grpcPayloadCopy(exchangeId, side, index)), label: '1' }],
+            });
             await message.click();
-            await screenshotStep('业务断言：声明长度与envelope offset保留，真实Copy得到实际载荷；损坏消息不补造缺失字节。 / Product assertions: retain declared length and envelope offset; actual Copy returns stored payload without inventing truncated bytes.');
           }
         }
         evidence.push({ scenarioId: expected.id, exchangeId, status: expected.status, truncated: expected.truncated });
         await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.close).click();
-        await screenshotStep('产品操作：选择独立Capture请求，进入gRPC并逐侧检查，不调用消息查询API代替界面。 / Product actions: select the Capture request and inspect both gRPC sides without calling message query APIs directly.');
       });
     }
     await screenshotStep('双向消息：Request和Response同时保持在途，逐侧复制完整消息并拒绝半条payload。 / Bidirectional messages: keep both sides in flight, copy complete messages on each side, and exclude incomplete payloads.');
@@ -362,6 +412,7 @@ test('capture.scenarios.grpc preserves envelope payloads compression and error t
       const responseMessages = [`${responsePreview}\ud83d\ude42after-preview"}`, '{"message":"after-\u4e2d"}'];
       const previews = { request: [requestMessages[0]!, requestPreview], response: [responsePreview, responseMessages[1]!] };
       const requestPath = '/e2e/grpc/json-utf8-preview-boundary';
+      await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(requestPath);
       const result = await trafficLab.run(scenario.id, {
         ...scenario.defaultDraft,
         path: requestPath,

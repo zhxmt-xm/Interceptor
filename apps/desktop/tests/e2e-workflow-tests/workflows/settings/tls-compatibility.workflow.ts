@@ -125,6 +125,9 @@ test('settings.tls-compatibility selects patterns from real failed TLS handshake
     }
     await expect(selectedCheckboxes).toHaveCount(0);
     await expect(addSelected).toBeDisabled();
+    await screenshotStep('没有选择主机时不能保存透传配置 / Passthrough cannot be saved without selected hosts', {
+      highlights: [{ target: addSelected, label: '1' }],
+    });
     await patternCheckbox(hosts[0]!, selectedPatterns[0]!).click();
     await patternCheckbox(hosts[1]!, selectedPatterns[1]!).click();
     expect(await selectedCheckboxes.evaluateAll((elements) =>
@@ -133,6 +136,14 @@ test('settings.tls-compatibility selects patterns from real failed TLS handshake
       AutomationIdFactory.tlsCompatibilityPattern(hosts[1]!, selectedPatterns[1]!),
     ].sort());
     await expect(addSelected).toBeEnabled();
+    await hostList.press('Home');
+    await screenshotStep('核对精确主机与父域通配范围后再保存 / Review exact-host and parent wildcard scopes before saving', {
+      highlights: [
+        { target: hostRow(hosts[0]!), label: '1' },
+        { target: hostRow(hosts[1]!), label: '2' },
+        { target: addSelected, label: '3' },
+      ],
+    });
     await dialog.screenshot({ path: testInfo.outputPath('tls-compatibility-selected.png') });
     await addSelected.click();
     await expect(dialog).toHaveCount(0);
@@ -151,6 +162,9 @@ test('settings.tls-compatibility selects patterns from real failed TLS handshake
     expect(dismissedObservation.errorCode).toMatch(/^(SELF_SIGNED_CERT_IN_CHAIN|UNABLE_TO_VERIFY_LEAF_SIGNATURE|DEPTH_ZERO_SELF_SIGNED_CERT)$/);
     observations.push(dismissedObservation);
     await expect(hostRow(dismissedHost)).toHaveCount(1);
+    await screenshotStep('Not now只关闭提示，不添加透传主机 / Not now closes the prompt without adding passthrough hosts', {
+      highlights: [{ target: dismiss, label: '1' }],
+    });
     await dismiss.click();
     await expect(dialog).toHaveCount(0);
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
@@ -184,6 +198,9 @@ test('settings.tls-compatibility selects patterns from real failed TLS handshake
       for (const pattern of selectedPatterns) {
         const row = getByAutomationId(page, AutomationIdFactory.tlsPassthroughHost(pattern));
         if (await row.isVisible()) {
+          await screenshotStep('移除本次添加的透传范围 / Remove the passthrough scope added for this operation', {
+            highlights: [{ target: getByAutomationId(page, AutomationIdFactory.tlsPassthroughRemoveHost(pattern)), label: '1' }],
+          });
           await getByAutomationId(page, AutomationIdFactory.tlsPassthroughRemoveHost(pattern)).click();
           await expect(row).toHaveCount(0);
         }

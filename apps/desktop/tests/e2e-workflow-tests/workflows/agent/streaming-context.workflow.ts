@@ -92,6 +92,8 @@ async function closeApplication(
   desktopApp: LocalElectronApplicationDriver,
   testInfo: TestInfo,
 ): Promise<void> {
+  const closePanel = getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.panel.close);
+  if (await closePanel.isVisible()) await closePanel.click();
   await desktopApp.captureFinalScreenshot(testInfo);
   await desktopApp.stopTrace(testInfo);
   await desktopApp.closeGracefully();
@@ -188,6 +190,9 @@ test('agent.chat.streaming-context persists ordered Streaming, Usage, Stop and R
       delayMs: 100,
     });
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.message.input).fill(FIRST_PROMPT);
+    await screenshotStep('发送一条消息以读取流式回复与用量 / Send a message to inspect streaming output and usage', {
+      highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.message.send), label: '1' }],
+    });
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.message.send).click();
     await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.session.root))
       .toHaveAttribute('data-turn-status', 'running');
@@ -198,10 +203,26 @@ test('agent.chat.streaming-context persists ordered Streaming, Usage, Stop and R
     const contextUsage = getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.context);
     await expect(contextUsage).toHaveAttribute('data-current-tokens', '10');
     await expect(contextUsage).toHaveAttribute('data-window-tokens', '131072');
+    await screenshotStep('回复完成后查看Context入口 / Locate Context after the response completes', {
+      highlights: [{ target: contextUsage, label: '1' }],
+    });
     await revealSessionUsage(desktopApp.page);
     const sessionUsage = getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.usage.panel);
     await expect(sessionUsage)
       .toHaveAttribute('data-total-tokens', '12');
+    await screenshotStep('悬停Context读取当前上下文与累计用量 / Hover Context to read current context and cumulative usage', {
+      highlights: [{ target: sessionUsage, label: '1' }],
+    });
+    await desktopApp.page.mouse.move(1, 1);
+    await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.message.input).focus();
+    await desktopApp.page.keyboard.press('Shift+Tab');
+    await expect(contextUsage.getByRole('button')).toBeFocused();
+    await expect(sessionUsage).toBeVisible();
+    await screenshotStep('通过键盘聚焦Context读取相同用量 / Focus Context with the keyboard to read the same usage', {
+      highlights: [{ target: sessionUsage, label: '1' }],
+    });
+    await desktopApp.page.keyboard.press('Tab');
+    await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.message.input)).toBeFocused();
     const reasoning = getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.reasoning).last();
     await reasoning.click();
     await expect(reasoning).toContainText(FIRST_REASONING);
@@ -242,6 +263,9 @@ test('agent.chat.streaming-context persists ordered Streaming, Usage, Stop and R
       .toHaveAttribute('data-input-tokens', '30');
     await expect(sessionUsage)
       .toHaveAttribute('data-cache-hit-rate', '0.8');
+    await screenshotStep('第二轮后区分当前Context和会话累计值 / Distinguish current Context from cumulative session totals after the second turn', {
+      highlights: [{ target: sessionUsage, label: '1' }],
+    });
     await screenshotStep('用户操作：第二轮发送完整历史；Reasoning保持独立，Session Usage按Token加权聚合。 / User actions: the second turn sends complete history; Reasoning stays separate and Session Usage is token-weighted.');
 
     // 用户操作：可见delta后Stop必须abort真实HTTP；Retry复用原user item且不伪造取消调用Usage。
@@ -254,9 +278,15 @@ test('agent.chat.streaming-context persists ordered Streaming, Usage, Stop and R
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.message.input).fill(STOP_PROMPT);
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.message.send).click();
     await expect(assistantItems.last()).toContainText(PARTIAL_ANSWER);
+    await screenshotStep('回复仍在生成时找到Stop / Locate Stop while the response is still generating', {
+      highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.turn.stop), label: '1' }],
+    });
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.turn.stop).click();
     await waitForTurnStatus(desktopApp.page, 'cancelled');
     await expect.poll(() => openAiCompatibleLab.evidence().at(-1)?.aborted).toBe(true);
+    await screenshotStep('Stop后保留部分回复，Retry可重新尝试 / Retain partial output after Stop and offer Retry', {
+      highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.turn.retry), label: '1' }],
+    });
 
     openAiCompatibleLab.enqueueTurn({
       textChunks: ['Retry ', 'completed ', 'safely.'],
@@ -273,11 +303,15 @@ test('agent.chat.streaming-context persists ordered Streaming, Usage, Stop and R
     await expect(assistantItems.last()).toContainText(RETRY_ANSWER);
     await expect(desktopApp.page.locator('[data-agent-item-kind="user-message"]'))
       .toHaveCount(3);
+    await screenshotStep('Retry完成后保留同一条用户消息 / Retain the same user message after Retry completes');
     await revealSessionUsage(desktopApp.page);
     await expect(sessionUsage)
       .toHaveAttribute('data-model-call-count', '3');
     await expect(sessionUsage)
       .toHaveAttribute('data-total-tokens', '66');
+    await screenshotStep('Retry后读取更新的累计用量 / Inspect updated cumulative usage after Retry', {
+      highlights: [{ target: sessionUsage, label: '1' }],
+    });
     await screenshotStep('用户操作：可见delta后Stop必须abort真实HTTP；Retry复用原user item且不伪造取消调用Usage。 / User actions: Stop after a visible delta must abort real HTTP; Retry reuses the user item without fake cancelled-call Usage.');
 
     // 业务断言：事件sequence严格递增；只把计数、hash和脱敏HTTP事实写入evidence。
@@ -316,7 +350,11 @@ test('agent.chat.streaming-context persists ordered Streaming, Usage, Stop and R
       await closeApplication(desktopApp, testInfo);
     } catch (error) {
       cleanupErrors.push(error);
-      await desktopApp.forceCleanup().catch(() => undefined);
+      try {
+        await desktopApp.forceCleanup();
+      } catch (cleanupError) {
+        cleanupErrors.push(cleanupError);
+      }
     }
     if (cleanupErrors.length > 0) {
       cleanupError = new AggregateError(cleanupErrors, 'Streaming workflow cleanup failed.');

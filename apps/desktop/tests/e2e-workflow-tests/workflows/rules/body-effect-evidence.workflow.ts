@@ -45,12 +45,20 @@ async function createBreakpointRule(
     page,
     AutomationIdFactory.ruleMatcherField(ruleId, 0, 'value'),
   ).fill('127.0.0.1');
+  await screenshotStep(`填写${phase} Breakpoint规则的名称和Host / Enter the ${phase} Breakpoint Rule name and Host`, {
+    highlights: [{ target: getByAutomationId(page, AutomationIdFactory.ruleMatcherField(ruleId, 0, 'value')), label: '1' }],
+  });
   await getByAutomationId(
     page,
     AutomationIdFactory.ruleActionField(ruleId, 0, 'remove'),
   ).click();
+  await screenshotStep(`移除${phase} Breakpoint规则的默认Header / Remove the default Header from the ${phase} Breakpoint Rule`);
   await getByAutomationId(page, AUTOMATION_IDS.rules.addAction).click();
+  await screenshotStep(`为${phase}规则选择Breakpoint动作 / Choose Breakpoint for the ${phase} Rule`, {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.rules.actionOption.breakpoint), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.rules.actionOption.breakpoint).click();
+  await screenshotStep(`新增Breakpoint动作，准备配置${phase}阶段 / Add a Breakpoint action before configuring the ${phase} phase`);
   if (phase === 'response') {
     await getByAutomationId(
       page,
@@ -60,10 +68,21 @@ async function createBreakpointRule(
       page,
       AutomationIdFactory.ruleActionField(ruleId, 0, 'phase-option.response'),
     ).click();
+    await getByAutomationId(
+      page,
+      AutomationIdFactory.ruleActionField(ruleId, 0, 'phase'),
+    ).scrollIntoViewIfNeeded();
+    await screenshotStep('为Breakpoint选择响应阶段 / Select response phase for the Breakpoint', {
+      highlights: [{ target: getByAutomationId(page, AutomationIdFactory.ruleActionField(ruleId, 0, 'phase')), label: '1' }],
+    });
   }
   await getByAutomationId(page, AutomationIdFactory.ruleToggle(ruleId)).click();
+  await screenshotStep(`启用${phase} Breakpoint规则 / Enable the ${phase} Breakpoint Rule`, {
+    highlights: [{ target: getByAutomationId(page, AutomationIdFactory.ruleToggle(ruleId)), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.rules.apply).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.rules.apply)).toBeDisabled();
+  await screenshotStep(`保存${phase} Breakpoint规则 / Save the ${phase} Breakpoint Rule`);
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
   return ruleId;
 }
@@ -77,21 +96,36 @@ async function createTextBodyRule(
 ): Promise<string> {
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.rules).click();
   await getByAutomationId(page, AUTOMATION_IDS.rules.rootMenuSurface).click({ button: 'right' });
+  await screenshotStep(`打开${phase} Body规则的新建菜单 / Open the create menu for the ${phase} Body Rule`, {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.rules.create), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.rules.create).click();
   const ruleRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.ruleRow).last();
   await expect(ruleRow).toBeVisible();
   const ruleId = await dynamicId(ruleRow, AUTOMATION_ID_PREFIXES.ruleRow);
+  await screenshotStep(`新建${phase} Body规则 / Create the ${phase} Body Rule`);
   await getByAutomationId(page, AUTOMATION_IDS.rules.editorName).fill(name);
+  await screenshotStep(`填写${phase} Body规则名称 / Enter the ${phase} Body Rule name`, {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.rules.editorName), label: '1' }],
+  });
   await getByAutomationId(
     page,
     AutomationIdFactory.ruleMatcherField(ruleId, 0, 'value'),
   ).fill('127.0.0.1');
+  await screenshotStep(`填写${phase} Body规则Host / Enter the ${phase} Body Rule Host`, {
+    highlights: [{ target: getByAutomationId(page, AutomationIdFactory.ruleMatcherField(ruleId, 0, 'value')), label: '1' }],
+  });
   await getByAutomationId(
     page,
     AutomationIdFactory.ruleActionField(ruleId, 0, 'remove'),
   ).click();
+  await screenshotStep(`移除${phase} Body规则的默认Header / Remove the default Header from the ${phase} Body Rule`);
   await getByAutomationId(page, AUTOMATION_IDS.rules.addAction).click();
+  await screenshotStep(`为${phase}规则选择Body动作 / Choose Body for the ${phase} Rule`, {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.rules.actionOption.body), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.rules.actionOption.body).click();
+  await screenshotStep(`新增Body动作，准备配置${phase}阶段 / Add a Body action before configuring the ${phase} phase`);
   if (phase === 'request') {
     await getByAutomationId(
       page,
@@ -102,14 +136,25 @@ async function createTextBodyRule(
       AutomationIdFactory.ruleActionField(ruleId, 0, 'phase-option.request'),
     ).click();
   }
+  await screenshotStep(`核对Body的${phase}阶段 / Check the Body ${phase} phase`, {
+    highlights: [{ target: getByAutomationId(page, AutomationIdFactory.ruleActionField(ruleId, 0, 'phase')), label: '1' }],
+  });
   await getByAutomationId(
     page,
     AutomationIdFactory.ruleActionField(ruleId, 0, 'content'),
   ).fill(content);
+  await screenshotStep(`填写${phase} Body替换正文 / Enter the ${phase} Body replacement`, {
+    highlights: [{ target: getByAutomationId(page, AutomationIdFactory.ruleActionField(ruleId, 0, 'content')), label: '1' }],
+  });
   await getByAutomationId(page, AutomationIdFactory.ruleToggle(ruleId)).click();
+  await screenshotStep(`启用${phase} Body规则 / Enable the ${phase} Body Rule`, {
+    highlights: [{ target: getByAutomationId(page, AutomationIdFactory.ruleToggle(ruleId)), label: '1' }],
+  });
   await getByAutomationId(page, AUTOMATION_IDS.rules.apply).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.rules.apply)).toBeDisabled();
+  await screenshotStep(`保存${phase} Body规则 / Save the ${phase} Body Rule`);
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+  await screenshotStep(`返回Capture准备检查${phase} Body / Return to Capture to inspect the ${phase} Body`);
   return ruleId;
 }
 
@@ -119,8 +164,14 @@ async function setRuleEnabled(page: Page, ruleId: string, enabled: boolean): Pro
   const toggle = getByAutomationId(page, AutomationIdFactory.ruleToggle(ruleId));
   if (await toggle.getAttribute('aria-checked') !== String(enabled)) {
     await toggle.click();
+    await screenshotStep(`在列表中${enabled ? '启用' : '停用'}规则 / ${enabled ? 'Enable' : 'Disable'} the Rule in the list`, {
+      highlights: [{ target: toggle, label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.rules.apply).click();
     await expect(getByAutomationId(page, AUTOMATION_IDS.rules.apply)).toBeDisabled();
+    await screenshotStep(`保存规则的${enabled ? '启用' : '停用'}状态 / Save the Rule's ${enabled ? 'enabled' : 'disabled'} state`, {
+      highlights: [{ target: toggle, label: '1' }],
+    });
   }
 }
 
@@ -206,6 +257,88 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
   const requestPath = '/e2e/body-effect-red';
   const original = Buffer.from('{"stage":"original"}');
   const replacement = '{"stage":"final"}';
+  const inspectRegularBodyVersion = async (
+    version: 'original' | 'final',
+    expectedBody: string,
+    fileName: string,
+  ): Promise<void> => {
+    const versionControl = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyEffect[version]);
+    await versionControl.click();
+    await expect(versionControl).toHaveAttribute('aria-checked', 'true');
+    await versionControl.scrollIntoViewIfNeeded();
+    await screenshotStep(`选择普通Body的${version}版本 / Select the regular Body ${version} version`, {
+      highlights: [{ target: versionControl, label: '1' }],
+    });
+    const raw = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyMode.raw);
+    await raw.click();
+    await expect(raw).toHaveAttribute('aria-checked', 'true');
+    const currentBody = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane);
+    await expect(currentBody).toContainText(expectedBody);
+    await raw.scrollIntoViewIfNeeded();
+    await screenshotStep(`查看普通Body ${version}的Raw正文 / Inspect Raw for the regular Body ${version}`, {
+      highlights: [{ target: raw, label: '1' }],
+    });
+
+    const copy = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy);
+    await copy.click();
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(expectedBody);
+    await screenshotStep(`复制普通Body ${version}正文 / Copy the regular Body ${version}`, {
+      highlights: [{ target: copy, label: '1' }],
+    });
+    await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.fullscreen).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toHaveCount(1);
+    await expect(dialog).toBeVisible();
+    await expect(getByAutomationId(dialog, AUTOMATION_IDS.capture.inspector.bodyPane)).toContainText(expectedBody);
+    await screenshotStep(`全屏查看普通Body ${version} / Inspect the regular Body ${version} fullscreen`);
+    const headerButtons = dialog.locator('header').getByRole('button');
+    await expect(headerButtons).toHaveCount(2);
+    await headerButtons.nth(0).click();
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(expectedBody);
+    await screenshotStep(`从全屏复制普通Body ${version} / Copy the regular Body ${version} from fullscreen`, {
+      highlights: [{ target: headerButtons.nth(0), label: '1' }],
+    });
+    await headerButtons.nth(1).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(versionControl).toHaveAttribute('aria-checked', 'true');
+    await expect(raw).toHaveAttribute('aria-checked', 'true');
+    await expect(currentBody).toContainText(expectedBody);
+    await screenshotStep(`关闭全屏后保留${version}与Raw / Retain ${version} and Raw after closing fullscreen`, {
+      highlights: [{ target: versionControl, label: '1' }],
+    });
+
+    const exportedBody = testInfo.outputPath(fileName);
+    try {
+      const save = getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.save);
+      await save.click();
+      await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), exportedBody);
+      await expect.poll(() => readFile(exportedBody).catch(() => undefined)).toEqual(Buffer.from(expectedBody));
+      await expect(save).toBeEnabled();
+      await expect(versionControl).toHaveAttribute('aria-checked', 'true');
+      await expect(currentBody).toContainText(expectedBody);
+      await testInfo.attach(fileName, { path: exportedBody, contentType: 'application/json' });
+      await screenshotStep(`保存${fileName}后保留${version}正文 / Retain the ${version} body after saving ${fileName}`, {
+        highlights: [{ target: versionControl, label: '1' }],
+      });
+    } finally {
+      await rm(exportedBody, { force: true });
+    }
+  };
+  const returnFromBodyMarker = async (bodyRuleId: string): Promise<void> => {
+    const marker = getByAutomationId(page, AutomationIdFactory.captureBodyRuleEffect(bodyRuleId));
+    await marker.scrollIntoViewIfNeeded();
+    await screenshotStep('点击普通Body来源前核对标记 / Inspect the regular Body source marker before following it', {
+      highlights: [{ target: marker, label: '1' }],
+    });
+    await marker.click();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.shell.workspace.rules))
+      .toHaveAttribute('aria-current', 'page');
+    const target = getByAutomationId(page, AutomationIdFactory.ruleTarget(bodyRuleId));
+    await expect(target).toHaveAttribute('aria-pressed', 'true');
+    await screenshotStep('普通Body来源返回同一Rule身份 / The regular Body source returns to the same Rule identity', {
+      highlights: [{ target, label: '1' }],
+    });
+  };
 
   // 中文：通过真实UI开始Recording并创建唯一的request Breakpoint规则。
   // English: Start Recording through the real UI and create the only request Breakpoint Rule.
@@ -251,11 +384,17 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
     AUTOMATION_IDS.capture.inspector.bodyPane,
   );
   await expect.poll(() => bodyPane.textContent()).toContain('final');
+  await screenshotStep('查看Breakpoint修改后的请求Final / Inspect the request Final after the Breakpoint edit', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyEffect.final), label: '1' }],
+  });
   await getByAutomationId(
     page,
     AUTOMATION_IDS.capture.inspector.bodyEffect.original,
   ).click();
   await expect.poll(() => bodyPane.textContent()).toContain('original');
+  await screenshotStep('切换到Breakpoint请求的Original / Switch to the Breakpoint request Original', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyEffect.original), label: '1' }],
+  });
   await getByAutomationId(
     page,
     AUTOMATION_IDS.capture.inspector.bodyEffect.final,
@@ -271,6 +410,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
   ).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.shell.workspace.rules))
     .toHaveAttribute('aria-current', 'page');
+  await screenshotStep('从正文标记返回最终写入规则 / Return from the body marker to the final writer Rule');
   await setRuleEnabled(page, ruleId, false);
   await screenshotStep('中文：marker必须导航回最终写入Rule；随后停用Breakpoint以隔离普通Rule场景。 / English: The marker must navigate to the final writer Rule; then disable the Breakpoint for the regular Rule scene.');
 
@@ -311,12 +451,24 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
     AutomationIdFactory.captureBodyRuleEffect(regularRuleId),
   )).toBeVisible();
   await expect.poll(() => bodyPane.textContent()).toContain('regular-final');
+  await screenshotStep('查看普通请求Body规则的Final / Inspect Final from the regular request Body Rule', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyEffect.final), label: '1' }],
+  });
   await getByAutomationId(
     page,
     AUTOMATION_IDS.capture.inspector.bodyEffect.original,
   ).click();
   await expect.poll(() => bodyPane.textContent()).toContain('regular-original');
   await screenshotStep('中文：普通Request Text Rule使用chunked输入，origin与Capture分别验证Final和Original。 / English: A regular Request Text Rule uses chunked input; origin and Capture verify Final and Original.');
+  // 版本工具：读取已断言的同一请求，真实复制、全屏和保存各版本，不改变网络输入。
+  // Version tools: copy, expand and save each version of the already-verified request without changing traffic.
+  await inspectRegularBodyVersion(
+    'original',
+    regularOriginal.toString('utf8'),
+    'body-effect-regular-request-original.json',
+  );
+  await inspectRegularBodyVersion('final', regularFinal, 'body-effect-regular-request-final.json');
+  await returnFromBodyMarker(regularRuleId);
 
   // 中文：Response Text Rule保留Final，并明确禁用不可观测的Original。
   // English: A Response Text Rule keeps Final while explicitly disabling the unobservable Original.
@@ -364,6 +516,9 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
   )).toBeVisible();
   await expect.poll(() => bodyPane.textContent()).toContain('response-final');
   await screenshotStep('中文：Response Text Rule保留Final，并明确禁用不可观测的Original。 / English: A Response Text Rule keeps Final while explicitly disabling the unobservable Original.');
+  await inspectRegularBodyVersion('final', responseFinal, 'body-effect-regular-response-final.json');
+  await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyEffect.original)).toBeDisabled();
+  await returnFromBodyMarker(responseRuleId);
 
   // 中文：普通Rule先写正文，随后Request Breakpoint Text必须成为唯一最终写入者。
   // English: A regular Rule writes first, then Request Breakpoint Text must become the sole final writer.
@@ -431,6 +586,9 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
   await responseFileSourceRow.click();
   await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.response).click();
   await expect.poll(() => bodyPane.textContent()).toContain('breakpoint-file-final');
+  await screenshotStep('选中用于保存的响应正文 / Select the response body to save', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.response), label: '1' }],
+  });
   const generatedFile = testInfo.outputPath('body-effect-response-file.json');
   const mainProcessOwner = desktopApp.nativeFileDialogOwner();
   let responseBreakpointRuleId: string | null = null;
@@ -443,6 +601,7 @@ test('rules.body-effect-evidence exposes the final body writer', async ({
     await submitFileDialogPath(mainProcessOwner, generatedFile);
     await expect.poll(async () => readFile(generatedFile).catch(() => null))
       .toEqual(responseFileBytes);
+    await screenshotStep('保存响应文件后返回Capture / Return to Capture after saving the response file');
 
     // 中文：Response Breakpoint通过真实Open Dialog选中该文件并Forward edited。
     // English: A Response Breakpoint selects that file through the real Open Dialog and forwards it.
@@ -736,6 +895,42 @@ test('rules.body-effect-evidence keeps breakpoint header effects aligned', async
       expect(String(result.headers['x-effect-layout'])).toContain('from-rule');
       expect(String(result.headers['x-effect-layout'])).toContain('origin');
     }
+    // Header来源：完成原网络断言后查看Capture的标记，并实际点击返回原Rule。
+    // Header source: inspect Capture after the original wire assertions and follow its marker to the same Rule.
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+    await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(requestPath);
+    const completedRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
+      .filter({ hasText: requestPath })
+      .last();
+    await expect(completedRow).toBeVisible();
+    if (await completedRow.getAttribute('aria-pressed') !== 'true') await completedRow.click();
+    await expect(completedRow).toHaveAttribute('aria-pressed', 'true');
+    await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.headers).click();
+    const headerSection = getByAutomationId(page, phase === 'request'
+      ? AUTOMATION_IDS.capture.inspector.section.requestHeaders
+      : AUTOMATION_IDS.capture.inspector.section.responseHeaders);
+    await expect(headerSection).toBeVisible();
+    if (await headerSection.getAttribute('aria-expanded') !== 'true') await headerSection.click();
+    const capturedHeaders = headerSection.locator('..');
+    const capturedHeaderEffect = getByAutomationId(
+      capturedHeaders,
+      AutomationIdFactory.captureRuleEffect(ruleId, operation, 'x-effect-layout'),
+    );
+    await expect(capturedHeaders).toContainText('from-rule');
+    await expect(capturedHeaderEffect).toHaveAttribute('data-effect', operation);
+    await capturedHeaders.scrollIntoViewIfNeeded();
+    await screenshotStep(`Capture中查看${phase} Header来源 / Inspect the ${phase} Header source in Capture`, {
+      highlights: [{ target: capturedHeaderEffect, label: '1' }],
+    });
+    await capturedHeaderEffect.click();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.shell.workspace.rules))
+      .toHaveAttribute('aria-current', 'page');
+    await expect(getByAutomationId(page, AUTOMATION_IDS.rules.editorName)).toHaveValue(`E2E ${phase} header layout`);
+    const returnedRule = getByAutomationId(page, AutomationIdFactory.ruleTarget(ruleId));
+    await expect(returnedRule).toHaveAttribute('aria-pressed', 'true');
+    await screenshotStep(`从${phase} Header标记返回原Rule / Return to the original Rule from the ${phase} Header marker`, {
+      highlights: [{ target: returnedRule, label: '1' }],
+    });
     await setRuleEnabled(page, ruleId, false);
     await screenshotStep('用户操作与数据断言：编辑后恢复值，增删普通行，再正常放行验证原有Rule结果。 / User actions and data assertions: restore an edited value, add/remove a row, then resume and verify the Rule result.');
   }

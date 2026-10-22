@@ -156,6 +156,9 @@ test('rules.import-tree appends a product-exported tree without reusing identiti
       AUTOMATION_ID_PREFIXES.ruleFolderRename,
     );
     await folderRename.fill('E2E imported folder');
+    await screenshotStep('填写导出示例的目录名称 / Enter the export example folder name', {
+      highlights: [{ target: folderRename, label: '1' }],
+    });
     await folderRename.press('Enter');
     const originalFolderTarget = getByAutomationId(
       page,
@@ -168,6 +171,9 @@ test('rules.import-tree appends a product-exported tree without reusing identiti
       originalFolderTarget.locator('xpath=ancestor::section[1]'),
       AutomationIdFactory.ruleRow(disabledRuleId),
     )).toHaveCount(1);
+    await screenshotStep('将停用规则拖入目录 / Drag the disabled Rule into the folder', {
+      highlights: [{ target: getByAutomationId(page, AutomationIdFactory.ruleRow(disabledRuleId)), label: '1' }],
+    });
 
     await getByAutomationId(page, AutomationIdFactory.ruleRow(enabledRuleId)).click();
     await getByAutomationId(page, AUTOMATION_IDS.rules.apply).click();
@@ -215,6 +221,12 @@ test('rules.import-tree appends a product-exported tree without reusing identiti
     await expect(getByPublicAutomationId(page, IMPORT_IDS.folderCount)).toHaveText('1');
     await expect(getByPublicAutomationId(page, IMPORT_IDS.enabledCount)).toHaveText('1');
     await expect(getByPublicAutomationId(page, IMPORT_IDS.skippedCount)).toHaveText('0');
+    await screenshotStep('核对导入预览的规则、目录和启用数量 / Review the Rule, folder and enabled counts in the import preview', {
+      highlights: [
+        { target: getByPublicAutomationId(page, IMPORT_IDS.cancel), label: '1' },
+        { target: getByPublicAutomationId(page, IMPORT_IDS.confirm), label: '2' },
+      ],
+    });
     await getByPublicAutomationId(page, IMPORT_IDS.cancel).click();
     await expect(getByPublicAutomationId(page, IMPORT_IDS.dialog)).toHaveCount(0);
     expect(await automationSuffixes(ruleRows, AUTOMATION_ID_PREFIXES.ruleRow)).toEqual([

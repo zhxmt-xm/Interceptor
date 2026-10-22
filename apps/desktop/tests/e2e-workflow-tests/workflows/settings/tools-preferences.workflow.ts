@@ -4,12 +4,12 @@ import { request } from 'node:http';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type { Page, TestInfo } from '@playwright/test';
 
-import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
+import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
-import { getByAutomationId } from '../../fixtures/ui/automation';
+import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 
 const PROMPT = ['Change the selected', 'application preference.'].join(' ');
@@ -153,6 +153,12 @@ async function chooseUiTheme(page: Page, theme: string): Promise<void> {
 
 async function prepareExportDraft(desktopApp: LocalElectronApplicationDriver, httpTrafficRunner: HttpTrafficRunner): Promise<void> {
   await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
+  await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter).fill('/e2e/preferences/');
+  const facetToggles = desktopApp.page.locator('[data-automation-id^="capture.filter.toggle."]');
+  for (let index = 0; index < await facetToggles.count(); index += 1) {
+    const toggle = facetToggles.nth(index);
+    if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+  }
   await startRecording(desktopApp);
   const sourcePath = '/e2e/preferences/export-defaults';
   httpTrafficRunner.respondWith(sourcePath, { statusCode: 200, headers: { 'content-type': 'text/plain', 'content-length': '2' }, body: 'ok' });
@@ -198,6 +204,7 @@ async function runPreferenceWorkflow(desktopApp: LocalElectronApplicationDriver,
     const languageOnly = workflow.id === 'settings.tools.language';
     let client: Client | null = null;
     let relaunchedApp: LocalElectronApplicationDriver | null = null;
+    let retainedRequest: { id: string; url: string; path: string } | null = null;
     for (const value of [PROMPT, ANSWER]) desktopApp.registerSensitiveTextForEvidenceAudit(value);
     let workflowError: unknown;
     const cleanupErrors: unknown[] = [];
@@ -260,9 +267,22 @@ async function runPreferenceWorkflow(desktopApp: LocalElectronApplicationDriver,
       if (languageOnly) await chooseUiLanguage(page, initialLanguage);
       else {
         await chooseUiTheme(page, 'warm');
+        await screenshotStep('Privacy中的三个默认设置相互独立 / Inspect the three independent Privacy defaults', {
+          highlights: [
+            { target: getByAutomationId(page, PRIVACY_IDS.maskAuthorization), label: '1' },
+            { target: getByAutomationId(page, PRIVACY_IDS.maskCookies), label: '2' },
+            { target: getByAutomationId(page, PRIVACY_IDS.warnBeforeUnmasked), label: '3' },
+          ],
+        });
         await getByAutomationId(page, PRIVACY_IDS.maskAuthorization).click();
         await getByAutomationId(page, PRIVACY_IDS.maskCookies).click();
         await assertPreference(page, 'settings_set_export_privacy_defaults', { maskAuthorization: false, maskCookies: true, warnBeforeUnmasked: true });
+        await screenshotStep('分别修改Authorization与Cookie默认值 / Change Authorization and Cookie defaults separately', {
+          highlights: [
+            { target: getByAutomationId(page, PRIVACY_IDS.maskAuthorization), label: '1' },
+            { target: getByAutomationId(page, PRIVACY_IDS.maskCookies), label: '2' },
+          ],
+        });
       }
       await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
       await getByAutomationId(page, AUTOMATION_IDS.agent.tools.search).fill('settings_set_');
@@ -324,18 +344,34 @@ async function runPreferenceWorkflow(desktopApp: LocalElectronApplicationDriver,
         const cookies = getByAutomationId(page, AUTOMATION_IDS.capture.transfer.maskCookies);
         await expect(authorization).toBeChecked();
         await expect(cookies).not.toBeChecked();
+        await screenshotStep('打开HAR时读取当时的Privacy默认值 / An opened HAR draft uses the current Privacy defaults', {
+          highlights: [{ target: authorization, label: '1' }, { target: cookies, label: '2' }],
+        });
         const nextDefaults = { maskAuthorization: false, maskCookies: true, warnBeforeUnmasked: false };
         expect(mcpValue(await client.callTool({ name: 'settings_set_export_privacy_defaults', arguments: nextDefaults }))).toEqual(nextDefaults);
         await expect(authorization).toBeChecked();
         await expect(cookies).not.toBeChecked();
+        await screenshotStep('默认值改变不改写已经打开的HAR草稿 / Changing defaults does not rewrite an open HAR draft', {
+          highlights: [{ target: authorization, label: '1' }, { target: cookies, label: '2' }],
+        });
         await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.headerClose).click();
         await getByAutomationId(page, AUTOMATION_IDS.capture.exportMenu).click();
         await getByAutomationId(page, AUTOMATION_IDS.capture.exportHar).click();
         await expect(authorization).not.toBeChecked();
         await expect(cookies).toBeChecked();
+        await screenshotStep('重新打开HAR读取新的默认值 / Reopening HAR reads the new defaults', {
+          highlights: [{ target: authorization, label: '1' }, { target: cookies, label: '2' }],
+        });
         await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.headerClose).click();
         await openPrivacy(page);
         await assertPreference(page, 'settings_set_export_privacy_defaults', nextDefaults);
+        await screenshotStep('关闭前核对保存的Privacy设置 / Inspect saved Privacy settings before closing', {
+          highlights: [
+            { target: getByAutomationId(page, PRIVACY_IDS.maskAuthorization), label: '1' },
+            { target: getByAutomationId(page, PRIVACY_IDS.maskCookies), label: '2' },
+            { target: getByAutomationId(page, PRIVACY_IDS.warnBeforeUnmasked), label: '3' },
+          ],
+        });
       }
       const finalLanguage = await page.locator('html').getAttribute('lang');
       const finalTheme = await page.locator('html').getAttribute('data-theme');
@@ -347,6 +383,48 @@ async function runPreferenceWorkflow(desktopApp: LocalElectronApplicationDriver,
       await client.close();
       client = null;
       await screenshotStep('导出默认值：真实Capture使HAR选项可用，打开中的草稿保持原值，下次打开读取新偏好。 / Export defaults: real Capture enables HAR options; an open draft retains its values and the next draft reads the updated preferences.');
+
+      // Save a Collection definition and retain temporary Capture before the same normal restart.
+      // 在同一次正常重启前保存Collection定义，并保留临时Capture作独立对照。
+      if (!languageOnly) {
+        if (!httpTrafficRunner) throw new Error('Workspace persistence requires the owned HTTP origin.');
+        const requestPath = '/e2e/preferences/retained-request';
+        const url = httpTrafficRunner.url(requestPath);
+        await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.composer).click();
+        await screenshotStep('在Collection中新建需要保留的请求 / Create a Collection request to retain', {
+          highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.composer.newRequest), label: '1' }],
+        });
+        await getByAutomationId(page, AUTOMATION_IDS.composer.newRequest).click();
+        await getByAutomationId(page, AUTOMATION_IDS.composer.url).fill(url);
+        const requestRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.composerCollectionRequest).last();
+        const automationId = await requestRow.getAttribute('data-automation-id');
+        if (!automationId?.startsWith(AUTOMATION_ID_PREFIXES.composerCollectionRequest)) throw new Error('The retained request has no public identifier.');
+        const id = automationId.slice(AUTOMATION_ID_PREFIXES.composerCollectionRequest.length);
+        retainedRequest = { id, url, path: requestPath };
+        await screenshotStep('填写请求URL并等待自动保存，不发送 / Enter the URL for autosave without sending', {
+          highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.composer.url), label: '1' }],
+        });
+        await requestRow.click({ button: 'right' });
+        await getByAutomationId(page, AutomationIdFactory.composerCollectionNodeAction(id, 'rename')).click();
+        const rename = getByAutomationId(page, AutomationIdFactory.composerCollectionFolderRename(id));
+        await rename.fill('Workspace retained request');
+        await screenshotStep('填写保存请求的名称 / Name the saved request', {
+          highlights: [{ target: rename, label: '1' }],
+        });
+        await rename.press('Enter');
+        await expect(requestRow).toContainText('Workspace retained request');
+        expect(httpTrafficRunner.observation(requestPath)).toBeUndefined();
+        await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+        const oldCapture = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
+          .filter({ hasText: '/e2e/preferences/export-defaults' });
+        await expect(oldCapture).toBeVisible();
+        await screenshotStep('关闭前的Capture记录仍是临时数据 / Capture records remain temporary before closing', {
+          highlights: [{ target: oldCapture, label: '1' }],
+        });
+        await screenshotStep('保存后通过窗口Close正常退出 / Close the window normally after saving', {
+          highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.shell.window.close), label: '1' }],
+        });
+      }
 
       // 证据与重启：偏好与授权持久化，Model零重放；恢复初始值仍通过原UI。
       // Evidence and restart: preferences and permissions persist without Model replay; restore initial values through the original UI.
@@ -361,6 +439,30 @@ async function runPreferenceWorkflow(desktopApp: LocalElectronApplicationDriver,
       if (!languageOnly) {
         await openPrivacy(relaunchedApp.page);
         await assertPreference(relaunchedApp.page, 'settings_set_export_privacy_defaults', finalPrivacy);
+        await screenshotStep('重启后Privacy保持关闭前的设置 / Privacy retains its saved settings after restart', {
+          highlights: [
+            { target: getByAutomationId(relaunchedApp.page, PRIVACY_IDS.maskAuthorization), label: '1' },
+            { target: getByAutomationId(relaunchedApp.page, PRIVACY_IDS.maskCookies), label: '2' },
+            { target: getByAutomationId(relaunchedApp.page, PRIVACY_IDS.warnBeforeUnmasked), label: '3' },
+          ],
+        });
+        if (!retainedRequest || !httpTrafficRunner) throw new Error('The saved workspace request was not prepared.');
+        await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.shell.workspace.composer).click();
+        const restoredRow = getByAutomationId(relaunchedApp.page, AutomationIdFactory.composerCollectionRequest(retainedRequest.id));
+        await expect(restoredRow).toContainText('Workspace retained request');
+        await restoredRow.click();
+        const savedUrl = new URL(retainedRequest.url);
+        const restoredUrl = getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.composer.url);
+        await expect(restoredUrl).toHaveValue(`${savedUrl.host}${savedUrl.pathname}${savedUrl.search}${savedUrl.hash}`);
+        await expect(restoredUrl.locator('..')).toContainText(`${savedUrl.protocol}//`);
+        expect(httpTrafficRunner.observation(retainedRequest.path)).toBeUndefined();
+        await screenshotStep('重启后Collection名称和URL保留且没有自动Send / The Collection name and URL survive restart without an automatic Send', {
+          highlights: [{ target: restoredRow, label: '1' }, { target: getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.composer.url), label: '2' }],
+        });
+        await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
+        await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.capture.keywordFilter).fill('/e2e/preferences/');
+        await expect(getByAutomationIdPrefix(relaunchedApp.page, AUTOMATION_ID_PREFIXES.captureRequestRow)).toHaveCount(0);
+        await screenshotStep('重启后上一代临时Capture记录不再保留 / Temporary Capture records from the previous process are not retained');
       }
       await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
       await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.settings.section.agent).click();
@@ -381,6 +483,13 @@ async function runPreferenceWorkflow(desktopApp: LocalElectronApplicationDriver,
         }
         await assertPreference(relaunchedApp.page, 'settings_set_export_privacy_defaults', initialPrivacy);
         await expect(relaunchedApp.page.locator('html')).toHaveAttribute('lang', initialLanguage);
+        await screenshotStep('恢复原来的Privacy默认值和主题 / Restore the original Privacy defaults and theme', {
+          highlights: [
+            { target: getByAutomationId(relaunchedApp.page, PRIVACY_IDS.maskAuthorization), label: '1' },
+            { target: getByAutomationId(relaunchedApp.page, PRIVACY_IDS.maskCookies), label: '2' },
+            { target: getByAutomationId(relaunchedApp.page, PRIVACY_IDS.warnBeforeUnmasked), label: '3' },
+          ],
+        });
       }
       const evidencePath = testInfo.outputPath('preferences.json');
       await writeFile(evidencePath, JSON.stringify({

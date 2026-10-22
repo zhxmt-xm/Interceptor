@@ -3,8 +3,9 @@ import { readFile, writeFile } from 'node:fs/promises';
 import type { Page, TestInfo } from '@playwright/test';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 
-import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
-import { getByAutomationId } from '../../fixtures/ui/automation';
+import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
+import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
+import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
@@ -144,7 +145,7 @@ async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testI
   }
 }
 
-test('settings.tools.system-proxy rejects overlapping Enable calls without a queue', async ({ desktopApp }, testInfo) => {
+test('settings.tools.system-proxy rejects overlapping Enable calls without a queue', async ({ desktopApp, httpTrafficRunner }, testInfo) => {
   test.setTimeout(120_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.tools.system-proxy' });
   desktopApp.preserveUserDataOnFailure();
@@ -153,8 +154,62 @@ test('settings.tools.system-proxy rejects overlapping Enable calls without a que
   try {
     // 准备：经真实UI创建Auto MCP Client，保留当前完整proxy/journal状态。
     // Arrange: create an Auto MCP Client through product UI and retain the current proxy/journal state.
+    const initial = await readProxyState(desktopApp);
+    expect(initial.journal).not.toBeNull();
+    const original = initial.journal!.original;
+    const explicitPath = '/e2e/system-proxy/ui/explicit-client';
+    await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(explicitPath);
+    const facetToggles = page.locator('[data-automation-id^="capture.filter.toggle."]');
+    for (let index = 0; index < await facetToggles.count(); index += 1) {
+      const toggle = facetToggles.nth(index);
+      if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+    }
+    await startRecording(desktopApp);
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
+    await getByAutomationId(page, AUTOMATION_IDS.settings.section.proxy).click();
+    await screenshotStep('检查已接管的系统代理及Restore入口 / Inspect owned system proxy and Restore', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.settings.proxy.restore), label: '1' }],
+    });
+    await getByAutomationId(page, AUTOMATION_IDS.settings.proxy.restore).click();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.settings.proxy.enable)).toBeEnabled();
+    await expectRestored(desktopApp, original);
+    await screenshotStep('Restore后系统路由恢复，监听器继续运行 / Restore the system route while keeping the listener available');
+    await expect(httpTrafficRunner.requestThroughProxy(desktopApp.capturePort(), explicitPath))
+      .resolves.toMatchObject({ statusCode: 200 });
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+    const explicitRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
+      .filter({ hasText: explicitPath }).last();
+    await expect(explicitRow).toBeVisible();
+    if (await explicitRow.getAttribute('aria-pressed') !== 'true') await explicitRow.click();
+    await expect(explicitRow).toHaveAttribute('aria-pressed', 'true');
+    await screenshotStep('显式代理客户端在Restore后仍通过监听器 / An explicit proxy client still uses the listener after Restore', {
+      highlights: [{ target: explicitRow, label: '1' }],
+    });
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
+    await getByAutomationId(page, AUTOMATION_IDS.settings.section.proxy).click();
+    await screenshotStep('通过Enable重新接管系统代理 / Take ownership again through Enable', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.settings.proxy.enable), label: '1' }],
+    });
+    await getByAutomationId(page, AUTOMATION_IDS.settings.proxy.enable).click();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.settings.proxy.restore)).toBeEnabled();
+    await expectOwned(desktopApp, original);
+    await screenshotStep('Enable后确认接管状态 / Confirm ownership after Enable');
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+    await startRecording(desktopApp);
+    await screenshotStep('确认Recording已开启后再暂停 / Confirm Recording is active before pausing', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle), label: '1' }],
+    });
+    await getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle).click();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle)).toHaveAttribute('aria-pressed', 'false');
+    await screenshotStep('单独暂停Recording / Pause Recording separately', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle), label: '1' }],
+    });
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
+    await getByAutomationId(page, AUTOMATION_IDS.settings.section.proxy).click();
+    await expectOwned(desktopApp, original);
+    await screenshotStep('暂停Recording不恢复系统代理 / Pausing Recording does not restore the system proxy');
+
     const before = await readProxyState(desktopApp);
-    expect(before.journal).not.toBeNull();
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
     await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
     await desktopApp.stopTrace(testInfo);
@@ -177,6 +232,7 @@ test('settings.tools.system-proxy rejects overlapping Enable calls without a que
     await client.connect(new StreamableHTTPClientTransport(new URL(configuration.url), { requestInit: { headers: configuration.headers } }));
     await getByAutomationId(page, AutomationIdFactory.mcpClientAuto(clientId)).click();
     await expect(row).toHaveAttribute('data-execution-mode', 'auto');
+    await expect(getByAutomationId(page, AUTOMATION_IDS.mcp.server.root)).toHaveAttribute('aria-busy', 'false');
     await desktopApp.startTrace(testInfo);
 
     // 用户操作：同一真实Main并发接收两个Enable，冲突请求必须立即结束而不是排队。
@@ -204,6 +260,11 @@ test('settings.tools.system-proxy rejects overlapping Enable calls without a que
       body: Buffer.from(JSON.stringify({ successfulCalls: 1, rejectedConflicts: 1, originalPreserved: true, explicitRetryPassed: true })),
       contentType: 'application/json',
     });
+    await getByAutomationId(page, AUTOMATION_IDS.settings.section.proxy).click();
+    await getByAutomationId(page, AUTOMATION_IDS.settings.proxy.restore).click();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.settings.proxy.enable)).toBeEnabled();
+    await expectRestored(desktopApp, original);
+    await screenshotStep('结束前通过Restore恢复原系统路由 / Restore the original system route at the end');
     desktopApp.releasePreservedUserData();
   } finally {
     // 清理：关闭MCP连接，fixture经正式Quit恢复OS代理并验证进程和端口。

@@ -119,6 +119,20 @@ async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Prom
 async function captureSources(desktopApp: LocalElectronApplicationDriver, httpTrafficRunner: HttpTrafficRunner, webSocketTrafficRunner: WebSocketTrafficRunner): Promise<void> {
   await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
   await startRecording(desktopApp);
+  await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
+  await getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.section.proxy).click();
+  await getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.proxy.restore).click();
+  await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.settings.proxy.enable)).toBeEnabled();
+  await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
+  if (await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.clear).isEnabled()) {
+    await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.clear).click();
+  }
+  await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter).fill(SOURCE_PATH);
+  const facetToggles = desktopApp.page.locator('[data-automation-id^="capture.filter.toggle."]');
+  for (let index = 0; index < await facetToggles.count(); index += 1) {
+    const toggle = facetToggles.nth(index);
+    if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+  }
   httpTrafficRunner.respondWith(`${SOURCE_PATH}http`, {
     statusCode: 200,
     headers: { 'content-type': 'text/plain', 'content-length': String(Buffer.byteLength(RESPONSE_BODY)), 'set-cookie': `session=${SECRET}` },
@@ -177,12 +191,18 @@ async function verifyCapturedData(page: Page, client: Client, items: Record<stri
   await getByAutomationId(page, AutomationIdFactory.captureRequestRow(httpId)).click();
   await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.response).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane)).toContainText(RESPONSE_BODY);
+  await screenshotStep('导入后检查保存的HTTP响应正文 / Inspect the saved HTTP response body after import', {
+    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.response), label: '1' }],
+  });
   await getByAutomationId(page, AutomationIdFactory.captureRequestRow(webSocketId)).click();
   await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.messages).click();
   const frameRows = page.locator(`[data-automation-id^="capture.websocket.frame.${webSocketId}."]`);
   await expect(frameRows).toHaveCount(2);
   await frameRows.first().click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.scroll)).toContainText(WEBSOCKET_BODY);
+  await screenshotStep('归档中的WebSocket消息仍可查看 / Inspect the WebSocket message retained by the archive', {
+    highlights: [{ target: frameRows.first(), label: '1' }],
+  });
 }
 
 function startedJob(value: unknown, kind: 'archive-export' | 'archive-import'): string {
@@ -273,6 +293,8 @@ test('capture.tools.archive-transfer exports and imports native archives through
     client = configured.client;
     await captureSources(desktopApp, httpTrafficRunner, webSocketTrafficRunner);
     await expect.poll(async () => (await captureItems(client!)).length).toBe(2);
+    const allSourceItems = mcpValue(await client.callTool({ name: 'capture_list_exchanges', arguments: { limit: 100 } }));
+    expect(allSourceItems.items, 'Archive input must contain only this workflow’s two exchanges.').toHaveLength(2);
     const originalItems = await captureItems(client);
     await verifyCapturedData(page, client, originalItems);
     await getByAutomationId(page, AUTOMATION_IDS.agent.panel.toggle).click();
@@ -388,6 +410,9 @@ test('capture.tools.archive-transfer exports and imports native archives through
     await expect(saveArchiveCommand.locator('code')).toHaveText('.iarchive');
     await expect(saveArchiveCommand.locator('code')).toHaveCSS('font-size', '9.5px');
     await expect(saveArchiveCommand.locator('code')).toHaveCSS('padding', '2px 6px');
+    await screenshotStep('在Export菜单选择Native Archive / Choose Native Archive in the Export menu', {
+      highlights: [{ target: saveArchiveCommand, label: '1' }],
+    });
     await saveArchiveCommand.click();
     const archiveDialog = page.getByRole('dialog');
     const exportWarnings = archiveDialog.locator('header + div > div');
@@ -401,32 +426,48 @@ test('capture.tools.archive-transfer exports and imports native archives through
     }
     const warningColors = await exportWarnings.evaluateAll(elements => elements.map(element => getComputedStyle(element).color));
     expect(warningColors[0]).not.toBe(warningColors[1]);
+    await screenshotStep('阅读Archive范围与敏感数据提示后先取消 / Read archive scope and sensitive-data warnings, then cancel first', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.transfer.cancel), label: '1' }],
+    });
     await archiveDialog.screenshot({ path: testInfo.outputPath('archive-export-warning.png') });
     await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.cancel).click();
     await expect(getByAutomationId(page, AUTOMATION_IDS.capture.transfer.headerClose)).toBeHidden();
     await getByAutomationId(page, AUTOMATION_IDS.capture.exportMenu).click();
     await saveArchiveCommand.click();
+    const allBeforeUiExport = mcpValue(await client.callTool({ name: 'capture_list_exchanges', arguments: { limit: 100 } }));
+    expect(allBeforeUiExport.items, 'Archive export must not include non-owned traffic.').toHaveLength(beforeUiImport.length);
+    await screenshotStep('确认Native Archive导出 / Confirm the Native Archive export', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start).click();
     const uiFile = path.join(directory, 'ui.iarchive');
     await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), uiFile);
     await expect(getByAutomationId(page, AUTOMATION_IDS.capture.transfer.headerClose)).toBeHidden();
     await readArchiveHash(uiFile);
+    await screenshotStep('Native Archive保存完成后回到Capture / Return to Capture after saving the native archive');
     await getByAutomationId(page, AUTOMATION_IDS.capture.importMenu).click();
     const openArchiveCommand = getByAutomationId(page, AUTOMATION_IDS.capture.openArchive);
     await expect(openArchiveCommand).toHaveCSS('display', 'flex');
     await expect.poll(() => openArchiveCommand.evaluate(element => element.getBoundingClientRect().height)).toBeCloseTo(menuRowHeight, 1);
     await expect(openArchiveCommand).toHaveCSS('align-items', 'center');
     await expect(openArchiveCommand.locator('code')).toHaveText('.iarchive');
+    await screenshotStep('从Import菜单选择Native Archive / Choose Native Archive in the Import menu', {
+      highlights: [{ target: openArchiveCommand, label: '1' }],
+    });
     await openArchiveCommand.click();
     const importWarning = archiveDialog.locator('header + div > div');
     await expect(importWarning).toHaveCount(1);
     await expect(importWarning).toHaveCSS('padding', '11px 13px');
     await expect(importWarning).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await archiveDialog.screenshot({ path: testInfo.outputPath('archive-import-warning.png') });
+    await screenshotStep('阅读原生归档导入提示并选择文件 / Read the native archive import warning before choosing a file', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.capture.transfer.start).click();
-    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), completeFile);
-    await expect.poll(async () => (await captureItems(client!)).length).toBe(10);
+    await submitFileDialogPath(desktopApp.nativeFileDialogOwner(), uiFile);
+    await expect.poll(async () => (await captureItems(client!)).length).toBe(beforeUiImport.length * 2);
     await expect(getByAutomationId(page, AUTOMATION_IDS.capture.transfer.headerClose)).toBeHidden();
+    await screenshotStep('同一份UI导出归档已追加，不覆盖原记录 / The same UI-exported archive appends without replacing existing records');
     const finalItems = await captureItems(client);
     expect(firstImported.every((entry) => finalItems.some((current) => current.id === entry.id))).toBe(true);
     await verifyCapturedData(page, client, finalItems.filter((entry) => !beforeUiImport.some((previous) => previous.id === entry.id)));

@@ -6,9 +6,28 @@
 
 - `execute-edited`、`body-file-preview`及`original-body-layout`保留Headers、Text/File、Original与编码/framing；文件必须由产品Save生成。
 
+- `execute-edited`的两条本地规则都限定`127.0.0.1`与`/e2e/`，原四组网络输入、后续Header规则、完整正文/gzip/chunked断言不变。步骤图覆盖创建/Host/Path/Breakpoint/启用/Apply、真实选中pending、Headers/Text编辑和Forward edited；JSON从Final/Raw查看，纯文本用对应Text模式，gzip编码后的Final字节使用Hex并逐字节对照线上内容，不误要求Raw自动变成明文。完整解压内容仍由原网络断言核对。已有选中行不再重复点击取消选择。
+  - 收尾与普通workflow一致，由driver点击产品Close并验证Main/Core/Worker、8888及完整宿主恢复；不在最后额外发起未等待完成的Settings Restore。显式Restore由所属代理设置流程验收，不能以兜底清理代替本流程正常退出。
+  - 请求流程先通过产品Save body生成`request-body.bin`，保留原四组请求/完整编码断言，再补头阶段空Text保留原正文，以及同一二进制文件的真实Open、Content-Type设置、完整字节和Content-Length核对。它与WebSocket空Text发送空消息是不同边界，不预造文件。
+    - 最后通过Rules UI分别停用本轮请求断点和Header规则并Save；响应流程另测正文Off时只将状态改为`202`，完整原正文保持，再停用响应规则。需要Text/File空间时只用正常分组折叠，必须完整入屏才标注。
+  - 同文件的独立Response流程先由产品Save生成`response-body.json`，再创建`/e2e/response-edits/`响应规则；分别验证Header-only、`201`与Text、同一文件File替换、Continue忽略草稿及Drop。所有成功响应逐字节核对正文及Content-Length，并用Response/Final/Raw查看；Response阶段的Drop不撤销已到达origin的请求。保留真实Save/Open、正常Close及宿主恢复，不预造文件或混称请求与响应阶段。
+    - 完整响应客户端与现有`HttpTrafficRunner`程序化断点客户端一致，由用户决定结束挂起，不额外设置20秒socket空闲截止；workflow总时限、截图单步时限和退出校验保持原值。连接中断仍显式报错。
+
+- `body-file-preview`将本轮路径用于Keyword和规则范围，补Save入口、选中暂停项、File模式/选择入口、选择后名称与完整大小、Original展开时的实际布局、预览拖拽和Forward前状态；保留两种文件大小、原生Open、完整文件/Text线上字节和预览长度/hash断言，不拿预览图片代替实际文件。
+
 - `queue-commands`、`queue-stepping`、`queue-isolation`及`lifecycle-release`保留选择、背压、HTTP/WS独立队列、批量继续/丢弃、客户端结束和正常退出释放。
 
+- `queue-commands`用本轮Path限定Capture列表，分别记录可见Manager、HTTP等待数量、未提交Text草稿、Continue rule/Continue queue/Drop queue菜单及执行后剩余队首；原POST/PUT作用域、忽略草稿、完整原始正文与不抵达origin的断言保留。
+
 - `websocket-close.workflow.ts`保留38px历史/暂停布局及close-code编辑，补Both双向、非空消息明确替换为空Text、独立返回方向和真实ping/pong逐个放行。关闭连接的两端结果按各自真实事实描述。
+  - Both的关闭码示例先完成发送方向的`1001`修改，再核对不同public pending ID的返回Close并通过Continue原样放行；确认该连接无等待项后才配置另一条连接。不将移动活动配置当作释放旧等待项。
+  - 同一连接随后分别选择Sent、Received与Message，保留原样Continue、Text完整替换及单帧Drop。停用后发送一条实际可送达的新消息作为顺序屏障，再确认被Drop的内容没有抵达客户端或源站；不使用固定等待时间冒充未转发证据。
+
+- WebSocket步骤图明确配置入口、Close类型/启用、关闭码、Replacement收起、Both与Message/Ping/Pong、空Text和逐个Continue；`queue-stepping`补队首放行前入口，`lifecycle-release`补断开和有等待项时的真实Close入口。所有示例限定本轮路径，不改原队列、字节、时间顺序或销毁断言。
+
+- `queue-commands`的两条Method规则额外限定`/e2e/queue-`，保留原POST/PUT与三类批量命令的数据面断言；步骤图覆盖规则配置、Queued只读详情、回到队首仍保留自己的草稿，以及等待项处理结束后停用本轮规则并Save。不把下一批两个POST写成跨Method请求，也不将停用规则等同于处理等待项。
+  - `queue-isolation`的HTTP规则限定POST与`/e2e/queue-isolation-`，仅约束自产请求；补齐Sent/Both配置、HTTP与WebSocket独立Text草稿、当前消息队列Continue与最后HTTP Continue入口，原跨队列、未来echo及不提交草稿的断言不变。
+  - 同一原流程加入单独GET的Response断点，确认其与POST请求共用HTTP队列且Queued时只读；完成原有WS/HTTP断言后再放行响应队首。新的双向WS等待项通过当前队列Drop，并以停用后的正常消息验证被丢弃两帧没有重放；全局等待数量按新增真实响应计算。
 
 - 快捷规则、Undo及菜单复用Capture原断点菜单流程；Agent/MCP批量仍由原Tool流程负责，不再保留教程副本。
 

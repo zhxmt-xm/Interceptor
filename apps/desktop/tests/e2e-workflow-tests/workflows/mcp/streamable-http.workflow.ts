@@ -18,6 +18,7 @@ import {
   type McpHostConfiguration,
 } from '../../fixtures/ui/mcp-workflow';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
+import { automaticallyExecuteMcpClientTools } from '../../fixtures/ui/settings-workflow';
 import {
   expect,
   LocalElectronApplicationDriver,
@@ -309,6 +310,12 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
     try {
       // 准备：从fresh profile进入Agent Settings，MCP必须默认关闭且没有伪造Client。
       // Arrange: enter Agent Settings from a fresh profile; MCP starts off with no fabricated Client.
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.keywordFilter).fill('/e2e/mcp/');
+      const facetToggles = desktopApp.page.locator('[data-automation-id^="capture.filter.toggle."]');
+      for (let index = 0; index < await facetToggles.count(); index += 1) {
+        const toggle = facetToggles.nth(index);
+        if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+      }
       await openMcpSettings(desktopApp.page);
       const serverRoot = getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.server.root);
       await expect(serverRoot).toHaveAttribute('data-server-state', 'disabled');
@@ -323,8 +330,21 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
         .getAttribute('data-endpoint') ?? '';
       expect(endpoint).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/mcp$/);
       expect(new URL(endpoint).port).not.toBe('8888');
+      await screenshotStep('开启MCP Server并读取独立endpoint / Enable MCP Server and inspect its separate endpoint', {
+        highlights: [
+          { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.server.enable), label: '1' },
+          { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.server.endpoint), label: '2' },
+        ],
+      });
       await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.client.add).click();
+      await screenshotStep('打开新增MCP Client窗口 / Open the Add MCP Client dialog');
       await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.client.label).fill('MCP workflow client');
+      await screenshotStep('填写Client名称后创建凭据 / Enter the Client label before creating its credential', {
+        highlights: [
+          { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.client.label), label: '1' },
+          { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.client.create), label: '2' },
+        ],
+      });
       await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.client.create).click();
       const clientRow = desktopApp.page.locator('[data-automation-id^="mcp.client.row."]');
       await expect(clientRow).toHaveCount(1);
@@ -335,6 +355,9 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
 
       // 外部交互：复制一次配置，用固定待验协议的官方Client连接同一endpoint。
       // External interaction: copy the configuration once and connect an official Client pinned to the protocol under test.
+      await screenshotStep('通过Client行复制正式连接配置 / Copy the formal connection configuration from the Client row', {
+        highlights: [{ target: getByAutomationId(desktopApp.page, AutomationIdFactory.mcpClientCopyConfiguration(clientId)), label: '1' }],
+      });
       const original = await copyMcpClientConfiguration(desktopApp, testInfo, clientId);
       activeSensitiveTexts = [original.token];
       expect(original.url).toBe(endpoint);
@@ -365,10 +388,21 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
 
       // 业务断言：MCP列关闭项即时不可发现；重新开启后query直接读取真实Core状态。
       // Business assertion: an MCP-column disable hides the Tool; re-enable lets a query read real Core state directly.
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.tools.search).fill('capture_get_proxy_status');
       await getByAutomationId(
         desktopApp.page,
         AutomationIdFactory.agentToolMcpSwitch('capture_get_proxy_status'),
       ).click();
+      await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolMcpSwitch('capture_get_proxy_status')))
+        .toHaveAttribute('aria-checked', 'false');
+      await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.tools.capabilities))
+        .toHaveAttribute('aria-busy', 'false');
+      await screenshotStep('只关闭query Tool的MCP权限 / Disable only the query Tool’s MCP permission', {
+        highlights: [
+          { target: getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolMcpSwitch('capture_get_proxy_status')), label: '1' },
+          { target: getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolAgentSwitch('capture_get_proxy_status')), label: '2' },
+        ],
+      });
       const filteredClient = await connectClient(original, expectedProtocolVersion);
       clients.push(filteredClient);
       expect((await filteredClient.listTools()).tools.map((tool) => tool.name))
@@ -377,6 +411,11 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
         desktopApp.page,
         AutomationIdFactory.agentToolMcpSwitch('capture_get_proxy_status'),
       ).click();
+      await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolMcpSwitch('capture_get_proxy_status')))
+        .toHaveAttribute('aria-checked', 'true');
+      await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.tools.capabilities))
+        .toHaveAttribute('aria-busy', 'false');
+      await screenshotStep('恢复MCP权限后再查询 / Restore MCP permission before querying again');
       const queryClient = await connectClient(original, expectedProtocolVersion);
       clients.push(queryClient);
       await expect(queryClient.callTool({ name: 'capture_get_proxy_status', arguments: {} }))
@@ -395,11 +434,13 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
       );
       const cancelledOutcome = expect(cancelledCall).rejects.toThrow();
       await expect(approval).toHaveAttribute('data-tool-name', 'capture_stop_recording');
+      await screenshotStep('Host发起的暂停请求等待MCP审批 / A Host pause request waits for MCP approval');
       abortController.abort(new Error('The Host cancelled this Tool call.'));
       await cancelledOutcome;
       await expect(approval).toHaveCount(0);
       await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle))
         .toHaveAttribute('aria-pressed', 'true');
+      await screenshotStep('Host取消单次调用后Recording不变 / Recording remains enabled after the Host cancels one call');
       await expect(queryClient.callTool({ name: 'capture_get_proxy_status', arguments: {} }))
         .resolves.not.toMatchObject({ isError: true });
 
@@ -416,20 +457,35 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
       clients.push(actionClient);
       const deniedCall = actionClient.callTool({ name: 'capture_stop_recording', arguments: {} });
       await expect(approval).toHaveAttribute('data-tool-name', 'capture_stop_recording');
+      await screenshotStep('核对MCP Tool与影响后选择Deny或Allow / Review the MCP Tool and effect before Deny or Allow', {
+        highlights: [
+          { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.deny), label: '1' },
+          { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.allow), label: '2' },
+        ],
+      });
       await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.deny).click();
       await expect(deniedCall).resolves.toMatchObject({ isError: true });
       await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle))
         .toHaveAttribute('aria-pressed', 'true');
       const allowedCall = actionClient.callTool({ name: 'capture_stop_recording', arguments: {} });
       await expect(approval).toHaveAttribute('data-tool-name', 'capture_stop_recording');
+      await screenshotStep('新的MCP暂停调用需要本次Allow / The new MCP pause call needs its own Allow', {
+        highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.allow), label: '1' }],
+      });
       await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.allow).click();
       await expect(allowedCall).resolves.not.toMatchObject({ isError: true });
       await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle))
         .toHaveAttribute('aria-pressed', 'false');
+      await screenshotStep('允许MCP暂停后核对Capture状态 / Verify Capture is paused after MCP approval', {
+        highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.recordingToggle), label: '1' }],
+      });
       await resumeRecording(desktopApp);
       await openMcpSettings(desktopApp.page);
-      await getByAutomationId(desktopApp.page, AutomationIdFactory.mcpClientAuto(clientId)).click();
+      await automaticallyExecuteMcpClientTools(desktopApp.page, clientId);
       await expect(clientRow).toHaveAttribute('data-execution-mode', 'auto');
+      await screenshotStep('单独设置当前MCP Client的Auto / Set Auto for this MCP Client independently', {
+        highlights: [{ target: getByAutomationId(desktopApp.page, AutomationIdFactory.mcpClientAuto(clientId)), label: '1' }],
+      });
       await actionClient.callTool({ name: 'capture_stop_recording', arguments: {} });
       await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.root)).toHaveCount(0);
       await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
@@ -489,11 +545,23 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
       )).toHaveValue(MCP_RULE_UPDATED_VALUE);
       await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.state))
         .toHaveAttribute('data-state', 'applied');
+      await screenshotStep('MCP写入后Rules显示已应用的新值 / Rules shows the applied values written through MCP', {
+        highlights: [
+          { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName), label: '1' },
+          { target: getByAutomationId(desktopApp.page, AutomationIdFactory.ruleActionField(mcpRuleId, 0, 'value')), label: '2' },
+        ],
+      });
       await getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName).fill('MCP local draft');
       await getByAutomationId(desktopApp.page, AutomationIdFactory.ruleActionField(mcpRuleId, 0, 'value'))
         .fill('unapplied-local-value');
       await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.state))
         .toHaveAttribute('data-state', 'dirty');
+      await screenshotStep('编辑本地草稿但不Apply / Edit the local draft without Apply', {
+        highlights: [
+          { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName), label: '1' },
+          { target: getByAutomationId(desktopApp.page, AutomationIdFactory.ruleActionField(mcpRuleId, 0, 'value')), label: '2' },
+        ],
+      });
       const concurrentWrite = await actionClient.callTool({
         name: 'rules_replace_tree', arguments: { baseRevision: rulesRevision, nodes: nextRuleNodes },
       });
@@ -505,9 +573,14 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
       const conflictPath = `${MCP_RULE_PATH}/conflict`;
       expect((await loopbackLab.requestThroughProxy(desktopApp.capturePort(), conflictPath)).statusCode).toBe(200);
       expect(loopbackLab.observation(conflictPath)?.headers[MCP_RULE_HEADER]).toBe(MCP_RULE_UPDATED_VALUE);
-      await screenshotStep('第二写入者生效时保留未Apply的本地草稿 / Retain the unapplied local draft while the second writer takes effect');
+      await screenshotStep('第二写入者生效时保留未Apply的本地草稿 / Retain the unapplied local draft while the second writer takes effect', {
+        highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName), label: '1' }],
+      });
       const reload = getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName).locator('..')
         .locator(`[data-automation-id="${AUTOMATION_IDS.rules.reload}"]`);
+      await screenshotStep('确认放弃本地草稿前找到Reload / Locate Reload before discarding the local draft', {
+        highlights: [{ target: reload, label: '1' }],
+      });
       await reload.click();
       await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName)).toHaveValue(MCP_RULE_UPDATED_NAME);
       await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.ruleActionField(mcpRuleId, 0, 'value')))
@@ -518,10 +591,54 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
       await expectMcpRuleEffect(desktopApp, loopbackLab, 'updated', MCP_RULE_UPDATED_VALUE);
       await screenshotStep('外部交互：产品UI自产Rule后，官方Client在Auto下读取并替换完整树；Renderer与真实origin同步更新。 / External interaction: after product UI creates a Rule, the official Client reads and replaces the full tree in Auto; Renderer and origin update.');
 
+      // 本地合并：从Reload的最新版本重新编辑并Save，使用新请求验证后恢复原演示值。
+      // Local merge: edit and save the reloaded revision, verify a new request, then restore the original example values.
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName).fill('MCP merged header');
+      await getByAutomationId(desktopApp.page, AutomationIdFactory.ruleActionField(mcpRuleId, 0, 'value')).fill('merged');
+      await screenshotStep('在最新版本上重新编辑本地合并值 / Edit the local merged values on the latest revision', {
+        highlights: [
+          { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName), label: '1' },
+          { target: getByAutomationId(desktopApp.page, AutomationIdFactory.ruleActionField(mcpRuleId, 0, 'value')), label: '2' },
+          { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.apply), label: '3' },
+        ],
+      });
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.apply).click();
+      rulesRevision += 1;
+      await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.revision))
+        .toHaveAttribute('data-revision', String(rulesRevision));
+      await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.state)).toHaveAttribute('data-state', 'applied');
+      await screenshotStep('本地合并已经Save并成为已应用版本 / The local merge is saved and applied');
+      await expectMcpRuleEffect(desktopApp, loopbackLab, 'merged', 'merged');
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
+      const mergedRow = getByAutomationIdPrefix(desktopApp.page, AUTOMATION_ID_PREFIXES.captureRequestRow)
+        .filter({ hasText: `${MCP_RULE_PATH}/merged` }).last();
+      await expect(mergedRow).toBeVisible();
+      if (await mergedRow.getAttribute('aria-pressed') !== 'true') await mergedRow.click();
+      await expect(mergedRow).toHaveAttribute('aria-pressed', 'true');
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.tab.headers).click();
+      const mergedHeadersToggle = getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.section.requestHeaders);
+      if (await mergedHeadersToggle.getAttribute('aria-expanded') !== 'true') await mergedHeadersToggle.click();
+      await expect(mergedHeadersToggle).toHaveAttribute('aria-expanded', 'true');
+      const mergedHeaders = mergedHeadersToggle.locator('..');
+      const mergedHeader = mergedHeaders.getByText(MCP_RULE_HEADER, { exact: true }).locator('..');
+      await expect(mergedHeader).toContainText('merged');
+      await screenshotStep('新请求带有本地合并后的Header / A new request carries the locally merged Header', {
+        highlights: [{ target: mergedHeader, label: '1' }, { target: mergedRow, label: '2' }],
+      });
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.rules).click();
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName).fill(MCP_RULE_UPDATED_NAME);
+      await getByAutomationId(desktopApp.page, AutomationIdFactory.ruleActionField(mcpRuleId, 0, 'value')).fill(MCP_RULE_UPDATED_VALUE);
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.apply).click();
+      rulesRevision += 1;
+      await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.revision))
+        .toHaveAttribute('data-revision', String(rulesRevision));
+      await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.state)).toHaveAttribute('data-state', 'applied');
+
       // Breakpoints准备与查询：恢复Ask，经真实Rules UI创建POST断点，并让官方Client读取同一pending identity。
       // Breakpoints arrange and query: restore Ask, create a POST Breakpoint through Rules UI, and let the official Client read the same pending identity.
       await openMcpSettings(desktopApp.page);
       await getByAutomationId(desktopApp.page, AutomationIdFactory.mcpClientAsk(clientId)).click();
+      await expect(serverRoot).toHaveAttribute('aria-busy', 'false');
       await expect(clientRow).toHaveAttribute('data-execution-mode', 'ask');
       await desktopApp.stopTrace(testInfo);
       const breakpointRuleId = await createRequestBreakpointRule(
@@ -633,7 +750,7 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
       // Auto：Drop不显示审批且不抵达origin；HTTP disable/enable决定后续真实POST是否进入pending。
       // Auto: Drop shows no approval and never reaches origin; HTTP disable/enable controls whether later real POSTs become pending.
       await openMcpSettings(desktopApp.page);
-      await getByAutomationId(desktopApp.page, AutomationIdFactory.mcpClientAuto(clientId)).click();
+      await automaticallyExecuteMcpClientTools(desktopApp.page, clientId);
       await expect(clientRow).toHaveAttribute('data-execution-mode', 'auto');
       await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
       const dropPath = `${MCP_BREAKPOINT_PATH}/drop`;
@@ -763,11 +880,16 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
       // Settings撤权：十一项MCP开关关闭后立即从tools/list消失，逐项猜测调用均为unknown tool且不触发审批。
       // Settings revocation: all eleven disappear immediately from tools/list; every guessed call is unknown and never opens approval.
       await openMcpSettings(desktopApp.page);
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.tools.search).fill('breakpoints_');
       for (const toolName of BREAKPOINT_TOOL_NAMES) {
         await getByAutomationId(
           desktopApp.page,
           AutomationIdFactory.agentToolMcpSwitch(toolName),
         ).click();
+        await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolMcpSwitch(toolName)))
+          .toHaveAttribute('aria-checked', 'false');
+        await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.tools.capabilities))
+          .toHaveAttribute('aria-busy', 'false');
       }
       const namesAfterDisable = (await actionClient.listTools()).tools.map((tool) => tool.name);
       expect(namesAfterDisable.filter((name) => (
@@ -792,6 +914,10 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
           desktopApp.page,
           AutomationIdFactory.agentToolMcpSwitch(toolName),
         ).click();
+        await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolMcpSwitch(toolName)))
+          .toHaveAttribute('aria-checked', 'true');
+        await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.tools.capabilities))
+          .toHaveAttribute('aria-busy', 'false');
       }
       await screenshotStep('Settings撤权：十一项MCP开关关闭后立即从tools/list消失，逐项猜测调用均为unknown tool且不触发审批。 / Settings revocation: all eleven disappear immediately from tools/list; every guessed call is unknown and never opens approval.');
 
@@ -811,6 +937,12 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
         relaunchedApp.registerSensitiveTextForEvidenceAudit(text);
       }
       await relaunchedApp.waitUntilReady();
+      await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.capture.keywordFilter).fill('/e2e/mcp/');
+      const relaunchedFacetToggles = relaunchedApp.page.locator('[data-automation-id^="capture.filter.toggle."]');
+      for (let index = 0; index < await relaunchedFacetToggles.count(); index += 1) {
+        const toggle = relaunchedFacetToggles.nth(index);
+        if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+      }
       await openMcpSettings(relaunchedApp.page);
       const relaunchedServer = getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.mcp.server.root);
       await expect(relaunchedServer).toHaveAttribute('data-server-state', 'running');
@@ -821,6 +953,9 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
         AutomationIdFactory.mcpClientRow(clientId),
       );
       await expect(relaunchedRow).toHaveAttribute('data-execution-mode', 'auto');
+      await screenshotStep('真实重启后保留MCP endpoint与Client模式 / Retain the MCP endpoint and Client mode after a real restart', {
+        highlights: [{ target: relaunchedRow, label: '1' }],
+      });
       await relaunchedApp.stopTrace(testInfo);
       await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.shell.workspace.rules).click();
       await expect(getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.rules.status.revision))
@@ -848,6 +983,7 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
         AutomationIdFactory.mcpClientAsk(clientId),
       ).click();
       await expect(relaunchedRow).toHaveAttribute('data-execution-mode', 'ask');
+      await expect(relaunchedServer).toHaveAttribute('aria-busy', 'false');
       await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
       const rotationPath = `${MCP_BREAKPOINT_PATH}/credential-rotation`;
       const rotationPending = await startPendingMcpRequest(
@@ -885,6 +1021,12 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
         relaunchedApp.page,
         AutomationIdFactory.mcpClientRegenerate(clientId),
       ).click();
+      await screenshotStep('轮换MCP凭据前核对确认窗口 / Review the confirmation before rotating MCP credentials', {
+        highlights: [
+          { target: getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.mcp.client.regenerateCancel), label: '1' },
+          { target: getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.mcp.client.regenerateConfirm), label: '2' },
+        ],
+      });
       await getByAutomationId(
         relaunchedApp.page,
         AUTOMATION_IDS.mcp.client.regenerateConfirm,
@@ -906,6 +1048,9 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
       );
       expect(loopbackLab.observation(rotationPath)).toBeUndefined();
       await openMcpSettings(relaunchedApp.page);
+      await screenshotStep('轮换后重新复制配置更新Host / Copy the rotated configuration to update the Host', {
+        highlights: [{ target: getByAutomationId(relaunchedApp.page, AutomationIdFactory.mcpClientCopyConfiguration(clientId)), label: '1' }],
+      });
       const regenerated = await copyMcpClientConfiguration(relaunchedApp, testInfo, clientId);
       activeSensitiveTexts = [original.token, regenerated.token];
       regeneratedTokenHash = createHash('sha256').update(regenerated.token).digest('hex');
@@ -950,6 +1095,7 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
       // 清理与证据：恢复Ask与Recording，撤销Client并关闭MCP；只保存Token hash。
       // Cleanup and evidence: restore Ask and Recording, revoke the Client, disable MCP, and save token hashes only.
       await getByAutomationId(relaunchedApp.page, AutomationIdFactory.mcpClientAsk(clientId)).click();
+      await expect(relaunchedServer).toHaveAttribute('aria-busy', 'false');
       const inFlightPath = '/e2e/mcp/composer-revocation';
       const releaseResponse = loopbackLab.holdResponse(inFlightPath);
       const inFlight = regeneratedClient.callTool({
@@ -962,6 +1108,12 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
         await expect.poll(() => loopbackLab.observation(inFlightPath)?.method).toBe('GET');
         expect(loopbackLab.responseWasAborted(inFlightPath)).toBe(false);
         await getByAutomationId(relaunchedApp.page, AutomationIdFactory.mcpClientRevoke(clientId)).click();
+        await screenshotStep('撤销Client前核对影响与确认 / Review the effect before revoking this Client', {
+          highlights: [
+            { target: getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.mcp.client.revokeCancel), label: '1' },
+            { target: getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.mcp.client.revokeConfirm), label: '2' },
+          ],
+        });
         await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.mcp.client.revokeConfirm).click();
         await expect.poll(() => loopbackLab.responseWasAborted(inFlightPath)).toBe(true);
         const outcome = await inFlight;
@@ -981,6 +1133,9 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
       clients.splice(clients.indexOf(regeneratedClient), 1);
       await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.mcp.server.enable).click();
       await expect(relaunchedServer).toHaveAttribute('data-server-state', 'disabled');
+      await screenshotStep('关闭MCP Server并确认停止监听 / Disable MCP Server and verify its stopped state', {
+        highlights: [{ target: getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.mcp.server.enable), label: '1' }],
+      });
       await expect.poll(async () => {
         try {
           await fetch(endpoint);
