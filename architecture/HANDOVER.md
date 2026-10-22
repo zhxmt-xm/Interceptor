@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `72f54c6b`
+> Tracked commit: `38b6d062`
 > Homepage guidebook: `815591b`
 
 ## 维护规则
@@ -16,7 +16,18 @@
   - 下一步：先完成渠道与帖子清单，再按顺序逐项备稿、核对发布规则、确认最终内容与账号授权并发布；正式外发使用已交付教程及 item 11、15 已就绪的资料与入口，未验收场景继续按 item 16 保留边界，本轮仅登记待办，不操作外部账号或对外发布。
   - 验收：每个选定渠道都有最终稿、素材和实际发布链接，并处理发布后的有效问题与反馈；发布链接及反馈记录保存在对应推广材料中，不把草稿算作已发布。账号、平台规则或人工操作阻塞时说明原因，继续其他可执行渠道。
 
-- **14. Android USB 流量接入 · 进行中 · 独立仓库开发已授权**
+- **14. Android USB 流量接入 · 暂停 · 代码与验收未全部完成**
+  - 暂停指令：用户要求记录完整进度、提交后停止；本次仅保存现有代码/测试及交接，不继续实现或启动新验收。恢复须获得新的继续指令，不能把中间commit标作完整手机功能。
+  - 当前基线：PC协议副本接入及Core/Main装配已在`de46fad8`保存并推送；Android工程基线为`f6dddadb`。HTTP/1、TLS/明文H2、WS及压缩、本地DNS UDP/TCP、源站Network生命周期、Rules/Breakpoints/Capture已有对应组件证据；主流程仍未接系统VpnService/真实USB。
+  - 暂停快照：Android新增测试与完整交接已另存并推送为[`6d5cc18`](https://github.com/zhxmt-xm/Interceptor-Android/commit/6d5cc18)，产品代码仍为上述工程基线；后续恢复以该快照和本item为准。
+  - 最新增量：Android仅新增真实系统DNS语义/取消测试并完成目标APK编译；API29+取消产品接线仍来自已提交基线。API35普通目标因activeNetwork为null停在fixture前提，产品断言未执行；官方API29 AVD已建立但未运行。本轮环境失败及已完成的模拟器清理见[暂停证据](../../Interceptor-Android/architecture/platform/testing.md#系统dns语义续验与暂停交接)，不把启动或编译成功记为运行通过。
+  - 完整剩余：
+    - 系统DNS取消与API26/API29、成功回答/hosts/搜索域/mDNS/NAT64/Private DNS矩阵；旧平台延迟停止，以及无界响应replacement原文取消仍待验证。
+    - 全局native分发、Network选择/切换、真实TUN IPv4/IPv6/DNS、VpnService、前台通知和完整退出恢复。
+    - 手机Launcher/连接状态/首次配对撤销/VPN与CA授权引导；Main USB/ADB/安装升级/reverse生命周期；Renderer设备入口和带Android图标的虚拟App来源/筛选。
+    - 真实手机与Electron E2E、拔线重连、arm64/16KiB系统、最终打包smoke、签名分发及native构建本机路径问题；不以已有lab或旧APK审计替代。
+  - 待确认：未知TCP与非DNS UDP/QUIC处理、PC/USB异常断线后的VPN策略、双端UI和系统授权。现有helper部署/原生授权仍是App验收阻塞，不自动批准或绕过；不修改Mockttp，不把手机原始TCP/DNS交PC转发。
+  - 恢复入口：先沿[Android交接](../../Interceptor-Android/architecture/HANDOVER.md)收尾当前DNS目标，再以真实单设备VPN闭环为主线；不要重做已验协议或扩大多设备/无线范围。下方早期阶段仅保留历史事实/证据导航，“当前未接线”的旧描述不覆盖本段状态。
   - 保存边界：用户已明确授权将当前Android/PC实现保存为中间进度commit，不等于Item 14完成；Android源码已保存于[`f6dddad`](https://github.com/zhxmt-xm/Interceptor-Android/commit/f6dddadb9d40d5e7e5e7a46169a7396b4d15555e)。本次不纳入其他会话的教程、MCP、启动脚本或item22。最新系统DNS取消接线仍有平台/Private DNS待验项，完整App、真机与原生授权边界不改变。
   - 目标：Android 使用`VpnService`创建并读写TUN，经USB/`adb reverse`接入PC；每台手机作为带Android图标的虚拟App，复用PC的Rules、Breakpoints和Capture。
   - 范围：仅USB，不做局域网、无线adb或云中继；不把TUN当作VPN之外的可选补充，不以无VPN显式代理替代系统流量接管。
