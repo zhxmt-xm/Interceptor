@@ -4,6 +4,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fontsReady, measure } from './homepage-element-data.mjs';
 
 const repository = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const homepage = path.resolve(repository, '../Interceptor-Homepage');
@@ -60,7 +61,7 @@ async function serve(design) {
     plugins: design ? [designSearch()] : [],
     resolve: { dedupe: ['react', 'react-dom', 'antd', 'lucide-react'] },
     server: {
-      host: '127.0.0.1', port: 0, strictPort: false,
+      host: '127.0.0.1', port: design ? 6199 : 6198, strictPort: true,
       fs: { allow: [homepage, repository] },
     },
   });
@@ -75,26 +76,6 @@ async function serve(design) {
   }
 }
 
-async function fontsReady(page) {
-  await page.evaluate(async () => {
-    for (const [family, weights] of Object.entries({
-      Inter: [400, 450, 500, 600, 700],
-      'JetBrains Mono': [400, 500],
-    })) {
-      for (const weight of weights) {
-        const faces = await document.fonts.load(`${weight} 16px "${family}"`, 'Interceptor');
-        if (!faces.length || faces.some((face) => face.status !== 'loaded'))
-          throw new Error(`Font did not load: ${family} ${weight}`);
-      }
-    }
-  });
-}
-
-const styleKeys = [
-  'fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'color',
-  'backgroundColor', 'borderColor', 'borderRadius', 'paddingTop', 'paddingRight',
-  'paddingBottom', 'paddingLeft', 'gap', 'display', 'alignItems', 'overflowY',
-];
 const targetsFor = (state) => state === 'entry' || state === 'closed'
   ? [{ id: 'trigger', selector: '[data-automation-id="guide.search.trigger"]', visibleOnly: true }]
   : [
@@ -112,43 +93,6 @@ const targetsFor = (state) => state === 'entry' || state === 'closed'
         { id: 'excerpt', selector: '[data-automation-id="guide.search.result"][aria-selected="true"] p' },
       ]),
   ];
-
-async function measure(page, state) {
-  const targets = targetsFor(state);
-  const collect = () => page.evaluate(({ targets, styleKeys }) => Object.fromEntries(targets.map((target) => {
-    const elements = [...document.querySelectorAll(target.selector)]
-      .filter((element) => !target.visibleOnly || element.checkVisibility());
-    if (elements.length !== 1) throw new Error(`${target.id}: expected one node, found ${elements.length}`);
-    const element = elements[0];
-    const rect = element.getBoundingClientRect();
-    const css = getComputedStyle(element);
-    return [target.id, {
-      geometry: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
-      styles: Object.fromEntries(styleKeys.map((key) => [key, css[key]])),
-      state: {
-        visible: element.checkVisibility(),
-        focused: document.activeElement === element,
-        role: element.getAttribute('role'),
-        selected: element.getAttribute('aria-selected'),
-        expanded: element.getAttribute('aria-expanded'),
-        value: element instanceof HTMLInputElement ? element.value : null,
-        text: element.textContent,
-        scrollTop: element.scrollTop,
-        scrollHeight: element.scrollHeight,
-        clientHeight: element.clientHeight,
-      },
-    }];
-  })), { targets, styleKeys });
-  const end = Date.now() + 2000;
-  let previous = await collect();
-  do {
-    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
-    const current = await collect();
-    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
-    previous = current;
-  } while (Date.now() < end);
-  throw new Error(`Unstable measurements: ${state}`);
-}
 
 const report = { scope: 'Homepage guide search', dataOnly, checked: 0, scenes: [], differences: [], errors: [] };
 await mkdir(output, { recursive: true });
@@ -180,7 +124,7 @@ try {
             ).toHaveCount(side === 'design' ? 1 : 0);
             const states = {};
             const save = async (state) => {
-              states[state] = await measure(page, state);
+              states[state] = await measure(page, targetsFor(state));
               if (!dataOnly) {
                 await page.locator('img').evaluateAll(async (images) => {
                   await Promise.all(images.filter((image) => {

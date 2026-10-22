@@ -1,11 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import logo from '../../../../apps/desktop/assets/interceptor-icon.png';
 import { FixtureIcon } from '../../fixtures/FixtureIcon';
 import { useDesignState } from '../../state/useDesignState';
-import { GUIDE_PREVIEW_CHAPTERS, GUIDE_PREVIEW_GROUPS } from './utils';
+import { GUIDE_PREVIEW_CHAPTERS, GUIDE_PREVIEW_GROUPS, GUIDE_PREVIEW_OUTLINE } from './utils';
 import { HomepageGuideSearchDialog } from './HomepageGuideSearchDialog';
 import { HomepageGuideSearchTrigger } from './HomepageGuideSearchTrigger';
+import { HomepageGuideOutlinePreview } from './HomepageGuideOutlinePreview';
 import styles from './HomepageGuidePreview.module.css';
 
 export function HomepageGuidePreview(): React.JSX.Element {
@@ -14,6 +15,10 @@ export function HomepageGuidePreview(): React.JSX.Element {
   const page = state.homepageGuidePage;
   const article = page === 'capture';
   const searchLocale = state.lang === 'en' ? 'en' : 'zh';
+  const getOutlineScrollRoot = useCallback(() => scrollRef.current, []);
+  const setOutlineActive = useCallback((homepageGuideOutlineActive: string) => {
+    updateState({ homepageGuideOutlineActive });
+  }, [updateState]);
   useEffect(() => {
     if (!state.homepageGuideSearchPreview) return;
     const openSearch = (event: KeyboardEvent): void => {
@@ -161,7 +166,15 @@ export function HomepageGuidePreview(): React.JSX.Element {
             )}
           </section>
 
-          {article ? <nav className={styles.hppOnPage} aria-label="本章内容">
+          {article && state.homepageGuideOutlinePreview ? (
+            <HomepageGuideOutlinePreview
+              headings={GUIDE_PREVIEW_OUTLINE}
+              locale="zh"
+              activeId={state.homepageGuideOutlineActive}
+              onActive={setOutlineActive}
+              getScrollRoot={getOutlineScrollRoot}
+            />
+          ) : article ? <nav className={styles.hppOnPage} aria-label="本章内容">
             <p>本章内容</p>
             <a href="#preview-recording">开始与暂停录制</a>
             <a href="#preview-filters">搜索和组合筛选</a>

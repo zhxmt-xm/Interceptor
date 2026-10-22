@@ -42,6 +42,7 @@ const INITIAL_UPSTREAM_CONFIG: UpstreamDesignConfig = {
 export const INITIAL_DESIGN_STATE: DesignState = {
   homepageGuidePreview: false, homepageGuidePage: 'overview',
   homepageGuideSearchPreview: false, homepageGuideSearchOpen: false, homepageGuideSearchQuery: '',
+  homepageGuideOutlinePreview: false, homepageGuideOutlineActive: '',
   storageCleared: false, storageConfirming: false, storageOperation: 'idle', storageStatus: 'ready',
   view: 'capture', theme: 'light', sidebar: 'collapsed', lang: 'en', overlay: '', tab: 'headers', detail: 'open',
   filters: 'open', filterGroup: '', filterActive: '', search: '', tip: '', pop: false, pop2: '',
@@ -102,6 +103,8 @@ export function reduceDesignState(state: DesignState, patch: DesignStatePatch): 
       homepageGuideSearchPreview: patch.homepageGuideSearchPreview ?? false,
       homepageGuideSearchOpen: patch.homepageGuideSearchOpen ?? false,
       homepageGuideSearchQuery: patch.homepageGuideSearchQuery ?? '',
+      homepageGuideOutlinePreview: patch.homepageGuideOutlinePreview ?? false,
+      homepageGuideOutlineActive: patch.homepageGuideOutlineActive ?? '',
       storageCleared: patch.storageCleared ?? false,
       storageConfirming: patch.storageConfirming ?? false,
       storageOperation: patch.storageOperation ?? 'idle',

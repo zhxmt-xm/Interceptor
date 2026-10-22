@@ -1,5 +1,11 @@
 import type { ThemeConfig } from 'antd';
 
+export const GUIDE_PREVIEW_OUTLINE = [
+  { id: 'preview-recording', title: '开始与暂停录制' },
+  { id: 'preview-filters', title: '搜索和组合筛选' },
+  { id: 'preview-body', title: '检查正文与预览范围' },
+] as const;
+
 export const GUIDE_PREVIEW_CHAPTERS = [
   '快速上手', '工作区与基本操作', 'Capture', 'Composer', 'Rules', 'Breakpoints',
   '导入导出', 'Settings', 'Diagnostics', 'Agent', 'MCP', 'Tool 权限与审批',

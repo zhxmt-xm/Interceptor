@@ -1,0 +1,43 @@
+.hgoOutline {
+  position: sticky;
+  top: calc(var(--header-height, var(--hpp-header-height, 80px)) + var(--space-12, 48px));
+  display: grid;
+  gap: var(--space-3, 12px);
+  max-height: calc(100vh - var(--header-height, var(--hpp-header-height, 80px)) - var(--space-16, 64px));
+  overflow: auto;
+  margin-top: var(--space-2, 8px);
+  font-size: 11px;
+}
+
+.hgoOutline p {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.hgoOutline a {
+  color: var(--text-2);
+}
+
+.hgoLink {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+.hgoLink:hover {
+  text-decoration-color: currentColor;
+}
+
+.hgoOutline a[aria-current="location"] {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+@media (max-width: 1000px) {
+  .hgoOutline {
+    display: none;
+  }
+}

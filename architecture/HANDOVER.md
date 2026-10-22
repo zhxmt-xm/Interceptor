@@ -1,7 +1,7 @@
 # Task List
 
-> Tracked commit: `6930d322`
-> Homepage guidebook: `fd3c171`
+> Tracked commit: `22b4cabd`
+> Homepage guidebook: `d2b37ee`
 
 ## 维护规则
 

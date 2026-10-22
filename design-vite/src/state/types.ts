@@ -129,6 +129,8 @@ export interface DesignState {
   readonly homepageGuideSearchPreview: boolean;
   readonly homepageGuideSearchOpen: boolean;
   readonly homepageGuideSearchQuery: string;
+  readonly homepageGuideOutlinePreview: boolean;
+  readonly homepageGuideOutlineActive: string;
   readonly view: DesignView;
   readonly theme: DesignTheme;
   readonly sidebar: SidebarState;

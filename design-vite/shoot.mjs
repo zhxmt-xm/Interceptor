@@ -53,6 +53,17 @@ if (previewUrlArgument !== undefined) {
 // Output path is shots/<theme>/<feature>/<variant>.png so light and dark stay separated.
 const shots = [];
 for (const theme of ['light', 'dark']) {
+  for (const full of [false, true]) {
+    shots.push({
+      feature: 'homepage-guide-outline', theme, variant: full ? 'current-full' : 'current', full,
+      state: {
+        view: 'playground', theme, lang: 'zh', homepageGuidePreview: true,
+        homepageGuidePage: 'capture', homepageGuideOutlinePreview: true,
+      },
+    });
+  }
+}
+for (const theme of ['light', 'dark']) {
   for (const [variant, open, query] of [
     ['entry', false, ''], ['empty', true, ''], ['results', true, '证书'], ['no-results', true, '不存在的关键词'],
   ]) {
@@ -908,6 +919,8 @@ async function shoot(list) {
       homepageGuideSearchPreview: false,
       homepageGuideSearchOpen: false,
       homepageGuideSearchQuery: '',
+      homepageGuideOutlinePreview: false,
+      homepageGuideOutlineActive: '',
       overlay: '',
       upstreamPopoverOpen: false,
       upstreamOperation: 'idle',

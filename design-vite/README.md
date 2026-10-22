@@ -94,7 +94,8 @@ window.__setState({
 - `homepageGuideSearchPreview / homepageGuideSearchOpen / homepageGuideSearchQuery`与人工点击共用typed state；`lang`选择中英示例。示例结果只用于设计，不是正式全文索引。
 - `tools/homepage-search-preview.mjs`把同一设计组件临时装入当前Homepage的Vite响应，复用真实Header、正文和主题；两侧使用同一正式Markdown数据，分别渲染设计与产品组件。默认生成当前实现/设计评审图，原入口增加前后的确认图保留在本地评审目录，不伪造为当前页面。
 - `--data-only`只采集声明元素的几何、样式、文本、焦点和滚动状态，原值严格比较并输出JSON/Markdown，不生成或读取截图。两种语言、浅深主题、桌面/窄屏和空态/结果/键盘/关闭分别建立状态；缺失、歧义、不稳定、字体失败与执行错误均失败，不使用容差或整体偏移。
-- Homepage是独立网站，不使用Desktop Renderer的fake Preload。此入口不修改Homepage源码，不复用或停止既有预览服务，退出关闭自有服务并删除缓存；Browser业务与阅读性能由Homepage测试负责，不以元素对照替代。
+- Homepage是独立网站，不使用Desktop Renderer的fake Preload。此入口使用独占的6198/6199 loopback端口，不修改Homepage源码、不复用或停止既有预览服务，退出关闭自有服务并删除缓存；端口被占用时失败。Browser业务与阅读性能由Homepage测试负责，不以元素对照替代。
+- `tools/homepage-element-data.mjs`供搜索与本章导航两个入口共用字体门禁、唯一节点/相邻帧稳定检查及原值采集，包含实际页面滚动位置。只读采集不注入产品状态，不对测量值补偿或裁剪。
 - 不包含App iframe、云端搜索、图片OCR或官网部署。
 
 ```sh
@@ -109,6 +110,33 @@ window.__setState({
   homepageGuidePreview: true, homepageGuidePage: 'capture',
   homepageGuideSearchPreview: true, homepageGuideSearchOpen: true,
   homepageGuideSearchQuery: '证书',
+});
+```
+
+### Homepage 本章导航当前位置
+
+`HomepageGuideOutlinePreview`保留已确认的右侧目录当前位置设计，默认关闭，不改变原App设计。当前项从11px调整为12px、600字重与主题强调色，其余目录项、正文和目录宽度保持原样；小于等于1000px仍沿用现有隐藏规则。正式网站通过独立组件实现，不依赖设计代码。
+
+- `homepageGuideOutlinePreview`启用设计演示；`homepageGuideOutlineActive`由实际阅读位置更新。目录点击沿用普通锚点，滚动时只改变当前项，不写浏览器历史；当前项超出目录视区时只滚动目录自身。
+- Ant Design Anchor会接管点击滚动和History写入，不直接替换当前React Router与原生平滑滚动。目录使用独立CSS Module和公开`aria-current="location"`，不改Ant Design私有DOM。
+- `tools/homepage-outline-preview.mjs`在独立的6195/6196 loopback服务里分别渲染正式目录和设计组件；两侧使用同一当前Markdown与网站外壳，不复制正文。默认生成当前设计/实现评审图，早期无当前位置的改前图保留在本地历史目录，不伪造为当前页面。
+- `--data-only`不读取或生成截图，按独立状态严格比较目录、标题和所有链接的原始几何、样式、文本、焦点、当前项及滚动值，包含中英、浅深、hover、点击、页底、短窗口和窄屏恢复。缺失、歧义、不稳定和执行错误均失败，不使用容差或位置补偿；字体和稳定性采集复用`homepage-element-data.mjs`。
+- 两侧通过真实点击和按实际剩余距离的滚轮到达同一阅读位置，不能用过大的滚轮余量干扰后续语言导航。不写Homepage源码，退出关闭服务并清理缓存；端口被占用时失败，不停止其他会话服务。
+- 正式阅读器的滚动、搜索定位、语言切换与性能由Homepage Browser流程验收，元素对照不代替业务测试。设计SPA原fixture的DOM属性开发告警不属于本目录设计，不为此修改其他组件。
+
+```sh
+node design-vite/tools/homepage-outline-preview.mjs "<独立评审目录>"
+node design-vite/tools/homepage-outline-preview.mjs "<独立元素报告目录>" --data-only
+node design-vite/shoot.mjs --feature=homepage-guide-outline --out-dir="<独立设计图目录>"
+```
+
+若Vite自动临时端口分配失败，可在自有终端以`npm run dev --workspace @interceptor/design-vite -- --host 127.0.0.1 --port 6197 --strictPort`启动设计SPA，再给`shoot.mjs`传`--preview-url=http://127.0.0.1:6197/`；结束后关闭该自有服务，不修改Vite或占用已有预览。
+
+```js
+window.__setState({
+  view: 'playground', theme: 'light', lang: 'zh',
+  homepageGuidePreview: true, homepageGuidePage: 'capture',
+  homepageGuideOutlinePreview: true,
 });
 ```
 
