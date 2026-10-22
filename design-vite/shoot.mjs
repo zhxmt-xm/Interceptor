@@ -53,6 +53,26 @@ if (previewUrlArgument !== undefined) {
 // Output path is shots/<theme>/<feature>/<variant>.png so light and dark stay separated.
 const shots = [];
 for (const theme of ['light', 'dark']) {
+  for (const [variant, open, query] of [
+    ['entry', false, ''], ['empty', true, ''], ['results', true, '证书'], ['no-results', true, '不存在的关键词'],
+  ]) {
+    shots.push({
+      feature: 'homepage-guide-search', theme, variant,
+      state: {
+        view: 'playground', theme, lang: 'zh', homepageGuidePreview: true, homepageGuidePage: 'capture',
+        homepageGuideSearchPreview: true, homepageGuideSearchOpen: open, homepageGuideSearchQuery: query,
+      },
+    });
+  }
+  shots.push({
+    feature: 'homepage-guide-search', theme, variant: 'results-full', full: true,
+    state: {
+      view: 'playground', theme, lang: 'zh', homepageGuidePreview: true, homepageGuidePage: 'capture',
+      homepageGuideSearchPreview: true, homepageGuideSearchOpen: true, homepageGuideSearchQuery: '证书',
+    },
+  });
+}
+for (const theme of ['light', 'dark']) {
   for (const homepageGuidePage of ['resources', 'overview', 'capture']) {
     shots.push({
       feature: 'homepage-guide', theme, variant: homepageGuidePage,
@@ -885,6 +905,9 @@ async function shoot(list) {
     await page.evaluate(() => window.__setState({
       homepageGuidePreview: false,
       homepageGuidePage: 'overview',
+      homepageGuideSearchPreview: false,
+      homepageGuideSearchOpen: false,
+      homepageGuideSearchQuery: '',
       overlay: '',
       upstreamPopoverOpen: false,
       upstreamOperation: 'idle',

@@ -87,6 +87,31 @@ window.__setState({
 });
 ```
 
+### Homepage 教程搜索
+
+`HomepageGuidePreview`内的已确认搜索组件默认关闭，不改变既有App设计。搜索入口放在教程侧栏标题下；手机放在正文导航上方。Ant Design Modal/Input展示跨章结果、摘要高亮、初始提示与无结果状态，支持键盘选择和关闭。
+
+- `homepageGuideSearchPreview / homepageGuideSearchOpen / homepageGuideSearchQuery`与人工点击共用typed state；`lang`选择中英示例。示例结果只用于设计，不是正式全文索引。
+- `tools/homepage-search-preview.mjs`把同一设计组件临时装入当前Homepage的Vite响应，复用真实Header、正文和主题；两侧使用同一正式Markdown数据，分别渲染设计与产品组件。默认生成当前实现/设计评审图，原入口增加前后的确认图保留在本地评审目录，不伪造为当前页面。
+- `--data-only`只采集声明元素的几何、样式、文本、焦点和滚动状态，原值严格比较并输出JSON/Markdown，不生成或读取截图。两种语言、浅深主题、桌面/窄屏和空态/结果/键盘/关闭分别建立状态；缺失、歧义、不稳定、字体失败与执行错误均失败，不使用容差或整体偏移。
+- Homepage是独立网站，不使用Desktop Renderer的fake Preload。此入口不修改Homepage源码，不复用或停止既有预览服务，退出关闭自有服务并删除缓存；Browser业务与阅读性能由Homepage测试负责，不以元素对照替代。
+- 不包含App iframe、云端搜索、图片OCR或官网部署。
+
+```sh
+node design-vite/shoot.mjs --feature=homepage-guide-search --out-dir="<独立候选目录>"
+node design-vite/tools/homepage-search-preview.mjs "<独立前后对照目录>"
+node design-vite/tools/homepage-search-preview.mjs "<独立元素报告目录>" --data-only
+```
+
+```js
+window.__setState({
+  view: 'playground', theme: 'light', lang: 'zh',
+  homepageGuidePreview: true, homepageGuidePage: 'capture',
+  homepageGuideSearchPreview: true, homepageGuideSearchOpen: true,
+  homepageGuideSearchQuery: '证书',
+});
+```
+
 ### Homepage 真实素材替换预览
 
 `tools/homepage-media-preview.mjs`复用独立Homepage仓库现有SPA的完整布局与交互，只在预览服务内替换图片响应和对应说明；不复制另一套官网、不修改正式首页源码、教程媒体或`shots/`。这是媒体替换方案，不是产品验收，也不向产品增加预览参数或状态setter。

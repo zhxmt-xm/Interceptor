@@ -67,6 +67,7 @@
 .hppOnPage p { color: var(--text); font-weight: 600; }
 .hppOnPage a { color: var(--text-2); }
 .hppMobileNavigation { display: none; }
+.hppMobileSearch { display: none; }
 .hppResources { width: min(1160px, calc(100% - var(--hpp-gutter) * 2)); margin: 96px auto; }
 .hppResources h1 { margin-top: var(--hpp-space-6); font-size: 38px; font-weight: 500; letter-spacing: -.04em; }
 .hppResourceGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--hpp-space-8); margin-top: var(--hpp-space-12); }
@@ -88,6 +89,7 @@
   .hppHeaderInner { gap: var(--hpp-space-2); }
   .hppHeaderActions { gap: var(--hpp-space-2); }
   .hppLayout { display: block; margin-block: var(--hpp-space-6); }
+  .hppMobileSearch { display: block; margin-bottom: var(--hpp-space-4); }
   .hppMobileNavigation { display: flex; align-items: center; gap: var(--hpp-space-2); margin-bottom: var(--hpp-space-6); color: var(--text-2); font-size: 12px; }
   .hppReading h1 { font-size: 26px; }
   .hppGroups, .hppResourceGrid { grid-template-columns: minmax(0, 1fr); gap: var(--hpp-space-6); }

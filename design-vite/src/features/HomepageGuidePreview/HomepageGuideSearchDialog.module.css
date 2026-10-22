@@ -1,0 +1,143 @@
+.hgsDialog {
+  --hgs-dialog-top: 100px;
+  --hgs-dialog-padding: 24px;
+}
+
+.hgsBody {
+  min-height: 0;
+}
+
+.hgsContent {
+  color: var(--text);
+  font-family: var(--font-sans, "Inter", sans-serif);
+}
+
+.hgsSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 12px);
+  padding-block: var(--space-3, 12px);
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.hgsResults {
+  display: grid;
+  gap: var(--space-1, 4px);
+  max-height: min(440px, calc(100dvh - 310px));
+  overflow: auto;
+}
+
+.hgsResult {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  padding: var(--space-3, 12px);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 8px);
+  color: var(--text-2);
+  text-decoration: none;
+}
+
+.hgsResult[aria-selected="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.hgsResult > svg {
+  flex-shrink: 0;
+}
+
+.hgsResultCopy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: var(--space-1, 4px);
+  overflow-wrap: anywhere;
+}
+
+.hgsResultCopy small {
+  color: var(--text-2);
+  font-size: 11px;
+}
+
+.hgsResultCopy strong {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.hgsResultCopy p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.hgsResultCopy mark {
+  padding: 0;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.hgsEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  padding: var(--space-8, 32px) var(--space-4, 16px);
+  text-align: center;
+  color: var(--text-2);
+}
+
+.hgsEmpty > svg {
+  color: var(--accent);
+}
+
+.hgsEmpty strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.hgsEmpty p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.hgsExamples,
+.hgsFooter,
+.hgsFooter span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+.hgsExamples {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.hgsFooter {
+  flex-wrap: wrap;
+  gap: var(--space-4, 16px);
+  margin-top: var(--space-4, 16px);
+  padding-top: var(--space-3, 12px);
+  border-top: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 11px;
+}
+
+.hgsFooter kbd {
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+}
+
+@media (max-width: 640px) {
+  .hgsDialog {
+    --hgs-dialog-top: 0px;
+    --hgs-dialog-padding: 16px;
+  }
+}

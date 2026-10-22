@@ -1,9 +1,11 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 import logo from '../../../../apps/desktop/assets/interceptor-icon.png';
 import { FixtureIcon } from '../../fixtures/FixtureIcon';
 import { useDesignState } from '../../state/useDesignState';
 import { GUIDE_PREVIEW_CHAPTERS, GUIDE_PREVIEW_GROUPS } from './utils';
+import { HomepageGuideSearchDialog } from './HomepageGuideSearchDialog';
+import { HomepageGuideSearchTrigger } from './HomepageGuideSearchTrigger';
 import styles from './HomepageGuidePreview.module.css';
 
 export function HomepageGuidePreview(): React.JSX.Element {
@@ -11,6 +13,18 @@ export function HomepageGuidePreview(): React.JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null);
   const page = state.homepageGuidePage;
   const article = page === 'capture';
+  const searchLocale = state.lang === 'en' ? 'en' : 'zh';
+  useEffect(() => {
+    if (!state.homepageGuideSearchPreview) return;
+    const openSearch = (event: KeyboardEvent): void => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        updateState({ homepageGuideSearchOpen: true });
+      }
+    };
+    window.addEventListener('keydown', openSearch);
+    return () => window.removeEventListener('keydown', openSearch);
+  }, [state.homepageGuideSearchPreview, updateState]);
   const open = (next: 'overview' | 'capture' | 'resources'): void => {
     updateState({ homepageGuidePage: next });
     scrollRef.current?.scrollTo({ top: 0, behavior: 'instant' });
@@ -69,6 +83,7 @@ export function HomepageGuidePreview(): React.JSX.Element {
         <main className={styles.hppLayout}>
           <aside className={styles.hppSidebar} aria-label="教程章节">
             <p className={styles.hppSideTitle}>使用指南</p>
+            {state.homepageGuideSearchPreview && <HomepageGuideSearchTrigger locale={searchLocale} onClick={() => updateState({ homepageGuideSearchOpen: true })} />}
             <button className={styles.hppChapter} data-selected={!article} type="button" onClick={() => open('overview')}>教程目录</button>
             {GUIDE_PREVIEW_CHAPTERS.map((chapter, index) => chapter === 'Capture' ? (
               <button className={styles.hppChapter} data-selected={article} key={chapter} type="button" onClick={() => open('capture')}>
@@ -83,6 +98,11 @@ export function HomepageGuidePreview(): React.JSX.Element {
           </aside>
 
           <section className={styles.hppReading}>
+            {state.homepageGuideSearchPreview && (
+              <div className={styles.hppMobileSearch}>
+                <HomepageGuideSearchTrigger locale={searchLocale} onClick={() => updateState({ homepageGuideSearchOpen: true })} />
+              </div>
+            )}
             <div className={styles.hppMobileNavigation}>
               <button type="button" onClick={() => open('overview')}>教程目录</button>
               <span>/</span>
@@ -148,6 +168,17 @@ export function HomepageGuidePreview(): React.JSX.Element {
             <a href="#preview-body">检查正文与预览范围</a>
           </nav> : null}
         </main>
+      )}
+      {state.homepageGuideSearchPreview && (
+        <HomepageGuideSearchDialog
+          open={state.homepageGuideSearchOpen}
+          query={state.homepageGuideSearchQuery}
+          locale={searchLocale}
+          onQuery={(homepageGuideSearchQuery) => updateState({ homepageGuideSearchQuery })}
+          onClose={() => updateState({ homepageGuideSearchOpen: false })}
+          onSelect={() => updateState({ homepageGuideSearchOpen: false })}
+          container={() => scrollRef.current?.closest<HTMLElement>('.app') ?? document.body}
+        />
       )}
     </div>
   );
