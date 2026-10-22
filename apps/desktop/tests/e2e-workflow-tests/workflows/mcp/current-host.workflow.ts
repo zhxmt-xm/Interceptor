@@ -67,8 +67,20 @@ test(`mcp.current-host ${phase} uses the current Host and a retained isolated pr
       await expect(server).toHaveAttribute('data-server-state', 'disabled');
       await getByAutomationId(page, AUTOMATION_IDS.mcp.server.enable).click();
       await expect(server).toHaveAttribute('data-server-state', 'running');
+      await screenshotStep('开启MCP Server并核对独立地址 / Enable MCP Server and check its separate endpoint', {
+        highlights: [
+          { target: getByAutomationId(page, AUTOMATION_IDS.mcp.server.enable), label: '1' },
+          { target: getByAutomationId(page, AUTOMATION_IDS.mcp.server.endpoint), label: '2' },
+        ],
+      });
       await getByAutomationId(page, AUTOMATION_IDS.mcp.client.add).click();
       await getByAutomationId(page, AUTOMATION_IDS.mcp.client.label).fill(`Current ${hostKind}`);
+      await screenshotStep('为当前Host创建独立Client / Create a separate Client for the current Host', {
+        highlights: [
+          { target: getByAutomationId(page, AUTOMATION_IDS.mcp.client.label), label: '1' },
+          { target: getByAutomationId(page, AUTOMATION_IDS.mcp.client.create), label: '2' },
+        ],
+      });
       await getByAutomationId(page, AUTOMATION_IDS.mcp.client.create).click();
     }
     await expect(server).toHaveAttribute('data-server-state', 'running');
@@ -76,6 +88,9 @@ test(`mcp.current-host ${phase} uses the current Host and a retained isolated pr
     await expect(row).toHaveCount(1);
     const clientId = await row.getAttribute('data-client-id');
     if (!clientId) throw new Error('The real MCP Client row omitted its id.');
+    await screenshotStep('从Client行复制当前Host连接配置 / Copy the current Host connection configuration from its Client row', {
+      highlights: [{ target: getByAutomationId(page, AutomationIdFactory.mcpClientCopyConfiguration(clientId)), label: '1' }],
+    });
     const configuration = await copyMcpClientConfiguration(desktopApp, testInfo, clientId);
     endpoint = configuration.url;
     tokenHash = createHash('sha256').update(configuration.token).digest('hex');
@@ -98,7 +113,9 @@ test(`mcp.current-host ${phase} uses the current Host and a retained isolated pr
     expect(prepared).toEqual({ workflow: 'mcp.current-host', clientId, endpoint, tokenHash });
     await getByAutomationId(page, AutomationIdFactory.mcpClientAsk(clientId)).click();
     await expect(row).toHaveAttribute('data-execution-mode', 'ask');
-    await screenshotStep('准备：创建或恢复同一测试Client，不从Store注入凭据或复制业务状态。 / Arrange: create or resume the same test Client without injecting credentials or business state.');
+    await screenshotStep('恢复同一Client并保持Ask模式 / Resume the same Client in Ask mode', {
+      highlights: [{ target: getByAutomationId(page, AutomationIdFactory.mcpClientAsk(clientId)), label: '1' }],
+    });
 
     // 用户操作：准备自产流量，当前Agent负责正式Host配置、查询和MCP调用，本workflow不构造SDK Client。
     // User actions: generate owned traffic; the current Agent configures its Host and calls MCP, without a test SDK Client.
@@ -106,6 +123,11 @@ test(`mcp.current-host ${phase} uses the current Host and a retained isolated pr
     await startRecording(desktopApp);
     const keywordFilter = getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter);
     await keywordFilter.fill(requestPath);
+    const facetToggles = page.locator('[data-automation-id^="capture.filter.toggle."]');
+    for (let index = 0; index < await facetToggles.count(); index += 1) {
+      const toggle = facetToggles.nth(index);
+      if (await toggle.getAttribute('aria-expanded') === 'true') await toggle.click();
+    }
     httpTrafficRunner.respondWith(requestPath, {
       headers: { 'content-type': 'application/json' },
       body: responseBody,
@@ -116,23 +138,39 @@ test(`mcp.current-host ${phase} uses the current Host and a retained isolated pr
     await expect(requests).toHaveCount(1);
     await expect(requests).toContainText(requestPath);
     await desktopApp.writeEvidence(testInfo);
+    await screenshotStep('按本次请求路径筛选后由真实Host查询 / Filter this request path before the real Host queries it', {
+      highlights: [
+        { target: keywordFilter, label: '1' },
+        { target: requests, label: '2' },
+      ],
+    });
     await publishPhase('connect-query-then-deny-stop');
-    await screenshotStep('用户操作：准备自产流量，当前Agent负责正式Host配置、查询和MCP调用，本workflow不构造SDK Client。 / User actions: generate owned traffic; the current Agent configures its Host and calls MCP, without a test SDK Client.');
 
     // 业务断言：真实Host先后触发Deny和Allow，UI裁决决定真实Recording，不以模型总结代替。
     // Business assertion: the real Host triggers Deny and Allow; actual UI verdicts govern Recording.
     const approval = getByAutomationId(page, AUTOMATION_IDS.mcp.approval.root);
     const recording = getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle);
     await expect(approval).toHaveAttribute('data-tool-name', 'capture_stop_recording', { timeout: HOST_STEP_TIMEOUT });
+    await screenshotStep('拒绝当前Host的暂停录制请求 / Deny the current Host request to stop recording', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.mcp.approval.deny), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.mcp.approval.deny).click();
     await expect(approval).toHaveCount(0);
     await expect(recording).toHaveAttribute('aria-pressed', 'true');
+    await screenshotStep('Deny后保持录制 / Recording stays enabled after Deny', {
+      highlights: [{ target: recording, label: '1' }],
+    });
     await publishPhase('allow-stop');
     await expect(approval).toHaveAttribute('data-tool-name', 'capture_stop_recording', { timeout: HOST_STEP_TIMEOUT });
+    await screenshotStep('核对新请求后选择Allow / Review the new request and choose Allow', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.mcp.approval.allow), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.mcp.approval.allow).click();
     await expect(recording).toHaveAttribute('aria-pressed', 'false');
+    await screenshotStep('Allow后核对录制已暂停 / Verify recording is paused after Allow', {
+      highlights: [{ target: recording, label: '1' }],
+    });
     await resumeRecording(desktopApp);
-    await screenshotStep('业务断言：真实Host先后触发Deny和Allow，UI裁决决定真实Recording，不以模型总结代替。 / Business assertion: the real Host triggers Deny and Allow; actual UI verdicts govern Recording.');
 
     // 用户操作：通过真实Settings切换Auto，当前Host再次执行相同Tool。
     // User actions: switch to Auto through real Settings, then let the current Host call the same Tool again.
@@ -140,12 +178,17 @@ test(`mcp.current-host ${phase} uses the current Host and a retained isolated pr
     await getByAutomationId(page, AutomationIdFactory.mcpClientAuto(clientId)).click();
     await expect(getByAutomationId(page, AutomationIdFactory.mcpClientRow(clientId)))
       .toHaveAttribute('data-execution-mode', 'auto');
+    await screenshotStep('仅将当前Client切换为Auto / Switch only this Client to Auto', {
+      highlights: [{ target: getByAutomationId(page, AutomationIdFactory.mcpClientAuto(clientId)), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
     await publishPhase('auto-stop');
     await expect(recording).toHaveAttribute('aria-pressed', 'false', { timeout: HOST_STEP_TIMEOUT });
     await expect(approval).toHaveCount(0);
+    await screenshotStep('Auto下暂停录制且不显示App审批 / Auto stops recording without an App approval dialog', {
+      highlights: [{ target: recording, label: '1' }],
+    });
     await resumeRecording(desktopApp);
-    await screenshotStep('用户操作：通过真实Settings切换Auto，当前Host再次执行相同Tool。 / User actions: switch to Auto through real Settings, then let the current Host call the same Tool again.');
 
     // 业务断言：当前Agent继续适用场景，最后真实调用capture_clear结束这一代Host验收。
     // Business assertion: the current Agent exercises applicable scenarios and calls capture_clear last.
@@ -156,14 +199,29 @@ test(`mcp.current-host ${phase} uses the current Host and a retained isolated pr
     await expect(requests).toHaveCount(0, { timeout: HOST_STEP_TIMEOUT });
     await expect(keywordFilter).toHaveValue(requestPath);
     await expect(recording).toHaveAttribute('aria-pressed', 'true');
+    await screenshotStep('真实Host清空记录后仍保持筛选和录制 / Keep the filter and recording after the real Host clears Capture', {
+      highlights: [
+        { target: keywordFilter, label: '1' },
+        { target: recording, label: '2' },
+      ],
+    });
 
     // 证据与清理：真实撤销本轮凭据、关闭MCP，fixture负责App正常退出及完整宿主恢复。
     // Evidence and cleanup: revoke this credential and stop MCP; the fixture verifies App shutdown and host restoration.
     await openMcpSettings(page);
+    await screenshotStep('从Settings撤销本次Host的Client / Revoke this Host Client from Settings', {
+      highlights: [{ target: getByAutomationId(page, AutomationIdFactory.mcpClientRevoke(clientId)), label: '1' }],
+    });
     await getByAutomationId(page, AutomationIdFactory.mcpClientRevoke(clientId)).click();
+    await screenshotStep('核对撤销范围并确认 / Review the revocation scope and confirm', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.mcp.client.revokeConfirm), label: '1' }],
+    });
     await getByAutomationId(page, AUTOMATION_IDS.mcp.client.revokeConfirm).click();
     await getByAutomationId(page, AUTOMATION_IDS.mcp.server.enable).click();
     await expect(server).toHaveAttribute('data-server-state', 'disabled');
+    await screenshotStep('关闭MCP Server并确认Client已移除 / Disable MCP Server and verify the Client is removed', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.mcp.server.enable), label: '1' }],
+    });
     await writeFile(testInfo.outputPath('current-host-evidence.json'), JSON.stringify({
       hostKind, hostVersion, endpoint, tokenHash, requestPath, phases,
       actualOrigin: httpTrafficRunner.evidence(),
@@ -174,7 +232,6 @@ test(`mcp.current-host ${phase} uses the current Host and a retained isolated pr
     }, null, 2), 'utf8');
     await publishPhase('completed-remove-host-configuration');
     completed = true;
-    await screenshotStep('证据与清理：真实撤销本轮凭据、关闭MCP，fixture负责App正常退出及完整宿主恢复。 / Evidence and cleanup: revoke this credential and stop MCP; the fixture verifies App shutdown and host restoration.');
   } finally {
     if (completed) await rm(configurationPath, { force: true });
   }

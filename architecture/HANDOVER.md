@@ -1,7 +1,7 @@
 # Task List
 
 > Tracked commit: `72f54c6b`
-> Homepage guidebook: `5c026b3`
+> Homepage guidebook: `815591b`
 
 ## 维护规则
 
@@ -51,10 +51,14 @@
   - 入口边界：下载、GitHub与feedback仍受私有产品仓库权限限制，需确认目标访客可用的入口；上线不会自动获得匿名下载权限。App iframe、主题语言衔接与登录会话转由item 16跟踪，不由普通网页可嵌入替代；正式公开、域名及任何付费操作另行确认。
   - 产品入口同步：本item验收真实官网URL及目标访客权限后，负责更新[英文README](../README.md)、[中文README](../README.zh-CN.md)的官网入口与GitHub Website，并核对首页、教程、下载和反馈的实际可达性。此前Website保持空白，README使用真实GitHub教程与Release入口；不使用占位网址，也不因接线自动公开仓库。
 
-- **16. Guidebook 跨平台与隔离场景补图、App接入 · blocked / 待确认 · 承接原item 9剩余范围**
+- **16. Guidebook 跨平台与隔离场景补图、App接入 · 暂停 / 英文补图待验证、其余环境blocked · 承接原item 9剩余范围**
   - 目标：在已交付的本机Guidebook和阅读器基础上，补齐尚无真实环境的功能步骤图与App入口；不是仅剩Windows，也不重新制作已核对的本机场景。
   - 教程约定：逐功能点保留用途、平台前提、真实操作、预期结果和限制；每个操作步骤对应真实App图，示例名称和值与同一次运行一致。原workflow通过[可选截图模式](../apps/desktop/tests/e2e-workflow-tests/README.md#trace-与证据)输出PNG，素材使用前独立审核，不再维护专用Guidebook制作/导入链路或要求视频；相似测试归纳成用户场景，不把fixture、内部故障注入或验收日志变成操作步骤。
-  - 环境缺口：Windows/AppContainer/UAC与对应安装恢复及原生文件面板截图；隔离首次CA/证书生命周期；真实DNS/DHCP WPAD网络；实际外部MCP Host、模型凭据与服务授权；更新下载、校验、安装及系统原生流程。需要用户提供对应环境和操作授权，本机结果不能替代。
+  - 环境缺口：Windows/AppContainer/UAC与对应安装恢复及原生文件面板截图；隔离首次CA/证书生命周期；真实DNS/DHCP WPAD网络；其他实际外部MCP Host、模型凭据与服务授权；更新下载、校验、安装及系统原生流程。当前Copilot SDK Host的代表主线已有真实验证，不代表其他Host、全部Tool或商业模型服务；其余范围仍需对应环境与操作授权。
+  - 当前步骤：按用户要求暂停执行并保存中间进度，不标记整项完成。[current-host workflow](../apps/desktop/tests/e2e-workflow-tests/workflows/mcp/current-host.workflow.ts)已补操作截图检查点；原`v0.1.1-alpha.1`签名Release与VS Code Copilot SDK Host的中文App主线已核对真实查询、正文、Deny/Allow/Auto、Composer、Clear及撤销，见[实际调用与恢复核对](../../../.copilot/session-state/110ad12a-fedc-47bb-9369-c786f9527723/files/item16-current-host/verified-current-host.json)。未修改产品代码、日常CA或helper部署，未将中文图发布到教程。
+    - 入书缺口：按[English App图片约定](../../Interceptor-Homepage/docs/guidebook.md#当前图片调整目标)以初始`en-US`完成独立prepare，实际App语言为`en`，见[英文准备记录](../apps/desktop/test-results/item16-current-host-english-20261022/prepare/mcp-current-host.workflow.-27b65-a-retained-isolated-profile-macos/current-host-phase.json)。最近一次英文verify中，活跃SDK仍请求旧endpoint，公开start未进入ready；该次仅作为中断记录，不能算通过或采用其中图片。完整英文操作图、双语教程接入与页面检查仍待完成。
+    - 续验前提：先取得用户继续授权及item22明确归还的App/8888窗口，核对共享截图契约、保留profile和Host实际连接，再按[英文恢复记录](../../../.copilot/session-state/110ad12a-fedc-47bb-9369-c786f9527723/files/item16-current-host-english/resume-verification.json)复用同一英文profile/Client执行原workflow。不要重复prepare、轮换凭据、停止会话、重启共享VS Code或以SDK Client替代真实Host；通过并审核原图、标注与同次示例后再接入双语教程。
+    - 清理状态：中文流程的Client、profile和Host配置已清理，旧中文恢复命令已失效。英文流程Main/Core与8888/MCP端口已退出恢复，待启动的Host连接已取消；只保留英文独立profile与对应Host配置供续验，其他Server未改。英文Client最终撤销、profile及Host配置清理仍由后续成功verify负责。
   - App入口：此前的暂停继续有效。先完成item 15受限官网地址和访问会话验收，再经用户确认截图方案，实现无边框iframe、浏览器打开、主题/语言衔接、滚动与加载错误；不承诺离线阅读，不向远程页面暴露Preload或业务IPC。
   - 安全与版本：保留当前App语言，翻译只在独立i18n流程验证；只录本次App及其原生面板，先定位自有文件目录，不录桌面、其他应用、个人流量或凭据。保持日常CA和系统配置，不绕过锁屏/UAC/Gatekeeper，不以强杀替代恢复，不新增私有教程npm包或registry依赖。
   - Release限制：空Rules树删除后的Apply入口和受测Upgrade未进入pending等行为已如实说明；产品修复需要独立授权及对应Release，不用备用规则、隐藏API、篡改发布包或截图伪造功能。

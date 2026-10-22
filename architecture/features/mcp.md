@@ -548,6 +548,12 @@ flowchart TD
   由当前Agent选取实际目录中的Tool，调用仍经真实Host SDK、Bearer与同一Main/Core链路；App的
   Deny/Allow/Auto、自产正文、真实POST和退出有独立断言。不另起Agent或把直连产品的官方Client冒充Host。
   此结论不包含聊天工具搜索热刷新、Host自身审批UI、其他Host，也不表示全部69项Tool都在Host逐项验收。
+- macOS签名`0.1.1-alpha.1`与VS Code`1.143.0`/AHP`1.1.0`还已验证当前Host原生工具入口：
+  正式配置加载后，由当前Agent发现并调用Capture查询/正文、Deny/Allow/Auto、Composer、
+  Rules/Breakpoints/Diagnostics与Core状态的代表Tool，最后真实Clear、撤销Client并正常退出。
+  [原生调用与恢复证据](../../../../.copilot/session-state/110ad12a-fedc-47bb-9369-c786f9527723/files/item16-current-host/verified-current-host.json)
+  核对自产正文完整字节、Cookie脱敏、Composer仅一次POST且不进入Capture，以及profile、Host配置与端口清理。
+  原生发现不等于活跃轮次热刷新，未调用Tool和其他Host不据此通过；本轮中文App图片未替代Guidebook的English图片要求。
 - Windows当前Host的精准筛选版本已完成代表Tool、App审批、真实Clear及退出恢复：
   workflow通过产品Keyword限定自产路径，查询Tool使用同一路径和Method filter并按返回的`exchangeId`读取。
   Clear的真实调用返回零Exchange/Body，完整筛选列表为空、Keyword保持且Recording不变；

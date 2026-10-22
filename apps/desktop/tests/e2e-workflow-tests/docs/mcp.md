@@ -16,6 +16,8 @@ MCP截图复用原真实SDK/Host流程；App侧图片不冒充外部商业Host�
 
 - `browser-playground-cors`与`current-host`的真实外部边界保留；尚无环境的Host不得被本地SDK结果代替。
 
+- `current-host`在同一隔离profile的prepare/verify中记录开启Server、创建Client、Copy入口、Ask、自产请求、Deny、Allow、Auto、Clear及撤销/关闭。当前Host通过正式入口实际调用，图片只展示本轮App，不展示或冒充Host配置页；凭据不进入截图或trace。等待Host的phase在对应取景完成后发布，不能因调用抢先到达而把审批弹窗拍成查询步骤。prepare正常退出仅代表配置准备完成，只有verify、真实调用证据与宿主恢复均通过后才能采用素材。
+
 命令、输出清单和显式导入边界见[套件说明](../README.md#trace-与证据)。已有公开PNG及历史验收记录保持原来源，新的运行不会自动替换它们；本节不把未经执行的平台或分支记为通过。
 
 本文件定义外部MCP Host接入Interceptor Desktop的真实E2E流程。确定性回归使用官方MCP Client，
@@ -55,6 +57,9 @@ MCP截图复用原真实SDK/Host流程；App侧图片不冒充外部商业Host�
 3. 读取当前session实际公布的MCP customization，恢复准备好的App后，对其真实id发送
    `session/mcpServerStartRequested`并等待`ready`。当前Host可能等待会话空闲后应用配置变化；
    `starting`不等于连接，steering消息也不保证立即刷新。不在重连期间轮换Client或反复创建配置。
+   VS Code`1.143.0`/AHP`1.1.0`的活跃SDK运行时在root替换endpoint/headers后可能仍使用旧配置：
+   原生连接入口返回旧地址，而公开start保持`starting`。root回读正确不足以证明运行时已应用；
+   保留新profile与Client，待正常的新用户轮次或Host正式刷新后再复验，不为此中断开发对话或重启共享VS Code。
 4. 原生工具搜索和公开MCP通道分开验收。当前Host若公开`channel`及`mcpApp.capabilities.serverTools`，
    当前Agent可以通过该`mcp://`通道执行`tools/list`、`tools/call`，请求由真实Host的既有MCP连接送到App。
    不直接构造产品MCP Client，不增加Agent Runtime，也不猜未公开的channel或能力。
