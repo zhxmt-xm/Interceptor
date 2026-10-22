@@ -1,4 +1,7 @@
-import { mkdir, mkdtemp, readFile, realpath, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { mkdir, mkdtemp, readFile, realpath, rmdir, unlink, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 
@@ -11,6 +14,35 @@ import {
   gitBlobSha, homepageBranch, homepageRepository, publishHomepageChanges,
   readHomepageHead, readHomepageSnapshot,
 } from './guidebook-github.mjs';
+
+const require = createRequire(import.meta.url);
+
+async function formatGeneratedJson(snapshot, changes) {
+  const expectedVersion = JSON.parse(snapshot.readFile('package.json').toString('utf8')).devDependencies['@biomejs/biome'];
+  check(require('@biomejs/biome/package.json').version === expectedVersion,
+    'App and Homepage must use the same Biome version to format published metadata.');
+  const configuration = JSON.parse(snapshot.readFile('biome.json').toString('utf8'));
+  check(!configuration.extends, 'The remote Biome configuration requires additional files; update the publisher before continuing.');
+  const directory = await mkdtemp(path.join(tmpdir(), 'interceptor-guidebook-format-'));
+  const configFile = path.join(directory, 'biome.json');
+  try {
+    await writeFile(configFile, JSON.stringify({ ...configuration, vcs: { ...configuration.vcs, enabled: false } }), 'utf8');
+    for (const [file, content] of changes) {
+      if (!file.endsWith('.json')) continue;
+      const input = await content.read();
+      const bytes = execFileSync(process.execPath, [
+        require.resolve('@biomejs/biome/bin/biome'), 'format',
+        '--config-path', directory, '--stdin-file-path', file,
+      ], { cwd: directory, input, maxBuffer: 16 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'] });
+      check(same(JSON.parse(input.toString('utf8')), JSON.parse(bytes.toString('utf8'))),
+        `Formatting changed generated metadata: ${file}`);
+      changes.set(file, { sha: gitBlobSha(bytes), read: async () => bytes });
+    }
+  } finally {
+    await unlink(configFile);
+    await rmdir(directory);
+  }
+}
 
 export function readRemotePublication() {
   const snapshot = readHomepageSnapshot();
@@ -151,16 +183,23 @@ export async function buildPublicationChanges(snapshot, plan, runs, destinations
       },
       steps, assets,
     }, null, 2)}\n`));
+    const groupDimensions = `${group.directory}/dimension-entries.json`;
+    if (snapshot.entries.has(groupDimensions)) {
+      const entries = JSON.parse(snapshot.readFile(groupDimensions).toString('utf8'));
+      check(Array.isArray(entries), `Invalid existing dimension metadata: ${groupDimensions}`);
+      for (const entry of entries) {
+        check(typeof entry.path === 'string' && entry.path.startsWith(`${group.directory.slice('guidebook/media/'.length)}/`)
+          && Array.isArray(dimensions[entry.path]), `Invalid group dimension entry: ${groupDimensions}`);
+        entry.dimensions = dimensions[entry.path];
+      }
+      addBytes(groupDimensions, Buffer.from(JSON.stringify(entries)));
+    }
   }
   const dimensionLines = Object.entries(dimensions).sort(([a], [b]) => a.localeCompare(b))
     .map(([key, size]) => `  ${JSON.stringify(key)}: [${size[0]}, ${size[1]}]`);
   addBytes(dimensionFile, Buffer.from(`{\n${dimensionLines.join(',\n')}\n}\n`));
-  // The schema's dimensions and numeric labels use Homepage's compact-array formatting.
-  const planText = JSON.stringify(plan, null, 2).replace(
-    /\[\n\s+((?:"[1-9][0-9]*"|[0-9]+)(?:,\n\s+(?:"[1-9][0-9]*"|[0-9]+))*)\n\s+\]/g,
-    (_, values) => `[${values.replace(/,\n\s+/g, ', ')}]`,
-  );
-  addBytes(planFile, Buffer.from(`${planText}\n`));
+  addBytes(planFile, Buffer.from(JSON.stringify(plan)));
+  await formatGeneratedJson(snapshot, writes);
   return writes;
 }
 
@@ -243,6 +282,7 @@ export async function publishGuidebook({ app, resume, verifyOnly = false }) {
     const changes = await buildPublicationChanges(snapshot, plan, runs, destinations);
     const allowed = new Set([planFile, dimensionFile, ...destinations,
       ...plan.groups.map(group => `${group.directory}/manifest.json`),
+      ...plan.groups.map(group => `${group.directory}/dimension-entries.json`).filter(file => snapshot.entries.has(file)),
       ...plan.values.flatMap(value => value.documents.map(document => document.file))]);
     for (const file of changes.keys()) check(allowed.has(file), `Unexpected generated path: ${file}`);
     report.changedFiles = [...changes].filter(([file, content]) => content.sha !== snapshot.entries.get(file)?.sha).map(([file]) => file);

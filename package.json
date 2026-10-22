@@ -43,6 +43,7 @@
     }
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@electron-forge/core": "8.0.1",
     "@inquirer/prompts": "8.7.3",
     "@types/node": "24.19.2",

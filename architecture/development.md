@@ -102,6 +102,8 @@ npm start -- --help
 - 复用原workflow，不创建截图专用测试；一次执行远端`guidebook/screenshot-publication.json`登记的全部测试和检查点。清单给每个发布图片固定身份，明确原测试、检查点、目标文件及同源变体，不根据文件序号、图片相似度或LLM猜测用途。
 - 原测试必须完整通过，实际App版本、平台、语言、窗口尺寸、红框和操作序列符合登记契约，所有代际正常退出且宿主恢复。运行缺项、重复身份或不匹配均失败，不沿用旧图补足。
 - 新运行先保存在`apps/desktop/test-results/guidebook-publications/<run>/`；完整校验后按固定路径准备图片、来源、尺寸和明确锚点内的双语端口替换。只验证模式不上传或更新远端。
+- 图片来源、发布清单、全局及分组尺寸JSON使用与Homepage相同版本的Biome开发工具及远端格式配置生成，不靠手写换行规则模拟格式；不需要本地Homepage安装。格式配置或工具版本不匹配时明确停止，不上传不能通过既有网站格式检查的元数据。
+- 完整批次恢复还核对依赖清单、Playground流量源码、automation ID及截图fixture摘要；这些输入改变后，不把原截图结果当作当前代码的验证。
 - 发布通过GitHub Git Data API上传变化的blob、以Homepage原`main`为父创建commit，最后以`force:false`推进它的`main`。上传或测试失败不更新分支；远端`main`中途变化立即停止，不覆盖其他提交。记录上传进度，完整证据且输入未变时可通过同一菜单“继续发布”恢复。
 - Homepage已有网站CI会在`main`更新后自动运行，本入口不新增或等待另一套Actions流程，不运行本地Homepage构建，不自动部署。终端区分截图已保存、候选commit已创建、远端已更新，不把上传了blob或创建了未发布commit当作推送成功。
 - 不创建其他worktree、clone或分支，不修改remote、不强推、不改写历史。共享系统代理、8888、原生授权及退出恢复仍遵守原E2E约定。

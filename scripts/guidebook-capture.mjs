@@ -217,6 +217,12 @@ export async function captureInputs(plan) {
   for await (const file of glob('fixtures/**/*.{ts,swift,mjs}', { cwd: directory })) files.add(file.split(path.sep).join('/'));
   const inputs = {};
   for (const file of [...files].sort()) inputs[file] = digest(await readFile(path.join(directory, file)));
+  const sharedFiles = new Set([
+    'package.json', 'package-lock.json', 'apps/desktop/package.json', 'apps/playground/package.json',
+    'apps/desktop/src/shared/automation-ids.ts',
+  ]);
+  for await (const file of glob('apps/playground/server/**/*.ts', { cwd: root })) sharedFiles.add(file.split(path.sep).join('/'));
+  for (const file of [...sharedFiles].sort()) inputs[`repository/${file}`] = digest(await readFile(path.join(root, file)));
   for (const source of plan.sources) check(inputs[`workflows/${source.workflow}`] === source.workflowSha256,
     `Workflow changed since mapping approval: ${source.workflow}`);
   return inputs;
