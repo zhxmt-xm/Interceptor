@@ -633,6 +633,8 @@ readImportFile(title) → { fileName, content } | null
 
 ## 10. Renderer 交互
 
+RuleEditor标题使用可直接编辑的无框input：默认、hover、focus均保持透明背景，无边框、圆角框或阴影；字体仍为14px/600，点击区域高28px、水平内边距为0。标题行通过flex居中，编辑及长名称横向滚动不改变标题行高度或右侧控件位置。输入继续更新本地草稿，由Save保存，不改变规则身份、启用状态或现有校验。
+
 ```mermaid
 flowchart LR
     A["rulesStore<br/>revision + nodes 草稿 + hits"] --> B["RuleList · RuleTreeNode"]

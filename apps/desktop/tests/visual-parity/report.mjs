@@ -39,7 +39,7 @@ const properties = {
   display: '布局方式', minHeight: '最小高度', resize: '拖拽缩放方式',
   present: '存在状态', visible: '可见状态', disabled: '禁用状态',
   checked: '勾选状态', selected: '选中状态', expanded: '展开状态',
-  pressed: '按下状态', focused: '焦点状态', content: '文字内容',
+  pressed: '按下状态', focused: '焦点状态', value: '输入值', content: '文字内容',
   clientWidth: '可视宽度', clientHeight: '可视高度',
   scrollWidth: '内容宽度', scrollHeight: '内容高度',
   scrollLeft: '水平滚动位置', scrollTop: '垂直滚动位置',
@@ -53,7 +53,7 @@ const booleanValues = {
 function displayValue(value, issue) {
   if (value === null || value === undefined) return '未取得';
   if (typeof value === 'boolean') return booleanValues[issue.property]?.[Number(value)] ?? (value ? '是' : '否');
-  if (issue.kind === 'text') return JSON.stringify(value);
+  if (issue.kind === 'text' || issue.property === 'value') return JSON.stringify(value);
   if (typeof value === 'number') return `${value}${['geometry', 'scroll'].includes(issue.kind) ? ' px' : ''}`;
   return typeof value === 'string' ? value || '""' : JSON.stringify(value);
 }

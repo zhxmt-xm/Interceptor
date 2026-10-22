@@ -1,0 +1,26 @@
+.rulesEditorHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.rulesEditorName {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+}
+
+.rulesEditorHelp {
+  display: inline-flex;
+  flex: 0 0 auto;
+}

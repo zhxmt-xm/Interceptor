@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `de46fad8`
+> Tracked commit: `72f54c6b`
 > Homepage guidebook: `5c026b3`
 
 ## 维护规则
@@ -68,6 +68,8 @@
   - 验证边界：原本地模式全量在HAR处停止；已修复共享剪贴板干扰，原HAR真实流程单独通过。尚未取得新远端入口的完整截图到`main`发布证据，保持代码完成待验收，不以独立来源或最小检查冒充全量通过。发布时仍严格拒绝失败、缺图、错误版本、未恢复宿主及远端分支冲突。
 
 ## 验证证据
+
+- Rules标题无框：[前置差异](../../../Users/zhang/.copilot/session-state/12b79f71-ccdb-4a1c-92e1-9fe1541fd0fd/files/rules-title-borderless-red-final/report.md)与[最终数据parity](../../../Users/zhang/.copilot/session-state/12b79f71-ccdb-4a1c-92e1-9fe1541fd0fd/files/rules-title-green-final/report.md)覆盖四主题的默认、hover、focus、长名称和失焦，以及Rules相关场景；Rules Store基线、Desktop/Design typecheck通过。本次产品仅改CSS，未改重命名、键盘事件或保存契约，不新增或重跑真实E2E；原workflow保持不变，不将本轮结果冒充Main/Core退出或宿主恢复证据。用户已有App及8888监听保持原状，parity自有服务已退出。改动说明见[无框标题](../commit-changes/202610230007_ui_rules_borderless-title.html)。
 
 - README图文：[素材来源](assets/readme-media.json)、[文档与媒体核对](../../../.copilot/session-state/5e6be39b-a22a-4e7d-8a4b-8f5424099e40/files/item11/documentation-verification.json)、[双语主题与尺寸预览](../../../.copilot/session-state/5e6be39b-a22a-4e7d-8a4b-8f5424099e40/files/item11/browser-verification.json)及[GitHub渲染核对](../../../.copilot/session-state/5e6be39b-a22a-4e7d-8a4b-8f5424099e40/files/item11/github-markdown-verification.json)。只验证文档与已有素材，不替代产品E2E或官网访问验收；官网入口同步归item 15，私有仓库访问限制保留。
 

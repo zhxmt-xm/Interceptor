@@ -22,8 +22,8 @@
 .nameInput {
   flex: 1;
   min-width: 0;
-  border: 1px solid transparent;
-  border-radius: 7px;
+  height: 28px;
+  border: 0;
   background: transparent;
   color: var(--text);
   font-family: inherit;
@@ -31,13 +31,6 @@
   font-weight: 600;
   padding: 0;
   outline: none;
-}
-.nameInput:hover {
-  border-color: var(--border-2);
-}
-.nameInput:focus {
-  border-color: var(--accent);
-  background: var(--panel-2);
 }
 .placeholder {
   flex: 1;

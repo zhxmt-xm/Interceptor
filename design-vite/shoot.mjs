@@ -52,6 +52,18 @@ if (previewUrlArgument !== undefined) {
 // Every shot declares { feature, theme, variant, state, full? }.
 // Output path is shots/<theme>/<feature>/<variant>.png so light and dark stay separated.
 const shots = [];
+for (const theme of ['light', 'dark', 'warm', 'ember']) {
+  for (const state of ['idle', 'hover', 'focus', 'long-title']) {
+    shots.push({
+      feature: 'rules-title', theme, variant: state, interaction: `rules-title-${state}`,
+      state: { view: 'rules', theme, sidebar: 'collapsed' },
+    });
+  }
+  shots.push({
+    feature: 'rules-title', theme, variant: 'focus-full', full: true, interaction: 'rules-title-focus',
+    state: { view: 'rules', theme, sidebar: 'collapsed' },
+  });
+}
 for (const theme of ['light', 'dark']) {
   for (const full of [false, true]) {
     shots.push({
@@ -921,6 +933,8 @@ async function shoot(list) {
       homepageGuideSearchQuery: '',
       homepageGuideOutlinePreview: false,
       homepageGuideOutlineActive: '',
+      ruleEditorName: 'Stub /v1/user',
+      ruleEditorSavedName: 'Stub /v1/user',
       overlay: '',
       upstreamPopoverOpen: false,
       upstreamOperation: 'idle',
@@ -1166,6 +1180,16 @@ async function shoot(list) {
       await page.getByRole('button', { name: 'Show all 4 actions' }).hover();
       await page.getByRole('tooltip').waitFor();
     }
+    if (s.interaction?.startsWith('rules-title-')) {
+      const nameInput = page.getByRole('textbox', { name: 'Rule name', exact: true });
+      await nameInput.blur();
+      await page.mouse.move(0, 0);
+      if (s.interaction === 'rules-title-hover') await nameInput.hover();
+      if (s.interaction === 'rules-title-focus') await nameInput.click();
+      if (s.interaction === 'rules-title-long-title') {
+        await nameInput.fill('Breakpoint · api.example.test/v1/replies?platform=web&build=0&client=web&location=333.4016');
+      }
+    }
     if (s.interaction === 'composer-folder-selected') {
       await page.locator('.ccol [data-grp="github-repos"] > .cgrp-h .cgrp-namebtn').click();
       await page.mouse.move(0, 0);
@@ -1254,6 +1278,11 @@ async function shoot(list) {
       await page.screenshot({ path: outputPath, clip });
     } else {
       await app.screenshot({ path: outputPath });
+    }
+    if (s.feature === 'rules-title') {
+      await page.locator('.rulesEditorHeader').screenshot({
+        path: path.join(dest, `${s.variant}-header.png`),
+      });
     }
     if (s.interaction?.startsWith('http-body-')) {
       const actual = await page.evaluate(() => {

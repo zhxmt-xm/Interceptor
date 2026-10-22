@@ -26,7 +26,7 @@ const designRoot = path.join(repoRoot, 'design-vite');
 
 const defaultOutDir = path.join(desktopRoot, 'test-results/visual-parity');
 const STYLE_KEYS = ['fontFamily', 'fontSize', 'fontWeight', 'letterSpacing', 'color'];
-const STATE_KEYS = ['disabled', 'checked', 'selected', 'expanded', 'pressed', 'focused'];
+const STATE_KEYS = ['disabled', 'checked', 'selected', 'expanded', 'pressed', 'focused', 'value'];
 const SCROLL_KEYS = ['clientWidth', 'clientHeight', 'scrollWidth', 'scrollHeight', 'scrollLeft', 'scrollTop'];
 const closingPages = new WeakSet();
 
@@ -168,6 +168,12 @@ async function collect(page, rootSelector, targets, side, designReference, sourc
               state[key] = element.matches(stateSelector);
             } else if (key === 'focused') {
               state[key] = element === document.activeElement || element.contains(document.activeElement);
+            } else if (key === 'value') {
+              if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement
+                || element instanceof HTMLSelectElement)) {
+                throw new Error('State value requires an input, textarea or select');
+              }
+              state[key] = element.value;
             } else if ((key === 'disabled' || key === 'checked' || key === 'selected')
               && typeof element[key] === 'boolean') {
               state[key] = element[key];
@@ -371,6 +377,9 @@ async function applyRendererActions(page, actions = [], side = 'renderer') {
         break;
       case 'assertSelectorVisible':
         await page.locator(action.selector).waitFor({ state: 'visible' });
+        break;
+      case 'assertInputValue':
+        await expect(page.locator(action.selector)).toHaveValue(action.value);
         break;
       case 'clickRole':
         await page.getByRole(action.role, { name: action.name, exact: true }).nth(index).click();

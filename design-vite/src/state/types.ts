@@ -245,6 +245,8 @@ export interface DesignState {
   readonly requestMenu: string;
   readonly ruleFilter: string;
   readonly ruleOptions: string;
+  readonly ruleEditorName: string;
+  readonly ruleEditorSavedName: string;
   readonly scene: string;
   readonly bodyPreview: BodyPreview;
   readonly bodyKind: BodyKind;

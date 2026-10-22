@@ -194,6 +194,7 @@
 - selected(list 行):`--sel` + 左竖条。
 - active(nav):`--accent-soft` + `--accent`。
 - focus-visible:`0 0 0 3px color-mix(in srgb, var(--accent) 26%, transparent)`。
+- **Rules详情标题**：采用标题式无框input，默认、hover、focus均透明且无边框、阴影或额外装饰，保留文本光标和键盘编辑。字体14px/600，点击区域28px高、水平padding为0；标题行以flex居中，长名称在输入框内部横向滚动，不挤动右侧控件。此行不套用普通表单框或focus-visible外框。
 - 过渡:`120–180ms ease`;尊重 `prefers-reduced-motion`。
 - **垂直居中统一使用 flex**：产品 UI、Playground 和设计稿中的同行文字、计数、状态、图标、徽标和按钮，都由对应的 `display:flex` / `inline-flex` 容器设置 `align-items:center`；混排字体或字号也不改用 baseline。禁止 `align-items:baseline`、`align-self:baseline` 等基线对齐，不按字形像素边界或自算矩形中心补偿。正常控件尺寸、gap、padding 和换行行高仍遵守组件规格，但不得为凑对齐另加 px 位移、margin、padding、行高或文字裁剪；先修正真正负责这一行的布局，不为对齐擅自换字体。
 - loading:与 Core 交互的异步操作(录制开关、导入/导出提交、HTTPS 安装、诊断修复等)在进行中显示旋转 spinner 并阻断重复触发;只替换图标、不改按钮文案。

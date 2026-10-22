@@ -10,6 +10,7 @@ import { useDesignState } from '../../state/useDesignState';
 import { BreakpointAction } from './BreakpointAction';
 import { RuleActionTags } from './RuleActionTags';
 import { RulesActionPopover } from './RulesActionPopover';
+import { RulesEditorHeader } from './RulesEditorHeader';
 
 const OVERFLOW_ACTIONS = [
   { kind: 'rewrite', label: 'Rewrite' },
@@ -53,12 +54,7 @@ export function RulesFixtureRenderer({ node }: RulesFixtureRendererProps): React
       return <div className={fixtureClassNames('sh')}>Actions <span className={fixtureClassNames('c')}>1</span></div>;
     }
     if (hasClass(element, 'edhead')) {
-      return (
-        <div className={fixtureClassNames('edhead')} data-fixture-node="">
-          {children}
-          <button className={fixtureClassNames('btn pri sm')} disabled type="button">Save</button>
-        </div>
-      );
+      return <RulesEditorHeader />;
     }
     return undefined;
   };

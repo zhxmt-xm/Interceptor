@@ -158,14 +158,14 @@ flowchart LR
 | --- | --- |
 | `styleKeys` | 需要比较的 computed style 属性；未知或不可读取属性报错 |
 | `measureText` | 用 DOM Range 测量文字范围，保留字体样式；不用于按钮命中区或替代 flex 对齐 |
-| `compareText` | 比较实际文本 |
+| `compareText` | 比较实际文本；表单控件值使用`stateKeys: ['value']` |
 | `present: false` | 明确期望两边都不存在该目标 |
 | `visible: false` | 目标必须存在，但期望没有可见面积或处于隐藏状态 |
-| `stateKeys` | 声明 `disabled/checked/selected/expanded/pressed/focused` 状态 |
+| `stateKeys` | 声明 `disabled/checked/selected/expanded/pressed/focused/value` 状态 |
 | `stateSelectors` | 相同状态在 design/app 两侧对应的原生 CSS selector，由目标自身执行 `matches()` |
 | `scroll: true` | 比较声明区域的内容、可视尺寸和滚动位置 |
 
-`stateKeys` 优先读取适用的原生布尔属性，否则读取 ARIA。没有对应属性时明确报错，不能默认为 false；设计与产品使用不同状态标记时，显式提供 `stateSelectors`。状态 selector 是原生 CSS，不支持 Playwright 的 `:text-is()` 等扩展。
+`stateKeys` 优先读取适用的原生布尔属性，否则读取 ARIA；`value`只读取原生input、textarea、select的当前value，不使用空的textContent或初始value attribute。没有对应属性时明确报错，不能默认为 false；设计与产品使用不同状态标记时，显式提供 `stateSelectors`。状态 selector 是原生 CSS，不支持 Playwright 的 `:text-is()` 等扩展。
 
 ### 支持的操作
 
@@ -175,9 +175,20 @@ flowchart LR
 - `fillLabel/pressLabel/typeLabel/fillAutomation/selectLabel`：驱动真实输入与 Select；不改 Store。
 - `resizeVertical`：用鼠标拖拽现有正文控件右下角，不改 DOM 高度。
 - `assertTextHidden/assertSelectorVisible/assertInsideViewport`：检查现有状态；弹层视口断言同时采样可见性及四边范围，在五秒内等待稳定。
+- `assertInputValue`：按唯一selector核对表单控件当前值，作为场景前提；两侧同时填入错误值也不能算通过。
 - `emitTlsCompatibility/emitCaptureEvents`：仅从 fake Preload 的测试事件入口发送正常契约事件。
 
 操作中的 `index` 保留原有明确顺序语义；它不是采集目标发生歧义时的自动回退。
+
+### Rules标题编辑态
+
+`rules-title-{idle,hover,focus,long-title,blur}-{light,dark,warm,ember}`直接测量标题input的border box，不使用`measureText`。场景分别通过正常点击、hover、填入长名称及Home/Tab失焦建立状态；输入值与焦点先作为前提核对，再比较几何、字体、内边距、边框、背景、圆角及原生滚动数据。
+
+- 长名称使用测试自产的`api.example.test`地址，长度超过输入框可视宽度；不读取用户流量或缩短名称规避横向滚动。
+- 同时比较标题栏及Enabled、开关、请求入口、说明、删除、Save的位置，避免只增大输入框却挤动相邻控件。Save禁用状态与实际草稿同步比较。
+- 按确认后的标题式无框设计比较：默认、hover和focus均无边框、底色或阴影，保留28px点击区域和零水平内边距。每个标题场景使用独立设计页，避免前一个编辑值或当前树selection泄漏到后一个场景；不调整读数或放宽容差。
+- 本层不替代真实Rules重命名、Save、reload持久化和退出恢复验收。
+- 只改标题CSS且未改重命名、键盘事件或Save契约时，由本组parity和既有Rules Store基线覆盖，不为几何/颜色变化单独扩展E2E；交互、命令或持久化行为变化仍需对应真实workflow。
 
 ## Fixture 与状态隔离
 

@@ -61,6 +61,12 @@ design-vite/
 - 菜单沿用App的Ant Popover定位与边界避让，挂到`.app`而不是编辑器内；Breakpoint等末项不会被编辑器裁切。触发按钮、Escape和外部点击均可关闭。
 - 菜单内容继续来自`rulesFixture`，保留已有动作的静态示意；本次不扩展动作编辑或规则执行。Rule Select保持独立的原有定位与状态。
 
+### Rules标题编辑
+
+`RulesEditorHeader`展示标题式无框输入，默认、hover和focus均不画边框或底色，28px点击区域与零水平内边距保持标题行布局。`ruleEditorName`与`ruleEditorSavedName`分别保存当前编辑值和本次标题演示的已保存值，正常输入和Save与`window.__setState()`使用相同状态；规则选择更新标题，输入同步当前列表行，不再使用静态span代替编辑态。
+
+`node design-vite/shoot.mjs --feature=rules-title --out-dir="<独立评审目录>"`生成四主题默认、hover、focus、长标题与完整内容截图，同时输出标题栏局部图。产品与设计截图分别标明来源；设计演示不代替真实Rules保存与持久化验收。
+
 ## 命令
 
 ### Android USB 单页候选

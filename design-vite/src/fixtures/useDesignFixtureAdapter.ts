@@ -254,6 +254,11 @@ export function useDesignFixtureAdapter(
     if (state.ctxmenu) anchorTreeMenu(root, state.ctxmenu);
   }, [rootRef, state, updateState]);
 
+  useEffect(() => {
+    const name = rootRef.current?.querySelector<HTMLElement>('.rrule.open .rrule-n');
+    if (name) name.textContent = state.ruleEditorName;
+  }, [rootRef, state.ruleEditorName]);
+
   // 只在场景字段变化时重置 facet 选中态；跟着整个 state 重置会把用户的点击立刻抹掉。
   useEffect(() => {
     const root = rootRef.current;
@@ -382,8 +387,8 @@ export function useDesignFixtureAdapter(
       const rule = closest(event.target, '.rrule');
       if (rule) {
         setSelected(root, '.rgrp-h', null, 'sel'); setSelected(root, '.rrule', rule, 'sel'); setSelected(root, '.rrule', rule, 'open');
-        const name = root.querySelector<HTMLElement>('.edname'); if (name) name.textContent = rule.querySelector('.rrule-n')?.textContent ?? '';
-        return;
+        const name = rule.querySelector('.rrule-n')?.textContent ?? '';
+        return patch({ ruleEditorName: name, ruleEditorSavedName: name });
       }
       if (closest(event.target, '.ccol-toggle')) return patch({ collection: root.dataset.collection === 'closed' ? 'open' : 'closed' });
       const composerChevron = closest(event.target, '.cgrp-chevbtn');
@@ -423,9 +428,13 @@ export function useDesignFixtureAdapter(
         const ruleId = managerRuleLink.closest<HTMLElement>('.break-manager-rule')?.dataset.managerRule;
         const target = ruleId ? root.querySelector<HTMLElement>(`.rrule[data-rule-id="${CSS.escape(ruleId)}"]`) : null;
         setSelected(root, '.rgrp-h', null, 'sel'); setSelected(root, '.rrule', target, 'sel'); setSelected(root, '.rrule', target, 'open');
-        const name = root.querySelector<HTMLElement>('.edname'); if (name && target) name.textContent = target.querySelector('.rrule-n')?.textContent ?? '';
+        const name = target?.querySelector('.rrule-n')?.textContent;
         if (ruleId) root.dataset.managerRule = ruleId;
-        return patch({ view: 'rules', breakpointPanel: '' });
+        return patch({
+          view: 'rules',
+          breakpointPanel: '',
+          ...(name === undefined || name === null ? {} : { ruleEditorName: name, ruleEditorSavedName: name }),
+        });
       }
       const replaceMode = closest(event.target, '[data-replace-mode]')?.dataset.replaceMode;
       if (replaceMode) return patch({ breakpointBody: replaceMode === 'off' ? 'ready' : replaceMode === 'text' ? 'replace' : 'file' });

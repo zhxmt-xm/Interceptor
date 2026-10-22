@@ -23,6 +23,33 @@ const EXPAND_RULE_TREE_ACTIONS = [
   { type: 'clickRole', role: 'button', name: 'Expand folder', index: 0 },
 ];
 
+const RULE_EDITOR_LONG_NAME = 'Breakpoint · api.example.test/v1/replies?platform=web&build=0&client=web&location=333.4016&feature=notification-center&sort=creation-time&language=en-US&cursor=next-page-0123456789';
+const RULE_EDITOR_TITLE_STATES = ['idle', 'hover', 'focus', 'long-title', 'blur'];
+
+function ruleEditorTitleActions(state, selector) {
+  const actions = [{ type: 'clickSelector', selector: '[data-parity="window-header-title"]' }];
+  const edited = state === 'long-title' || state === 'blur';
+  if (state === 'hover') actions.push({ type: 'hoverSelector', selector });
+  if (state === 'focus') actions.push({ type: 'clickSelector', selector });
+  if (edited) {
+    actions.push({ type: 'fillLabel', label: 'Rule name', value: RULE_EDITOR_LONG_NAME });
+  }
+  if (state === 'blur') {
+    actions.push(
+      { type: 'pressLabel', label: 'Rule name', key: 'Home' },
+      { type: 'pressLabel', label: 'Rule name', key: 'Tab' },
+      { type: 'hoverSelector', selector: '[data-parity="window-header-title"]' },
+    );
+  }
+  const focus = state === 'focus' || state === 'long-title' ? ':focus' : ':not(:focus)';
+  const hover = state === 'hover' ? ':hover' : '';
+  actions.push(
+    { type: 'assertSelectorVisible', selector: `${selector}${focus}${hover}` },
+    { type: 'assertInputValue', selector, value: edited ? RULE_EDITOR_LONG_NAME : 'Stub /v1/user' },
+  );
+  return actions;
+}
+
 const RULE_SET_APPLIED_TARGETS = [
   {
     name: 'Rule set applied',
@@ -895,6 +922,72 @@ export const views = [
     },
   ]),
   ...INITIAL_VIEWS,
+  ...['light', 'dark', 'warm', 'ember'].flatMap(theme => RULE_EDITOR_TITLE_STATES.map(state => ({
+    id: `rules-title-${state}-${theme}`,
+    theme,
+    freshDesign: true,
+    rendererNav: 'Rules & Map',
+    designState: {
+      view: 'rules',
+      theme,
+      sidebar: 'collapsed',
+      overlay: '',
+      ruleEditorName: 'Stub /v1/user',
+      ruleEditorSavedName: 'Stub /v1/user',
+    },
+    designActions: ruleEditorTitleActions(state, '.rulesEditorName'),
+    rendererActions: ruleEditorTitleActions(state, '[data-automation-id="rules.editor.name"]'),
+    targets: [
+      {
+        name: 'Rule title input',
+        designSelector: '.rulesEditorName',
+        appSelector: '[data-automation-id="rules.editor.name"]',
+        stateKeys: ['focused', 'value'],
+        scroll: true,
+        styleKeys: [
+          'fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'color',
+          'height', 'padding', 'margin', 'boxSizing', 'borderWidth', 'borderColor',
+          'borderRadius', 'backgroundColor', 'outlineStyle', 'boxShadow', 'minWidth',
+        ],
+      },
+      {
+        name: 'Rule editor header',
+        designSelector: '.rulesEditorHeader',
+        appSelector: 'div:has(> [data-automation-id="rules.editor.name"])',
+        styleKeys: ['display', 'alignItems', 'gap', 'padding', 'borderBottomWidth'],
+      },
+      {
+        name: 'Rule enabled badge',
+        designSelector: '.rulesEditorHeader > .sbadge',
+        appSelector: '[data-automation-id="rules.editor.name"] + span',
+        compareText: true,
+      },
+      {
+        name: 'Rule enabled switch',
+        designSelector: '.rulesEditorHeader > [role="switch"]',
+        appSelector: '[data-automation-id="rules.editor.enabled"]',
+        styleKeys: ['width', 'height', 'borderRadius', 'backgroundColor'],
+        stateKeys: ['checked'],
+      },
+      ...[
+        ['Rule requests button', '[data-show-rule-requests]', '[data-automation-id="rules.show-matching-requests"]'],
+        ['Rule scope button', '[aria-label="Where rules apply"]', 'button[aria-label="Where rules apply"]'],
+        ['Rule delete button', '[aria-label="Delete rule"]', 'button[aria-label="Delete rule"]'],
+      ].map(([name, designSelector, appSelector]) => ({
+        name,
+        designSelector: `.rulesEditorHeader ${designSelector}`,
+        appSelector,
+        styleKeys: ['width', 'height'],
+      })),
+      {
+        name: 'Rule save button',
+        designSelector: '.rulesEditorHeader > button:last-child',
+        appSelector: '[data-automation-id="rules.apply"]',
+        compareText: true,
+        stateKeys: ['disabled'],
+      },
+    ],
+  }))),
   ...['light', 'dark'].flatMap((theme) => {
     const suffix = theme === 'dark' ? '-dark' : '';
     return [
@@ -1198,6 +1291,7 @@ export const views = [
           agentProvider: 'configured',
           agentChat: 'checkout',
           agentToolTrace: 'rules',
+          agentToolApproval: '',
         },
         rendererActions: [
           { type: 'clickAutomation', automationId: 'shell.workspace.rules' },
