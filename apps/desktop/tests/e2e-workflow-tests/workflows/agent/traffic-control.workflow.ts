@@ -19,6 +19,8 @@ import {
 } from '../../fixtures/runtime/local-electron-driver';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
+import { createWorkflowMcpClient } from '../../fixtures/ui/mcp-workflow';
+import { automaticallyExecuteMcpClientTools } from '../../fixtures/ui/settings-workflow';
 
 const phrase = (...parts: readonly string[]): string => parts.join(' ');
 const START_DENY_PROMPT = phrase('Keep recording paused', 'when asked to start it.');
@@ -694,4 +696,70 @@ test('agent.tools.traffic-control synchronizes Recording and Capture cleanup', a
   }
   if (workflowError) throw workflowError;
   if (cleanupError) throw cleanupError;
+});
+
+test('capture.start-recording executes through the current MCP Host', async ({
+  desktopApp,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  const { page } = desktopApp;
+  const recording = getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle);
+  let client: Awaited<ReturnType<typeof createWorkflowMcpClient>>['client'] | null = null;
+
+  const pauseRecording = async (): Promise<void> => {
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+    if (await recording.getAttribute('aria-pressed') === 'true') {
+      await expect(recording).toHaveAttribute('aria-busy', 'false');
+      await recording.click();
+      await expect(recording).toHaveAttribute('aria-pressed', 'false');
+    }
+  };
+
+  try {
+    await pauseRecording();
+    const configured = await createWorkflowMcpClient(
+      desktopApp,
+      testInfo,
+      'Capture start current Host',
+      'capture-start-recording',
+    );
+    client = configured.client;
+    const [askResult] = await Promise.all([
+      client.callTool({ name: 'capture_start_recording', arguments: {} }),
+      (async () => {
+        await expect(getByAutomationId(page, AUTOMATION_IDS.mcp.approval.root))
+          .toHaveAttribute('data-tool-name', 'capture_start_recording');
+        await getByAutomationId(page, AUTOMATION_IDS.mcp.approval.allow).click();
+      })(),
+    ]);
+    expect(askResult.isError).not.toBe(true);
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+    await expect(recording).toHaveAttribute('aria-pressed', 'true');
+
+    await pauseRecording();
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
+    await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
+    await automaticallyExecuteMcpClientTools(page, configured.clientId);
+    const autoResult = await client.callTool({
+      name: 'capture_start_recording',
+      arguments: {},
+    });
+    expect(autoResult.isError).not.toBe(true);
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+    await expect(recording).toHaveAttribute('aria-pressed', 'true');
+    await expect(getByAutomationId(page, AUTOMATION_IDS.mcp.approval.root)).toHaveCount(0);
+    await pauseRecording();
+
+    await testInfo.attach('capture-start-recording-current-host.json', {
+      body: Buffer.from(JSON.stringify({
+        ask: true,
+        auto: true,
+        restoredPaused: true,
+      })),
+      contentType: 'application/json',
+    });
+  } finally {
+    await pauseRecording();
+    await client?.close();
+  }
 });

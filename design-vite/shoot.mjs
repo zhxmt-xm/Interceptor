@@ -193,6 +193,43 @@ for (const theme of ['light', 'dark', 'warm', 'ember']) {
       state: { view: 'capture', theme, sidebar: 'collapsed', overlay: '', detail: 'open', scene: 'websocket', tab: 'messages' } });
   }
 }
+for (const theme of ['light', 'dark', 'warm', 'ember']) {
+  for (const [variant, guidebookAppState, guidebookAppSearchOpen, guidebookAppImageOpen] of [
+    ['ready', 'ready', false, false],
+    ['loading', 'loading', false, false],
+    ['error', 'error', false, false],
+    ['search', 'ready', true, false],
+    ['image', 'ready', false, true],
+  ]) {
+    shots.push({
+      feature: 'guidebook-app',
+      theme,
+      variant,
+      state: {
+        view: 'guidebook',
+        theme,
+        sidebar: 'collapsed',
+        lang: 'zh-CN',
+        guidebookAppState,
+        guidebookAppSearchOpen,
+        guidebookAppImageOpen,
+      },
+    });
+  }
+  shots.push({
+    feature: 'guidebook-app',
+    theme,
+    variant: 'ready-full',
+    full: true,
+    state: {
+      view: 'guidebook',
+      theme,
+      sidebar: 'collapsed',
+      lang: 'zh-CN',
+      guidebookAppState: 'ready',
+    },
+  });
+}
 for (const feature of FEATURES) {
   for (const theme of ['light', 'dark']) {
     const base = { view: feature, theme: TOKEN[theme], sidebar: feature === 'capture' ? 'collapsed' : 'expanded', overlay: '', ...(feature === 'settings' ? { settings: 'certificates' } : {}) };

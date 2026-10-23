@@ -312,19 +312,19 @@ macOS定向用例同在`tools-certificates.workflow.ts`，名称含`rejects over
 ### Steps
 
 1. 保存宿主基线和helper只读返回的完整exemption集合，创建空profile并启动真实Electron；通过UI配置本地Model Provider。
-2. Agent发现四项Tool，打开AppContainer面板；单项SID取自产品真实枚举，不伪造SID或预置豁免。
+2. Agent发现四项变更Tool，打开AppContainer面板；单项SID取自产品真实枚举，不伪造SID或预置豁免。
 3. Ask逐项Deny保持完整OS集合；Allow分别执行单项启用/停用、全部启用/停用，当前面板不用手动Refresh即显示结果。
 4. Agent Auto逐项重复，确认单项不影响其他SID，批量只操作当前枚举且保留枚举外既有豁免；真实原生授权不注入返回值。
-5. 通过产品UI创建MCP Client，真实SDK连接；独立覆盖四项Ask Deny/Allow与Auto，结果仅含公开字段，不返回原始helper输出。
-6. 关闭四项Agent授权，旧Chat返回unknown_tool而MCP仍可发现；再关闭MCP授权，旧Client调用返回-32602，OS集合不变。
+5. 通过产品UI创建MCP Client；默认走真实SDK，显式current-host模式走同一VS Code Host公开MCP通道。先调用`settings_list_app_containers`并与helper只读基线逐项核对，再覆盖四项Ask Deny/Allow与Auto；结果仅含公开字段，不返回原始helper输出。
+6. 关闭四项Agent授权，旧Chat返回unknown_tool而MCP仍可发现；再关闭查询及四项变更的MCP授权，旧Client按实际入口返回不存在错误，OS集合不变。
 7. 通过正式批量/单项UI恢复初始完整exemption集合，正常退出第一代，验证Main/Core/Worker、8888及WinINet/journal恢复。
-8. 同profile启动第二代；四项Agent/MCP开关保持关闭，Model请求增量0，OS豁免集合仍为初始值，没有重放写入或UAC。
+8. 同profile启动第二代；四项Agent与五项MCP开关保持关闭，Model请求增量0，OS豁免集合仍为初始值，没有重放写入或UAC。
 9. 保存两代trace、metadata和仅含数量/hash的exemption证据；finally再次经真实UI恢复任何本轮变更，正常退出并验证宿主完全恢复，成功后删除profile。
 
 ### 验收要求
 
-- Red只能来自四项Tool缺失或目标业务缺口；权限、selector或构建失败保持blocked，不算产品Red。
-- Green记录四项Agent/MCP调用、两列授权、挂载UI即时同步、单项/批量范围及两代正常销毁。
+- Red只能来自五项Tool缺失或目标业务缺口；权限、selector或构建失败保持blocked，不算产品Red。
+- Green记录查询与四项变更的真实MCP调用、四项Agent调用、两列授权、挂载UI即时同步、单项/批量范围及两代正常销毁。
 - 初始与最终完整exemption集合hash必须相同，枚举外SID保持不变；不保存完整机器SID清单、helper路径、凭据或代理配置。
 
 <a id="settings-navigation"></a>
@@ -364,7 +364,7 @@ macOS保留十个section、键盘和跨workspace往返；App Containers按产品
 <a id="settings-app-containers-ordering"></a>
 ## `settings.app-containers.ordering`
 
-**状态**：排序流程passed；新增布局断言待E2E
+**状态**：passed；Windows真实120行排序、筛选/恢复、标题与推荐标签布局及退出恢复已验
 **策略**：shared；Windows
 
 ### Steps

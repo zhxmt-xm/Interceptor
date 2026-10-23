@@ -72,6 +72,7 @@ const VIEW_LABEL_KEYS: Record<ViewId, string> = {
   rules: 'rules.title',
   composer: 'composer.title',
   diagnostics: 'diagnostics.title',
+  guidebook: 'guidebook.title',
   settings: 'settings.title',
 };
 
@@ -274,6 +275,8 @@ export function App(): React.JSX.Element {
     setSettingsSection,
     actions,
     tlsPassthroughTarget,
+    themeMode,
+    language,
   );
 
   const content = (
@@ -281,6 +284,7 @@ export function App(): React.JSX.Element {
       className={styles.app}
       data-agent-panel={agentPanelOpen ? 'open' : 'closed'}
       data-collapsed={collapsed}
+      data-view={view}
       data-automation-id={AUTOMATION_IDS.app.root}
     >
       <Sidebar

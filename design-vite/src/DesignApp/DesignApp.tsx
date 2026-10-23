@@ -13,6 +13,7 @@ import { RulesImportDialog } from '../features/Rules/RulesImportDialog';
 import { RulesRootContextMenu } from '../features/Rules/RulesRootContextMenu';
 import { AcceptancePlayground } from '../features/Playground/AcceptancePlayground';
 import { HomepageGuidePreview } from '../features/HomepageGuidePreview/HomepageGuidePreview';
+import { GuidebookAppPreview } from '../features/GuidebookAppPreview/GuidebookAppPreview';
 import { AndroidPreview } from '../features/AndroidPreview/AndroidPreview';
 import { AndroidDeviceDialog } from '../features/AndroidPreview/AndroidDeviceDialog';
 import { AndroidPreviewControls } from '../features/AndroidPreview/AndroidPreviewControls';
@@ -78,6 +79,7 @@ function DesignAppContent(): React.JSX.Element {
                 <Composer />
                 <Settings />
                 <Diagnostics />
+                <GuidebookAppPreview />
               </div>
               <AgentSidePanel />
               <FixtureRenderer node={statusbarFixture} renderElement={renderStatusbarElement} />

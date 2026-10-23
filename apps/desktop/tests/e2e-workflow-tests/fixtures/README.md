@@ -36,6 +36,7 @@ VS Code 1.143应用配置后，当前Agent须在该一次性session执行官方`
 
 - `stepScreenshots`是默认关闭的测试option。`step-screenshots.ts`跟随当前测试的真实App代际，在原流程检查点保存PNG；自动fixture最先建立本次截图运行，最后在其他fixture、driver退出及宿主恢复结束后生成清单。driver只报告实际恢复结果，证据写入失败也进入原清理错误聚合，不得生成成功清单；不用图片代替业务断言。
 - macOS PNG由[window-screenshot.swift](ui/window-screenshot.swift)一次性捕获，先核对所属Main及窗口。原生文件面板在[file-dialog.ts](ui/file-dialog.ts)的共享操作边界取景，底层macOS窗口工具不依赖截图runtime；只在定位本次文件后拍Open/Save，取消则拍返回App的状态。锁屏、权限或取景失败显式失败，不录桌面、不启动视频。
+- Windows原生文件面板沿用[windows-file-dialog.ts](ui/windows-file-dialog.ts)的真实UI Automation定位与owner进程代际；先进入测试自产目录、回读目录并只填basename，再由`PrintWindow`输出唯一对话框PNG，随后通过同一真实鼠标入口确认。PNG写盘前遮盖原生导航侧栏和地址breadcrumb；对话框不唯一、非前台、所有权变化、空图或写入失败均显式失败，不回退为整屏截图。
 - 输出留在本次测试的`step-screenshots/`，fixture不读写Homepage、不执行Git。显式发布操作由`npm start`调用[发布脚本](../../../../../scripts/guidebook-publish.mjs)，复用原workflow与持久映射；普通模式仍保留原trace/final.png和正常退出门禁。
 - `recordScreenshotExample()`保存测试实际拥有的loopback端点，拒绝用户名/密码和同key变更，移除query/hash；HTTP/模型/TLS fixture在真实listener就绪后登记，独立认证、MCP换地址与上游流程使用不同明确key。只有截图模式收集这些值，不通过Renderer/Store或产品参数注入示例。
 - 可选高亮由`screenshot-highlights.ts`读取真实Locator边界，并在独立PNG上绘制红框与编号；App画面及原始PNG不变。目标不在当前窗口、未完整显示或捕获期间移动时明确失败，不使用猜测偏移；合成器仅在确有标注时加载。

@@ -662,6 +662,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'openAndroidApplication',
         'openCertificateManager',
         'openDownloadedUpdate',
+        'openGuidebookInBrowser',
         'pickBreakpointBodyFile',
         'probeTls',
         'queryDiagnostics',
@@ -715,7 +716,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
       hasNodeRequire: 'undefined',
       csp: expect.stringContaining("connect-src 'none'"),
     });
-    expect(securitySnapshot.csp).toContain("frame-src 'none'");
+    expect(securitySnapshot.csp).toContain('frame-src https://www.interceptor.cn');
     expect(securitySnapshot.csp).not.toContain('frame-ancestors');
 
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();

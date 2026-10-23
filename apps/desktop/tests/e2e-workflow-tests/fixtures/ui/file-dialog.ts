@@ -6,8 +6,9 @@ import { cancelWindowsFileDialog, submitWindowsFileDialogPath } from './windows-
 export async function submitFileDialogPath(owner: WorkflowProcessIdentity, targetPath: string): Promise<void> {
   switch (process.platform) {
     case 'win32':
-      await screenshotNativeDialog('选择本次文件位置 / Choose this operation’s file location');
-      return submitWindowsFileDialogPath(owner, targetPath);
+      return submitWindowsFileDialogPath(owner, targetPath, () => screenshotNativeDialog(
+        '选择本次文件位置 / Choose this operation’s file location',
+      ));
     case 'darwin':
       return submitMacosFileDialogPath(owner, targetPath, () => screenshotNativeDialog(
         '选择本次文件位置 / Choose this operation’s file location',

@@ -3503,6 +3503,7 @@ export function installFakeInterceptor({
       return updateStatus;
     },
     openDownloadedUpdate: async () => undefined,
+    openGuidebookInBrowser: async () => undefined,
     onUpdateStatusChange: () => () => undefined,
     closeApplication: async () => undefined,
     minimizeWindow: async () => undefined,

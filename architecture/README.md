@@ -42,6 +42,7 @@ Handover只列未完成任务、当前阻塞和运行约束；完成项从任务
 | [features/http-message-editing.md](features/http-message-editing.md) | Breakpoint、Rules、Composer 共用的 HTTP header/body 编辑契约 | `rules/`、`proxy/`、`composer/` | `features/breakpoints/`、`features/rules/`、`features/composer/` |
 | [features/transfer.md](features/transfer.md) | HAR、Native Archive、Body 导出的异步文件任务 | `transfer/`、`har/`、`archive/` | Capture 导入导出菜单 |
 | [features/diagnostics.md](features/diagnostics.md) | 三进程结构化日志、查询、导出 | `diagnostics/` | `features/diagnostics/` |
+| [features/guidebook.md](features/guidebook.md) | Desktop 在线使用指南入口、远程 frame 安全边界、主题/语言同步与外部浏览器跳转 | 无 | `features/guidebook/` |
 | [features/settings.md](features/settings.md) | 证书/MITM、系统代理与上游代理、更新、存储状态、语言主题 | `workspace/`、Main使用的`@interceptor/platform-capabilities`、`updates/` | `features/settings/` |
 | [features/tool-capabilities.md](features/tool-capabilities.md) | Agent/MCP共用的Tool目录、Settings开关和`ask`/`auto`契约 | 复用既有command；共享registry位于`packages/interceptor-tools/` | Settings > Agent Tool capabilities |
 | [features/mcp.md](features/mcp.md) | 对外 AI Host 接入、调用方认证、transport 与共享 Tool Catalog 消费 | 无新增 Core 业务；transport 已接入 Main `mcp/` | Settings > Agent MCP 配置 + App 级问询弹层 |

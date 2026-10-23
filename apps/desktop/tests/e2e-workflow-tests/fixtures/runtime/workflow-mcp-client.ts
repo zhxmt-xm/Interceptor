@@ -1,8 +1,10 @@
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
+import { readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { createConnection } from 'node:net';
+import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -31,8 +33,55 @@ interface HostToolEvidence {
   readonly error?: { readonly message: string; readonly code?: number };
 }
 
-const CODE_CLI = '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code';
 const ROOT_CHANNEL = 'ahp-root://';
+
+interface CodeCliCommand {
+  readonly executable: string;
+  readonly argumentsPrefix: readonly string[];
+  readonly environment?: NodeJS.ProcessEnv;
+}
+
+function resolveCodeCliCommand(): CodeCliCommand {
+  if (process.platform === 'darwin') {
+    return {
+      executable: '/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code',
+      argumentsPrefix: [],
+    };
+  }
+  if (process.platform !== 'win32') {
+    throw new Error('The current Host driver supports only macOS and Windows.');
+  }
+  const codeCommand = execFileSync('where.exe', ['code.cmd'], {
+    encoding: 'utf8',
+    timeout: 5_000,
+    windowsHide: true,
+  }).split(/\r?\n/).find((value) => value.trim().length > 0)?.trim();
+  if (!codeCommand) throw new Error('The official VS Code command was not found on PATH.');
+  const command = readFileSync(codeCommand, 'utf8');
+  const cliMatch = command.match(
+    /"%~dp0\.\.\\Code\.exe"\s+"%~dp0\.\.\\([^"]+\\resources\\app\\out\\cli\.js)"/i,
+  );
+  if (!cliMatch?.[1]) throw new Error('The official Windows VS Code command omitted its CLI entry.');
+  const installationDirectory = path.resolve(path.dirname(codeCommand), '..');
+  return {
+    executable: path.join(installationDirectory, 'Code.exe'),
+    argumentsPrefix: [path.resolve(installationDirectory, cliMatch[1])],
+    environment: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+  };
+}
+
+function runCodeCli(
+  command: CodeCliCommand,
+  argumentsList: readonly string[],
+  timeout: number,
+): string {
+  return execFileSync(command.executable, [...command.argumentsPrefix, ...argumentsList], {
+    encoding: 'utf8',
+    timeout,
+    windowsHide: true,
+    env: command.environment,
+  });
+}
 
 export async function connectWorkflowMcpClient(
   configuration: McpConfiguration,
@@ -60,8 +109,9 @@ export async function connectWorkflowMcpClient(
   }
   if (mode !== 'current-host') throw new Error('INTERCEPTOR_E2E_MCP_CLIENT must be sdk or current-host.');
   const session = process.env.INTERCEPTOR_E2E_CURRENT_HOST_SESSION;
-  if (process.platform !== 'darwin' || !session || !/^ahp-session:\/[a-f0-9-]{36}$/.test(session)) {
-    throw new Error('The current Host driver requires macOS and the verified current INTERCEPTOR_E2E_CURRENT_HOST_SESSION.');
+  if ((process.platform !== 'darwin' && process.platform !== 'win32')
+    || !session || !/^ahp-session:\/[a-f0-9-]{36}$/.test(session)) {
+    throw new Error('The current Host driver requires macOS or Windows and the verified current INTERCEPTOR_E2E_CURRENT_HOST_SESSION.');
   }
   const currentHostMcpClient = new CurrentHostMcpClient(configuration, session, testInfo);
   try {
@@ -115,11 +165,10 @@ class CurrentHostMcpClient implements WorkflowMcpClient {
   }
 
   async connect(): Promise<void> {
+    const codeCli = resolveCodeCliCommand();
     let discovery: unknown;
     try {
-      discovery = JSON.parse(execFileSync(CODE_CLI, ['agent', 'endpoints'], {
-        encoding: 'utf8', timeout: 15_000,
-      }));
+      discovery = JSON.parse(runCodeCli(codeCli, ['agent', 'endpoints'], 15_000));
     } catch {
       // CLI output and parser excerpts can contain the Host connection credential.
       throw new Error('The official Code CLI did not return a valid Host endpoint descriptor.');
@@ -136,7 +185,7 @@ class CurrentHostMcpClient implements WorkflowMcpClient {
     const socketPath = endpoint.endpoint.path;
     this.hostConnectionToken = endpoint.connectionToken;
     this.protocolVersion = endpoint.protocolVersion;
-    const version = execFileSync(CODE_CLI, ['--version'], { encoding: 'utf8', timeout: 15_000 }).trim().split('\n')[0];
+    const version = runCodeCli(codeCli, ['--version'], 15_000).trim().split(/\r?\n/)[0];
     this.hostVersion = `VS Code ${version} / AHP ${this.protocolVersion}`;
     const webSocket = new WebSocket(`ws://localhost/?tkn=${encodeURIComponent(this.hostConnectionToken)}`, {
       createConnection: () => createConnection(socketPath),

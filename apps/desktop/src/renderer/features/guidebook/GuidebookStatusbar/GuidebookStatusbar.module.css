@@ -1,0 +1,18 @@
+.status {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.status span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}

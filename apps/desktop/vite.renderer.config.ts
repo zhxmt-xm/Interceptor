@@ -11,7 +11,7 @@ const productionCsp = [
   "object-src 'none'",
   "base-uri 'none'",
   "form-action 'none'",
-  "frame-src 'none'",
+  "frame-src https://www.interceptor.cn",
   "worker-src 'self' blob:",
 ].join('; ');
 
@@ -25,7 +25,7 @@ const developmentCsp = [
   "object-src 'none'",
   "base-uri 'none'",
   "form-action 'none'",
-  "frame-src 'none'",
+  "frame-src https://www.interceptor.cn",
   "worker-src 'self' blob:",
 ].join('; ');
 

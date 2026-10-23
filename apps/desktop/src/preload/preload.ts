@@ -224,6 +224,8 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.updateDownload),
   openDownloadedUpdate: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.updateOpenDownloaded),
+  openGuidebookInBrowser: (language) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.guidebookOpenBrowser, language),
   onUpdateStatusChange: (listener) => {
     const handler = (
       _event: Electron.IpcRendererEvent,

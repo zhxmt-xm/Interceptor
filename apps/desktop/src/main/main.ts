@@ -33,6 +33,7 @@ import type {
 
 import {
   DESKTOP_IPC_CHANNELS,
+  DESKTOP_UI_LANGUAGES,
   type ApplicationStartupStage,
   type AndroidDesktopStatus,
   type PlatformOperation,
@@ -49,6 +50,7 @@ import {
   type SystemProxyRestoreResult,
   type UpdateStatus,
 } from '../shared/desktop-api';
+import { guidebookUrl } from '../shared/guidebook';
 import { PlatformCapabilitiesService, readErrorMessage, readErrorName } from '@interceptor/platform-capabilities';
 import {
   IMPORT_FILE_MAX_BYTES,
@@ -1396,6 +1398,17 @@ class DesktopApplication {
       this.assertTrustedSender(event.senderFrame?.url);
       await this.runMainAction('main.update.open-downloaded', () =>
         this.requireUpdateService().openDownloaded());
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.guidebookOpenBrowser, async (event, language: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      if (
+        typeof language !== 'string'
+        || !DESKTOP_UI_LANGUAGES.includes(language as (typeof DESKTOP_UI_LANGUAGES)[number])
+      ) {
+        throw new Error('Guidebook language is invalid.');
+      }
+      await shell.openExternal(guidebookUrl(language as (typeof DESKTOP_UI_LANGUAGES)[number], false));
     });
 
     // 存储用量只读查询；数据库与 Blob 路径不暴露给 Renderer。

@@ -9,6 +9,7 @@ import { test as playwrightTest, type TestInfo } from '@playwright/test';
 import type { LocalElectronApplicationDriver } from './local-electron-driver';
 import { MacosWorkflowHostSafetyOperations } from '../safety/macos-workflow-host-safety-operations';
 import { macosFileDialogWindowId, showMacosFileDialogList } from '../ui/macos-file-dialog';
+import { screenshotWindowsFileDialog } from '../ui/windows-file-dialog';
 import {
   annotateScreenshot, readStableHighlightGeometry, verifyHighlightGeometry,
   type AnnotatedScreenshot, type HighlightGeometry, type ScreenshotHighlight,
@@ -189,6 +190,8 @@ JSON.stringify(matches[0].kCGWindowNumber);
     await execute(tool, [String(owner.processId), String(windowId), destination], {
       timeout: 30_000, encoding: 'utf8',
     });
+  } else if (process.platform === 'win32' && window === 'native-dialog') {
+    await screenshotWindowsFileDialog(driver.nativeFileDialogOwner(), destination);
   } else {
     if (window === 'native-dialog') {
       throw new Error('Native file-panel screenshots are not implemented on this platform.');

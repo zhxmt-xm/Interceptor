@@ -1,0 +1,496 @@
+.gbAppRoot {
+  position: relative;
+  display: none;
+  grid-template-rows: 42px minmax(0, 1fr) 30px;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.gbAppToolbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--chrome);
+}
+
+.gbAppNavigation,
+.gbAppActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gbAppToolbar button,
+.gbAppSearchButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 28px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+}
+
+.gbAppToolbar button:hover,
+.gbAppSearchButton:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.gbAppToolbar button:disabled {
+  opacity: .35;
+}
+
+.gbAppToolbar svg,
+.gbAppSearchButton svg {
+  width: 14px;
+  height: 14px;
+}
+
+.gbAppAddress {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gbAppAddress svg {
+  width: 15px;
+  height: 15px;
+  color: var(--accent);
+}
+
+.gbAppAddress small {
+  overflow: hidden;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gbAppActions {
+  justify-content: flex-end;
+  font-size: 11.5px;
+}
+
+.gbAppOnline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 4px;
+  color: var(--text-2);
+}
+
+.gbAppOnline i,
+.gbAppStatus i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.gbAppReading {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr) 156px;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.gbAppChapters {
+  min-width: 0;
+  overflow-y: auto;
+  padding: 18px 12px;
+  border-right: 1px solid var(--border);
+  background: var(--sidebar);
+}
+
+.gbAppChapterHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 9px 12px;
+}
+
+.gbAppChapterHeader strong {
+  font-size: 13px;
+}
+
+.gbAppChapterHeader small {
+  color: var(--text-3);
+  font-size: 10px;
+}
+
+.gbAppSearchButton {
+  justify-content: flex-start;
+  width: 100%;
+  height: 34px;
+  margin-bottom: 8px;
+  background: var(--panel-2);
+  font-size: 11.5px;
+}
+
+.gbAppSearchButton kbd {
+  margin-left: auto;
+  color: var(--text-3);
+  font: 500 9px var(--font-mono);
+}
+
+.gbAppChapters > button:not(.gbAppSearchButton) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 33px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-2);
+  font: 500 11.5px var(--font-ui);
+  text-align: left;
+}
+
+.gbAppChapters > button span {
+  color: var(--text-3);
+  font: 500 9.5px var(--font-mono);
+}
+
+.gbAppChapters > button[data-active="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.gbAppArticle {
+  min-width: 0;
+  overflow-y: auto;
+  padding: 40px 52px 80px;
+}
+
+.gbAppEyebrow {
+  color: var(--accent);
+  font: 500 10px var(--font-mono);
+  letter-spacing: .08em;
+}
+
+.gbAppArticle h1 {
+  margin: 10px 0 12px;
+  font-size: 30px;
+  font-weight: 560;
+  letter-spacing: -.04em;
+}
+
+.gbAppLead {
+  max-width: 720px;
+  color: var(--text-2);
+  font-size: 13.5px;
+  line-height: 1.8;
+}
+
+.gbAppNotice {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 22px 0 30px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--text-2);
+  font-size: 11.5px;
+}
+
+.gbAppNotice svg {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  color: var(--accent);
+}
+
+.gbAppArticle section {
+  max-width: 760px;
+  margin-top: 30px;
+}
+
+.gbAppArticle h2 {
+  margin-bottom: 10px;
+  font-size: 19px;
+  font-weight: 560;
+}
+
+.gbAppArticle section > p,
+.gbAppArticle li {
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.9;
+}
+
+.gbAppArticle ol {
+  margin: 14px 0;
+  padding-left: 24px;
+}
+
+.gbAppMedia {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  text-align: left;
+}
+
+.gbAppMedia > span {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 42px;
+  margin-right: 12px;
+  border-radius: 7px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.gbAppMedia strong,
+.gbAppMedia small {
+  display: block;
+}
+
+.gbAppMedia small {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: 10px;
+}
+
+.gbAppOutline {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 42px 20px 20px 0;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 450;
+  line-height: 1.5;
+}
+
+.gbAppOutline strong {
+  color: var(--text);
+}
+
+.gbAppOutline a {
+  color: var(--text-3);
+  font: inherit;
+  text-decoration: none;
+}
+
+.gbAppOutline a[data-current="true"] {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.gbAppStatus {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 14px;
+  border-top: 1px solid var(--border);
+  background: var(--chrome);
+  color: var(--text-3);
+  font-size: 10.5px;
+}
+
+.gbAppStatus span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gbAppCentered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 0;
+  color: var(--text-2);
+}
+
+.gbAppCentered > svg {
+  width: 28px;
+  height: 28px;
+  color: var(--text-3);
+}
+
+.gbAppCentered strong {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.gbAppCentered p {
+  font-size: 12px;
+}
+
+.gbAppCentered div {
+  display: flex;
+  gap: 8px;
+}
+
+.gbAppCentered button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border-2);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text);
+}
+
+.gbAppSpinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: gbAppSpin .8s linear infinite;
+}
+
+.gbAppOverlay {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--bg) 56%, transparent);
+  backdrop-filter: blur(5px);
+}
+
+.gbAppSearchDialog,
+.gbAppImageDialog {
+  width: min(600px, calc(100% - 48px));
+  overflow: hidden;
+  border: 1px solid var(--border-2);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 22px 70px color-mix(in srgb, var(--text) 18%, transparent);
+}
+
+.gbAppSearchDialog header,
+.gbAppImageDialog header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.gbAppSearchDialog header input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: 500 13px var(--font-ui);
+}
+
+.gbAppSearchDialog header kbd {
+  color: var(--text-3);
+  font: 500 9px var(--font-mono);
+}
+
+.gbAppSearchDialog > p {
+  padding: 10px 14px 4px;
+  color: var(--text-3);
+  font-size: 10px;
+}
+
+.gbAppSearchDialog > button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: calc(100% - 16px);
+  margin: 0 8px 6px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.gbAppSearchDialog > button:first-of-type {
+  background: var(--accent-soft);
+}
+
+.gbAppSearchDialog > button span {
+  margin-top: 3px;
+  color: var(--text-3);
+  font-size: 10.5px;
+}
+
+.gbAppImageDialog {
+  width: min(920px, calc(100% - 64px));
+}
+
+.gbAppImageDialog header {
+  justify-content: space-between;
+}
+
+.gbAppImageDialog header button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+}
+
+.gbAppImageDialog > div {
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  height: 500px;
+  background:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px),
+    var(--panel-2);
+  background-size: 32px 32px;
+  color: var(--text-2);
+}
+
+.gbAppImageDialog > div svg {
+  width: 48px;
+  height: 48px;
+  color: var(--accent);
+}
+
+.gbAppImageDialog footer {
+  padding: 9px 14px;
+  color: var(--text-3);
+  font: 500 10px var(--font-mono);
+}
+
+@keyframes gbAppSpin {
+  to { transform: rotate(360deg); }
+}
