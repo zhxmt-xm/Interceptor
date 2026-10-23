@@ -10,7 +10,7 @@
 
 Interceptor 是面向 Web/API 开发者和测试工程师的桌面 HTTP(S) 调试代理，运行于 **Windows 和 macOS**。在一个工作区检查 HTTP/1.1、HTTP/2、WebSocket 和 gRPC 流量，不改服务端即可测试不同响应、重放请求。Agent 与 MCP 提供可选的 AI 辅助，日常调试不需要模型账号。
 
-[下载](#下载) | [快速上手](#快速上手) | [功能](#功能) | [图文使用指南](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/README.md) | [反馈](https://github.com/zhxmt-xm/Interceptor/issues)
+[官网](https://www.interceptor.cn/) | [下载](#下载) | [快速上手](#快速上手) | [功能](#功能) | [图文使用指南](https://www.interceptor.cn/guide) | [反馈](https://github.com/zhxmt-xm/Interceptor/issues)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-capture-dark.png">
@@ -29,7 +29,7 @@ Interceptor 是面向 Web/API 开发者和测试工程师的桌面 HTTP(S) 调�
 | macOS · Intel（x64） | [DMG](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-darwin-x64.dmg) · [ZIP](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-darwin-x64.zip) | 先将 Interceptor 复制到 Applications，再打开应用。 |
 | Windows · x64 | [EXE](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-win32-x64.exe) · [MSI](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-win32-x64.msi) · [ZIP](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-win32-x64.zip) | 运行安装器，或完整解压 ZIP 后再启动 App。 |
 
-**访问权限：** 产品仓库和独立 Guidebook 仓库目前均为私有。下载、Issue 与教程链接需要对应 GitHub 仓库的访问权限。出现 `404` 可能是未登录或没有权限；私有 Release 并不支持匿名下载。
+**访问权限：** 产品仓库、Release 下载、Issue 与已发布 Guidebook 均可匿名访问；独立官网源码仓库仍保持私有。
 
 <details>
 <summary>安装权限、签名与更新</summary>
@@ -37,7 +37,7 @@ Interceptor 是面向 Web/API 开发者和测试工程师的桌面 HTTP(S) 调�
 - macOS 安装包采用 ad-hoc 签名，未经 Apple 公证。确认下载来源可信且文件完整后，如果系统提供该选项，可通过“系统设置 → 隐私与安全性 → 仍要打开”放行。
 - Windows 安装器未签名。只对可信下载使用系统正常的单应用授权流程；受管理设备可能禁止安装。
 - 不要全局关闭系统安全保护。helper 安装、系统代理变更和 CA 信任分别保留正常的系统授权步骤。
-- 更新来自 GitHub Releases。检查匿名进行，App 不要求 GitHub 登录或 token。仓库为私有时，应用内更新无法读取其 Release，请使用上方已获授权的浏览器下载入口。下载和打开安装器都由用户主动操作。
+- 更新来自 GitHub Releases。检查匿名进行，App 不要求 GitHub 登录或 token。下载和打开安装器都由用户主动操作。
 
 </details>
 
@@ -51,7 +51,7 @@ Interceptor 是面向 Web/API 开发者和测试工程师的桌面 HTTP(S) 调�
 4. **按需启用 HTTPS 解密。** 打开 Settings → Certificates，检查本地 CA；只在需要时生成或信任，完成操作系统授权后再启用 HTTPS 解密。无需替换已有 CA 材料。
 5. **先保存，再正常退出。** 当前 Capture 会话是临时数据，关闭前导出 HAR 或原生归档。正常退出会恢复 Interceptor 接管的系统代理设置。
 
-[按图完成第一条请求](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/getting-started.md) · [常见问题与代理恢复](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/troubleshooting.md)
+[按图完成第一条请求](https://www.interceptor.cn/guide/getting-started) · [常见问题与代理恢复](https://www.interceptor.cn/guide/troubleshooting)
 
 证书固定或独立信任库可能阻止解密。TLS 透传保持连接加密，不暴露 HTTP 内容；完全绕过代理的客户端流量不会被捕获。暂停录制不会停止转发，也不会停用 Rules。
 
@@ -63,7 +63,7 @@ Interceptor 是面向 Web/API 开发者和测试工程师的桌面 HTTP(S) 调�
 - 检查请求头、Cookie、请求与响应正文、耗时和 TLS 信息；切换 JSON 树、格式化文本、原文、图片和十六进制视图。
 - 在 HTTP/1.1、HTTP/2 请求之外查看 WebSocket 帧和 gRPC 消息。
 
-开头截图展示了选中的订单响应。更多真实步骤：[Capture](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/capture.md) · [HTTP/2](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/capture.md#walkthrough-capture-http2) · [WebSocket](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/capture.md#walkthrough-capture-websocket-messages) · [gRPC](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/capture.md#walkthrough-capture-grpc-messages)
+开头截图展示了选中的订单响应。更多真实步骤：[Capture](https://www.interceptor.cn/guide/capture) · [HTTP/2](https://www.interceptor.cn/guide/capture#walkthrough-capture-http2) · [WebSocket](https://www.interceptor.cn/guide/capture#walkthrough-capture-websocket-messages) · [gRPC](https://www.interceptor.cn/guide/capture#walkthrough-capture-grpc-messages)
 
 ### Rules：不改服务端，测试不同结果
 
@@ -76,7 +76,7 @@ Interceptor 是面向 Web/API 开发者和测试工程师的桌面 HTTP(S) 调�
   <img src="architecture/assets/readme-rules-light.png" alt="Rules 按本地域名和路径匹配，为请求添加 x-interceptor-demo Header，并显示一次命中" width="1600">
 </picture>
 
-[Rules 图文教程：匹配、改写、模拟与映射](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/rules.md)
+[Rules 图文教程：匹配、改写、模拟与映射](https://www.interceptor.cn/guide/rules)
 
 ### Breakpoints：转发之前，先检查或修改
 
@@ -89,7 +89,7 @@ Interceptor 是面向 Web/API 开发者和测试工程师的桌面 HTTP(S) 调�
   <img src="architecture/assets/readme-breakpoints-light.png" alt="暂停的本地订单请求，展示原始 JSON、替换正文以及继续、转发已编辑内容和丢弃按钮" width="1600">
 </picture>
 
-[Breakpoints 图文教程：暂停、编辑、放行与丢弃](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/breakpoints.md)
+[Breakpoints 图文教程：暂停、编辑、放行与丢弃](https://www.interceptor.cn/guide/breakpoints)
 
 ### Composer：独立复现一条 API 调用
 
@@ -102,7 +102,7 @@ Interceptor 是面向 Web/API 开发者和测试工程师的桌面 HTTP(S) 调�
   <img src="architecture/assets/readme-composer-light.png" alt="Composer 发送带自定义 Header 的 GET 请求，并展示 200 JSON 响应" width="1600">
 </picture>
 
-Composer 直接发送请求，不进入 Capture，也不经过 Rules。[Composer 与 Collection 图文教程](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/composer.md)。
+Composer 直接发送请求，不进入 Capture，也不经过 Rules。[Composer 与 Collection 图文教程](https://www.interceptor.cn/guide/composer)。
 
 ### Agent：在工作区内获得 AI 辅助
 
@@ -117,7 +117,7 @@ Composer 直接发送请求，不进入 Capture，也不经过 Rules。[Composer
 
 *截图使用无 Key、确定性回复的本地演示模型，不代表商业模型的效果或兼容性验收。*
 
-[Agent 配置与对话图文教程](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/agent.md)
+[Agent 配置与对话图文教程](https://www.interceptor.cn/guide/agent)
 
 ### MCP：从兼容的 AI 客户端使用 Interceptor
 
@@ -132,19 +132,19 @@ Composer 直接发送请求，不进入 Capture，也不经过 Rules。[Composer
 
 *截图展示真实的本机服务与客户端配置，不代表某个外部 Host 已验收。MCP 默认关闭。*
 
-[MCP 配置与兼容性指南](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/mcp.md) · [Tool 操作速查](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/tool-reference.md)
+[MCP 配置与兼容性指南](https://www.interceptor.cn/guide/mcp) · [Tool 操作速查](https://www.interceptor.cn/guide/tool-reference)
 
 ### 保存、配置与排查
 
 | 功能 | 解决什么问题 | 图文步骤 |
 | --- | --- | --- |
-| 导入导出 | 交换 HAR、重新打开原生录制归档、保存单独正文，并共享 Rules 或 Composer Collection。 | [文件与导出隐私](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/transfer.md#walkthrough) |
-| 系统与上游代理 | 查看代理接管状态并恢复，选择 Direct、System、手动代理或 PAC 路由。 | [代理设置](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/settings.md#walkthrough-settings-proxy-routing) · [上游代理](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/settings.md#upstream) |
-| HTTPS 与 TLS 透传 | 管理 CA 信任、启用解密，或让选定域名保持加密。 | [证书](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/settings.md#https-decryption) · [透传](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/settings.md#tls-passthrough) |
-| Diagnostics | 筛选结构化日志、检查操作链，导出脱敏诊断用于反馈问题。 | [Diagnostics 图文教程](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/diagnostics.md#walkthrough) |
-| 工作区 | 拖拽调整面板，选择四种时段主题和 15 种界面语言。 | [导航与偏好](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/workspace.md) |
+| 导入导出 | 交换 HAR、重新打开原生录制归档、保存单独正文，并共享 Rules 或 Composer Collection。 | [文件与导出隐私](https://www.interceptor.cn/guide/transfer#walkthrough) |
+| 系统与上游代理 | 查看代理接管状态并恢复，选择 Direct、System、手动代理或 PAC 路由。 | [代理设置](https://www.interceptor.cn/guide/settings#walkthrough-settings-proxy-routing) · [上游代理](https://www.interceptor.cn/guide/settings#upstream) |
+| HTTPS 与 TLS 透传 | 管理 CA 信任、启用解密，或让选定域名保持加密。 | [证书](https://www.interceptor.cn/guide/settings#https-decryption) · [透传](https://www.interceptor.cn/guide/settings#tls-passthrough) |
+| Diagnostics | 筛选结构化日志、检查操作链，导出脱敏诊断用于反馈问题。 | [Diagnostics 图文教程](https://www.interceptor.cn/guide/diagnostics#walkthrough) |
+| 工作区 | 拖拽调整面板，选择四种时段主题和 15 种界面语言。 | [导航与偏好](https://www.interceptor.cn/guide/workspace) |
 
-[完整指南](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/README.md)还包含存储、更新、Windows AppContainer 前提与恢复。平台专项和外部服务步骤仍遵守各自说明的边界，不能用 macOS 截图替代这些检查。
+[完整指南](https://www.interceptor.cn/guide)还包含存储、更新、Windows AppContainer 前提与恢复。平台专项和外部服务步骤仍遵守各自说明的边界，不能用 macOS 截图替代这些检查。
 
 ## Agent 与 MCP 权限
 
@@ -157,7 +157,7 @@ AI 是可选能力，模型请求可能产生服务商费用。Agent 与 MCP 提
 | 已停用 Tool | 拒绝 | 拒绝 |
 | 原生文件对话框与系统授权 | 仍需完成 | 仍需完成 |
 
-`Ask` 不等于只读模式，查询也可能暴露数据。只允许检查时，按[权限指南](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/tool-permissions.md#read-only)停用 change Tool。
+`Ask` 不等于只读模式，查询也可能暴露数据。只允许检查时，按[权限指南](https://www.interceptor.cn/guide/tool-permissions#read-only)停用 change Tool。
 
 ## 隐私与安全
 
@@ -165,7 +165,7 @@ AI 是可选能力，模型请求可能产生服务商费用。Agent 与 MCP 提
 - **分享前检查导出内容。** HAR 隐私选项不等于全面匿名化，原生归档保留完整数据；正文、URL 等字段仍需自行检查。
 - **AI 可能将数据传出 App。** Agent 会向配置的模型服务发送会话上下文和 Tool 结果；已授权的 MCP 客户端可以读取其启用 Tool 暴露的数据。请检查权限及接收方的数据政策。
 - **关闭解密或退出不会移除 CA 信任。** 不再需要时，通过 Settings 移除信任；不要分享 CA 私钥。
-- **正常关闭才能完成代理恢复。** 会话期间若其他应用修改了系统代理，Interceptor 会避免覆盖对方的设置。清理中断时，参考[恢复指南](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/zh-CN/troubleshooting.md)。
+- **正常关闭才能完成代理恢复。** 会话期间若其他应用修改了系统代理，Interceptor 会避免覆盖对方的设置。清理中断时，参考[恢复指南](https://www.interceptor.cn/guide/troubleshooting)。
 
 ## 反馈与贡献
 
