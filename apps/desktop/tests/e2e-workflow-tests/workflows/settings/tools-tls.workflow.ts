@@ -6,9 +6,17 @@ import type { Page, TestInfo } from '@playwright/test';
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { isCertificateTrusted, removeCreatedSharedCertificate, sharedCertificateDirectory, waitForCertificateInstallation } from '../../fixtures/ui/https-capture';
-import { expect, LocalElectronApplicationDriver } from '../../fixtures/runtime/local-electron-driver';
+import {
+  expect,
+  LocalElectronApplicationDriver,
+  test as localTest,
+} from '../../fixtures/runtime/local-electron-driver';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { certificateLifecycleTest as test } from '../../fixtures/runtime/certificate-lifecycle-driver';
+import {
+  connectWorkflowMcpClient,
+  type WorkflowMcpClient,
+} from '../../fixtures/runtime/workflow-mcp-client';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const TOOL_NAMES = [
@@ -23,6 +31,77 @@ const ANSWER = ['The TLS configuration', 'step completed.'].join(' ');
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function mcpValue(result: unknown): Readonly<Record<string, unknown>> {
+  if (!isRecord(result) || !Array.isArray(result.content)) {
+    throw new Error('TLS MCP result omitted content.');
+  }
+  expect(result.isError).not.toBe(true);
+  const content = result.content.find(
+    (entry) => isRecord(entry) && entry.type === 'text' && typeof entry.text === 'string',
+  );
+  if (!isRecord(content) || typeof content.text !== 'string') {
+    throw new Error('TLS MCP result omitted text.');
+  }
+  const value: unknown = JSON.parse(content.text);
+  if (!isRecord(value)) throw new Error('TLS MCP result is not an object.');
+  return value;
+}
+
+async function createTlsMcpClient(
+  desktopApp: LocalElectronApplicationDriver,
+  testInfo: TestInfo,
+): Promise<{ client: WorkflowMcpClient; clientId: string }> {
+  const { page } = desktopApp;
+  await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
+  await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
+  await getByAutomationId(page, AUTOMATION_IDS.mcp.server.enable).click();
+  await expect(getByAutomationId(page, AUTOMATION_IDS.mcp.server.root))
+    .toHaveAttribute('data-server-state', 'running');
+  await getByAutomationId(page, AUTOMATION_IDS.mcp.client.add).click();
+  await getByAutomationId(page, AUTOMATION_IDS.mcp.client.label).fill('TLS shared CA MCP');
+  await getByAutomationId(page, AUTOMATION_IDS.mcp.client.create).click();
+  const row = page.locator('[data-automation-id^="mcp.client.row."]');
+  await expect(row).toHaveCount(1);
+  const clientId = await row.getAttribute('data-client-id');
+  if (!clientId) throw new Error('TLS MCP Client omitted identity.');
+  await desktopApp.stopTrace(testInfo);
+  await getByAutomationId(page, AutomationIdFactory.mcpClientCopyConfiguration(clientId)).click();
+  const copied = JSON.parse(await page.evaluate(() => navigator.clipboard.readText())) as {
+    servers: {
+      interceptor: {
+        url: string;
+        headers: { Authorization: string };
+      };
+    };
+  };
+  const configuration = copied.servers.interceptor;
+  desktopApp.registerSensitiveTextForEvidenceAudit(
+    configuration.headers.Authorization.slice('Bearer '.length),
+  );
+  const client = await connectWorkflowMcpClient(configuration, 'tls-shared-ca', testInfo);
+  await desktopApp.startTrace(testInfo);
+  return { client, clientId };
+}
+
+async function callTlsMcpChange(
+  page: Page,
+  client: WorkflowMcpClient,
+  name: string,
+  args: Readonly<Record<string, unknown>>,
+  approval: 'allow' | 'auto',
+): Promise<Readonly<Record<string, unknown>>> {
+  const [result] = await Promise.all([
+    client.callTool({ name, arguments: args }),
+    (async () => {
+      if (approval === 'auto') return;
+      await expect(getByAutomationId(page, AUTOMATION_IDS.mcp.approval.root))
+        .toHaveAttribute('data-tool-name', name);
+      await getByAutomationId(page, AUTOMATION_IDS.mcp.approval.allow).click();
+    })(),
+  ]);
+  return mcpValue(result);
 }
 
 function resultForCall(lab: OpenAiCompatibleLab, callId: string): Readonly<Record<string, unknown>> {
@@ -359,3 +438,155 @@ test('settings.tools.tls keeps configuration intent trust and mounted panels con
   if (workflowError) throw workflowError;
   if (cleanupErrors.length > 0) throw new AggregateError(cleanupErrors, 'TLS cleanup failed.');
 });
+
+localTest(
+  'settings.tools.tls applies and restores shared-CA configuration through MCP',
+  async ({ desktopApp }, testInfo) => {
+    localTest.setTimeout(180_000);
+    const { page } = desktopApp;
+    const insecureHost = 'tls-current-host.example.test';
+    const passthroughHost = '*.tls-current-host.example.test';
+    let client: WorkflowMcpClient | null = null;
+    let clientId = '';
+    let originalInsecureHosts: string[] | null = null;
+    let originalPassthroughHosts: string[] | null = null;
+    let originalMitmEnabled: boolean | null = null;
+    let restored = false;
+
+    const setClientAuto = async (): Promise<void> => {
+      await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
+      await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
+      await getByAutomationId(page, AutomationIdFactory.mcpClientAuto(clientId)).click();
+      await expect(getByAutomationId(page, AutomationIdFactory.mcpClientRow(clientId)))
+        .toHaveAttribute('data-execution-mode', 'auto');
+    };
+
+    const restoreState = async (): Promise<void> => {
+      if (!client || originalInsecureHosts === null
+        || originalPassthroughHosts === null || originalMitmEnabled === null) {
+        return;
+      }
+      await setClientAuto();
+      await callTlsMcpChange(
+        page,
+        client,
+        TOOL_NAMES[0],
+        { hosts: originalInsecureHosts },
+        'auto',
+      );
+      const currentPassthrough = mcpValue(await client.callTool({
+        name: 'settings_get_tls_passthrough',
+        arguments: {},
+      }));
+      await callTlsMcpChange(
+        page,
+        client,
+        TOOL_NAMES[1],
+        {
+          hosts: originalPassthroughHosts,
+          expectedRevision: currentPassthrough.revision,
+        },
+        'auto',
+      );
+      await callTlsMcpChange(
+        page,
+        client,
+        originalMitmEnabled ? TOOL_NAMES[2] : TOOL_NAMES[3],
+        {},
+        'auto',
+      );
+      restored = true;
+    };
+
+    try {
+      const configured = await createTlsMcpClient(desktopApp, testInfo);
+      client = configured.client;
+      clientId = configured.clientId;
+
+      const insecureState = mcpValue(await client.callTool({
+        name: 'settings_get_tls_insecure_hosts',
+        arguments: {},
+      }));
+      if (!Array.isArray(insecureState.hosts)
+        || !insecureState.hosts.every((host) => typeof host === 'string')) {
+        throw new Error('TLS insecure-host query omitted its public hosts.');
+      }
+      originalInsecureHosts = [...insecureState.hosts] as string[];
+
+      const passthroughState = mcpValue(await client.callTool({
+        name: 'settings_get_tls_passthrough',
+        arguments: {},
+      }));
+      if (!Array.isArray(passthroughState.hosts)
+        || !passthroughState.hosts.every((host) => typeof host === 'string')
+        || typeof passthroughState.revision !== 'number') {
+        throw new Error('TLS passthrough query omitted its public state.');
+      }
+      originalPassthroughHosts = [...passthroughState.hosts] as string[];
+
+      await openCertificates(page);
+      const toggle = getByAutomationId(page, AUTOMATION_IDS.settings.certificates.mitmToggle);
+      originalMitmEnabled = await toggle.getAttribute('aria-checked') === 'true';
+
+      await callTlsMcpChange(
+        page,
+        client,
+        TOOL_NAMES[0],
+        { hosts: [...originalInsecureHosts, insecureHost] },
+        'allow',
+      );
+      await expect(getByAutomationId(page, AutomationIdFactory.insecureHost(insecureHost)))
+        .toBeVisible();
+
+      await getByAutomationId(page, AUTOMATION_IDS.settings.section.tlsPassthrough).click();
+      await callTlsMcpChange(
+        page,
+        client,
+        TOOL_NAMES[1],
+        {
+          hosts: [...originalPassthroughHosts, passthroughHost],
+          expectedRevision: passthroughState.revision,
+        },
+        'allow',
+      );
+      await expect(getByAutomationId(
+        page,
+        AutomationIdFactory.tlsPassthroughHost(passthroughHost),
+      )).toBeVisible();
+
+      await setClientAuto();
+      await openCertificates(page);
+      await callTlsMcpChange(page, client, TOOL_NAMES[3], {}, 'auto');
+      await expect(toggle).toHaveAttribute('aria-checked', 'false');
+      await callTlsMcpChange(page, client, TOOL_NAMES[2], {}, 'auto');
+      await expect(toggle).toHaveAttribute('aria-checked', 'true');
+
+      await restoreState();
+      await openCertificates(page);
+      await expect(toggle).toHaveAttribute('aria-checked', String(originalMitmEnabled));
+      await expect(getByAutomationId(page, AutomationIdFactory.insecureHost(insecureHost)))
+        .toHaveCount(0);
+      await getByAutomationId(page, AUTOMATION_IDS.settings.section.tlsPassthrough).click();
+      await expect(getByAutomationId(
+        page,
+        AutomationIdFactory.tlsPassthroughHost(passthroughHost),
+      )).toHaveCount(0);
+
+      await testInfo.attach('settings-tools-tls-current-host.json', {
+        body: Buffer.from(JSON.stringify({
+          tools: TOOL_NAMES,
+          askCalls: 2,
+          autoCalls: 2,
+          sharedCertificatePreserved: true,
+          restoredExactly: true,
+        })),
+        contentType: 'application/json',
+      });
+    } finally {
+      if (!restored && !page.isClosed()) {
+        await restoreState();
+      }
+      await client?.close();
+    }
+  },
+);

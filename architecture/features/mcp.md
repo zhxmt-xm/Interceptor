@@ -558,13 +558,13 @@ flowchart TD
   已复用保留Client完成原生调用、完整正文、Deny/Allow/Auto、Composer及真实Clear。原图与标注经过对应workflow和宿主恢复门禁；
   Client、profile及其Host配置已清理，旧恢复命令不再适用。[逐Tool范围](../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/native-tool-coverage.json)从实际Host发现目录生成，未调用的Tool保持`not-run`。
   教程图片单独验收并按固定摘要保留，不把自动SDK截图流程当作真实Host重拍。
-- 原Tool workflow的当前Host入口已在同一VS Code`1.143.0`/AHP`1.1.0`上完成12条SDK/Host成对Green：
+- 原Tool workflow的当前Host入口已在VS Code`1.143.x`/AHP`1.1.0`上完成17条SDK/Host成对Green：
   公开证书Reveal/View、语言/主题/导出隐私、Rules导入/导出、Composer Collection读写与导入/导出、
   Breakpoint批处理、Diagnostics查询/导出、Capture传输任务、正文导出及HAR导入/导出；
-  [扩展核对](../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/current-host-workflow-expansion.json)
-  汇总14次Host连接代际、26种Tool、109次调用、Tool目录、逐调用结果、Server停止/配置删除、两代App正常退出和端口释放。
-  与English代表流程合并后的[69项范围](../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/native-tool-coverage-expanded.json)
-  为39项`passed`、30项`not-run`；扩展workflow新增19项并重验7项，不把重验重复计数。
+  原[扩展核对](../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/current-host-workflow-expansion.json)
+  与[Windows补充核对](../../../../.copilot/session-state/cab53ba7-29cc-4a1d-a698-254405325e80/files/item16-windows/verification.json)
+  汇总20次Host连接代际、41种Tool、189次调用、Tool目录、逐调用结果、Server停止/配置删除、两代App正常退出和端口释放。
+  与English代表流程合并后的69项范围为54项`passed`、15项`not-run`；已通过项不因重验重复计数。
   VS Code现版本要求配置应用后在一次性同Host session执行官方`/mcp reload`；一次性session不创建worktree且验收后删除。
   Tool撤权的Host包装错误保持实际`-32603`与`MCP tool not found`，不伪装成SDK的`-32602`。
 - Windows当前Host的精准筛选版本已完成代表Tool、App审批、真实Clear及退出恢复：
@@ -572,6 +572,10 @@ flowchart TD
   Clear的真实调用返回零Exchange/Body，完整筛选列表为空、Keyword保持且Recording不变；
   Client、Host配置、临时CA与系统设置均已清理恢复。旧workflow的虚拟行假阳性仍保留并排除，
   不把这一主线的Green扩大为全部Tool或其他Host通过。
+- Windows AppContainer补充流程已通过同一公开Host通道真实调用查询、单项启停和全量启停五项Tool，
+  覆盖Ask/Auto、撤权、两代App与系统exemption精确恢复；Server、root配置和一次性session均在结束时移除。
+- Windows补充还覆盖Archive导入/导出、Recording启动、系统代理启用/恢复、TLS insecure/passthrough替换和HTTPS解密启停；
+  原生文件窗口、代理、TLS名单、共享CA及宿主状态均在每条流程结束时恢复。
 - 双Host同时读取同一Capture、正式Tool中间进度SSE仍待真实Host验收；普通JSON响应或Client测试不能替代。
   当前开发Agent的识别、配置、Tool清单与恢复步骤见[真实Host workflow](../../apps/desktop/tests/e2e-workflow-tests/docs/mcp.md#当前开发agent的真实host验收)；
   当前宿主条件与待办由[Handover](../HANDOVER.md)跟踪。

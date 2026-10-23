@@ -809,6 +809,77 @@ const upstreamStateViews = ['light', 'dark', 'warm', 'ember'].flatMap(theme =>
 
 export const views = [
   ...['light', 'dark', 'warm', 'ember'].map(theme => ({
+    id: `guidebook-${theme}`,
+    theme,
+    rendererNav: 'Guidebook',
+    designState: {
+      view: 'guidebook',
+      theme,
+      sidebar: 'collapsed',
+      lang: 'zh-CN',
+      guidebookAppState: 'ready',
+      guidebookAppSearchOpen: false,
+      guidebookAppImageOpen: false,
+    },
+    rendererActions: [
+      { type: 'clickAutomation', automationId: 'shell.language.trigger' },
+      { type: 'clickAutomation', automationId: 'shell.language.zh-CN' },
+      { type: 'clickSelector', selector: '[data-parity="window-header-title"]' },
+    ],
+    targets: [
+      {
+        name: 'Guidebook navigation',
+        designSelector: '[data-nav="guidebook"]',
+        appSelector: '[data-automation-id="shell.workspace.guidebook"]',
+      },
+      {
+        name: 'Guidebook toolbar',
+        designSelector: '.gbAppToolbar',
+        appSelector: '[data-automation-id="guidebook.root"] > header',
+      },
+      {
+        name: 'Guidebook back',
+        designSelector: '.gbAppNavigation > button:nth-child(1)',
+        appSelector: '[data-automation-id="guidebook.back"]',
+      },
+      {
+        name: 'Guidebook forward',
+        designSelector: '.gbAppNavigation > button:nth-child(2)',
+        appSelector: '[data-automation-id="guidebook.forward"]',
+      },
+      {
+        name: 'Guidebook refresh',
+        designSelector: '.gbAppNavigation > button:nth-child(3)',
+        appSelector: '[data-automation-id="guidebook.refresh"]',
+      },
+      {
+        name: 'Guidebook address',
+        designSelector: '.gbAppAddress',
+        appSelector: '[data-automation-id="guidebook.root"] > header > div:nth-child(2)',
+      },
+      {
+        name: 'Guidebook search',
+        designSelector: '.gbAppActions > button:nth-of-type(1)',
+        appSelector: '[data-automation-id="guidebook.search"]',
+      },
+      {
+        name: 'Guidebook open browser',
+        designSelector: '.gbAppActions > button:nth-of-type(2)',
+        appSelector: '[data-automation-id="guidebook.open-browser"]',
+      },
+      {
+        name: 'Guidebook reading area',
+        designSelector: '.gbAppReading',
+        appSelector: '[data-parity="guidebook-content"]',
+      },
+      {
+        name: 'Guidebook statusbar',
+        designSelector: '.gbAppStatus',
+        appSelector: '[data-automation-id="app.statusbar"]',
+      },
+    ],
+  })),
+  ...['light', 'dark', 'warm', 'ember'].map(theme => ({
     id: `capture-android-device-${theme}`,
     theme,
     mitmActive: false,

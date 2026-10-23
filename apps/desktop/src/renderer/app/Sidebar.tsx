@@ -1,5 +1,6 @@
 import {
   Activity,
+  BookOpen,
   GitBranch,
   Globe,
   type LucideIcon,
@@ -21,6 +22,7 @@ export type ViewId =
   | 'rules'
   | 'composer'
   | 'diagnostics'
+  | 'guidebook'
   | 'settings';
 
 const NAV = [
@@ -108,6 +110,14 @@ export function Sidebar({
 
       <div className={styles.spring} />
 
+      <NavItem
+        icon={BookOpen}
+        label={t('guidebook.title')}
+        active={activeView === 'guidebook'}
+        collapsed={collapsed}
+        onClick={() => onSelect('guidebook')}
+        automationId={AUTOMATION_IDS.shell.workspace.guidebook}
+      />
       <NavItem
         icon={Settings}
         label={t('sidebar.settings')}

@@ -202,6 +202,29 @@ Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；
 
 15种语言从真实UI切换并持久化；Renderer/Ant/Main语言意图同步；不重复检查与语言无关的业务数据。
 
+<a id="shell-guidebook-online"></a>
+## `shell.guidebook.online`
+
+**状态**：planned
+**策略**：shared
+
+### Steps
+
+1. 创建空 profile/evidence，启动 trace 和真实 Electron；等待 App root、Core Running 与 8888 listener。
+2. 点击 readiness Cancel，确认未修改系统代理；从 Sidebar 点击 `shell.workspace.guidebook`。
+3. 检查 Guidebook toolbar、固定官方地址和 Loading 状态；等待 sandboxed iframe 加载 `https://www.interceptor.cn/guide?embed=desktop`，确认网页 Header/Footer 不出现，目录、正文和本章导航可见。
+4. 点击 App toolbar Search，确认 iframe 内既有 Guidebook 搜索弹窗打开；输入测试自产查询，选择结果并确认正文导航仍保留 `embed=desktop`。
+5. 点击真实教程图片并关闭官网大图预览，确认 App 外壳、Sidebar、Header 与 Statusbar 始终保留。
+6. 通过真实 Theme UI 切换当前主题，确认 iframe 使用相同主题；切换 App 语言，确认 `zh-CN` 使用 `/guide`，其他语言使用 `/en/guide`，再恢复初始主题和语言。
+7. 点击 Refresh，确认新 frame 代际重新进入 Loading 后恢复 Ready；点击 `guidebook.open-browser`，只读确认 Main 请求操作系统打开固定官方 Guidebook URL，不允许测试覆盖 URL。
+8. 保存 trace、final screenshot、Main/Renderer 日志及 frame URL evidence。
+9. 点击 `shell.window.close`；验证 Main、Renderer、Core、Worker 全退且 8888 释放。
+10. 删除 profile；网络不可用、远程页面结构不匹配或强制 kill 均使 workflow 失败。
+
+### 预期效果
+
+Desktop 通过安全的在线 frame 提供完整 Guidebook 阅读、搜索、图片预览与主题/语言同步；远程页面不获得 Preload 或业务 IPC；外部浏览器只打开固定官网 URL；关闭后无进程、端口或系统设置残留。
+
 <a id="shell-window-controls"></a>
 ## `shell.window.controls`
 

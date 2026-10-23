@@ -5,10 +5,13 @@ import type {
 import { CaptureMain, CaptureStatusbar } from '../features/capture';
 import { ComposerMain, ComposerStatusbar } from '../features/composer';
 import { DiagnosticsMain, DiagnosticsStatusbar } from '../features/diagnostics';
+import { GuidebookMain, GuidebookStatusbar } from '../features/guidebook';
+import type { LanguageId } from '../i18n/languages';
 import { RulesMain, RulesStatusbar } from '../features/rules';
 import type { BreakpointScope } from '../features/rules/interfaces';
 import { SettingsMain, SettingsStatusbar } from '../features/settings';
 import type { TlsPassthroughNavigationTarget } from '../features/settings/interfaces';
+import type { ThemeMode } from '../theme/theme';
 
 import type { ViewId } from './Sidebar';
 
@@ -44,6 +47,8 @@ export const FEATURE_VIEWS: Record<
     onSettingsSectionChange: (section: string) => void,
     actions: FeatureActions,
     tlsPassthroughTarget: TlsPassthroughNavigationTarget | null,
+    theme: ThemeMode,
+    language: LanguageId,
   ) => FeatureViews
 > = {
   capture: (_settingsSection, _onSettingsSectionChange, actions) => ({
@@ -79,5 +84,16 @@ export const FEATURE_VIEWS: Record<
   diagnostics: () => ({
     main: <DiagnosticsMain />,
     statusbar: <DiagnosticsStatusbar />,
+  }),
+  guidebook: (
+    _settingsSection,
+    _onSettingsSectionChange,
+    _actions,
+    _tlsPassthroughTarget,
+    theme,
+    language,
+  ) => ({
+    main: <GuidebookMain theme={theme} language={language} />,
+    statusbar: <GuidebookStatusbar />,
   }),
 };

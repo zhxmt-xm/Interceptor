@@ -16,6 +16,7 @@ export const AUTOMATION_IDS = {
       rules: 'shell.workspace.rules',
       composer: 'shell.workspace.composer',
       diagnostics: 'shell.workspace.diagnostics',
+      guidebook: 'shell.workspace.guidebook',
       settings: 'shell.workspace.settings',
     },
     window: {
@@ -54,6 +55,19 @@ export const AUTOMATION_IDS = {
       enterAnyway: 'shell.boot.enter-anyway',
       openDiagnostics: 'shell.boot.open-diagnostics',
     },
+  },
+  guidebook: {
+    root: 'guidebook.root',
+    frame: 'guidebook.frame',
+    back: 'guidebook.back',
+    forward: 'guidebook.forward',
+    refresh: 'guidebook.refresh',
+    search: 'guidebook.search',
+    openBrowser: 'guidebook.open-browser',
+    loading: 'guidebook.loading',
+    error: 'guidebook.error',
+    retry: 'guidebook.retry',
+    status: 'guidebook.status',
   },
   upstream: {
     trigger: 'upstream.trigger',

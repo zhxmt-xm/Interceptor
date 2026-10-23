@@ -2,20 +2,26 @@ import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
+import {
+  connectWorkflowMcpClient,
+  type WorkflowMcpClient,
+} from '../../fixtures/runtime/workflow-mcp-client';
+import { verifyAppContainerQueryResult } from '../../fixtures/safety/app-container-system-state';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 
 const execFileAsync = promisify(execFile);
+const QUERY_TOOL = 'settings_list_app_containers';
 const TOOL_NAMES = [
   'settings_enable_app_container', 'settings_disable_app_container',
   'settings_enable_all_app_containers', 'settings_disable_all_app_containers',
 ] as const;
+const MCP_TOOL_NAMES = [QUERY_TOOL, ...TOOL_NAMES] as const;
 const PROMPT = ['Verify the requested', 'AppContainer access change.'].join(' ');
 const ANSWER = ['The AppContainer access', 'step completed.'].join(' ');
 
@@ -131,7 +137,10 @@ async function restoreInitialState(page: Page, desktopDirectory: string, initial
   expect(setHash((await readSystemSnapshot(desktopDirectory)).exemptSids)).toBe(setHash(initial.exemptSids));
 }
 
-async function createMcpClient(desktopApp: LocalElectronApplicationDriver) {
+async function createMcpClient(
+  desktopApp: LocalElectronApplicationDriver,
+  testInfo: TestInfo,
+): Promise<{ client: WorkflowMcpClient; clientId: string }> {
   const { page } = desktopApp;
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
   await getByAutomationId(page, AUTOMATION_IDS.mcp.server.enable).click();
@@ -149,12 +158,19 @@ async function createMcpClient(desktopApp: LocalElectronApplicationDriver) {
   };
   const configuration = copied.servers.interceptor;
   desktopApp.registerSensitiveTextForEvidenceAudit(configuration.headers.Authorization.slice('Bearer '.length));
-  const client = new Client({ name: 'app-container-workflow', version: '1.0.0' }, { versionNegotiation: { mode: { pin: '2026-07-28' } } });
-  await client.connect(new StreamableHTTPClientTransport(new URL(configuration.url), { requestInit: { headers: configuration.headers } }));
-  return { client, clientId };
+  return {
+    client: await connectWorkflowMcpClient(configuration, 'app-container-workflow', testInfo),
+    clientId,
+  };
 }
 
-async function callMcpTool(client: Client, page: Page, name: string, args: Readonly<Record<string, unknown>>, verdict?: 'allow' | 'deny') {
+async function callMcpTool(
+  client: WorkflowMcpClient,
+  page: Page,
+  name: string,
+  args: Readonly<Record<string, unknown>>,
+  verdict?: 'allow' | 'deny',
+): Promise<unknown> {
   const [result] = await Promise.all([
     client.callTool({ name, arguments: args }),
     (async () => {
@@ -168,6 +184,22 @@ async function callMcpTool(client: Client, page: Page, name: string, args: Reado
     expect(result.isError).not.toBe(true);
     expect(/\b[A-Za-z]:[\\/]|"(?:workingDirectory|binaries|exemptSids|path)"/.test(JSON.stringify(result))).toBe(false);
   }
+  return result;
+}
+
+function mcpValue(result: unknown): Readonly<Record<string, unknown>> {
+  if (!isRecord(result) || !Array.isArray(result.content)) {
+    throw new Error('AppContainer MCP result omitted content.');
+  }
+  const text = result.content.find(
+    (entry) => isRecord(entry) && entry.type === 'text' && typeof entry.text === 'string',
+  );
+  if (!isRecord(text) || typeof text.text !== 'string') {
+    throw new Error('AppContainer MCP result omitted its text value.');
+  }
+  const value: unknown = JSON.parse(text.text);
+  if (!isRecord(value)) throw new Error('AppContainer MCP result is not an object.');
+  return value;
 }
 
 async function closeGeneration(desktopApp: LocalElectronApplicationDriver, testInfo: TestInfo): Promise<void> {
@@ -202,7 +234,7 @@ test('settings.tools.app-containers shares single and bulk changes with exact sy
   const targetSid = currentSids[0];
   if (!targetSid) throw new Error('No real AppContainers are available for this workflow.');
   const argsFor = (name: string) => name.includes('_all_') ? {} : { appContainerSid: targetSid };
-  let client: Client | null = null;
+  let client: WorkflowMcpClient | null = null;
   let relaunchedApp: LocalElectronApplicationDriver | null = null;
   let workflowError: unknown;
   const cleanupErrors: unknown[] = [];
@@ -245,11 +277,16 @@ test('settings.tools.app-containers shares single and bulk changes with exact sy
     }
     await screenshotStep('Agent：Ask逐项拒绝及允许，Auto重复四项，OS完整集合与已挂载的行状态必须同步。 / Agent: deny and allow each Ask action, then repeat in Auto and compare the complete OS set with mounted rows.');
 
-    // MCP：正式UI创建独立Client，沿同一四项owner验证Ask/Auto及完整目标范围。
-    // MCP: create a real Client through UI and verify the same owners, Ask/Auto, and exact mutation scope.
-    const configured = await createMcpClient(desktopApp);
+    // MCP：正式UI创建独立Client，先核对查询，再沿同一四项owner验证Ask/Auto及完整目标范围。
+    // MCP: create a real Client through UI, verify the query, then exercise the same owners in Ask/Auto.
+    const configured = await createMcpClient(desktopApp, testInfo);
     client = configured.client;
     await openAppContainers(desktopApp.page);
+    verifyAppContainerQueryResult(
+      mcpValue(await callMcpTool(client, desktopApp.page, QUERY_TOOL, {})),
+      { ...initial, supported: true, exemptSids: outside },
+    );
+    await expectState(desktopApp.page, desktopApp.desktopDirectory, outside, currentSids);
     for (const name of TOOL_NAMES) {
       await callMcpTool(client, desktopApp.page, name, argsFor(name), 'deny');
       await expectState(desktopApp.page, desktopApp.desktopDirectory, outside, currentSids);
@@ -281,12 +318,20 @@ test('settings.tools.app-containers shares single and bulk changes with exact sy
       await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolAgentSwitch(name))).toHaveAttribute('aria-checked', 'false');
       await callAgentTool(desktopApp.page, openAiCompatibleLab, `revoked-${name}`, name, argsFor(name), undefined, 'unknown_tool');
     }
-    expect((await client.listTools()).tools.filter((tool) => TOOL_NAMES.some((name) => name === tool.name))).toHaveLength(4);
-    for (const name of TOOL_NAMES) {
+    expect((await client.listTools()).tools.filter(
+      (tool) => MCP_TOOL_NAMES.some((name) => name === tool.name),
+    )).toHaveLength(5);
+    const missingToolError = process.env.INTERCEPTOR_E2E_MCP_CLIENT === 'current-host'
+      ? { code: -32603, message: expect.stringContaining('MCP tool not found') }
+      : { code: -32602 };
+    for (const name of MCP_TOOL_NAMES) {
       await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.tools.search).fill(name);
       await getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolMcpSwitch(name)).click();
       await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolMcpSwitch(name))).toHaveAttribute('aria-checked', 'false');
-      await expect(client.callTool({ name, arguments: argsFor(name) })).rejects.toMatchObject({ code: -32602 });
+      await expect(client.callTool({
+        name,
+        arguments: name === QUERY_TOOL ? {} : argsFor(name),
+      })).rejects.toMatchObject(missingToolError);
     }
     await client.close();
     client = null;
@@ -306,13 +351,18 @@ test('settings.tools.app-containers shares single and bulk changes with exact sy
     await openAppContainers(relaunchedApp.page);
     await expectState(relaunchedApp.page, relaunchedApp.desktopDirectory, initial.exemptSids, currentSids);
     await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.settings.section.agent).click();
-    for (const name of TOOL_NAMES) {
+    for (const name of MCP_TOOL_NAMES) {
       await getByAutomationId(relaunchedApp.page, AUTOMATION_IDS.agent.tools.search).fill(name);
-      await expect(getByAutomationId(relaunchedApp.page, AutomationIdFactory.agentToolAgentSwitch(name))).toHaveAttribute('aria-checked', 'false');
+      if ((TOOL_NAMES as readonly string[]).includes(name)) {
+        await expect(getByAutomationId(
+          relaunchedApp.page,
+          AutomationIdFactory.agentToolAgentSwitch(name),
+        )).toHaveAttribute('aria-checked', 'false');
+      }
       await expect(getByAutomationId(relaunchedApp.page, AutomationIdFactory.agentToolMcpSwitch(name))).toHaveAttribute('aria-checked', 'false');
     }
     await testInfo.attach('app-container-tools.json', {
-      body: Buffer.from(JSON.stringify({ agentCalls: 4, mcpCalls: 4, askDenials: 8, initialHash: setHash(initial.exemptSids),
+      body: Buffer.from(JSON.stringify({ agentCalls: 4, mcpCalls: 5, askDenials: 8, initialHash: setHash(initial.exemptSids),
         initialExemptCount: initial.exemptSids.length, enumeratedCount: currentSids.length, outsideCount: outside.length, restartRequests: 0 })),
       contentType: 'application/json',
     });

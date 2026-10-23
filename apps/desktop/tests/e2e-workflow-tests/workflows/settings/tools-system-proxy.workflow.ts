@@ -1,13 +1,16 @@
 import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import type { Page, TestInfo } from '@playwright/test';
-import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
+import {
+  connectWorkflowMcpClient,
+  type WorkflowMcpClient,
+} from '../../fixtures/runtime/workflow-mcp-client';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
 const TOOL_NAMES = ['settings_enable_system_proxy', 'settings_restore_system_proxy'] as const;
@@ -150,7 +153,7 @@ test('settings.tools.system-proxy rejects overlapping Enable calls without a que
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.tools.system-proxy' });
   desktopApp.preserveUserDataOnFailure();
   const { page } = desktopApp;
-  let client: Client | null = null;
+  let client: WorkflowMcpClient | null = null;
   try {
     // 准备：经真实UI创建Auto MCP Client，保留当前完整proxy/journal状态。
     // Arrange: create an Auto MCP Client through product UI and retain the current proxy/journal state.
@@ -196,13 +199,15 @@ test('settings.tools.system-proxy rejects overlapping Enable calls without a que
     await screenshotStep('Enable后确认接管状态 / Confirm ownership after Enable');
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
     await startRecording(desktopApp);
+    const recordingToggle = getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle);
+    await expect(recordingToggle).toHaveAttribute('aria-busy', 'false');
     await screenshotStep('确认Recording已开启后再暂停 / Confirm Recording is active before pausing', {
-      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle), label: '1' }],
+      highlights: [{ target: recordingToggle, label: '1' }],
     });
-    await getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle).click();
-    await expect(getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle)).toHaveAttribute('aria-pressed', 'false');
+    await recordingToggle.click();
+    await expect(recordingToggle).toHaveAttribute('aria-pressed', 'false');
     await screenshotStep('单独暂停Recording / Pause Recording separately', {
-      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.recordingToggle), label: '1' }],
+      highlights: [{ target: recordingToggle, label: '1' }],
     });
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
     await getByAutomationId(page, AUTOMATION_IDS.settings.section.proxy).click();
@@ -228,8 +233,7 @@ test('settings.tools.system-proxy rejects overlapping Enable calls without a que
     };
     const configuration = copied.servers.interceptor;
     desktopApp.registerSensitiveTextForEvidenceAudit(configuration.headers.Authorization.slice('Bearer '.length));
-    client = new Client({ name: 'system-proxy-conflict', version: '1.0.0' }, { versionNegotiation: { mode: { pin: '2026-07-28' } } });
-    await client.connect(new StreamableHTTPClientTransport(new URL(configuration.url), { requestInit: { headers: configuration.headers } }));
+    client = await connectWorkflowMcpClient(configuration, 'system-proxy-conflict', testInfo);
     await getByAutomationId(page, AutomationIdFactory.mcpClientAuto(clientId)).click();
     await expect(row).toHaveAttribute('data-execution-mode', 'auto');
     await expect(getByAutomationId(page, AUTOMATION_IDS.mcp.server.root)).toHaveAttribute('aria-busy', 'false');
@@ -256,8 +260,18 @@ test('settings.tools.system-proxy rejects overlapping Enable calls without a que
     expect(desktopApp.matchesSystemProxyEvidence(await readProxyState(desktopApp), before)).toBe(true);
     expect((await client.callTool({ name: TOOL_NAMES[0], arguments: {} })).isError).not.toBe(true);
     expect(desktopApp.matchesSystemProxyEvidence(await readProxyState(desktopApp), before)).toBe(true);
+    expect((await client.callTool({ name: TOOL_NAMES[1], arguments: {} })).isError).not.toBe(true);
+    await expectRestored(desktopApp, original);
+    expect((await client.callTool({ name: TOOL_NAMES[0], arguments: {} })).isError).not.toBe(true);
+    await expectOwned(desktopApp, original);
     await testInfo.attach('system-proxy-conflict.json', {
-      body: Buffer.from(JSON.stringify({ successfulCalls: 1, rejectedConflicts: 1, originalPreserved: true, explicitRetryPassed: true })),
+      body: Buffer.from(JSON.stringify({
+        successfulCalls: 3,
+        rejectedConflicts: 1,
+        originalPreserved: true,
+        explicitRetryPassed: true,
+        restoreAndEnablePassed: true,
+      })),
       contentType: 'application/json',
     });
     await getByAutomationId(page, AUTOMATION_IDS.settings.section.proxy).click();

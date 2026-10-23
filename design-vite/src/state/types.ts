@@ -1,4 +1,4 @@
-export type DesignView = 'capture' | 'rules' | 'composer' | 'settings' | 'diagnostics' | 'playground';
+export type DesignView = 'capture' | 'rules' | 'composer' | 'guidebook' | 'settings' | 'diagnostics' | 'playground';
 export type DesignTheme = 'warm' | 'light' | 'ember' | 'dark';
 export type SidebarState = 'expanded' | 'collapsed';
 export type DetailState = 'open' | 'closed';
@@ -147,6 +147,9 @@ export interface DesignState {
   readonly homepageGuideSearchQuery: string;
   readonly homepageGuideOutlinePreview: boolean;
   readonly homepageGuideOutlineActive: string;
+  readonly guidebookAppState: 'ready' | 'loading' | 'error';
+  readonly guidebookAppSearchOpen: boolean;
+  readonly guidebookAppImageOpen: boolean;
   readonly view: DesignView;
   readonly theme: DesignTheme;
   readonly sidebar: SidebarState;

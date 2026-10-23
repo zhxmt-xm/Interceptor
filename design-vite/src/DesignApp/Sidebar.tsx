@@ -38,6 +38,7 @@ export function Sidebar(): React.JSX.Element {
       <div className={fixtureClassNames('label')}>Session</div>
       <div className={fixtureClassNames('nav')}><Icon name="i-globe" /><span className={fixtureClassNames('txt col')}><span>Local traffic</span><small>127.0.0.1:8888</small></span><span className={fixtureClassNames('live')} /></div>
       <div className={fixtureClassNames('spring')} />
+      <div className={fixtureClassNames(`nav${state.view === 'guidebook' ? ' on' : ''}`)} data-nav="guidebook" onClick={() => updateState({ view: 'guidebook' })}><Icon name="i-book-open" /><span className={fixtureClassNames('txt')}>{state.lang === 'en' ? 'Guidebook' : '使用指南'}</span></div>
       <div className={fixtureClassNames(`nav${state.view === 'settings' ? ' on' : ''}`)} data-nav="settings" onClick={() => updateState({ view: 'settings' })}><Icon name="i-settings" /><span className={fixtureClassNames('txt')}>Settings</span></div>
       <div className={fixtureClassNames('nav lgtrigger')} data-lgtrigger><Icon name="i-globe" /><span className={fixtureClassNames('txt')}>Language</span><span className={fixtureClassNames('lgcode')}>{LANGUAGE_CODE[state.lang] ?? 'EN'}</span></div>
       <div className={fixtureClassNames('nav thtrigger')} data-thtrigger><Icon name={THEME_ICON[state.theme]} /><span className={fixtureClassNames('txt')}>Theme</span><span className={fixtureClassNames('thdot')} /></div>

@@ -37,7 +37,7 @@ Windows实机验收的范围与实际状态见[Windows矩阵](../../apps/desktop
 - **生命周期与证据**：`fixtures/runtime/local-electron-driver.ts` 为每个测试创建独立临时 `userData`，启动 BrowserContext trace，等待真实 Renderer/Core/8888 listener，并在 workflow 后保存 `trace.zip`、`final.png`、Main/Renderer 日志和 PID/端口 metadata；两平台普通收尾都点击产品`shell.window.close`，验证 Main/Core 退出与 8888 可重新 bind，不以macOS菜单Quit替代Close。macOS主动crash后立即落该代证据，避免同profile下一代清理日志造成缺失；只有原生快捷键专项使用Command+Q，Windows保留Alt+F4。强制关闭只在宿主保护允许时兜底，不能作为正常退出或E2E成功证明。
 - **共享CA验收**：普通workflow及smoke先只读检查已由产品初始化的用户级CA，结束保留材料和系统信任；不把共享CA复制进profile。首次初始化专项允许产品启动生成/授信，破坏性专项要求空共享目录并保存完整Root/admin trust基线。仅测试fixture声明范围，不给产品增加专用路径或开关；Windows首次窗口等待允许新CA UAC完成，业务/系统代理原生契约不变。
 - **失败时保留特权profile**：调用`preserveUserDataOnFailure()`的workflow，在Playwright实际状态为`failed`、`timedOut`或`interrupted`时必须保留profile，不能仅判断`await use(driver)`是否抛错；任何清理或宿主guard错误也必须保留。判定归`fixtures/runtime/workflow-profile-retention.ts`，unit覆盖状态与错误组合。CA清理按本轮身份和真实信任状态等待正式UI，不以按钮瞬时不可见当作已清理。
-- **零 Mock / 零 seed输入边界**：测试操作通过公共 automation ID 进入真实 App UI，再走 Preload/Main/Core/Storage/Proxy/Worker；测试侧只拥有loopback origin/client、证据与清理。导入文件必须由同一workflow先经产品Export真实产生，测试只能只读核验并重新选择，不得自行构造业务输入。`fixtures/ui/windows-file-dialog.ts`用Windows UI Automation定位真实Open/Save Dialog，再用真实鼠标键盘选择路径，不改写dialog返回值；`apps/playground/server/scenarios/traffic-lab.ts`提供共享协议服务与随机origin port，但被测Proxy listener保持产品默认`127.0.0.1:8888`。**禁止 `page.evaluate(window.interceptor.*)` 代替业务操作。**
+- **零 Mock / 零 seed输入边界**：测试操作通过公共 automation ID 进入真实 App UI，再走 Preload/Main/Core/Storage/Proxy/Worker；测试侧只拥有loopback origin/client、证据与清理。导入文件必须由同一workflow先经产品Export真实产生，测试只能只读核验并重新选择，不得自行构造业务输入。`fixtures/ui/windows-file-dialog.ts`用Windows UI Automation定位真实Open/Save Dialog，再用真实鼠标键盘选择路径，不改写dialog返回值；可选步骤截图只在填入测试自产路径后按owner进程代际捕获该对话框窗口，不截桌面或其他应用。`apps/playground/server/scenarios/traffic-lab.ts`提供共享协议服务与随机origin port，但被测Proxy listener保持产品默认`127.0.0.1:8888`。**禁止 `page.evaluate(window.interceptor.*)` 代替业务操作。**
 - **fixture分类与协议归属**：`runtime/` 管进程与profile，`ui/` 管真实控件驱动，`safety/` 管宿主恢复，`agent/` 管模型模拟；按上述取舍保留的安全判断单测仍随所属目录放置。`trafficLab`为每条workflow统一拥有Playground的HTTP、WebSocket和按需TLS服务，场景运行与细粒度控制共享origin。E2E可直接使用Node流量API；Browser Playground只在页面或Browser MCP流程需要时启动。详细边界见[fixtures说明](../../apps/desktop/tests/e2e-workflow-tests/fixtures/README.md)。
 
 ## 3. 驱动与证据边界
@@ -48,7 +48,7 @@ macOS常驻helper独立于每条workflow的Main/Core，不作为它们的子进�
 
 `apps/playground`不是测试Runner。Browser MCP流程需要真实Electron与浏览器之间的链路；Playground人工报告由使用者实际操作并观察产品与origin后填写，自动结果不能代填。
 
-业务workflow从`npm start → Test → E2E`选择普通验收或逐步截图，仍执行同一份操作与断言。截图模式自动建立独立运行目录，普通测试不会清理其产物；在明确检查点记录PNG，在原driver及宿主guard结束后生成带结果、语言/主题、尺寸和SHA-256的清单。不维护单独Guidebook制作/导入菜单或跨仓发布脚本，截图不绑定Homepage。macOS使用独立的一次性原生窗口截图工具，不需要录屏器或FFmpeg；Windows原生面板截图未实现时明确报错。直接CLI/CI参数、目录和平台范围见[步骤截图说明](../../apps/desktop/tests/e2e-workflow-tests/README.md#trace-与证据)。原图不自动发布，使用前仍须审核隐私与实际验证范围。
+业务workflow从`npm start → Test → E2E`选择普通验收或逐步截图，仍执行同一份操作与断言。截图模式自动建立独立运行目录，普通测试不会清理其产物；在明确检查点记录PNG，在原driver及宿主guard结束后生成带结果、语言/主题、尺寸和SHA-256的清单。不维护单独Guidebook制作/导入菜单或跨仓发布脚本，截图不绑定Homepage。macOS使用独立的一次性原生窗口截图工具，不需要录屏器或FFmpeg；Windows原生Open/Save面板使用owner-scoped `PrintWindow`，进入测试目录并遮盖导航侧栏与地址breadcrumb后写PNG，不捕获桌面或个人路径。直接CLI/CI参数、目录和平台范围见[步骤截图说明](../../apps/desktop/tests/e2e-workflow-tests/README.md#trace-与证据)。原图不自动发布，使用前仍须审核隐私与实际验证范围。
 
 ## 4. 执行约束
 
