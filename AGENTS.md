@@ -335,6 +335,9 @@
 
 - 提交须有用户授权，不擅自创建分支。
 	- 已提交记录的更正和历史整理按用户明确授权执行，不擅自改写已推送历史。
+- PR 禁止使用 squash merge。
+	- 需要保持线性历史时使用 rebase merge，不使用会保留分叉拓扑的 merge commit。
+	- 合并后立即删除本地与远端 feature branch，执行 `fetch --prune`，切回 `main` 并确认本地 `main`、`origin/main` 与 Git Graph 均在同一条线上。
 - 以用户已授权的 Handover item 为提交边界，一个 item 一个 commit，不混入其他工作项。
 	- 功能约定、前置测试证据、实现、Green、验收证据和完成状态一起提交。
 	- 所需实现、测试和验收完成后再提交；只有用户明确要求时才保存中间进度。
