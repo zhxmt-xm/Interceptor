@@ -50,7 +50,7 @@
     - 验证：Design与Desktop typecheck通过；[最新直接交互核对](../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/guidebook-app-overlay-interactions/verification.json)覆盖键盘导航、正文滚轮/键盘滚动、目录跟随、搜索与空态、弹层互斥、快捷键修饰键、图片缩放拖拽/关闭/焦点和阅读位置恢复、重试、四主题背景/宽度、窄容器、返回Settings及原Homepage搜索/目录。图片尺寸与位置在动画结束后测量，不把打开动画当作缩放或拖动。只算设计预览，不算产品E2E或Renderer parity。
     - 默认外壳验收：[既有Renderer全量元素数据parity](../apps/desktop/test-results/item16-nonwindows-20261023/shared-shell-parity/report.md)一次连续运行554/554场景、4297/4297控件，差异、缺失、歧义、不稳定和执行错误均为0，退出码0；[输入与退出核对](../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/parity-verification.json)确认957份输入无新增、删除或字节变化，5199与8888空闲。保留Vite未来`configLoader: 'native'`兼容性提示，未屏蔽提示或改构建配置。该结果只覆盖已有Renderer与候选默认关闭时的设计基准，不包含尚未实施的Guidebook产品页面；未启动Electron/Main/Core或操作系统设置，不能替代真实E2E。09:15只读检查桌面仍锁定。
     - 比对：47张最终候选图与已审阅图逐像素一致，dark大图的2个差异像素已复核。默认外壳首次light整图存在151个差异像素，同源复拍与原图完全一致，其他三主题及四处Header图一致；[原始差异和复拍证据](../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/guidebook-app-final-verification.json)全部保留，不用容差或重拍结果掩盖首次差异，不计为严格parity通过。
-    - 待确认：已提供逐组件位置/内容清单、改前及拟议效果图，用户当前无法确认，候选继续默认关闭。继续授权不替代item 15受限官网地址和访问会话验收，也不替代明确UI确认；候选仅使用本地Homepage例图，不能冒充真实iframe或登录验收。不承诺离线阅读，不向远程页面暴露Preload或业务IPC。
+    - 待确认：已提供逐组件位置/内容清单、改前及拟议效果图，用户当前无法确认，候选继续默认关闭。官网真实URL与公开访问已验收，但不替代明确UI确认；候选仅使用本地Homepage例图，不能冒充真实iframe或登录验收。不承诺离线阅读，不向远程页面暴露Preload或业务IPC。
   - 安全与版本：保留当前App语言，翻译只在独立i18n流程验证；只录本次App及其原生面板，先定位自有文件目录，不录桌面、其他应用、个人流量或凭据。保持日常CA和系统配置，不绕过锁屏/UAC/Gatekeeper，不以强杀替代恢复，不新增私有教程npm包或registry依赖。
   - Release限制：空Rules树删除后的Apply入口和受测Upgrade未进入pending等行为已如实说明；产品修复需要独立授权及对应Release，不用备用规则、隐藏API、篡改发布包或截图伪造功能。
   - 30项`not-run`分类：
@@ -59,7 +59,7 @@
     - 测试编排blocked 2项：Archive导入/导出SDK Green，当前Host因消息编排额度和原生Cancel焦点未取得Green；适配已撤回。
     - 环境blocked 4项：证书生成/安装/卸载/删除需要空共享材料的隔离macOS用户或VM及正常系统授权，不能破坏日常CA。
     - Windows-only 5项：AppContainer查询和单项/全量启停，按用户要求本轮排除。
-  - 其他真正外部阻塞：DNS/DHCP WPAD需要授权的隔离网络与恢复保护；其他Host/商业模型缺目标、账号与服务使用授权；固定匿名更新入口仍HTTP404且仓库private；App入口等待item 15受限真实URL/访问会话与明确UI确认。
+  - 其他真正外部阻塞：DNS/DHCP WPAD需要授权的隔离网络与恢复保护；其他Host/商业模型缺目标、账号与服务使用授权；稳定版更新REST入口在只有pre-release时按GitHub语义返回404；官网真实URL已就绪，App入口仍等待明确UI确认。
   - 下一步：Body与HAR已验证同一workflow两代App和两次明确Host刷新；Archive保持SDK范围。新Host编排轮次可先继续上述13项普通Tool，再在代理快照稳定窗口执行6项系统设置Tool。其余外部前提满足后沿[功能映射](../../Interceptor-Homepage/docs/guidebook-coverage.md)与[规格索引](../apps/desktop/tests/e2e-workflow-tests/docs/README.md)续验。
   - 已有基础：[教程目录](../../Interceptor-Homepage/guidebook/README.md)与[读取/媒体/恢复记录](../../Interceptor-Homepage/docs/guidebook.md)保留。当前本地预览为`http://127.0.0.1:4175/guide`；停止后在Homepage运行`npm run dev`恢复。后续修改按影响范围复验，不覆盖旧结果。
 
