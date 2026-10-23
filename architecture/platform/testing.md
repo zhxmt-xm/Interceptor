@@ -53,6 +53,7 @@ macOS常驻helper独立于每条workflow的Main/Core，不作为它们的子进�
 ## 4. 执行约束
 
 - 普通E2E的Renderer DOM操作、原生文件面板关闭后的页面断言、窗口尺寸准备和产品Close均不主动前置App。窗口准备只等待并调整真实窗口，不以`frontmost`促使窗口出现；原生Open/Save、系统授权、原生快捷键和最小化恢复专项才由所属driver核对进程代际后取得焦点。产品正常启动显示窗口的行为不变，不增加后台模式或测试专用产品参数。
+- macOS Open/Save的路径和文件名以20ms逐字符发送真实Unicode键盘事件；每个字符前核对所属App仍在前台，再由AX完整回读字段。5ms在长临时路径上会稳定截断后半段；不通过写AX值、共享剪贴板或放宽完整值断言规避。
 - parity使用显式`headless:true`、`--no-proxy-server`的Edge和`windowsHide:true`的Node子进程，不创建可见测试窗口，不调用系统键鼠、前置或置顶。直连仅用于parity浏览器，避免设计/font请求经过被测系统代理，不改App或宿主代理设置。页面内的Playwright DOM操作不需要OS前台焦点；真实Electron窗口恢复、Open/Save和UAC不属于这一层，用户暂停时保留原用例，等待明确通知后执行。
 - parity设计页先逐字重加载`Inter`和`JetBrains Mono`并确认得到已加载的FontFace，再重新计算Monaco字体；Renderer也核对实际使用的自定义字体。`document.fonts.ready`本身不代表下载成功；字体不可用时直接报错，不使用fallback生成布局结论，不更换字体或放宽严格比较。
 - parity设计页在同一批次复用，每个场景先清理`overlay: ''`、`mcpToolApproval: ''`并重置`mitm: 'inactive'`，再应用自身`designState`；显式浮层和active场景优先。明暗“MITM Tunnel→普通Capture”、“Composer Export loading→选中目录”及MCP审批后的Composer不能残留上一场景的遮罩。不新增工具自身单测，不改变产品MITM或文件操作。

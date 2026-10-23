@@ -1,12 +1,12 @@
 import { createHash } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
-import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type { Collection, CollectionNode, CollectionRequest } from '@interceptor/core-protocol';
 import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { connectWorkflowMcpClient, type WorkflowMcpClient } from '../../fixtures/runtime/workflow-mcp-client';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 
@@ -225,7 +225,10 @@ async function verifyCredentials(page: Page, requestId: string): Promise<void> {
   });
 }
 
-async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Promise<{ client: Client; clientId: string }> {
+async function createMcpClient(
+  desktopApp: LocalElectronApplicationDriver,
+  testInfo: TestInfo,
+): Promise<{ client: WorkflowMcpClient; clientId: string }> {
   const { page } = desktopApp;
   await getByAutomationId(page, AUTOMATION_IDS.agent.panel.close).click();
   await getByAutomationId(page, AUTOMATION_IDS.mcp.server.enable).click();
@@ -243,9 +246,10 @@ async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Prom
   };
   const server = configuration.servers.interceptor;
   desktopApp.registerSensitiveTextForEvidenceAudit(server.headers.Authorization.slice('Bearer '.length));
-  const client = new Client({ name: 'collection-workflow', version: '1.0.0' }, { versionNegotiation: { mode: { pin: '2026-07-28' } } });
-  await client.connect(new StreamableHTTPClientTransport(new URL(server.url), { requestInit: { headers: server.headers } }));
-  return { client, clientId };
+  return {
+    client: await connectWorkflowMcpClient(server, 'collection-workflow', testInfo),
+    clientId,
+  };
 }
 
 function mcpValue(result: unknown): Readonly<Record<string, unknown>> {
@@ -284,7 +288,7 @@ test('composer.tools.collection reads and replaces the saved tree without disclo
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'composer.tools.collection' });
   const sensitiveTexts = [PROMPT, ANSWER, BODY, ...Object.values(SECRETS)];
   for (const text of sensitiveTexts) desktopApp.registerSensitiveTextForEvidenceAudit(text);
-  let client: Client | null = null;
+  let client: WorkflowMcpClient | null = null;
   let relaunchedApp: LocalElectronApplicationDriver | null = null;
   let workflowError: unknown;
   const cleanupErrors: unknown[] = [];
@@ -356,7 +360,7 @@ test('composer.tools.collection reads and replaces the saved tree without disclo
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.agent.panel.toggle).click();
     for (const name of TOOL_NAMES) expect(await callAgentTool(desktopApp.page, openAiCompatibleLab, `disabled-${name}`, name, name === TOOL_NAMES[0] ? {} : { baseRevision: 0, nodes: [] }))
       .toMatchObject({ ok: false, error: { code: 'unknown_tool' } });
-    const configuredClient = await createMcpClient(desktopApp);
+    const configuredClient = await createMcpClient(desktopApp, testInfo);
     client = configuredClient.client;
     const mcpCollection = mcpValue(await client.callTool({ name: TOOL_NAMES[0], arguments: {} })).collection as unknown as Collection;
     const replacement = { baseRevision: mcpCollection.revision, nodes: renamedTree(mcpCollection.nodes, requestId, 'Collection MCP') };
@@ -377,7 +381,12 @@ test('composer.tools.collection reads and replaces the saved tree without disclo
     expect(mcpValue(await allowedCall)).toEqual({ revision: mcpCollection.revision + 1 });
     for (const name of TOOL_NAMES) await getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolMcpSwitch(name)).click();
     await expect.poll(async () => (await client!.listTools()).tools.filter((tool) => TOOL_NAMES.some((name) => name === tool.name)).length).toBe(0);
-    for (const name of TOOL_NAMES) await expect(client.callTool({ name, arguments: {} })).rejects.toMatchObject({ code: -32602 });
+    const missingToolError = process.env.INTERCEPTOR_E2E_MCP_CLIENT === 'current-host'
+      ? { code: -32603, message: expect.stringContaining('MCP tool not found') }
+      : { code: -32602 };
+    for (const name of TOOL_NAMES) {
+      await expect(client.callTool({ name, arguments: {} })).rejects.toMatchObject(missingToolError);
+    }
     await client.close();
     client = null;
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.composer).click();

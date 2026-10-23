@@ -2,13 +2,13 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type { Page, TestInfo } from '@playwright/test';
 import type { RuleNode } from '@interceptor/core-protocol';
 
 import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { connectWorkflowMcpClient, type WorkflowMcpClient } from '../../fixtures/runtime/workflow-mcp-client';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { cancelFileDialog, submitFileDialogPath } from '../../fixtures/ui/file-dialog';
@@ -133,7 +133,10 @@ async function selectImport(desktopApp: LocalElectronApplicationDriver, inputPat
   await expect(getByAutomationId(desktopApp.page, 'rules.import.skipped-count')).toHaveText('0');
 }
 
-async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Promise<{ client: Client; clientId: string }> {
+async function createMcpClient(
+  desktopApp: LocalElectronApplicationDriver,
+  testInfo: TestInfo,
+): Promise<{ client: WorkflowMcpClient; clientId: string }> {
   const { page } = desktopApp;
   await getByAutomationId(page, AUTOMATION_IDS.agent.panel.close).click();
   await getByAutomationId(page, AUTOMATION_IDS.mcp.server.enable).click();
@@ -151,11 +154,10 @@ async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Prom
   };
   const server = configuration.servers.interceptor;
   desktopApp.registerSensitiveTextForEvidenceAudit(server.headers.Authorization.slice('Bearer '.length));
-  const client = new Client({ name: 'rules-import-workflow', version: '1.0.0' }, {
-    versionNegotiation: { mode: { pin: '2026-07-28' } },
-  });
-  await client.connect(new StreamableHTTPClientTransport(new URL(server.url), { requestInit: { headers: server.headers } }));
-  return { client, clientId };
+  return {
+    client: await connectWorkflowMcpClient(server, 'rules-import-workflow', testInfo),
+    clientId,
+  };
 }
 
 function mcpValue(result: unknown): unknown {
@@ -193,7 +195,7 @@ test('rules.tools.import appends product-exported Rules through the shared confi
   for (const text of [PROMPT, ANSWER]) desktopApp.registerSensitiveTextForEvidenceAudit(text);
   const directory = await mkdtemp(path.join(os.tmpdir(), 'interceptor-rules-import-tool-'));
   const inputPath = path.join(directory, 'product-rules.json');
-  let client: Client | null = null;
+  let client: WorkflowMcpClient | null = null;
   let relaunchedApp: LocalElectronApplicationDriver | null = null;
   let workflowError: unknown;
   const cleanupErrors: unknown[] = [];
@@ -275,7 +277,7 @@ test('rules.tools.import appends product-exported Rules through the shared confi
     await beginImport(desktopApp.page, openAiCompatibleLab, 'import-disabled');
     await waitForTurn(desktopApp.page);
     expect(toolResult(openAiCompatibleLab, 'import-disabled')).toMatchObject({ ok: false, error: { code: 'unknown_tool' } });
-    const configuredClient = await createMcpClient(desktopApp);
+    const configuredClient = await createMcpClient(desktopApp, testInfo);
     client = configuredClient.client;
     expect((await client.listTools()).tools.some((tool) => tool.name === 'rules_import')).toBe(true);
     const approval = getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.root);
@@ -297,7 +299,10 @@ test('rules.tools.import appends product-exported Rules through the shared confi
     await expect(approval).toHaveCount(0);
     await getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolMcpSwitch('rules_import')).click();
     await expect.poll(async () => (await client!.listTools()).tools.some((tool) => tool.name === 'rules_import')).toBe(false);
-    await expect(client.callTool({ name: 'rules_import', arguments: {} })).rejects.toMatchObject({ code: -32602 });
+    const missingToolError = process.env.INTERCEPTOR_E2E_MCP_CLIENT === 'current-host'
+      ? { code: -32603, message: expect.stringContaining('MCP tool not found') }
+      : { code: -32602 };
+    await expect(client.callTool({ name: 'rules_import', arguments: {} })).rejects.toMatchObject(missingToolError);
     await client.close();
     client = null;
     await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.rules).click();

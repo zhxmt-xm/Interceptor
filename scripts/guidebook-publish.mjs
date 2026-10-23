@@ -47,7 +47,64 @@ async function formatGeneratedJson(snapshot, changes) {
 export function readRemotePublication() {
   const snapshot = readHomepageSnapshot();
   check(snapshot.entries.has(planFile), `Homepage has no ${planFile}. Publish the reviewed mapping once before using this menu.`);
-  return { snapshot, ...parsePublicationPlan(JSON.parse(snapshot.readFile(planFile).toString('utf8'))) };
+  const parsed = parsePublicationPlan(JSON.parse(snapshot.readFile(planFile).toString('utf8')));
+  const retainedHostGroups = verifyRetainedHostMedia(snapshot, parsed.plan, parsed.destinations);
+  return { snapshot, ...parsed, retainedHostGroups };
+}
+
+export function verifyRetainedHostMedia(snapshot, plan, destinations) {
+  if (plan.retainedHostGroups === undefined || plan.retainedHostGroups.length === 0) return [];
+  const dimensions = JSON.parse(snapshot.readFile(dimensionFile).toString('utf8'));
+  return plan.retainedHostGroups.map(group => {
+    const manifestFile = `${group.directory}/manifest.json`;
+    const bytes = snapshot.readFile(manifestFile);
+    check(digest(bytes) === group.manifestSha256, `Reviewed Host manifest changed: ${manifestFile}`);
+    const manifest = JSON.parse(bytes.toString('utf8'));
+    const verification = manifest.source?.hostVerification;
+    check(manifest.schemaVersion === 1 && manifest.appVersion === plan.appVersion
+      && manifest.appLanguage === 'en' && manifest.platform === `macOS ${plan.architecture}`
+      && manifest.source?.workflow === 'mcp/current-host.workflow.ts'
+      && typeof verification?.hostKind === 'string' && verification.hostKind.trim().length > 0
+      && typeof verification.hostVersion === 'string' && verification.hostVersion.trim().length > 0
+      && /^[a-f0-9]{64}$/.test(verification.nativeCallsSha256)
+      && /^[a-f0-9]{64}$/.test(verification.verificationSha256),
+    `Missing matching real Host verification: ${manifestFile}`);
+    check(Array.isArray(manifest.steps) && manifest.steps.length > 0
+      && Array.isArray(manifest.assets) && manifest.assets.length > 0,
+    `Empty retained Host media: ${manifestFile}`);
+    const referencedAssets = new Set();
+    const stepIds = new Set();
+    for (const step of manifest.steps) {
+      check(typeof step.id === 'string' && !stepIds.has(step.id)
+        && step.language === 'en' && step.window === 'app'
+        && /^[\w.-]+\.png$/.test(step.image) && /^[\w.-]+\.png$/.test(step.rawImage),
+      `Invalid retained Host step: ${manifestFile}/${step.id}`);
+      stepIds.add(step.id);
+      referencedAssets.add(step.image);
+      referencedAssets.add(step.rawImage);
+    }
+    const files = new Set();
+    for (const asset of manifest.assets) {
+      check(/^[\w.-]+\.png$/.test(asset.file) && !files.has(asset.file) && referencedAssets.has(asset.file),
+        `Invalid retained Host asset: ${manifestFile}/${asset.file}`);
+      const file = `${group.directory}/${asset.file}`;
+      check(!destinations.has(file), `Retained Host asset overlaps an automatic destination: ${file}`);
+      const image = snapshot.readFile(file);
+      check(image.length >= 24 && image.subarray(0, 8).toString('hex') === '89504e470d0a1a0a'
+        && digest(image) === asset.sha256 && image.length === asset.bytes
+        && image.readUInt32BE(16) === asset.width && image.readUInt32BE(20) === asset.height
+        && same(dimensions[file.slice('guidebook/media/'.length)], [asset.width, asset.height]),
+      `Retained Host image or dimensions changed: ${file}`);
+      files.add(asset.file);
+      destinations.add(file);
+    }
+    check(files.size === referencedAssets.size, `Incomplete retained Host images: ${manifestFile}`);
+    return {
+      directory: group.directory, manifestSha256: group.manifestSha256,
+      hostKind: verification.hostKind, hostVersion: verification.hostVersion,
+      steps: manifest.steps.length, assets: files.size, reexecuted: false,
+    };
+  });
 }
 
 export function verifyRemoteCoverage(snapshot, destinations) {
@@ -204,7 +261,7 @@ export async function buildPublicationChanges(snapshot, plan, runs, destinations
 }
 
 export async function publishGuidebook({ app, resume, verifyOnly = false }) {
-  const { snapshot, plan, sources, destinations } = readRemotePublication();
+  const { snapshot, plan, sources, destinations, retainedHostGroups } = readRemotePublication();
   check(process.env.npm_execpath, 'Use npm start to run the publisher.');
   check(process.platform === plan.platform && process.arch === plan.architecture,
     `The current screenshot contract requires ${plan.platform}/${plan.architecture}.`);
@@ -246,12 +303,15 @@ export async function publishGuidebook({ app, resume, verifyOnly = false }) {
     planBlob: snapshot.entries.get(planFile).sha,
     sourceCommit: captureCommand(root, 'git', ['rev-parse', 'HEAD']),
     app: { path: appPath, version, sha256: appSha256 }, captureInputs: inputs,
-    expectedTests: sources.size, expectedReferences: references, completedSources: [],
+    expectedTests: sources.size, expectedReferences: references, completedSources: [], retainedHostGroups,
     uploadedBlobs: previous?.uploadedBlobs ?? [], changedFiles: [], output,
   };
   const saveReport = () => writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
   await saveReport();
-  console.log(`\n目标：${homepageRepository}/${homepageBranch}，不读取本地Homepage。\n${sources.size}条原测试，${plan.groups.length}组媒体。\n报告：${reportPath}`);
+  console.log(`\n目标：${homepageRepository}/${homepageBranch}，不读取本地Homepage。\n${sources.size}条原测试重拍，${plan.groups.length}组自动更新媒体。\n报告：${reportPath}`);
+  if (retainedHostGroups.length > 0) {
+    console.log(`${retainedHostGroups.length}组真实Host图片已按审核摘要校验，保留原图，不自动重拍或以SDK替代。`);
+  }
   try {
     const runs = new Map();
     for (const [index, source] of [...sources.values()].entries()) {
@@ -296,7 +356,7 @@ export async function publishGuidebook({ app, resume, verifyOnly = false }) {
       return report;
     }
     const commit = await publishHomepageChanges(snapshot, changes, report, saveReport,
-      `docs(guidebook): refresh verified ${plan.appVersion} screenshots\n\nGenerated by Interceptor npm start from ${report.sourceCommit}.\nAll registered screenshot sources passed with host restoration.\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`);
+      `docs(guidebook): refresh verified ${plan.appVersion} screenshots\n\nGenerated by Interceptor npm start from ${report.sourceCommit}.\nAll registered automatic screenshot sources passed with host restoration.${retainedHostGroups.length > 0 ? '\nReviewed real Host images were integrity-checked and preserved, not re-executed.' : ''}\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`);
     report.finishedAt = new Date().toISOString();
     await saveReport();
     console.log(commit
@@ -317,7 +377,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.met
       options: { app: { type: 'string' }, resume: { type: 'string' }, 'verify-only': { type: 'boolean', default: false } },
       allowPositionals: false,
     });
-    check(Boolean(values.app) !== Boolean(values.resume), 'Use npm start → Test → E2E → 全部教程截图并发布 Homepage.');
+    check(Boolean(values.app) !== Boolean(values.resume), 'Use npm start → Test → E2E → 教程截图更新并发布 Homepage.');
     await publishGuidebook({ app: values.app, resume: values.resume, verifyOnly: values['verify-only'] });
   } catch (error) {
     console.error(`[guidebook-publish] ${error instanceof Error ? error.message : String(error)}`);

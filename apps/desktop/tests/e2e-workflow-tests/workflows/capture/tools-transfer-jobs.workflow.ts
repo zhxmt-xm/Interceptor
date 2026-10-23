@@ -4,13 +4,13 @@ import { request } from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 
-import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { connectWorkflowMcpClient, type WorkflowMcpClient } from '../../fixtures/runtime/workflow-mcp-client';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
@@ -93,7 +93,10 @@ async function callAgent(
   return resultForCall(openAiCompatibleLab, callId);
 }
 
-async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Promise<{ client: Client; clientId: string }> {
+async function createMcpClient(
+  desktopApp: LocalElectronApplicationDriver,
+  testInfo: TestInfo,
+): Promise<{ client: WorkflowMcpClient; clientId: string }> {
   const { page } = desktopApp;
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
@@ -110,12 +113,17 @@ async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Prom
   const configuration = JSON.parse(await page.evaluate(() => navigator.clipboard.readText())) as { servers: { interceptor: { url: string; headers: { Authorization: string } } } };
   const server = configuration.servers.interceptor;
   desktopApp.registerSensitiveTextForEvidenceAudit(server.headers.Authorization.slice('Bearer '.length));
-  const client = new Client({ name: 'transfer-jobs', version: '1.0.0' }, { versionNegotiation: { mode: { pin: '2026-07-28' } } });
-  await client.connect(new StreamableHTTPClientTransport(new URL(server.url), { requestInit: { headers: server.headers } }));
-  return { client, clientId };
+  return {
+    client: await connectWorkflowMcpClient(server, 'transfer-jobs', testInfo),
+    clientId,
+  };
 }
 
-async function captureArchiveSource(desktopApp: LocalElectronApplicationDriver, loopbackLab: HttpTrafficRunner, client: Client): Promise<void> {
+async function captureArchiveSource(
+  desktopApp: LocalElectronApplicationDriver,
+  loopbackLab: HttpTrafficRunner,
+  client: WorkflowMcpClient,
+): Promise<void> {
   await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.capture).click();
   await startRecording(desktopApp);
   await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.settings).click();
@@ -186,12 +194,21 @@ async function startArchiveFromUi(desktopApp: LocalElectronApplicationDriver, de
   return jobId;
 }
 
-async function waitForCanceledArchiveCleanup(client: Client, jobId: string, directory: string): Promise<void> {
+async function waitForCanceledArchiveCleanup(
+  client: WorkflowMcpClient,
+  jobId: string,
+  directory: string,
+): Promise<void> {
   await expect.poll(async () => publicJob(mcpValue(await client.callTool({ name: TOOL_NAMES[0], arguments: { jobId } }))).state).toBe('cancelled');
   await expect.poll(async () => (await readdir(directory)).sort(), { timeout: 30_000 }).toEqual(['completed.jsonl']);
 }
 
-async function verifyCanceledArchive(page: Page, client: Client, jobId: string, directory: string): Promise<void> {
+async function verifyCanceledArchive(
+  page: Page,
+  client: WorkflowMcpClient,
+  jobId: string,
+  directory: string,
+): Promise<void> {
   await waitForCanceledArchiveCleanup(client, jobId, directory);
   await expect(getByAutomationId(page, 'capture.transfer.progress')).toHaveAttribute('data-transfer-job-state', 'cancelled');
   await screenshotStep('取消清理完成后关闭任务结果 / Close the job result after cancellation cleanup completes', {
@@ -230,7 +247,7 @@ test('capture.tools.transfer-jobs queries and cancels real file jobs without exp
   for (const value of [PROMPT, ANSWER]) desktopApp.registerSensitiveTextForEvidenceAudit(value);
   const { page } = desktopApp;
   const directory = await mkdtemp(path.join(os.tmpdir(), 'interceptor-transfer-jobs-'));
-  let client: Client | null = null;
+  let client: WorkflowMcpClient | null = null;
   let relaunchedApp: LocalElectronApplicationDriver | null = null;
   let workflowError: unknown;
   const cleanupErrors: unknown[] = [];
@@ -248,7 +265,7 @@ test('capture.tools.transfer-jobs queries and cancels real file jobs without exp
     // 真实完成任务：MCP调用正式Diagnostics Export，原生Save产生文件；Get取得同一Core任务的终态。
     // Real completed job: MCP invokes the product Diagnostics export, native Save creates the file, and Get observes its Core-owned terminal state.
     await getByAutomationId(page, AUTOMATION_IDS.agent.panel.close).click();
-    const configuredClient = await createMcpClient(desktopApp);
+    const configuredClient = await createMcpClient(desktopApp, testInfo);
     client = configuredClient.client;
     const approval = getByAutomationId(page, AUTOMATION_IDS.mcp.approval.root);
     const exporting = client.callTool({ name: 'diagnostics_export', arguments: { process: 'core' } });
@@ -367,7 +384,12 @@ test('capture.tools.transfer-jobs queries and cancels real file jobs without exp
     expect(publicJob(mcpValue(await client.callTool({ name: TOOL_NAMES[0], arguments: { jobId: completedJobId } })))).toEqual(completed);
     for (const name of TOOL_NAMES) await getByAutomationId(page, AutomationIdFactory.agentToolMcpSwitch(name)).click();
     await expect.poll(async () => (await client!.listTools()).tools.filter((tool) => (TOOL_NAMES as readonly string[]).includes(tool.name)).length).toBe(0);
-    for (const name of TOOL_NAMES) await expect(client.callTool({ name, arguments: { jobId: completedJobId } })).rejects.toMatchObject({ code: -32602 });
+    const missingToolError = process.env.INTERCEPTOR_E2E_MCP_CLIENT === 'current-host'
+      ? { code: -32603, message: expect.stringContaining('MCP tool not found') }
+      : { code: -32602 };
+    for (const name of TOOL_NAMES) {
+      await expect(client.callTool({ name, arguments: { jobId: completedJobId } })).rejects.toMatchObject(missingToolError);
+    }
     await client.close();
     client = null;
     await screenshotStep('独立撤权：Agent与MCP各自关闭两项，旧Chat和旧连接均拒绝后续调用而不产生文件操作。 / Independent revocation: disable both Tools separately for Agent and MCP; existing chats/connections reject later calls without file operations.');

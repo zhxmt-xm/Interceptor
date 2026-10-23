@@ -383,7 +383,7 @@ diagnostics.row.<traceKey>
 | --- | --- | --- | --- |
 | `mcp.desktop.streamable-http` | 三版官方Client经loopback HTTP接入、单次取消、授权Tool、同步Rules并跨重启保持状态 | shared | macOS三协议Green；不代表当前开发Host验收 |
 | `mcp.settings.protocol-support` | Server关闭/运行时均显示三版协议说明，不提供版本切换器 | shared | Windows实机已验；macOS保留原记录 |
-| `mcp.current-host` | 当前开发Agent通过真实Host公开MCP通道调用Tool，fixture核对App裁决与退出 | current-agent interactive | Windows精准筛选版本最终Green：当前Host代表查询、审批、真实Clear及Client/CA/宿主清理通过；旧假阳性和重连超时保留，不代表全部Tool或其他Host通过 |
+| `mcp.current-host` | 当前开发Agent通过真实Host公开MCP通道调用Tool，fixture核对App裁决与退出 | current-agent interactive | Windows精准筛选与macOS English App代表主线Green；另有12条既有macOS workflow经一次性同Host session成对完成SDK/Host Green，扩展覆盖14次连接代际、26种Tool与109次调用。合并为39/69项通过、30项未运行；配置、session、App和宿主均按约定清理，不代表其他Host通过 |
 | `mcp.browser-playground-cors` | Browser以Bearer跨Origin连接最新MCP并完成query/change调用 | shared | passed |
 | `mcp.tools.breakpoints` | 官方MCP Client处理真实HTTP/WebSocket pending | privileged UI | passed |
 
@@ -444,8 +444,9 @@ npm run test:e2e:workflow --workspace @interceptor/desktop -- \
 - macOS 14+首次使用时以现有Xcode工具链编译`fixtures/ui/window-screenshot.swift`，由`SCScreenshotManager`一次性捕获所属窗口，不启动持续录屏或FFmpeg。每次核对Main PID/代际、唯一窗口及解锁状态，不回退为整屏或其他App。
 - 原生Save/Open在真实文件路径已定位后单独截图；取消的截图记录回到App后的状态，不取景尚未定位的个人目录。普通模式仍走相同的原生确认/取消操作。
 - Windows普通App步骤使用真实Renderer截图，不宣称包含原生边框；原生文件面板的截图模式尚不支持，明确报错。Windows正常无截图workflow保持原入口，完整实机复验仍按Windows矩阵跟踪。
-- 普通逐步截图只是私有测试证据，不自动复制或上传。显式选择`npm start → Test → E2E → 全部教程截图并发布 Homepage`才从GitHub读取发布清单并运行全部原测试；截图和映射通过后，使用`gh`的Git Data API创建Homepage commit并非强制推进`main`。不需要本地Homepage或新的Actions流程，不操作App仓库的Git index；Homepage原网站CI在更新后运行，不由此入口等待。来源、隐私、语言和恢复要求不放宽。
+- 普通逐步截图只是私有测试证据，不自动复制或上传。显式选择`npm start → Test → E2E → 教程截图更新并发布 Homepage`才从GitHub读取发布清单并重跑全部自动来源；独立验收的真实Host组明确显示保留、不重拍，不能用SDK替代。截图和映射通过后，使用`gh`的Git Data API创建Homepage commit并非强制推进`main`。不需要本地Homepage或新的Actions流程，不操作App仓库的Git index；Homepage原网站CI在更新后运行，不由此入口等待。来源、隐私、语言和恢复要求不放宽。
 - Homepage的`guidebook/screenshot-publication.json`为发布契约：固定`source.key`和`checkpoint.key`映射目标原图/标注文件，全序列检查标题、窗口、主题、尺寸与编号，源文件摘要另行锁定。插入或修改原workflow后必须更新对应契约，保留原checkpoint key；不把新的`step-007`直接当成旧的`step-007`。新运行缺图或有歧义立即停止，不用旧素材补齐。
+- `retainedHostGroups`只登记已由真实Host完成并审核的独立图片组，固定manifest摘要并逐文件核对原图、标注、字节及尺寸。其图片不得与自动来源重叠；更新App版本或图片需要重新进行真实Host验收和审核。没有该字段表示没有独立Host组，非法字段或变化的证据不能当作空列表跳过；报告明确记录这些图片未在批量流程重拍。
 - 发布运行在`test-results/guidebook-publications/<run>/`保留各原测试证据及schema 2的`publication.json`。向导可选只生成验收、不写远端；全部通过后可在同一入口继续发布该完整目录，前提是远端基线、映射、App和workflow/fixture、各代退出证据摘要仍一致。不复用旧本地仓库模式或部分完成的批次。
 
 每条workflow独立保留：

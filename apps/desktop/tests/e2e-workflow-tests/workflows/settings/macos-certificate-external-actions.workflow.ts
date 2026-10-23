@@ -2,11 +2,10 @@ import { X509Certificate } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
-
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
+import { connectWorkflowMcpClient, type WorkflowMcpClient } from '../../fixtures/runtime/workflow-mcp-client';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { rootCertificateThumbprints, sharedCertificateDirectory } from '../../fixtures/ui/https-capture';
 import {
@@ -25,7 +24,7 @@ test('settings.certificates.external-actions reveals and views the shared public
   const windowsBefore = await listCertificateWindows(certificateDirectory);
   const ownedWindows: CertificateWindow[] = [];
   const rootsBefore = await rootCertificateThumbprints();
-  let client: Client | null = null;
+  let client: WorkflowMcpClient | null = null;
   let workflowError: unknown;
   const cleanupErrors: unknown[] = [];
   const completedActions: string[] = [];
@@ -56,8 +55,7 @@ test('settings.certificates.external-actions reveals and views the shared public
     };
     const configuration = copied.servers.interceptor;
     desktopApp.registerSensitiveTextForEvidenceAudit(configuration.headers.Authorization.slice('Bearer '.length));
-    client = new Client({ name: 'certificate-external-actions', version: '1.0.0' }, { versionNegotiation: { mode: { pin: '2026-07-28' } } });
-    await client.connect(new StreamableHTTPClientTransport(new URL(configuration.url), { requestInit: { headers: configuration.headers } }));
+    client = await connectWorkflowMcpClient(configuration, 'certificate-external-actions', testInfo);
     await getByAutomationId(page, AUTOMATION_IDS.settings.section.certificates).click();
     await desktopApp.startTrace(testInfo);
 

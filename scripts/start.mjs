@@ -130,7 +130,7 @@ async function chooseWorkflow(workspaces) {
     const mode = await choose('E2E：选择运行方式', [
       { name: '普通验收（不生成步骤图）', value: 'standard' },
       { name: '逐步截图（同时执行业务断言）', value: 'screenshots' },
-      { name: '全部教程截图并发布 Homepage', value: 'guidebook', disabled: process.platform !== 'darwin' ? '当前教程清单使用已验证的macOS原生窗口' : false },
+      { name: '教程截图更新并发布 Homepage', value: 'guidebook', disabled: process.platform !== 'darwin' ? '当前教程清单使用已验证的macOS原生窗口' : false },
     ]);
     if (mode === back) return;
     if (mode === 'guidebook') {
@@ -171,9 +171,12 @@ async function chooseWorkflow(workspaces) {
 async function chooseGuidebookPublication() {
   console.log('通过当前gh账号读取Homepage的main及截图映射，不需要本地Homepage仓库。');
   const { readRemotePublication } = await import('./guidebook-publish.mjs');
-  const { plan } = readRemotePublication();
+  const { plan, retainedHostGroups } = readRemotePublication();
+  if (retainedHostGroups.length > 0) {
+    console.log(`${plan.sources.length}条原测试自动重拍；${retainedHostGroups.length}组真实Host图片单独验收、校验后保留，不在本次重拍。`);
+  }
   const source = await choose('教程截图：选择来源', [
-    { name: '重新拍摄全部登记截图', value: 'capture' },
+    { name: '重拍全部自动来源（独立Host图片校验后保留）', value: 'capture' },
     { name: '继续发布已经完整通过的本地截图', value: 'resume' },
   ]);
   if (source === back) return;
@@ -190,7 +193,7 @@ async function chooseGuidebookPublication() {
     default: true,
   });
   return {
-    title: `${publish ? '发布' : '只验证'}全部教程截图 · ${plan.sources.length}条原测试 · ${plan.repository}/${plan.branch}`,
+    title: `${publish ? '发布' : '只验证'}教程截图更新 · ${plan.sources.length}条原测试 · ${plan.repository}/${plan.branch}`,
     commands: [nodeCommand('scripts/guidebook-publish.mjs', [
       source === 'capture' ? '--app' : '--resume', path.resolve(location),
       ...(!publish ? ['--verify-only'] : []),
@@ -198,6 +201,9 @@ async function chooseGuidebookPublication() {
     notices: [
       `使用English App ${plan.appVersion}，逐条运行清单中的全部原workflow，不拍设计稿或创建测试副本。`,
       '固定映射逐项核对截图、来源、红框及正文动态示例；缺图、步骤改变、失败或宿主未恢复均停止。',
+      ...(retainedHostGroups.length > 0 ? [
+        `${retainedHostGroups.length}组独立真实Host图片只核对审核清单、完整PNG与尺寸，不标为本次重拍；任何变化停止发布。`,
+      ] : []),
       '拍摄期间自动操作真实窗口和原生文件面板，请保持桌面解锁，不要同时操作其他应用。',
       publish
         ? `全部截图及映射通过后，使用GitHub API提交到 ${plan.repository}/${plan.branch}；不提交App代码、不新建分支或强推。`
@@ -346,7 +352,8 @@ async function main() {
     console.log('npm start');
     console.log('Development / Test / Build / Release → 目标或必要范围 → 确认执行');
     console.log('Desktop / Design 选择后直接启动；构建准备自动完成，不询问缓存模式。');
-    console.log('Test → E2E可选普通验收、逐步截图或全部教程截图并发布Homepage；最后一项按固定清单验收后自动commit/push。');
+    console.log('Test → E2E可选普通验收、逐步截图或教程截图更新并发布Homepage；最后一项按固定清单验收后自动commit/push。');
+    console.log('教程发布重拍全部自动来源；独立真实Host图片按审核摘要校验后保留，不用SDK冒充重拍。');
     console.log('教程发布直接使用gh调用GitHub API；不需要本地Homepage仓库，不clone或推送App分支。');
     console.log('执行摘要分列显示，确认默认 Yes，仍需按 Enter；输入 n 取消。');
     console.log('低频工具保留原命令；Release 启动 npm run release，继续完成发版向导。');

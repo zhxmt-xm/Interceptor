@@ -3,7 +3,6 @@ import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { request } from 'node:http';
 import path from 'node:path';
 
-import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
@@ -11,6 +10,7 @@ import { CAPTURE_FACET_IDS } from '../../../../src/renderer/features/capture/con
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { connectWorkflowMcpClient, type WorkflowMcpClient } from '../../fixtures/runtime/workflow-mcp-client';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
@@ -85,13 +85,17 @@ async function finishAgentCall(page: Page, openAiCompatibleLab: OpenAiCompatible
   return agentResult(openAiCompatibleLab, callId);
 }
 
-async function connectMcpClient(configuration: McpConfiguration): Promise<Client> {
-  const client = new Client({ name: 'har-transfer', version: '1.0.0' }, { versionNegotiation: { mode: { pin: '2026-07-28' } } });
-  await client.connect(new StreamableHTTPClientTransport(new URL(configuration.url), { requestInit: { headers: configuration.headers } }));
-  return client;
+async function connectMcpClient(
+  configuration: McpConfiguration,
+  testInfo: TestInfo,
+): Promise<WorkflowMcpClient> {
+  return connectWorkflowMcpClient(configuration, 'har-transfer', testInfo);
 }
 
-async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Promise<{ client: Client; configuration: McpConfiguration }> {
+async function createMcpClient(
+  desktopApp: LocalElectronApplicationDriver,
+  testInfo: TestInfo,
+): Promise<{ client: WorkflowMcpClient; configuration: McpConfiguration }> {
   const { page } = desktopApp;
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
@@ -110,7 +114,7 @@ async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Prom
   const copied = JSON.parse(await page.evaluate(() => navigator.clipboard.readText())) as { servers: { interceptor: McpConfiguration } };
   const configuration = copied.servers.interceptor;
   desktopApp.registerSensitiveTextForEvidenceAudit(configuration.headers.Authorization.slice('Bearer '.length));
-  return { client: await connectMcpClient(configuration), configuration };
+  return { client: await connectMcpClient(configuration, testInfo), configuration };
 }
 
 async function captureSources(desktopApp: LocalElectronApplicationDriver, httpTrafficRunner: HttpTrafficRunner): Promise<void> {
@@ -150,7 +154,7 @@ async function captureSources(desktopApp: LocalElectronApplicationDriver, httpTr
   }
 }
 
-async function captureItems(client: Client): Promise<Record<string, unknown>[]> {
+async function captureItems(client: WorkflowMcpClient): Promise<Record<string, unknown>[]> {
   const value = mcpValue(await client.callTool({ name: 'capture_list_exchanges', arguments: { search: SOURCE_PATH, limit: 100 } }));
   if (!Array.isArray(value.items) || !value.items.every(isRecord)) throw new Error('Capture omitted query items.');
   return value.items;
@@ -166,7 +170,7 @@ function startedJob(value: unknown, kind: 'har-export' | 'har-import'): string {
   return value.job.id as string;
 }
 
-async function waitForCompletedJob(client: Client, jobId: string): Promise<void> {
+async function waitForCompletedJob(client: WorkflowMcpClient, jobId: string): Promise<void> {
   await expect.poll(async () => {
     const value = mcpValue(await client.callTool({ name: 'capture_get_transfer_job', arguments: { jobId } }));
     return isRecord(value.job) ? value.job.state : null;
@@ -249,7 +253,7 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
   const directory = testInfo.outputPath('har-transfer-files');
   await mkdir(directory, { recursive: true });
   for (const value of [PROMPT, ANSWER, SECRET, directory]) desktopApp.registerSensitiveTextForEvidenceAudit(value);
-  let client: Client | null = null;
+  let client: WorkflowMcpClient | null = null;
   let relaunchedApp: LocalElectronApplicationDriver | null = null;
   let workflowError: unknown;
   const cleanupErrors: unknown[] = [];
@@ -265,7 +269,7 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     const matches = isRecord(discovery.value) && Array.isArray(discovery.value.matches) ? discovery.value.matches : [];
     for (const name of TOOL_NAMES) expect(matches.some((entry) => isRecord(entry) && isRecord(entry.descriptor) && entry.descriptor.name === name), `HAR Tool must be discoverable: ${name}`).toBe(true);
     await getByAutomationId(page, AUTOMATION_IDS.agent.panel.close).click();
-    const configured = await createMcpClient(desktopApp);
+    const configured = await createMcpClient(desktopApp, testInfo);
     client = configured.client;
     await captureSources(desktopApp, httpTrafficRunner);
     await expect.poll(async () => (await captureItems(client!)).length).toBe(2);
@@ -629,7 +633,12 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
 
     for (const name of TOOL_NAMES) await getByAutomationId(page, AutomationIdFactory.agentToolMcpSwitch(name)).click();
-    for (const name of TOOL_NAMES) await expect(client.callTool({ name, arguments: {} })).rejects.toMatchObject({ code: -32602 });
+    const missingToolError = process.env.INTERCEPTOR_E2E_MCP_CLIENT === 'current-host'
+      ? { code: -32603, message: expect.stringContaining('MCP tool not found') }
+      : { code: -32602 };
+    for (const name of TOOL_NAMES) {
+      await expect(client.callTool({ name, arguments: {} })).rejects.toMatchObject(missingToolError);
+    }
     await client.close();
     client = null;
     await screenshotStep('IPC原入口：从Capture菜单导出，再导入同流程文件；完成后由统一通知更新列表。 / Original IPC entry: export from Capture, import a file from this workflow, and refresh through the shared completion notice.');
@@ -655,7 +664,7 @@ test('capture.tools.har-transfer exports and imports real HAR files through Agen
     for (const value of [PROMPT, ANSWER, SECRET, directory, configured.configuration.headers.Authorization.slice('Bearer '.length)]) relaunchedApp.registerSensitiveTextForEvidenceAudit(value);
     await relaunchedApp.waitUntilReady();
     await relaunchedApp.stopTrace(testInfo);
-    client = await connectMcpClient(configured.configuration);
+    client = await connectMcpClient(configured.configuration, testInfo);
     expect(mcpValue(await client.callTool({ name: 'capture_get_transfer_job', arguments: { jobId: fullJobId } }))).toEqual({ job: null });
     expect(openAiCompatibleLab.evidence().length).toBe(modelRequests);
     expect(httpTrafficRunner.evidence().length).toBe(originRequests);

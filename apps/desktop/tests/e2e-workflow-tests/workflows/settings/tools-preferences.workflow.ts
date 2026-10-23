@@ -1,13 +1,13 @@
 import { writeFile } from 'node:fs/promises';
 import { request } from 'node:http';
 
-import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { connectWorkflowMcpClient, type WorkflowMcpClient } from '../../fixtures/runtime/workflow-mcp-client';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
@@ -83,13 +83,7 @@ async function callAgent(page: Page, openAiCompatibleLab: OpenAiCompatibleLab, c
   return agentResult(openAiCompatibleLab, callId);
 }
 
-async function connectMcp(configuration: McpConfiguration): Promise<Client> {
-  const client = new Client({ name: 'settings-preferences', version: '1.0.0' }, { versionNegotiation: { mode: { pin: '2026-07-28' } } });
-  await client.connect(new StreamableHTTPClientTransport(new URL(configuration.url), { requestInit: { headers: configuration.headers } }));
-  return client;
-}
-
-async function createMcpClient(desktopApp: LocalElectronApplicationDriver) {
+async function createMcpClient(desktopApp: LocalElectronApplicationDriver, testInfo: TestInfo) {
   const { page } = desktopApp;
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
@@ -106,7 +100,11 @@ async function createMcpClient(desktopApp: LocalElectronApplicationDriver) {
   const copied = JSON.parse(await page.evaluate(() => navigator.clipboard.readText())) as { servers: { interceptor: McpConfiguration } };
   const configuration = copied.servers.interceptor;
   desktopApp.registerSensitiveTextForEvidenceAudit(configuration.headers.Authorization.slice('Bearer '.length));
-  return { client: await connectMcp(configuration), clientId, configuration };
+  return {
+    client: await connectWorkflowMcpClient(configuration, 'settings-preferences', testInfo),
+    clientId,
+    configuration,
+  };
 }
 
 async function openPrivacy(page: Page): Promise<void> {
@@ -202,7 +200,7 @@ async function runPreferenceWorkflow(desktopApp: LocalElectronApplicationDriver,
     const initialTheme = await page.locator('html').getAttribute('data-theme');
     if (!initialLanguage || !initialTheme) throw new Error('Initial preferences missing from document state.');
     const languageOnly = workflow.id === 'settings.tools.language';
-    let client: Client | null = null;
+    let client: WorkflowMcpClient | null = null;
     let relaunchedApp: LocalElectronApplicationDriver | null = null;
     let retainedRequest: { id: string; url: string; path: string } | null = null;
     for (const value of [PROMPT, ANSWER]) desktopApp.registerSensitiveTextForEvidenceAudit(value);
@@ -226,7 +224,7 @@ async function runPreferenceWorkflow(desktopApp: LocalElectronApplicationDriver,
         expect(matches.some((entry) => isRecord(entry) && isRecord(entry.descriptor) && entry.descriptor.name === name), `Preference Tool must be discoverable: ${name}`).toBe(true);
       }
       await getByAutomationId(page, AUTOMATION_IDS.agent.panel.close).click();
-      const configured = await createMcpClient(desktopApp);
+      const configured = await createMcpClient(desktopApp, testInfo);
       client = configured.client;
       let initialPrivacy: Record<string, boolean> = {};
       if (!languageOnly) {
@@ -379,7 +377,12 @@ async function runPreferenceWorkflow(desktopApp: LocalElectronApplicationDriver,
       await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
       for (const item of cases) await getByAutomationId(page, AutomationIdFactory.agentToolMcpSwitch(item.name)).click();
       await expect.poll(async () => (await client!.listTools()).tools.filter((tool) => cases.some((item) => item.name === tool.name)).length).toBe(0);
-      for (const item of cases) await expect(client.callTool({ name: item.name, arguments: item.first })).rejects.toMatchObject({ code: -32602 });
+      const missingToolError = process.env.INTERCEPTOR_E2E_MCP_CLIENT === 'current-host'
+        ? { code: -32603, message: expect.stringContaining('MCP tool not found') }
+        : { code: -32602 };
+      for (const item of cases) {
+        await expect(client.callTool({ name: item.name, arguments: item.first })).rejects.toMatchObject(missingToolError);
+      }
       await client.close();
       client = null;
       await screenshotStep('导出默认值：真实Capture使HAR选项可用，打开中的草稿保持原值，下次打开读取新偏好。 / Export defaults: real Capture enables HAR options; an open draft retains its values and the next draft reads the updated preferences.');

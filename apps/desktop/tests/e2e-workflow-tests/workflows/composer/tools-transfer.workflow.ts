@@ -2,13 +2,13 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type { CollectionNode, CollectionRequest } from '@interceptor/core-protocol';
 import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { connectWorkflowMcpClient, type WorkflowMcpClient } from '../../fixtures/runtime/workflow-mcp-client';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { cancelFileDialog, submitFileDialogPath } from '../../fixtures/ui/file-dialog';
@@ -194,7 +194,10 @@ async function selectImport(desktopApp: LocalElectronApplicationDriver, inputPat
   await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.composer.import.skippedCount)).toHaveText('0');
 }
 
-async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Promise<{ client: Client; clientId: string }> {
+async function createMcpClient(
+  desktopApp: LocalElectronApplicationDriver,
+  testInfo: TestInfo,
+): Promise<{ client: WorkflowMcpClient; clientId: string }> {
   const { page } = desktopApp;
   await getByAutomationId(page, AUTOMATION_IDS.agent.panel.close).click();
   await getByAutomationId(page, AUTOMATION_IDS.mcp.server.enable).click();
@@ -210,9 +213,10 @@ async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Prom
   const configuration = JSON.parse(await page.evaluate(() => navigator.clipboard.readText())) as { servers: { interceptor: { url: string; headers: { Authorization: string } } } };
   const server = configuration.servers.interceptor;
   desktopApp.registerSensitiveTextForEvidenceAudit(server.headers.Authorization.slice('Bearer '.length));
-  const client = new Client({ name: 'collection-transfer', version: '1.0.0' }, { versionNegotiation: { mode: { pin: '2026-07-28' } } });
-  await client.connect(new StreamableHTTPClientTransport(new URL(server.url), { requestInit: { headers: server.headers } }));
-  return { client, clientId };
+  return {
+    client: await connectWorkflowMcpClient(server, 'collection-transfer', testInfo),
+    clientId,
+  };
 }
 
 function mcpValue(result: unknown): unknown {
@@ -251,7 +255,7 @@ test('composer.tools.transfer exports and imports Collections through native dia
   for (const text of [PROMPT, ANSWER, SECRET]) desktopApp.registerSensitiveTextForEvidenceAudit(text);
   const directory = await mkdtemp(path.join(os.tmpdir(), 'interceptor-collection-transfer-'));
   const inputPath = path.join(directory, 'product-collection.json');
-  let client: Client | null = null;
+  let client: WorkflowMcpClient | null = null;
   let relaunchedApp: LocalElectronApplicationDriver | null = null;
   let workflowError: unknown;
   const cleanupErrors: unknown[] = [];
@@ -375,7 +379,7 @@ test('composer.tools.transfer exports and imports Collections through native dia
       await finishCall(desktopApp.page);
       expect(resultForCall(openAiCompatibleLab, `disabled-${index}`)).toMatchObject({ ok: false, error: { code: 'unknown_tool' } });
     }
-    const configuredClient = await createMcpClient(desktopApp);
+    const configuredClient = await createMcpClient(desktopApp, testInfo);
     client = configuredClient.client;
     const approval = getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.approval.root);
     for (const name of [EXPORT_TOOL, IMPORT_TOOL]) {
@@ -422,7 +426,12 @@ test('composer.tools.transfer exports and imports Collections through native dia
     verifyCopies(original, finalTree, 4);
     for (const name of [EXPORT_TOOL, IMPORT_TOOL]) await getByAutomationId(desktopApp.page, AutomationIdFactory.agentToolMcpSwitch(name)).click();
     await expect.poll(async () => (await client!.listTools()).tools.filter((tool) => [EXPORT_TOOL, IMPORT_TOOL].includes(tool.name)).length).toBe(0);
-    for (const name of [EXPORT_TOOL, IMPORT_TOOL]) await expect(client.callTool({ name, arguments: {} })).rejects.toMatchObject({ code: -32602 });
+    const missingToolError = process.env.INTERCEPTOR_E2E_MCP_CLIENT === 'current-host'
+      ? { code: -32603, message: expect.stringContaining('MCP tool not found') }
+      : { code: -32602 };
+    for (const name of [EXPORT_TOOL, IMPORT_TOOL]) {
+      await expect(client.callTool({ name, arguments: {} })).rejects.toMatchObject(missingToolError);
+    }
     await client.close();
     client = null;
     await screenshotStep('双授权：Agent撤权后旧Chat无效，MCP仍使用同一导入/导出命令，随后MCP撤权立即生效。 / Independent permissions: revoke Agent calls, exercise the same import and export commands through MCP, then revoke MCP immediately.');

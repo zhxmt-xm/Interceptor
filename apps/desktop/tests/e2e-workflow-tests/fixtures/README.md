@@ -17,6 +17,13 @@ MCP的确定性workflow与当前开发Host workflow复用[UI助手](ui/mcp-workf
 profile。`preserveDesktopAppUserData`仅保留已准备的数据，不保留进程或放宽宿主恢复；验收失败使用既有
 profile保留策略，完整成功后删除测试profile。准备通过不等于Host调用通过。
 
+原Tool workflow的MCP调用可通过`runtime/workflow-mcp-client.ts`显式选择当前Host公开`mcp://`通道；默认官方SDK路径不变。
+Host入口只配置本次Client、使用一次性同Host session公布的`serverTools`，不直连产品的替代Client。
+VS Code 1.143应用配置后，当前Agent须在该一次性session执行官方`/mcp reload`；fixture会先写入
+`configuration-applied`证据并输出无凭据提示，再等待Server出现。原UI、原生窗口与业务断言保持，
+未公布的协议选项直接报错；结束后停止并移除本轮Server、删除一次性session，Host证据和原App退出证据同时保留。
+具体参数及验收边界见[当前Host入口](../docs/mcp.md#原tool-workflow的当前host执行入口)。
+
 辅助单测只保留以下既有安全判断，不替代真实 Electron workflow：
 
 - [workflow-host-safety-guard.test.ts](safety/tests/unit/workflow-host-safety-guard.test.ts)：没有基线时不恢复宿主、只终止登记进程、恢复失败仍报告原污染。
@@ -32,7 +39,7 @@ profile保留策略，完整成功后删除测试profile。准备通过不等于
 - 输出留在本次测试的`step-screenshots/`，fixture不读写Homepage、不执行Git。显式发布操作由`npm start`调用[发布脚本](../../../../../scripts/guidebook-publish.mjs)，复用原workflow与持久映射；普通模式仍保留原trace/final.png和正常退出门禁。
 - `recordScreenshotExample()`保存测试实际拥有的loopback端点，拒绝用户名/密码和同key变更，移除query/hash；HTTP/模型/TLS fixture在真实listener就绪后登记，独立认证、MCP换地址与上游流程使用不同明确key。只有截图模式收集这些值，不通过Renderer/Store或产品参数注入示例。
 - 可选高亮由`screenshot-highlights.ts`读取真实Locator边界，并在独立PNG上绘制红框与编号；App画面及原始PNG不变。目标不在当前窗口、未完整显示或捕获期间移动时明确失败，不使用猜测偏移；合成器仅在确有标注时加载。
-- macOS原生路径与文件名由[type-macos-text.swift](ui/type-macos-text.swift)发送Unicode键盘事件，不使用共享剪贴板粘贴；每个字符前检查所属App仍在前台。实际字段仍逐字核对，但错误不输出读到的非预期文本，避免把外部剪贴板内容写进日志。
+- macOS原生路径与文件名由[type-macos-text.swift](ui/type-macos-text.swift)以20ms逐字符发送Unicode键盘事件，不使用共享剪贴板粘贴；每个字符前检查所属App仍在前台，避免事件队列截断长临时路径。实际字段仍逐字核对；Go To失败只显示测试自产目标和字段值，不读取或输出外部剪贴板。
 
 - Windows文件窗口点击使用UI Automation提供的物理坐标及`SetPhysicalCursorPos`，不混用逻辑坐标；不改变系统缩放、窗口归属/前台检查、真实键鼠或提交后的文件断言。
 - Recording助手同时处理fresh profile的readiness确认与已确认后的暂停/恢复：真实点击后等待Recording或确认按钮，只有确实显示readiness才确认；不等待不存在的弹窗，不调用Preload代替用户操作。

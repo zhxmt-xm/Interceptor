@@ -96,11 +96,12 @@ npm start -- --help
 
 ### 全部教程截图与Homepage发布
 
-入口为`npm start → Test → E2E → 全部教程截图并发布 Homepage`。本地只需要Interceptor仓库和已登录的`gh`，不需要clone或准备Homepage目录；发布工具的定向及代表性来源验收见下文，不等同于重新验收全部App功能。
+入口为`npm start → Test → E2E → 教程截图更新并发布 Homepage`。本地只需要Interceptor仓库和已登录的`gh`，不需要clone或准备Homepage目录；发布工具的定向及代表性来源验收见下文，不等同于重新验收全部App功能。
 
 - `gh auth login`使用对`zhxmt-xm/Interceptor-Homepage`有写入权限的账号；脚本通过GitHub API读取远端`main`、图片映射和必要文稿，不读取本地Homepage、不复制整个仓库，也不操作Interceptor的index或分支。
-- 复用原workflow，不创建截图专用测试；一次执行远端`guidebook/screenshot-publication.json`登记的全部测试和检查点。清单给每个发布图片固定身份，明确原测试、检查点、目标文件及同源变体，不根据文件序号、图片相似度或LLM猜测用途。
-- 原测试必须完整通过，实际App版本、平台、语言、窗口尺寸、红框和操作序列符合登记契约，所有代际正常退出且宿主恢复。运行缺项、重复身份或不匹配均失败，不沿用旧图补足。
+- 复用原workflow，不创建截图专用测试；一次执行远端`guidebook/screenshot-publication.json`的`sources`登记的全部自动测试和检查点。清单给每张自动更新图片固定身份，明确原测试、检查点、目标文件及同源变体，不根据文件序号、图片相似度或LLM猜测用途。
+- 真实Host图片需要当前Host实际交互，独立完成原workflow、原生调用、正常退出与图片审核后，才可登记为`retainedHostGroups`。清单固定媒体目录与审核后manifest的SHA-256；发布器核对实际Host证据摘要、全部原图/标注的SHA-256、字节、PNG尺寸、全局尺寸和中英引用，明确显示“保留，不重拍”，报告记`reexecuted: false`。任何变化、缺失或与自动目标重叠都停止，不用SDK代替真实Host，也不把保留图算作本次Host验收。
+- 自动原测试必须完整通过，实际App版本、平台、语言、窗口尺寸、红框和操作序列符合登记契约，所有代际正常退出且宿主恢复。运行缺项、重复身份或不匹配均失败，不沿用旧图补足；独立Host来源是预先声明的边界，不是自动运行失败后的回退。
 - 新运行先保存在`apps/desktop/test-results/guidebook-publications/<run>/`；完整校验后按固定路径准备图片、来源、尺寸和明确锚点内的双语端口替换。只验证模式不上传或更新远端。
 - 图片来源、发布清单、全局及分组尺寸JSON使用与Homepage相同版本的Biome开发工具及远端格式配置生成，不靠手写换行规则模拟格式；不需要本地Homepage安装。格式配置或工具版本不匹配时明确停止，不上传不能通过既有网站格式检查的元数据。
 - 完整批次恢复还核对依赖清单、Playground流量源码、automation ID及截图fixture摘要；这些输入改变后，不把原截图结果当作当前代码的验证。

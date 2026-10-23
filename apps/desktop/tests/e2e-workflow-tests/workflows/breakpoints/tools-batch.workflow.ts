@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 
-import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AUTOMATION_ID_PREFIXES, AutomationIdFactory } from '../../../../src/shared/automation-ids';
@@ -10,6 +9,7 @@ import { automaticallyExecuteMcpClientTools } from '../../fixtures/ui/settings-w
 import { createRequestBreakpointRule } from '../../fixtures/ui/breakpoint-workflow';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { connectWorkflowMcpClient, type WorkflowMcpClient } from '../../fixtures/runtime/workflow-mcp-client';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
@@ -144,7 +144,10 @@ async function disableWebSocketAndVerifyBarrier(page: Page, proxiedWebSocketClie
   await proxiedWebSocketClient.waitForText(message);
 }
 
-async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Promise<{ client: Client; clientId: string }> {
+async function createMcpClient(
+  desktopApp: LocalElectronApplicationDriver,
+  testInfo: TestInfo,
+): Promise<{ client: WorkflowMcpClient; clientId: string }> {
   const { page } = desktopApp;
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
@@ -161,9 +164,10 @@ async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Prom
   const configuration = JSON.parse(await page.evaluate(() => navigator.clipboard.readText())) as { servers: { interceptor: { url: string; headers: { Authorization: string } } } };
   const server = configuration.servers.interceptor;
   desktopApp.registerSensitiveTextForEvidenceAudit(server.headers.Authorization.slice('Bearer '.length));
-  const client = new Client({ name: 'breakpoint-batch', version: '1.0.0' }, { versionNegotiation: { mode: { pin: '2026-07-28' } } });
-  await client.connect(new StreamableHTTPClientTransport(new URL(server.url), { requestInit: { headers: server.headers } }));
-  return { client, clientId };
+  return {
+    client: await connectWorkflowMcpClient(server, 'breakpoint-batch', testInfo),
+    clientId,
+  };
 }
 
 function mcpValue(result: unknown): unknown {
@@ -203,7 +207,7 @@ test('breakpoints.tools.batch scopes Agent and MCP batch commands to real pendin
   for (const text of [PROMPT, ANSWER, DRAFT]) desktopApp.registerSensitiveTextForEvidenceAudit(text);
   const { page } = desktopApp;
   const clients: ProxiedWebSocketClient[] = [];
-  let client: Client | null = null;
+  let client: WorkflowMcpClient | null = null;
   let relaunchedApp: LocalElectronApplicationDriver | null = null;
   let workflowError: unknown;
   const cleanupErrors: unknown[] = [];
@@ -301,7 +305,7 @@ test('breakpoints.tools.batch scopes Agent and MCP batch commands to real pendin
     const mcpPostFirst = await holdHttpRequest(desktopApp, loopbackLab, 'mcp-post-first', 'POST');
     const mcpPostSecond = await holdHttpRequest(desktopApp, loopbackLab, 'mcp-post-second', 'POST');
     const mcpPut = await holdHttpRequest(desktopApp, loopbackLab, 'mcp-put', 'PUT');
-    const configuredClient = await createMcpClient(desktopApp);
+    const configuredClient = await createMcpClient(desktopApp, testInfo);
     client = configuredClient.client;
     const approval = getByAutomationId(page, AUTOMATION_IDS.mcp.approval.root);
     const denied = client.callTool({ name: TOOL_NAMES[0], arguments: { queueKey: 'http' } });
@@ -330,7 +334,12 @@ test('breakpoints.tools.batch scopes Agent and MCP batch commands to real pendin
     await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
     for (const name of TOOL_NAMES) await getByAutomationId(page, AutomationIdFactory.agentToolMcpSwitch(name)).click();
     await expect.poll(async () => (await client!.listTools()).tools.filter((tool) => (TOOL_NAMES as readonly string[]).includes(tool.name)).length).toBe(0);
-    for (const name of TOOL_NAMES) await expect(client.callTool({ name, arguments: {} })).rejects.toMatchObject({ code: -32602 });
+    const missingToolError = process.env.INTERCEPTOR_E2E_MCP_CLIENT === 'current-host'
+      ? { code: -32603, message: expect.stringContaining('MCP tool not found') }
+      : { code: -32602 };
+    for (const name of TOOL_NAMES) {
+      await expect(client.callTool({ name, arguments: {} })).rejects.toMatchObject(missingToolError);
+    }
     await client.close();
     client = null;
     for (const proxiedWebSocketClient of clients) proxiedWebSocketClient.destroy();

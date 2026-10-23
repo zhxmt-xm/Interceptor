@@ -5,12 +5,12 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 
-import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { connectWorkflowMcpClient, type WorkflowMcpClient } from '../../fixtures/runtime/workflow-mcp-client';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
@@ -275,7 +275,10 @@ async function readCompletedExport(filePath: string): Promise<{ count: number; h
   return { count: records.length, hash: createHash('sha256').update(content).digest('hex') };
 }
 
-async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Promise<{ client: Client; clientId: string }> {
+async function createMcpClient(
+  desktopApp: LocalElectronApplicationDriver,
+  testInfo: TestInfo,
+): Promise<{ client: WorkflowMcpClient; clientId: string }> {
   const { page } = desktopApp;
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.agent).click();
@@ -292,9 +295,10 @@ async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Prom
   const configuration = JSON.parse(await page.evaluate(() => navigator.clipboard.readText())) as { servers: { interceptor: { url: string; headers: { Authorization: string } } } };
   const server = configuration.servers.interceptor;
   desktopApp.registerSensitiveTextForEvidenceAudit(server.headers.Authorization.slice('Bearer '.length));
-  const client = new Client({ name: 'diagnostics-transfer', version: '1.0.0' }, { versionNegotiation: { mode: { pin: '2026-07-28' } } });
-  await client.connect(new StreamableHTTPClientTransport(new URL(server.url), { requestInit: { headers: server.headers } }));
-  return { client, clientId };
+  return {
+    client: await connectWorkflowMcpClient(server, 'diagnostics-transfer', testInfo),
+    clientId,
+  };
 }
 
 function mcpValue(result: unknown): unknown {
@@ -332,7 +336,7 @@ test('diagnostics.tools.queries-export reads current traces and exports redacted
   const { page } = desktopApp;
   const directory = await mkdtemp(path.join(os.tmpdir(), 'interceptor-diagnostics-tools-'));
   const exportedFiles: { count: number; hash: string }[] = [];
-  let client: Client | null = null;
+  let client: WorkflowMcpClient | null = null;
   let relaunchedApp: LocalElectronApplicationDriver | null = null;
   let workflowError: unknown;
   const cleanupErrors: unknown[] = [];
@@ -427,7 +431,7 @@ test('diagnostics.tools.queries-export reads current traces and exports redacted
       expect(await finishAgentCall(page, openAiCompatibleLab, `diagnostics-disabled-${index}`)).toMatchObject({ ok: false, error: { code: 'unknown_tool' } });
     }
     await getByAutomationId(page, AUTOMATION_IDS.agent.panel.close).click();
-    const configuredClient = await createMcpClient(desktopApp);
+    const configuredClient = await createMcpClient(desktopApp, testInfo);
     client = configuredClient.client;
     const mcpRecent = recordsFromValue(mcpValue(await client.callTool({ name: TOOL_NAMES[1], arguments: { limit: 200 } })));
     expect(mcpRecent.filter((record) => record.command === 'composer.send')).toEqual(composerRecords);
@@ -473,7 +477,12 @@ test('diagnostics.tools.queries-export reads current traces and exports redacted
     await expect(approval).toHaveCount(0);
     for (const name of TOOL_NAMES) await getByAutomationId(page, AutomationIdFactory.agentToolMcpSwitch(name)).click();
     await expect.poll(async () => (await client!.listTools()).tools.filter((tool) => (TOOL_NAMES as readonly string[]).includes(tool.name)).length).toBe(0);
-    for (const name of TOOL_NAMES) await expect(client.callTool({ name, arguments: {} })).rejects.toMatchObject({ code: -32602 });
+    const missingToolError = process.env.INTERCEPTOR_E2E_MCP_CLIENT === 'current-host'
+      ? { code: -32603, message: expect.stringContaining('MCP tool not found') }
+      : { code: -32602 };
+    for (const name of TOOL_NAMES) {
+      await expect(client.callTool({ name, arguments: {} })).rejects.toMatchObject(missingToolError);
+    }
     await client.close();
     client = null;
     await screenshotStep('独立授权与MCP：Agent撤权不影响MCP，两项查询静默；导出仍需独立审批和真实Save，撤权立即生效。 / Independent permissions and MCP: revoking Agent leaves MCP enabled; both queries stay silent and export retains independent approval and native Save until MCP is revoked.');

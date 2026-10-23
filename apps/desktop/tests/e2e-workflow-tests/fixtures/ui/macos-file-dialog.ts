@@ -58,9 +58,9 @@ export async function prepareMacosFileDialogPath(
   }).toBe(true);
   const navigationPath = initial.save ? path.dirname(targetPath) : targetPath;
   await typeMacosFileDialogText(owner, navigationPath);
-  await expect.poll(async () => (await readMacosFileDialog(owner)).navigationPath === navigationPath, {
+  await expect.poll(async () => (await readMacosFileDialog(owner)).navigationPath, {
     message: 'The macOS Go to Folder path was not entered completely',
-  }).toBe(true);
+  }).toBe(navigationPath);
   // Return can crash the native panel's Chinese input-method context while GoTo closes.
   const navigationClick = await sendMacosFileDialogKeys(owner, `
 if (identifier(target) !== "GoToWindow") throw new Error("The owned Go to Folder sheet is unavailable");
@@ -108,10 +108,9 @@ JSON.stringify(diagnostic);
 pressKey(124, $.kCGEventFlagMaskCommand);
 pressKey(123, $.kCGEventFlagMaskCommand | $.kCGEventFlagMaskShift);
 `);
-    const selectedName = await readMacosFileDialog(owner);
-    if (selectedName.nameFieldSelection !== selectedName.nameFieldValue) {
-      throw new Error('The macOS Save file name was not fully selected.');
-    }
+    await expect.poll(async () => (await readMacosFileDialog(owner)).nameFieldSelection, {
+      message: 'The macOS Save file name was not fully selected.',
+    }).toBe(state.nameFieldValue);
     await typeMacosFileDialogText(owner, path.basename(targetPath), false);
     await expect.poll(async () => (await readMacosFileDialog(owner)).nameFieldValue === path.basename(targetPath), {
       message: 'The macOS Save file name was not entered completely',
@@ -128,7 +127,7 @@ export async function cancelMacosFileDialog(owner: WorkflowProcessIdentity): Pro
     await sendMacosFileDialogKeys(owner, 'pressKey(53);');
     await expect.poll(async () => (await readMacosFileDialog(owner)).goToVisible).toBe(false);
   }
-  await sendMacosFileDialogKeys(owner, 'pressKey(53);');
+  await sendMacosFileDialogKeys(owner, 'clickNativeButton("CancelButton");');
   await expect.poll(async () => (await readMacosFileDialog(owner)).visible).toBe(false);
 }
 
@@ -246,6 +245,7 @@ function clickAt(coordinates, clicks = 1) {
       $.CGEventPost($.kCGHIDEventTap, event);
       delay(0.02);
     }
+    if (click < clicks) delay(0.12);
   }
 }
 function clickNativeButton(buttonId) {

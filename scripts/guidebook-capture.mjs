@@ -94,6 +94,17 @@ export function parsePublicationPlan(plan) {
       }
     }
   }
+  if (plan.retainedHostGroups !== undefined) {
+    check(Array.isArray(plan.retainedHostGroups), 'Invalid retained Host media list.');
+    for (const group of plan.retainedHostGroups) {
+      relativeFile(group.directory);
+      check(group.directory.startsWith('guidebook/media/') && !directories.has(group.directory),
+        `Duplicate or invalid retained Host directory: ${group.directory}`);
+      check(/^[a-f0-9]{64}$/.test(group.manifestSha256),
+        `Missing reviewed Host manifest digest: ${group.directory}`);
+      directories.add(group.directory);
+    }
+  }
   check(Array.isArray(plan.values), 'Missing explicit example bindings.');
   const valueKeys = new Set();
   for (const value of plan.values) {

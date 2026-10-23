@@ -553,7 +553,20 @@ flowchart TD
   Rules/Breakpoints/Diagnostics与Core状态的代表Tool，最后真实Clear、撤销Client并正常退出。
   [原生调用与恢复证据](../../../../.copilot/session-state/110ad12a-fedc-47bb-9369-c786f9527723/files/item16-current-host/verified-current-host.json)
   核对自产正文完整字节、Cookie脱敏、Composer仅一次POST且不进入Capture，以及profile、Host配置与端口清理。
-  原生发现不等于活跃轮次热刷新，未调用Tool和其他Host不据此通过；本轮中文App图片未替代Guidebook的English图片要求。
+  原生发现不等于活跃轮次热刷新，未调用Tool和其他Host不据此通过；原中文App图片未替代Guidebook的English图片要求。
+- 同一签名App的[English Host流程](../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/verified-current-host.json)
+  已复用保留Client完成原生调用、完整正文、Deny/Allow/Auto、Composer及真实Clear。原图与标注经过对应workflow和宿主恢复门禁；
+  Client、profile及其Host配置已清理，旧恢复命令不再适用。[逐Tool范围](../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/native-tool-coverage.json)从实际Host发现目录生成，未调用的Tool保持`not-run`。
+  教程图片单独验收并按固定摘要保留，不把自动SDK截图流程当作真实Host重拍。
+- 原Tool workflow的当前Host入口已在同一VS Code`1.143.0`/AHP`1.1.0`上完成12条SDK/Host成对Green：
+  公开证书Reveal/View、语言/主题/导出隐私、Rules导入/导出、Composer Collection读写与导入/导出、
+  Breakpoint批处理、Diagnostics查询/导出、Capture传输任务、正文导出及HAR导入/导出；
+  [扩展核对](../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/current-host-workflow-expansion.json)
+  汇总14次Host连接代际、26种Tool、109次调用、Tool目录、逐调用结果、Server停止/配置删除、两代App正常退出和端口释放。
+  与English代表流程合并后的[69项范围](../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/native-tool-coverage-expanded.json)
+  为39项`passed`、30项`not-run`；扩展workflow新增19项并重验7项，不把重验重复计数。
+  VS Code现版本要求配置应用后在一次性同Host session执行官方`/mcp reload`；一次性session不创建worktree且验收后删除。
+  Tool撤权的Host包装错误保持实际`-32603`与`MCP tool not found`，不伪装成SDK的`-32602`。
 - Windows当前Host的精准筛选版本已完成代表Tool、App审批、真实Clear及退出恢复：
   workflow通过产品Keyword限定自产路径，查询Tool使用同一路径和Method filter并按返回的`exchangeId`读取。
   Clear的真实调用返回零Exchange/Body，完整筛选列表为空、Keyword保持且Recording不变；

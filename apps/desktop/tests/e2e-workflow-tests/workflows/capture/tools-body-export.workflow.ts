@@ -5,13 +5,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 
-import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import type { Page, TestInfo } from '@playwright/test';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
 import type { HttpTrafficRunner } from '../../../../../playground/server/scenarios/traffic-lab';
 import type { OpenAiCompatibleLab } from '../../fixtures/agent/openai-compatible-lab';
 import { expect, LocalElectronApplicationDriver, test } from '../../fixtures/runtime/local-electron-driver';
+import { connectWorkflowMcpClient, type WorkflowMcpClient } from '../../fixtures/runtime/workflow-mcp-client';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
@@ -105,14 +105,15 @@ async function finishAgentCall(page: Page, lab: OpenAiCompatibleLab, callId: str
   return resultForCall(lab, callId);
 }
 
-async function connectMcpClient(configuration: McpConfiguration): Promise<Client> {
-  const client = new Client({ name: 'body-export', version: '1.0.0' }, { versionNegotiation: { mode: { pin: '2026-07-28' } } });
-  await client.connect(new StreamableHTTPClientTransport(new URL(configuration.url), { requestInit: { headers: configuration.headers } }));
-  return client;
+async function connectMcpClient(
+  configuration: McpConfiguration,
+  testInfo: TestInfo,
+): Promise<WorkflowMcpClient> {
+  return connectWorkflowMcpClient(configuration, 'body-export', testInfo);
 }
 
-async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Promise<{
-  client: Client;
+async function createMcpClient(desktopApp: LocalElectronApplicationDriver, testInfo: TestInfo): Promise<{
+  client: WorkflowMcpClient;
   clientId: string;
   configuration: McpConfiguration;
 }> {
@@ -132,7 +133,7 @@ async function createMcpClient(desktopApp: LocalElectronApplicationDriver): Prom
   const copied = JSON.parse(await page.evaluate(() => navigator.clipboard.readText())) as { servers: { interceptor: McpConfiguration } };
   const configuration = copied.servers.interceptor;
   desktopApp.registerSensitiveTextForEvidenceAudit(configuration.headers.Authorization.slice('Bearer '.length));
-  return { client: await connectMcpClient(configuration), clientId, configuration };
+  return { client: await connectMcpClient(configuration, testInfo), clientId, configuration };
 }
 
 function bodyProof(detail: Record<string, unknown>, side: 'requestBody' | 'responseBody', bytes: Buffer): BodyProof {
@@ -145,7 +146,7 @@ function bodyProof(detail: Record<string, unknown>, side: 'requestBody' | 'respo
 async function captureSource(
   desktopApp: LocalElectronApplicationDriver,
   lab: HttpTrafficRunner,
-  client: Client,
+  client: WorkflowMcpClient,
   requestPath: string,
   requestBytes: Buffer,
   responseBytes: Buffer,
@@ -209,7 +210,12 @@ function startedJob(value: unknown): string {
   return job.id as string;
 }
 
-async function verifyExport(client: Client, jobId: string, destination: string, proof: BodyProof): Promise<void> {
+async function verifyExport(
+  client: WorkflowMcpClient,
+  jobId: string,
+  destination: string,
+  proof: BodyProof,
+): Promise<void> {
   await expect.poll(async () => {
     const value = mcpValue(await client.callTool({ name: 'capture_get_transfer_job', arguments: { jobId } }));
     return isRecord(value.job) ? value.job.state : null;
@@ -245,7 +251,7 @@ test('capture.tools.body-export saves captured bytes through native Agent and MC
   const { page } = desktopApp;
   const directory = await mkdtemp(path.join(os.tmpdir(), 'interceptor-body-export-'));
   for (const value of [PROMPT, ANSWER, SECRET, directory]) desktopApp.registerSensitiveTextForEvidenceAudit(value);
-  let client: Client | null = null;
+  let client: WorkflowMcpClient | null = null;
   let relaunchedApp: LocalElectronApplicationDriver | null = null;
   let workflowError: unknown;
   const cleanupErrors: unknown[] = [];
@@ -261,7 +267,7 @@ test('capture.tools.body-export saves captured bytes through native Agent and MC
     const matches = isRecord(discovery.value) && Array.isArray(discovery.value.matches) ? discovery.value.matches : [];
     expect(matches.some((entry) => isRecord(entry) && isRecord(entry.descriptor) && entry.descriptor.name === TOOL_NAME), 'Body export must be available in Capture discovery').toBe(true);
     await getByAutomationId(page, AUTOMATION_IDS.agent.panel.close).click();
-    const configured = await createMcpClient(desktopApp);
+    const configured = await createMcpClient(desktopApp, testInfo);
     client = configured.client;
     expect((await client.listTools()).tools.map((tool) => tool.name)).toContain(TOOL_NAME);
 
@@ -359,7 +365,10 @@ test('capture.tools.body-export saves captured bytes through native Agent and MC
     await expect(client.callTool({ name: TOOL_NAME, arguments: responseArgs })).resolves.toMatchObject({ isError: true });
     await getByAutomationId(page, AutomationIdFactory.agentToolMcpSwitch(TOOL_NAME)).click();
     expect((await client.listTools()).tools.map((tool) => tool.name)).not.toContain(TOOL_NAME);
-    await expect(client.callTool({ name: TOOL_NAME, arguments: otherArgs })).rejects.toMatchObject({ code: -32602 });
+    const missingToolError = process.env.INTERCEPTOR_E2E_MCP_CLIENT === 'current-host'
+      ? { code: -32603, message: expect.stringContaining('MCP tool not found') }
+      : { code: -32602 };
+    await expect(client.callTool({ name: TOOL_NAME, arguments: otherArgs })).rejects.toMatchObject(missingToolError);
     await client.close();
     client = null;
     await screenshotStep('原入口与身份隔离：Capture保存按钮仍可用，错配正文或Clear后的旧身份均不得启动文件任务。 / Original entry and identity isolation: the Capture save button still works, while mismatched bodies or identities invalidated by Clear cannot start file jobs.');
@@ -384,7 +393,7 @@ test('capture.tools.body-export saves captured bytes through native Agent and MC
     }
     await relaunchedApp.waitUntilReady();
     await relaunchedApp.stopTrace(testInfo);
-    client = await connectMcpClient(configured.configuration);
+    client = await connectMcpClient(configured.configuration, testInfo);
     expect(mcpValue(await client.callTool({ name: 'capture_get_transfer_job', arguments: { jobId: responseJobId } }))).toEqual({ job: null });
     expect(openAiCompatibleLab.evidence().length).toBe(modelRequests);
     expect(httpTrafficRunner.evidence().length).toBe(originRequests);

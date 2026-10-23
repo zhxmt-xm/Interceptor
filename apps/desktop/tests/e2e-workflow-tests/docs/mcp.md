@@ -63,8 +63,11 @@ MCP截图复用原真实SDK/Host流程；App侧图片不冒充外部商业Host�
 4. 原生工具搜索和公开MCP通道分开验收。当前Host若公开`channel`及`mcpApp.capabilities.serverTools`，
    当前Agent可以通过该`mcp://`通道执行`tools/list`、`tools/call`，请求由真实Host的既有MCP连接送到App。
    不直接构造产品MCP Client，不增加Agent Runtime，也不猜未公开的channel或能力。
-5. AHP `0.9.0`当前安装版将MCP路由放在`params.channel`；遵守实际协商版本的公开实现，
-   不把AHP版本当成产品MCP协议版本。若Host不公布此通道/能力，不得使用它或假定通用支持。
+5. 已核对的VS Code `1.143.0`/AHP `1.1.0`实际公开入口仍将MCP路由放在`params.channel`。
+   当前公开文档的顶层`channel`格式在该Host返回`-32601`；已用现成Server的只读发现
+   [核对实际线格式](../../../../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/host-channel-wire-params.json)，不保留双路径猜测或降级。
+   这是Host接口核对，不是Interceptor业务验收；不把AHP版本当成产品MCP协议版本。
+   若Host不公布此通道/能力，不得使用它或假定通用支持。
 6. 报告记录具体入口：公开MCP通道通过不代表聊天工具搜索热刷新、Host自身审批UI或其他Host通过。
    逐项记录实际调用、App裁决、origin与退出恢复；目录69项可见也不代表69项业务均已调用。
 7. App通过真实UI撤销本轮Client并关闭后，对Host发送公开`session/mcpServerStopRequested`，
@@ -73,6 +76,26 @@ MCP截图复用原真实SDK/Host流程；App侧图片不冒充外部商业Host�
 官方参考：[AHP MCP管理](https://microsoft.github.io/agent-host-protocol/guide/mcp)、
 [公开MCP通道](https://microsoft.github.io/agent-host-protocol/specification/mcp-channel)、
 [VS Code MCP配置](https://code.visualstudio.com/docs/agent-customization/mcp-servers)。
+
+### 原Tool workflow的当前Host执行入口
+
+原业务workflow可显式选择当前Host公开通道，复用同一套UI操作、真实流量、原生文件窗口及业务断言，不复制一套教程或Host业务步骤。
+
+- 默认仍使用官方SDK Client及原固定协议。设置`INTERCEPTOR_E2E_MCP_CLIENT=current-host`时，还须提供本次创建的一次性同Host session URI作为`INTERCEPTOR_E2E_CURRENT_HOST_SESSION`。一次性session使用同一VS Code Copilot SDK Host、同一workspace且不创建worktree，只用于Host刷新和本轮公开MCP通道；不复用主开发session，结束后删除。
+- 此入口仅用于已核对的macOS VS Code Copilot SDK/AHP公开接口。先从真实App Copy config取得本轮Client配置，使用官方`code agent endpoints`认证，只添加本workflow独有的Server；必须由当前会话实际公布`ready`、`mcp://`及`serverTools`后才发送`tools/list`或`tools/call`。
+- VS Code 1.143不会因AHP `root/configChanged`立即刷新已有session的top-level MCP inventory，AHP连接也不公开runtime的`session.mcp.reload`。fixture取得`configuration-applied`后会写入证据并输出提示；当前Agent此时在一次性session执行正式`/mcp reload`，再由fixture等待Server公开身份。不得以直接SDK Client、伪造`session/customizationsChanged`、重启共享Host或覆盖其他Server代替。
+- 不构造直连产品的替代SDK Client，不注入Store/Preload，不伪造握手或强制当前Host采用某个MCP协议版本。Host按自己的真实SDK协商；该证据与三版协议确定性回归分开。
+- App Ask/Auto、真实文件窗口和系统授权照常执行。公开通道不代表聊天原生Tool入口、Host自身审批UI或单次取消已经验证；未公布的调用选项明确拒绝，不降级成SDK直连。
+- Tool撤权后，官方SDK直连的未知Tool错误保持`-32602`；VS Code 1.143公开Host通道保持实际`-32603`并要求消息含`MCP tool not found`。workflow分别断言真实协议结果，不在adapter中改写错误码或伪装成同一实现。
+- 证据写入原workflow输出目录，记录当前Host/session、目录、逐Tool实际返回和参数摘要；不写Bearer或Host连接token。结束先停止并移除严格匹配本轮endpoint/凭据指纹的Host配置，保留其他Server，原driver继续验证App退出、profile与完整宿主恢复。
+- 新入口的每个业务场景必须取得实际workflow Green及恢复证据后才能计入覆盖；接线或类型检查通过不算Host调用通过。
+
+实际执行顺序：
+
+1. 当前Agent创建一次性同Host session，要求它只读Handover后保持空闲；记录其`ahp-session:/...`，不创建worktree。
+2. 以该URI启动原workflow的`current-host`模式。看到`[current-host-mcp] ... configuration applied`后，在一次性session发送`/mcp reload`。
+3. fixture继续验证Server `ready`、Tool目录和原业务流程；结束停止Server、删除严格匹配的root配置并验证App与宿主恢复。
+4. 核对root配置没有本轮条目、App/Main/Core/Worker退出及8888释放，再删除一次性session。活动主session不用于这条入口，避免VS Code 1.143保留已删除的session customization。
 
 ### 完整操作顺序
 
@@ -135,6 +158,10 @@ Windows不传`--project macos`。构建后运行真实App前必须满足宿主�
 
 **状态**：Windows当前Host的精准筛选版本最终Green；原生Tool查询、正文、Deny/Allow/Auto、Composer及真实Clear已执行，Client、Host配置、CA与宿主恢复已核对。仅覆盖下述代表场景，不代表全部Tool或其他Host通过；旧虚拟行假阳性与重连超时证据保留，不改写为通过。
 **策略**：真实开发Agent交互；复用同一Electron driver，不构造测试MCP Client或模型Runtime
+
+macOS English App同一Client的prepare/verify也已通过：当前VS Code Copilot SDK Host实际调用、完整分块正文、脱敏、Deny/Allow/Auto、Composer源站请求与真实Clear见[原生调用核对](../../../../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/verified-current-host.json)。[原workflow与截图清单](../../../test-results/item16-nonwindows-20261023/current-host-english/mcp-current-host.workflow.-e6da6-a-retained-isolated-profile-macos/)保留原图和标注；Client已撤销，App正常退出、宿主恢复、端口释放、profile与对应Host配置移除均已核对。此次没有更改产品或重启Host；不扩大为全部Tool、其他Host或教程已发布。
+
+原Tool workflow入口另已完成12条macOS成对Green：[扩展核对](../../../../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/current-host-workflow-expansion.json)覆盖公开证书、设置偏好、Rules导入/导出、Composer Collection读写与导入/导出、Breakpoint批处理、Diagnostics查询/导出、Capture传输任务、正文导出及HAR导入/导出，共14次Host连接代际、26种Tool、109次调用。各自SDK路径、Host Tool目录/调用、Ask/Auto或原生窗口、持久化、两代App退出及root配置清理均有独立证据；与English代表流程合并后的[69项范围](../../../../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/native-tool-coverage-expanded.json)为39项`passed`、30项`not-run`。
 
 Windows复验入口：本轮Client已撤销，Host配置、profile及临时CA已清理，不能再使用本轮旧配置。
 下次复验先确认系统复制/粘贴和由产品初始化的共享CA前提，再使用以下prepare命令。

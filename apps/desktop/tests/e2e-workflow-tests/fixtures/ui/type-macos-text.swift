@@ -31,7 +31,7 @@ do {
             }
             event.post(tap: .cghidEventTap)
         }
-        Thread.sleep(forTimeInterval: 0.005)
+        Thread.sleep(forTimeInterval: 0.02)
     }
 } catch {
     FileHandle.standardError.write(Data("\(error.localizedDescription)\n".utf8))
