@@ -10,7 +10,7 @@
 
 Interceptor is a desktop HTTP(S) debugging proxy for web/API developers and QA engineers on **Windows and macOS**. Inspect HTTP/1.1, HTTP/2, WebSocket and gRPC traffic, test a different response without changing the server, and replay requests from one workspace. Agent and MCP add optional AI assistance; ordinary debugging needs no model account.
 
-[Download](#download) | [Quick Start](#quick-start) | [Features](#features) | [Illustrated Guide](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/README.en.md) | [Feedback](https://github.com/zhxmt-xm/Interceptor/issues)
+[Website](https://www.interceptor.cn/) | [Download](#download) | [Quick Start](#quick-start) | [Features](#features) | [Illustrated Guide](https://www.interceptor.cn/en/guide) | [Feedback](https://github.com/zhxmt-xm/Interceptor/issues)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-capture-dark.png">
@@ -29,7 +29,7 @@ Available pre-release: [v0.1.1-alpha.1](https://github.com/zhxmt-xm/Interceptor/
 | macOS · Intel (x64) | [DMG](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-darwin-x64.dmg) · [ZIP](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-darwin-x64.zip) | Copy Interceptor to Applications before opening it. |
 | Windows · x64 | [EXE](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-win32-x64.exe) · [MSI](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-win32-x64.msi) · [ZIP](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-win32-x64.zip) | Run an installer, or extract the entire ZIP before launching the App. |
 
-**Access:** the product and Guidebook repositories are currently private. Downloads, issues and guide links require access to their respective GitHub repositories. A `404` can mean you are signed out or lack permission; it does not make a private release anonymously downloadable.
+**Access:** the product repository, release downloads, issues and the published Guidebook are anonymously accessible. The separate website source repository remains private.
 
 <details>
 <summary>Installation permissions, signing and updates</summary>
@@ -37,7 +37,7 @@ Available pre-release: [v0.1.1-alpha.1](https://github.com/zhxmt-xm/Interceptor/
 - macOS packages use ad-hoc signing and are not notarized by Apple. After verifying the source and integrity of the download, use **System Settings → Privacy & Security → Open Anyway** if macOS offers it.
 - Windows installers are unsigned. Follow the normal per-application approval process only for a download you trust. Managed devices may prohibit installation.
 - Do not disable system-wide security protections. Helper installation, system proxy changes and CA trust have their own normal system authorization steps.
-- Updates use GitHub Releases. Checks are anonymous; the App does not request a GitHub login or token. While the repository is private, in-app update checks cannot access its releases: use the authorized browser downloads above. Downloading and opening an installer remain explicit user actions.
+- Updates use GitHub Releases. Checks are anonymous; the App does not request a GitHub login or token. Downloading and opening an installer remain explicit user actions.
 
 </details>
 
@@ -51,7 +51,7 @@ Release assets are not a claim that every platform-specific workflow has been ve
 4. **Enable HTTPS inspection only when needed.** Open Settings → Certificates and check the local CA. Generate or trust it only if needed, complete the OS authorization, then enable HTTPS decryption. Existing CA material does not need to be replaced.
 5. **Save, then quit normally.** Export a HAR or native archive before closing: the current Capture session is temporary. Normal exit restores the system proxy settings Interceptor owns.
 
-[Follow the illustrated first-request guide](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/getting-started.md) · [Troubleshooting and proxy recovery](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/troubleshooting.md)
+[Follow the illustrated first-request guide](https://www.interceptor.cn/en/guide/getting-started) · [Troubleshooting and proxy recovery](https://www.interceptor.cn/en/guide/troubleshooting)
 
 Certificate pinning and separate trust stores can prevent decryption. TLS passthrough keeps a connection encrypted; it does not expose its HTTP content. Interceptor cannot capture a client that bypasses the proxy entirely. Pausing recording does not stop forwarding or disable Rules.
 
@@ -63,7 +63,7 @@ Certificate pinning and separate trust stores can prevent decryption. TLS passth
 - Inspect headers, cookies, request/response bodies, timing and TLS details; switch between JSON trees, formatted text, raw content, images and hex.
 - Read WebSocket frames and gRPC messages alongside HTTP/1.1 and HTTP/2 exchanges.
 
-The opening screenshot shows a selected order response. More real steps: [Capture](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/capture.md) · [HTTP/2](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/capture.md#walkthrough-capture-http2) · [WebSocket](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/capture.md#walkthrough-capture-websocket-messages) · [gRPC](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/capture.md#walkthrough-capture-grpc-messages)
+The opening screenshot shows a selected order response. More real steps: [Capture](https://www.interceptor.cn/en/guide/capture) · [HTTP/2](https://www.interceptor.cn/en/guide/capture#walkthrough-capture-http2) · [WebSocket](https://www.interceptor.cn/en/guide/capture#walkthrough-capture-websocket-messages) · [gRPC](https://www.interceptor.cn/en/guide/capture#walkthrough-capture-grpc-messages)
 
 ### Rules: test a different outcome without changing the server
 
@@ -76,7 +76,7 @@ The opening screenshot shows a selected order response. More real steps: [Captur
   <img src="architecture/assets/readme-rules-light.png" alt="Rules matching a local host and path and adding an x-interceptor-demo request header, with one recorded hit" width="1600">
 </picture>
 
-[Rules walkthrough: matching, rewriting, mocking and mapping](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/rules.md)
+[Rules walkthrough: matching, rewriting, mocking and mapping](https://www.interceptor.cn/en/guide/rules)
 
 ### Breakpoints: review traffic before it continues
 
@@ -89,7 +89,7 @@ The opening screenshot shows a selected order response. More real steps: [Captur
   <img src="architecture/assets/readme-breakpoints-light.png" alt="A paused local order request with original JSON, an edited replacement body and continue, forward edited and drop controls" width="1600">
 </picture>
 
-[Breakpoints walkthrough: pause, edit, continue and drop](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/breakpoints.md)
+[Breakpoints walkthrough: pause, edit, continue and drop](https://www.interceptor.cn/en/guide/breakpoints)
 
 ### Composer: reproduce an API call on its own
 
@@ -102,7 +102,7 @@ The opening screenshot shows a selected order response. More real steps: [Captur
   <img src="architecture/assets/readme-composer-light.png" alt="Composer sending a GET with a custom header and showing a 200 JSON response" width="1600">
 </picture>
 
-Composer sends directly: its requests do not enter Capture or run through Rules. [Composer and collection walkthrough](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/composer.md).
+Composer sends directly: its requests do not enter Capture or run through Rules. [Composer and collection walkthrough](https://www.interceptor.cn/en/guide/composer).
 
 ### Agent: ask for help inside the workspace
 
@@ -117,7 +117,7 @@ Composer sends directly: its requests do not enter Capture or run through Rules.
 
 *This screenshot uses a deterministic, keyless local demonstration model, not a commercial model performance or compatibility test.*
 
-[Agent setup and conversation walkthrough](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/agent.md)
+[Agent setup and conversation walkthrough](https://www.interceptor.cn/en/guide/agent)
 
 ### MCP: use Interceptor from a compatible AI client
 
@@ -132,19 +132,19 @@ Composer sends directly: its requests do not enter Capture or run through Rules.
 
 *This screenshot shows real local server/client configuration, not acceptance of a particular external host. MCP is off by default.*
 
-[MCP setup and compatibility guide](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/mcp.md) · [Tool reference](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/tool-reference.md)
+[MCP setup and compatibility guide](https://www.interceptor.cn/en/guide/mcp) · [Tool reference](https://www.interceptor.cn/en/guide/tool-reference)
 
 ### Save, configure and troubleshoot
 
 | Feature | Why it is useful | Illustrated steps |
 | --- | --- | --- |
-| Import and export | Exchange HAR files, reopen native capture archives, save individual bodies, and share Rules or Composer collections. | [Files and export privacy](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/transfer.md#walkthrough) |
-| System and upstream proxy | Inspect proxy ownership and restore it; choose Direct, System, manual proxy or PAC routing. | [Proxy settings](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/settings.md#walkthrough-settings-proxy-routing) · [Upstream](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/settings.md#upstream) |
-| HTTPS and TLS passthrough | Manage CA trust, enable decryption, or keep selected hosts encrypted. | [Certificates](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/settings.md#https-decryption) · [Passthrough](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/settings.md#tls-passthrough) |
-| Diagnostics | Filter structured logs, inspect an operation and export redacted diagnostics for a bug report. | [Diagnostics walkthrough](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/diagnostics.md#walkthrough) |
-| Workspace | Resize panels and choose from four time-of-day themes and 15 interface languages. | [Navigation and preferences](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/workspace.md) |
+| Import and export | Exchange HAR files, reopen native capture archives, save individual bodies, and share Rules or Composer collections. | [Files and export privacy](https://www.interceptor.cn/en/guide/transfer#walkthrough) |
+| System and upstream proxy | Inspect proxy ownership and restore it; choose Direct, System, manual proxy or PAC routing. | [Proxy settings](https://www.interceptor.cn/en/guide/settings#walkthrough-settings-proxy-routing) · [Upstream](https://www.interceptor.cn/en/guide/settings#upstream) |
+| HTTPS and TLS passthrough | Manage CA trust, enable decryption, or keep selected hosts encrypted. | [Certificates](https://www.interceptor.cn/en/guide/settings#https-decryption) · [Passthrough](https://www.interceptor.cn/en/guide/settings#tls-passthrough) |
+| Diagnostics | Filter structured logs, inspect an operation and export redacted diagnostics for a bug report. | [Diagnostics walkthrough](https://www.interceptor.cn/en/guide/diagnostics#walkthrough) |
+| Workspace | Resize panels and choose from four time-of-day themes and 15 interface languages. | [Navigation and preferences](https://www.interceptor.cn/en/guide/workspace) |
 
-The [complete guide](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/README.en.md) also covers storage, updates, Windows AppContainer prerequisites and recovery. Platform-specific or external-service steps retain their stated limits; macOS screenshots do not replace those checks.
+The [complete guide](https://www.interceptor.cn/en/guide) also covers storage, updates, Windows AppContainer prerequisites and recovery. Platform-specific or external-service steps retain their stated limits; macOS screenshots do not replace those checks.
 
 ## Agent and MCP Permissions
 
@@ -157,7 +157,7 @@ AI is optional. Model requests may incur provider charges. Agent and MCP have **
 | Disabled Tool | Rejected | Rejected |
 | Native file dialogs and OS authorization | Still required | Still required |
 
-`Ask` is not read-only mode: queries can expose data. To allow inspection only, disable change Tools as described in the [permissions guide](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/tool-permissions.md#read-only).
+`Ask` is not read-only mode: queries can expose data. To allow inspection only, disable change Tools as described in the [permissions guide](https://www.interceptor.cn/en/guide/tool-permissions#read-only).
 
 ## Privacy and Safety
 
@@ -165,7 +165,7 @@ AI is optional. Model requests may incur provider charges. Agent and MCP have **
 - **Check exports before sharing.** HAR privacy options are not blanket anonymization; native archives preserve full data. Review bodies, URLs and other fields yourself.
 - **AI can send data outside the App.** Agent sends conversation context and Tool results to the configured model provider. An authorized MCP client can receive data exposed by its enabled Tools. Review both permissions and the recipient's data policy.
 - **CA trust outlives decryption and the App.** Turning off decryption or quitting does not uninstall the CA. Remove its trust through Settings when no longer needed; never share its private key.
-- **Close normally to restore the proxy.** If another application changes the system proxy during a session, Interceptor avoids overwriting that application's settings. Use the [recovery guide](https://github.com/zhxmt-xm/Interceptor-Homepage/blob/main/guidebook/en/troubleshooting.md) if cleanup is interrupted.
+- **Close normally to restore the proxy.** If another application changes the system proxy during a session, Interceptor avoids overwriting that application's settings. Use the [recovery guide](https://www.interceptor.cn/en/guide/troubleshooting) if cleanup is interrupted.
 
 ## Feedback and Contributing
 

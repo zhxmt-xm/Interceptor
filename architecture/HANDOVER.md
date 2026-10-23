@@ -1,7 +1,7 @@
 # Task List
 
-> Tracked commit: `3181a324`
-> Homepage guidebook: `20e4d1d`
+> Tracked commit: `bc47fafb`
+> Homepage guidebook: `cdee504`
 
 ## 维护规则
 
@@ -28,14 +28,6 @@
   - 剩余环境阻塞：物理USB拔线/重连；自定义hosts、真实DHCP搜索域、NAT64及旧平台同步解析延迟停止；正式签名Secrets、ARM64 runner和Windows最终包。缺对应环境时保持`blocked`，不伪造Network、修改第三方或绕过系统授权。
   - 下一步：配置正式Android签名Secrets并运行首个draft Release；修复GitHub Billing后重跑ARM64 16KiB workflow；有物理Android设备时执行拔线/重连。提交边界不纳入item16 Guidebook、MCP workflow或其他共享修改。
   - 保存边界：用户已授权把本轮Android/PC实现保存为Item 14中间进度，不等于完整Item 14或release-ready；Android实现已提交并推送为[`dfc3f31`](https://github.com/zhxmt-xm/Interceptor-Android/commit/dfc3f31)，PC当前提交只包含item14，不纳入并行Guidebook/MCP修改。
-
-- **15. Cloudflare 受限部署与线上验收 · 待确认**
-  - 目标：把已完成本地制作的官网部署到免费Cloudflare静态托管，先限制为本人或明确允许的成员访问，再按用户确认决定公开。源码仓库继续保持private，不要求购买域名或启用付费服务。
-  - 当前：本地官网行为、素材来源与验证保留在[官网架构](../../Interceptor-Homepage/docs/architecture.md#真实首页素材)。尚无已验收的线上URL，账号授权和访问保护需要确认，不将先前OAuth失败等同于当前认证状态。
-  - 步骤：按[受限部署约定](../../Interceptor-Homepage/docs/deployment.md#待执行受限部署与线上验收)先确认实际账号、保护范围与全部正式/预览地址，再连接本人的GitHub官网仓库或授权Wrangler部署；`Cloudflare account`必须确实限定账号成员，不能只选择项目所属账号。不得创建临时公开部署、擅自影响其他应用或靠网址未公布代替访问控制。
-  - 验收：首页与教程深链/刷新、真实404、静态缓存、步骤索引及原图；获准账号能访问，匿名及未授权账号不能绕过保护，包括直接资源和预览地址。保留实际URL与浏览器证据，核对国内外线路和Google Fonts依赖，不承诺免费默认域名在大陆稳定快速。
-  - 入口边界：下载、GitHub与feedback仍受私有产品仓库权限限制，需确认目标访客可用的入口；上线不会自动获得匿名下载权限。App iframe、主题语言衔接与登录会话转由item 16跟踪，不由普通网页可嵌入替代；正式公开、域名及任何付费操作另行确认。
-  - 产品入口同步：本item验收真实官网URL及目标访客权限后，负责更新[英文README](../README.md)、[中文README](../README.zh-CN.md)的官网入口与GitHub Website，并核对首页、教程、下载和反馈的实际可达性。此前Website保持空白，README使用真实GitHub教程与Release入口；不使用占位网址，也不因接线自动公开仓库。
 
 - **16. Guidebook 跨平台与隔离场景补图、App接入 · 进行中 · 英文Host、双语图文与7条复用workflow已验证，App候选及隔离前提待确认 · 承接原item 9剩余范围**
   - 目标：在已交付的本机Guidebook和阅读器基础上，补齐尚无真实环境的功能步骤图与App入口；不是仅剩Windows，也不重新制作已核对的本机场景。
@@ -75,9 +67,11 @@
 
 - 教程远端发布工具：[使用与验收边界](development.md#全部教程截图与homepage发布)覆盖`npm start`入口、明确映射、失败停止和GitHub API限定提交；[代表性真实图片提交](https://github.com/zhxmt-xm/Interceptor-Homepage/commit/09c2ded2ecd588d013bf6a92c4f7bc086fce0c8b)及[远端文件核对](../../../.copilot/session-state/1d972f24-fe28-435a-8aa3-c05fc62af77f/files/english-guidebook/representative-publication/remote-verification.json)保留完整来源、双语值与精确文件边界。发布器核对远端SHA成功后即结束，不等待既有网站CI。该验收不等于单次60条App全量回归通过，失败/中断及独立CI结果保留；本轮App与测试端口无残留，未强推或改写并发历史。
 
+- 公开官网与入口：Homepage [`cdee504`](https://github.com/zhxmt-xm/Interceptor-Homepage/commit/cdee5040c9a5b0f4751596c992aa21b2dc69d013)由[最终CI](https://github.com/zhxmt-xm/Interceptor-Homepage/actions/runs/39984476354)完成formatter、lint、typecheck、build、105项Playwright与`wrangler deploy`，总耗时4分19秒。`https://www.interceptor.cn`中英文静态HTML、canonical/Open Graph、双语sitemap、robots、真实404、Release入口、本地Inter/JetBrains Mono字体及HTML立即验证/hashed资源一年immutable缓存均通过；未请求Google Fonts。产品仓库、Release、Issues及官网可匿名访问，Homepage源码仓库也已公开。Cloudflare Git push自动build保持关闭，GitHub Actions只在完整检查成功后部署同一份受测`dist`；App iframe与其余跨平台素材仍由item 16跟踪。
+
 - Rules标题无框：[前置差异](../../../Users/zhang/.copilot/session-state/12b79f71-ccdb-4a1c-92e1-9fe1541fd0fd/files/rules-title-borderless-red-final/report.md)与[最终数据parity](../../../Users/zhang/.copilot/session-state/12b79f71-ccdb-4a1c-92e1-9fe1541fd0fd/files/rules-title-green-final/report.md)覆盖四主题的默认、hover、focus、长名称和失焦，以及Rules相关场景；Rules Store基线、Desktop/Design typecheck通过。本次产品仅改CSS，未改重命名、键盘事件或保存契约，不新增或重跑真实E2E；原workflow保持不变，不将本轮结果冒充Main/Core退出或宿主恢复证据。用户已有App及8888监听保持原状，parity自有服务已退出。
 
-- README图文：[素材来源](assets/readme-media.json)、[文档与媒体核对](../../../.copilot/session-state/5e6be39b-a22a-4e7d-8a4b-8f5424099e40/files/item11/documentation-verification.json)、[双语主题与尺寸预览](../../../.copilot/session-state/5e6be39b-a22a-4e7d-8a4b-8f5424099e40/files/item11/browser-verification.json)及[GitHub渲染核对](../../../.copilot/session-state/5e6be39b-a22a-4e7d-8a4b-8f5424099e40/files/item11/github-markdown-verification.json)。只验证文档与已有素材，不替代产品E2E或官网访问验收；官网入口同步归item 15，私有仓库访问限制保留。
+- README图文：[素材来源](assets/readme-media.json)、[文档与媒体核对](../../../.copilot/session-state/5e6be39b-a22a-4e7d-8a4b-8f5424099e40/files/item11/documentation-verification.json)、[双语主题与尺寸预览](../../../.copilot/session-state/5e6be39b-a22a-4e7d-8a4b-8f5424099e40/files/item11/browser-verification.json)及[GitHub渲染核对](../../../.copilot/session-state/5e6be39b-a22a-4e7d-8a4b-8f5424099e40/files/item11/github-markdown-verification.json)。该证据只覆盖制作时文档与已有素材；当前公开入口、静态教程与部署验收见上述官网证据。
 
 - 教程编号图文、English App图片与原页预览：[验证说明](../../Interceptor-Homepage/docs/guidebook.md#当前图片调整目标)覆盖中英14章、1136张不同英文图和0张旧图；[最终Browser](../../../.copilot/session-state/1d972f24-fe28-435a-8aa3-c05fc62af77f/files/english-guidebook/guidebook-final-browser.json)34项全部通过，build/typecheck与限定Biome通过。[原图/标注核对](../../../.copilot/session-state/1d972f24-fe28-435a-8aa3-c05fc62af77f/files/english-guidebook/published-image-verification.json)保留完整字节、自然尺寸、全部原显式锚点及双语图序。
   - [早期布局对照](../../Interceptor-Homepage/commit-changes/202610202002_ui_guidebook_operation-guides.html)保留正文、外壳与目录的变化；维护说明不进入读者正文。最后相关Main/Core正常退出、宿主恢复与8888释放已验证，App窗口已归还Android会话；临时4176已释放，原4175预览保持。Windows、独立环境和App嵌入仍由item 16跟踪，本项不部署。
