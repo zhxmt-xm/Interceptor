@@ -145,7 +145,7 @@ Android USB接入当前验证：
 - 最新macOS package已包含`Resources/android`中的APK、Platform-Tools 37.0.1、NOTICE与manifest；package artifact audit核对1532个文件、424642388字节并通过。Forge保留Google官方ADB签名和staging SHA-256，完整App仍通过`codesign --deep --strict`；Main启动不再spawn整包签名检查。
 - `npm audit --omit=dev`在把既有override从DOMPurify 3.4.16更新到3.4.17、`ip-address` 10.7.3更新到10.7.4后为0 vulnerability；Monaco和代理栈主版本均未变化。Workspace typecheck、package/artifact audit及隔离Android parity通过；全workspace测试仅保留既有raw TCP FIN两项目标Red，与本次patch升级无关。
 - 最新未打包Electron在独占窗口完成真实API35双端流程：产品UI从缺失态安装随包APK，双方输入并确认完整指纹，Main启动Core listener和精确reverse，Android完成真实系统通知/VPN授权，TUN HTTP返回并在Capture显示Android来源；随后手机本地停止、Desktop断开并正常Close。最终VPN、reverse、8888和系统代理journal全部为空。该流程使用emulator ADB传输，不替代物理USB拔线、ARM64真机或原生16KiB硬件。
-- 最新production package的构建与artifact audit通过，但packaged smoke在新ad-hoc App CDHash触发的真实helper管理员授权前停在启动页；测试没有凭据且不能绕过系统确认，App/8888/journal均已安全清理。需用户先正常启动该包并批准helper更新，再用同一`npm run test:smoke --workspace @interceptor/desktop`恢复；当前保持`blocked`，不记smoke通过。
+- 最新production package先通过真实SecurityAgent管理员授权更新helper，再完成packaged smoke：固定`interceptor://app`、Preload窄API白名单、sandbox/CSP、Main/Core、Capture、Composer、Breakpoint、截图矩阵、正常Close和系统代理恢复均通过。Smoke测试同步登记6个Android窄API，并通过公共设备入口重新关闭Breakpoint flyout；截图辅助断言改为可见Tooltip数量为0，不改变产品行为。
 
 
 涉及 Main / Preload / IPC / Fuses / CSP / 打包边界时追加：

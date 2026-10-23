@@ -211,7 +211,7 @@ end tell
       contentType: 'application/json',
     });
     await page.mouse.move(400, 400);
-    await expect(page.locator('.ant-tooltip')).toBeHidden();
+    await expect(page.locator('.ant-tooltip:not(.ant-tooltip-hidden)')).toHaveCount(0);
     await page.screenshot({
       path: testInfo.outputPath(name),
       animations: 'disabled',
@@ -323,7 +323,7 @@ class PackagedWorkflowSmoke {
       await expect(breakpointToggle).toHaveAttribute('aria-checked', String(!breakpoints.enabled));
       await breakpointToggle.click();
       await expect(breakpointToggle).toHaveAttribute('aria-checked', String(breakpoints.enabled));
-      await page.keyboard.press('Escape');
+      await getByAutomationId(page, AUTOMATION_IDS.capture.breakpointManager).click();
       await expect(breakpointToggle).toBeHidden();
 
       const diagnostics = await page.evaluate(() =>
@@ -573,6 +573,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'completeCollectionImport',
         'completeRulesImport',
         'completeUiPreferenceChange',
+        'connectAndroidDevice',
         'continueBreakpointQueue',
         'continueBreakpointRule',
         'copyMcpClientConfiguration',
@@ -587,6 +588,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'disableMcpServer',
         'disableMcpTool',
         'disableWebSocketBreakpoints',
+        'disconnectAndroidDevice',
         'downloadUpdate',
         'dropBreakpointQueue',
         'echoCore',
@@ -601,6 +603,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'generateCertificate',
         'getAgentModels',
         'getAgentSession',
+        'getAndroidStatus',
         'getCaptureStatus',
         'getCaptureUsage',
         'getCertificateStatus',
@@ -622,12 +625,14 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'getUpstreamSettings',
         'importCollection',
         'importRules',
+        'installAndroidApplication',
         'installCertificate',
         'listAgentSessions',
         'listAppContainers',
         'listBreakpoints',
         'minimizeWindow',
         'onAgentSessionEvent',
+        'onAndroidStatusChange',
         'onAppContainersChanged',
         'onBreakpointsChange',
         'onCaptureEvents',
@@ -654,6 +659,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'onUiPreferenceChanged',
         'onUpdateStatusChange',
         'onUpstreamSettingsChanged',
+        'openAndroidApplication',
         'openCertificateManager',
         'openDownloadedUpdate',
         'pickBreakpointBodyFile',
