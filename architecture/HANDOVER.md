@@ -16,17 +16,17 @@
   - 下一步：先完成渠道与帖子清单，再按顺序逐项备稿、核对发布规则、确认最终内容与账号授权并发布；正式外发使用已交付教程及 item 11、15 已就绪的资料与入口，未验收场景继续按 item 16 保留边界，本轮仅登记待办，不操作外部账号或对外发布。
   - 验收：每个选定渠道都有最终稿、素材和实际发布链接，并处理发布后的有效问题与反馈；发布链接及反馈记录保存在对应推广材料中，不把草稿算作已发布。账号、平台规则或人工操作阻塞时说明原因，继续其他可执行渠道。
 
-- **14. Android USB 流量接入 · 进行中 · 本地与packaged验收已通过，待物理USB和正式签名验收**
+- **14. Android USB 流量接入 · 进行中 · 双端与正式签名验收已通过，待物理USB、ARM64和Windows验收**
   - 目标：Android以`VpnService`创建TUN，经USB/`adb reverse`接入PC；Android唯一连接源站，PC复用Rules、Breakpoints和Capture，不接收原始TCP/DNS或重复请求源站。
   - 当前Android：全局TCP/UDP dispatcher、selected Network、双栈TUN、本地DNS、前台Service、Launcher、双端完整指纹、VPN/CA系统入口及断线保留阻断已实现。未知TCP发送RST，非DNS UDP/QUIC关闭；PC control断开后由手机本地停止恢复。
   - 当前Desktop/Core：Main拥有PC mTLS身份、ADB设备状态、APK版本/签名/摘要校验、缺失/升级安装、Core listener和精确reverse；Core写入稳定`android:<sha256>`来源，Renderer设备入口、安装态、筛选和Request row Android图标已接线。拔线/offline时先停Core，不停止共享ADB Server或清理其他映射。
   - 当前交付：Desktop package随包当前平台ADB所需的Platform-Tools 37.0.1文件、NOTICE、已验证APK和manifest；正式发版必须指定私有Android Release asset、APK SHA-256和签名证书SHA-256，拒绝debug证书、换签和降级。具体边界见[发布架构](platform/release.md#21-android-apk-与-adb-runtime)。
   - 当前验证边界：Android JVM/lint、API35相关类、真实系统VPN/TUN、native长等待/关闭、真实ADB与缺失态安装、四主题安装/已安装parity、macOS package与artifact audit已有对应证据；未打包真实Electron已从产品UI完成安装、双端配对、Core/reverse、系统VPN、TUN请求进入Android Capture来源、手机停止、Desktop断开和正常退出，见[测试文档](platform/testing.md#android-usb接入当前验证)和[Android测试](../../Interceptor-Android/architecture/platform/testing.md#系统vpn重复停止与失败流reset)。emulator流程不替代物理USB或真机验收。
   - 当前packaged步骤：已通过真实SecurityAgent管理员授权更新production helper；随后packaged smoke完成Preload安全白名单、Main/Core、Capture、Composer、Breakpoint、截图矩阵、正常退出和系统代理恢复，package与artifact audit保持通过。
-  - Android发布链：Android仓库已提供fail-closed的正式签名Gradle任务和`Android release APK` workflow；无Secrets运行在首步停止且未创建tag、Release或artifact。正式长期keystore及5个GitHub Secrets尚未配置，不能生成或冒充正式APK资产。
-  - ARM64环境：Android仓库已提供官方API35 ARM64 ps16k workflow，要求Apple Silicon宿主、ARM64 ABI、16384页大小、无native bridge及实际JNI目标。GitHub在分配`macos-15` runner前因账户付款/Spending Limit拒绝任务，无产品测试结果；需先修复Billing或提供可信自托管ARM64 runner。
-  - 剩余环境阻塞：物理USB拔线/重连；自定义hosts、真实DHCP搜索域、NAT64及旧平台同步解析延迟停止；正式签名Secrets、ARM64 runner和Windows最终包。缺对应环境时保持`blocked`，不伪造Network、修改第三方或绕过系统授权。
-  - 下一步：配置正式Android签名Secrets并运行首个draft Release；修复GitHub Billing后重跑ARM64 16KiB workflow；有物理Android设备时执行拔线/重连。提交边界不纳入item16 Guidebook、MCP workflow或其他共享修改。
+  - Android发布链：Android仓库保留fail-closed的本机正式签名Gradle任务；长期keystore和密码只保存在仓库外的本机安全存储。首个`v0.1.0` draft Release已上传唯一正式签名APK，Desktop私有asset下载路径与APK摘要已核对；Android CI、GitHub签名Secrets和相关run已按当前要求移除，draft仍未Publish。
+  - ARM64环境：官方API35 x86_64 ps16k环境已完成16384页大小与JNI/HTTP/TLS/WS/DNS目标；仍缺无native bridge的ARM64/真实16KiB硬件，现有环境不能替代。
+  - 剩余环境阻塞：物理USB拔线/重连；自定义hosts、真实DHCP搜索域、NAT64及旧平台同步解析延迟停止；ARM64硬件和Windows最终包。缺对应环境时保持`blocked`，不伪造Network、修改第三方或绕过系统授权。
+  - 下一步：有物理Android设备时执行拔线/重连与ARM64验收；有Windows环境时执行最终package与安装验收。提交边界不纳入item16 Guidebook、MCP workflow或其他共享修改。
   - 保存边界：用户已授权把本轮Android/PC实现保存为Item 14中间进度，不等于完整Item 14或release-ready；Android实现已提交并推送为[`dfc3f31`](https://github.com/zhxmt-xm/Interceptor-Android/commit/dfc3f31)，PC当前提交只包含item14，不纳入并行Guidebook/MCP修改。
 
 - **16. Guidebook 跨平台与隔离场景补图、App接入 · 进行中 · 英文Host、双语图文与7条复用workflow已验证，App候选及隔离前提待确认 · 承接原item 9剩余范围**
