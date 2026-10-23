@@ -1668,7 +1668,7 @@ Core decode接收调用方的输出预算：文本2 MiB、图片16 MiB，不以�
 - 同一Exchange的request/response各有独立Original与Final writer；读接口只选Final/当前展示writer。Original按现有BodyRuleEffect绑定；没有正文替换时消费后丢弃额外Original副本，不另留不可查询的Blob。缺失原文明确为unavailable，不将停止前缀或存储失败当完整原文。
 - metadata、规则审计、Final trailers、停止前缀与取消已有组件覆盖；停止/中断正文保留可读前缀并标记truncated。录制暂停不取消网络；Clear按明确Session同步撤销旧建档资格，再等待IO。正文写入失败保留不可用状态并输出诊断，不谎报保存成功。
 - 请求/响应断点都关联实际Capture ID；未录制的交互仍进入断点，但snapshot不带不存在的记录身份。Core停止Android入口会取消对应pending并等待记录结算；全Core退出及RPC失联先排空所有来源再dispose，失败返回fatal/非零退出，不发布成功stopped。
-- 验证顺序已覆盖真实Capture/文件IO目标Red、同组及现有Proxy调用方Green、真实WSS与Android lab、Main unit及真实ADB/APK integration。系统VpnService/TUN在API35已完成真实HTTP闭环和重复停止；完整Electron双端连续Green、物理USB拔线、正式release签名APK及真机ARM64仍是本项剩余验收，不能由模拟器或package audit代替。
+- 验证顺序已覆盖真实Capture/文件IO目标Red、同组及现有Proxy调用方Green、真实WSS与Android lab、Main unit及真实ADB/APK integration。系统VpnService/TUN在API35已完成真实HTTP闭环和重复停止；完整Electron双端连续Green，本机正式签名APK已上传未Publish的draft Release并通过私有asset下载校验。物理USB拔线、真机ARM64和Windows最终包仍是本项剩余验收，不能由模拟器或package audit代替。
 
 ## 11. 验证边界
 
