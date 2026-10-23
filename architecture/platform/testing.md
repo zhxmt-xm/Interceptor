@@ -142,10 +142,10 @@ Android USB接入当前验证：
   - 清理只执行目标设备`reverse --remove tcp:39080`，共享ADB Server保持运行；
   - 另从设备卸载测试App后，由`AndroidDeviceService.installDeviceApplication()`执行真实`adb install -r`，设备内base APK SHA-256、版本与随包APK再次完全一致。
 - Renderer按现有Android设计新增安装态，四主题的已安装与缺失共8场景、48/48目标严格parity通过；报告在忽略目录`apps/desktop/test-results/visual-parity/`，不读取或生成PNG。
-- 最终macOS package已包含正式签名`0.1.0` Android APK、Platform-Tools 37.0.1、NOTICE与manifest；manifest固定APK SHA-256 `b116e283f40c2cbd87d37e8ad9360314baed9a463a3162fa9fa7a78a3fe9640e`及签名证书SHA-256 `bbf7858fcad16453a5d224f2835d9d31aaf20cae34819dae76b98c3f3699eb79`。package artifact audit核对1532个文件、413004691字节并通过；Forge保留Google官方ADB签名和staging SHA-256，完整App通过`codesign --deep --strict`。
+- 最新macOS package包含正式签名`0.1.0` Android APK、Platform-Tools 37.0.1、NOTICE与manifest；manifest固定APK SHA-256 `a5899620307f674b79ff1d6a91ae66e79ae1ad00efa14bec4bf70748f0f62375`及签名证书SHA-256 `bbf7858fcad16453a5d224f2835d9d31aaf20cae34819dae76b98c3f3699eb79`。package artifact audit核对1532个文件、413004691字节并通过；Forge保留Google官方ADB签名和staging SHA-256，完整App通过`codesign --deep --strict`。
 - `npm audit --omit=dev`在把既有override从DOMPurify 3.4.16更新到3.4.17、`ip-address` 10.7.3更新到10.7.4后为0 vulnerability；Monaco和代理栈主版本均未变化。Workspace typecheck、package/artifact audit及隔离Android parity通过；全workspace测试仅保留既有raw TCP FIN两项目标Red，与本次patch升级无关。
 - 最新未打包Electron在独占窗口完成真实API35双端流程：产品UI从缺失态安装随包APK，双方输入并确认完整指纹，Main启动Core listener和精确reverse，Android完成真实系统通知/VPN授权，TUN HTTP返回并在Capture显示Android来源；随后手机本地停止、Desktop断开并正常Close。最终VPN、reverse、8888和系统代理journal全部为空。该流程使用emulator ADB传输，不替代物理USB拔线、ARM64真机或原生16KiB硬件。
-- 使用上述正式Android runtime重建production package后，完整packaged smoke再次通过：固定`interceptor://app`、Preload窄API白名单、sandbox/CSP、Main/Core、Capture、Composer、Breakpoint、截图矩阵、正常Close和系统代理恢复均通过；最终Main/Core/Worker退出，8888与39080空闲。此前真实SecurityAgent管理员授权更新的helper保持有效。
+- 此前APK SHA-256 `b116e283f40c2cbd87d37e8ad9360314baed9a463a3162fa9fa7a78a3fe9640e`的package完成过完整packaged smoke；它不再是当前draft asset。EC签名重建会产生不同APK字节，最新APK使外层ad-hoc App的designated requirement变为`cdhash H"c7c2159a7e08a032d4a91b7b1471301da1085a9d"`，已安装helper仍授权`cdhash H"66be08972cea020f5ab9103b24cd37dc3b69fd36"`。最新smoke两次均停在真实SecurityAgent管理员重新授权，`app.root`等待120秒后失败；没有修改授权数据库、放宽helper校验或把旧package结果移用于当前asset。清理后Main/Core/Worker退出，8888与39080空闲。
 
 涉及 Main / Preload / IPC / Fuses / CSP / 打包边界时追加：
 
