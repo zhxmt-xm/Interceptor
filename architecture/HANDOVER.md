@@ -22,7 +22,7 @@
   - 当前Desktop/Core：Main拥有PC mTLS身份、ADB设备状态、APK版本/签名/摘要校验、缺失/升级安装、Core listener和精确reverse；Core写入稳定`android:<sha256>`来源，Renderer设备入口、安装态、筛选和Request row Android图标已接线。拔线/offline时先停Core，不停止共享ADB Server或清理其他映射。
   - 当前交付：Desktop package随包当前平台ADB所需的Platform-Tools 37.0.1文件、NOTICE、已验证APK和manifest；正式发版必须指定私有Android Release asset、APK SHA-256和签名证书SHA-256，拒绝debug证书、换签和降级。具体边界见[发布架构](platform/release.md#21-android-apk-与-adb-runtime)。
   - 当前验证边界：Android JVM/lint、API35相关类、真实系统VPN/TUN、native长等待/关闭、真实ADB与缺失态安装、四主题安装/已安装parity、macOS package与artifact audit已有对应证据；未打包真实Electron已从产品UI完成安装、双端配对、Core/reverse、系统VPN、TUN请求进入Android Capture来源、手机停止、Desktop断开和正常退出，见[测试文档](platform/testing.md#android-usb接入当前验证)和[Android测试](../../Interceptor-Android/architecture/platform/testing.md#系统vpn重复停止与失败流reset)。emulator流程不替代物理USB或真机验收。
-  - 当前packaged步骤：已通过真实SecurityAgent管理员授权更新production helper；随后packaged smoke完成Preload安全白名单、Main/Core、Capture、Composer、Breakpoint、截图矩阵、正常退出和系统代理恢复，package与artifact audit保持通过。
+  - 当前packaged步骤：已通过真实SecurityAgent管理员授权更新production helper；正式签名Android `0.1.0` APK已进入macOS production package，manifest固定APK与签名摘要。artifact audit、完整App strict codesign及packaged smoke均通过，Main/Core/Worker正常退出，8888与39080空闲。
   - Android发布链：Android仓库保留fail-closed的本机正式签名Gradle任务；长期keystore和密码只保存在仓库外的本机安全存储。首个`v0.1.0` draft Release已上传唯一正式签名APK，Desktop私有asset下载路径与APK摘要已核对；Android CI、GitHub签名Secrets和相关run已按当前要求移除，draft仍未Publish。
   - ARM64环境：官方API35 x86_64 ps16k环境已完成16384页大小与JNI/HTTP/TLS/WS/DNS目标；仍缺无native bridge的ARM64/真实16KiB硬件，现有环境不能替代。
   - 剩余环境阻塞：物理USB拔线/重连；自定义hosts、真实DHCP搜索域、NAT64及旧平台同步解析延迟停止；ARM64硬件和Windows最终包。缺对应环境时保持`blocked`，不伪造Network、修改第三方或绕过系统授权。
