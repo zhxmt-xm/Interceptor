@@ -26,7 +26,7 @@
   - Android发布链：Android仓库保留fail-closed的本机正式签名Gradle任务；长期keystore和密码只保存在仓库外的本机安全存储。首个`v0.1.0` draft Release已上传唯一正式签名APK，Desktop私有asset下载路径与APK摘要已核对；Android CI、GitHub签名Secrets和相关run已按当前要求移除，draft仍未Publish。
   - ARM64环境：官方API35 x86_64 ps16k环境已完成16384页大小与JNI/HTTP/TLS/WS/DNS目标；仍缺无native bridge的ARM64/真实16KiB硬件，现有环境不能替代。
   - 剩余环境阻塞：物理USB拔线/重连；真实DHCP搜索域、NAT64及旧平台同步解析延迟停止；ARM64硬件和Windows最终包。自定义系统hosts已在专用可写API35 AVD通过真实解析验证并恢复原文件。缺对应环境时保持`blocked`，不伪造Network、修改第三方或绕过系统授权。
-  - 下一步：有物理Android设备时执行拔线/重连与ARM64验收；有Windows环境时执行最终package与安装验收。提交边界不纳入item16 Guidebook、MCP workflow或其他共享修改。
+  - 恢复条件：连接并授权物理Android USB设备后执行拔线/重连与旧请求不重放；提供ARM64/真实16KiB设备、Windows x64环境及带DHCP搜索域或NAT64的专用网络后分别续验。提交边界不纳入item16 Guidebook、MCP workflow或其他共享修改。
   - 保存边界：用户已授权把本轮Android/PC实现保存为Item 14中间进度，不等于完整Item 14或release-ready；Android实现已提交并推送为[`dfc3f31`](https://github.com/zhxmt-xm/Interceptor-Android/commit/dfc3f31)，PC当前提交只包含item14，不纳入并行Guidebook/MCP修改。
 
 - **16. Guidebook 跨平台与隔离场景补图、App接入 · 进行中 · 英文Host、双语图文与7条复用workflow已验证，App候选及隔离前提待确认 · 承接原item 9剩余范围**
