@@ -57,6 +57,50 @@ function appliedRequest() {
 }
 
 describe('HTTP exchange decision and cancellation state', () => {
+  it.each([null, 100])('settles only the observed original response after its replacement is received (%s)', byteLength => {
+    const httpExchange = appliedRequest();
+    const replacementId = '00000000-0000-4000-8000-000000000009';
+    httpExchange.receive(response, 'android');
+    httpExchange.receive({ ...responseDecision, decision: { action: 'intercept', statusCode: 202, headers: [],
+      editedHeaderNames: [], body: { action: 'replace', bodyId: replacementId, byteLength: 0 }, delayMs: 0 } }, 'pc');
+    httpExchange.receive(responseApplied, 'android');
+    httpExchange.receive({ ...envelope, type: 'body.open', bodyId, phase: 'response', role: 'original', byteLength }, 'android');
+    httpExchange.receiveChunk({ bodyId, offset: 0, payload: new Uint8Array([1, 2]) }, 'android');
+    httpExchange.receive({ ...envelope, type: 'body.ack', bodyId, offset: 2 }, 'pc');
+    httpExchange.receive({ ...envelope, type: 'body.end', bodyId: replacementId, byteLength: 0, trailers: [] }, 'pc');
+    httpExchange.receive({ ...envelope, type: 'body.received', bodyId: replacementId, byteLength: 0 }, 'android');
+    httpExchange.receive({ ...envelope, type: 'body.stopped', bodyId, byteLength: 2, reason: 'response-replaced' }, 'android');
+    httpExchange.receive({ ...envelope, type: 'body.received', bodyId, byteLength: 2 }, 'pc');
+    httpExchange.receive(complete, 'android');
+    httpExchange.receive(completed, 'pc');
+    expect(httpExchange.state).toBe('completed');
+    expect(httpExchange.signal.aborted).toBe(false);
+  });
+
+  it.each(['kept-response', 'applied-body', 'replacement-pending', 'pending-ack', 'upgrade'])(
+    'rejects invalid response-replaced stops: %s', invalid => {
+      const httpExchange = appliedRequest();
+      const replacementId = '00000000-0000-4000-8000-000000000009';
+      const statusCode = invalid === 'upgrade' ? 101 : 200;
+      httpExchange.receive({ ...response, response: { statusCode, headers: [] } }, 'android');
+      httpExchange.receive(invalid === 'kept-response' ? responseDecision : {
+        ...responseDecision, decision: { action: 'intercept', statusCode, headers: [], editedHeaderNames: [],
+          body: { action: 'replace', bodyId: replacementId, byteLength: 0 }, delayMs: 0 },
+      }, 'pc');
+      httpExchange.receive(responseApplied, 'android');
+      httpExchange.receive({ ...envelope, type: 'body.open', bodyId, phase: 'response',
+        role: invalid === 'applied-body' ? 'applied' : 'original', byteLength: null }, 'android');
+      if (invalid !== 'kept-response' && invalid !== 'replacement-pending') {
+        httpExchange.receive({ ...envelope, type: 'body.end', bodyId: replacementId, byteLength: 0, trailers: [] }, 'pc');
+        httpExchange.receive({ ...envelope, type: 'body.received', bodyId: replacementId, byteLength: 0 }, 'android');
+      }
+      if (invalid === 'pending-ack') httpExchange.receiveChunk({ bodyId, offset: 0, payload: new Uint8Array([1]) }, 'android');
+      expect(() => httpExchange.receive({ ...envelope, type: 'body.stopped', bodyId,
+        byteLength: invalid === 'pending-ack' ? 1 : 0, reason: 'response-replaced' }, 'android'))
+        .toThrow(InspectionProtocolError);
+    },
+  );
+
   it('settles an explicitly stopped upload prefix without cancelling the successful response', () => {
     const httpExchange = appliedRequest();
     httpExchange.receive({ ...envelope, type: 'body.open', bodyId, phase: 'request', role: 'applied', byteLength: 70001 }, 'android');

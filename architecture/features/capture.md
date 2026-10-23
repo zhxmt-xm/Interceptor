@@ -229,6 +229,7 @@ stateDiagram-v2
 - 响应头到达前已有唯一请求行；收到响应头后更新同一Exchange的状态码、MIME，正文到达时更新实际累计字节。
 - 中断时保留真实响应头及已捕获正文，不把已有200改成伪造错误码，也不把部分正文标成完整成功。
 - Pause不截断已接受的流量；Clear只移除记录并推进generation，剩余网络字节继续转发，旧行不得恢复。
+- Android响应replacement完整消费后，可以停止未结束的源站原文而正常完成最终响应。`HttpRecording`按`response-replaced`保留已观察Original前缀及truncated；零字节停止时Original为unavailable，不冒充完整空正文。Final仅取实际applied副本，字节、完整性和trailers独立结算；已有正常原文end仍保留完整结果。此约定不改变本机Mockttp流量，组件与native联调不代替Android用户流程验收。
 - 各协议的用户操作和独立断言见[Capture规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md)。
 
 #### H2 Range与多stream集成
@@ -1655,13 +1656,19 @@ Core decode接收调用方的输出预算：文本2 MiB、图片16 MiB，不以�
 
 ## 与当前实现的差异：Android 协议副本录制
 
-- Core命令与组件接线已实现并通过关联回归：CaptureService持有唯一录制开关，Proxy与Android各保留自己的Session。两端复用现有暂停/恢复意图，Android启动不隐式恢复录制；Clear清空全部内容并保留所有活动Session壳，不保留壳下旧请求。既有本机HTTP/WebSocket录制边界已有组件基线与最终Green；本轮真实Electron前置被platform启动阶段阻塞，仍待App验收。
-- Android的HttpRecording已连接正式CaptureService和CaptureEventQueue；真实Android lab核对HTTP/WS/H2的Capture记录、正文与规则证据，不再仅依赖观测回调，当前范围见[双端验证](../../../Interceptor-Android/architecture/platform/testing.md#正式native-h2双端lab)。CoreApplication已注册显式设备命令，Main仅完成RPC映射/状态订阅；ADB管理、Android来源和手机UI仍待接线，不代表产品已经可以接管手机。
+- Core命令与组件接线已实现并通过关联回归：CaptureService持有唯一录制开关，Proxy与Android各保留自己的Session。两端复用现有暂停/恢复意图，Android启动不隐式恢复录制；Clear清空全部内容并保留所有活动Session壳，不保留壳下旧请求。
+- Android的HttpRecording已连接正式CaptureService和CaptureEventQueue；真实Android lab核对HTTP/WS/H2的Capture记录、正文与规则证据，不再仅依赖观测回调，当前范围见[双端验证](../../../Interceptor-Android/architecture/platform/testing.md#正式native-h2双端lab)。
+- `android.start`携带Main核准的设备来源；Core为完整手机指纹生成稳定`android:<sha256>` appId，并把`Android · <model>`写入正式Capture summary。Renderer的Application facet和Request row对该appId显示Android品牌图标，不把PC代理请求误标成手机来源。
+- Main的`AndroidDeviceService`已拥有单设备ADB状态、PC mTLS身份、Core listener、`adb reverse --no-rebind`及精确清理：
+  - `reverse --list`只在目标设备ready时核对本轮local/remote端口，不依赖ADB输出中的transport名称；
+  - 设备已拔出、offline或unauthorized时先停止Core，再释放本地ownership；不执行`adb kill-server`、`reverse --remove-all`或清理其他映射。
+- Desktop已实现APK缺失、升级、同版本修复、签名不符和已安装新版本状态。Main在`adb install -r`前后核对随包APK、设备base APK、版本、完整SHA-256及签名身份；拒绝换签和降级。Capture设备窗口按已确认设计显示安装态、完整双端指纹、通道状态和Android来源。
+- 四主题已安装/缺失态严格parity覆盖8场景48目标，全部原始几何、样式、文本和状态零差异；不修改设计基准或使用容差。API35 emulator已通过真实ADB list/open/reverse/nc/remove及缺失态安装，仍不替代物理USB、ARM64真机或拔线验收。
 - 请求头到达就以Core新ID创建Exchange，wire exchangeId不作为全局存储ID。规则效果在Android应用确认后发布；Final来自Android的applied正文副本，不使用PC拟发送的replacement内容代替。
 - 同一Exchange的request/response各有独立Original与Final writer；读接口只选Final/当前展示writer。Original按现有BodyRuleEffect绑定；没有正文替换时消费后丢弃额外Original副本，不另留不可查询的Blob。缺失原文明确为unavailable，不将停止前缀或存储失败当完整原文。
 - metadata、规则审计、Final trailers、停止前缀与取消已有组件覆盖；停止/中断正文保留可读前缀并标记truncated。录制暂停不取消网络；Clear按明确Session同步撤销旧建档资格，再等待IO。正文写入失败保留不可用状态并输出诊断，不谎报保存成功。
 - 请求/响应断点都关联实际Capture ID；未录制的交互仍进入断点，但snapshot不带不存在的记录身份。Core停止Android入口会取消对应pending并等待记录结算；全Core退出及RPC失联先排空所有来源再dispose，失败返回fatal/非零退出，不发布成功stopped。
-- 验证顺序已覆盖真实Capture/文件IO目标Red、同组及现有Proxy调用方Green、真实WSS与Android lab；109项相关测试及Core typecheck通过。上述后端验证不代替Main/Core装配、Android来源图标、Renderer/Electron用户流程或真实VPN。
+- 验证顺序已覆盖真实Capture/文件IO目标Red、同组及现有Proxy调用方Green、真实WSS与Android lab、Main unit及真实ADB/APK integration。系统VpnService/TUN在API35已完成真实HTTP闭环和重复停止；完整Electron双端连续Green、物理USB拔线、正式release签名APK及真机ARM64仍是本项剩余验收，不能由模拟器或package audit代替。
 
 ## 11. 验证边界
 

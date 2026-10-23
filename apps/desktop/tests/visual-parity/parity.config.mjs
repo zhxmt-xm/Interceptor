@@ -808,6 +808,93 @@ const upstreamStateViews = ['light', 'dark', 'warm', 'ember'].flatMap(theme =>
 );
 
 export const views = [
+  ...['light', 'dark', 'warm', 'ember'].map(theme => ({
+    id: `capture-android-device-${theme}`,
+    theme,
+    mitmActive: false,
+    designState: {
+      view: 'capture', theme, sidebar: 'collapsed', detail: 'closed',
+      androidDesktopPreview: true, androidDialog: 'devices', androidDeviceStatus: 'ready',
+      androidPackage: 'installed', androidConnection: 'pairing', androidComputerConfirmed: false,
+      androidPhoneConfirmed: false, androidVpn: 'stopped', androidCa: 'missing', androidError: '',
+    },
+    rendererActions: [
+      { type: 'clickAutomation', automationId: 'capture.android.trigger' },
+      {
+        type: 'fillAutomation',
+        automationId: 'capture.android.device-fingerprint',
+        value: '2C71 A84D 6E20 9B15 F308 42CA D967 10EB 84F2 B605 39AC E718 D092 6F43 A1BE 57C0',
+      },
+      { type: 'pressLabel', label: 'Android device identity', key: 'Tab' },
+    ],
+    targets: [
+      {
+        name: 'Android device trigger',
+        designSelector: '[data-design-android-device-trigger] button',
+        appSelector: '[data-automation-id="capture.android.trigger"]',
+      },
+      {
+        name: 'Android dialog title',
+        designSelector: '.androidDeviceTitle',
+        appSelector: '[data-parity="android-device-dialog-title"]',
+      },
+      {
+        name: 'Android device card',
+        designSelector: '.androidDeviceCard',
+        appSelector: '[data-parity="android-device-card"]',
+      },
+      {
+        name: 'Android fingerprint grid',
+        designSelector: '.androidDeviceFingerprints',
+        appSelector: '[data-parity="android-device-fingerprints"]',
+      },
+      {
+        name: 'Android dialog footer',
+        designSelector: '.androidDeviceFooter',
+        appSelector: '[data-parity="android-device-dialog-footer"]',
+      },
+      'Confirm this device',
+    ],
+  })),
+  ...['light', 'dark', 'warm', 'ember'].map(theme => ({
+    id: `capture-android-install-${theme}`,
+    theme,
+    mitmActive: false,
+    androidApplicationState: 'missing',
+    designState: {
+      view: 'capture', theme, sidebar: 'collapsed', detail: 'closed',
+      androidDesktopPreview: true, androidDialog: 'devices', androidDeviceStatus: 'ready',
+      androidPackage: 'missing', androidConnection: 'disconnected', androidComputerConfirmed: false,
+      androidPhoneConfirmed: false, androidVpn: 'stopped', androidCa: 'missing', androidError: '',
+    },
+    rendererActions: [
+      { type: 'clickAutomation', automationId: 'capture.android.trigger' },
+    ],
+    targets: [
+      {
+        name: 'Android install dialog title',
+        designSelector: '.androidDeviceTitle',
+        appSelector: '[data-parity="android-device-dialog-title"]',
+      },
+      {
+        name: 'Android install device card',
+        designSelector: '.androidDeviceCard',
+        appSelector: '[data-parity="android-device-card"]',
+      },
+      {
+        name: 'Android install setup',
+        designSelector: '.androidDeviceSetup',
+        appSelector: '[data-parity="android-device-install"]',
+      },
+      {
+        name: 'Android install dialog footer',
+        designSelector: '.androidDeviceFooter',
+        appSelector: '[data-parity="android-device-dialog-footer"]',
+      },
+      'Install Android app',
+      'Bundled version',
+    ],
+  })),
   ...upstreamViews,
   ...upstreamStateViews,
   ...['warm', 'ember'].flatMap((theme) =>

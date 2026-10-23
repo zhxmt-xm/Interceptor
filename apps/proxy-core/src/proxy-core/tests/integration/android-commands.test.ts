@@ -98,6 +98,7 @@ describe('Core Android commands and capture ownership', () => {
   async function startAndroid() {
     return readStatus(await execute({ type: 'android.start', payload: {
       identity: pcIdentity, devicePin: pin(deviceIdentity.cert),
+      device: { id: 'android:test-device', name: 'Android · Test device' },
     } }));
   }
 
@@ -288,7 +289,11 @@ describe('Core Android commands and capture ownership', () => {
   });
 
   it('rejects duplicate or invalid starts and makes stop and subsequent restart deterministic', async () => {
-    await expect(execute({ type: 'android.start', payload: { identity: pcIdentity, devicePin: 'invalid' } }))
+    await expect(execute({ type: 'android.start', payload: {
+      identity: pcIdentity,
+      devicePin: 'invalid',
+      device: { id: 'android:test-device', name: 'Android · Test device' },
+    } }))
       .rejects.toThrow('confirmed device pin');
     expect((await captureService.status()).sessionCount).toBe(0);
     const listening = await startAndroid();
@@ -371,6 +376,7 @@ describe('Core Android commands and capture ownership', () => {
     });
     await expect(execute({ type: 'android.start', payload: {
       identity: pcIdentity, devicePin: pin(deviceIdentity.cert),
+      device: { id: 'android:test-device', name: 'Android · Test device' },
     } }, abortController.signal)).rejects.toThrow();
     expect(port).toBeTypeOf('number');
     await assertPortReleased(port!);

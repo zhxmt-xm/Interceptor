@@ -7,6 +7,8 @@ import type { InspectionHeaders, InspectionHttpMessage } from './inspection';
 export interface InspectionRecordingOptions {
   sessionId: string;
   recording: boolean;
+  appId: string;
+  appName: string;
 }
 
 /** PC已计算的规则结果，实际效果等待Android应用确认。 */

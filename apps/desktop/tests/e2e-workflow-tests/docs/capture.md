@@ -1,5 +1,51 @@
 # Capture Workflows
 
+<a id="capture-android-single-device"></a>
+## `capture.android.single-device`
+
+**状态**：planned · 产品接线中
+**策略**：macOS/Windows共享业务步骤；真实Android设备、USB、系统VPN授权与CA授权；零seed
+
+### Steps
+
+1. 创建独立Desktop profile、trace和本轮Android设备证据目录；确认ADB只看到目标USB设备，记录既有reverse映射，不停止共享ADB Server。
+2. 启动真实Electron，等待App/Core/8888；从Capture工具栏打开Android devices，选择目标设备。若App版本不匹配，经产品UI安装并核对签名/摘要。
+3. 双端分别显示完整电脑/手机指纹；只确认电脑一侧时，手机不能启动VPN，PC不能出现Android来源。再从真实手机UI确认电脑身份。
+4. 手机点击开始接管，处理真实Android系统VPN授权；TUN、前台通知与USB通道分别到达running/connected，PC Application出现同一`Pixel · Android`来源。
+5. 手机目标App发出测试自产HTTP、HTTPS、H2和WebSocket；PC现有Rules与Breakpoints修改/暂停请求和响应。断点放行前源站/手机不得提前收到对应内容。
+6. 核对源站只收到Android发出的一次请求，PC不访问源站；Capture的Original/Final、来源、正文、trailers和WS消息正确。Android-only筛选为OR语义，零条时只显示空态，不伪造记录。
+7. 发出未知TCP和非DNS UDP/QUIC自产流量，确认手机收到显式失败且源站无连接/数据报，PC无伪造HTTP记录。
+8. 手机点击停止；在TUN、native owner、PC channel与前台服务全部退出前保持Stopping。完成后普通联网恢复，旧请求不重放。
+9. 保存trace、双端截图、源站计数、系统VPN/通知、Main/Core/Android进程、映射及metadata；点击Desktop Close。
+10. 验证Main/Renderer/Core/Worker、Android service和本轮reverse全部退出，8888释放；保留原ADB Server/其他映射，删除本轮profile与fixture。
+
+### 预期效果
+
+真实系统流量只由Android连接源站，PC复用正式Rules、Breakpoints和Capture。配对、USB、VPN和CA相互独立；非支持协议不直连，停止完成前不报告恢复。
+
+<a id="capture-android-disconnect"></a>
+## `capture.android.disconnect`
+
+**状态**：planned · 产品接线中
+**策略**：真实USB拔线/重连；手机保留VPN阻断；不重放
+
+### Steps
+
+1. 按`capture.android.single-device`前四步启动独立Electron和真实手机接管，制造一条已完成请求及一条PC断点等待请求。
+2. 物理拔出USB；Core取消该设备断点与channel，PC显示Offline，手机保持VPN并显示阻断，不自动停止或普通直连。
+3. 在断线期间发送HTTP、未知TCP和UDP；源站不得收到新请求/数据报，PC不得新增成功Capture或假报手机已停止。
+4. 重新插入并从产品设备入口重连；建立新session和reverse。旧TCP/H2/POST不恢复、不重放，旧Capture仍保留原来源。
+5. 新建请求应通过新session正常执行；随后再次拔线，并从手机本地点击停止接管。
+6. PC在未收到通道确认时仍显示停止结果未知；手机实际完成TUN/native/worker收尾后恢复普通联网。
+7. 保存拔线前后源站计数、两端状态、trace、日志及映射证据；关闭Desktop。
+8. 验证Main/Core/Worker、Android service、本轮映射和8888全部退出；系统VPN已停止，宿主代理/CA及其他ADB资源恢复。
+9. 删除本轮profile和fixture，不卸载App、不删除配对或手机CA。
+10. 任一步无法使用真实USB、系统授权或设备状态时保持blocked，不用`adb disconnect`、状态注入或隐藏API代替物理流程。
+
+### 预期效果
+
+USB异常不把受控流量绕过PC发送；重连创建新会话且不重放；PC不能从断线状态猜测手机已停止，手机始终有本地恢复入口。
+
 ## 原流程与可选步骤截图
 
 截图通过同一批原Capture workflow的`--screenshots`选项生成，不维护录制专用动作。

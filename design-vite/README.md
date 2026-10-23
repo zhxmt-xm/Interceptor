@@ -69,23 +69,45 @@ design-vite/
 
 ## 命令
 
-### Android USB 单页候选
+### Android USB 双端设计与产品还原
 
-`src/features/AndroidPreview/`为独立Android App的首轮连接页拟议效果，不是桌面产品页面；默认关闭，不替换既有设计基准或正式`shots/`。
+`src/features/AndroidPreview/`在同一个SPA内提供手机连接页与PC Capture设备入口的权威设计；`androidPreview`和`androidDesktopPreview`是画布外预览开关，默认关闭，不进入正式产品代码或`shots/`。Android Launcher和Desktop Renderer已经按这些状态实现，设计辅助控制仍不能移植成产品后门。
 
-- 顶部标识、中部VPN/通道状态与电脑身份指纹、底部连接/停止按钮；不把PC的Rules、Breakpoints和Capture搬到手机。
-- 未连接、首次配对、接管中和连接中断均由同一typed state驱动；按钮可切换演示状态，不发起网络或系统授权。
-- 断线页展示保留VPN阻断与手动停止恢复的候选，仍需与用户确认产品策略。
-- 新页面无改前产品截图。正式Android UI、设计定稿和通信简化均未获确认，不据此实施产品界面。
+- 手机保留单页：品牌、独立VPN/通道状态、双方完整身份指纹、独立CA安装说明、底部连接/停止动作；长内容在手机内滚动，底部动作不被内容挤走。
+- PC只在Capture工具栏Export后添加USB图标入口，使用Ant Design v6 Modal展示设备、APK、配对与状态；通过公开`styles`/`classNames`配置，不覆盖`.ant-*`私有DOM。
+- 两端确认分别操作。打开VPN授权后保持等待，由画布外设计控制栏模拟允许/拒绝；模拟系统结果不是产品按钮，也不代表实际VPN或CA授权。
+- 停止保持pending，只有外部“模拟收尾完成”才结束；USB离线时PC只提供手机停止指引，不推断手机的本地停止进度或结果。
+- 双端配对后，Application增加`Pixel 8 · Android`来源样例。Android图标复用现有`simple-icons`品牌数据；普通控件使用Lucide。Android零条流量不伪造请求，来源勾选保留OR、All、分组清除与全局清除。
+- 手机九种主状态及指纹展开、CA步骤、系统授权等待，与PC设备/配对/授权/停止/来源等场景共用typed state。切换端、USB样例与模拟系统结果的控制栏位于画布外，截图时隐藏。
+- 断线策略已固定为保留VPN阻断、手机手动停止恢复；未知TCP发送RST，非DNS UDP/QUIC关闭。真实拔线和恢复仍须物理设备E2E，不把PC的Rules、Breakpoints和Capture搬到手机。
+- 手机改前图只保留历史评审用途，不是产品截图；PC设计SPA是产品还原基准。Renderer已安装/配对态与APK缺失态共8场景48目标严格零差异，真实Android系统授权另行验收。
+
+从未连接状态打开，再通过设计控制栏切换场景；不要只修改`androidConnection`来拼出不一致的VPN/配对状态：
 
 ```js
 window.__setState({
   view: 'playground',
   androidPreview: true,
-  androidConnection: 'pairing', // disconnected / pairing / connected / error
+  theme: 'light',
+});
+
+// 或直接打开PC候选，其他Android状态由view切换恢复初始值。
+window.__setState({
+  view: 'capture',
+  androidDesktopPreview: true,
+  androidDialog: 'devices',
+  sidebar: 'collapsed',
+  detail: 'closed',
   theme: 'light',
 });
 ```
+
+```sh
+node design-vite/shoot.mjs --feature=android-usb --out-dir="<新的独立评审目录>"
+node design-vite/shoot.mjs --feature=android-usb --theme=dark --variant=desktop-pairing,phone-pairing --out-dir="<新的独立评审目录>"
+```
+
+截图覆盖四主题的framed/full场景。Modal场景保留其正常入场动画，等窗口完全不透明、动画结束且处于画布内再拍摄；不能全局禁用动画后把透明窗口当作已显示。默认关闭的`desktop-baseline`用于与改前图逐像素核对，不以改变正式设计掩盖偏差。
 
 ### Homepage 教程阅读候选
 

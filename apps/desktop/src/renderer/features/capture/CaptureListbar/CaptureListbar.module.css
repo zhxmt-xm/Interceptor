@@ -203,6 +203,9 @@
   gap: var(--icon-button-gap);
   flex: 0 0 auto;
 }
+.androidTrigger {
+  color: var(--text);
+}
 .fileAnchor {
   display: inline-flex;
 }

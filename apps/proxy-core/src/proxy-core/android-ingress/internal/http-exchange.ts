@@ -291,17 +291,24 @@ export class HttpExchange {
     }
   }
 
-  /** 显式不完整终态只记录请求前缀，不放宽正常end或取消响应求值。 */
+  /** 显式结算已停止的原文/上传前缀，不放宽正常end或取消成功的替换响应。 */
   private stopBody(message: Extract<InspectionHttpMessage, { type: 'body.stopped' }>, sender: InspectionPeer): void {
     const body = this.bodyAtOffset(message.bodyId, message.byteLength);
-    requireValid(body.owner === sender && body.phase === 'request'
-      && body.termination === 'open' && !this.pendingChunksBySender.has(sender));
-    if (sender === 'pc') {
-      requireValid(body.role === 'replacement' && body.discardRequested && message.reason === 'early-response');
-    } else if (message.reason === 'early-response') {
-      requireValid(this.responseStage !== null);
+    requireValid(body.owner === sender && body.termination === 'open' && !this.pendingChunksBySender.has(sender));
+    if (message.reason === 'response-replaced') {
+      requireValid(sender === 'android' && body.phase === 'response' && body.role === 'original'
+        && this.responseStage?.applied && !this.responseSwitchingProtocols
+        && [...this.bodiesById.values()].some(replacement => replacement.owner === 'pc'
+          && replacement.phase === 'response' && replacement.role === 'replacement' && replacement.received));
     } else {
-      requireValid(message.reason === 'synthetic-response' && this.requestStage?.action === 'respond' && body.role === 'original');
+      requireValid(body.phase === 'request');
+      if (sender === 'pc') {
+        requireValid(body.role === 'replacement' && body.discardRequested && message.reason === 'early-response');
+      } else if (message.reason === 'early-response') {
+        requireValid(this.responseStage !== null);
+      } else {
+        requireValid(message.reason === 'synthetic-response' && this.requestStage?.action === 'respond' && body.role === 'original');
+      }
     }
     body.termination = 'stopped';
   }

@@ -110,6 +110,8 @@ export class HttpRecording {
       protocol: httpVersionToProtocol(message.request.httpVersion),
       requestMime: readHeader(inspectionHeaderBag(message.request.headers), 'content-type'),
       headers: toHeaderInputs('request', message.request.headers),
+      appId: this.options.appId,
+      appName: this.options.appName,
       startedAt: Date.now(), requestBytes: 0, responseBytes: 0, state: 'pending',
     }]);
     await this.publish('exchange-added');

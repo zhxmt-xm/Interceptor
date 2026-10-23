@@ -107,6 +107,8 @@ export class CoreApplication implements CoreRpcHost {
   private readonly androidIngressService: AndroidIngressService | null;
   /** Android入口本次拥有的Capture Session，与设备wire session分开。 */
   private androidCaptureSessionId: string | null = null;
+  /** Android来源由可信Main确认，不从回环地址或HTTP header推导。 */
+  private androidCaptureSource: { appId: string; appName: string } | null = null;
   /** 入口启停与Clear串行化，退出前等待已接受清理，GC不撞上另一入口启动。 */
   private ingressOperation: Promise<void> = Promise.resolve();
   /** 上一次成功发送的Android快照，只用于通知去重。 */
@@ -247,11 +249,14 @@ export class CoreApplication implements CoreRpcHost {
   /** 在每条新副本WSS接纳时固定录制状态，不从设备wire身份推导Capture Session。 */
   private createAndroidRecording(): HttpRecording {
     const sessionId = this.androidCaptureSessionId;
-    if (!this.captureService || !this.captureEventQueue || sessionId === null) {
+    const source = this.androidCaptureSource;
+    if (!this.captureService || !this.captureEventQueue || sessionId === null || source === null) {
       throw new Error('Android capture session is not active.');
     }
     return new HttpRecording(this.captureService, this.captureEventQueue, {
-      sessionId, recording: this.captureService.isRecording && !this.captureCleanupInProgress,
+      sessionId,
+      recording: this.captureService.isRecording && !this.captureCleanupInProgress,
+      ...source,
     }, this.coreDiagnostics);
   }
 
@@ -271,9 +276,10 @@ export class CoreApplication implements CoreRpcHost {
       }
       const sessionId = `session-${randomUUID()}`;
       this.androidCaptureSessionId = sessionId;
+      this.androidCaptureSource = { appId: options.device.id, appName: options.device.name };
       try {
         await captureService.ensureSession({
-          id: sessionId, name: 'Android capture', startedAt: Date.now(), captureMode: 'android-usb', appVersion,
+          id: sessionId, name: options.device.name, startedAt: Date.now(), captureMode: 'android-usb', appVersion,
         });
         abortSignal.throwIfAborted();
         this.assertIngressCanStart();
@@ -286,6 +292,7 @@ export class CoreApplication implements CoreRpcHost {
           await androidIngressService.stop();
           await captureService.cleanup({ kind: 'session', sessionId });
           this.androidCaptureSessionId = null;
+          this.androidCaptureSource = null;
         } catch (cleanupError) {
           throw new AggregateError([error, cleanupError], 'Android startup and cleanup failed.');
         }
@@ -301,6 +308,7 @@ export class CoreApplication implements CoreRpcHost {
       await this.coreDiagnostics.action('android.stop', () => androidIngressService.stop());
     }
     this.androidCaptureSessionId = null;
+    this.androidCaptureSource = null;
     await this.collectStoppedIngressBodies();
     return { type: 'android.status', payload: this.androidStatus() };
   }
@@ -1387,6 +1395,7 @@ export class CoreApplication implements CoreRpcHost {
     const ingressErrors: unknown[] = ingressResults.flatMap(result => result.status === 'rejected' ? [result.reason] : []);
     if (ingressErrors.length > 0) throw new AggregateError(ingressErrors, 'Core ingress shutdown failed.');
     this.androidCaptureSessionId = null;
+    this.androidCaptureSource = null;
     const storageResults = await Promise.allSettled([
       this.captureService?.dispose(),
       this.diagnosticsService?.close(),

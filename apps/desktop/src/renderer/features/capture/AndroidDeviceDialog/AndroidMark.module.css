@@ -1,0 +1,17 @@
+.mark {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--panel);
+  color: #3ddc84;
+}
+
+.mark svg {
+  width: 25px;
+  height: 25px;
+  fill: currentcolor;
+}

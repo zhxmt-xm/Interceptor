@@ -4,6 +4,7 @@ import type { UiPreferenceAppliedChange } from '../shared/ui-preferences';
 import {
   DESKTOP_IPC_CHANNELS,
   type ApplicationStartupStage,
+  type AndroidDesktopStatus,
   type PlatformOperationConflict,
   CoreProcessStatus,
   type AgentRuntimeEvent,
@@ -269,6 +270,21 @@ const api: InterceptorDesktopApi = {
   stopCapture: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.captureStop),
   getCaptureStatus: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.captureGetStatus),
+  getAndroidStatus: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.androidGetStatus),
+  installAndroidApplication: (serial) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.androidInstallApplication, serial),
+  connectAndroidDevice: (serial, deviceFingerprint) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.androidConnect, serial, deviceFingerprint),
+  disconnectAndroidDevice: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.androidDisconnect),
+  openAndroidApplication: (serial) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.androidOpenApplication, serial),
+  onAndroidStatusChange: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, status: AndroidDesktopStatus) => listener(status);
+    ipcRenderer.on(DESKTOP_IPC_CHANNELS.androidStatus, handler);
+    return () => ipcRenderer.removeListener(DESKTOP_IPC_CHANNELS.androidStatus, handler);
+  },
   onCaptureStatusChange: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, status: CaptureStatus) => {
       listener(status);

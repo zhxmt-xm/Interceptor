@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { access, readFile, readdir, stat } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -40,6 +41,8 @@ class PackageArtifactAuditor {
       access(path.join(resourcesPath, 'proxy-core/entry.cjs')),
       access(path.join(resourcesPath, 'proxy-core/archive/worker/entry.cjs')),
       access(path.join(resourcesPath, 'proxy-core/diagnostics/worker/entry.cjs')),
+      access(path.join(resourcesPath, 'android/Interceptor-Android.apk')),
+      access(path.join(resourcesPath, 'android/manifest.json')),
       access(path.join(resourcesPath, `system-proxy/${this.systemProxyHelperName()}`)),
       ...(process.platform === 'win32'
         ? [access(path.join(resourcesPath, 'app-container/app-container-helper.exe'))]
@@ -48,6 +51,7 @@ class PackageArtifactAuditor {
 
     await this.auditAsar(asarPath);
     await this.auditLicenses(resourcesPath);
+    await this.auditAndroidRuntime(resourcesPath);
     const packageFiles = await this.collectFiles(this.packageRoot);
     const packageBytes = packageFiles.reduce((total, file) => total + file.size, 0);
 
@@ -62,6 +66,9 @@ class PackageArtifactAuditor {
     }
 
     await this.auditFuses(executablePath);
+    if (process.platform === 'darwin') {
+      await this.verifyMacosCode(path.resolve(path.dirname(executablePath), '../..'));
+    }
     if (process.platform === 'win32') {
       await this.auditWindowsSignatures(packageFiles);
     }
@@ -117,6 +124,84 @@ class PackageArtifactAuditor {
     if (!coreLicenses.includes('mockttp@') || !coreLicenses.includes('tls-impersonate@')) {
       throw new Error('Core dependency license notices are incomplete.');
     }
+  }
+
+  /** Verify every staged Android runtime byte against the package manifest. */
+  static async auditAndroidRuntime(resourcesPath) {
+    const androidDirectory = path.join(resourcesPath, 'android');
+    const manifest = JSON.parse(await readFile(path.join(androidDirectory, 'manifest.json'), 'utf8'));
+    if (
+      manifest.schemaVersion !== 1 ||
+      manifest.applicationId !== 'com.zhxmt.interceptor.android' ||
+      !Number.isSafeInteger(manifest.versionCode) ||
+      manifest.versionCode < 1 ||
+      typeof manifest.versionName !== 'string' ||
+      manifest.versionName.length === 0 ||
+      manifest.apkFile !== 'Interceptor-Android.apk' ||
+      typeof manifest.signerSha256 !== 'string' ||
+      !/^[0-9a-f]{64}$/.test(manifest.signerSha256) ||
+      manifest.platformTools?.revision !== '37.0.1' ||
+      !Array.isArray(manifest.platformTools.files)
+    ) {
+      throw new Error('Invalid packaged Android runtime manifest.');
+    }
+    const files = [
+      { path: manifest.apkFile, sha256: manifest.apkSha256 },
+      ...manifest.platformTools.files,
+    ];
+    const signedPlatformTools = new Set(process.platform === 'win32'
+      ? [
+          'platform-tools/adb.exe',
+          'platform-tools/AdbWinApi.dll',
+          'platform-tools/AdbWinUsbApi.dll',
+        ]
+      : ['platform-tools/adb']);
+    const expectedAdb = process.platform === 'win32' ? 'platform-tools/adb.exe' : 'platform-tools/adb';
+    for (const file of files) {
+      if (
+        typeof file.path !== 'string' ||
+        path.isAbsolute(file.path) ||
+        file.path.split(/[\\/]/).includes('..') ||
+        typeof file.sha256 !== 'string' ||
+        !/^[0-9a-f]{64}$/.test(file.sha256)
+      ) {
+        throw new Error('Invalid Android runtime file manifest entry.');
+      }
+      const bytes = await readFile(path.join(androidDirectory, file.path));
+      const actual = createHash('sha256').update(bytes).digest('hex');
+      if (actual !== file.sha256) {
+        if (
+          signedPlatformTools.has(file.path) &&
+          process.platform === 'win32' &&
+          process.env.WINDOWS_CERTIFICATE_FILE
+        ) {
+          if (await this.authenticodeStatus(path.join(androidDirectory, file.path)) !== 'Valid') {
+            throw new Error('Packaged Android ADB Authenticode signature is invalid.');
+          }
+        } else {
+          throw new Error(`Packaged Android runtime checksum mismatch: ${file.path}.`);
+        }
+      }
+    }
+    if (!files.some(file => file.path === expectedAdb) ||
+        !files.some(file => file.path === 'platform-tools/NOTICE.txt')) {
+      throw new Error('Packaged Android platform-tools files are incomplete.');
+    }
+  }
+
+  /** Verify the complete macOS bundle after Packager has signed nested executables. */
+  static async verifyMacosCode(applicationPath) {
+    await new Promise((resolve, reject) => {
+      execFile(
+        '/usr/bin/codesign',
+        ['--verify', '--deep', '--strict', '--all-architectures', applicationPath],
+        { windowsHide: true },
+        (error, _stdout, stderr) => {
+          if (error) reject(new Error(stderr || error.message));
+          else resolve();
+        },
+      );
+    });
   }
 
   /** Require the exact nine-fuse security policy configured by Forge. */

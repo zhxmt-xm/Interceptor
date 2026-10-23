@@ -416,7 +416,11 @@ node apps/desktop/tests/visual-parity/parity.mjs
 npm run package
 ```
 
-该命令依次构建协议、Core、原生 helper 和 Electron 应用。
+该命令依次构建原生helper、运行`prepare:android-runtime`并打包Electron应用。Android staging要求：
+
+- `ANDROID_HOME`中的Build Tools 35.0.0与Platform-Tools 37.0.1；也可复用兄弟Android仓库未提交的`local.properties`。
+- 本地非发版默认读取`../Interceptor-Android/app/build/outputs/apk/debug/app-debug.apk`；可用`INTERCEPTOR_ANDROID_APK`指定其他已验证APK。
+- 设置`INTERCEPTOR_BUILD_VERSION`的正式构建还必须提供`INTERCEPTOR_ANDROID_SIGNER_SHA256`，并拒绝Android Debug证书。完整发版资产流程见[发布架构](platform/release.md#21-android-apk-与-adb-runtime)。
 
 | 平台 | 产物 |
 | --- | --- |

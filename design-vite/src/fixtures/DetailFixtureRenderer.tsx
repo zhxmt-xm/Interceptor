@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useCallback, type ReactNode } from 'react';
 
 import { KvValueDesign } from '../components/KvValueDesign/KvValueDesign';
 import { CaptureCodePreview } from './CaptureCodePreview';
@@ -9,6 +9,7 @@ import type { FixtureElementNode, FixtureNode } from './FixtureNode';
 
 interface DetailFixtureRendererProps {
   readonly node: FixtureNode;
+  readonly renderElement?: FixtureElementRenderer;
 }
 
 function hasClass(node: FixtureElementNode, className: string): boolean {
@@ -89,6 +90,10 @@ const renderDetailSection: FixtureElementRenderer = (node, children) => {
   );
 };
 
-export function DetailFixtureRenderer({ node }: DetailFixtureRendererProps): React.JSX.Element {
-  return <FixtureRenderer node={node} renderElement={renderDetailSection} /> as React.JSX.Element;
+export function DetailFixtureRenderer({ node, renderElement }: DetailFixtureRendererProps): React.JSX.Element {
+  const render = useCallback<FixtureElementRenderer>((element, children) => {
+    const custom = renderElement?.(element, children);
+    return custom === undefined ? renderDetailSection(element, children) : custom;
+  }, [renderElement]);
+  return <FixtureRenderer node={node} renderElement={render} /> as React.JSX.Element;
 }

@@ -10,8 +10,9 @@
   "scripts": {
     "build:native": "npm run build:native --workspace @interceptor/platform-capabilities",
     "e2e:prepare-local": "npm run build --workspace @interceptor/core-protocol && npm run build --workspace @interceptor/proxy-core && npm run build:native && node tests/e2e-workflow-tests/prepare-local.mjs",
-    "package": "npm run build:native && electron-forge package",
-    "make": "npm run build:native && electron-forge make",
+    "prepare:android-runtime": "node ../../scripts/prepare-android-runtime.mjs",
+    "package": "npm run build:native && npm run prepare:android-runtime && electron-forge package",
+    "make": "npm run build:native && npm run prepare:android-runtime && electron-forge make",
     "start": "npm run build:native && electron-forge start",
     "test": "vitest run",
     "test:installer:windows": "node --experimental-transform-types tests/installer/windows-installer-smoke.mjs",

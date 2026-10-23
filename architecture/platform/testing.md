@@ -129,6 +129,25 @@ App视觉基准已按用户确认恢复为视觉对齐前的实现，不再为�
 - 为隔离并行会话的未提交Android设计和Core改动，[提交候选类型检查](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/item21-commit/typecheck-index.json)直接使用独立Git index中的源文件，125个根文件、1164个依赖源文件为0诊断，不写工作区或实际index；[提交候选parity](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/item21-commit/parity-index/report.md)在Capture、Add action和Rule Select共3场景44目标上严格零差异，737份工作区输入未变，自有服务与浏览器退出。
 - 本轮仅同步设计稿及相关说明，没有修改Rules业务或Renderer，也没有运行真实Electron/Main/Core、操作宿主代理或证书；上述结果不替代真实业务E2E。全量报告不读取或生成PNG，手工设计评审截图单独保留在本地。
 
+Android USB接入当前验证：
+
+- Main Android device owner的6个纯业务目标与APK parser/安装器5个目标通过，覆盖：
+  - 设备拔出/offline后的Core停止与本地ownership释放；
+  - ADB transport名称不同于用户serial时仍只按本轮local/remote端口核对mapping；
+  - APK缺失安装、同签名升级、换签拒绝、降级拒绝及安装后精确字节复核。
+- API35 emulator真实ADB integration通过：
+  - `devices -l`读取ready设备；
+  - 正式Launcher由`am start`打开；
+  - Main listener建立`reverse --no-rebind`，手机`toybox nc`实际穿透到该listener；
+  - 清理只执行目标设备`reverse --remove tcp:39080`，共享ADB Server保持运行；
+  - 另从设备卸载测试App后，由`AndroidDeviceService.installDeviceApplication()`执行真实`adb install -r`，设备内base APK SHA-256、版本与随包APK再次完全一致。
+- Renderer按现有Android设计新增安装态，四主题的已安装与缺失共8场景、48/48目标严格parity通过；报告在忽略目录`apps/desktop/test-results/visual-parity/`，不读取或生成PNG。
+- 最新macOS package已包含`Resources/android`中的APK、Platform-Tools 37.0.1、NOTICE与manifest；package artifact audit核对1532个文件、424642388字节并通过。Forge保留Google官方ADB签名和staging SHA-256，完整App仍通过`codesign --deep --strict`；Main启动不再spawn整包签名检查。
+- `npm audit --omit=dev`仍被既有生产依赖阻塞：Monaco当前依赖的DOMPurify报告critical，`ip-address`报告moderate；建议命令会强制切换Monaco大版本。本项没有修改依赖manifest，不把该失败写成通过，也不在Android范围内擅自升级或降级编辑器。
+- 最新未打包Electron在独占窗口完成真实API35双端流程：产品UI从缺失态安装随包APK，双方输入并确认完整指纹，Main启动Core listener和精确reverse，Android完成真实系统通知/VPN授权，TUN HTTP返回并在Capture显示Android来源；随后手机本地停止、Desktop断开并正常Close。最终VPN、reverse、8888和系统代理journal全部为空。该流程使用emulator ADB传输，不替代物理USB拔线、ARM64真机或原生16KiB硬件。
+- 最新production package的构建与artifact audit通过，但packaged smoke在新ad-hoc App CDHash触发的真实helper管理员授权前停在启动页；测试没有凭据且不能绕过系统确认，App/8888/journal均已安全清理。需用户先正常启动该包并批准helper更新，再用同一`npm run test:smoke --workspace @interceptor/desktop`恢复；当前保持`blocked`，不记smoke通过。
+
+
 涉及 Main / Preload / IPC / Fuses / CSP / 打包边界时追加：
 
 ```powershell

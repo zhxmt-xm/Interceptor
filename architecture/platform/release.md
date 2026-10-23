@@ -25,6 +25,28 @@ Main窗口的Preload路径以及未打包E2E均使用这两个正式产物，不
 
 external模块在顶层`require`可能阻塞packaged Main与CDP初始化，因此`@vscode/sudo-prompt`和`@peculiar/x509`在对应业务需要时通过`await import`懒加载。
 
+### 2.1 Android APK 与 ADB runtime
+
+- `scripts/prepare-android-runtime.mjs`是Desktop打包前唯一Android资源staging入口：
+  - 使用Build Tools 35.0.0的`aapt2`和`apksigner.jar`核对`applicationId`、`versionCode`、`versionName`及唯一签名证书；
+  - 计算完整APK SHA-256，复制为`Resources/android/Interceptor-Android.apk`；
+  - 只复制当前平台运行ADB所需的Platform-Tools 37.0.1文件及原始`NOTICE.txt`，不随包Fastboot、镜像或Android Studio；
+  - 生成`Resources/android/manifest.json`，固定APK摘要、签名证书摘要、Platform-Tools revision和各源文件摘要。
+- 本地非发版package可使用兄弟Android仓库的debug APK进行开发smoke；设置`INTERCEPTOR_BUILD_VERSION`的正式发版必须同时显式提供：
+  - `INTERCEPTOR_ANDROID_APK`：已签名APK路径；
+  - `INTERCEPTOR_ANDROID_SIGNER_SHA256`：预期签名证书SHA-256。
+  - 发版入口拒绝默认debug APK、Android Debug证书、缺失签名摘要或摘要不符。
+- `release-artifacts.yml`只按用户给定的私有Android Release asset ID下载APK，先核对用户给定的完整APK SHA-256，再交给相同staging入口；跨仓读取使用独立`INTERCEPTOR_ANDROID_RELEASE_TOKEN`，Desktop仓库的默认token不扩大权限。
+- Main在任何`adb install -r`前：
+  - 重新核对随包APK完整SHA-256与v2/v3签名块证书；
+  - 读取设备安装版本与base APK SHA-256；字节不同时pull只读base APK并比较签名身份；
+  - 拒绝签名不符与降级，只允许缺失、同签名升级或同版本修复安装；安装后再次要求设备内APK与随包字节完全一致。
+- Forge保留macOS ADB原有的Google Developer ID签名，不用App entitlement重签第三方ADB；外层App签名仍封存该resource：
+  - Main直接比较staging SHA-256，避免启动阶段对子进程执行`codesign --deep`；
+  - artifact audit用`codesign --verify --deep --strict --all-architectures`核对完整App bundle和嵌套官方ADB；
+  - Windows改写后Main要求ADB及其两个随包DLL与Desktop executable均为`Valid`且签名证书Thumbprint相同。
+  - artifact audit执行同一资源清单检查；APK、NOTICE和metadata仍必须逐字节匹配manifest。
+
 ## 3. 身份与安装器
 
 `INTERCEPTOR_BUILD_VERSION`同时提供给Forge的`readPackageJson`及Packager的`appVersion`。

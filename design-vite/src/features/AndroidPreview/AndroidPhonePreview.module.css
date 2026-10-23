@@ -1,0 +1,49 @@
+.androidPhoneFrame { display: flex; flex-direction: column; width: 390px; height: 700px; flex: 0 0 auto; overflow: hidden; border: 1px solid var(--border-2); border-radius: 16px; background: var(--bg); }
+.androidPhoneSystembar { display: flex; align-items: center; justify-content: space-between; flex: 0 0 32px; padding: 0 24px; color: var(--text-2); font-size: 11px; }
+.androidPhoneBrand { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; padding: 16px 22px 18px; border-bottom: 1px solid var(--border); }
+.androidPhoneLogo { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; flex: 0 0 auto; border-radius: 10px; color: #fff; background: linear-gradient(135deg, var(--accent), var(--purple)); }
+.androidPhoneBrand h2 { margin: 0; font-size: 19px; font-weight: 640; }
+.androidPhoneBrand p { margin: 5px 0 0; font-size: 11px; color: var(--text-2); }
+.androidPhoneBrand > svg { margin-left: auto; flex: 0 0 auto; color: var(--text-3); }
+.androidPhoneScroll { display: flex; flex-direction: column; gap: 18px; flex: 1; min-height: 0; padding: 22px; overflow-y: auto; }
+.androidPhoneScroll:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.androidPhoneEyebrow { display: block; color: var(--text-3); font-size: 10.5px; font-weight: 600; }
+.androidPhoneStatus h3 { margin: 10px 0 0; font-size: 25px; font-weight: 600; line-height: 1.3; }
+.androidPhoneStatus p { margin: 12px 0 0; font-size: 12px; color: var(--text-2); line-height: 1.8; }
+.androidPhoneStatus[data-tone="danger"] h3 { color: var(--red); }
+.androidPhoneStatus[data-tone="warning"] h3 { color: var(--yellow); }
+.androidPhoneSignals { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.androidPhoneSignals > span { display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; border-radius: 7px; background: var(--panel-2); color: var(--text-2); font-size: 10.5px; }
+.androidPhoneSignals > span[data-ready="true"] { color: var(--green); }
+.androidPhoneCard { padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
+.androidPhoneCardHeading { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 11px; color: var(--text-2); }
+.androidPhoneCardHeading strong { font-size: 12px; font-weight: 550; color: var(--text); }
+.androidPhoneCardHeading strong[data-ready="true"] { color: var(--green); }
+.androidPhoneCardTitle { display: inline-flex; align-items: center; gap: 7px; }
+.androidPhoneCaption { display: block; margin-top: 14px; font-size: 10px; color: var(--text-2); line-height: 1.6; }
+.androidPhoneFingerprint { display: block; margin-top: 7px; white-space: pre-wrap; font: 400 11.5px/1.85 var(--font-mono); color: var(--text); }
+.androidPhoneConsent { display: flex; align-items: center; gap: 16px; margin-top: 12px; font-size: 10.5px; color: var(--text-3); }
+.androidPhoneConsent span { display: inline-flex; align-items: center; gap: 5px; }
+.androidPhoneConsent span[data-ready="true"] { color: var(--green); }
+.androidPhoneIdentity { margin-top: 12px; border-top: 1px solid var(--border); }
+.androidPhoneIdentity summary { display: flex; align-items: center; gap: 7px; min-height: 36px; color: var(--accent); cursor: pointer; font-size: 11px; }
+.androidPhoneIdentity summary > svg { flex: 0 0 auto; transform: rotate(-90deg); }
+.androidPhoneIdentity[open] summary > svg { transform: none; }
+.androidPhoneCard p { margin: 12px 0 0; font-size: 11.5px; color: var(--text-2); line-height: 1.8; }
+.androidPhoneCard h4 { margin: 0; font-size: 12px; font-weight: 600; }
+.androidPhoneVerified { display: flex; align-items: center; gap: 7px; }
+.androidPhoneVerified > svg { flex: 0 0 auto; color: var(--green); }
+.androidPhoneLink { display: flex; align-items: center; gap: 4px; margin-top: 10px; min-height: 30px; padding: 0; border: 0; background: transparent; color: var(--accent); font-size: 11px; }
+.androidPhoneGuide { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 12px; }
+.androidPhoneGuide ol, .androidPhoneHelp { margin: 0 0 12px; padding-left: 18px; font-size: 11.5px; line-height: 1.9; color: var(--text-2); }
+.androidPhoneHelp { margin-top: 12px; margin-bottom: 0; }
+.androidPhoneFootnote { margin: 0; font-size: 10.5px; color: var(--text-3); line-height: 1.8; }
+.androidPhoneActions { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; padding: 16px 22px 8px; border-top: 1px solid var(--border); background: var(--bg); }
+.androidPhoneActions p { margin: 0; color: var(--text-3); text-align: center; font-size: 10.5px; line-height: 1.6; }
+.androidPhonePrimary, .androidPhoneSecondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; padding: 10px 14px; border: 1px solid transparent; border-radius: 9px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.androidPhonePrimary { background: var(--accent); color: var(--bg); }
+.androidPhoneSecondary { background: var(--panel-2); border-color: var(--border-2); color: var(--text); }
+.androidPhonePrimary:disabled { background: var(--panel-2); color: var(--text-3); cursor: wait; }
+.androidPhoneTextButton { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; border: 0; padding: 0; background: transparent; color: var(--text-2); font-size: 11.5px; }
+.androidPhoneFrame button:focus-visible, .androidPhoneFrame summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.androidPhoneGesture { width: 104px; height: 4px; flex: 0 0 auto; margin: 8px auto 10px; border-radius: 999px; background: var(--text-3); }

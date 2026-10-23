@@ -1091,10 +1091,12 @@ export function installFakeInterceptor({
   fileOperationDelayMs = 0,
   storageUsage = null,
   storageUnavailable = false,
+  androidApplicationState = 'current',
 }) {
   let captureEventsListener = null;
   let captureResetListener = null;
   let captureStatusListener = null;
+  let androidStatusListener = null;
   let agentSessionListener = null;
   let mcpStatusListener = null;
   let mcpApprovalListener = null;
@@ -2999,6 +3001,24 @@ export function installFakeInterceptor({
     };
   }
   let captureStatus = { ...fixture.capture.captureStatus };
+  let androidStatus = {
+    devices: [{
+      serial: 'device …7F21',
+      state: 'ready',
+      model: 'Pixel 8',
+      application: {
+        state: androidApplicationState,
+        bundledVersion: '0.1.0',
+        installedVersion: androidApplicationState === 'missing' ? null : '0.1.0',
+        detail: null,
+      },
+    }],
+    computerFingerprint: '8A31 D902 7FC4 16BD 53E8 A091 C72F 4B60 D915 6A3C E82B 07F4 9C20 B165 3D7E A804',
+    connectedSerial: null,
+    deviceFingerprint: null,
+    ingressListening: false,
+    phoneConnected: false,
+  };
   let captureGeneration = 1;
   let systemProxyStatus = {
     supported: true,
@@ -3631,6 +3651,54 @@ export function installFakeInterceptor({
       return storage;
     },
     getCaptureStatus: async () => captureStatus,
+    getAndroidStatus: async () => structuredClone(androidStatus),
+    installAndroidApplication: async (serial) => {
+      androidStatus = {
+        ...androidStatus,
+        devices: androidStatus.devices.map(device => device.serial === serial
+          ? {
+              ...device,
+              application: {
+                state: 'current',
+                bundledVersion: '0.1.0',
+                installedVersion: '0.1.0',
+                detail: null,
+              },
+            }
+          : device),
+      };
+      androidStatusListener?.(structuredClone(androidStatus));
+      return structuredClone(androidStatus);
+    },
+    connectAndroidDevice: async (serial, deviceFingerprint) => {
+      androidStatus = {
+        ...androidStatus,
+        connectedSerial: serial,
+        deviceFingerprint,
+        ingressListening: true,
+        phoneConnected: false,
+      };
+      androidStatusListener?.(structuredClone(androidStatus));
+      return structuredClone(androidStatus);
+    },
+    disconnectAndroidDevice: async () => {
+      androidStatus = {
+        ...androidStatus,
+        connectedSerial: null,
+        deviceFingerprint: null,
+        ingressListening: false,
+        phoneConnected: false,
+      };
+      androidStatusListener?.(structuredClone(androidStatus));
+      return structuredClone(androidStatus);
+    },
+    openAndroidApplication: async () => undefined,
+    onAndroidStatusChange: (listener) => {
+      androidStatusListener = listener;
+      return () => {
+        if (androidStatusListener === listener) androidStatusListener = null;
+      };
+    },
     startCapture: async () => {
       captureGeneration += 1;
       captureStatus = {

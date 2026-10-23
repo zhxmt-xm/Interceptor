@@ -54,6 +54,25 @@ async function openReverseListener(hostPort) {
 const pin = certificate => `sha256/${createHash('sha256')
   .update(certificate.publicKey.export({ type: 'spki', format: 'der' })).digest('base64')}`;
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+function assertOriginalResponsePrefix(record, expected, trailers) {
+  const original = record.messages.find(({ message }) =>
+    message.type === 'body.open' && message.phase === 'response' && message.role === 'original').message;
+  const bytes = Buffer.concat(record.chunks.filter(chunk => chunk.bodyId === original.bodyId)
+    .map(chunk => Buffer.from(chunk.payload)));
+  const ending = record.messages.find(({ message, sender }) => sender === 'android'
+    && ['body.end', 'body.stopped'].includes(message.type) && message.bodyId === original.bodyId).message;
+  assert.equal(ending.byteLength, bytes.length);
+  if (ending.type === 'body.stopped') {
+    assert.equal(ending.reason, 'response-replaced');
+    assert(!Object.hasOwn(ending, 'trailers'));
+    assert(bytes.length <= expected.length);
+    assert.deepEqual(bytes, expected.subarray(0, bytes.length));
+    return true;
+  }
+  assert.deepEqual(bytes, expected);
+  assert.deepEqual(ending.trailers, trailers);
+  return false;
+}
 const cleanupFailures = [];
 const recordings = [];
 const webSocketRecords = [];
@@ -196,6 +215,10 @@ try {
     { kind: 'rule', id: 'native-http2-rewrite', name: 'Native H2 address rewrite', priority: 16, enabled: true,
       matchers: [{ type: 'path', mode: 'exact', value: '/origin/native-h2-rewrite' }],
       actions: [{ type: 'breakpoint', phase: 'request' }] },
+    { kind: 'rule', id: 'stream-replaced', name: 'Replace streaming response', priority: 17, enabled: true,
+      matchers: [{ type: 'path', mode: 'regex', value: '^/origin/(native-stream-replaced|native-h2-stream-replaced)$' }],
+      actions: [{ type: 'status', statusCode: 202 },
+        { type: 'body', phase: 'response', format: 'text', content: 'pc-stream-response' }] },
     ...['native-block', 'native-tls-block'].map((name, index) => ({
       kind: 'rule', id: name, name, priority: 8 + index, enabled: true,
       matchers: [{ type: 'path', mode: 'exact', value: `/origin/${name}` }],
@@ -255,14 +278,17 @@ try {
     if (raw) originClientCertificates++;
     if (!['/origin/inspect', '/origin/replace', '/origin/early', '/origin/early-replaced',
       '/origin/reuse-1', '/origin/reuse-2', '/origin/native-early', '/origin/native-cancel',
-      '/origin/native-tls', '/origin/native-authority', '/origin/native-h2-rewritten'].includes(request.url) || raw) {
+      '/origin/native-tls', '/origin/native-authority', '/origin/native-h2-rewritten',
+      '/origin/native-stream-replaced'].includes(request.url) || raw) {
       response.writeHead(403).end();
       return;
     }
     const chunks = [];
     const record = { url: request.url, httpVersion: request.httpVersion, headers: request.headers,
-      tlsServerName: request.socket.servername, chunks, complete: false };
+      tlsServerName: request.socket.servername, chunks, complete: false, responseClosed: false, responseFinished: false };
     originRequests.push(record);
+    response.once('close', () => { record.responseClosed = true; });
+    response.once('finish', () => { record.responseFinished = true; });
     const early = ['/origin/early', '/origin/early-replaced', '/origin/native-early',
       '/origin/native-tls', '/origin/native-authority'].includes(request.url);
     const cancelling = request.url === '/origin/native-cancel';
@@ -280,6 +306,9 @@ try {
         response.write('unmodified-origin-response');
         response.addTrailers([['X-Origin-Tag', 'one'], ['x-origin-tag', 'two'], ['X-Origin-Empty', '']]);
         response.end();
+      } else if (request.url === '/origin/native-stream-replaced') {
+        response.writeHead(200, { 'content-type': 'text/event-stream' });
+        response.write('origin-stream-prefix');
       } else if (request.url === '/origin/native-h2-rewritten') {
         response.end('rewritten-h1');
       } else {
@@ -324,7 +353,7 @@ try {
     origin.on('stream', (stream, headers) => observeOrigin(() => {
       const url = headers[':path'];
       assert(['/origin/native-h2-paused', '/origin/native-h2-fast', '/origin/native-h2-early',
-        '/origin/native-h2-goaway', '/origin/native-h2-clear'].includes(url));
+        '/origin/native-h2-goaway', '/origin/native-h2-clear', '/origin/native-h2-stream-replaced'].includes(url));
       assert.equal(secure, url !== '/origin/native-h2-clear');
       assert.equal(stream.session.socket instanceof TLSSocket, secure);
       assert.equal(headers['x-pc-h2-request'], 'applied');
@@ -339,10 +368,11 @@ try {
       http2OriginRequests.push(record);
       const early = url === '/origin/native-h2-early';
       const goaway = url === '/origin/native-h2-goaway';
+      const streaming = url === '/origin/native-h2-stream-replaced';
       stream.on('close', () => { record.reset = stream.rstCode; });
       stream.on('error', error => {
         record.error = error.code;
-        if (!(early || goaway) || !['ERR_HTTP2_STREAM_ERROR', 'ECONNRESET'].includes(error.code)) {
+        if (!(early || goaway || streaming) || !['ERR_HTTP2_STREAM_ERROR', 'ECONNRESET'].includes(error.code)) {
           observeOrigin(() => { throw error; });
         }
       });
@@ -359,6 +389,12 @@ try {
       stream.on('end', () => observeOrigin(() => {
         record.complete = true;
         if (early || goaway) return;
+        if (streaming) {
+          record.responded = true;
+          stream.respond({ ':status': 200, 'content-type': 'text/event-stream' });
+          stream.write('origin-stream-prefix');
+          return;
+        }
         const paused = url === '/origin/native-h2-paused';
         const bytes = Buffer.from(paused ? 'h'.repeat(70001) : secure ? 'fast-h2' : 'clear-h2');
         record.responded = true;
@@ -603,13 +639,13 @@ try {
   assert.equal(approvals, 1);
   assert.equal(nativeTlsApprovals, 1);
   assert.equal(webSocketApprovals, 22);
-  assert.equal(originAttempts, 11);
-  assert.equal(originRequests.length, 11);
+  assert.equal(originAttempts, 12);
+  assert.equal(originRequests.length, 12);
   assert.equal(http2BreakpointApprovals, 3);
-  assert.equal(http2OriginAttempts, 5);
-  assert.equal(http2OriginRequests.length, 5);
+  assert.equal(http2OriginAttempts, 6);
+  assert.equal(http2OriginRequests.length, 6);
   assert.equal(http2OriginRequests.filter(request => !request.secure).length, 1);
-  assert.equal(http2SessionEvidence.length, 5);
+  assert.equal(http2SessionEvidence.length, 6);
   assert(http2SessionEvidence.every(record => record.transportEnded && record.transportClosed && record.closed));
   for (const request of http2OriginRequests) {
     const port = request.secure ? nativeOriginPorts.h2OriginPort : nativeOriginPorts.h2CleartextOriginPort;
@@ -629,6 +665,13 @@ try {
   assert(http2Goaway.goawayLastStreamId > 0);
   assert.equal(http2Goaway.responded, false);
   assert.equal(http2OriginRequests.filter(request => request.url === '/origin/native-h2-goaway').length, 1);
+  const streamingHttp1 = originRequests.find(request => request.url === '/origin/native-stream-replaced');
+  assert.equal(streamingHttp1.complete, true);
+  assert.equal(streamingHttp1.responseClosed, true);
+  assert.equal(streamingHttp1.responseFinished, false);
+  const streamingHttp2 = http2OriginRequests.find(request => request.url === '/origin/native-h2-stream-replaced');
+  assert.equal(streamingHttp2.complete, true);
+  assert.equal(streamingHttp2.reset, http2Constants.NGHTTP2_CANCEL);
   assert.equal(originClientCertificates, 0);
   assert.equal(webSocketRecords.length, 3);
   const closingDeadline = Date.now() + 5000;
@@ -660,19 +703,14 @@ try {
   const earlyOrigin = originRequests.find(request => request.url === '/origin/early-replaced');
   assert(Buffer.concat(earlyOrigin.chunks).length < 4 * 1024 * 1024);
   assert.equal(earlyOrigin.complete, false);
-  assert.equal(originRequests.filter(request => request.complete).length, 5);
+  assert.equal(originRequests.filter(request => request.complete).length, 6);
   const observed = recordings.find(record => record.messages.some(({ message }) =>
     message.type === 'http.request' && message.request.url.endsWith('/origin/inspect')));
   const uploadId = observed.messages.find(({ message }) => message.type === 'body.open'
     && message.phase === 'request' && message.role === 'applied').message.bodyId;
   assert.deepEqual(Buffer.concat(observed.chunks.filter(chunk => chunk.bodyId === uploadId).map(chunk => Buffer.from(chunk.payload))), expected);
-  const originalResponseId = observed.messages.find(({ message }) =>
-    message.type === 'body.open' && message.phase === 'response' && message.role === 'original').message.bodyId;
-  assert.deepEqual(observed.messages.find(({ message }) =>
-    message.type === 'body.end' && message.bodyId === originalResponseId).message.trailers,
-  [['X-Origin-Tag', 'one'], ['x-origin-tag', 'two'], ['X-Origin-Empty', '']]);
-  assert.deepEqual(Buffer.concat(observed.chunks.filter(chunk => chunk.bodyId === originalResponseId)
-    .map(chunk => Buffer.from(chunk.payload))), Buffer.from('unmodified-origin-response'));
+  assertOriginalResponsePrefix(observed, Buffer.from('unmodified-origin-response'),
+    [['X-Origin-Tag', 'one'], ['x-origin-tag', 'two'], ['X-Origin-Empty', '']]);
   const appliedResponseId = observed.messages.find(({ message }) =>
     message.type === 'body.open' && message.phase === 'response' && message.role === 'applied').message.bodyId;
   assert.deepEqual(observed.messages.find(({ message }) =>
@@ -709,7 +747,7 @@ try {
   }
   const http2Records = recordings.filter(record => record.messages.some(({ message }) =>
     message.type === 'http.request' && new URL(message.request.url).pathname.startsWith('/origin/native-h2-')));
-  assert.equal(http2Records.length, 7);
+  assert.equal(http2Records.length, 8);
   for (const record of http2Records) {
     const request = record.messages.find(({ message }) => message.type === 'http.request').message.request;
     assert.equal(request.httpVersion, '2');
@@ -735,8 +773,15 @@ try {
         : pathname.endsWith('-clear') ? [['x-h2-origin', 'clear']] : []);
     }
   }
-  assert.equal(recordings.length, 25);
-  assert.equal(recordings.filter(record => record.messages.some(({ message }) => message.type === 'exchange.completed')).length, 17);
+  for (const pathname of ['/origin/native-stream-replaced', '/origin/native-h2-stream-replaced']) {
+    const record = recordings.find(record => record.messages.some(({ message }) =>
+      message.type === 'http.request' && message.request.url.endsWith(pathname)));
+    assert.equal(assertOriginalResponsePrefix(record, Buffer.from('origin-stream-prefix'), []), true);
+    assert(record.messages.some(({ message }) => message.type === 'exchange.completed'));
+    assert(!record.messages.some(({ message }) => message.type === 'exchange.cancel'));
+  }
+  assert.equal(recordings.length, 27);
+  assert.equal(recordings.filter(record => record.messages.some(({ message }) => message.type === 'exchange.completed')).length, 19);
   assert.equal(recordings.filter(record => record.messages.some(({ message }) => message.type === 'exchange.cancelled')).length, 6);
   const captureDetails = [];
   for (const record of recordings) {
@@ -762,28 +807,36 @@ try {
         && (message.type === 'body.end' || message.type === 'body.stopped') && message.bodyId === bodyId);
       assert.equal(body.truncated, !ended || ended.message.type === 'body.stopped');
       const effect = phase === 'request' ? detail.requestBodyEffect : detail.responseBodyEffect;
-      if (effect?.originalState === 'available') {
+      if (effect) {
         const original = record.messages.find(({ message }) => message.type === 'body.open'
-          && message.phase === phase && message.role === 'original').message;
-        const originalBytes = Buffer.concat(record.chunks.filter(chunk => chunk.bodyId === original.bodyId)
+          && message.phase === phase && message.role === 'original')?.message;
+        const originalBytes = Buffer.concat(record.chunks.filter(chunk => chunk.bodyId === original?.bodyId)
           .map(chunk => Buffer.from(chunk.payload)));
-        assert.equal(effect.originalBody.encodedSize, originalBytes.length);
-        assert((await captureService.readBodyRange(effect.originalBody.bodyHash, 0, originalBytes.length)).equals(originalBytes));
+        const originalEnding = record.messages.find(({ message, sender }) => sender === 'android'
+          && ['body.end', 'body.stopped'].includes(message.type) && message.bodyId === original?.bodyId)?.message;
+        assert.equal(effect.originalState, originalBytes.length ? 'available'
+          : originalEnding?.type === 'body.end' ? 'empty' : 'unavailable');
+        if (originalBytes.length) {
+          assert.equal(effect.originalBody.encodedSize, originalBytes.length);
+          assert.equal(effect.originalBody.truncated, originalEnding?.type !== 'body.end');
+          assert((await captureService.readBodyRange(effect.originalBody.bodyHash, 0, originalBytes.length)).equals(originalBytes));
+        } else {
+          assert.equal(effect.originalBody, undefined);
+        }
       }
     }
     captureDetails.push(detail);
   }
-  assert.equal(captureDetails.filter(detail => detail.summary.state === 'completed').length, 17);
+  assert.equal(captureDetails.filter(detail => detail.summary.state === 'completed').length, 19);
   assert.equal(captureDetails.filter(detail => detail.summary.state === 'aborted').length, 8);
   const http2Capture = captureDetails.filter(detail => new URL(detail.url).pathname.startsWith('/origin/native-h2-'));
-  assert.equal(http2Capture.length, 7);
+  assert.equal(http2Capture.length, 8);
   assert(http2Capture.every(detail => detail.summary.protocol === 'h2'));
   const pausedHttp2 = http2Capture.find(detail => detail.url.endsWith('/origin/native-h2-paused'));
   assert.equal(pausedHttp2.summary.statusCode, 202);
-  assert.equal(pausedHttp2.responseBodyEffect.originalState, 'available');
-  assert.equal(pausedHttp2.responseBodyEffect.originalBody.encodedSize, 70001);
-  assert((await captureService.readBodyRange(pausedHttp2.responseBodyEffect.originalBody.bodyHash, 0, 70001))
-    .equals(Buffer.from('h'.repeat(70001))));
+  assert(pausedHttp2.responseBodyEffect);
+  assertOriginalResponsePrefix(recordings.find(record => record.captureExchangeId === pausedHttp2.summary.id),
+    Buffer.from('h'.repeat(70001)), [['x-h2-origin', 'paused']]);
   assert.deepEqual(pausedHttp2.responseTrailers, []);
   await writeFile(path.join(evidence, 'http2-capture.json'), JSON.stringify(http2Capture, null, 2), 'utf8');
   const webSocketEvidence = [];
@@ -820,7 +873,7 @@ try {
   const inspectedCapture = captureDetails.find(detail => detail.url.endsWith('/origin/inspect'));
   assert.equal(inspectedCapture.summary.statusCode, 202);
   assert(inspectedCapture.summary.ruleIds.includes('inspect'));
-  assert.equal(inspectedCapture.responseBodyEffect.originalState, 'available');
+  assert(inspectedCapture.responseBodyEffect);
   assert.deepEqual(inspectedCapture.responseTrailers, []);
   const authorityCapture = captureDetails.find(detail => detail.url.endsWith('/origin/native-authority'));
   assert.equal(new URL(authorityCapture.url).hostname, 'http-authority.example.test');
@@ -832,7 +885,7 @@ try {
     assert(blocked.summary.ruleIds.length > 0);
   }
   const captureEvents = captureEventQueue.drain(100);
-  assert.equal(captureEvents.length, 25);
+  assert.equal(captureEvents.length, 27);
   assert(captureEvents.every(event => ['completed', 'aborted'].includes(event.summary.state)));
   await writeFile(path.join(evidence, 'capture-details.json'), JSON.stringify(captureDetails, null, 2), 'utf8');
   await writeFile(path.join(evidence, 'result.json'), JSON.stringify({
@@ -850,6 +903,8 @@ try {
     androidHttp1OriginConnection: true, independentOriginCa: true, originHostnameVerified: true, originClientCertificates,
     androidHttp1ExchangeExecutor: true, earlyUploadStop: true, requestReplacement: true,
     simultaneousRequestResponseReplacement: true, sequentialClientConnection: true,
+    streamingResponseReplacement: true, responseOriginalPrefixRecorded: true,
+    http1OriginResponseClosed: true, http2OriginResponseReset: http2Constants.NGHTTP2_CANCEL,
     androidNativeIpHttpExchange: true, nativeUploadReadStopped: true, nativePeerResetCancelledExchange: true,
     nativeTlsSniHttpExchange: true, nativeTlsResponseBreakpointApprovals: nativeTlsApprovals,
     nativeHttpAuthorityIndependentOfSni: true, originalTlsServerNamePreserved: true,

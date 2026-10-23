@@ -6,6 +6,9 @@
  */
 
 import type {
+  AndroidStatusResult,
+  CoreCommand,
+  CoreResultForCommand,
   DiagnosticIngestPayload,
   MainToCoreMessage,
   UpstreamProxyConfig,
@@ -15,6 +18,38 @@ import type {
   CoreProcessStatus,
   UpdateStatus,
 } from '../../shared/desktop-api';
+import type { AndroidApplicationPackage } from '../android/apk';
+
+// ─── android：设备发现、身份与ADB reverse ───
+
+export interface AndroidSecureStore {
+  isEncryptionAvailable(): boolean;
+  encryptString(value: string): Buffer;
+  decryptString(value: Buffer): string;
+}
+
+export interface AndroidDeviceServiceOptions {
+  readonly dataDirectory: string;
+  readonly secureStore: AndroidSecureStore;
+  readonly runAdb: (args: readonly string[]) => Promise<string>;
+  readonly applicationPackage: Pick<AndroidApplicationPackage, 'status' | 'install'>;
+  readonly requestCore: <T extends CoreCommand>(command: T) => Promise<CoreResultForCommand<T>>;
+  readonly now?: () => Date;
+}
+
+export interface AndroidDesktopIdentity {
+  readonly key: string;
+  readonly cert: string;
+  readonly fingerprint: string;
+}
+
+export interface AndroidOwnedMapping {
+  readonly serial: string;
+  readonly deviceFingerprint: string;
+  readonly devicePort: number;
+  readonly corePort: number;
+  readonly coreStatus: AndroidStatusResult['payload'];
+}
 
 // ─── core：CoreRuntime / CoreProcess 生命周期 ───
 

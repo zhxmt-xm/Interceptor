@@ -58,7 +58,12 @@ describe('Android HTTP recording through real Capture', () => {
   });
 
   function createRecording(recording = true) {
-    return new HttpRecording(captureService, captureEventQueue, { sessionId: 'recording', recording }, diagnostics);
+    return new HttpRecording(captureService, captureEventQueue, {
+      sessionId: 'recording',
+      recording,
+      appId: 'android:test-device',
+      appName: 'Android · Test device',
+    }, diagnostics);
   }
 
   async function request(httpRecording: HttpRecording) {
@@ -101,11 +106,17 @@ describe('Android HTTP recording through real Capture', () => {
     const detail = await captureService.getExchangeDetail(httpRecording.exchangeId);
     expect(httpRecording.exchangeId).not.toBe(envelope.exchangeId);
     expect(detail).toMatchObject({ url: 'https://api.test/items?one=1', scheme: 'https', port: 443,
-      summary: { method: 'POST', protocol: 'http/1.1', state: 'pending', requestBytes: 0, responseBytes: 0 } });
+      summary: {
+        method: 'POST', protocol: 'http/1.1', state: 'pending', requestBytes: 0, responseBytes: 0,
+        appId: 'android:test-device', appName: 'Android · Test device',
+      } });
     expect(detail?.requestHeaders.slice(0, 3)).toEqual([
       { name: 'X-Tag', value: 'one' }, { name: 'x-tag', value: 'two' }, { name: 'X-Empty', value: '' },
     ]);
-    expect(captureEventQueue.drain(10)).toMatchObject([{ kind: 'exchange-added', summary: { id: httpRecording.exchangeId } }]);
+    expect(captureEventQueue.drain(10)).toMatchObject([{
+      kind: 'exchange-added',
+      summary: { id: httpRecording.exchangeId, appId: 'android:test-device', appName: 'Android · Test device' },
+    }]);
     await httpRecording.settle();
     expect((await captureService.getExchangeDetail(httpRecording.exchangeId))?.summary.state).toBe('aborted');
   });
@@ -245,6 +256,45 @@ describe('Android HTTP recording through real Capture', () => {
     expect(detail?.summary.ruleIds).toEqual(['body-rule']);
     await httpRecording.settle();
   });
+
+  it.each([Buffer.alloc(0), Buffer.from('prefix')])(
+    'keeps a stopped response original separate from the complete applied replacement (%s)', async prefix => {
+      const httpRecording = createRecording();
+      const requestStageId = await request(httpRecording);
+      await httpRecording.recordMessage(await decision(httpRecording, requestStageId,
+        { phase: 'request', decision: { action: 'bypass' } }), 'android');
+      const responseStageId = randomUUID();
+      await httpRecording.recordMessage({ ...envelope, type: 'http.response', stageId: responseStageId,
+        response: { statusCode: 200, headers: [['Content-Type', 'text/event-stream']] } }, 'android');
+      const applied = await decision(httpRecording, responseStageId, {
+        phase: 'response', decision: { action: 'intercept', statusCode: 202, headers: [['Content-Type', 'text/plain']],
+          editedHeaderNames: ['content-type'], body: { action: 'replace', bodyId: randomUUID(), byteLength: 3 }, delayMs: 0 },
+      }, { hits: [], headerEffects: [], bodyEffect: { ruleId: 'replacement', phase: 'response', effect: 'replace', source: 'text' } });
+      await httpRecording.recordMessage(applied, 'android');
+      const bodyId = randomUUID();
+      await httpRecording.recordMessage({ ...envelope, type: 'body.open', bodyId, phase: 'response',
+        role: 'original', byteLength: null }, 'android');
+      if (prefix.length) await httpRecording.recordChunk({ bodyId, offset: 0, payload: prefix });
+      await httpRecording.recordMessage({ ...envelope, type: 'body.stopped', bodyId,
+        byteLength: prefix.length, reason: 'response-replaced' }, 'android');
+      await body(httpRecording, 'response', 'applied', Buffer.from('NEW'));
+      await httpRecording.recordMessage({ ...envelope, type: 'exchange.complete', requestBytes: 0, responseBytes: 3 }, 'android');
+      await httpRecording.settle();
+      const detail = await captureService.getExchangeDetail(httpRecording.exchangeId);
+      expect(detail).toMatchObject({ summary: { state: 'completed', statusCode: 202, responseBytes: 3 },
+        responseBody: { encodedSize: 3, truncated: false },
+        responseBodyEffect: prefix.length
+          ? { originalState: 'available', originalBody: { encodedSize: prefix.length, truncated: true } }
+          : { originalState: 'unavailable' },
+        responseTrailers: [] });
+      expect(await captureService.readBodyRange(detail!.responseBody!.bodyHash!, 0, 99)).toEqual(Buffer.from('NEW'));
+      if (prefix.length) {
+        expect(await captureService.readBodyRange(detail!.responseBodyEffect!.originalBody!.bodyHash!, 0, 99)).toEqual(prefix);
+      } else {
+        expect(detail!.responseBodyEffect!.originalBody).toBeUndefined();
+      }
+    },
+  );
 
   it('records stopped upload prefixes as truncated while allowing a completed exchange', async () => {
     const httpRecording = createRecording();

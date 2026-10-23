@@ -125,7 +125,27 @@ async function choosePlan(source, sourceVersion, existingTags) {
   return createReleasePlan(version, { targets }, source.sha);
 }
 
-function printPlan(plan, context, source) {
+async function chooseAndroidArtifact() {
+  const assetId = await input({
+    message: '输入已签名Android APK的GitHub Release asset ID',
+    validate: (value) => /^[1-9]\d*$/.test(value.trim()) || '请输入正整数asset ID。',
+  });
+  const apkSha256 = await input({
+    message: '输入Android APK的SHA-256',
+    validate: (value) => /^[0-9a-f]{64}$/.test(value.trim()) || '请输入64位小写十六进制SHA-256。',
+  });
+  const signerSha256 = await input({
+    message: '输入Android APK签名证书的SHA-256',
+    validate: (value) => /^[0-9a-f]{64}$/.test(value.trim()) || '请输入64位小写十六进制SHA-256。',
+  });
+  return {
+    assetId: assetId.trim(),
+    apkSha256: apkSha256.trim(),
+    signerSha256: signerSha256.trim(),
+  };
+}
+
+function printPlan(plan, context, source, androidArtifact) {
   console.log('\n发版信息');
   printColumns([
     ['仓库', context.repository],
@@ -134,6 +154,9 @@ function printPlan(plan, context, source) {
     ['发版版本', plan.version],
     ['tag', plan.tag],
     ['工作流分支', context.workflowRef],
+    ['Android asset', androidArtifact.assetId],
+    ['Android APK SHA-256', androidArtifact.apkSha256],
+    ['Android signer SHA-256', androidArtifact.signerSha256],
   ]);
   console.log(`\n构建目标 · ${plan.assetCount} 个安装包`);
   printColumns([
@@ -163,13 +186,16 @@ function printPlan(plan, context, source) {
   console.log('  macOS采用ad-hoc且未公证，Windows未签名；不会自动公开仓库。\n');
 }
 
-async function runCi(plan, context) {
+async function runCi(plan, context, androidArtifact) {
   const requestId = randomUUID();
   try {
     runCommand('gh', [
       'workflow', 'run', workflowName, '--repo', context.repository, '--ref', context.workflowRef,
       '-f', `source_sha=${plan.sourceSha}`, '-f', `version=${plan.version}`,
       '-f', `targets=${JSON.stringify(plan.targets.map(({ platform, arch, packages }) => ({ platform, arch, packages })))}`,
+      '-f', `android_asset_id=${androidArtifact.assetId}`,
+      '-f', `android_apk_sha256=${androidArtifact.apkSha256}`,
+      '-f', `android_signer_sha256=${androidArtifact.signerSha256}`,
       '-f', `request_id=${requestId}`,
     ]);
   } catch (error) {
@@ -269,8 +295,9 @@ async function main() {
   if (source.sha !== selected.sha) throw new Error('GitHub返回的源码SHA与选择不一致。');
   const tags = readRemoteTags(repository);
   const plan = await choosePlan(source, readCommittedVersion(repository, source.sha), tags);
+  const androidArtifact = await chooseAndroidArtifact();
   const context = { repository, workflowRef: repositoryInfo.defaultBranchRef.name };
-  printPlan(plan, context, source);
+  printPlan(plan, context, source, androidArtifact);
   if (!await confirm({ message: '按此源码commit开始发版？', default: true })) {
     console.log('已取消；仅查询了提交信息，没有修改本地文件或发起CI、tag、发布操作。');
     return;
@@ -279,7 +306,7 @@ async function main() {
     throw new Error(`${plan.version} 已存在，请选择新版本；不会删除或覆盖tag。`);
   }
   console.log(`[1/3] 提交CI：源码 ${plan.sourceSha}`);
-  await runCi(plan, context);
+  await runCi(plan, context, androidArtifact);
   publishRelease(plan, context);
 }
 

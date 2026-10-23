@@ -92,6 +92,7 @@ async function main() {
   await runNpm(['run', 'build:core']);
   console.log('[release-build 2/5] 构建当前平台的 native helpers');
   await runNpm(['run', 'build:native', '--workspace', '@interceptor/desktop']);
+  await runNpm(['run', 'prepare:android-runtime', '--workspace', '@interceptor/desktop']);
   console.log('[release-build 3/5] 只运行所选 Forge makers');
   const makerPackageTypes = [...new Set(target.packages.map((type) => type === 'exe' ? 'msi' : type))];
   const previousDirectory = process.cwd();

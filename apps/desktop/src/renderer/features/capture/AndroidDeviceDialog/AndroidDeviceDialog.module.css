@@ -1,0 +1,343 @@
+.dialog {
+  overflow: hidden;
+  border: 1px solid var(--border-2);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.header {
+  padding: 20px 52px 18px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.body {
+  max-height: min(600px, calc(100vh - 220px));
+  overflow-y: auto;
+}
+
+.modalFooter {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.title > svg {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+.title h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.title p {
+  margin: 6px 0 0;
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1.5714285714;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  color: var(--text);
+}
+
+.deviceList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.device {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 76.375px;
+  padding: 14px;
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.device[data-selected="true"] {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border-2));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.deviceIdentity {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.deviceIdentity strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.deviceIdentity span {
+  overflow: hidden;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deviceState {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.deviceState > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+.deviceState[data-state="ready"] {
+  color: var(--green);
+}
+
+.deviceState[data-state="unauthorized"],
+.deviceState[data-state="offline"] {
+  color: var(--yellow);
+}
+
+.identitySection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.appRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 12px;
+}
+
+.appRow span {
+  color: var(--text-2);
+}
+
+.appRow code {
+  font: 400 11px var(--font-mono);
+}
+
+.identitySection h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.identitySection > p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.fingerprints {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.fingerprints > div {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel-2);
+}
+
+.fingerprints span,
+.fingerprints label {
+  display: block;
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 550;
+}
+
+.fingerprints code {
+  display: block;
+  margin-top: 10px;
+  color: var(--text);
+  font: 400 11.5px/1.8 var(--font-mono);
+  white-space: pre-wrap;
+}
+
+.fingerprints textarea {
+  width: 100%;
+  min-height: 86px;
+  margin-top: 9px;
+  resize: vertical;
+  border: 1px solid var(--border-2);
+  border-radius: 7px;
+  padding: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font: 400 11.5px/1.65 var(--font-mono);
+  outline: none;
+}
+
+.fingerprints textarea:focus {
+  border-color: var(--accent);
+}
+
+.fingerprintValue {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fingerprints small {
+  display: block;
+  margin-top: 10px;
+  color: var(--text-3);
+  font-size: 10.5px;
+  line-height: 1.55;
+}
+
+.connection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 12px;
+}
+
+.confirmations {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.connection span {
+  color: var(--text-2);
+}
+
+.connection strong {
+  font-weight: 500;
+}
+
+.privacy {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.privacy[data-install="true"] {
+  padding-top: 4px;
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--yellow) 25%, var(--border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--yellow) 7%, var(--panel));
+}
+
+.notice > svg {
+  flex: 0 0 auto;
+  color: var(--yellow);
+}
+
+.notice p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 11.5px;
+  line-height: 1.7;
+}
+
+.loading,
+.empty {
+  padding: 32px 28px;
+  color: var(--text-2);
+  text-align: center;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.empty > svg {
+  color: var(--text-3);
+}
+
+.empty h3,
+.empty p {
+  margin: 0;
+}
+
+.empty h3 {
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 550;
+}
+
+.empty p {
+  max-width: 370px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.footerStart {
+  display: flex;
+  align-items: center;
+  margin-right: auto;
+}
+
+.footer button {
+  height: 30px;
+  padding-inline: 9px;
+  font-size: 11px;
+}

@@ -126,6 +126,20 @@ export interface AgentProviderProfileState {
 export interface DesignState {
   readonly androidPreview: boolean;
   readonly androidConnection: 'disconnected' | 'pairing' | 'connected' | 'error';
+  readonly androidDesktopPreview: boolean;
+  readonly androidDialog: 'closed' | 'devices' | 'forget' | 'stop-help';
+  readonly androidDeviceStatus: 'ready' | 'unauthorized' | 'offline' | 'empty';
+  readonly androidPackage: 'missing' | 'installed';
+  readonly androidComputerConfirmed: boolean;
+  readonly androidPhoneConfirmed: boolean;
+  readonly androidVpn: 'stopped' | 'permission' | 'running' | 'stopping' | 'blocked';
+  readonly androidVpnPromptOpen: boolean;
+  readonly androidCa: 'missing' | 'installed';
+  readonly androidError: '' | 'identity' | 'vpn-denied' | 'usb';
+  readonly androidIdentityOpen: boolean;
+  readonly androidCaGuide: boolean;
+  readonly androidHelpOpen: boolean;
+  readonly androidSelectedApps: readonly string[];
   readonly homepageGuidePreview: boolean;
   readonly homepageGuidePage: 'resources' | 'overview' | 'capture';
   readonly homepageGuideSearchPreview: boolean;

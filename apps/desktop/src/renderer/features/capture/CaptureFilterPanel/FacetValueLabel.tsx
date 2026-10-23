@@ -11,6 +11,7 @@ import type { CaptureFacetId } from '../interfaces';
 
 import styles from './FacetValueLabel.module.css';
 import { StatusFacetValue } from './StatusFacetValue';
+import { AndroidSourceIcon } from '../AndroidSourceIcon/AndroidSourceIcon';
 
 export interface FacetValueLabelProps {
   facet: CaptureFacetId;
@@ -33,9 +34,12 @@ export function FacetValueLabel({
     facet === 'rule' ? (findLeaf(state.nodes, value)?.name ?? undefined) : undefined);
 
   if (facet === 'application') {
+    const androidSource = value.startsWith('android:');
     return (
       <>
-        {icon ? (
+        {androidSource ? (
+          <AndroidSourceIcon size={13} />
+        ) : icon ? (
           <img className={styles.itemAppIcon} src={icon} alt="" />
         ) : (
           <AppWindow className={styles.itemAppUnknown} size={13} strokeWidth={1.8} />

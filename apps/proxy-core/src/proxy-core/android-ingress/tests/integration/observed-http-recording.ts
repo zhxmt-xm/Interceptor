@@ -25,7 +25,12 @@ export class ObservedHttpRecording extends HttpRecording {
 
   /** 继承生产录制类型，不启动文件存储。 */
   constructor() {
-    super(new CaptureService(), new CaptureEventQueue(), { sessionId: 'unused', recording: false }, new CoreDiagnostics());
+    super(new CaptureService(), new CaptureEventQueue(), {
+      sessionId: 'unused',
+      recording: false,
+      appId: 'android:observed',
+      appName: 'Android · Observed',
+    }, new CoreDiagnostics());
   }
 
   /** 观察消息次序。 */

@@ -648,6 +648,7 @@ async function runViews(views, options, report) {
           fileOperationDelayMs: view.fileOperationDelayMs ?? 0,
           storageUsage: view.storageUsage ?? null,
           storageUnavailable: view.storageUnavailable === true,
+          androidApplicationState: view.androidApplicationState ?? 'current',
         });
         await appPage.goto(url, { waitUntil: 'networkidle' });
         await appPage.locator('[data-collapsed]').first().waitFor({ state: 'visible' });

@@ -1,0 +1,5 @@
+.androidPreviewControls { position: fixed; bottom: 12px; left: 50%; z-index: 10000; display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 7px; max-width: calc(100vw - 32px); padding: 7px 10px; border: 1px solid; border-radius: 9px; font-family: "Inter", sans-serif; font-size: 11px; transform: translateX(-50%); }
+.androidPreviewControls > span { margin-right: 4px; font-weight: 600; white-space: nowrap; }
+.androidPreviewControls button, .androidPreviewControls select { min-height: 28px; padding: 0 9px; border: 1px solid currentColor; border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.androidPreviewControls button[data-active="true"] { font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.androidPreviewControls button:focus-visible, .androidPreviewControls select:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }

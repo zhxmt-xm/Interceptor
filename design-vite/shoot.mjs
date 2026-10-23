@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { startDesignPreview } from './tools/design-preview.mjs';
+import { ANDROID_PHONE_SCENES, androidScenePatch } from './src/features/AndroidPreview/utils.ts';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const shotsRoot = path.resolve(process.argv
@@ -52,6 +53,53 @@ if (previewUrlArgument !== undefined) {
 // Every shot declares { feature, theme, variant, state, full? }.
 // Output path is shots/<theme>/<feature>/<variant>.png so light and dark stay separated.
 const shots = [];
+for (const theme of ['light', 'dark', 'warm', 'ember']) {
+  for (const [scene] of ANDROID_PHONE_SCENES) {
+    for (const full of [false, true]) {
+      shots.push({
+        feature: 'android-usb', theme, variant: `phone-${scene}${full ? '-full' : ''}`, full,
+        state: { view: 'playground', theme, androidPreview: true, ...androidScenePatch(scene) },
+      });
+    }
+  }
+  for (const [variant, state] of [
+    ['phone-permission-waiting', { ...androidScenePatch('permission'), androidVpnPromptOpen: true }],
+    ['phone-identities', { ...androidScenePatch('connected'), androidIdentityOpen: true }],
+    ['phone-ca-guide', { ...androidScenePatch('connected'), androidCaGuide: true }],
+  ]) {
+    for (const full of [false, true]) {
+      shots.push({
+        feature: 'android-usb', theme, variant: `${variant}${full ? '-full' : ''}`, full,
+        state: { view: 'playground', theme, androidPreview: true, ...state },
+      });
+    }
+  }
+  const desktopStates = [
+    ['desktop-baseline', { androidDesktopPreview: false, androidDialog: 'closed' }],
+    ['desktop-entry', { androidDialog: 'closed' }],
+    ['desktop-empty', { androidDeviceStatus: 'empty' }],
+    ['desktop-unauthorized', { androidDeviceStatus: 'unauthorized' }],
+    ['desktop-install', { androidPackage: 'missing' }],
+    ['desktop-ready', {}],
+    ['desktop-pairing', androidScenePatch('pairing')],
+    ['desktop-permission', androidScenePatch('permission')],
+    ['desktop-connected', androidScenePatch('connected')],
+    ['desktop-stopping', androidScenePatch('stopping')],
+    ['desktop-offline', androidScenePatch('error')],
+    ['desktop-stop-help', { ...androidScenePatch('error'), androidDialog: 'stop-help' }],
+    ['desktop-forget', { ...androidScenePatch('https'), androidConnection: 'disconnected', androidVpn: 'stopped', androidDialog: 'forget' }],
+    ['desktop-source-filter', { ...androidScenePatch('connected'), androidDialog: 'closed', androidSelectedApps: ['android'] }],
+  ];
+  for (const [variant, state] of desktopStates) {
+    for (const full of [false, true]) {
+      shots.push({
+        feature: 'android-usb', theme, variant: `${variant}${full ? '-full' : ''}`, full,
+        state: { view: 'capture', theme, sidebar: 'collapsed', detail: 'closed', androidPreview: false,
+          androidDesktopPreview: true, androidDialog: 'devices', ...androidScenePatch('disconnected'), ...state },
+      });
+    }
+  }
+}
 for (const theme of ['light', 'dark', 'warm', 'ember']) {
   for (const state of ['idle', 'hover', 'focus', 'long-title']) {
     shots.push({
@@ -831,12 +879,16 @@ for (const theme of ['light', 'dark', 'warm', 'ember']) {
   }
 }
 
-const STABILIZE = '*{caret-color:transparent!important}body:not(.menu-interaction-shot) *{transition:none!important;animation:none!important}.monaco-editor .cursors-layer{display:none!important}body.menu-interaction-shot{padding:0!important;align-items:flex-start!important;justify-content:flex-start!important}';
+const STABILIZE = '*{caret-color:transparent!important}body:not(.menu-interaction-shot):not(.android-modal-shot) *{transition:none!important;animation:none!important}.monaco-editor .cursors-layer{display:none!important}[data-design-android-controls]{display:none!important}body.menu-interaction-shot{padding:0!important;align-items:flex-start!important;justify-content:flex-start!important}';
 const FULL_CSS = `
+body{align-items:flex-start!important}
 .app{height:auto!important;min-height:900px!important}
 .mainhost,.mv{overflow:visible!important}
 .app[data-homepage-guide="open"] .hppRoot{position:relative!important;overflow:visible!important}
 .app[data-homepage-guide="open"] .hppSidebar{position:static!important;max-height:none!important;overflow:visible!important}
+.androidPreviewRoot{position:relative!important;inset:auto!important;grid-area:1 / 1 / -1 / -1!important;overflow:visible!important}
+.androidPhoneFrame{height:auto!important;min-height:700px!important;overflow:visible!important}
+.androidPhoneScroll{flex:1 0 auto!important;overflow:visible!important;max-height:none!important}
 .listwrap,.cfilters-scroll,.rlist,.reditor,.insp,.scroll,.edscroll,.ccol-scroll,.creq,.cresp,.cpane,.cscroll,.cedit,.jsonv,
 .snav,.scontent,.break-inspector,.break-scroll,.dlist,.ddetail,.dscroll{overflow:visible!important;max-height:none!important}
 `;
@@ -926,6 +978,22 @@ async function shoot(list) {
       if (s.full) await page.addStyleTag({ content: FULL_CSS });
     }
     await page.evaluate(() => window.__setState({
+      androidPreview: false,
+      androidConnection: 'disconnected',
+      androidDesktopPreview: false,
+      androidDialog: 'closed',
+      androidDeviceStatus: 'ready',
+      androidPackage: 'installed',
+      androidComputerConfirmed: false,
+      androidPhoneConfirmed: false,
+      androidVpn: 'stopped',
+      androidVpnPromptOpen: false,
+      androidCa: 'missing',
+      androidError: '',
+      androidIdentityOpen: false,
+      androidCaGuide: false,
+      androidHelpOpen: false,
+      androidSelectedApps: [],
       homepageGuidePreview: false,
       homepageGuidePage: 'overview',
       homepageGuideSearchPreview: false,
@@ -1020,7 +1088,8 @@ async function shoot(list) {
       await windowTitle.click();
       await page.waitForTimeout(120);
     }
-    await page.evaluate(({ interaction, modelMenuOpen }) => {
+    await page.evaluate(({ interaction, modelMenuOpen, androidModalOpen }) => {
+      document.body.classList.toggle('android-modal-shot', androidModalOpen);
       document.body.classList.toggle(
         'menu-interaction-shot',
         interaction === 'request-menu'
@@ -1030,7 +1099,8 @@ async function shoot(list) {
           || interaction === 'provider-menu'
           || modelMenuOpen,
       );
-    }, { interaction: s.interaction, modelMenuOpen: s.state.agentModelMenu === 'open' });
+    }, { interaction: s.interaction, modelMenuOpen: s.state.agentModelMenu === 'open',
+      androidModalOpen: s.feature === 'android-usb' && s.state.androidDesktopPreview && s.state.androidDialog !== 'closed' });
     await page.evaluate((st) => window.__setState({
       overlay: '',
       fileMenu: '',
@@ -1255,6 +1325,21 @@ async function shoot(list) {
     // Monaco hosts inside a hidden tab measure as zero until the tab is visible.
     await page.evaluate(() => window.__monacoRelayout());
     await page.waitForTimeout(60);
+    if (s.feature === 'android-usb' && s.state.androidDesktopPreview && s.state.androidDialog !== 'closed') {
+      await expect(page.locator('[data-design-android-dialog]')).toBeVisible();
+      await expect.poll(() => page.getByRole('dialog').evaluate(element => {
+        const canvas = document.querySelector('.app').getBoundingClientRect();
+        const rect = element.getBoundingClientRect();
+        const root = element.closest('.androidDeviceModalRoot');
+        return {
+          insideCanvas: rect.left >= canvas.left && rect.top >= canvas.top
+            && rect.right <= canvas.right && rect.bottom <= canvas.bottom,
+          opaque: getComputedStyle(element).opacity === '1',
+          animating: root.getAnimations({ subtree: true }).some(animation => animation.playState === 'running'),
+        };
+      }), { message: 'Android device dialog must be opaque and settled inside the canvas' })
+        .toEqual({ insideCanvas: true, opaque: true, animating: false });
+    }
     if (s.hover) await page.hover(s.hover);
     else if (!s.interaction) await page.mouse.move(0, 0);
     if (s.feature === 'upstream') {

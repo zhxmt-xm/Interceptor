@@ -36,6 +36,14 @@ const clientAppResources = path.join(
   desktopDirectory,
   '../../packages/platform-capabilities/dist/client-app',
 );
+const androidResources = path.join(desktopDirectory, '.runtime/android');
+const packagedAndroidAdbSuffix = path.join(
+  'Contents',
+  'Resources',
+  'android',
+  'platform-tools',
+  'adb',
+);
 const windowsCertificateFile = process.env.WINDOWS_CERTIFICATE_FILE;
 const windowsCertificatePassword = process.env.WINDOWS_CERTIFICATE_PASSWORD;
 const windowsSign: PackagerWindowsSignOptions | undefined = windowsCertificateFile
@@ -121,6 +129,7 @@ const config: ForgeConfig = {
       path.resolve(desktopDirectory, '../../NOTICE'),
       proxyCoreDirectory,
       appIconPng,
+      androidResources,
       ...(process.platform === 'win32' || process.platform === 'darwin'
         ? [systemProxyResources]
         : []),
@@ -144,6 +153,7 @@ const config: ForgeConfig = {
           osxSign: {
             identity: appleSignIdentity ?? '-',
             identityValidation: appleSignIdentity !== undefined,
+            ignore: (filePath) => filePath.endsWith(packagedAndroidAdbSuffix),
             optionsForFile: (filePath) => ({
               hardenedRuntime: true,
               ...(path.basename(filePath) === 'macos-proxy-helper'

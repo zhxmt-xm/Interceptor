@@ -10,6 +10,7 @@ shots-diff/
 /design-vite/shots/
 /apps/desktop/tests/visual-parity/renderer-shots/
 /apps/desktop/tests/visual-parity/parity-report.md
+/apps/desktop/.runtime/android/
 *.log
 .env
 .env.*

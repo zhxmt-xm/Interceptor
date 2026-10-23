@@ -34,6 +34,7 @@ import type {
 import {
   DESKTOP_IPC_CHANNELS,
   type ApplicationStartupStage,
+  type AndroidDesktopStatus,
   type PlatformOperation,
   type AppContainerAccessSnapshot,
   type CaptureExchangeEvent,
@@ -78,6 +79,13 @@ import { RulesImportService } from './rules/import-service';
 import { UiPreferencesService } from './settings/ui-preferences-service';
 import type { UiPreferenceAppliedChange } from '../shared/ui-preferences';
 import { GitHubReleaseUpdateService } from './updates/github-release-update-service';
+import { AndroidDeviceService } from './android/entry';
+import {
+  createAdbRunner,
+  resolveAdbExecutable,
+  verifyPackagedAdbExecutable,
+} from './android/adb';
+import { AndroidApplicationPackage } from './android/apk';
 import {
   isJsonImportPath,
   toBodyDecodeOptions,
@@ -147,6 +155,8 @@ class DesktopApplication {
   private toolCapabilitySettingsService: ToolCapabilitySettingsService | null = null;
   /** External Host MCP endpoint, Client credentials and approval owner. */
   private mcpDesktopService: McpDesktopService | null = null;
+  /** USB Android设备、专用PC身份、Core入口与reverse的Main owner。 */
+  private androidDeviceService: AndroidDeviceService | null = null;
   /** Stops Runtime Session event broadcasts before Agent shutdown. */
   private agentRuntimeUnsubscribe: (() => void) | null = null;
   /** Anonymous GitHub release checker; downloads always remain user-controlled. */
@@ -207,6 +217,37 @@ class DesktopApplication {
     const mainWindow = this.createMainWindow();
     await once(mainWindow, 'ready-to-show', { signal: AbortSignal.timeout(15_000) });
     if (this.quitting) return;
+    const adbExecutable = resolveAdbExecutable(
+      app.isPackaged,
+      process.resourcesPath,
+      process.env.ANDROID_HOME,
+      process.platform,
+    );
+    const androidRuntimeDirectory = app.isPackaged
+      ? path.join(process.resourcesPath, 'android')
+      : path.join(app.getAppPath(), '.runtime/android');
+    if (app.isPackaged) {
+      await verifyPackagedAdbExecutable(
+        adbExecutable,
+        androidRuntimeDirectory,
+        process.platform,
+        process.execPath,
+      );
+    }
+    const runAdb = createAdbRunner(adbExecutable);
+    const androidDataDirectory = path.join(app.getPath('userData'), 'android');
+    const androidApplicationPackage = new AndroidApplicationPackage({
+      runtimeDirectory: androidRuntimeDirectory,
+      temporaryDirectory: path.join(androidDataDirectory, 'packages'),
+      runAdb,
+    });
+    this.androidDeviceService = new AndroidDeviceService({
+      dataDirectory: androidDataDirectory,
+      secureStore: safeStorage,
+      runAdb,
+      applicationPackage: androidApplicationPackage,
+      requestCore: (command) => this.coreRuntime.request(command),
+    });
     await this.platformCapabilitiesService.prepare();
     if (this.quitting) return;
     this.toolCapabilitySettingsService = new ToolCapabilitySettingsService(
@@ -323,6 +364,16 @@ class DesktopApplication {
         attributes: { detail },
       });
     });
+    this.coreRuntime.onAndroidStatusChange((status) => {
+      const androidDeviceService = this.androidDeviceService;
+      if (!androidDeviceService) return;
+      void androidDeviceService.updateCoreStatus(status)
+        .then((androidStatus) => this.broadcastAndroidStatus(androidStatus))
+        .catch((error: unknown) => this.diagnostics.error('main.android.status-update-failed', {
+          errorCode: readErrorName(error),
+          attributes: { message: readErrorMessage(error) },
+        }));
+    });
     this.coreRuntime.onCoreProcessReady(() => this.platformCapabilitiesService.synchronizeCore());
     this.coreRuntime.start();
     await this.mcpDesktopService.start();
@@ -400,6 +451,7 @@ class DesktopApplication {
         { name: 'update-service', stop: () => this.updateService?.stop() },
         { name: 'mcp-desktop', stop: () => this.mcpDesktopService?.stop() },
         { name: 'agent-runtime', stop: () => this.agentRuntime?.stop() },
+        { name: 'android-device', stop: () => this.androidDeviceService?.stop() },
         { name: 'core-runtime', stop: () => this.coreRuntime.stop() },
       ],
       reportStopFailure: (name, error) => {
@@ -759,6 +811,9 @@ class DesktopApplication {
       DESKTOP_IPC_CHANNELS.appQuit,
       DESKTOP_IPC_CHANNELS.windowMinimize,
       DESKTOP_IPC_CHANNELS.windowToggleMaximize,
+      DESKTOP_IPC_CHANNELS.androidGetStatus,
+      DESKTOP_IPC_CHANNELS.androidInstallApplication,
+      DESKTOP_IPC_CHANNELS.androidOpenApplication,
     ];
     const ipcMain = {
       handle: (
@@ -1403,6 +1458,43 @@ class DesktopApplication {
       return toRendererCaptureStatus(result.payload);
     });
 
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.androidGetStatus, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.requireAndroidDeviceService().status();
+    });
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.androidInstallApplication,
+      async (event, serial: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        assertString(serial, 'Android device serial');
+        const status = await this.requireAndroidDeviceService().installDeviceApplication(serial);
+        this.broadcastAndroidStatus(status);
+        return status;
+      },
+    );
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.androidConnect,
+      async (event, serial: unknown, deviceFingerprint: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        assertString(serial, 'Android device serial');
+        assertString(deviceFingerprint, 'Android device fingerprint');
+        const status = await this.requireAndroidDeviceService().connectDevice(serial, deviceFingerprint);
+        this.broadcastAndroidStatus(status);
+        return status;
+      },
+    );
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.androidDisconnect, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      const status = await this.requireAndroidDeviceService().disconnectDevice();
+      this.broadcastAndroidStatus(status);
+      return status;
+    });
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.androidOpenApplication, async (event, serial: unknown) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      assertString(serial, 'Android device serial');
+      await this.requireAndroidDeviceService().openDeviceApplication(serial);
+    });
+
     // 会话分页查询；Renderer 属于可信应用代码，Main 原样转交 payload。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.sessionsQuery,
@@ -2000,6 +2092,15 @@ class DesktopApplication {
     }
   }
 
+  /** Broadcast public Android device and ingress state without pins or identity material. */
+  private broadcastAndroidStatus(status: AndroidDesktopStatus): void {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed() && !window.webContents.isDestroyed()) {
+        window.webContents.send(DESKTOP_IPC_CHANNELS.androidStatus, status);
+      }
+    }
+  }
+
   /** Broadcast one committed Capture cleanup to every Renderer window. */
   private broadcastCaptureReset(reset: CaptureReset): void {
     for (const window of BrowserWindow.getAllWindows()) {
@@ -2232,6 +2333,11 @@ class DesktopApplication {
       throw new Error('Update service is not initialized');
     }
     return this.updateService;
+  }
+
+  private requireAndroidDeviceService(): AndroidDeviceService {
+    if (!this.androidDeviceService) throw new Error('Android device service is not ready.');
+    return this.androidDeviceService;
   }
 
   /** Create one user-triggered installer downloader backed by GitHub Releases. */

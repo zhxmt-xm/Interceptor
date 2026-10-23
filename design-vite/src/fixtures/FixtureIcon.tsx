@@ -61,6 +61,7 @@ import {
   Trash2,
   TriangleAlert,
   Upload,
+  Usb,
   Video,
   Wifi,
   X,
@@ -68,11 +69,13 @@ import {
   type LucideIcon,
   type LucideProps,
 } from 'lucide-react';
+import { AndroidMark } from './AndroidMark/AndroidMark';
 
 const ICON_BY_ID: Readonly<Record<string, LucideIcon>> = {
   'i-activity': Activity,
   'i-alert': TriangleAlert,
   'i-ampersand': Ampersand,
+  'i-android': AndroidMark,
   'i-app-window': AppWindow,
   'i-arrow': ArrowRight,
   'i-ban': Ban,
@@ -132,6 +135,7 @@ const ICON_BY_ID: Readonly<Record<string, LucideIcon>> = {
   'i-terminal': Terminal,
   'i-trash': Trash2,
   'i-upload': Upload,
+  'i-usb': Usb,
   'i-video': Video,
   'i-wifi': Wifi,
   'i-x': X,

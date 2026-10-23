@@ -82,6 +82,15 @@ describe('Forge release configuration', () => {
     }
   });
 
+  it('ships the staged Android APK and platform-tools runtime', () => {
+    const resources = forgeConfig.packagerConfig?.extraResource;
+    const paths = Array.isArray(resources) ? resources : [resources];
+
+    expect(paths).toEqual(expect.arrayContaining([
+      expect.stringMatching(/[\\/]\.runtime[\\/]android$/),
+    ]));
+  });
+
   it.runIf(process.platform === 'darwin')('hardens ad-hoc apps without requiring a Developer ID team or injectable entitlements', async () => {
     vi.stubEnv('APPLE_SIGN_IDENTITY', undefined);
     vi.resetModules();
@@ -89,6 +98,14 @@ describe('Forge release configuration', () => {
     const signing = localConfig.packagerConfig?.osxSign;
     if (!signing || typeof signing !== 'object') throw new Error('Missing macOS signing configuration.');
 
+    const ignore = signing.ignore;
+    if (typeof ignore !== 'function') throw new Error('Missing macOS signing ignore rule.');
+    expect(ignore(
+      '/Applications/Interceptor.app/Contents/Resources/android/platform-tools/adb',
+    )).toBe(true);
+    expect(ignore(
+      '/Applications/Interceptor.app/Contents/MacOS/Interceptor',
+    )).toBe(false);
     expect(signing.identity).toBe('-');
     expect(signing.optionsForFile?.('Interceptor.app', { platform: 'darwin' })).toMatchObject({
       hardenedRuntime: true,

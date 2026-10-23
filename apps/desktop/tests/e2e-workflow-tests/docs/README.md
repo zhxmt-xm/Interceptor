@@ -5,7 +5,7 @@
 | 分类 | 详细文档 | Workflow 数量 |
 | --- | --- | ---: |
 | Application 与 Shell | [application-shell.md](application-shell.md) | 9 |
-| Capture 与协议 | [capture.md](capture.md) | 40 |
+| Capture 与协议 | [capture.md](capture.md) | 42 |
 | Rules | [rules.md](rules.md) | 15 |
 | Composer | [composer.md](composer.md) | 11 |
 | Breakpoints | [breakpoints.md](breakpoints.md) | 14 |
@@ -14,7 +14,7 @@
 | MCP | [mcp.md](mcp.md) | 5 |
 | Settings 与 Updates | [settings-updates.md](settings-updates.md) | 31 |
 
-总计：144 条 workflow 契约（含共享CA启动、普通消息高度、正文阈值、Original/File预览、macOS上游配置及Windows WPAD；部分契约含多个协议或大小测试）。管理员MMC原生专项另保留排除说明，不计入workflow数量；Bilibili专属契约已移除，Windows人工UAC取消专项不作为验收门槛，不删除可自动化的错误分支测试。
+总计：146 条 workflow 契约（含共享CA启动、普通消息高度、正文阈值、Original/File预览、Android单设备接管/断线恢复、macOS上游配置及Windows WPAD；部分契约含多个协议或大小测试）。管理员MMC原生专项另保留排除说明，不计入workflow数量；Bilibili专属契约已移除，Windows人工UAC取消专项不作为验收门槛，不删除可自动化的错误分支测试。
 
 ## 文档约定
 

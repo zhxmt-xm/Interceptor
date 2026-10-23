@@ -263,11 +263,17 @@ export function useDesignFixtureAdapter(
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    root.querySelectorAll<HTMLElement>('.fitem[data-demo]').forEach((row) => row.classList.toggle('on', row.dataset.demo === (state.filterActive ? 'on' : 'off')));
+    root.querySelectorAll<HTMLElement>('.fitem[data-demo]:not([data-android-app])').forEach((row) => row.classList.toggle('on', row.dataset.demo === (state.filterActive ? 'on' : 'off')));
+    if (state.androidDesktopPreview) {
+      root.querySelectorAll<HTMLElement>('.fitem[data-android-app]').forEach(row => {
+        const id = row.dataset.androidApp;
+        row.classList.toggle('on', id === 'all' ? state.androidSelectedApps.length === 0 : state.androidSelectedApps.includes(id ?? ''));
+      });
+    }
     const selectedRule = state.ruleFilter ? state.ruleFilter.replace(/^rule-/, '') : 'all';
     root.querySelectorAll<HTMLElement>('.fitem[data-rule]').forEach((row) => row.classList.toggle('on', row.dataset.rule === selectedRule));
     updateState({ hasFilter: syncFilterBadge(root) });
-  }, [rootRef, state.filterActive, state.ruleFilter, updateState]);
+  }, [rootRef, state.filterActive, state.ruleFilter, state.androidDesktopPreview, state.androidSelectedApps, updateState]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -276,6 +282,8 @@ export function useDesignFixtureAdapter(
   }, [
     rootRef,
     state.filterActive,
+    state.androidSelectedApps,
+    state.androidDesktopPreview,
     state.filterGroup,
     state.ruleFilter,
     state.ruleOptions,
@@ -296,6 +304,7 @@ export function useDesignFixtureAdapter(
     };
     const clearFilterGroup = (group: HTMLElement): void => {
       group.querySelectorAll('.fitem').forEach((row, index) => row.classList.toggle('on', index === 0));
+      if (group.querySelector('[data-android-app]')) updateState({ androidSelectedApps: [] });
     };
     const onClick = (event: MouseEvent): void => {
       const patch = (value: DesignStatePatch): void => updateState(value);
@@ -454,6 +463,11 @@ export function useDesignFixtureAdapter(
         const rows = Array.from(facet.closest('.fgrp-b')?.querySelectorAll<HTMLElement>('.fitem') ?? []); const all = rows[0];
         if (facet === all) rows.forEach((row) => row.classList.toggle('on', row === all));
         else { facet.classList.toggle('on'); all?.classList.toggle('on', !rows.slice(1).some((row) => row.classList.contains('on'))); }
+        if (facet.dataset.androidApp) {
+          const androidSelectedApps = rows.slice(1).filter(row => row.classList.contains('on'))
+            .map(row => row.dataset.androidApp).filter((id): id is string => Boolean(id));
+          patch({ androidSelectedApps, ...(androidSelectedApps.length === 1 && androidSelectedApps[0] === 'android' ? { detail: 'closed' } : {}) });
+        }
         syncFilter(); return;
       }
       if (closest(event.target, '.omni-clear')) return patch({ search: '' });

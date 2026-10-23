@@ -117,7 +117,8 @@ export function parseInspectionMessage(
       return { ...envelope, type: message.type, bodyId: uuid(message.bodyId), byteLength: count(message.byteLength) };
     case 'body.stopped':
       fields('bodyId', 'byteLength', 'reason');
-      requireValid(message.reason === 'early-response' || message.reason === 'synthetic-response');
+      requireValid(message.reason === 'early-response' || message.reason === 'synthetic-response'
+        || message.reason === 'response-replaced');
       return { ...envelope, type: message.type, bodyId: uuid(message.bodyId),
         byteLength: count(message.byteLength), reason: message.reason };
     case 'body.discard':

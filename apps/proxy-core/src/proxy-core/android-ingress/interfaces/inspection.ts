@@ -67,7 +67,7 @@ export type InspectionCancellationReason =
   | 'device-stopped'
   | 'protocol-error';
 
-export type InspectionBodyStopReason = 'early-response' | 'synthetic-response';
+export type InspectionBodyStopReason = 'early-response' | 'synthetic-response' | 'response-replaced';
 
 export type InspectionHttpMessage = InspectionEnvelope & (
   | { type: 'http.request'; stageId: string; request: InspectionRequest }

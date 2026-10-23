@@ -487,6 +487,40 @@ export type DesktopUiLanguage = (typeof DESKTOP_UI_LANGUAGES)[number];
 
 export type ApplicationStartupStage = 'platform' | 'certificate' | 'ready';
 
+export type AndroidDeviceState = 'ready' | 'unauthorized' | 'offline';
+
+export type AndroidApplicationState =
+  | 'unavailable'
+  | 'missing'
+  | 'current'
+  | 'update-available'
+  | 'reinstall-required'
+  | 'newer-installed'
+  | 'signature-mismatch';
+
+export interface AndroidApplicationInfo {
+  readonly state: AndroidApplicationState;
+  readonly bundledVersion: string | null;
+  readonly installedVersion: string | null;
+  readonly detail: string | null;
+}
+
+export interface AndroidDeviceInfo {
+  readonly serial: string;
+  readonly state: AndroidDeviceState;
+  readonly model: string | null;
+  readonly application: AndroidApplicationInfo;
+}
+
+export interface AndroidDesktopStatus {
+  readonly devices: AndroidDeviceInfo[];
+  readonly computerFingerprint: string;
+  readonly connectedSerial: string | null;
+  readonly deviceFingerprint: string | null;
+  readonly ingressListening: boolean;
+  readonly phoneConnected: boolean;
+}
+
 export type PlatformOperation = import('@interceptor/tools').PlatformOperation;
 
 export interface PlatformOperationConflict {
@@ -580,6 +614,12 @@ export const DESKTOP_IPC_CHANNELS = {
   captureReset: 'capture:reset',
   captureImported: 'capture:imported',
   captureEvents: 'capture:events',
+  androidGetStatus: 'android:get-status',
+  androidInstallApplication: 'android:install-application',
+  androidConnect: 'android:connect',
+  androidDisconnect: 'android:disconnect',
+  androidOpenApplication: 'android:open-application',
+  androidStatus: 'android:status-changed',
   sessionsQuery: 'sessions:query',
   sessionsDetail: 'sessions:detail',
   websocketFrames: 'websocket:frames',
@@ -738,6 +778,12 @@ export interface InterceptorDesktopApi {
   onCaptureStatusChange(listener: (status: CaptureStatus) => void): () => void;
   onCaptureReset(listener: (reset: CaptureReset) => void): () => void;
   onCaptureImported(listener: () => void): () => void;
+  getAndroidStatus(): Promise<AndroidDesktopStatus>;
+  installAndroidApplication(serial: string): Promise<AndroidDesktopStatus>;
+  connectAndroidDevice(serial: string, deviceFingerprint: string): Promise<AndroidDesktopStatus>;
+  disconnectAndroidDevice(): Promise<AndroidDesktopStatus>;
+  openAndroidApplication(serial: string): Promise<void>;
+  onAndroidStatusChange(listener: (status: AndroidDesktopStatus) => void): () => void;
   querySessions(request: SessionQueryRequest): Promise<SessionsPage>;
   getExchangeDetail(exchangeId: string): Promise<CaptureExchangeDetail | null>;
   queryWebSocketFrames(request: WebSocketFrameQuery): Promise<WebSocketFramePage>;

@@ -13,6 +13,7 @@ import { cx, MethodBadge, sizeLabel } from '../../../components';
 import { useBreakpointsStore } from '../../breakpoints';
 import { breakpointQueuePosition } from '../../breakpoints/utils';
 import { useCaptureStore } from '../data/captureStore';
+import { AndroidSourceIcon } from '../AndroidSourceIcon/AndroidSourceIcon';
 import {
   displayBytes,
   displayPath,
@@ -61,6 +62,7 @@ export const RequestRow = memo(function RequestRow({
   const clientAppIcon = useCaptureStore((state) =>
     summary.appId ? state.clientAppIcons.get(summary.appId) : undefined,
   );
+  const androidSource = summary.appId?.startsWith('android:') === true;
   const showQueryParams = useCaptureStore((state) => state.showQueryParams);
   const timeLabels = {
     closed: t('capture.closed'),
@@ -94,10 +96,12 @@ export const RequestRow = memo(function RequestRow({
         <span
           className={styles.clientApp}
           data-parity={
-            clientAppIcon ? 'capture-list-app-cell' : 'capture-list-app-cell-unknown'
+            clientAppIcon || androidSource ? 'capture-list-app-cell' : 'capture-list-app-cell-unknown'
           }
         >
-          {clientAppIcon ? (
+          {androidSource ? (
+            <AndroidSourceIcon label={summary.appName} />
+          ) : clientAppIcon ? (
             <img
               className={styles.clientAppIcon}
               src={clientAppIcon}
@@ -181,4 +185,3 @@ export const RequestRow = memo(function RequestRow({
     </button>
   );
 });
-

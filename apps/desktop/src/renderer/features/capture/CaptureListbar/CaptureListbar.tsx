@@ -11,6 +11,7 @@ import {
   Search,
   Trash2,
   Upload,
+  Usb,
   X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -20,6 +21,7 @@ import { AUTOMATION_IDS, type AutomationId } from '../../../../shared/automation
 import { cx, Flyout, IconButton } from '../../../components';
 import { useBreakpointsStore } from '../../breakpoints';
 import { BreakpointManager } from '../BreakpointManager/BreakpointManager';
+import { AndroidDeviceDialog } from '../AndroidDeviceDialog/AndroidDeviceDialog';
 import { useCaptureStore } from '../data/captureStore';
 import { toggleCapture } from '../data/useCaptureData';
 import type { CaptureTransferAction } from '../interfaces';
@@ -55,6 +57,7 @@ export function CaptureListbar({
   const [recordingPending, setRecordingPending] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [managerOpen, setManagerOpen] = useState(false);
+  const [androidOpen, setAndroidOpen] = useState(false);
   const breakpointsEnabled = useBreakpointsStore((state) => state.enabled);
   const pausedCount = useBreakpointsStore((state) => state.breakpoints.length);
 
@@ -94,7 +97,8 @@ export function CaptureListbar({
   };
 
   return (
-    <div className={styles.listbar}>
+    <>
+      <div className={styles.listbar}>
       <div className={styles.start}>
         <span className={styles.filtersToggle}>
           <IconButton
@@ -300,8 +304,19 @@ export function CaptureListbar({
               />
             </span>
           </Flyout>
+          <IconButton
+            icon={Usb}
+            size="sm"
+            label="Android devices"
+            pressed={androidOpen}
+            className={styles.androidTrigger}
+            onClick={() => setAndroidOpen(true)}
+            automationId={AUTOMATION_IDS.capture.android.trigger}
+          />
         </div>
       </div>
-    </div>
+      </div>
+      <AndroidDeviceDialog open={androidOpen} onClose={() => setAndroidOpen(false)} />
+    </>
   );
 }

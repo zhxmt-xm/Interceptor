@@ -14,6 +14,8 @@ import { RulesRootContextMenu } from '../features/Rules/RulesRootContextMenu';
 import { AcceptancePlayground } from '../features/Playground/AcceptancePlayground';
 import { HomepageGuidePreview } from '../features/HomepageGuidePreview/HomepageGuidePreview';
 import { AndroidPreview } from '../features/AndroidPreview/AndroidPreview';
+import { AndroidDeviceDialog } from '../features/AndroidPreview/AndroidDeviceDialog';
+import { AndroidPreviewControls } from '../features/AndroidPreview/AndroidPreviewControls';
 import { Settings } from '../features/Settings/Settings';
 import { AppContainerBulkDialog } from '../features/Settings/AppContainerBulkDialog';
 import { AgentProviderDialog } from '../features/Settings/AgentProviderDialog';
@@ -79,6 +81,7 @@ function DesignAppContent(): React.JSX.Element {
               </div>
               <AgentSidePanel />
               <FixtureRenderer node={statusbarFixture} renderElement={renderStatusbarElement} />
+              <AndroidDeviceDialog />
               {overlayFixtures.map((fixture, index) => <FixtureRenderer key={`overlay-${index}`} node={fixture} />)}
               <AppContainerBulkDialog />
               <AgentProviderDialog />
@@ -98,6 +101,7 @@ function DesignAppContent(): React.JSX.Element {
           )}
         </div>
         {state.view === 'playground' ? null : <FixtureRenderer node={dockFixture} />}
+        <AndroidPreviewControls />
       </AntApp>
     </ConfigProvider>
   );

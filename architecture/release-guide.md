@@ -6,7 +6,7 @@
 npm run release
 ```
 
-流程为：**选择源码commit → 选择版本和目标 → 确认 → CI检出指定SHA并构建/tag/draft → 核对源码及附件完整性 → 自动Publish**。
+流程为：**选择源码commit → 选择版本和目标 → 指定已签名Android APK → 确认 → CI检出指定SHA并构建/tag/draft → 核对源码及附件完整性 → 自动Publish**。
 
 本地工作区可以保留未提交修改。命令不会修改本地版本或配置，不commit、push、stash、checkout、清理文件或改变HEAD；未提交内容不会进入安装包。
 
@@ -15,7 +15,12 @@ npm run release
 - 项目依赖已经按[开发指南](development.md)安装。
 - 官方GitHub CLI `gh`已安装并登录，账号有仓库和Actions权限。
 - 需要发布的源码commit已经存在于GitHub。只有本地有而尚未推送时，命令明确拒绝，不自动上传、不改用main。
-- 默认分支已经部署支持`source_sha`、`version`和`targets`输入的Release workflow。修改本机脚本不会自动更新GitHub工作流；更新发版工具时，先审阅、提交并推送工具和workflow，再运行发版命令。
+- 默认分支已经部署支持`source_sha`、`version`、`targets`及Android APK三项身份输入的Release workflow。修改本机脚本不会自动更新GitHub工作流；更新发版工具时，先审阅、提交并推送工具和workflow，再运行发版命令。
+- Android私有仓库已发布同一轮正式签名APK，并准备：
+  - GitHub Release asset ID；
+  - 完整APK SHA-256；
+  - APK签名证书SHA-256。
+- Desktop仓库Actions secret `INTERCEPTOR_ANDROID_RELEASE_TOKEN`只授予读取`zhxmt-xm/Interceptor-Android` Release asset的最小权限；token不输入本地向导、不写日志或产物。缺secret、摘要不符、debug证书或换签时CI在Desktop构建前停止。
 
 Intel Mac使用官方[GitHub CLI Release](https://github.com/cli/cli/releases/latest)中的`macOS_amd64.zip`；`amd64`适用于Intel x86_64，不是arm64。Homebrew已将Intel macOS列为Tier 3，不需要为了gh新装Homebrew。
 
@@ -86,10 +91,11 @@ d274c2f8   2026-10-04    fix(capture): count requests in filter group badges
 - EXE需要Windows CI中的NSIS 3.11和7-Zip；CI核对内嵌MSI与单独MSI的SHA-256，不能只把应用exe改名当安装器。NSIS启动MSI保留原生安装UI及退出码，不自行提权、不静默安装、不强制重启。
 - macOS内置更新只接受同架构DMG；ZIP-only只能手动分发。
 - 任意可访问commit都能查询和选择，但不保证每个旧快照都能通过当前构建、许可、安全和测试门禁；不为旧快照跳过检查或注入业务修复。
+- 选择Desktop目标后，向导要求输入Android Release asset ID、APK SHA-256和签名证书SHA-256；三项原样显示在最终摘要。CI只下载该asset并逐项复核，不查找“latest”或按文件名猜测APK。
 
 ## 4. 核对摘要并开始
 
-摘要分列显示仓库、**源码commit**、源码日期、发版版本、tag、工作流分支和构建目标。
+摘要分列显示仓库、**源码commit**、源码日期、发版版本、tag、工作流分支、Android APK三项身份和构建目标。
 
 **源码commit与工作流分支不是同一概念：**
 

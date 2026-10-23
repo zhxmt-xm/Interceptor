@@ -419,6 +419,7 @@ export interface AndroidStartCommand {
   payload: {
     identity: { key: string; cert: string };
     devicePin: string;
+    device: { id: string; name: string };
   };
 }
 

@@ -69,7 +69,11 @@ describe('CoreRpcClient', () => {
       const fakeRpcPort = new FakeRpcPort();
       coreRpcClient.attach(fakeRpcPort);
       const command: CoreCommand = type === 'android.start'
-        ? { type, payload: { identity: { key: 'test-key', cert: 'test-cert' }, devicePin: 'test-pin' } }
+        ? { type, payload: {
+          identity: { key: 'test-key', cert: 'test-cert' },
+          devicePin: 'test-pin',
+          device: { id: 'android:test', name: 'Android · Test' },
+        } }
         : { type, payload: {} };
       const result: AndroidStatusResult = { type: 'android.status', payload: {
         listening: false, connected: false, host: null, port: null, recording: false, captureSessionId: null,

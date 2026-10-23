@@ -24,7 +24,7 @@ const decode = (value: unknown) => parseInspectionMessage(encode(value), session
 
 describe('inspection HTTP protocol messages', () => {
   it('distinguishes incomplete request prefixes and receiver discard from complete body ends', () => {
-    for (const reason of ['early-response', 'synthetic-response']) {
+    for (const reason of ['early-response', 'synthetic-response', 'response-replaced']) {
       const stopped = { ...envelope, type: 'body.stopped', bodyId, byteLength: 2, reason };
       expect(decode(stopped)).toEqual(stopped);
     }
