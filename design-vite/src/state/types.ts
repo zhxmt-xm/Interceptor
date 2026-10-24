@@ -150,6 +150,14 @@ export interface DesignState {
   readonly guidebookAppState: 'ready' | 'loading' | 'error';
   readonly guidebookAppSearchOpen: boolean;
   readonly guidebookAppImageOpen: boolean;
+  readonly guidebookAppPreview: boolean;
+  readonly guidebookPreviewPage: 'overview' | 'mcp';
+  readonly guidebookPreviewLoadState: 'ready' | 'loading' | 'error';
+  readonly guidebookPreviewSearchOpen: boolean;
+  readonly guidebookPreviewSearchQuery: string;
+  readonly guidebookPreviewImageOpen: boolean;
+  readonly guidebookPreviewImageError: boolean;
+  readonly guidebookPreviewSection: string;
   readonly view: DesignView;
   readonly theme: DesignTheme;
   readonly sidebar: SidebarState;

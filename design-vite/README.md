@@ -69,6 +69,33 @@ design-vite/
 
 ## 命令
 
+### App 教程入口候选
+
+`src/features/GuidebookAppPreview/GuidebookAppCandidatePreview.tsx`是默认关闭的桌面教程入口候选，保留早期阅读布局预览；同目录的`GuidebookAppPreview.tsx`仍是已确认的App设计基准。候选不修改产品Renderer或Homepage实现。
+
+- 复用唯一Window Header、现有Sidebar与状态栏；拟议入口位于Settings上方，内容首行提供在线状态和“在浏览器打开”，阅读区不加iframe边框、阴影或外层卡片。
+- 目录、MCP样章、加载、失败/重试、搜索与原图预览使用同一typed state；页内目录跟随真实滚动，控件与`window.__setState()`使用同一状态，不为截图单独注入DOM。
+- 搜索沿用线上阅读页的交互边界：有可见dialog时不再打开搜索；`Ctrl/Cmd+K`不响应输入法组合事件或额外的Alt修饰键，关闭后恢复原焦点，不把搜索叠在大图上。
+- 样章文字仅用于布局，完整教程仍以Homepage Markdown为唯一来源；其他章节只展示导航排版，不把本候选当作全部章节的运行实现。图片来自已审阅的English Host原workflow，不改字或调色。
+- 本地图片与浏览器出口使用既有Homepage预览`http://127.0.0.1:4175`，评审前需启动它；这不是正式发布地址，不代表受限站点登录、跨源iframe、主题协议或App真实E2E已经验收。
+- 画布下方的独立候选控件只用于切换设计状态，不遮挡App或进入`.app`截图。四主题、目录/样章、加载/错误、搜索/原图、侧栏展开和中文样章均可预览；截图分别保存framed与full，不提交全量PNG基准。
+- 正式App接入与验收见[Guidebook](../architecture/features/guidebook.md)；本候选只作设计预览，用户明确确认页面、入口位置和状态截图后才能用于新的产品UI改动。
+
+```sh
+node design-vite/shoot.mjs --feature=guidebook-app-candidate --out-dir="<独立候选目录>"
+```
+
+```js
+window.__setState({
+  view: 'settings',
+  guidebookAppPreview: true,
+  guidebookPreviewPage: 'mcp', // overview / mcp
+  guidebookPreviewLoadState: 'ready', // ready / loading / error
+  theme: 'light',
+  lang: 'en',
+});
+```
+
 ### Android USB 双端设计与产品还原
 
 `src/features/AndroidPreview/`在同一个SPA内提供手机连接页与PC Capture设备入口的权威设计；`androidPreview`和`androidDesktopPreview`是画布外预览开关，默认关闭，不进入正式产品代码或`shots/`。Android Launcher和Desktop Renderer已经按这些状态实现，设计辅助控制仍不能移植成产品后门。
@@ -116,7 +143,7 @@ node design-vite/shoot.mjs --feature=android-usb --theme=dark --variant=desktop-
 - `homepageGuidePreview`开启候选，`homepageGuidePage`选择`resources / overview / capture`；入口、目录与Capture按钮使用同一typed state。
 - 预览只用于确认资源卡片和阅读内容区；正式接入时继续复用Homepage现有SiteHeader及其语言、主题菜单、下载和手机导航，不以候选里的简化Header替换它。
 - 其余章节只展示目录排版，完整内容仍以Homepage的Markdown为唯一来源，不把样章预览算作全部章节已经可用。
-- 此处仍是设计候选，不复制到正式App基准，也不接入App iframe；内容与媒体验收状态见Handover。
+- 此处仍是设计候选，不复制到正式App基准，也不接入App iframe；内容与媒体验收范围见[Guidebook](../architecture/features/guidebook.md#6-与当前验证范围的差异)。
 
 ```sh
 node design-vite/shoot.mjs --feature=homepage-guide --out-dir="<独立候选目录>"

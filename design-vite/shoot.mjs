@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { startDesignPreview } from './tools/design-preview.mjs';
 import { ANDROID_PHONE_SCENES, androidScenePatch } from './src/features/AndroidPreview/utils.ts';
+import { guidebookPreviewPatch } from './src/features/GuidebookAppPreview/utils.ts';
 
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const shotsRoot = path.resolve(process.argv
@@ -99,6 +100,24 @@ for (const theme of ['light', 'dark', 'warm', 'ember']) {
       });
     }
   }
+}
+for (const theme of ['light', 'dark', 'warm', 'ember']) {
+  for (const scene of ['overview', 'article', 'loading', 'error', 'search', 'image']) {
+    for (const full of scene === 'search' || scene === 'image' ? [false] : [false, true]) {
+      shots.push({
+        feature: 'guidebook-app-candidate', theme, variant: `${scene}${full ? '-full' : ''}`, full,
+        state: { ...guidebookPreviewPatch(scene), theme, sidebar: 'collapsed', lang: 'en' },
+      });
+    }
+  }
+  shots.push({
+    feature: 'guidebook-app-candidate', theme, variant: 'article-expanded',
+    state: { ...guidebookPreviewPatch('article'), theme, sidebar: 'expanded', lang: 'en' },
+  });
+  shots.push({
+    feature: 'guidebook-app-candidate', theme, variant: 'article-zh',
+    state: { ...guidebookPreviewPatch('article'), theme, sidebar: 'collapsed', lang: 'zh-CN' },
+  });
 }
 for (const theme of ['light', 'dark', 'warm', 'ember']) {
   for (const state of ['idle', 'hover', 'focus', 'long-title']) {
@@ -916,13 +935,16 @@ for (const theme of ['light', 'dark', 'warm', 'ember']) {
   }
 }
 
-const STABILIZE = '*{caret-color:transparent!important}body:not(.menu-interaction-shot):not(.android-modal-shot) *{transition:none!important;animation:none!important}.monaco-editor .cursors-layer{display:none!important}[data-design-android-controls]{display:none!important}body.menu-interaction-shot{padding:0!important;align-items:flex-start!important;justify-content:flex-start!important}';
+const STABILIZE = '*{caret-color:transparent!important}body:not(.menu-interaction-shot):not(.android-modal-shot) *{transition:none!important;animation:none!important}.monaco-editor .cursors-layer{display:none!important}[data-design-android-controls],[data-design-guidebook-controls]{display:none!important}body.menu-interaction-shot{padding:0!important;align-items:flex-start!important;justify-content:flex-start!important}';
 const FULL_CSS = `
 body{align-items:flex-start!important}
 .app{height:auto!important;min-height:900px!important}
 .mainhost,.mv{overflow:visible!important}
 .app[data-homepage-guide="open"] .hppRoot{position:relative!important;overflow:visible!important}
 .app[data-homepage-guide="open"] .hppSidebar{position:static!important;max-height:none!important;overflow:visible!important}
+.gbpRoot[data-design-guidebook-state="ready"]{height:auto!important}
+.gbpRoot[data-design-guidebook-state="ready"] .gbpReader,.gbpRoot[data-design-guidebook-state="ready"] .gbpArticleScroll,
+.gbpRoot[data-design-guidebook-state="ready"] .gbpChapters,.gbpRoot[data-design-guidebook-state="ready"] .gbpOutline{overflow:visible!important;max-height:none!important}
 .androidPreviewRoot{position:relative!important;inset:auto!important;grid-area:1 / 1 / -1 / -1!important;overflow:visible!important}
 .androidPhoneFrame{height:auto!important;min-height:700px!important;overflow:visible!important}
 .androidPhoneScroll{flex:1 0 auto!important;overflow:visible!important;max-height:none!important}
@@ -1038,6 +1060,14 @@ async function shoot(list) {
       homepageGuideSearchQuery: '',
       homepageGuideOutlinePreview: false,
       homepageGuideOutlineActive: '',
+      guidebookAppPreview: false,
+      guidebookPreviewPage: 'mcp',
+      guidebookPreviewLoadState: 'ready',
+      guidebookPreviewSearchOpen: false,
+      guidebookPreviewSearchQuery: '',
+      guidebookPreviewImageOpen: false,
+      guidebookPreviewImageError: false,
+      guidebookPreviewSection: 'gbp-connect',
       ruleEditorName: 'Stub /v1/user',
       ruleEditorSavedName: 'Stub /v1/user',
       overlay: '',
@@ -1248,6 +1278,12 @@ async function shoot(list) {
       designApp.style.height = `${appSize.height}px`;
     }, s.appSize ?? { width: 1600, height: 900 });
     await page.waitForTimeout(140);
+    if (s.feature === 'guidebook-app-candidate' && s.state.guidebookPreviewPage === 'mcp'
+      && s.state.guidebookPreviewLoadState === 'ready') {
+      const illustrations = page.locator('[data-design-guidebook-preview] img');
+      if (await illustrations.count() === 0) throw new Error('The Guidebook candidate omitted its reviewed example image.');
+      await illustrations.evaluateAll(images => Promise.all(images.map(image => image.decode())));
+    }
     if (
       s.interaction === 'request-menu'
       || s.interaction === 'breakpoint-menu'

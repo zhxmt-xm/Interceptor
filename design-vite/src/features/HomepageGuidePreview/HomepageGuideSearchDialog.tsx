@@ -11,7 +11,7 @@ import {
 } from './utils';
 import styles from './HomepageGuideSearchDialog.module.css';
 
-export function HomepageGuideSearchDialog({ open, query, locale, onQuery, onClose, onSelect, container, entries }: {
+export function HomepageGuideSearchDialog({ open, query, locale, onQuery, onClose, onSelect, container, entries, contained = false }: {
   open: boolean;
   query: string;
   locale: GuideSearchPreviewLocale;
@@ -20,6 +20,7 @@ export function HomepageGuideSearchDialog({ open, query, locale, onQuery, onClos
   onSelect: (href: string) => void;
   container?: () => HTMLElement;
   entries?: readonly GuideSearchPreviewResult[];
+  contained?: boolean;
 }): React.JSX.Element {
   const copy = GUIDE_SEARCH_PREVIEW_COPY[locale];
   const inputRef = useRef<InputRef>(null);
@@ -41,13 +42,14 @@ export function HomepageGuideSearchDialog({ open, query, locale, onQuery, onClos
       width={680}
       footer={null}
       onCancel={onClose}
-      getContainer={container}
+      getContainer={contained ? false : container}
       afterOpenChange={(visible) => { if (visible) inputRef.current?.focus(); }}
       className={styles.hgsDialog}
       classNames={{ body: styles.hgsBody }}
-      style={{ top: 'var(--hgs-dialog-top)', maxWidth: '100%', margin: '0 auto' }}
+      style={{ top: contained ? 'var(--gbp-space-lg)' : 'var(--hgs-dialog-top)', maxWidth: '100%', margin: '0 auto' }}
       styles={{
-        wrapper: { padding: '16px' },
+        wrapper: { padding: '16px', ...(contained ? { position: 'absolute' } : {}) },
+        ...(contained ? { mask: { position: 'absolute' as const } } : {}),
         container: { padding: 'var(--hgs-dialog-padding)' },
       }}
     >

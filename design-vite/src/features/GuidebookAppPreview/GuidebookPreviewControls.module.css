@@ -1,0 +1,19 @@
+.gbpControls {
+  display: flex;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px auto 0;
+  padding: 8px 12px;
+  border: 1px solid;
+  border-radius: 9px;
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+}
+
+.gbpControls > span:first-child {
+  font-weight: 600;
+}
