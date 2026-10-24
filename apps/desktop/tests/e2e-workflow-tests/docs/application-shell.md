@@ -205,17 +205,17 @@ Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；
 <a id="shell-guidebook-online"></a>
 ## `shell.guidebook.online`
 
-**状态**：planned
+**状态**：passed（macOS x64签名package；远程production Guidebook）
 **策略**：shared
 
 ### Steps
 
 1. 创建空 profile/evidence，启动 trace 和真实 Electron；等待 App root、Core Running 与 8888 listener。
 2. 点击 readiness Cancel，确认未修改系统代理；从 Sidebar 点击 `shell.workspace.guidebook`。
-3. 检查 Guidebook toolbar、固定官方地址和 Loading 状态；等待 sandboxed iframe 加载 `https://www.interceptor.cn/guide?embed=desktop`，确认网页 Header/Footer 不出现，目录、正文和本章导航可见。
+3. 检查 Guidebook toolbar、固定官方地址和 Loading 状态；等待 sandboxed iframe 加载 `https://www.interceptor.cn/guide?embed=desktop`，确认网页 Header/Footer 不出现，概览目录和正文可见；进入具体章节后确认本章导航可见。
 4. 点击 App toolbar Search，确认 iframe 内既有 Guidebook 搜索弹窗打开；输入测试自产查询，选择结果并确认正文导航仍保留 `embed=desktop`。
 5. 点击真实教程图片并关闭官网大图预览，确认 App 外壳、Sidebar、Header 与 Statusbar 始终保留。
-6. 通过真实 Theme UI 切换当前主题，确认 iframe 使用相同主题；切换 App 语言，确认 `zh-CN` 使用 `/guide`，其他语言使用 `/en/guide`，再恢复初始主题和语言。
+6. 保持初始App语言，通过真实 Theme UI 切换当前主题，确认 iframe 使用相同主题，再恢复初始主题；语言同步由下述独立i18n workflow验证。
 7. 点击 Refresh，确认新 frame 代际重新进入 Loading 后恢复 Ready；点击 `guidebook.open-browser`，只读确认 Main 请求操作系统打开固定官方 Guidebook URL，不允许测试覆盖 URL。
 8. 保存 trace、final screenshot、Main/Renderer 日志及 frame URL evidence。
 9. 点击 `shell.window.close`；验证 Main、Renderer、Core、Worker 全退且 8888 释放。
@@ -224,6 +224,25 @@ Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；
 ### 预期效果
 
 Desktop 通过安全的在线 frame 提供完整 Guidebook 阅读、搜索、图片预览与主题/语言同步；远程页面不获得 Preload 或业务 IPC；外部浏览器只打开固定官网 URL；关闭后无进程、端口或系统设置残留。
+
+<a id="shell-guidebook-i18n"></a>
+## `shell.guidebook.i18n`
+
+**状态**：passed（macOS x64签名package；初始语言正常恢复）
+**策略**：shared
+
+### Steps
+
+1. 创建独立空profile/evidence，启动trace与真实Electron，等待App root、Core Running和8888 listener；点击readiness Cancel，确认系统设置未修改。
+2. 读取初始App语言与主题，从Sidebar进入Guidebook；等待固定官网frame Ready，核对`zh-CN`映射`/guide`、其余语言映射`/en/guide`，保留`embed=desktop`。
+3. 通过真实Language菜单切换到另一种教程语言：初始为`zh-CN`时选择`en`，其他初始语言选择`zh-CN`。
+4. 等待App的`html[lang]`更新和新的Guidebook frame Ready；核对官网origin、入口路径、正文`lang`和主题同步，远程frame无Preload。
+5. 通过同一Language菜单恢复初始App语言；等待原locale入口与正文`lang`恢复，主题始终不变。
+6. 保存语言、frame URL、trace、final screenshot及Main/Renderer日志和metadata；点击`shell.window.close`，验证Main/Renderer/Core/Worker全部退出、8888释放和宿主基线恢复，删除profile。
+
+### 预期效果
+
+App语言只在本独立i18n workflow中切换，官网入口与正文locale同步并恢复；普通Guidebook workflow保持初始语言，不以Store或localStorage写入代替UI操作。
 
 <a id="shell-window-controls"></a>
 ## `shell.window.controls`
