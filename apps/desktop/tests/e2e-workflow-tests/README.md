@@ -194,6 +194,8 @@ diagnostics.row.<traceKey>
 | `shell.sidebar.collapse` | 折叠态导航可用并可恢复展开 | shared | planned |
 | `shell.appearance.theme` | 四主题切换与跨重启持久化 | shared | planned |
 | `shell.appearance.language` | 15语言切换、布局与持久化 | shared | planned |
+| `shell.guidebook.online` | 在线Guidebook的安全frame、搜索、图片、主题同步、刷新与浏览器出口 | shared | passed |
+| `shell.guidebook.i18n` | 独立验证Guidebook语言入口、正文locale同步与初始语言恢复 | shared | passed |
 | `shell.window.controls` | 最小化、最大化、恢复 | shared | planned |
 
 详细步骤：[docs/application-shell.md](docs/application-shell.md)
