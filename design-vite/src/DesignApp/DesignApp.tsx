@@ -13,7 +13,10 @@ import { RulesImportDialog } from '../features/Rules/RulesImportDialog';
 import { RulesRootContextMenu } from '../features/Rules/RulesRootContextMenu';
 import { AcceptancePlayground } from '../features/Playground/AcceptancePlayground';
 import { HomepageGuidePreview } from '../features/HomepageGuidePreview/HomepageGuidePreview';
+import { GuidebookAppCandidatePreview } from '../features/GuidebookAppPreview/GuidebookAppCandidatePreview';
 import { GuidebookAppPreview } from '../features/GuidebookAppPreview/GuidebookAppPreview';
+import { GuidebookPreviewControls } from '../features/GuidebookAppPreview/GuidebookPreviewControls';
+import { GUIDEBOOK_PREVIEW_COPY, guidebookPreviewLocale } from '../features/GuidebookAppPreview/utils';
 import { AndroidPreview } from '../features/AndroidPreview/AndroidPreview';
 import { AndroidDeviceDialog } from '../features/AndroidPreview/AndroidDeviceDialog';
 import { AndroidPreviewControls } from '../features/AndroidPreview/AndroidPreviewControls';
@@ -52,6 +55,13 @@ function DesignAppContent(): React.JSX.Element {
     element.attributes.class?.split(/\s+/).includes('capture-upstream')
       ? (state.view === 'capture' ? <UpstreamProxyStatus /> : null) : undefined
   );
+  const renderHeaderElement: FixtureElementRenderer = element => (
+    state.guidebookAppPreview && element.attributes.class?.split(/\s+/).includes('header-view-title-v2')
+      ? <span className={fixtureClassNames('header-view-title-v2')} data-parity="window-header-title">
+          {GUIDEBOOK_PREVIEW_COPY[guidebookPreviewLocale(state.lang)].shell}
+        </span>
+      : undefined
+  );
   const messageConfig = useMemo(() => ({
     getContainer: () => rootRef.current ?? document.body,
     styles: { list: { position: 'absolute' as const } },
@@ -65,21 +75,26 @@ function DesignAppContent(): React.JSX.Element {
           {...attributes}
           {...designRootAttributes(state)}
           data-homepage-guide={state.homepageGuidePreview ? 'open' : undefined}
+          data-guidebook-app-preview={state.guidebookAppPreview ? 'open' : undefined}
           ref={rootRef}
           className={fixtureClassNames(designRootClassName(state, rootClasses))}
         >
           {state.androidPreview ? <AndroidPreview /> : state.homepageGuidePreview ? <HomepageGuidePreview /> : state.view === 'playground' ? <AcceptancePlayground /> : (
             <>
               <Sidebar />
-              <FixtureRenderer node={topbarFixture} />
+              <FixtureRenderer node={topbarFixture} renderElement={renderHeaderElement} />
               <AgentPanelToggle />
               <div className={fixtureClassNames('mainhost')}>
-                <Capture />
-                <Rules />
-                <Composer />
-                <Settings />
-                <Diagnostics />
-                <GuidebookAppPreview />
+                {state.guidebookAppPreview ? <GuidebookAppCandidatePreview /> : (
+                  <>
+                    <Capture />
+                    <Rules />
+                    <Composer />
+                    <Settings />
+                    <Diagnostics />
+                    <GuidebookAppPreview />
+                  </>
+                )}
               </div>
               <AgentSidePanel />
               <FixtureRenderer node={statusbarFixture} renderElement={renderStatusbarElement} />
@@ -104,6 +119,7 @@ function DesignAppContent(): React.JSX.Element {
         </div>
         {state.view === 'playground' ? null : <FixtureRenderer node={dockFixture} />}
         <AndroidPreviewControls />
+        <GuidebookPreviewControls />
       </AntApp>
     </ConfigProvider>
   );

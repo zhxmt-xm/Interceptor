@@ -1,0 +1,89 @@
+.gbpRoot {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  container-name: guidebook-app;
+  container-type: inline-size;
+}
+
+.gbpToolbar {
+  display: flex;
+  height: var(--content-toolbar-height);
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--gbp-space-sm);
+  padding: 0 var(--gbp-space);
+  border-bottom: 1px solid var(--border);
+  background: var(--filter);
+}
+
+.gbpConnection {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--gbp-space-xs);
+  color: var(--text-2);
+  font-weight: 550;
+}
+
+.gbpToolbarLanguage {
+  margin-left: auto;
+  color: var(--text-3);
+}
+
+.gbpStatus {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--gbp-space);
+  padding: var(--gbp-space-lg);
+  overflow: auto;
+  text-align: center;
+}
+
+.gbpStatusIcon {
+  display: flex;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--gbp-radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.gbpStatusIcon[data-state="error"] {
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+  color: var(--red);
+}
+
+.gbpStatus h1 {
+  margin: 0;
+  font-size: var(--gbp-heading-size);
+  font-weight: 600;
+}
+
+.gbpStatus p {
+  max-width: 52ch;
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--gbp-reading-size);
+  line-height: 1.65;
+}
+
+.gbpStatusActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--gbp-space-xs);
+  margin-top: var(--gbp-space-xs);
+}

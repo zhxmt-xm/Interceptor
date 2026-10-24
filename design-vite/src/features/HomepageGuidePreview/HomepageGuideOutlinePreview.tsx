@@ -7,10 +7,11 @@ interface Props {
   activeId: string;
   onActive: (id: string) => void;
   getScrollRoot?: () => HTMLElement | null;
+  contained?: boolean;
 }
 
 export function HomepageGuideOutlinePreview({
-  headings, locale, activeId, onActive, getScrollRoot,
+  headings, locale, activeId, onActive, getScrollRoot, contained = false,
 }: Props): React.JSX.Element {
   const outlineRef = useRef<HTMLElement>(null);
   const activeIdRef = useRef(activeId);
@@ -94,6 +95,7 @@ export function HomepageGuideOutlinePreview({
     <nav
       ref={outlineRef}
       className={styles.hgoOutline}
+      style={contained ? { position: 'static', top: 'auto', marginTop: 0, maxHeight: '100%' } : undefined}
       aria-label={locale === 'en' ? 'On this page' : '本章内容'}
       data-automation-id="guide.outline"
       data-design-preview="guide-outline"
