@@ -328,6 +328,7 @@
 	- 既有历史报告仅保留为历史资料，不作为生成或维护新报告的要求。
 - 完成一个里程碑或用户要求时，更新 Handover 的跟踪 commit、任务状态和相关架构文档。
 	- 不确定是否已到该阶段时，先确认。
+	- 在 commit 前完成文档同步；commit 或 PR merge 后，不为跟踪 hash、推送状态或完成总结再次写回 Handover、另建 commit。
 - [README.md](README.md) 只放稳定介绍、使用开发说明和导航，不写进度。
 	- 只有命令或稳定说明变化时才改 README；提交前确认文档与代码一致。
 
@@ -335,6 +336,8 @@
 
 - 提交须有用户授权，不擅自创建分支。
 	- 已提交记录的更正和历史整理按用户明确授权执行，不擅自改写已推送历史。
+- 用户授权提交后，统一使用 [PR 提交与合并 skill](.github/skills/pr-rebase-submit/SKILL.md)。
+	- 授权包含在当前 checkout 创建 feature branch、push、创建 PR 和 rebase merge，不逐步重复询问；用户明确要求暂缓某一步时遵从该要求。
 - PR 禁止使用 squash merge。
 	- 需要保持线性历史时使用 rebase merge，不使用会保留分叉拓扑的 merge commit。
 	- 合并后立即删除本地与远端 feature branch，执行 `fetch --prune`，切回 `main` 并确认本地 `main`、`origin/main` 与 Git Graph 均在同一条线上。
@@ -349,7 +352,7 @@
 ### 执行任务清单
 
 - 用户授权执行清单后，不用每个任务重复询问。
-	- 每项通过所需验收后，立即 commit、push，再继续下一项。
+	- 每项通过所需验收后，立即按 PR 提交与合并 skill 完成 commit、push 和 rebase merge，再继续下一项。
 	- 不因单项完成就停止整轮任务，不扩大授权范围，不跳过验收。
 - 受阻项写清原因，继续其他可执行的已授权任务。
 	- 只有用户暂停、需要额外授权或没有可执行任务时才停止。
