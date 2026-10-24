@@ -18,13 +18,13 @@
 
 E2E fixture与Playground的既有测试按保护的实际风险维护，不因目录里已有测试就继续增加，也不因为测试失败就删除。产品业务单测、Core真实协议集成、Electron workflow和退出恢复不属于精简范围。
 
-- E2E fixture只保留宿主恢复、精确进程归属和失败profile保留的3个既有测试文件；文件窗口脚本文本断言与模型lab响应快照已移除，真实行为由所属workflow验证，Windows未验收状态不改变。
-- Playground保留输入边界、脱敏/证据、取消及真实HTTP/TLS/WebSocket场景的10个既有测试文件；重复类型约束的recipe清单和布局/序列化辅助函数单测已移除。
+- E2E fixture的既有测试保护宿主恢复、精确进程归属和失败profile保留；原生文件窗口与模型交互通过所属真实workflow验证。
+- Playground的既有测试保护输入边界、脱敏、取消及真实HTTP/TLS/WebSocket场景，不扩充recipe清单、布局或序列化辅助代码的单测。
 - 工具修改直接跑受影响的Playground场景或已有真实E2E；不因精简另建一套fixture测试、测试注册层或宽泛skip。仅删除测试文件不等于对应业务已通过，已有失败与历史证据仍保留。
 - 具体职责见[fixtures说明](../../apps/desktop/tests/e2e-workflow-tests/fixtures/README.md)与[Playground维护边界](../../apps/playground/README.md#既有辅助测试的维护边界)。
 - 正文分块单测保留超过1MiB的真实字节数组、offset/分块调用和end断言，使用完整字节比较而非对百万个索引做通用对象深比较；不能用降低数据量、抽样字节或放宽超时代替等价校验。
 
-Windows实机验收的范围与实际状态见[Windows矩阵](../../apps/desktop/tests/e2e-workflow-tests/README.md#windows-复验)，后续任务由[Handover](../HANDOVER.md)跟踪。按用户确认，Windows待验不作为其他item的提交blocker；其他item仍须完成自身可执行验收，Windows未执行、skip和失败不能改写为通过，发布产物门禁不因此取消。
+Windows实机验收的方法与前提见[Windows执行要求](../../apps/desktop/tests/e2e-workflow-tests/README.md#windows-复验)，未完成任务由[Handover](../HANDOVER.md)跟踪。各任务完成自身受影响范围的验收；未执行、skip和失败不能改写为通过，发布产物门禁不因此取消。
 
 ## 2. Local E2E driver
 
@@ -70,7 +70,7 @@ macOS常驻helper独立于每条workflow的Main/Core，不作为它们的子进�
 
 平台专属范围包括：Windows的WinINet、AppContainer、当前用户CA文件/证书查看器、Windows进程与原生窗口保护及MSI；macOS的helper部署/通信、Keychain信任、macOS系统代理/WPAD、DMG与macOS原生窗口专项。共用的用户流程仍由当前平台driver执行，不能用另一个平台的fake冒充本机实现。普通默认命令遵守这些限定，不要求额外过滤参数。
 
-按用户确认，移除依赖个人登录与第三方页面结构的Bilibili专属workflow，不以第三方登录态作为通用协议验收前提。Windows人工UAC取消专项不作为验收门槛；产品的取消/拒绝错误分支、证书安装/卸载、退出恢复及macOS可自动化的原生授权测试保留。移除范围不记为passed，也不修改系统授权策略。
+通用协议验收不依赖个人登录与第三方页面结构。Windows人工UAC取消专项不作为验收门槛；产品的取消/拒绝错误分支、证书安装/卸载、退出恢复及macOS可自动化的原生授权测试保留，不修改系统授权策略。
 
 ## 5. 常用命令
 
@@ -94,80 +94,6 @@ node apps/desktop/tests/visual-parity/parity.mjs
 完整parity在`1600×900`、`deviceScaleFactor=2`下按每批5个view启动独立Edge子进程；每个view使用独立BrowserContext以限制内存峰值，不改变单场景状态或严格数据判定。父进程只准备一次Renderer Vite和设计preview，异步等待子批次并持续报告进度；设计构建使用本次独占临时目录，退出清理，不依赖其他构建可覆盖的共享dist。
 
 普通差异继续汇总余下批次；环境错误不能继续时明确记录未运行范围。browser、Vite与design preview统一在`finally`关闭，关闭失败写入错误报告，不得吞掉后声称通过。SIGINT/SIGTERM分别以130/143退出并清理本次资源。最终报告不混入运行中的中间状态，生成报告与批量截图不进入Git，手工设计评审和真实E2E的截图机制保持独立。
-
-App视觉基准已按用户确认恢复为视觉对齐前的实现，不再为消除设计差异调整产品：
-
-- [源码恢复核对](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/app-led-revert/final-scope-verification.json)覆盖43个Renderer实现/样式文件和15个语言资源文件，均与改前源码逐字节一致；菜单统一恢复Ant Popover，JetBrains Mono恢复原可变字重注册，断点数量恢复原普通文字。具体行为见[Renderer说明](renderer.md)。
-- [相关产品测试](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/app-led-revert/final-green-tests.log)为11个文件、126项通过，[Desktop typecheck](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/app-led-revert/final-typecheck.log)通过；恢复前的目标Red分别保留在[细微排版](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/app-led-revert/red-tests.log)和[字体/数量文字](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/app-led-revert/three-groups-red-tests.log)中。
-- [全场景数据报告](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/app-led-revert/all-scenes/report.md)覆盖534/534场景、4137/4137目标；缺失、歧义、不稳定和执行错误均为0。保留2305条差异（2293条几何、12条样式，几何差值绝对值最大4px），结果仍为`differences`，不能称为设计一致性通过，也不把78个相关文件当作78个产品故障。
-  - [输入与来源记录](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/app-led-revert/resume-inputs.json)核对734份输入及Node、Edge版本；汇总暂停前完整285个场景与恢复后249个场景。中断批次重新执行，原中断报告保留；这是同一有效基准下的完整覆盖，不是一次连续运行。
-  - [收尾核对](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/app-led-revert/final-verification.json)确认源码、保留修复与Git staged mode/blob未变，5199在IPv4/IPv6均已释放。本层未启动真实Electron/Main/Core，未改宿主代理或证书，不作为业务E2E或最终打包验收。
-- 已确认的比较准备修正继续保留：设计请求菜单不因`key`变化重建，普通Body行选择排除隐藏断点行，设计字体栈移除未注册的Inter Variable前缀；两侧编辑器的后续ResizeObserver通知合并到动画帧，卸载取消回调。独立数据parity、原始精度和全部目标不变，未采用后续未批准的设计同步候选。
-  - ResizeObserver修复的前置[两个Red](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/resize-observer-fix/unit-red.log)、[四文件60项Green](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/resize-observer-fix/related-unit-green.log)与[原始全量记录](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/resize-observer-fix/full-verification.json)保留。该历史阶段覆盖534场景、4125/4137目标，观察器错误从3降至0，原始5175条元素差异与场景条件逐项未变；38个故障场景目标复验无运行错误，两个当时未确认设计菜单的前提错误仍使整体状态为`error`，不冒充当前最终结果。
-  - [比较条件与日志归因记录](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/parity-comparison-audit/full-page-diagnostics-verification.json)保留修复前5条错误的归属：两个未就绪设计菜单使12个目标未比较，其余三条为ResizeObserver错误。两次全量原始差异一致，727份受测源码未变，8个预期WPAD失败日志按场景保留、构建错误为0。该阶段的[修正预览](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/parity-comparison-audit/review/)是历史材料，不表示仍等待同一轮确认；原始失败证据未覆盖。
-  - [中文具体差异验收](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/parity-specific-differences/)保存实际CLI、原始报告与分组核对：`upstream-settings-system-editing-light`的8个目标产生12条差异、0执行错误，报告调整前后`views`和`summary`完全相同；精度、方向、字体声明、状态值、分组和文件链接均已检查。上述历史运行均正常关闭自有服务并释放5199，未启动真实Electron或操作宿主代理、证书，不作为业务E2E。
-
-设计稿按上述固定App基准同步，Rules菜单正式落地前的小差异验证如下：
-
-- 设计入口复用已有Ant reset，主行高与对应局部行高、默认段落/列表间距、普通计数及文本分段、菜单间距和分隔线归属按App同步。字体来源与注册方式不变，不修改Renderer或比较规则来消除差异。
-- [菜单落地前的完整覆盖报告](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/current-small/report.md)覆盖534/534场景、4137/4137目标；2305条差异降至3条，均属于Rules的Add action菜单位置/高度。缺失、歧义、不稳定和执行错误均为0；该阶段仍为`differences`，不是全量通过。
-  - 来源为[第二轮全量](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/full-02/report.md)中未受影响的532个场景，加上[Proxy标题与设置导航复验](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/proxy-title-final/report.md)的2个场景、6个目标。不是一次连续运行；原始全量的5条差异报告保留，不混入未批准候选的结果。
-  - [适用性核对](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/current-small/verification.json)确认734份输入中733份逐字节未变，唯一后续改动严格限定为`.proxy-ready-dialog > .dlghead > b`的18px行高；未改通用弹窗标题。App保持不变，原场景记录逐项保留，5199在IPv4/IPv6均已释放。
-- [Design typecheck](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/final-small-typecheck.log)通过；Proxy弹窗的[浅色](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/proxy-title-shots/light/proxy-not-ready/dialog.png)与[深色](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/proxy-title-shots/dark/proxy-not-ready/dialog.png)设计图已生成并检查，标题、图标、正文和按钮布局正常。设计截图与独立数据parity分开执行，没有新增设计工具自身测试；本轮未启动真实Electron/Main/Core，也未操作系统代理或证书，不作为业务E2E。
-- Rules菜单的[三方评审](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/rules-candidate/index.html)已获用户确认并落地：修复编辑器裁切并同步App的Popover、组标题与动作图标。以下候选记录保留为历史评审证据，不代替正式源码的最终验证。
-  - [候选类型与交互补验](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/rules-validation-04/result.json)使用仓库已有TypeScript 7.0.2的内存文件接口检查虚拟组件及修改后的源文件，配置、全局、语法、绑定与语义诊断均为0；该次检查只在内存修正CSS Modules class拼接类型，没有落盘或变更依赖。正式实现已包含此修正。
-  - 明暗主题均先取得harness稳定帧，再核对10个动作的命中；菜单与App同为`782 / 413 / 250 / 486.5625`，Breakpoint不再被裁切。触发按钮、Escape和外部点击均能关闭，缩小到`1280×700`后菜单仍完整进入视口，全部动作可命中；[设计与App截图](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/rules-validation-04/images/)已检查。
-  - 原设计与候选的动作条目都只作静态示意：点击Rewrite header后仍为2张动作卡片且菜单不关闭；App会新增动作并关闭。这是保留原设计能力，不算新增动作业务流程通过，也未为本项扩建设计编辑器。
-  - 候选通过[独立CLI定向复验](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/rules-validation-04/official/report.md)：`rules-add-action,rules-select-dropdown`共2个场景、2个目标，0差异及执行问题；只证明已声明字段一致。734份正式输入未变，自有Renderer、两个设计preview与浏览器均关闭，三个动态端口重新绑定成功；菜单落地前的完整报告保留当时的3条差异。
-- Rules正式源码的[Design typecheck](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/applied-typecheck.log)与[交互及定向检查](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/rules-applied-validation-02/result.json)通过，不使用Vite源码转换或虚拟组件：明暗菜单的几何与App严格一致，10项动作均可命中，触发按钮、Escape、外部点击关闭及`1280×700`边界避让通过；设计动作条目仍保留上述静态示意能力。原CLI对`rules-add-action,rules-select-dropdown`的2场景2目标为零差异，737份输入未变，两个自有页面服务及浏览器退出，端口重新绑定成功。
-  - [首次正式诊断记录](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/rules-applied-validation/result.json)捕获开场动画中的缩放尺寸，未算通过；手工交互检查随后按既有菜单截图准备方式等待真实动画结束，再调用原harness采样。没有关闭产品动画、修改parity判定或补偿几何读数；定向结果不能替代全量验证。
-
-设计稿按App基准同步的最终验收：
-
-- [正式源码全量报告](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/full-applied/report.md)为一次连续运行：534/534场景、4137/4137目标，差异、缺失、歧义、不稳定和执行错误均为0，退出码0；本项差异记录由2305降至0，没有删除目标或放宽比较规则。
-- [输入与退出核对](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/design-sync-preview/full-applied-verification.json)确认737份输入逐字节未变，Renderer视觉基准不变，Node为`v24.21.0`、Edge为`155.0.4283.62`；5199在IPv4/IPv6均已释放。
-- 为隔离并行会话的未提交Android设计和Core改动，[提交候选类型检查](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/item21-commit/typecheck-index.json)直接使用独立Git index中的源文件，125个根文件、1164个依赖源文件为0诊断，不写工作区或实际index；[提交候选parity](../../../../.copilot/session-state/a420ef8f-364c-45ad-aa6f-936b1b113590/files/item21-commit/parity-index/report.md)在Capture、Add action和Rule Select共3场景44目标上严格零差异，737份工作区输入未变，自有服务与浏览器退出。
-- 本轮仅同步设计稿及相关说明，没有修改Rules业务或Renderer，也没有运行真实Electron/Main/Core、操作宿主代理或证书；上述结果不替代真实业务E2E。全量报告不读取或生成PNG，手工设计评审截图单独保留在本地。
-
-<a id="guidebook-app-validation"></a>
-Guidebook App接入验证：
-
-- 候选默认关闭阶段的历史全量记录覆盖554/554场景、4297/4297控件；差异、缺失、歧义、不稳定和执行错误全部为0，退出码0。原报告目录为`apps/desktop/test-results/item16-nonwindows-20261023/shared-shell-parity/`，当前本机不可读；现存[输入与退出核对](../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/parity-verification.json)确认957份受测输入在运行前后无新增、删除或字节变化，5199与8888均空闲。该历史记录不替代后续正式Guidebook场景或当前复验。
-- 正式接入后Desktop typecheck与Guidebook/i18n 28条unit test通过；Homepage合并提交`83999b9`的lint、production build、107条Browser测试和production deploy均Green，线上资源与本地build指纹一致。
-- 最新全量parity执行566/566场景、4385/4385控件；Guidebook四主题40/40控件及其余562场景零差异。全量报告仍为Red，因为item 14新增Android toolbar按钮后，默认Capture设计fixture没有该按钮，4个Import/Export菜单场景共24项水平位置统一相差33px；缺失、歧义、不稳定和执行错误均为0。该差异不属于Guidebook实现，也未通过删除目标、放宽规则或在item 16修改item 14设计来掩盖。
-- `shell.guidebook.online`与独立`shell.guidebook.i18n`在同一macOS x64签名package完成2/2真实Electron复验。在线流程保持初始语言，从公开Sidebar进入固定production URL，核对`sandbox="allow-same-origin allow-scripts"`、`no-referrer`、远程frame无Preload、隐藏站点Chrome、搜索、目录/图片、主题同步、刷新与浏览器入口点击；i18n流程单独切换中英文入口和正文locale，再恢复初始App语言，主题不变。两份metadata均记录`gracefulDestroyVerified=true`，Main/Core/Worker正常退出，8888释放；[在线trace](../../apps/desktop/test-results/item16-final/guidebook-workflows-final/application-guidebook-onli-8de1a-inside-the-secure-App-shell-macos/trace.zip)、[i18n trace](../../apps/desktop/test-results/item16-final/guidebook-workflows-final/application-guidebook-i18n-c8aa9-anguage-through-the-real-UI-macos/trace.zip)及同目录metadata、frame URL和Main/Renderer日志已保存。
-- 独立i18n初次运行时，官网`GuidePage`动态JS/CSS仍未完成加载，正文selector尚未出现；测试此前只等待iframe URL，未等待官网内容根。补上公开`guide.root`可见状态后两条流程Green，使用既有30秒页面加载期限，没有改产品或网络响应。原[失败trace](../../apps/desktop/test-results/item16-final/guidebook-workflows/application-guidebook-i18n-c8aa9-anguage-through-the-real-UI-macos/trace.zip)和退出metadata保留；该等待条件失败不计作产品Red。
-- 当前macOS x64 package、1532个文件共424666582字节的artifact audit及strict codesign通过。该package的designated requirement为`cdhash H"6dbabcaede8cc0e457fa88da41bb46e84714027c"`；重新授权前helper仍记录上一份`cdhash H"c7c2159a7e08a032d4a91b7b1471301da1085a9d"`，首次smoke因此停在SecurityAgent管理员确认前的`Preparing system components`。正常管理员确认后，`service.json`的`clientRequirement`与当前App一致，完整packaged smoke 1/1 Green；使用既有截图矩阵，正常Close及宿主guard确认系统代理、journal和证书基线恢复，Main/Core/Worker退出，8888与39080释放。没有修改授权数据库、放宽helper校验或复用旧package结果。
-- 收尾时Desktop与Design typecheck、Guidebook/i18n两文件28条unit test重新通过；正式Guidebook四主题[数据parity报告](../../apps/desktop/test-results/item16-final/guidebook-parity/report.md)为4/4场景、40/40控件零差异。该定向结果不将上述item 14全量parity Red改写为Green。当前package、helper、命令、退出核对及未验证范围保存在[最终验证记录](../../apps/desktop/test-results/item16-final/verification.json)。本轮没有修改已提交的产品代码；新增workflow验证既有行为，没有为补历史Red回滚实现或故意制造故障。
-
-Guidebook图片与外部Host的既有验证边界：
-
-- [原汇总](../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/current-host-workflow-expansion.json)与Windows补充记录合计20次Host连接代际、41种Tool、189次实际调用；17条真实workflow完成SDK基线和current-host路径，69项范围的既有结论为54项`passed`、15项`not-run`，不代表其他Host或商业模型通过。每条流程保留App审批、原生窗口、流量或持久化断言、正常退出与8888释放；[英文代表主线](../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/verified-current-host.json)仍保留。
-- VS Code `1.143.0`/AHP `1.1.0`的已有session不会因`root/configChanged`立即采用新top-level MCP Server，AHP也不公开runtime的`session.mcp.reload`。fixture保存`configuration-applied`证据，由同Host的一次性session执行正式`/mcp reload`，再确认`ready`、`mcp://`及`serverTools`；使用当前目录，不创建worktree，不以SDK直连、伪造state action或重启共享Host替代。实际AHP请求仍使用`params.channel`。
-- 撤权后SDK直连返回`-32602`，VS Code Host包装层返回含`MCP tool not found`的`-32603`，workflow分别断言真实结果。无关GitHub SAML拒绝不计为Interceptor验收。正式流程完成后只移除本轮Client、Host条目和一次性session，其他配置保留；最初的`interceptor-e2e-turn-refresh-probe`已从root、runtime目录和session公开state移除，原诊断session只剩ready的GitHub Server。
-- macOS原生Go To输入使用20ms Unicode键盘事件间隔，逐字符检查前台App并以AX完整回读，不写AX值或共享剪贴板。HAR Save轮询完整AX选区，取消使用本轮真实`CancelButton`鼠标点击；SDK及两代Host结果与原失败恢复记录保留。Windows原生面板在Host抢前台时通过owner线程关联、焦点与真实输入/取消/确认重试，不能改写dialog返回值。[Rules恢复](../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/rules-import-environment-recovery.json)确认journal、App和8888无残留。
-- Windows `1.143.1`/AHP `1.1.0`既有记录覆盖AppContainer五项Tool共18次、Ask/Auto、撤权、两代App及exemption精确恢复，另有Archive、Recording、系统代理与TLS；120行排序/筛选/恢复和布局为真实只读枚举，无写入/UAC。Collection Import四张1800×1080原生Save/Open PNG只显示测试目录和basename，写盘前遮盖侧栏与地址breadcrumb。原记录位于`/Users/zhxmt/.copilot/session-state/cab53ba7-29cc-4a1d-a698-254405325e80/files/item16-windows/verification.json`；该会话目录当前本机不可读，本轮未重复执行Windows，也不把该历史记录当作本轮复验。
-- 既有图片核对记录中英文各1082个编号步骤关联真实图片，69个连续说明明确复用最近同流程原图，14个整节缺口由Release、Windows AppContainer/原生面板、Browser Host与Certificates实录补齐。原`item16-guidebook-image-completion.json`位于上述Windows会话目录；该记录及29条Browser图片/导航/标注测试属于历史证据，本轮没有重拍全部素材。正式Homepage合并与部署使用`83999b9`，App访问production页面的当前证据由上述签名package workflow提供。
-- 历史发布核对使用固定`retainedHostGroups`审核摘要，逐文件检查原图、标注、字节、尺寸及引用，自动来源与Host图片不互相覆盖，不用SDK替代或静默回退；[发布核对](../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/publication-generator-verification.json)的代表workflow不等于整批重拍。该专用发布链已由原workflow可选截图模式取代，不恢复旧Guidebook制作/导入命令。
-- 保留的11项未执行Tool、4项隔离证书阻塞、Windows正式素材映射、WPAD网络及外部Host/模型授权条件详见[Guidebook验证差异](../features/guidebook.md#6-与当前验证范围的差异)。已清理中英文Client、profile、MCP端口与对应Host配置，旧临时恢复命令不再适用；人工补验须先具备对应隔离环境与恢复保护。
-
-Android USB接入当前验证：
-
-- Main Android device owner的6个纯业务目标与APK parser/安装器5个目标通过，覆盖：
-  - 设备拔出/offline后的Core停止与本地ownership释放；
-  - ADB transport名称不同于用户serial时仍只按本轮local/remote端口核对mapping；
-  - APK缺失安装、同签名升级、换签拒绝、降级拒绝及安装后精确字节复核。
-- API35 emulator真实ADB integration通过：
-  - `devices -l`读取ready设备；
-  - 正式Launcher由`am start`打开；
-  - Main listener建立`reverse --no-rebind`，手机`toybox nc`实际穿透到该listener；
-  - 清理只执行目标设备`reverse --remove tcp:39080`，共享ADB Server保持运行；
-  - 另从设备卸载测试App后，由`AndroidDeviceService.installDeviceApplication()`执行真实`adb install -r`，设备内base APK SHA-256、版本与随包APK再次完全一致。
-- Renderer按现有Android设计新增安装态，四主题的已安装与缺失共8场景、48/48目标严格parity通过；报告在忽略目录`apps/desktop/test-results/visual-parity/`，不读取或生成PNG。
-- 最新macOS package包含正式签名`0.1.0` Android APK、Platform-Tools 37.0.1、NOTICE与manifest；manifest固定APK SHA-256 `a5899620307f674b79ff1d6a91ae66e79ae1ad00efa14bec4bf70748f0f62375`及签名证书SHA-256 `bbf7858fcad16453a5d224f2835d9d31aaf20cae34819dae76b98c3f3699eb79`。package artifact audit核对1532个文件、413004691字节并通过；Forge保留Google官方ADB签名和staging SHA-256，完整App通过`codesign --deep --strict`。
-- `npm audit --omit=dev`在把既有override从DOMPurify 3.4.16更新到3.4.17、`ip-address` 10.7.3更新到10.7.4后为0 vulnerability；Monaco和代理栈主版本均未变化。Workspace typecheck、package/artifact audit及隔离Android parity通过；全workspace测试仅保留既有raw TCP FIN两项目标Red，与本次patch升级无关。
-- 最新未打包Electron在独占窗口完成真实API35双端流程：产品UI从缺失态安装随包APK，双方输入并确认完整指纹，Main启动Core listener和精确reverse，Android完成真实系统通知/VPN授权，TUN HTTP返回并在Capture显示Android来源；随后手机本地停止、Desktop断开并正常Close。最终VPN、reverse、8888和系统代理journal全部为空。该流程使用emulator ADB传输，不替代物理USB拔线、ARM64真机或原生16KiB硬件。
-- 此前APK SHA-256 `b116e283f40c2cbd87d37e8ad9360314baed9a463a3162fa9fa7a78a3fe9640e`的package完成过完整packaged smoke；它不再是当前draft asset。EC签名重建会产生不同APK字节，最新APK使外层ad-hoc App的designated requirement变为`cdhash H"c7c2159a7e08a032d4a91b7b1471301da1085a9d"`，已安装helper当时仍授权`cdhash H"66be08972cea020f5ab9103b24cd37dc3b69fd36"`；初次smoke真实停在SecurityAgent管理员重新授权，没有修改授权数据库、放宽helper校验或移用旧package结果。用户随后完成真实管理员确认，helper授权与当前App requirement一致，最新package完整smoke 1/1 Green；固定`interceptor://app`、Preload白名单、sandbox/CSP、Main/Core、Capture、Composer、Breakpoint、截图矩阵、正常Close和系统代理恢复均通过，最终Main/Core/Worker退出，8888与39080空闲。
 
 涉及 Main / Preload / IPC / Fuses / CSP / 打包边界时追加：
 

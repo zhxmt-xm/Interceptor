@@ -128,7 +128,7 @@ Main/Core连接适配、平台组合和Certificate材料的既有回归位于Des
 
 - 已归类：两端系统代理、系统信任库、macOS组件部署与通信、Windows应用信息/图标和AppContainer；目录归类不等于两端全部验收完成。
 - CA材料、错误类型、SecureStore契约和原生实现属于本package，平台业务仍在Main进程执行。Core仅引用`@interceptor/platform-capabilities/client-app`的native查询/解析入口，不加载证书或系统代理编排。
-- 当前模块状态：Certificate/SystemProxy/AppContainer/helper准备各自持有private operation state，ApplicationActionGate平台表与旧queue已删除。Main进程内的HelperService只协调共享原生授权资源；Certificate与AppContainer不能同时发起授权，不需要该资源的SystemProxy操作仍可执行。native helper本身不保存这些业务状态。已确认结束的失败、未知写入与只读请求分别处理，最新真实验收与尚未确认结束的写入限制见下节及Handover。
+- Certificate/SystemProxy/AppContainer/helper准备各自持有private operation state。Main进程内的HelperService只协调共享原生授权资源；Certificate与AppContainer不能同时发起授权，不需要该资源的SystemProxy操作仍可执行。native helper本身不保存这些业务状态。已确认结束的失败、未知写入与只读请求分别处理，尚未确认结束的写入限制见下节。
 - SystemProxyService拥有上游降级策略并使用UpstreamProbe；ClientAppService拥有Main侧图标缓存，Core继续保留应用归属缓存与事件。
 - Electron的窗口、Dialog、clipboard、`safeStorage`、`shell`适配和各feature凭据格式留在Main，不搬进package或root helper。共享Core命令与DiagnosticsRecorder契约来自`@interceptor/core-protocol`；操作标识和`PlatformOperationInProgressError`沿用`@interceptor/tools`，各module的原生错误及`instanceof`语义不变。
 
@@ -146,7 +146,7 @@ npm run test --workspace @interceptor/platform-capabilities -- --no-file-paralle
 npm run test --workspace @interceptor/desktop -- src/main/tests/unit/platform-capabilities.test.ts src/main/tests/unit/system-proxy-operation-ownership.test.ts src/main/tests/integration/certificate-service.test.ts
 ```
 
-原生Windows测试必须在Windows运行，Mac上的skip不计通过。Windows实机验收统一由[Handover第8项](../../architecture/HANDOVER.md)及[Windows矩阵](../../apps/desktop/tests/e2e-workflow-tests/README.md#windows-复验)跟踪；按用户确认，不作为其他item的提交blocker，未执行结果仍保留。真实Electron E2E和packaged smoke继续使用原产品操作和独立宿主恢复guard，不能用本模块测试代替。
+原生Windows测试必须在Windows运行，Mac上的skip不计通过。Windows实机任务由[Handover](../../architecture/HANDOVER.md)跟踪，执行要求见[Windows矩阵](../../apps/desktop/tests/e2e-workflow-tests/README.md#windows-复验)；按用户确认，不作为其他item的提交blocker，未执行结果仍保留。真实Electron E2E和packaged smoke继续使用原产品操作和独立宿主恢复guard，不能用本模块测试代替。
 
 原生集成可直接复验完整App内已经签名的helper。下面的环境变量仅由测试读取，不是产品参数，也不替换E2E中的helper；测试仍禁止root且不写系统设置。在仓库根执行：
 

@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `873d8793`
+> Tracked commit: `9426dbd9`
 > Homepage guidebook: `83999b9`
 
 ## 维护规则
@@ -29,3 +29,31 @@
   - 剩余环境阻塞：物理USB拔线/重连；真实DHCP搜索域、NAT64及旧平台同步解析延迟停止；ARM64硬件和Windows最终包。自定义系统hosts已在专用可写API35 AVD通过真实解析验证并恢复原文件。缺对应环境时保持`blocked`，不伪造Network、修改第三方或绕过系统授权。
   - 恢复条件：连接并授权物理Android USB设备后执行拔线/重连与旧请求不重放；提供ARM64/真实16KiB设备、Windows x64环境及带DHCP搜索域或NAT64的专用网络后分别续验。提交边界不纳入item16 Guidebook、MCP workflow或其他共享修改。
   - 保存边界：用户已授权把本轮Android/PC实现保存为Item 14中间进度，不等于完整Item 14或release-ready；Android实现已提交并推送为[`dfc3f31`](https://github.com/zhxmt-xm/Interceptor-Android/commit/dfc3f31)，PC当前提交只包含item14，不纳入并行Guidebook/MCP修改。
+
+- **17. E2E 契约、workflow 与用户教程对齐 · 进行中 · 待实现、待确认与待验证**
+  - 目标：逐项把验收契约对应到可执行workflow的输入、操作、断言和适用证据，再对应用户教程；旧`planned`或文件存在都不能作为实现、运行或通过的结论。稳定契约与源码链接留在E2E README和`docs/`，这里只跟踪未完成部分。
+  - 待实现：
+    - `application.lifecycle.profile-isolation`：补完整的A/B profile主题、语言、Rules与Capture隔离流程。现有`settings/macos-upstream-proxy.workflow.ts`只核对跨profile上游与代理恢复，不能替代完整隔离契约。
+    - `shell.appearance.language`：补15种语言逐项UI、布局与跨重启持久化矩阵。现有`application/guidebook-i18n.workflow.ts`和`settings/tools-preferences.workflow.ts`只有部分语言操作，不能替代完整矩阵；语言切换放独立i18n流程。
+    - `capture.list.virtual-scroll`：补超过viewport/overscan的真实请求、有限DOM row、滚动选择、跨workspace保持及实时追加的跟随/不抢滚动断言。
+  - 部分代码 · 待补齐契约断言：
+    - `shell.navigation.workspaces`：`settings/navigation.workflow.ts`未把Guidebook加入工作区往返矩阵；旧规格仍写五个workspace，需要对齐现有六个入口和Header/Main/Statusbar。
+    - `capture.inspector.resize`：`capture/section-collapse.workflow.ts`已有真实拖动和恢复，尚需最小/中间/最大尺寸及切换记录、tab和正文模式的边界断言。
+    - `composer.send-failure`：`diagnostics/tools-queries-export.workflow.ts`已有真实连接失败和后续成功请求，尚需非法URL、无伪response、错误清除与History终态断言。
+    - `diagnostics.pagination`：`diagnostics/tools-queries-export.workflow.ts`已有自产历史和Load earlier，尚需逐页keys、轮询插入、去重/无跳页和hasMore终态断言。
+  - 待确认旧规格：
+    - `rules.apply-conflict`：旧规格要求两个App共享RuleStore，与独立profile/listener边界不一致；现有`mcp/streamable-http.workflow.ts`已包含真实MCP第二写入者、Renderer草稿conflict和Reload。先按生产支持的入口对齐契约，再判断是否缺断言，不新增共享存储后门。
+    - `composer.resize`：旧规格按左右请求/响应宽度描述，产品契约实际为上下请求/响应区域；`composer/response-section-collapse.workflow.ts`已有真实高度拖动。先对齐高度、最小尺寸和窗口缩放契约，再补极限边界。
+    - `breakpoints.execute-edited`：旧Inventory与HTTP framing正文结论冲突；逐项核对当前origin实际headers/body断言和适用原始结果，未核实前保持待验证。
+  - 已有相关workflow · 待逐项核对覆盖与有效验收，不能按旧`planned`重复开发：
+    - Application/Shell：`application.startup.ready`、`application.lifecycle.graceful-close`对照共享driver；`shell.sidebar.collapse`、`shell.appearance.theme`、`shell.window.controls`对照`settings/navigation.workflow.ts`和`settings/tools-preferences.workflow.ts`，不能用夹带的启动/退出或部分主题操作替代完整契约。
+    - Capture：`capture.proxy-readiness.resolve`、`capture.traffic.capture-select`、`capture.filter.keyword`、`capture.filter.structured`、`capture.filter.protocol`、`capture.facets-clear-menu`、`capture.inspector.body-modes`、`capture.protocols.without-mitm`、`capture.protocols.with-mitm`、`capture.clear`、`capture.transfer.har-roundtrip`、`capture.transfer.archive-roundtrip`，分别对照现有readiness、facets、body、TLS/WS/H2/gRPC和transfer流程；Tool往返不能自动算作普通UI契约完整覆盖。
+    - Rules：`rules.load-search-select`、`rules.create-edit-delete`、`rules.matcher-variants`、`rules.action-variants`、`rules.reorder`、`rules.validate-apply`、`rules.runtime-hit`，对照`rules/{hierarchy-menus-status,root-toolbar,body-effect-evidence}.workflow.ts`及实际matcher/action正反例；Renderer Reload不能自动代替跨进程持久化。
+    - Composer：`composer.request-edit`、`composer.send-success`、`composer.history-new`，对照`composer/{collection-tree-interactions,response-section-collapse,body-formatting,collection-import}.workflow.ts`，核对完整字段、response视图和New/History语义。
+    - Breakpoints：`breakpoints.toggle`、`breakpoints.queue-select`、`breakpoints.continue-unmodified`、`breakpoints.drop`、`breakpoints.resize`、`breakpoints.websocket-close`，对照`breakpoints/{queue-commands,queue-isolation,execute-edited,websocket-close,original-body-layout}.workflow.ts`和Capture分栏流程。
+    - Diagnostics：`diagnostics.list-detail`、`diagnostics.filters`、`diagnostics.export`、`diagnostics.resize`，对照`diagnostics/tools-queries-export.workflow.ts`，区分普通UI与Tool入口，并逐项核对过滤范围、时间线和脱敏文件。
+    - Settings：`settings.proxy.enable-restore`、`settings.certificates.generate-delete`、`settings.certificates.trust`、`settings.certificates.https`、`settings.certificates.external-actions`、`settings.tls-compatibility`、`settings.privacy.defaults`，对照对应proxy、certificate、TLS及preferences流程；共享CA与平台授权前提分别核对，不复用不适用的旧产物结果。
+  - 待实现 · 环境`blocked`：`settings.updates.download-open`和`settings.update-notification`缺Available→Download→校验→Open installer的真实workflow；需要可匿名访问的新正式Release和对应平台packaged App。现有`settings/updates-check.workflow.ts`只覆盖真实不可用/失败检查，不覆盖下载或通知。本项不授权发布Release、安装更新或绕过原生授权；具备前提后按E2E契约取消安装器并恢复环境。
+  - Guidebook教程 · 待补充：Homepage的`docs/guidebook-coverage.md`尚未映射`shell.guidebook.online`、`shell.guidebook.i18n`，中英文`guidebook/{zh-CN,en}/workspace.md`缺App内Guidebook入口、阅读/搜索、图片、主题/语言同步、刷新/Retry和固定浏览器出口说明。两份真实workflow及E2E详细规格已存在，不重建测试；教程按用户操作归纳，不把i18n验收矩阵写成必做步骤。
+  - Android边界：`capture.android.single-device`和`capture.android.disconnect`的物理设备实现、验收与教程素材归item 14；用户尚未明确恢复物理验收，不因本项对齐索引而执行USB、ARM64、Windows或Android CI。
+  - 下一步：先解决旧契约歧义，逐项建立准确源码对应；仅补实际缺失的workflow/断言。代码存在但证据未核实标待验证，实际失败记录失败原因，平台/UAC/Release前提缺失标`blocked`。完成适用真实E2E、trace和退出/系统设置恢复后删除对应子项；原始结果保留运行产物，不在其他文档重建进度列。本轮只整理文档与缺口，不执行或宣称通过上述验收。

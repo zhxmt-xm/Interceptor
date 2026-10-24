@@ -111,10 +111,8 @@ npm start -- --help
 
 #### 发布工具验收范围
 
-- 清单的60条指56个原workflow文件中的测试场景，包含1838个截图检查点；目前14章双语教程引用1136张不同图片。一个测试会覆盖多次操作和图片，`i/60`不是教程内容完成百分比。
+- workflow场景、截图检查点和教程步骤不是一一对应；一个测试会覆盖多次操作和图片，运行进度不是教程内容完成百分比。
 - 定向验收覆盖真实Start菜单与取消、权限/失败来源/部分批次/过期基线拒绝、无变化不创建commit，以及真实来源生成后的图片/端口绑定、原文保留和重复生成一致性。
-- 一组完整通过的Agent模型来源已通过同一发布函数更新Homepage：[实际提交](https://github.com/zhxmt-xm/Interceptor-Homepage/commit/09c2ded2ecd588d013bf6a92c4f7bc086fce0c8b)、[候选Browser与恢复核对](../../../.copilot/session-state/1d972f24-fe28-435a-8aa3-c05fc62af77f/files/english-guidebook/representative-publication/candidate-accepted.json)、[远端父提交/文件摘要核对](../../../.copilot/session-state/1d972f24-fe28-435a-8aa3-c05fc62af77f/files/english-guidebook/representative-publication/remote-verification.json)。这不是绕过正式入口全量门禁的新模式，也不把单次60条中断记录记为通过。
-- 本轮不等待既有网站CI作为发布门禁；其独立失败状态见[Homepage验收说明](../../Interceptor-Homepage/docs/guidebook.md#npm-start整本截图发布)。没有重跑全部60条App场景，也没有删除账户artifact或改变CI规则来凑Green。
 
 ### Desktop
 

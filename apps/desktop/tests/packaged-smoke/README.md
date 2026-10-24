@@ -1,6 +1,6 @@
 # Desktop Packaged Application E2E
 
-本目录验证 Interceptor 的真实 Electron **production package**。目录名保留 `packaged-smoke`，但目标职责是生产包完整验收：启动 `electron-forge package` 生成的最终 Windows 可执行文件或 macOS `.app`，通过 Chrome DevTools Protocol（CDP）连接真实 Renderer，执行与 [`../e2e-workflow-tests/`](../e2e-workflow-tests/) 相同的应用生命周期、destroy 契约和全部 feature workflow，再追加 production package 特有的安全、资源和启动边界。
+本目录验证 Interceptor 的真实 Electron **production package**：启动 `electron-forge package` 生成的最终 Windows 可执行文件或 macOS `.app`，通过 Chrome DevTools Protocol（CDP）连接真实 Renderer，执行综合启动、安全、资源、关键业务和退出检查。逐功能workflow由 [`../e2e-workflow-tests/`](../e2e-workflow-tests/) 维护，综合smoke不能替代全部feature验收。
 
 测试不在 Vite dev server、JSDOM 或 fake Electron 中运行。被测 Main、Preload、Renderer、Proxy Core UtilityProcess、Worker、ASAR、Fuses 与 extra resources 都来自最终 package。
 
@@ -9,8 +9,6 @@
 生产包 workflow 与本地 E2E 遵守同一原则：所有业务操作都必须由 Playwright 通过真实 App UI 发起，随后经过真实 Preload、Main、Core、Storage、Proxy 和 Worker。禁止 fake Preload、状态注入、service mock、直接业务 API arrange、测试专用 Renderer setter 或隐藏 IPC。
 
 测试侧只允许创建 loopback 协议 origin/客户端、输入文件与证据采集设施。Open/Save Dialog、UAC、macOS Authorization 等原生 UI必须由 package 真实发起；无法无人值守完成时应标记为需要本机人工操作或独立平台验收，不得用 mock 代替。
-
-> 当前状态：现有 `startup.spec.ts` 已覆盖生产启动、安全边界、关键跨进程路径、真实 Capture、截图矩阵和退出清理，但仍是一条综合测试，尚未复用完整 workflow contract，也尚未做到每条 workflow 独立 trace。本文同时记录当前实现与目标架构；不得把目标清单误报为现有覆盖。
 
 Capture暂停/恢复/Clear、Composer Send、Breakpoint开关与正常Close均操作公共automation ID及真实键盘；恢复Recording复用local workflow的readiness助手。Preload只用于原有白名单、安全与只读状态/协议断言，不通过直接业务API安排这些操作，不在轮询中暗中重启listener。
 
@@ -22,11 +20,8 @@ Capture暂停/恢复/Clear、Composer Send、Breakpoint开关与正常Close均�
 
 ```text
 apps/desktop/tests/packaged-smoke/
-├─ README.md                    # 本文档
-├─ startup.spec.ts              # 当前综合 production package 测试
-├─ fixtures/                    # 目标：packaged CDP driver
-│  └─ packaged-cdp-driver.ts
-└─ packaged-boundaries.spec.ts  # 目标：package 特有安全/资源断言
+├─ README.md        # 本文档
+└─ startup.spec.ts  # 综合 production package 测试
 ```
 
 Playwright 配置位于：
@@ -184,7 +179,7 @@ sequenceDiagram
     T->>T: verify process cleanup
 ```
 
-## 当前已实现覆盖
+## 综合 smoke 检查
 
 ### UI 与窗口
 
@@ -265,7 +260,7 @@ Smoke 使用 packaged Core 中的真实：
 
 测试结束时会关闭 CDP/browser 和应用进程，并验证被测进程退出。失败路径也必须执行清理，避免残留 Electron/Core 影响下一次运行。
 
-以上是当前 `startup.spec.ts` 已实现范围。完整 feature workflow 及逐用例 trace 以 `e2e-workflow-tests/README.md` 的 inventory 为目标台账，需后续逐项实现并在 local 与 packaged 两个目标上验收。
+`startup.spec.ts`是综合检查；完整feature workflow及逐用例trace由`e2e-workflow-tests/`独立维护，综合smoke不能替代所属workflow。
 
 ## Packaged 资源路径
 
@@ -324,7 +319,7 @@ process-output.log
 metadata.json
 ```
 
-当前综合测试已经通过 `testInfo.outputPath()` 留存截图，失败时 Playwright 可保存诊断附件；逐 workflow 的 always-retained trace 是后续实现项。
+综合测试通过`testInfo.outputPath()`留存截图，失败时Playwright保存诊断附件；逐workflow的trace由所属E2E driver维护。
 
 查看 trace：
 

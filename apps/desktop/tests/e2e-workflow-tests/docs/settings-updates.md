@@ -41,7 +41,7 @@ Windows共享私钥使用用户目录中的`root-key.pem`，跨profile启动不�
 
 helper部署前只读检查失败时，启动保留原错误，不产生授权、CA或Core写入，也不保留修改占用阻止Quit。`system-proxy.read-effective`收到完整回复但value格式错误时，typed client须标明completed及只读operation，不误记为未知写入。非法原生回复与不可用组件的组合由所属module测试覆盖；真实E2E不篡改安装资源制造输入。已发送写入后的超时/断线仍必须保守保护，普通status成功不能证明该写入结束。
 
-第4项失联写入验收：传输/原生集成负责丢失终态回复、原ID/操作匹配、缺记录、记录淘汰/重启和查询失败，确认期间仍有原操作占用，失败命令绝不重放；只有精确匹配的结束记录才进入原业务回读/回滚。已确认import失败只撤回安装前不存在的精确公开CA，未确认或已有CA保持。真实UI流程继续覆盖Install/Uninstall/Delete、取消、跨入口状态通知、Quit及宿主恢复，不用fake Preload或篡改安装资源制造故障，也不将正常UI Green冒充断线分支已在E2E触发。
+失联写入验收：传输/原生集成负责丢失终态回复、原ID/操作匹配、缺记录、记录淘汰/重启和查询失败，确认期间仍有原操作占用，失败命令绝不重放；只有精确匹配的结束记录才进入原业务回读/回滚。已确认import失败只撤回安装前不存在的精确公开CA，未确认或已有CA保持。真实UI流程覆盖Install/Uninstall/Delete、取消、跨入口状态通知、Quit及宿主恢复，不用fake Preload或篡改安装资源制造故障，也不将正常UI结果冒充断线分支已在E2E触发。
 
 普通TLS workflow复用共享CA后，经UI添加测试origin的源站例外再开启MITM，首笔H1/H2请求即须成功；不靠预热失败请求或listener重建触发新规则。Core集成同时验证撤销例外立即恢复严格校验，端口和Capture会话不变。
 
@@ -57,11 +57,11 @@ helper部署前只读检查失败时，启动保留原错误，不产生授权�
 4. 只读确认精确CA存在且真实系统信任验证通过，helper PID保持不变，MITM仍关闭；经产品Uninstall撤销trust并删除系统证书，macOS专项为用户系统确认等待最多120秒，Root集合精确恢复，经Delete删除本地材料。Windows超时不变。
 5. 重复Generate/Install/Uninstall/Delete，第二张CA指纹必须不同，同一helper仍复用。保存两轮公开指纹、helper身份、系统验证及基线哈希证据；真实Close后由宿主guard验证Main/Core/Worker、8888、完整代理和admin trust恢复。
 
-本轮目标是macOS权限写入和确认归helper，不承诺绕过系统要求的用户认证，不改变Windows原流程；缺前置Red、最终Green或系统恢复证据不得标passed。API拒绝时的已有CA保护及撤销失败不删除由产品unit/native integration覆盖；不得为制造取消场景添加产品测试后门。
+macOS权限写入和确认归helper，不绕过系统要求的用户认证，Windows使用所属平台流程。API拒绝时的已有CA保护及撤销失败不删除由产品unit/native integration覆盖；不得为制造取消场景添加产品测试后门。
 
 ## `settings.certificates.cancel-trust`（macOS）
 
-当前前置/最终验证：Install直接请求前台helper；真实取消归属本轮的系统窗口，产品先清除本轮CA，再断言恰有一次直接授权日志、没有自动尝试/回退日志，完整授权规则和Root/admin trust均保持基线。窗口或环境失败不计产品Red。
+Install取消验收：直接请求前台helper，真实取消归属测试App的系统窗口；产品清除测试CA后，断言恰有一次直接授权日志、没有自动尝试/回退日志，完整授权规则和Root/admin trust均保持基线。窗口或环境失败不计产品故障。
 
 1. 创建独立profile、trace和系统Root/admin trust基线，启动真实Electron并确认常驻helper/listener就绪；通过Settings Generate创建本轮CA并记录公开指纹。
 2. 点击Install，macOS fixture只认本轮Main的固定helper子进程及`certificate.trust`参数，核验Main/helper/SecurityAgent的进程代际和唯一授权窗口；不再以Main的`security`子进程冒充helper。
@@ -86,7 +86,6 @@ macOS系统代理crash-recovery：App A接管并持久化用户级完整快照�
 <a id="settings-tools-language"></a>
 ## `settings.tools.language`
 
-**状态**：passed
 **策略**：shared；专属i18n流程；两代真实Electron；host-safety-guard
 
 ### Steps
@@ -106,7 +105,6 @@ macOS系统代理crash-recovery：App A接管并持久化用户级完整快照�
 <a id="settings-tools-preferences"></a>
 ## `settings.tools.preferences`
 
-**状态**：passed
 **策略**：shared；两代真实Electron；host-safety-guard
 
 ### Steps
@@ -127,7 +125,6 @@ macOS系统代理crash-recovery：App A接管并持久化用户级完整快照�
 <a id="settings-tools-readonly"></a>
 ## `settings.tools.readonly`
 
-**状态**：passed
 **策略**：shared；Windows/macOS；host-safety-guard；两代真实 Electron
 
 ### Steps
@@ -169,14 +166,13 @@ Windows盘符检查使用单词边界，与其他Settings Tools一致；AppConta
 - unit Red 必须精确体现六项 registry/executor/adapter 缺失；E2E Red 必须在真实产品启动且 lab
   正常后失败于 Settings discovery/调用缺口，构建、selector 或宿主清理错误不能冒充 Red。
 - Green 记录六项 Agent 与 MCP 实际调用、只读前后比较、双列撤权、重启零重放和脱敏审计结论。
-- 两代 metadata、trace 与宿主 guard 均须验证完整销毁；没有该证据不得把 Inventory 标为 passed。
+- 两代 metadata、trace 与宿主 guard 均须验证完整销毁；缺少该证据时在Handover保留待验证任务。
 
 <a id="settings-tools-system-proxy"></a>
 ## `settings.tools.system-proxy`
 
 并发契约：同一真实App经UI创建Auto MCP Client后，同时调用两次`settings_enable_system_proxy`；只能一项成功，另一项立即返回`operation_in_progress`及`system-proxy.enable`并显示现有message提示。两项结束后original/owned保持，新显式重试可执行，之前拒绝的请求不得重放。用例名称`rejects overlapping Enable`；两端共用步骤，trace在读取产品MCP配置时暂停，退出仍由正常Quit和完整宿主guard验证。Core故障恢复是当前操作的必要收尾，不是排队保存用户请求。
 
-**状态**：passed
 **策略**：os-side-effect；Windows；host-safety-guard；两代真实 Electron
 
 macOS复用以下相同步骤：系统配置读取使用被测入口配套的SystemConfiguration helper，默认未打包bundle读取`packages/platform-capabilities/dist`，显式签名App使用其Resources；journal读取用户级`Interceptor Platform/system-proxy/journal.json`，Windows helper命令和LOCALAPPDATA路径不变。所有比较覆盖完整结构且只输出布尔结果/哈希；各平台分别验证恢复，不能互相代替。
@@ -211,7 +207,6 @@ Green必须包含审批裁决、两项真实执行、重复Restore、撤权零�
 <a id="settings-tools-tls"></a>
 ## `settings.tools.tls`
 
-**状态**：passed
 **策略**：privileged UI；Windows/macOS；host-safety-guard；两代Electron
 
 macOS只读信任查询使用平台fixture，Windows原certutil参数/输出判断保持。
@@ -243,7 +238,6 @@ Red必须精确指向四项缺失或行为缺口，Green记录审批、revision�
 <a id="settings-tools-certificates"></a>
 ## `settings.tools.certificates`
 
-**状态**：passed；Manager管理员MMC原生专项排除
 **策略**：native-ui + privileged UI；Windows/macOS；host-safety-guard；两代Electron
 
 可能触发系统确认的Agent Install/Uninstall/Delete复用平台证书等待配置（macOS 120秒、Windows 30秒）；Deny与普通Tool仍使用15秒。finally先确认运行中的Agent进入终态，再关闭本轮窗口、清理CA；前一步不确定时保留材料并报告失败，不在授信仍进行时删除材料。该测试收尾顺序不证明产品多入口并发变更已受保护，也不替代MCP超时/取消的专项验证。
@@ -285,7 +279,6 @@ macOS定向用例同在`tools-certificates.workflow.ts`，名称含`rejects over
 <a id="settings-tools-certificate-manager"></a>
 ## MMC 原生验收排除说明
 
-**状态**：用户明确排除管理员MMC原生验收；不是passed，不再blocked
 **策略**：保留Tool与逻辑测试，不注册MMC原生workflow
 
 ### 逻辑验证
@@ -306,7 +299,6 @@ macOS定向用例同在`tools-certificates.workflow.ts`，名称含`rejects over
 <a id="settings-tools-app-containers"></a>
 ## `settings.tools.app-containers`
 
-**状态**：passed
 **策略**：privileged UI；Windows；host-safety-guard；两代Electron
 
 ### Steps
@@ -330,7 +322,6 @@ macOS定向用例同在`tools-certificates.workflow.ts`，名称含`rejects over
 <a id="settings-navigation"></a>
 ## `settings.navigation`
 
-**状态**：passed
 **策略**：shared
 
 macOS保留十个section、键盘和跨workspace往返；App Containers按产品已有unsupported状态检查Search、Enable all、Disable all不出现并截图，不要求Windows专属控件。新增Upstream section通过正式导航验证共享编辑器，其网络流程独立验收。Windows专属断言不变。macOS启动等待boot退出，产品Close后预留120秒供用户处理原生代理恢复授权；不自动批准、不输入密码，实际恢复与进程/8888/journal检查保持。
@@ -364,7 +355,6 @@ macOS保留十个section、键盘和跨workspace往返；App Containers按产品
 <a id="settings-app-containers-ordering"></a>
 ## `settings.app-containers.ordering`
 
-**状态**：passed；Windows真实120行排序、筛选/恢复、标题与推荐标签布局及退出恢复已验
 **策略**：shared；Windows
 
 ### Steps
@@ -386,7 +376,6 @@ macOS保留十个section、键盘和跨workspace往返；App Containers按产品
 <a id="settings-app-containers-bulk-access"></a>
 ## `settings.app-containers.bulk-access`
 
-**状态**：passed
 **策略**：os-side-effect；headed；Windows
 
 ### Steps
@@ -407,7 +396,7 @@ macOS保留十个section、键盘和跨workspace往返；App Containers按产品
 Enable all 与 Disable all 各自对应一条 Main 命令和一次 UAC；前者原子添加当前 SID，后者原子移除当前 SID，均保留枚举外 exemption。完整真实 flow 最终精确恢复测试前系统状态，不发生 Renderer 循环、隐式全量覆盖或不可逆批量启用。
 
 <a id="settings-proxy-upstream"></a>
-## `settings.proxy.upstream`（macOS，ClashX链式转发与外部改写已验）
+## `settings.proxy.upstream`（macOS，ClashX链式转发与外部改写）
 
 1. 外部ClashX等HTTP代理保持运行，系统HTTP/HTTPS均指向同一loopback端口。无此环境算前置阻塞，不计产品Red。
 2. 自动fixture在App启动前只读保存生效上游及完整service快照；独立profile/trace及host guard随后启动真实Electron。
@@ -430,7 +419,7 @@ Enable all 与 Disable all 各自对应一条 Main 命令和一次 UAC；前者�
 <a id="item5-external-network-preparation"></a>
 ### 外部代理验收准备
 
-用户已允许本项启动/关闭App及开启/关闭代理测试。ClashX保持运行，执行前读取本轮真实系统代理状态，不将旧的开启或关闭状态作为当前基线。恢复执行时：
+ClashX保持运行，执行前读取真实系统代理状态，不将旧的开启或关闭状态作为当前基线。准备步骤：
 
 1. 在任何ClashX操作前只读保存完整network service快照、证书信任基线、journal和8888状态；原始代理数据只在私有证据中保留，报告只写哈希和布尔结果。
 2. 确认外部端口实际由该代ClashX进程监听，再通过ClashX真实菜单开启系统代理；回读全部service及原生效上游，HTTP/HTTPS端口必须等于本轮ClashX端口，不能只判断“不是8888”。菜单无法可靠操作或出现额外系统授权时停止，不调用helper写设置代替UI。
@@ -453,7 +442,6 @@ ClashX三条属于`settings.proxy.upstream`，另一条为既有跨profile crash
 <a id="settings-upstream-windows"></a>
 ## `settings.upstream.windows`
 
-**状态**：已验证。负向workflow取得真实前置Red和最终Green；隔离Windows VM中DNS-only、DHCP-only、双来源分别以WPAD与System运行，HTTP/TLS选路、App/Core代际及正常退出恢复均通过。正向网络的历史前置Red不补造；详细边界见[实现与证据](../../../../../architecture/features/settings.md#windows-wpad-research)。
 **策略**：真实Windows Electron；沿用现有PlatformCapabilities上游API；macOS代码、分支和测试不修改。
 
 ### Steps
@@ -528,7 +516,6 @@ npm run test:e2e:workflow --workspace @interceptor/desktop -- wpad-network.workf
 <a id="settings-upstream-macos"></a>
 ## `settings.upstream.macos`
 
-**状态**：当前macOS流程最终Green（固定模式、失败保持、PAC HTTP/HTTPS、DNS/DHCP WPAD、System Auto Detect、重启与退出恢复）；初始整体功能前置真实E2E Red历史缺证，不记为完整TDD闭环
 **策略**：macOS；真实Electron；系统代理宿主保护；WPAD网络调整另行授权
 
 ### Steps
@@ -599,21 +586,17 @@ npm run test:e2e:workflow --workspace @interceptor/desktop -- wpad-network.workf
   正常Close后复用profile启动第二代App，重新核对DHCP来源、WPAD回载、PAC下载及两条路线。
   保存两代trace、截图、PID/端口与路由证据；第二代通过产品Close恢复代理后，外部保护才移除DHCP服务及接口，
   核对原服务配置/顺序、默认路由和本轮DHCP服务文件恢复。授权或环境失败记blocked，不算产品Red或验收Green。
-  实验代理端口由外部协调器提供给测试fixture，不进入产品参数。保留原明文HTTP经PAC HTTP上游的失败用例，
-  该独立场景不更改其协议、headers、PAC或断言，也不宣称第17项已修复。
-  前置该场景在首个WPAD HTTPS请求失败：正文成功但上游CONNECT为空，Core的同条件集成也复现。
-  根因及与第17项的区分见[Settings限制](../../../../../architecture/features/settings.md#34-上游代理链式转发)；
-  用例及原PAC条件保留；修改后的DNS-WPAD独立场景已复验，实际取得两种模式各自的上游CONNECT和DIRECT流量，
-  不把它与独立显式PAC用例或DHCP验收混写。
+  实验代理端口由外部协调器提供给测试fixture，不进入产品参数。明文HTTP经PAC HTTP上游的独立场景保留原协议、
+  headers、PAC和断言。DNS-WPAD、显式PAC与DHCP分别核对上游CONNECT及DIRECT流量，不能只断言响应正文成功。
+  协议边界见[Settings上游代理](../../../../../architecture/features/settings.md#34-上游代理链式转发)。
 - 同一fixture另提供`/tls-proxy.pac`，通过真实UI直接选择显式PAC，不需要DNS搜索域或Auto Detect变更。
   PAC对HTTPS返回PROXY、对HTTP返回DIRECT；HTTPS正文成功必须同时有且仅有一条正确CONNECT记录，
-  HTTP正文只到达自产origin、不新增上游连接。该场景独立取得TLS scheme修复前后证据，
+  HTTP正文只到达自产origin、不新增上游连接。该场景独立验证TLS scheme与实际选路，
   不替代DNS-WPAD、系统Auto Detect或DHCP场景，也不修改原明文HTTP/PAC失败输入。
 
 <a id="settings-proxy-enable-restore"></a>
 ## `settings.proxy.enable-restore`
 
-**状态**：planned
 **策略**：os-side-effect；headed
 
 ### Steps
@@ -636,7 +619,6 @@ Enable只由用户UI发起；Main精确拥有和记录全部代理字段；Resto
 <a id="settings-system-proxy-crash-recovery"></a>
 ## `settings.system-proxy.crash-recovery`
 
-**状态**：passed
 **策略**：os-side-effect；headed；Windows；host-safety-guard
 
 ### Steps
@@ -662,9 +644,8 @@ Enable只由用户UI发起；Main精确拥有和记录全部代理字段；Resto
 <a id="settings-proxy-mitm-persistence"></a>
 ## `settings.proxy-mitm.persistence`
 
-macOS接入已有平台driver：同profile journal、完整结构比较及Security只读信任查询。Windows保留原路径、JSON比较、180秒总预算及业务操作顺序；macOS完整授信流程待用户在场复验。
+macOS使用平台driver：同profile journal、完整结构比较及Security只读信任查询，授信流程需要用户在场处理原生授权。Windows保留原路径、JSON比较、180秒总预算及业务操作顺序。
 
-**状态**：passed
 **策略**：os-side-effect；headed；Windows
 
 ### Steps
@@ -690,7 +671,6 @@ CA 身份、有效期、系统信任、MITM 用户意图、TLS passthrough 与�
 <a id="settings-certificates-generate-delete"></a>
 ## `settings.certificates.generate-delete`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -715,11 +695,10 @@ CA生成/重生成只写当前profile并使用OS secure storage保护私钥；Re
 
 macOS验收同时检查公开CA身份、安装前未受信任、正式Install后系统信任及产品状态一致、Uninstall后不再受信任。根CA检查不能仅凭钥匙串中存在指纹；系统的根信任链评估与实际HTTPS叶证书握手分别验收。使用产品在同一workflow生成的CA，不能在E2E预造证书或直接调用TrustStore API；只有缺失信任设置、非法证书等无法由现有UI稳定产生的边界由所属unit/integration验证。
 
-macOS Install的待验收路径先提权导入系统钥匙串，再由普通用户Main启动不带`-k`的`security add-trusted-cert`，Security框架向用户请求admin trust授权；不是以root运行App或修改系统授权规则。成功证据必须同时有匹配证书的系统信任评估、产品状态、真实HTTPS请求和清理后的原证书集合；导入失败不继续trust，导入成功但trust失败不得继续MITM。原`capture.scenarios.tls`是本轮端到端检查入口；系统密码只由本机用户在原生窗口输入，Windows授权路径不变。
+macOS Install通过已部署helper的前台`certificate.trust`入口请求admin trust，具体操作见本文件的`settings.certificates.helper-trust`契约；Main不直接执行`security add-trusted-cert`。成功证据必须同时有匹配证书的系统信任评估、产品状态、真实HTTPS请求和清理后的原证书集合；导入失败不继续trust，导入成功但trust失败不得继续MITM。`capture.scenarios.tls`验证端到端HTTPS；系统密码只由本机用户在原生窗口输入，Windows授权路径不变。
 
 macOS Uninstall先清除该CA的admin trust，再删除系统钥匙串内同一指纹证书；前一步失败不能继续删除公开证书而留下无法按证书移除的孤立trust。真实TLS workflow保存`trust-settings-before`/`trust-settings-after`并要求完全恢复，同时保留原证书集合断言、正常产品Close和进程/8888/代理恢复门禁；Windows仍检查原机器级Root集合。
 
-**状态**：planned
 **策略**：os-side-effect；headed
 
 ### Steps
@@ -742,7 +721,6 @@ Trust/Untrust只操作当前CA的精确thumbprint；安装信任不会自动Enab
 <a id="settings-certificates-https"></a>
 ## `settings.certificates.https`
 
-**状态**：planned
 **策略**：os-side-effect；headed
 
 ### Steps
@@ -765,7 +743,6 @@ MITM switch、Trusted状态和Core配置同步；insecure host会trim/去重并�
 <a id="settings-certificates-external-actions"></a>
 ## `settings.certificates.external-actions`
 
-**状态**：planned
 **策略**：native-ui
 
 macOS只读子范围复用已有共享CA：经UI创建MCP Client并在Ask卡批准Reveal及View；Finder选中的精确路径须为当前`root-cert.pem`，允许复用既有窗口但不关闭它。View必须显示同一公开证书的系统只读详情，核对原生helper进程及证书SHA-256窗口身份，真实关闭后helper退出；不得导入证书、请求trust或修改System/login/admin trust。Windows原生driver原样委托。
@@ -794,7 +771,6 @@ macOS View由普通用户前台helper的固定`certificate.view`显示`SFCertifi
 <a id="settings-storage-refresh-clear"></a>
 ## `settings.storage.refresh-clear`
 
-**状态**：passed
 **策略**：os-side-effect
 
 ### Steps
@@ -816,7 +792,6 @@ Refresh只读取真实Core usage；统计口径为已提交正文总量，包含
 <a id="settings-privacy-defaults"></a>
 ## `settings.privacy.defaults`
 
-**状态**：planned
 **策略**：os-side-effect
 
 ### Steps
@@ -839,7 +814,6 @@ Privacy defaults即时持久并真实驱动HAR Export初始状态；风险组合
 <a id="settings-tls-compatibility"></a>
 ## `settings.tls-compatibility`
 
-**状态**：planned；行高修改缺前置E2E
 **策略**：真实TLS流量与产品UI；host-safety-guard；涉及CA时使用正式授权与清理路径
 
 ### Steps
@@ -853,7 +827,6 @@ Privacy defaults即时持久并真实驱动HAR Export初始状态；风险组合
 <a id="settings-updates-check"></a>
 ## `settings.updates.check`
 
-**状态**：passed（macOS packaged匿名失败重试/重启与退出恢复；Windows、真实下载/Open成功链路未验）
 **策略**：native-ui（local断言unsupported；packaged匿名请求固定Release来源）
 
 实现入口为[updates-check.workflow.ts](../workflows/settings/updates-check.workflow.ts)。HTTP 404或请求失败按失败处理，不以公开仓库或有效Release作为删除登录的前提。
@@ -878,8 +851,7 @@ Local诚实显示unsupported；packaged匿名请求固定仓库，HTTP 404或请
 <a id="settings-updates-download-open"></a>
 ## `settings.updates.download-open`
 
-**状态**：planned
-**策略**：native-ui；第6项目标为匿名更新，仅packaged且存在真实可匿名访问的新release时可执行
+**策略**：native-ui；匿名更新，仅packaged且存在真实可匿名访问的新release时可执行
 
 ### Steps
 
@@ -901,10 +873,9 @@ Local诚实显示unsupported；packaged匿名请求固定仓库，HTTP 404或请
 <a id="settings-update-notification"></a>
 ## `settings.update-notification`
 
-**状态**：planned
 **策略**：shared（有效available/downloaded仅packaged真实检查）
 
-当前缺通知专属真实workflow；执行时需要packaged App和可匿名访问的新release。不注入Update store或伪造状态，也不把404失败检查作为通知下载通过。布局契约见[更新通知按钮](../../../../../architecture/features/settings.md#更新通知按钮)。
+执行时需要packaged App和可匿名访问的新release。不注入Update store或伪造状态，也不把404失败检查作为通知下载通过。布局契约见[更新通知按钮](../../../../../architecture/features/settings.md#更新通知按钮)。
 
 ### Steps
 

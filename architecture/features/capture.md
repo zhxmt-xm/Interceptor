@@ -242,18 +242,6 @@ stateDiagram-v2
 <a id="normal-goaway-gap"></a>
 ##### 源站正常GOAWAY与TLS EOF
 
-修复前的记录中，源站正常GOAWAY后旧响应曾仅到达262144/393216字节，没有end/trailer，Capture停在`response-streaming`；源站stream正常finish/close且rstCode=0。后续请求转入新上游session并完整捕获，不能据此把旧请求记为成功。
-
-根因是暂停的上游stream尚有缓冲时被Node的`socketOnClose → closeSession`销毁，`readableEnded=false`；
-http2-wrapper等不到end，Mockttp无法转发trailer。公开只读观测确认393216字节及带END_STREAM的trailer已到达
-Core，销毁时仍留327680字节未被消费者读完。修复不需要修改第三方，也不得在close时假补EOF、强制全量缓冲
-或把Capture改成completed。
-
-修复前的可控边界：不暂停的普通流式响应可以完整通过正常GOAWAY；“一次普通请求成功”不能覆盖暂停缓冲。
-真实response breakpoint挂起headers后，384 KiB Core样本与4 MiB真实UI样本均曾只到65536字节、无end/trailer，
-Capture仍为`response-streaming`；下一请求使用不同上游session成功，两次POST在源站各出现一次。
-无GOAWAY的相同暂停对照完整通过；384 KiB真实UI样本也曾通过，触发与缓冲和时序有关，不代表每次GOAWAY必失败。
-
 `CoreApplication`唯一拥有[Http2ClientService](../../apps/proxy-core/src/proxy-core/http2-client/README.md)，
 通过Node公开的`http2.client.stream.created`、`session.socket.allowHalfOpen`和生命周期事件管理本进程的
 Proxy/Composer出站TLS/H2；明文H2、入站session和TLS探测保持原路径，不修改依赖、重放请求或全量复制正文。
@@ -261,12 +249,6 @@ Proxy/Composer出站TLS/H2；明文H2、入站session和TLS探测保持原路径
 消费者排空后仍未正常结束，或EOF发生在最终响应头之前，以`ERR_H2_UPSTREAM_INCOMPLETE`显式失败。
 完整响应须保持字节/hash、trailer、completed及新请求使用新连接；真实截断不得长期streaming或伪装成功。
 Core停止时注销订阅、取消排空检查并等待session关闭，不影响其他进程或留下跨代监听。
-
-验收范围：Core回归覆盖trailer、DATA.END_STREAM、无响应头/部分正文提前EOF、取消、并发、
-32 MiB正文与128 KiB窗口背压、Composer及Core代际释放。macOS真实UI与最终签名App均验证同一暂停响应
-完整收到4 MiB/hash/trailer/end、后续请求使用新上游session且两个POST各只出现一次，Capture保留原身份与完整正文。
-H2/gRPC/TLS及断点退出也取得真实Green；Windows实机独立归第8项，不由macOS结果代替。
-正式Red、Green、最终产物与历史失败恢复证据见[Handover](../HANDOVER.md#第14项验证与恢复)。
 
 #### H2错误GOAWAY
 
@@ -362,8 +344,6 @@ Playground手动入口：Capture Lab的HTTP分组提供`h2-error-goaway-client`�
 - 标题仍显示host/path，使用自然行高，不用字体替换或文字位移补偿布局。
 - 完整URL仅取当前选中Exchange的详情；尚未就绪时不显示标题Copy，General的Request URL也不提供短标题复制。切换请求时，上一条详情不能让新请求的Copy提前显示。
 - 当前请求URL就绪后才显示Copy，复制原始完整URL（含协议、实际端口和query）；同一请求刷新详情期间已有URL保持可用，不增加额外的详情请求。
-- Windows前置单测及真实Electron均复现了旧实现复制短标题；当前版本的标题与General完整URL复制、JSON/HTML末行Copy和Fullscreen已通过真实UI复验。未改Header CSS，未把既有hover失败解释为已证实的样式缺陷。
-  - 对应场景与证据边界见[Capture fullscreen规格](../../apps/desktop/tests/e2e-workflow-tests/docs/capture.md#capture-body-fullscreen)；真实退出、共享CA及系统设置清理与该轮结果一并核对。
 
 #### Compact正文高度
 
@@ -1654,21 +1634,19 @@ Core decode接收调用方的输出预算：文本2 MiB、图片16 MiB，不以�
 超出时 UI 明确显示预览大小与完整大小，用户可经 **Save body**（`body.export.start`）把完整编码正文
 流式写到自选文件，该路径不受预览上限限制。
 
-## 与当前实现的差异：Android 协议副本录制
+## Android 协议副本录制
 
-- Core命令与组件接线已实现并通过关联回归：CaptureService持有唯一录制开关，Proxy与Android各保留自己的Session。两端复用现有暂停/恢复意图，Android启动不隐式恢复录制；Clear清空全部内容并保留所有活动Session壳，不保留壳下旧请求。
-- Android的HttpRecording已连接正式CaptureService和CaptureEventQueue；真实Android lab核对HTTP/WS/H2的Capture记录、正文与规则证据，不再仅依赖观测回调，当前范围见[双端验证](../../../Interceptor-Android/architecture/platform/testing.md#正式native-h2双端lab)。
+- Core命令与组件接线：CaptureService持有唯一录制开关，Proxy与Android各保留自己的Session。两端复用现有暂停/恢复意图，Android启动不隐式恢复录制；Clear清空全部内容并保留所有活动Session壳，不保留壳下旧请求。
+- Android的HttpRecording连接CaptureService和CaptureEventQueue，保存HTTP/WS/H2的Capture记录、正文与规则效果。
 - `android.start`携带Main核准的设备来源；Core为完整手机指纹生成稳定`android:<sha256>` appId，并把`Android · <model>`写入正式Capture summary。Renderer的Application facet和Request row对该appId显示Android品牌图标，不把PC代理请求误标成手机来源。
 - Main的`AndroidDeviceService`已拥有单设备ADB状态、PC mTLS身份、Core listener、`adb reverse --no-rebind`及精确清理：
   - `reverse --list`只在目标设备ready时核对本轮local/remote端口，不依赖ADB输出中的transport名称；
   - 设备已拔出、offline或unauthorized时先停止Core，再释放本地ownership；不执行`adb kill-server`、`reverse --remove-all`或清理其他映射。
 - Desktop已实现APK缺失、升级、同版本修复、签名不符和已安装新版本状态。Main在`adb install -r`前后核对随包APK、设备base APK、版本、完整SHA-256及签名身份；拒绝换签和降级。Capture设备窗口按已确认设计显示安装态、完整双端指纹、通道状态和Android来源。
-- 四主题已安装/缺失态严格parity覆盖8场景48目标，全部原始几何、样式、文本和状态零差异；不修改设计基准或使用容差。API35 emulator已通过真实ADB list/open/reverse/nc/remove及缺失态安装，仍不替代物理USB、ARM64真机或拔线验收。
 - 请求头到达就以Core新ID创建Exchange，wire exchangeId不作为全局存储ID。规则效果在Android应用确认后发布；Final来自Android的applied正文副本，不使用PC拟发送的replacement内容代替。
 - 同一Exchange的request/response各有独立Original与Final writer；读接口只选Final/当前展示writer。Original按现有BodyRuleEffect绑定；没有正文替换时消费后丢弃额外Original副本，不另留不可查询的Blob。缺失原文明确为unavailable，不将停止前缀或存储失败当完整原文。
-- metadata、规则审计、Final trailers、停止前缀与取消已有组件覆盖；停止/中断正文保留可读前缀并标记truncated。录制暂停不取消网络；Clear按明确Session同步撤销旧建档资格，再等待IO。正文写入失败保留不可用状态并输出诊断，不谎报保存成功。
+- metadata、规则审计、Final trailers、停止前缀与取消分别处理；停止/中断正文保留可读前缀并标记truncated。录制暂停不取消网络；Clear按明确Session同步撤销旧建档资格，再等待IO。正文写入失败保留不可用状态并输出诊断，不谎报保存成功。
 - 请求/响应断点都关联实际Capture ID；未录制的交互仍进入断点，但snapshot不带不存在的记录身份。Core停止Android入口会取消对应pending并等待记录结算；全Core退出及RPC失联先排空所有来源再dispose，失败返回fatal/非零退出，不发布成功stopped。
-- 验证顺序已覆盖真实Capture/文件IO目标Red、同组及现有Proxy调用方Green、真实WSS与Android lab、Main unit及真实ADB/APK integration。系统VpnService/TUN在API35已完成真实HTTP闭环和重复停止；完整Electron双端连续Green，本机正式签名APK已上传未Publish的draft Release并通过私有asset下载校验。物理USB拔线、真机ARM64和Windows最终包仍是本项剩余验收，不能由模拟器或package audit代替。
 
 ## 11. 验证边界
 

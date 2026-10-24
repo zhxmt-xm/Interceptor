@@ -87,8 +87,7 @@ Windows共享CA私钥由CertificateService直接读写当前用户共享目录�
 Core ready屏障内RPC已可用，不能因生命周期尚未公开running而跳过已有listener的上游下发。
 若listener尚未启动，Capture bootstrap在启动后仍调用Main的幂等Enable；OS owned只表示系统归属，
 不代表新Core已经配置路线。Main在已owned分支应用上游但不重复写系统配置，进入running后通知Renderer刷新。
-`system-proxy.read-discovery`为无参数只读入口，返回主网络搜索域及缓存DHCP 252；实际系统WPAD、
-DHCP和端到端验收仍按Settings的能力边界跟踪，不把读取缓存视为主动发现已验证。
+`system-proxy.read-discovery`为无参数只读入口，返回主网络搜索域及缓存DHCP 252，不主动发送DHCP发现请求。
 
 `CoreApplication`拥有唯一的[Http2ClientService](../../apps/proxy-core/src/proxy-core/http2-client/README.md)，
 只在本Core代际运行时观察其出站TLS/H2客户端，包括Mockttp与Composer。通过Node公开channel与

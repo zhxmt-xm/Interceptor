@@ -58,7 +58,6 @@
 <a id="breakpoints-tools-batch"></a>
 ## `breakpoints.tools.batch`
 
-**状态**：passed
 **策略**：shared；两代真实Electron；host-safety-guard
 
 ### Steps
@@ -89,7 +88,6 @@ UI批量命令workflow替代本组Agent/MCP调用。
 <a id="breakpoints-toggle"></a>
 ## `breakpoints.toggle`
 
-**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -112,7 +110,6 @@ UI批量命令workflow替代本组Agent/MCP调用。
 <a id="breakpoints-queue-select"></a>
 ## `breakpoints.queue-select`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -135,7 +132,6 @@ UI批量命令workflow替代本组Agent/MCP调用。
 <a id="breakpoints-queue-stepping"></a>
 ## `breakpoints.queue-stepping`
 
-**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -160,7 +156,6 @@ HTTP pending按最新snapshot推进；中间abort不删除Capture行。只有用
 <a id="breakpoints-queue-isolation"></a>
 ## `breakpoints.queue-isolation`
 
-**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -187,7 +182,6 @@ HTTP与WebSocket逻辑队列互不阻塞；同一WebSocket连接的双向帧按C
 <a id="breakpoints-queue-commands"></a>
 ## `breakpoints.queue-commands`
 
-**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -227,7 +221,6 @@ HTTP与WebSocket逻辑队列互不阻塞；同一WebSocket连接的双向帧按C
 <a id="breakpoints-lifecycle-release"></a>
 ## `breakpoints.lifecycle-release`
 
-**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -253,7 +246,6 @@ HTTP与WebSocket均没有产品timeout。pending无隐藏数量上限，只由�
 <a id="breakpoints-continue-unmodified"></a>
 ## `breakpoints.continue-unmodified`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -276,7 +268,6 @@ Continue unmodified只释放等待，不改字节；pending badge、Core、clien
 <a id="breakpoints-execute-edited"></a>
 ## `breakpoints.execute-edited`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -311,7 +302,7 @@ Mockttp/origin，Core state=edited，Capture反映实际转发结果。
 - 暂停快照包含priority更晚的rewrite header/marker；Forward edited后Capture保留绑定breakpoint rule的effect。
 - 最终state、暂停marker、origin wire与Capture effect均须通过，并确认代理恢复、进程销毁和8888释放。selector、UAC、构建或fixture失败不算产品故障。
 
-HTTP framing矩阵仍未通过，本workflow整体保持`planned`；final Rule state与header effect不能替代线上字节验收。
+HTTP framing矩阵必须逐项断言origin实际收到的headers和body；final Rule state与header effect不能替代线上字节验收。
 
 ### Automation Contract
 
@@ -340,7 +331,6 @@ HTTP framing矩阵仍未通过，本workflow整体保持`planned`；final Rule s
 <a id="breakpoints-drop"></a>
 ## `breakpoints.drop`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -363,7 +353,6 @@ Drop真实中止目标数据面；请求不继续转发；pending badge、client
 <a id="breakpoints-websocket-close"></a>
 ## `breakpoints.websocket-close`
 
-**状态**：planned
 **策略**：privileged UI
 
 ### Steps
@@ -390,7 +379,6 @@ closeCode与body是正交编辑；没有body replacement时仍必须转发用户
 <a id="breakpoints-resize"></a>
 ## `breakpoints.resize`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps

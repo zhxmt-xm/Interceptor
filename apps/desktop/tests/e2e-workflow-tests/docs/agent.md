@@ -27,7 +27,6 @@ Agent只使用原workflow与已有可控模型lab；截图模式不增加第二�
 <a id="agent-panel-navigation-persistence"></a>
 ## `agent.panel.navigation-persistence`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -52,7 +51,6 @@ Agent 是全局右侧栏，不是 Workspace 或 overlay；fresh profile 只显�
 <a id="agent-settings-model-configuration"></a>
 ## `agent.settings.model-configuration`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -75,7 +73,6 @@ Settings > Agent 是 Provider/模型配置的唯一入口；Test connection 返�
 <a id="agent-chat-streaming-context"></a>
 ## `agent.chat.streaming-context`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -98,7 +95,6 @@ Settings > Agent 是 Provider/模型配置的唯一入口；Test connection 返�
 <a id="agent-chat-restart-recovery"></a>
 ## `agent.chat.restart-recovery`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -121,7 +117,6 @@ Provider配置、默认模型、Session列表、当前Session、Transcript、out
 <a id="agent-tools-settings-capabilities"></a>
 ## `agent.tools.settings-capabilities`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -150,7 +145,6 @@ MCP执行链路由`mcp.desktop.streamable-http`覆盖。
 <a id="agent-tools-capture-discovery"></a>
 ## `agent.tools.capture-discovery`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -180,7 +174,6 @@ Agent通过共享Capability Index渐进发现已开启Tool，并查询同一真�
 <a id="agent-tools-body-messages"></a>
 ## `agent.tools.body-messages`
 
-**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -223,7 +216,6 @@ Agent通过共享Capability Index渐进发现已开启Tool，并查询同一真�
 <a id="agent-tools-execution-modes"></a>
 ## `agent.tools.execution-modes`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -252,7 +244,6 @@ Tool启用状态与执行模式正交：关闭永远不可调用；开启的quer
 <a id="agent-tools-traffic-control"></a>
 ## `agent.tools.traffic-control`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -282,7 +273,6 @@ Renderer镜像，且不丢失清理开始后到达的新流量。
 <a id="agent-tools-rules"></a>
 ## `agent.tools.rules`
 
-**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -311,7 +301,6 @@ effect与查询结果一致。
 <a id="agent-tools-breakpoints"></a>
 ## `agent.tools.breakpoints`
 
-**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -336,7 +325,6 @@ Agent只能处理真实产品pending；query不问询，七项change遵守Ask/Au
 <a id="agent-tools-composer"></a>
 ## `agent.tools.composer`
 
-**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -363,7 +351,6 @@ Stop真实终止socket。Deny、关闭项与重启均不产生网络副作用，
 <a id="agent-tools-diagnostics"></a>
 ## `agent.tools.diagnostics`
 
-**状态**：passed
 **策略**：shared
 
 从仓库根目录复验，不可与其他占用8888的实例并行：

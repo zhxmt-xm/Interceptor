@@ -414,15 +414,9 @@ Main通过同包helper执行macOS代理和System Keychain公开证书操作。
 
 #### 可选上游配置（与当前实现的差异）
 
-以下为已确认设计及当前macOS实现；真实网络流程和恢复按下述边界验收。
-Windows原生WPAD发现已接入WinHTTP；定向测试、本机真实负向流程，以及隔离Windows VM中的DNS-only、DHCP-only、双来源优先级与System Auto Detect流程均已验证。[Windows实现与证据](#windows-wpad-research)保留对应范围，不用macOS结果代替Windows。
-Windows显式WPAD及System仅Auto Detect、无启用的显式代理/PAC时均调用原生发现；发现失败保留旧配置和路线，不再报平台不支持或静默改成Direct。macOS原发现调用和功能代码未改，其网络结果不能代替Windows正向验收。
-当前代码已接入五种模式和双入口；macOS WPAD使用系统DNS解析与缓存的DHCP 252 URL，不主动发送DHCP发现请求；Windows由WinHTTP完成DHCP/DNS发现。
-固定路由、Manual重启回载、PAC/WPAD失败保持、DNS-WPAD的DIRECT及重启、系统Auto Detect的DIRECT和跨profile崩溃恢复
-已有真实App验收。macOS在仅启用Auto Detect时会提供`http://wpad/wpad.dat`，由系统搜索域解析短主机名，
-不需要将发现结果写为原始network service的显式PAC。H1/PAC及TLS scheme的Mockttp适配已实现，
-普通HTTP、显式PAC HTTPS、新包smoke、DNS-WPAD/System Auto Detect及隔离DHCP真实流程均已取得最终Green。
-初始整体功能未保存修改前真实E2E证据，仍是历史TDD缺口；不以最终Green或后续故障Red补造该历史。
+Main提供System、Direct、Manual、PAC和WPAD五种上游模式，Settings与Capture快捷入口调用同一业务。
+macOS WPAD使用系统DNS解析和缓存的DHCP 252 URL，不主动发送DHCP发现请求；Windows通过WinHTTP完成DHCP/DNS发现。
+Windows显式WPAD及System仅Auto Detect、无启用的显式代理/PAC时均调用原生发现；发现失败保留旧配置和路线。
 
 <a id="upstream-request-adapter"></a>
 **已实现的发送适配**
@@ -432,9 +426,9 @@ Windows显式WPAD及System仅Auto Detect、无启用的显式代理/PAC时均调
 - Mockttp共用的HTTP/1.x出站构造使用小写字段名；单个值保存string，同名多个值按原顺序保存string数组。
   空字符串、相同的重复值和未知字段保留；使用无原型对象，不通用join、不覆盖、不去重、不修改源raw列表。
   原始字段先经过Node名字/值校验，不用大小写转换掩盖非法输入。
-- `setDefaultHeaders:false`与第10项正文/framing保持。Cookie数组由Node按`; `发送；
+- `setDefaultHeaders:false`与正文/framing契约保持。Cookie数组由Node按`; `发送；
   `Set-Cookie`多行、认证挑战、CL/TE、Host及H2转换仍由所属发送层处理，不新增自动修正或后值优先策略。
-  本次允许H1线上名字小写及同名行归组，但不允许字段值丢失、正文变化或真实目标错误。
+  H1线上名字小写及同名行归组，但不允许字段值丢失、正文变化或真实目标错误。
 - 原始Capture、编辑器、Rules、响应头路径和WS/H2发送选择不重写；
   共用转换helper若修正空值/特殊键，必须回归原有使用方，不能只验PAC。
 - 未解密TLS传给PAC的判断目标必须是`https://<实际authority>/`，保留CONNECT端口与IPv6表示；
@@ -443,7 +437,7 @@ Windows显式WPAD及System仅Auto Detect、无启用的显式代理/PAC时均调
 - 普通PAC求值通过Mockttp内对公开`getResolver()`的适配补上实际端口，原请求path和Agent认证注入顺序不变；
   含目标端口的Agent缓存不得串用另一目标端口。PAC按每个新HTTP请求求值，不能复用先前DIRECT socket跳过新路线；
   只关闭PAC请求结束后的空闲socket复用，固定上游的keep-alive策略和已开始的响应/长连接不改变。
-- 原12/17失败输入保持不变。以同一输入直发与经Interceptor后的源站method、目标/path/query、字段值、
+- 以同一输入直发与经Interceptor后的源站method、目标/path/query、字段值、
   正文bytes及实际上游路径作对照；H1字段名大小写与必要的逐跳字段变化单独说明，不泛化为忽略所有header差异。
 - 普通PAC非默认端口、多目标与IPv6有独立协议验收。对象化本身不证明任意异常Host输入、
   PAC候选间代理认证等组合均已覆盖；不将未验边界宣称为全部解决，也不追加未经授权的Agent补丁。
@@ -451,32 +445,12 @@ Windows显式WPAD及System仅Auto Detect、无启用的显式代理/PAC时均调
 **HTTP/PAC兼容处理**：既有raw-header数组不会建立HTTP Agent读取的Node字段表，
 曾导致Host回退与重建时丢头；上游背景见[httptoolkit/mockttp#194](https://github.com/httptoolkit/mockttp/issues/194)。
 现在由Mockttp在创建H1请求前提交无原型多值对象，字段名小写，字段值与空值保留；
-不修改HTTP Agent，也不将HTTP代理转成CONNECT来绕过。原失败用例保持其输入并取得Green。
+不修改HTTP Agent，也不将HTTP代理转成CONNECT来绕过。
 
 **TLS/PAC兼容处理**：保留原始隧道的`secureEndpoint:false`，但给PAC的请求stub明确使用真实HTTPS authority；
 IPv6在主机匹配的URL中加括号，实际socket host保持原值。普通PAC的端口由Mockttp内的
 `TargetPortPacProxyAgent.getResolver()`调用原库公开求值接口前恢复，不改实际请求path或用户PAC。
 原代理库继续拥有连接、候选类型与脚本编译；没有运行时覆盖其prototype或改写其源码。
-
-**验证边界**：同一浏览器直发与经Core Direct/固定/PAC的method、path/query、业务header值与正文已作源站对照；
-H1名字小写、Cookie发送形式及原有逐跳Connection差异有明确记录，不宣称原始报文逐字节完全相同。
-新包构建、随包文件、artifact audit与smoke已验证。DNS-WPAD的DIRECT/重启、
-WPAD与显式PAC的HTTPS PROXY/HTTP DIRECT、System Auto Detect的跨profile崩溃恢复均已复验，
-原代理先由App恢复，实验DNS再按独立保护撤销。
-
-DHCP验收使用真实隔离feth链路、公开SCPreferences持久网络服务和仅监听测试接口的bootpd。
-macOS DHCP客户端实际取得租约并成为主网络，Option 252指向本轮loopback PAC服务；
-正式helper读取同一URL，搜索域为空，没有写入State:/或DHCP缓存，也未使用DNS回退。
-用户仅从UI选择WPAD，两个入口显示相同路线；HTTPS经过真实CONNECT上游，HTTP按PAC选择DIRECT。
-正常Close后复用profile启动第二代，重新下载PAC并再次验证两条路线。
-产品自行恢复代理后才撤销实验网络；原服务配置/顺序、默认路由、接口、DHCP文件和进程均恢复，8888释放。
-实际DHCP报文、两代App与恢复结果见[DHCP验收记录](/Users/zhxmt/Desktop/Interceptor-WPAD-Recovery-20261004-0853/dhcp-experiment-20261009183209/result.json)；
-可复验步骤见[DHCP验收规格](../../apps/desktop/tests/e2e-workflow-tests/docs/settings-updates.md#settings-upstream-macos)。
-本轮命令、Red/Green、真实App代际与恢复结果见[实现证据](/Users/zhxmt/.copilot/session-state/bda43480-2b1f-4f42-8883-5c58d667f62a/files/mockttp-adapter-implementation-20261008.json)；
-环境阻塞不能作为通过，也不补造此前缺失的整体功能真实E2E前置证据；
-初始实现、后续故障修复和最终网络验收分别记录，不合并成不存在的完整历史TDD链路。
-当前完整Renderer/设计稿一致性结果见[parity记录](/Users/zhxmt/.copilot/session-state/bda43480-2b1f-4f42-8883-5c58d667f62a/files/upstream-full-parity-delivery-20261009.json)；
-检查保留原设计基准，几何、字体和交互状态与实际协议验收分别记录。
 
 | `mode` | 保存字段 | 含义 |
 | --- | --- | --- |
@@ -602,12 +576,7 @@ PAC按所选agent走普通HTTP代理转发或CONNECT，不能把固定代理的�
 - 上游凭据不进入源站请求或Capture记录。
 
 <a id="windows-wpad-research"></a>
-#### Windows WPAD 实现与验收边界（item 13）
-
-Windows原生发现与共享业务接入已实现；定向unit/integration、本机真实失败保持及打包检查通过。
-隔离Windows VM的DNS-only、DHCP-only、双来源优先级分别以WPAD及System运行，正向选路、App/Core重启和恢复均已验证；
-每条使用真实Electron、Preload、Main、Core、WinHTTP、listener及storage，不注入发现结果或业务Store。
-用户允许必要的包内调用抽象，但底线是不改任何macOS功能代码；当前选择保留其原调用，只补Windows。
+#### Windows WPAD 实现与平台边界
 
 **最小接入**
 
@@ -636,9 +605,8 @@ Windows原生发现与共享业务接入已实现；定向unit/integration、本
 
 **与macOS的关系和分离**
 
-- 原Main的`discoverPacUrl()`只读取`helperService.macosHelperServiceClient`，再调用
-  `macos/discover-wpad.ts`，导致Windows报不支持。现已在其前增加Windows分派，
-  原生WinHTTP调用留在Windows目录，macOS这段调用及其功能代码原样保留。
+- Main的`discoverPacUrl()`按平台分派：Windows使用原生WinHTTP，macOS通过
+  `helperService.macosHelperServiceClient`调用`macos/discover-wpad.ts`。原生实现各自在所属平台目录维护。
 - 对外统一指PlatformCapabilitiesService已有的`getUpstreamSettings()`与`applyUpstreamSettings()`等业务能力，
   不是强制两端改成新的内部接口。Windows新增`discoverWpadPacUrl(): Promise<string>`，
   既有公共平台代理interface不要求macOS实现新方法；现有Main模式、状态、通知和Core应用不复制。
@@ -660,24 +628,16 @@ Windows原生发现与共享业务接入已实现；定向unit/integration、本
 - 原生发现算法不承诺逐步一致。macOS只试其提供的搜索域；WinHTTP的接口选择、DNS搜索及缓存由Windows管理，
   不能套用macOS测试来宣称Windows也具有同样的搜索域约束。共同验收的是所选PAC和实际路线正确，
   平台策略及网络报文各自取证。
-- 本项只新增Windows发现及Windows System配置转换分支，不统一全部system-proxy DTO、
-  重写平台factory或合并journal。macOS Service、Swift协议、部署授权及既有调用链全部不动，
-  Core数据面也不改变。
-- 测试按责任分开：本轮补Windows发现、Win32错误、进程超时、失败保持、通知和代际同步，
-  不修改macOS DHCP缓存/DNS输入测试。
+- 测试按平台责任分开：Windows覆盖WinHTTP发现、Win32错误、进程超时、失败保持、通知和代际同步；
+  macOS覆盖DHCP缓存与DNS输入。
   现有macOS专属测试不能通过移除`runIf`或复制整份workflow冒充Windows覆盖；
   共用用户步骤可复用，网络准备、原生读取和退出恢复仍由各自driver/实验环境负责。
-- macOS既有执行分支及源码不变，本项不要求macOS实机回归；通过变更范围检查确认没有改动macOS，
-  不把Windows测试或未执行的macOS测试记成新的macOS验收结果。
 
 **必须一起处理的边界**
 
-- 原helper读写都使用`INTERNET_PER_CONN_FLAGS`。微软要求Windows 7及以后读取连接类型使用
-  `INTERNET_PER_CONN_FLAGS_UI`，恢复仍使用`INTERNET_PER_CONN_FLAGS`。
-  现已分别指定读写option，保持现有六字段快照和journal格式。
-  本机接管/退出与隔离环境的`flags: 9` Auto Detect接管、跨profile恢复及正常Close往返均已验证。
+- Windows 7及以后，helper读取连接类型使用`INTERNET_PER_CONN_FLAGS_UI`，
+  恢复使用`INTERNET_PER_CONN_FLAGS`；六字段快照和journal格式保持一致。
 - WinHTTP发现是同步阻塞调用，不能放在Main线程内直接执行。现有`execFile`已隔离到helper，
-  但[共享runner](../../packages/platform-capabilities/src/internal/command-runners.ts)及系统代理调用没有配置超时。
   Windows新发现命令使用专用`execFile`调用，期限30秒、输出上限64KiB；
   超时后确认本次helper子进程退出再释放操作占用；
   不能只用`Promise.race`留下仍运行的helper，也不能全局改变其他平台写操作的超时和恢复语义。
@@ -691,13 +651,12 @@ Windows原生发现与共享业务接入已实现；定向unit/integration、本
 - 沿用当前失败约定：显式WPAD和System发现失败均不自动Direct；Apply失败保留旧偏好和旧路线，
   接管前失败不得写系统代理。启用Auto Detect但未部署WPAD的网络也会遇到错误，
   可能阻止自动接管；允许这种System场景回退Direct属于另一个需明确确认的行为变更，本次不改。
-- 首轮只接入现有Apply、Enable和Core同步时机，不附带新增后台网络监听、周期重发现或静默重试。
+- WPAD在Apply、Enable和Core同步时发现，不进行后台网络监听、周期重发现或静默重试。
 
 **Windows验收**
 
-本次使用Hyper-V Private switch连接Windows 11 Enterprise LTSC Evaluation与Alpine网络VM，
-不接宿主网卡、不桥接日常局域网；网络VM提供DNS、真实DHCP 252、HTTP PAC和tcpdump。
-后续复验仍需获准的隔离环境及恢复保护；以下场景都从真实Electron UI操作，不以手填PAC替代WPAD。
+Windows WPAD验收需要获准的隔离网络及恢复保护。网络环境提供DNS、真实DHCP 252、HTTP PAC和报文采集，
+不桥接日常局域网；以下场景都从真实Electron UI操作，不以手填PAC替代WPAD。
 
 | 场景 | 前提与关键证据 |
 | --- | --- |
@@ -715,51 +674,6 @@ Windows原生发现与共享业务接入已实现；定向unit/integration、本
   仍限定macOS；不能移除平台保护便宣称已有Windows覆盖。
   纯转换器在没有URL时仍返回`null`，Main现在先通过Windows发现与解析入口准备URL再调用转换器；
   Windows测试覆盖完整链路，不把纯转换器改成网络客户端。
-- 既有Windows转换、接管/恢复及原生只读测试已作为基线运行；随后新增Windows WPAD目标测试，
-  取得[unit/integration Red](C:/Users/zhang/.copilot/session-state/e25d9c46-b5b8-421a-a43d-7f8c9ef1fc72/files/item13-wpad-red.json)：
-  显式WPAD仍报不支持，System仅Auto Detect仍返回Direct，helper不认识`discover-wpad`。
-  [独立WinHTTP只读检查](C:/Users/zhang/.copilot/session-state/e25d9c46-b5b8-421a-a43d-7f8c9ef1fc72/files/item13-native-precondition.json)
-  实际返回`12180`，WinINet前后相同；它证明本机原生发现失败，不证明独立DNS/DHCP正向发现或实际上游已经通过。
-- 首次[Electron准备结果](C:/Users/zhang/.copilot/session-state/e25d9c46-b5b8-421a-a43d-7f8c9ef1fc72/files/item13-e2e-red.log)
-  是共享CA缺失的环境失败，不是产品Red。随后通过正常产品启动完成CA初始化及系统授权，
-  没有绕过guard；[初始化记录](C:/Users/zhang/.copilot/session-state/e25d9c46-b5b8-421a-a43d-7f8c9ef1fc72/files/item13-bootstrap-state.json)
-  保留公开指纹、正常退出、WinINet及8888恢复结果。共享CA保留用于后续正常运行，不把初始化前无CA描述为已恢复。
-- [真实前置Red](C:/Users/zhang/.copilot/session-state/e25d9c46-b5b8-421a-a43d-7f8c9ef1fc72/files/item13-e2e-red-run.log)
-  精确失败在WPAD返回平台不支持，Manual流量和正常Close均已执行；
-  [同组Green](C:/Users/zhang/.copilot/session-state/e25d9c46-b5b8-421a-a43d-7f8c9ef1fc72/files/item13-e2e-green.log)
-  则显示原生未发现WPAD，两次失败后真实请求仍经过Manual，两个UI入口保留同一模式。
-  [实际路线与错误](C:/Users/zhang/.copilot/session-state/e25d9c46-b5b8-421a-a43d-7f8c9ef1fc72/files/item13-e2e-green/settings-wpad-failure-pres-df2af-ative-WPAD-and-PAC-failures/windows-upstream-failures.json)
-  和[正常退出metadata](C:/Users/zhang/.copilot/session-state/e25d9c46-b5b8-421a-a43d-7f8c9ef1fc72/files/item13-e2e-green/settings-wpad-failure-pres-df2af-ative-WPAD-and-PAC-failures/metadata.json)
-  分别记录业务与进程恢复，不用UI截图代替网络断言。
-- [Windows定向Green及平台边界](C:/Users/zhang/.copilot/session-state/e25d9c46-b5b8-421a-a43d-7f8c9ef1fc72/files/item13-platform-boundary.json)
-  覆盖真实helper只读发现、30秒超时及对应子进程结束，确认macOS文件、构造分支、System转换、发现调用和公共API未变。
-  平台包与Desktop typecheck、Desktop调用方及Core上游/PAC集成已运行；
-  其中macOS专属用例按既有平台条件跳过，未执行范围不计入Windows通过。
-- 已按[测试分层](../platform/testing.md)执行
-  [package](C:/Users/zhang/.copilot/session-state/e25d9c46-b5b8-421a-a43d-7f8c9ef1fc72/files/item13-package.log)、
-  [artifact audit](C:/Users/zhang/.copilot/session-state/e25d9c46-b5b8-421a-a43d-7f8c9ef1fc72/files/item13-package-audit.log)及
-  [packaged smoke](C:/Users/zhang/.copilot/session-state/e25d9c46-b5b8-421a-a43d-7f8c9ef1fc72/files/item13-smoke.log)；
-  当前Windows产物未配置签名证书，审计按开发无签名策略通过，不冒充签名发行版。
-- [六条正向流程汇总](C:/Users/zhang/.copilot/session-state/e25d9c46-b5b8-421a-a43d-7f8c9ef1fc72/files/item13-hyperv/verified-network-summary.json)
-  逐条校验真实Playwright结果无skip、所选PAC URL、HTTP PROXY/DIRECT、HTTPS CONNECT和三个运行代际。
-  DNS-only选择`http://wpad.item13.wpad.test/wpad.dat`及上游`18081`；
-  DHCP-only和双来源均选择`http://192.168.233.1/dhcp.pac`及另一上游`18082`。
-  WPAD同profile正常重启回载；System仅Auto Detect跨profile崩溃恢复；
-  每条还终止本轮Core并验证新Core重新应用路线，最终Close恢复original及清理journal。
-- [原始网络证据](C:/Users/zhang/.copilot/session-state/e25d9c46-b5b8-421a-a43d-7f8c9ef1fc72/files/item13-hyperv/network-evidence/)
-  包含PCAP、DNS结果、含252的真实DHCP响应、PAC GET和最终guest状态。
-  DHCP-only期间DNS WPAD返回NXDOMAIN；双来源的两个PAC提供不同路线，不能只凭API参数宣称DHCP优先。
-  Alpine以宿主本地RTC显示时间但标为UTC；原始报文没有改写，归属按同轮server模式顺序和URL核对，
-  不把其时间戳与Windows的UTC报告直接等同。
-- 本次guest从正式构建产物及完整开发运行依赖启动既有local driver，不复制仓库、不克隆worktree；
-  fresh CA由产品生成并通过真实UAC键盘确认。准备阶段的缺依赖、授权过期及fixture读取owned而非original
-  都单独保留失败记录，不当作产品Red；最终每条业务流程均由原宿主guard验证退出和完整WinINet/Root基线。
-- [实验资源恢复](C:/Users/zhang/.copilot/session-state/e25d9c46-b5b8-421a-a43d-7f8c9ef1fc72/files/item13-hyperv/lab-cleanup.json)
-  确认两台VM正常关机后只移除本轮VM与Private switch，原Default Switch保留；
-  [临时文件清理](C:/Users/zhang/.copilot/session-state/e25d9c46-b5b8-421a-a43d-7f8c9ef1fc72/files/item13-hyperv/temporary-cleanup.json)
-  移除guest磁盘、镜像副本、转移运行时和临时凭据，保留官方来源清单、脚本及全部证据。
-  用户已启用的Hyper-V保持，不更改日常网卡的DNS、网关或代理。
-
 官方依据：
 [WinHttpDetectAutoProxyConfigUrl](https://learn.microsoft.com/en-us/windows/win32/api/winhttp/nf-winhttp-winhttpdetectautoproxyconfigurl)、
 [DetectAutoProxyUrl](https://learn.microsoft.com/en-us/windows/win32/api/wininet/nf-wininet-detectautoproxyurl)、

@@ -10,8 +10,6 @@ Windows使用官方`_electron.launch()`启动未打包production bundle；macOS�
 - `packaged-smoke`另行验证最终package的安全、资源、启动和退出边界，当前综合smoke不等于已经复用了全部workflow；
 - 两个目标共享 workflow 定义和操作契约，不维护两套业务流程。
 
-> 当前状态：本地 Electron driver、逐测试 trace/evidence、fixture及Inventory已建立，详细workflow规格见[规格索引](docs/README.md)；管理员MMC原生专项仅保留排除说明，不计入workflow。已实现的spec按owning feature放入`workflows/<feature>/`，Inventory只有满足对应前置测试及Green/销毁证据的条目才能标passed；仅补既有行为覆盖不人为制造Red。
-
 ## 零 Mock 硬性原则
 
 **所有 workflow 的业务操作必须经过真实 App。**
@@ -30,7 +28,7 @@ Windows使用官方`_electron.launch()`启动未打包production bundle；macOS�
 
 共享CA：普通workflow在App启动前只读检查用户级CA已生成且受信任；由开发者先通过正常产品启动初始化，不复制材料或写测试seed。普通准备/清理不Generate/Install/Uninstall/Delete，只修改本profile的MITM/TLS配置。首次初始化使用`certificate-startup.workflow.ts`；破坏性证书专项用`certificateLifecycleTest`且启动前共享目录必须为空，只清理本轮产品生成的CA。Windows CA启动行为同步，原certutil/UAC及系统代理原生命令保持。
 
-无法在零 Mock、零 seed 条件下完成的 workflow 保持 `planned/blocked`，不得用低保真替代测试冒充通过。
+无法在零 Mock、零 seed 条件下完成的workflow，在Handover记录阻塞，不得用低保真替代测试冒充通过。
 
 ## 每条 Workflow 独立生命周期
 
@@ -83,13 +81,13 @@ npm exec --workspace @interceptor/desktop playwright test -- --config tests/e2e-
 
 `INTERCEPTOR_E2E_MACOS_APP_PATH`仅在测试driver中选择已构建的签名App，此时Main必须通过生产App路径/CDHash、完整资源和运行时验证，不能回退到开发socket。设置该变量后直接运行Playwright，prepare会拒绝混用产物。packaged smoke和产物安全验收仍独立执行，开发授权不替代生产核准。
 
-每条workflow仍独立profile/trace，系统授权由本机用户处理；常驻helper跨workflow保留，Main/Core/Worker、前台helper子进程和8888仍必须退出恢复。macOS失败清理先确认完整代理已恢复，否则保留App、listener和profile，不再让测试侧重复弹旧代理授权后强杀。证书admin trust由同一已部署helper的前台固定入口执行，仍有独立系统权限；不以Main的security写命令代替。组件卸载不等于业务恢复，整轮结束按已确认的保留/卸载范围处理。新trust成功/取消workflow的实机状态见Inventory，不复用旧Main路径的Green。
+每条workflow仍独立profile/trace，系统授权由本机用户处理；常驻helper跨workflow保留，Main/Core/Worker、前台helper子进程和8888仍必须退出恢复。macOS失败清理先确认完整代理已恢复，否则保留App、listener和profile，不再让测试侧重复弹旧代理授权后强杀。证书admin trust由同一已部署helper的前台固定入口执行，仍有独立系统权限；不以Main的security写命令代替。组件卸载不等于业务恢复，整轮结束按已确认的保留/卸载范围处理。
 
-macOS业务窗口由driver按项目配置准备：常规场景保持真实1600x900，只有body-fill滚轮边界场景使用1600x800。Windows项目默认尺寸不变，body-fill保留默认尺寸布局检查后，仅在滚动阶段调整本轮真实窗口高度到800px。macOS admin trust前后检查统一在宿主guard；TLS/gRPC/H2保持相同业务步骤。HTTPS弹窗定位已按共享CA前提通过真实验收；共享native文件窗口的14个调用文件、16个场景均完成macOS复验，逐条结果和历史失败见Handover。GoTo使用唯一原生建议项的真实双击，Save/Open及取消真实点击原生按钮，不改输入法、语言或dialog返回值；Windows实机仍归第8项。
+macOS业务窗口由driver按项目配置准备：常规场景保持真实1600x900，只有body-fill滚轮边界场景使用1600x800。Windows项目默认尺寸不变，body-fill保留默认尺寸布局检查后，仅在滚动阶段调整本轮真实窗口高度到800px。macOS admin trust前后检查统一在宿主guard；TLS/gRPC/H2保持相同业务步骤。GoTo使用唯一原生建议项的真实双击，Save/Open及取消真实点击原生按钮，不改输入法、语言或dialog返回值。
 
 ### Windows 复验
 
-以下记录Windows item 8的验收范围与各场景实际状态。按用户确认，Windows待验不作为其他item的提交blocker；原生/E2E的未执行、skip及失败仍分别保留，macOS结果不能替代，也不免除发布产物的门禁。Manager管理员MMC原生专项及依赖人工点击的Windows UAC取消专项不在本轮验收范围；产品功能、可自动化的拒绝/取消逻辑与证书安装/卸载/退出恢复测试保留。Bilibili专属登录探针已按用户要求移除，不用第三方登录态作为验收前提，也不将移除记为passed。路径相对[workflows/](workflows/)，`{a,b}`代表两份文件，详细步骤见[规格索引](docs/README.md)。
+Windows使用本平台的原生/E2E流程，macOS结果不能替代，也不免除发布产物门禁。管理员MMC及依赖人工点击的Windows UAC取消专项不在套件范围；产品功能、可自动化的拒绝/取消逻辑与证书安装/卸载/退出恢复测试保留。通用协议验收不依赖第三方登录态。路径相对[workflows/](workflows/)，`{a,b}`代表两份文件，详细步骤见[规格索引](docs/README.md)。
 
 | 分组 | 用例 | 重点 |
 | --- | --- | --- |
@@ -97,8 +95,8 @@ macOS业务窗口由driver按项目配置准备：常规场景保持真实1600x9
 | 代理/AppContainer | `settings/{tools-system-proxy,system-proxy-crash-recovery,app-container-bulk-access,tools-app-containers,app-container-ordering}.workflow.ts` | 单项/批量UAC、冲突/Quit立即拒绝、无重放、完整WinINet/exemption恢复 |
 | 协议/交互 | `capture/{tls-scenarios,http2-scenarios,http2-origin-goaway,grpc-scenarios,navigate-tls-passthrough}.workflow.ts`；`settings/{tls-compatibility,proxy-mitm-persistence}.workflow.ts`；`agent/body-messages.workflow.ts` | 首请求源站例外、暂停响应正常GOAWAY完整排空、Edge证书校验、Raw/Copy长度及hash、每代Page；取消背景host默认选择，Capture discovery精确17项 |
 | 导入/只读 | `composer/{collection-import,tools-transfer}.workflow.ts`；`rules/{import-tree,tools-import}.workflow.ts`；`settings/tools-readonly.workflow.ts` | 真实signal、原生/预览Cancel与Confirm、退出取消、重启零重放；六项无审批查询及CA不变 |
-| 构建/路径（含原第11项） | `npm run build:native --workspace @interceptor/platform-capabilities`及该package所属测试；[Client App](../../../proxy-core/src/proxy-core/client-app/tests/unit/service.test.ts)、[Transfer](../../../proxy-core/src/proxy-core/transfer/tests/unit/job-manager.test.ts)；Windows文件窗口通过上述原生导入/导出workflow验收 | package开发资源与App同包路径、共用runner、8 MiB枚举、certutil/UAC、Windows路径解析、互斥拒绝与无重放；不使用macOS skip或脚本文本断言替代真实原生操作 |
-| 纯Auto Detect/WPAD | [上游契约与证据](../../../../architecture/features/settings.md#windows-wpad-research)；`settings/wpad-failure-preservation.workflow.ts`及`settings/wpad-network.workflow.ts` | 本机原生失败保持；隔离Windows中DNS-only、DHCP-only、双来源优先级分别覆盖WPAD/System，HTTP/TLS选路、App/Core代际和完整恢复已验，不以手填PAC或macOS结果替代 |
+| 构建/路径 | `npm run build:native --workspace @interceptor/platform-capabilities`及该package所属测试；[Client App](../../../proxy-core/src/proxy-core/client-app/tests/unit/service.test.ts)、[Transfer](../../../proxy-core/src/proxy-core/transfer/tests/unit/job-manager.test.ts)；Windows文件窗口通过上述原生导入/导出workflow验收 | package开发资源与App同包路径、共用runner、8 MiB枚举、certutil/UAC、Windows路径解析、互斥拒绝与无重放；不使用macOS skip或脚本文本断言替代真实原生操作 |
+| 纯Auto Detect/WPAD | [上游契约](../../../../architecture/features/settings.md#windows-wpad-research)；`settings/wpad-failure-preservation.workflow.ts`及`settings/wpad-network.workflow.ts` | 本机原生失败保持；隔离Windows中DNS-only、DHCP-only、双来源优先级分别覆盖WPAD/System，HTTP/TLS选路、App/Core代际和完整恢复，不以手填PAC或macOS结果替代 |
 | 产物/全量 | 全部适用workflow、[packaged smoke](../packaged-smoke/startup.spec.ts)及[Windows安装器smoke](../installer/windows-installer-smoke.mjs) | ready门禁、精确Preload白名单、Core重启、截图矩阵、签名/资源、安装升级卸载、系统设置/进程恢复 |
 
 ## 目录结构
@@ -114,6 +112,8 @@ apps/desktop/tests/e2e-workflow-tests/
 │  ├─ composer.md
 │  ├─ breakpoints.md
 │  ├─ diagnostics.md
+│  ├─ agent.md
+│  ├─ mcp.md
 │  └─ settings-updates.md
 ├─ fixtures/
 │  ├─ README.md
@@ -122,6 +122,10 @@ apps/desktop/tests/e2e-workflow-tests/
 │  ├─ safety/
 │  └─ agent/
 ├─ workflows/
+│  ├─ application/
+│  │  ├─ core-restart.workflow.ts
+│  │  ├─ guidebook-online.workflow.ts
+│  │  └─ guidebook-i18n.workflow.ts
 │  ├─ capture/
 │  │  ├─ breakpoint-menu-hierarchy.workflow.ts
 │  │  ├─ clear-facets.workflow.ts
@@ -176,6 +180,18 @@ diagnostics.row.<traceKey>
 
 ## Workflow Inventory
 
+Inventory是验收契约索引，列出契约不表示已有独立workflow、执行过或验收通过。同一workflow可以覆盖多个契约，但必须逐项对照输入、操作和断言，不能以相似步骤代替完整覆盖。
+
+可执行用例以Playwright收集结果为准：
+
+```sh
+npm exec --no --workspace @interceptor/desktop -- playwright test --config tests/e2e-workflow-tests/playwright.config.ts --list
+```
+
+`--list`只收集用例，不启动Electron或执行测试。实际运行结果、平台、产物及退出恢复由对应report、trace和metadata判断，不能从Inventory或文件存在推断。
+
+契约与源码对应时逐项核对准备、用户操作和业务断言；共享driver或其他workflow中的相似步骤只能证明其实际检查的部分。进度只在[Handover](../../../../architecture/HANDOVER.md)维护：无实现为待实现，断言不全为进行中，已有代码但缺适用验收证据为待验证，契约与生产行为冲突为待确认，平台/权限/产物前提不满足为`blocked`。失败和跳过保留真实原因；只有适用运行通过且退出、端口和系统设置恢复后才能结束该任务。
+
 策略说明：
 
 - `shared`：local 与 packaged 均执行；
@@ -184,218 +200,221 @@ diagnostics.row.<traceKey>
 
 ### [Application 与 Shell](docs/application-shell.md)
 
-| Workflow ID | 用户目标 | 策略 | 状态 |
-| --- | --- | --- | --- |
-| `application.startup.ready` | 新 profile 启动后首窗、Core 和 listener ready | shared | planned |
-| `application.lifecycle.core-restart` | Core被结束后恢复UI/RPC、系统代理并验证故障与退出竞争 | os-side-effect | passed |
-| `application.lifecycle.graceful-close` | 产品 Close 完整销毁 Main/Core/Renderer/Worker/listener | shared | planned |
-| `application.lifecycle.profile-isolation` | 两个 profile 的持久/临时状态严格隔离 | shared | planned |
-| `shell.navigation.workspaces` | 五个 workspace 的 Header/Main/Statusbar 同步切换 | shared | planned |
-| `shell.sidebar.collapse` | 折叠态导航可用并可恢复展开 | shared | planned |
-| `shell.appearance.theme` | 四主题切换与跨重启持久化 | shared | planned |
-| `shell.appearance.language` | 15语言切换、布局与持久化 | shared | planned |
-| `shell.guidebook.online` | 在线Guidebook的安全frame、搜索、图片、主题同步、刷新与浏览器出口 | shared | passed |
-| `shell.guidebook.i18n` | 独立验证Guidebook语言入口、正文locale同步与初始语言恢复 | shared | passed |
-| `shell.window.controls` | 最小化、最大化、恢复 | shared | planned |
+| Workflow ID | 用户目标 | 策略 |
+| --- | --- | --- |
+| `application.startup.ready` | 新 profile 启动后首窗、Core 和 listener ready | shared |
+| `application.lifecycle.core-restart` | Core被结束后恢复UI/RPC、系统代理并验证故障与退出竞争 | os-side-effect |
+| `application.lifecycle.graceful-close` | 产品 Close 完整销毁 Main/Core/Renderer/Worker/listener | shared |
+| `application.lifecycle.profile-isolation` | 两个 profile 的持久/临时状态严格隔离 | shared |
+| `shell.navigation.workspaces` | 五个 workspace 的 Header/Main/Statusbar 同步切换 | shared |
+| `shell.sidebar.collapse` | 折叠态导航可用并可恢复展开 | shared |
+| `shell.appearance.theme` | 四主题切换与跨重启持久化 | shared |
+| `shell.appearance.language` | 15语言切换、布局与持久化 | shared |
+| `shell.guidebook.online` | 在线Guidebook的安全frame、搜索、图片、主题同步、刷新与浏览器出口 | shared |
+| `shell.guidebook.i18n` | 独立验证Guidebook语言入口、正文locale同步与初始语言恢复 | shared |
+| `shell.window.controls` | 最小化、最大化、恢复 | shared |
 
 详细步骤：[docs/application-shell.md](docs/application-shell.md)
 
 ### [Capture](docs/capture.md)
 
-| Workflow ID | 用户目标 | 策略 | 状态 |
-| --- | --- | --- | --- |
-| `capture.recording.pause-resume` | 按请求/握手开始时决定录制，Resume不产生孤立正文 | os-side-effect | passed |
-| `capture.proxy-readiness.resolve` | Cancel、Proxy settings、Enable 的授权语义 | os-side-effect | planned |
-| `capture.traffic.capture-select` | 真实请求进入列表并按需加载Inspector | shared | planned |
-| `capture.inspector.section-collapse` | Inspector详情区独立折叠并暴露正确ARIA关系 | privileged UI | passed |
-| `capture.filter.keyword` | Keyword筛选和恢复 | shared | planned |
-| `capture.filter.structured` | Method/Status/Host/Type/Duration组合筛选 | shared | planned |
-| `capture.filter-group-selection` | Option选择保持facet分组展开 | shared | passed |
-| `capture.filter.protocol` | All/H1/H2/WS协议筛选 | shared | planned |
-| `capture.facet-stable-ordering` | Facet计数变化不改变首次出现顺序 | privileged UI | passed |
-| `capture.clear-facets` | Clear时列表、selection与facet snapshot同步归零 | privileged UI | passed |
-| `capture.breakpoint-menu-hierarchy` | Block/Breakpoint同组对齐并可展开二级菜单 | privileged UI | passed |
-| `capture.breakpoint-submenu-lifecycle` | 根菜单与Breakpoint二级菜单的hover、翻转和dismiss lifecycle | privileged UI | passed |
-| `capture.navigate-tls-passthrough` | 从TLS tunnel跳到最具体的覆盖pattern并短暂高亮 | privileged UI | passed |
-| `capture.facets-clear-menu` | Facet顺序、Breakpoint菜单和Clear同步回归 | privileged UI | planned |
-| `capture.detail-body-fill` | Detail Response BodyViewer填满剩余高度 | privileged UI | passed |
-| `capture.messages.compact-layout` | 普通gRPC/WS短长消息限高、拖拽、内外滚动、窗口缩放、Copy/全屏及205条gRPC分页 | privileged UI | Windows消息布局、拖拽、Copy/分页已验；窗口缩放子步骤保留macOS原记录 |
-| `capture.body-preview-limits` | 2MiB预览、1–2MiB手动格式化与截断禁止 | os-side-effect | Windows实机已验；macOS保留原记录 |
-| `capture.body.fullscreen` | Request/Response全屏、真实Copy、关闭/再开、Raw/Hex模式保持 | os-side-effect | Windows前置Red→最终Green：URL就绪后显示Copy，标题/General完整URL及JSON/HTML Header hover通过；正常退出与宿主恢复已核对 |
-| `capture.list.virtual-scroll` | 大列表虚拟滚动和状态保持 | shared | planned |
-| `capture.inspector.body-modes` | Auto/Text/JSON/Hex精确正文 | shared | planned |
-| `capture.protocols.without-mitm` | HTTP/WS完整捕获，HTTPS/WSS仅tunnel | shared | planned |
-| `capture.protocols.with-mitm` | Trust/MITM前后对比，HTTPS/WSS/H2/gRPC解密 | privileged UI | planned |
-| `capture.playground-traffic` | Playground UI自产H1、WebSocket及H2错误GOAWAY流量进入真实Capture | os-side-effect | passed |
-| `capture.scenarios.http` | H1 JSON/上传/流式/early response/中断及413完整响应收尾，不改Mockttp | os-side-effect | passed |
-| `capture.scenarios.http2` | H2 Headers/trailer/正文、Range及双向错误GOAWAY与CA恢复 | privileged UI | passed |
-| `capture.http2-origin-goaway` | 源站正常GOAWAY后放行4 MiB响应，完整hash/trailer/end、新上游session与无重放 | privileged UI | Windows实机已验；macOS保留原记录 |
-| `capture.scenarios.bodies` | 十一种正文的实际模式、Raw保真及安全展示 | os-side-effect | passed |
-| `capture.scenarios.body-media` | PNG/二进制/音视频原生导出 | native-ui | passed |
-| `capture.scenarios.encoding` | 三种正常压缩和损坏gzip/图片 | os-side-effect | passed |
-| `capture.scenarios.websocket` | 四种WebSocket的方向、载荷与控制连接 | os-side-effect | passed |
-| `capture.scenarios.grpc` | gRPC原场景、单向/双向streaming、半消息、Copy与Pause/Clear | privileged UI | passed |
-| `capture.scenarios.tls` | 不解密tunnel与解密H1/H2、完整CA恢复 | privileged UI | passed |
-| `capture.inspector.resize` | Inspector splitter与响应式布局 | shared | planned |
-| `capture.clear` | 清Exchange/Body并保留Session壳 | shared | planned |
-| `capture.transfer.har-roundtrip` | 真实Capture导出HAR、Clear、导回同一文件并验证有损映射/脱敏 | native-ui + os-side-effect | planned |
-| `capture.transfer.archive-roundtrip` | 真实Capture全保真保存、Clear、打开同一archive并验证恢复/拒绝损坏输入 | native-ui + privileged UI | planned |
-| `capture.tools.transfer-jobs` | 文件任务查询/取消、运行中Alt+F4清理、脱敏与双代销毁 | native-ui + os-side-effect | passed；取消提交点竞态未验 |
-| `capture.tools.body-export` | Agent/MCP原生正文保存、编码字节完整性、撤权与双代销毁 | native-ui + os-side-effect | passed |
-| `capture.tools.har-transfer` | Agent/MCP原生HAR导出再导入、范围脱敏、追加与双代销毁 | native-ui + os-side-effect | passed |
-| `capture.tools.archive-transfer` | Agent/MCP/IPC原生Archive往返、HTTP正文/WS消息、追加与双代销毁 | native-ui + os-side-effect | passed |
+| Workflow ID | 用户目标 | 策略 |
+| --- | --- | --- |
+| `capture.recording.pause-resume` | 按请求/握手开始时决定录制，Resume不产生孤立正文 | os-side-effect |
+| `capture.proxy-readiness.resolve` | Cancel、Proxy settings、Enable 的授权语义 | os-side-effect |
+| `capture.traffic.capture-select` | 真实请求进入列表并按需加载Inspector | shared |
+| `capture.inspector.section-collapse` | Inspector详情区独立折叠并暴露正确ARIA关系 | privileged UI |
+| `capture.https-setup-position` | macOS共享CA下HTTPS弹窗打开与截图期间保持居中 | shared；macOS |
+| `capture.filter.keyword` | Keyword筛选和恢复 | shared |
+| `capture.filter.structured` | Method/Status/Host/Type/Duration组合筛选 | shared |
+| `capture.filter-group-selection` | Option选择保持facet分组展开 | shared |
+| `capture.filter.protocol` | All/H1/H2/WS协议筛选 | shared |
+| `capture.facet-stable-ordering` | Facet计数变化不改变首次出现顺序 | privileged UI |
+| `capture.clear-facets` | Clear时列表、selection与facet snapshot同步归零 | privileged UI |
+| `capture.breakpoint-menu-hierarchy` | Block/Breakpoint同组对齐并可展开二级菜单 | privileged UI |
+| `capture.breakpoint-submenu-lifecycle` | 根菜单与Breakpoint二级菜单的hover、翻转和dismiss lifecycle | privileged UI |
+| `capture.navigate-tls-passthrough` | 从TLS tunnel跳到最具体的覆盖pattern并短暂高亮 | privileged UI |
+| `capture.facets-clear-menu` | Facet顺序、Breakpoint菜单和Clear同步回归 | privileged UI |
+| `capture.detail-body-fill` | Detail Response BodyViewer填满剩余高度 | privileged UI |
+| `capture.messages.compact-layout` | 普通gRPC/WS短长消息限高、拖拽、内外滚动、窗口缩放、Copy/全屏及205条gRPC分页 | privileged UI |
+| `capture.body-preview-limits` | 2MiB预览、1–2MiB手动格式化与截断禁止 | os-side-effect |
+| `capture.body.fullscreen` | Request/Response全屏、真实Copy、关闭/再开、Raw/Hex模式保持 | os-side-effect |
+| `capture.list.virtual-scroll` | 大列表虚拟滚动和状态保持 | shared |
+| `capture.inspector.body-modes` | Auto/Text/JSON/Hex精确正文 | shared |
+| `capture.protocols.without-mitm` | HTTP/WS完整捕获，HTTPS/WSS仅tunnel | shared |
+| `capture.protocols.with-mitm` | Trust/MITM前后对比，HTTPS/WSS/H2/gRPC解密 | privileged UI |
+| `capture.playground-traffic` | Playground UI自产H1、WebSocket及H2错误GOAWAY流量进入真实Capture | os-side-effect |
+| `capture.scenarios.http` | H1 JSON/上传/流式/early response/中断及413完整响应收尾，不改Mockttp | os-side-effect |
+| `capture.scenarios.http2` | H2 Headers/trailer/正文、Range及双向错误GOAWAY与CA恢复 | privileged UI |
+| `capture.http2-origin-goaway` | 源站正常GOAWAY后放行4 MiB响应，完整hash/trailer/end、新上游session与无重放 | privileged UI |
+| `capture.scenarios.bodies` | 十一种正文的实际模式、Raw保真及安全展示 | os-side-effect |
+| `capture.scenarios.body-media` | PNG/二进制/音视频原生导出 | native-ui |
+| `capture.scenarios.encoding` | 三种正常压缩和损坏gzip/图片 | os-side-effect |
+| `capture.scenarios.websocket` | 四种WebSocket的方向、载荷与控制连接 | os-side-effect |
+| `capture.scenarios.grpc` | gRPC原场景、单向/双向streaming、半消息、Copy与Pause/Clear | privileged UI |
+| `capture.scenarios.tls` | 不解密tunnel与解密H1/H2、完整CA恢复 | privileged UI |
+| `capture.inspector.resize` | Inspector splitter与响应式布局 | shared |
+| `capture.clear` | 清Exchange/Body并保留Session壳 | shared |
+| `capture.transfer.har-roundtrip` | 真实Capture导出HAR、Clear、导回同一文件并验证有损映射/脱敏 | native-ui + os-side-effect |
+| `capture.transfer.archive-roundtrip` | 真实Capture全保真保存、Clear、打开同一archive并验证恢复/拒绝损坏输入 | native-ui + privileged UI |
+| `capture.tools.transfer-jobs` | 文件任务查询/取消、运行中Alt+F4清理、脱敏与双代销毁 | native-ui + os-side-effect |
+| `capture.tools.body-export` | Agent/MCP原生正文保存、编码字节完整性、撤权与双代销毁 | native-ui + os-side-effect |
+| `capture.tools.har-transfer` | Agent/MCP原生HAR导出再导入、范围脱敏、追加与双代销毁 | native-ui + os-side-effect |
+| `capture.tools.archive-transfer` | Agent/MCP/IPC原生Archive往返、HTTP正文/WS消息、追加与双代销毁 | native-ui + os-side-effect |
+| `capture.android.single-device` | Android双端配对、USB/VPN接管与真实协议进入Capture | native-ui + os-side-effect；真实Android设备 |
+| `capture.android.disconnect` | 物理USB拔线/重连保持阻断，手机停止恢复且不重放 | native-ui + os-side-effect；真实USB |
 
 详细步骤与协议字段矩阵：[docs/capture.md](docs/capture.md)
 
 ### [Rules](docs/rules.md)
 
-| Workflow ID | 用户目标 | 策略 | 状态 |
-| --- | --- | --- | --- |
-| `rules.load-search-select` | 加载、搜索、选择和命中数 | shared | planned |
-| `rules.root-toolbar` | 根级新建规则、新建目录与导出入口 | shared | passed |
-| `rules.hierarchy-menus-status` | 三级目录、节点菜单、validation、命中与Capture导航 | privileged UI | passed |
-| `rules.action-tag-overflow` | 两个行内action tags与完整有序Tooltip | shared | passed |
-| `rules.create-edit-delete` | 新建、重命名、启停、删除 | shared | planned |
-| `rules.matcher-variants` | 八种matcher及校验 | shared | planned |
-| `rules.action-variants` | 11种action及安全校验 | shared | planned |
-| `rules.reorder` | 菜单/拖拽排序与priority | shared | planned |
-| `rules.validate-apply` | Validate、Apply、revision和持久化 | shared | planned |
-| `rules.apply-conflict` | 乐观并发冲突恢复 | shared | planned/blocked |
-| `rules.runtime-hit` | 规则真实作用于Proxy数据面 | shared | planned |
-| `rules.body-effect-evidence` | Final writer、Original三态、Text/File正文证据与Header effect布局 | native-ui + privileged UI | passed |
-| `rules.import-tree` | 真实Save→Open、取消、纯追加、身份重生成与持久化 | native-ui | passed |
-| `rules.tools.export` | Agent/MCP审批与原生导出、已保存树/草稿隔离、撤权和双代销毁 | native-ui | passed |
-| `rules.tools.import` | Agent/MCP共享导入确认、全新身份追加、草稿持久化与双代销毁 | native-ui | passed |
+| Workflow ID | 用户目标 | 策略 |
+| --- | --- | --- |
+| `rules.load-search-select` | 加载、搜索、选择和命中数 | shared |
+| `rules.root-toolbar` | 根级新建规则、新建目录与导出入口 | shared |
+| `rules.hierarchy-menus-status` | 三级目录、节点菜单、validation、命中与Capture导航 | privileged UI |
+| `rules.action-tag-overflow` | 两个行内action tags与完整有序Tooltip | shared |
+| `rules.create-edit-delete` | 新建、重命名、启停、删除 | shared |
+| `rules.matcher-variants` | 八种matcher及校验 | shared |
+| `rules.action-variants` | 11种action及安全校验 | shared |
+| `rules.reorder` | 菜单/拖拽排序与priority | shared |
+| `rules.validate-apply` | Validate、Apply、revision和持久化 | shared |
+| `rules.apply-conflict` | 乐观并发冲突恢复 | shared |
+| `rules.runtime-hit` | 规则真实作用于Proxy数据面 | shared |
+| `rules.body-effect-evidence` | Final writer、Original三态、Text/File正文证据与Header effect布局 | native-ui + privileged UI |
+| `rules.import-tree` | 真实Save→Open、取消、纯追加、身份重生成与持久化 | native-ui |
+| `rules.tools.export` | Agent/MCP审批与原生导出、已保存树/草稿隔离、撤权和双代销毁 | native-ui |
+| `rules.tools.import` | Agent/MCP共享导入确认、全新身份追加、草稿持久化与双代销毁 | native-ui |
 
 详细步骤：[docs/rules.md](docs/rules.md)
 
 ### [Composer](docs/composer.md)
 
-| Workflow ID | 用户目标 | 策略 | 状态 |
-| --- | --- | --- | --- |
-| `composer.request-edit` | 编辑完整request模型 | shared | planned |
-| `composer.collection.tree-interactions` | 三级目录、菜单、选择、重命名与splitter | shared | passed |
-| `composer.send-success` | 真实发送与四种response视图 | shared | planned |
-| `composer.response.section-collapse` | 响应详情区独立折叠并暴露正确ARIA关系 | shared | passed |
-| `composer.response.body-formatting` | code正文自动/手动格式化与失败回退 | shared | passed |
-| `composer.send-failure` | URL/网络失败和重试 | shared | planned |
-| `composer.history-new` | History加载和New重置 | shared | planned |
-| `composer.resize` | Request/Response splitter | shared | planned |
-| `composer.collection.import` | 真实Save→Open、取消、字段身份重生成与Core回载 | native-ui | passed |
-| `composer.tools.collection` | Agent/MCP集合查询与原子替换、凭据往返、界面同步和双代销毁 | shared | passed |
-| `composer.tools.transfer` | Agent/MCP真实导出/导入、原生取消与确认、身份重生成和双代销毁 | native-ui | passed |
+| Workflow ID | 用户目标 | 策略 |
+| --- | --- | --- |
+| `composer.request-edit` | 编辑完整request模型 | shared |
+| `composer.collection.tree-interactions` | 三级目录、菜单、选择、重命名与splitter | shared |
+| `composer.send-success` | 真实发送与四种response视图 | shared |
+| `composer.response.section-collapse` | 响应详情区独立折叠并暴露正确ARIA关系 | shared |
+| `composer.response.body-formatting` | code正文自动/手动格式化与失败回退 | shared |
+| `composer.send-failure` | URL/网络失败和重试 | shared |
+| `composer.history-new` | History加载和New重置 | shared |
+| `composer.resize` | Request/Response splitter | shared |
+| `composer.collection.import` | 真实Save→Open、取消、字段身份重生成与Core回载 | native-ui |
+| `composer.tools.collection` | Agent/MCP集合查询与原子替换、凭据往返、界面同步和双代销毁 | shared |
+| `composer.tools.transfer` | Agent/MCP真实导出/导入、原生取消与确认、身份重生成和双代销毁 | native-ui |
 
 详细步骤：[docs/composer.md](docs/composer.md)
 
 ### [Breakpoints](docs/breakpoints.md)
 
-| Workflow ID | 用户目标 | 策略 | 状态 |
-| --- | --- | --- | --- |
-| `breakpoints.toggle` | Break on match与Core同步 | shared | planned |
-| `breakpoints.queue-select` | 真实pending队列和snapshot | shared | planned |
-| `breakpoints.queue-stepping` | HTTP队首、Queued、中间abort与不抢焦点 | privileged UI | passed |
-| `breakpoints.queue-isolation` | HTTP/WS隔离、同连接双向队列、独立草稿与精确frame去重 | privileged UI | passed |
-| `breakpoints.queue-commands` | queue/rule三条批量命令与原始数据面 | privileged UI | passed |
-| `breakpoints.tools.batch` | Agent/MCP三条批量Tool、Rule/queue隔离、原样数据面与双代销毁 | shared | passed |
-| `breakpoints.lifecycle-release` | 无timeout等待与Core生命周期aborted释放 | privileged UI | passed |
-| `breakpoints.continue-unmodified` | 原样继续 | shared | planned |
-| `breakpoints.execute-edited` | Header-only、Body-only、Header+Body、继承chunked四段真实HTTP编辑 | privileged UI | passed |
-| `breakpoints.drop` | Drop并终止数据面 | shared | planned |
-| `breakpoints.resize` | Capture列表/Inspector splitter | shared | planned |
-| `breakpoints.body-preview` | 产品导出File的有界预览、完整文件/Text发送及短File布局联动 | native-ui | Windows大/短File预览与完整文件发送已验；macOS保留原记录 |
-| `breakpoints.original-body` | Original限高、2MiB预览与完整原文放行 | os-side-effect | Windows实机已验；macOS保留原记录 |
-| `breakpoints.websocket-close` | WebSocket close-code-only编辑 | privileged UI | planned |
+| Workflow ID | 用户目标 | 策略 |
+| --- | --- | --- |
+| `breakpoints.toggle` | Break on match与Core同步 | shared |
+| `breakpoints.queue-select` | 真实pending队列和snapshot | shared |
+| `breakpoints.queue-stepping` | HTTP队首、Queued、中间abort与不抢焦点 | privileged UI |
+| `breakpoints.queue-isolation` | HTTP/WS隔离、同连接双向队列、独立草稿与精确frame去重 | privileged UI |
+| `breakpoints.queue-commands` | queue/rule三条批量命令与原始数据面 | privileged UI |
+| `breakpoints.tools.batch` | Agent/MCP三条批量Tool、Rule/queue隔离、原样数据面与双代销毁 | shared |
+| `breakpoints.lifecycle-release` | 无timeout等待与Core生命周期aborted释放 | privileged UI |
+| `breakpoints.continue-unmodified` | 原样继续 | shared |
+| `breakpoints.execute-edited` | Header-only、Body-only、Header+Body、继承chunked四段真实HTTP编辑 | privileged UI |
+| `breakpoints.drop` | Drop并终止数据面 | shared |
+| `breakpoints.resize` | Capture列表/Inspector splitter | shared |
+| `breakpoints.body-preview` | 产品导出File的有界预览、完整文件/Text发送及短File布局联动 | native-ui |
+| `breakpoints.original-body` | Original限高、2MiB预览与完整原文放行 | os-side-effect |
+| `breakpoints.websocket-close` | WebSocket close-code-only编辑 | privileged UI |
 
 详细步骤：[docs/breakpoints.md](docs/breakpoints.md)
 
 ### [Diagnostics](docs/diagnostics.md)
 
-| Workflow ID | 用户目标 | 策略 | 状态 |
-| --- | --- | --- | --- |
-| `diagnostics.list-detail` | 真实记录和action timeline | shared | planned |
-| `diagnostics.filters` | Process/Level/Outcome过滤 | shared | planned |
-| `diagnostics.pagination` | Keyset分页与轮询合并 | shared | planned |
-| `diagnostics.export` | 筛选后的脱敏JSONL导出 | native-ui | planned |
-| `diagnostics.resize` | List/Detail splitter | shared | planned |
-| `diagnostics.tools.queries-export` | Agent/MCP当前快照查询、原生JSONL导出、脱敏与双代销毁 | native-ui | passed |
+| Workflow ID | 用户目标 | 策略 |
+| --- | --- | --- |
+| `diagnostics.list-detail` | 真实记录和action timeline | shared |
+| `diagnostics.filters` | Process/Level/Outcome过滤 | shared |
+| `diagnostics.pagination` | Keyset分页与轮询合并 | shared |
+| `diagnostics.export` | 筛选后的脱敏JSONL导出 | native-ui |
+| `diagnostics.resize` | List/Detail splitter | shared |
+| `diagnostics.tools.queries-export` | Agent/MCP当前快照查询、原生JSONL导出、脱敏与双代销毁 | native-ui |
 
 详细步骤：[docs/diagnostics.md](docs/diagnostics.md)
 
 ### [Settings 与 Updates](docs/settings-updates.md)
 
-| Workflow ID | 用户目标 | 策略 | 状态 |
-| --- | --- | --- | --- |
-| `settings.navigation` | 十个Settings section与跨workspace返回保持 | shared | passed |
-| `settings.tools.readonly` | Agent/MCP六项Settings只读查询、脱敏、撤权、双代零重放与完整宿主恢复 | shared | passed |
-| `settings.tools.system-proxy` | Agent审批/Auto启用与恢复系统代理、首次original保持、撤权和双代零重放 | os-side-effect | passed |
-| `settings.tools.tls` | TLS名单与解密意图/有效状态、即时UI同步、撤权、重启和测试CA清理 | privileged UI | passed；Windows PEM方案已实机复验，macOS保留既有记录 |
-| `settings.tools.certificates` | Agent/MCP六项证书生命周期与查看、授权、重启及完整CA清理 | native-ui + privileged UI | passed；Windows PEM生命周期与查看已复验，不含macOS-only授权取消专项 |
-| `settings.tools.app-containers` | Agent/MCP单项及批量exemption、挂载同步、撤权与双代恢复 | privileged UI | passed |
-| `settings.tools.language` | 原UI/Agent/MCP语言设置、独立授权、持久化与双代销毁 | shared | passed |
-| `settings.tools.preferences` | 原UI/Agent/MCP主题与Privacy默认值、HAR草稿隔离和双代销毁 | shared | passed |
-| `settings.app-containers.ordering` | Enabled稳定置顶且搜索保持顺序 | shared | passed |
-| `settings.app-containers.bulk-access` | 对称批量启用/停用并精确恢复AppContainer exemption | os-side-effect | passed |
-| `settings.proxy.enable-restore` | 系统代理Enable/Restore ownership | os-side-effect | planned |
-| `settings.proxy.upstream` | macOS接续ClashX上游，外部改写后退出/跨profile重启不覆盖新配置 | macOS / external proxy / os-side-effect | passed（ClashX三场景及完整系统代理恢复） |
-| `settings.upstream.macos` | System/Direct/Manual/PAC/WPAD双入口、DNS/DHCP选路、重启与完整宿主恢复 | macOS / isolated network / os-side-effect | 当前最终Green；初始整体功能前置Red历史缺证，见[规格](docs/settings-updates.md#settings-upstream-macos) |
-| `settings.upstream.windows` | Windows原生WPAD/PAC失败保持，DNS/DHCP、优先级、System Auto Detect和代际恢复 | Windows / isolated network / os-side-effect | passed；负向Red→Green及六条正向/恢复Green，适用范围与历史Red边界见[规格](docs/settings-updates.md#settings-upstream-windows) |
-| `settings.system-proxy.crash-recovery` | App A异常退出后由顺序启动的App B加载首次快照并完整恢复 | os-side-effect | passed |
-| `settings.proxy-mitm.persistence` | 异常退出后恢复系统代理并跨进程恢复MITM/TLS配置 | os-side-effect | passed |
-| `settings.certificates.generate-delete` | CA Generate/Regenerate/Delete | shared | planned |
-| `settings.certificates.shared-startup` | 自动准备共享CA，正常退出保留，跨fresh profile复用且不重写材料 | shared / os-side-effect | Windows PEM生成/跨profile复用及删除profile后保留已验；macOS保留既有签名包记录，契约见[Settings](../../../../architecture/features/settings.md#ca与profile生命周期) |
-| `settings.certificates.startup-cancel` | 首次原生授权时首窗可见、Quit即时拒绝、取消收尾及同CA正常重启 | macOS / os-side-effect | passed |
-| `settings.certificates.trust` | Install/Uninstall本机信任 | os-side-effect | planned |
-| `settings.certificates.helper-trust` | macOS两张不同CA直接经前台helper授信/撤销，复用同一常驻组件 | macOS / os-side-effect | passed |
-| `settings.certificates.cancel-trust` | 取消helper前台入口的系统确认，由产品撤回新增CA | macOS / os-side-effect | passed |
-| `settings.helper-startup` | macOS首次部署及开发/生产入口复用，不覆盖另一份授权 | macOS / os-side-effect | passed |
-| `settings.certificates.https` | MITM switch和host例外 | os-side-effect | planned |
-| `settings.certificates.external-actions` | Reveal/View；不包含用户排除的管理员MMC原生验收 | native-ui | planned |
-| `settings.tls-compatibility` | 真实TLS失败提示、精确host/wildcard选择、滚动、保存与Not now；最终Green，保留样式前置缺口 | privileged UI | planned |
-| `settings.storage.refresh-clear` | 单项正文用量、右上Refresh及两处Clear同步、取消和录制状态保持 | os-side-effect | passed |
-| `settings.privacy.defaults` | Export隐私默认值与持久化 | os-side-effect | planned |
-| `settings.updates.check` | 匿名检查、请求失败重试和同profile重启；无账号API/控件，退出恢复 | native-ui | Windows local不可用状态已验；保留macOS packaged失败路径记录，Windows下载/Open成功链路未验 |
-| `settings.updates.download-open` | 真实下载、校验和打开安装器 | native-ui | planned |
-| `settings.update-notification` | Header通知与Settings状态同步 | shared | planned |
+| Workflow ID | 用户目标 | 策略 |
+| --- | --- | --- |
+| `settings.navigation` | 十个Settings section与跨workspace返回保持 | shared |
+| `settings.tools.readonly` | Agent/MCP六项Settings只读查询、脱敏、撤权、双代零重放与完整宿主恢复 | shared |
+| `settings.tools.system-proxy` | Agent审批/Auto启用与恢复系统代理、首次original保持、撤权和双代零重放 | os-side-effect |
+| `settings.tools.tls` | TLS名单与解密意图/有效状态、即时UI同步、撤权、重启和测试CA清理 | privileged UI |
+| `settings.tools.certificates` | Agent/MCP六项证书生命周期与查看、授权、重启及完整CA清理 | native-ui + privileged UI |
+| `settings.tools.app-containers` | Agent/MCP单项及批量exemption、挂载同步、撤权与双代恢复 | privileged UI |
+| `settings.tools.language` | 原UI/Agent/MCP语言设置、独立授权、持久化与双代销毁 | shared |
+| `settings.tools.preferences` | 原UI/Agent/MCP主题与Privacy默认值、HAR草稿隔离和双代销毁 | shared |
+| `settings.app-containers.ordering` | Enabled稳定置顶且搜索保持顺序 | shared |
+| `settings.app-containers.bulk-access` | 对称批量启用/停用并精确恢复AppContainer exemption | os-side-effect |
+| `settings.proxy.enable-restore` | 系统代理Enable/Restore ownership | os-side-effect |
+| `settings.proxy.upstream` | macOS接续ClashX上游，外部改写后退出/跨profile重启不覆盖新配置 | macOS / external proxy / os-side-effect |
+| `settings.upstream.macos` | System/Direct/Manual/PAC/WPAD双入口、DNS/DHCP选路、重启与完整宿主恢复 | macOS / isolated network / os-side-effect |
+| `settings.upstream.windows` | Windows原生WPAD/PAC失败保持，DNS/DHCP、优先级、System Auto Detect和代际恢复 | Windows / isolated network / os-side-effect |
+| `settings.system-proxy.crash-recovery` | App A异常退出后由顺序启动的App B加载首次快照并完整恢复 | os-side-effect |
+| `settings.proxy-mitm.persistence` | 异常退出后恢复系统代理并跨进程恢复MITM/TLS配置 | os-side-effect |
+| `settings.certificates.generate-delete` | CA Generate/Regenerate/Delete | shared |
+| `settings.certificates.shared-startup` | 自动准备共享CA，正常退出保留，跨fresh profile复用且不重写材料 | shared / os-side-effect |
+| `settings.certificates.startup-cancel` | 首次原生授权时首窗可见、Quit即时拒绝、取消收尾及同CA正常重启 | macOS / os-side-effect |
+| `settings.certificates.trust` | Install/Uninstall本机信任 | os-side-effect |
+| `settings.certificates.helper-trust` | macOS两张不同CA直接经前台helper授信/撤销，复用同一常驻组件 | macOS / os-side-effect |
+| `settings.certificates.cancel-trust` | 取消helper前台入口的系统确认，由产品撤回新增CA | macOS / os-side-effect |
+| `settings.helper-startup` | macOS首次部署及开发/生产入口复用，不覆盖另一份授权 | macOS / os-side-effect |
+| `settings.certificates.https` | MITM switch和host例外 | os-side-effect |
+| `settings.certificates.external-actions` | Reveal/View；不包含用户排除的管理员MMC原生验收 | native-ui |
+| `settings.tls-compatibility` | 真实TLS失败提示、精确host/wildcard选择、滚动、保存与Not now | privileged UI |
+| `settings.storage.refresh-clear` | 单项正文用量、右上Refresh及两处Clear同步、取消和录制状态保持 | os-side-effect |
+| `settings.privacy.defaults` | Export隐私默认值与持久化 | os-side-effect |
+| `settings.updates.check` | 匿名检查、请求失败重试和同profile重启；无账号API/控件，退出恢复 | native-ui |
+| `settings.updates.download-open` | 真实下载、校验和打开安装器 | native-ui |
+| `settings.update-notification` | Header通知与Settings状态同步 | shared |
 
 详细步骤：[docs/settings-updates.md](docs/settings-updates.md)
 
 ### [Agent](docs/agent.md)
 
-| Workflow ID | 用户目标 | 策略 | 状态 |
-| --- | --- | --- | --- |
-| `agent.panel.navigation-persistence` | 右侧Panel跨Workspace/Settings保持且只由显式入口关闭 | shared | passed |
-| `agent.settings.model-configuration` | 通过Settings配置、验证、切换与删除模型 | shared | passed |
-| `agent.chat.streaming-context` | 多轮Streaming、Context/Usage、Stop与Retry | shared | passed |
-| `agent.chat.restart-recovery` | Provider、Session、Transcript与Usage跨重启恢复 | shared | passed |
-| `agent.tools.settings-capabilities` | 从共享registry配置Agent/MCP Tool开关并跨重启恢复 | shared | passed |
-| `agent.tools.capture-discovery` | Agent发现并查询产品UI产生的真实Capture与storage状态 | shared | passed |
-| `agent.tools.body-messages` | Agent读取真实HTTP正文、WebSocket frame与gRPC message | privileged UI | passed |
-| `agent.tools.execution-modes` | change Tool按Session的ask/auto执行且可恢复 | shared | passed |
-| `agent.tools.traffic-control` | Agent启动Recording并清空Capture，所有UI镜像同步收敛 | shared | passed |
-| `agent.tools.rules` | Agent读取Rules与命中并按revision替换完整递归Rule tree | privileged UI | passed |
-| `agent.tools.breakpoints` | Agent处理真实HTTP/WebSocket pending并验证Ask/Auto/stale | privileged UI | passed |
-| `agent.tools.composer` | Agent发送真实直连请求、探测TLS并验证socket取消 | privileged UI | passed |
-| `agent.tools.diagnostics` | Agent过滤读取真实Diagnostics记录并验证脱敏与稳定顺序 | shared | passed |
+| Workflow ID | 用户目标 | 策略 |
+| --- | --- | --- |
+| `agent.panel.navigation-persistence` | 右侧Panel跨Workspace/Settings保持且只由显式入口关闭 | shared |
+| `agent.settings.model-configuration` | 通过Settings配置、验证、切换与删除模型 | shared |
+| `agent.chat.streaming-context` | 多轮Streaming、Context/Usage、Stop与Retry | shared |
+| `agent.chat.restart-recovery` | Provider、Session、Transcript与Usage跨重启恢复 | shared |
+| `agent.tools.settings-capabilities` | 从共享registry配置Agent/MCP Tool开关并跨重启恢复 | shared |
+| `agent.tools.capture-discovery` | Agent发现并查询产品UI产生的真实Capture与storage状态 | shared |
+| `agent.tools.body-messages` | Agent读取真实HTTP正文、WebSocket frame与gRPC message | privileged UI |
+| `agent.tools.execution-modes` | change Tool按Session的ask/auto执行且可恢复 | shared |
+| `agent.tools.traffic-control` | Agent启动Recording并清空Capture，所有UI镜像同步收敛 | shared |
+| `agent.tools.rules` | Agent读取Rules与命中并按revision替换完整递归Rule tree | privileged UI |
+| `agent.tools.breakpoints` | Agent处理真实HTTP/WebSocket pending并验证Ask/Auto/stale | privileged UI |
+| `agent.tools.composer` | Agent发送真实直连请求、探测TLS并验证socket取消 | privileged UI |
+| `agent.tools.diagnostics` | Agent过滤读取真实Diagnostics记录并验证脱敏与稳定顺序 | shared |
 
 详细步骤：[docs/agent.md](docs/agent.md)
 
 ### [MCP](docs/mcp.md)
 
-| Workflow ID | 用户目标 | 策略 | 状态 |
-| --- | --- | --- | --- |
-| `mcp.desktop.streamable-http` | 三版官方Client经loopback HTTP接入、单次取消、授权Tool、同步Rules并跨重启保持状态 | shared | macOS三协议Green；不代表当前开发Host验收 |
-| `mcp.settings.protocol-support` | Server关闭/运行时均显示三版协议说明，不提供版本切换器 | shared | Windows实机已验；macOS保留原记录 |
-| `mcp.current-host` | 当前开发Agent通过真实Host公开MCP通道调用Tool，fixture核对App裁决与退出 | current-agent interactive | Windows精准筛选、AppContainer、Archive、Recording、系统代理、TLS与macOS English App代表主线Green；共17条workflow完成SDK/Host Green，覆盖20次连接代际、41种Tool与189次调用。合并为54/69项通过、15项未运行；配置、session、App和宿主均按约定清理，不代表其他Host通过 |
-| `mcp.browser-playground-cors` | Browser以Bearer跨Origin连接最新MCP并完成query/change调用 | shared | passed |
-| `mcp.tools.breakpoints` | 官方MCP Client处理真实HTTP/WebSocket pending | privileged UI | passed |
+| Workflow ID | 用户目标 | 策略 |
+| --- | --- | --- |
+| `mcp.desktop.streamable-http` | 三版官方Client经loopback HTTP接入、单次取消、授权Tool、同步Rules并跨重启保持状态 | shared |
+| `mcp.settings.protocol-support` | Server关闭/运行时均显示三版协议说明，不提供版本切换器 | shared |
+| `mcp.current-host` | 当前开发Agent通过真实Host公开MCP通道调用Tool，fixture核对App裁决与退出 | current-agent interactive |
+| `mcp.browser-playground-cors` | Browser以Bearer跨Origin连接最新MCP并完成query/change调用 | shared |
+| `mcp.tools.breakpoints` | 官方MCP Client处理真实HTTP/WebSocket pending | privileged UI |
 
 详细步骤：[docs/mcp.md](docs/mcp.md)
 
 ## Workflow 完整性
 
-完整覆盖由显式manifest和reporter管理，不以代码覆盖率代替：
+覆盖范围通过契约与可执行workflow逐项对照，不以代码覆盖率或用例数量代替：
 
-- Inventory中的每个ID必须有测试；
+- 声明某个Inventory契约已覆盖前，必须找到对应的可执行workflow及该契约所需的全部断言；
 - local与packaged必须执行策略要求的目标；
 - workflow不得静默skip；
 - 每个执行实例必须生成trace和destroy证据；
@@ -501,8 +520,8 @@ npm run test:e2e:workflow:report --workspace @interceptor/desktop
 ## 修改原则
 
 - Workflow以用户目标命名，不以单个按钮命名；
-- 详细步骤按分类维护在`docs/`，主README只维护Inventory与状态；
+- 详细步骤按分类维护在`docs/`，主README只维护Inventory与运行方式；
 - 每条workflow必须独立、可重复、可单独回放；
 - Fixture负责环境，workflow负责行为；
 - Local与packaged核心操作/断言保持一致；
-- 新增Renderer feature时同步扩展automation ID、Inventory、分类文档、manifest和测试。
+- 新增Renderer feature时同步扩展automation ID、Inventory、分类文档和测试。

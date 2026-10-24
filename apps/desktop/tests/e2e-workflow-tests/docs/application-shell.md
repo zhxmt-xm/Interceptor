@@ -6,6 +6,8 @@
 
 - `application/core-restart.workflow.ts`继续验证Core代际、临时Capture与系统代理恢复，不把普通导航混入故障恢复。
 
+- [Guidebook在线阅读workflow](../workflows/application/guidebook-online.workflow.ts)对应[`shell.guidebook.online`](#shell-guidebook-online)，验证远程frame、搜索、图片、主题、刷新与浏览器出口；[独立i18n workflow](../workflows/application/guidebook-i18n.workflow.ts)对应[`shell.guidebook.i18n`](#shell-guidebook-i18n)，通过真实Language菜单验证并恢复初始语言。它们验证App内Guidebook功能，不是制作其他功能教程的专用脚本。
+
 - `settings/navigation.workflow.ts`覆盖工作区往返、Settings末次分组、侧栏、四主题与原主题恢复、只读语言菜单和真实Maximize/Restore/Minimize。最小化时不截桌面，只对恢复后的同一App窗口取景；原生窗口读取/恢复归平台driver。
 
 - `agent/panel-navigation-persistence.workflow.ts`保留空态Configure深链、面板跨工作区和关闭；Composer保存及重启归Composer原流程，偏好持久化归Settings原流程。
@@ -19,7 +21,6 @@
 <a id="application-startup-ready"></a>
 ## `application.startup.ready`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -42,7 +43,6 @@
 <a id="application-lifecycle-core-restart"></a>
 ## `application.lifecycle.core-restart`
 
-**状态**：passed
 **策略**：os-side-effect
 
 macOS续验使用相同真实请求、Core故障和退出恢复断言；读取完整SystemConfiguration快照及用户级共享journal。Windows继续读取WinINet及LOCALAPPDATA共享journal，原命令和路径不变。忙时Quit拒绝按下述共同操作契约验证，两端均须保存各自证据，不沿用历史Windows passed记录。
@@ -67,7 +67,6 @@ Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；
 <a id="application-lifecycle-graceful-close"></a>
 ## `application.lifecycle.graceful-close`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -90,7 +89,6 @@ Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；
 <a id="application-lifecycle-profile-isolation"></a>
 ## `application.lifecycle.profile-isolation`
 
-**状态**：planned
 **策略**：os-side-effect
 
 ### Steps
@@ -113,7 +111,6 @@ Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；
 <a id="shell-navigation-workspaces"></a>
 ## `shell.navigation.workspaces`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -136,7 +133,6 @@ Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；
 <a id="shell-sidebar-collapse"></a>
 ## `shell.sidebar.collapse`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -159,7 +155,6 @@ Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；
 <a id="shell-appearance-theme"></a>
 ## `shell.appearance.theme`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -182,7 +177,6 @@ Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；
 <a id="shell-appearance-language"></a>
 ## `shell.appearance.language`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -205,7 +199,6 @@ Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；
 <a id="shell-guidebook-online"></a>
 ## `shell.guidebook.online`
 
-**状态**：passed（macOS x64签名package；远程production Guidebook）
 **策略**：shared
 
 ### Steps
@@ -228,7 +221,6 @@ Desktop 通过安全的在线 frame 提供完整 Guidebook 阅读、搜索、图
 <a id="shell-guidebook-i18n"></a>
 ## `shell.guidebook.i18n`
 
-**状态**：passed（macOS x64签名package；初始语言正常恢复）
 **策略**：shared
 
 ### Steps
@@ -247,7 +239,6 @@ App语言只在本独立i18n workflow中切换，官网入口与正文locale同�
 <a id="shell-window-controls"></a>
 ## `shell.window.controls`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps

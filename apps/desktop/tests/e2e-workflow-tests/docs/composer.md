@@ -29,7 +29,6 @@ Composer 由 Core 直接出站，不依赖系统代理路由。因此这些 work
 <a id="composer-tools-collection"></a>
 ## `composer.tools.collection`
 
-**状态**：passed
 **策略**：shared；两代真实Electron；host-safety-guard
 
 ### Steps
@@ -62,7 +61,6 @@ Red必须来自新Tool缺失或外部替换UI未同步，不能来自selector、
 <a id="composer-tools-transfer"></a>
 ## `composer.tools.transfer`
 
-**状态**：passed
 **策略**：native-ui；Windows；两代真实Electron
 
 ### Steps
@@ -89,7 +87,6 @@ Red必须来自两项Tool尚未实现，不能使用原生Dialog定位失败作�
 <a id="composer-request-edit"></a>
 ## `composer.request-edit`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -113,7 +110,6 @@ Composer的method、URL、protocol、headers、query、body和auth均从默认�
 <a id="composer-collection-tree-interactions"></a>
 ## `composer.collection.tree-interactions`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -139,7 +135,6 @@ Composer的method、URL、protocol、headers、query、body和auth均从默认�
 <a id="composer-send-success"></a>
 ## `composer.send-success`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -163,7 +158,6 @@ Composer通过真实Core直接出站；sending和终态准确；四个response�
 <a id="composer-response-section-collapse"></a>
 ## `composer.response.section-collapse`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -181,7 +175,6 @@ Response Headers、Request Headers、Cookies、Timing与Connection沿用同一�
 <a id="composer-response-body-formatting"></a>
 ## `composer.response.body-formatting`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -208,7 +201,6 @@ code正文按语言使用既有formatter；自动与手动路径共享同一结�
 <a id="composer-send-failure"></a>
 ## `composer.send-failure`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -231,7 +223,6 @@ code正文按语言使用既有formatter；自动与手动路径共享同一结�
 <a id="composer-history-new"></a>
 ## `composer.history-new`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -254,7 +245,6 @@ History只保存真实Composer发送；加载恢复完整请求；New重置编�
 <a id="composer-resize"></a>
 ## `composer.resize`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -277,7 +267,6 @@ Composer splitter遵守两侧最小宽度；请求/响应控件在极限宽度�
 <a id="composer-collection-import"></a>
 ## `composer.collection.import`
 
-**状态**：Windows真实Save/Open与导入已验；macOS保留既有记录。
 **策略**：native-ui
 
 ### Steps
