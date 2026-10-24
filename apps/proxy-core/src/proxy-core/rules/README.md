@@ -36,7 +36,6 @@ WS决定已由`evaluateWebSocketMessage`统一实现，现有Proxy已调用。�
 drop和aborted。hex/UTF-8编辑与快照名称归本模块；Proxy与Android HttpChannel调用同一方法，
 分别执行实际转发与发送协议决定，不复制业务步骤。连接仍active时，aborted与drop都只丢弃当前消息；
 连接owner的取消另行终止求值和网络，不能把一次suspension释放推断为整条连接取消。
-现有本机字节/断点、Android通道及真实native/TLS WS互通已验证；系统VpnService、Main设备管理和手机UI仍需独立验收。
 
 ## 依赖
 

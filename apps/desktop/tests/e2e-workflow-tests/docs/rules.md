@@ -37,7 +37,6 @@
 <a id="rules-load-search-select"></a>
 ## `rules.load-search-select`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -60,7 +59,6 @@ Rules页面通过真实Core读取权威RuleSet；搜索只作用于视图；选�
 <a id="rules-root-toolbar"></a>
 ## `rules.root-toolbar`
 
-**状态**：待验证（既有业务断言已通过；新增Capture可见结果步骤待真实运行）
 **策略**：shared
 
 ### Steps
@@ -92,7 +90,6 @@ Rules根级高频命令始终在Collection toolbar可见；新建落点与现有
 <a id="rules-hierarchy-menus-status"></a>
 ## `rules.hierarchy-menus-status`
 
-**状态**：待验证（既有业务断言已通过；新增匹配和顺序的Capture检查步骤待真实运行）
 **策略**：privileged UI
 
 ### Steps
@@ -126,7 +123,6 @@ Rules根级高频命令始终在Collection toolbar可见；新建落点与现有
 <a id="rules-action-tag-overflow"></a>
 ## `rules.action-tag-overflow`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -152,7 +148,6 @@ Rule row始终为名称、命中数和树缩进保留空间；超过两个action
 <a id="rules-create-edit-delete"></a>
 ## `rules.create-edit-delete`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -175,7 +170,6 @@ Create、rename、toggle、delete只修改选中草稿并准确维护dirty；App
 <a id="rules-matcher-variants"></a>
 ## `rules.matcher-variants`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -198,7 +192,6 @@ Create、rename、toggle、delete只修改选中草稿并准确维护dirty；App
 <a id="rules-action-variants"></a>
 ## `rules.action-variants`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -221,7 +214,6 @@ Create、rename、toggle、delete只修改选中草稿并准确维护dirty；App
 <a id="rules-reorder"></a>
 ## `rules.reorder`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -244,7 +236,6 @@ Create、rename、toggle、delete只修改选中草稿并准确维护dirty；App
 <a id="rules-validate-apply"></a>
 ## `rules.validate-apply`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -267,7 +258,6 @@ Create、rename、toggle、delete只修改选中草稿并准确维护dirty；App
 <a id="rules-apply-conflict"></a>
 ## `rules.apply-conflict`
 
-**状态**：planned / blocked，需先实现可在零Mock条件下安全共享RuleStore且listener不冲突的双实例fixture
 **策略**：shared
 
 ### Steps
@@ -290,7 +280,6 @@ Create、rename、toggle、delete只修改选中草稿并准确维护dirty；App
 <a id="rules-runtime-hit"></a>
 ## `rules.runtime-hit`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -313,7 +302,6 @@ Rule不仅能编辑和保存，也真实作用于Proxy数据面；匹配/不匹�
 <a id="rules-body-effect-evidence"></a>
 ## `rules.body-effect-evidence`
 
-**状态**：待验证（普通Body及Original/Final工具已验证；Header标记返回的选择检查修正后待复验）
 **策略**：native-ui + privileged UI
 
 ### Steps
@@ -348,14 +336,13 @@ Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original
 ### 验收要求
 
 - 实现前同一workflow必须因`requestBodyEffect/responseBodyEffect`与Inspector marker/version controls不存在而Red，不能用selector、fixture、原生Dialog或构建失败代替。
-- unit/integration Red先于产品实现，分别锁定RuleService最终写入者、Breakpoint Text/File、Capture存储、Native Archive与HAR边界；当前实现后同一矩阵与真实Electron workflow全部Green并完成销毁证据。
+- unit/integration先验证RuleService最终写入者、Breakpoint Text/File、Capture存储、Native Archive与HAR边界，再执行同一矩阵对应的真实Electron workflow并核对销毁。
 - Header布局只改变显示；修改产品CSS前先确认断点编辑/Store基线，再以真实UI几何断言验证目标差异，不把selector或环境失败算Red。
 - 正文工具和Header返回均在既有网络断言之后真实点击，不更换请求/响应输入、不改写Open/Save返回值。新增步骤真实运行前，不将旧Green或静态typecheck当作这些画面的验收结果。
 
 <a id="rules-tools-export"></a>
 ## `rules.tools.export`
 
-**状态**：passed
 **策略**：native-ui；Windows；host-safety-guard；两代真实Electron
 
 ### Steps
@@ -386,7 +373,6 @@ Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original
 <a id="rules-tools-import"></a>
 ## `rules.tools.import`
 
-**状态**：passed
 **策略**：native-ui；Windows；host-safety-guard；两代真实Electron
 
 ### Steps
@@ -414,7 +400,6 @@ Body marker只来自真实Rule/Breakpoint replacement；Request能检查Original
 <a id="rules-import-tree"></a>
 ## `rules.import-tree`
 
-**状态**：passed
 **策略**：native-ui
 
 ### Steps

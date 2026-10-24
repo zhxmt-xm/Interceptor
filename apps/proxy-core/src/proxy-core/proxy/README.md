@@ -14,36 +14,6 @@ WS消息决定委托唯一RuleService的`evaluateWebSocketMessage`。Proxy保留
 不再自行匹配配置、构造断点或解释hex编辑；每对socket的AbortSignal覆盖正在等待及排队的消息，
 异常关闭后不创建迟到断点，Capture未完成也不阻塞业务取消。应用message与控制帧仍保持方向内顺序。
 
-### Android TCP 适配前置验证
-
-用户已明确要求Android通过HTTP/WS协议副本接入Core，不传原始TCP，且不允许修改Mockttp。
-Android持有真实连接，Core返回处理决定；PC不依据副本访问源站。下述内部CONNECT是旧路线的
-实验适配，不作为正式入口；不能包装CONNECT或调用Mockttp私有API宣称直接接入。
-该约束不要求改写现有桌面显式代理，具体见[新协议](../../../../../../Interceptor-Android/architecture/features/inspection-protocol.md)。
-
-`tests/integration/tcp-ingress.test.ts`通过真实loopback origin验证：先向本代理建立CONNECT，
-再发送origin-form HTTP原始TCP字节，仍会进入现有Rules和Breakpoints，不是源站直通或抓包副本。
-覆盖请求/响应头改写、二进制POST正文与单次发送、断点编辑前不抵达origin、
-暂停Capture后仍执行规则并转发、客户端断开解除对应pending且不发送POST。
-
-这不改变Android到PC的mTLS WSS协议。[AndroidIngressService](../android-ingress/README.md)
-曾在旧服务层使用该路径并验证WSS→ProxyService→origin；该Core/Android旧路线现已删除，正式Service只收HTTP协议副本，不再调用本代理转发手机流量。
-正式v2入口已装配CoreApplication命令与Main RPC；设备生命周期、来源绑定或正式配对仍缺，不能作为手机流量接入验收，
-也不证明Android HTTPS/非HTTP协议或真实USB已支持。
-
-#### 提前FIN的入口适配限制
-
-独立测试绕过Android、WSS及`TcpRelay`，分别向CONNECT后的socket和直接HTTP入口
-发送完整POST，在真实请求断点处发送上传FIN后放行；两条路径均返回空响应，目标仍Red。
-同文件的普通Node `http.createServer()`基线也会在响应等待时因客户端FIN关闭返回方向。
-因此不能仅据此把故障归因为Android传输或Mockttp独有缺陷，更不能认定必须修改Mockttp。
-
-当前Core的`ProxyService`承担协议转发并串联Rules/Breakpoints/Capture；Core并无可直接
-接收任意TCP流的公共业务API。内部CONNECT只是旧Android实验曾选择的适配，不是手机
-必须伪装成本机应用，也不是复用Core规则能力的唯一架构方案。该适配尚未满足原始TCP
-半关闭要求。用户已停止Core原始TCP入口方向，改为Android解析协议并与PC交换副本及决定；
-旧失败保留为历史证据，不通过修改Mockttp解决，也不把迁移方案当作旧路径已修复。
-
 ## 只订阅增量事件
 
 Capture **只订阅 initiated / body-data 类事件，绝不订阅 completed 的 `request` / `response`**。Mockttp 一旦发现 completed listener，就会调用 `waitForCompletedRequest` 与 `body.asBuffer()` 无条件缓冲完整正文——那会让大文件下载吃满内存。

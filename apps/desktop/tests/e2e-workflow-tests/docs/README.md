@@ -1,11 +1,11 @@
 # E2E Workflow 详细文档
 
-本目录保存 Renderer E2E workflow 的完整人工可读验收规格。主 [`../README.md`](../README.md) 只维护职责、原则、Inventory、状态和运行方式；每条 workflow 的完整步骤放在以下分类文件中。
+本目录保存 Renderer E2E workflow 的完整人工可读验收规格。主 [`../README.md`](../README.md) 只维护职责、原则、Inventory和运行方式；每条 workflow 的完整步骤放在以下分类文件中。
 
-| 分类 | 详细文档 | Workflow 数量 |
+| 分类 | 详细文档 | 契约数量 |
 | --- | --- | ---: |
-| Application 与 Shell | [application-shell.md](application-shell.md) | 11 |
-| Capture 与协议 | [capture.md](capture.md) | 42 |
+| Application、Shell 与 Guidebook | [application-shell.md](application-shell.md) | 11 |
+| Capture 与协议 | [capture.md](capture.md) | 43 |
 | Rules | [rules.md](rules.md) | 15 |
 | Composer | [composer.md](composer.md) | 11 |
 | Breakpoints | [breakpoints.md](breakpoints.md) | 14 |
@@ -14,7 +14,7 @@
 | MCP | [mcp.md](mcp.md) | 5 |
 | Settings 与 Updates | [settings-updates.md](settings-updates.md) | 31 |
 
-总计：148 条 workflow 契约（含共享CA启动、普通消息高度、正文阈值、Original/File预览、Android单设备接管/断线恢复、macOS上游配置、Windows WPAD及独立Guidebook i18n；部分契约含多个协议或大小测试）。管理员MMC原生专项另保留排除说明，不计入workflow数量；Bilibili专属契约已移除，Windows人工UAC取消专项不作为验收门槛，不删除可自动化的错误分支测试。
+总计：149条验收契约，与主README的Inventory逐项对应；契约数量不等于workflow文件或Playwright用例数量。包括共享CA启动、macOS HTTPS弹窗、正文与消息、Android单设备接管/断线恢复、macOS上游配置、Windows WPAD及Guidebook在线阅读与独立i18n；同一workflow可以检查多个契约，契约也可以包含多个协议或大小场景。管理员MMC原生专项另保留排除说明；Windows人工UAC取消专项不作为验收门槛，不删除可自动化的错误分支测试。
 
 ## 文档约定
 
@@ -78,4 +78,4 @@
 - 不直接调用 `window.interceptor` 完成业务 arrange/act；
 - 测试侧只允许提供真实 loopback 协议 origin/客户端、输入文件、证据采集与进程清理；
 - UAC、macOS Authorization、Open/Save Dialog 等由 App 真实发起并由本机用户处理；
-- 不能在零 Mock 条件下完成的流程保持 planned/blocked，不用低保真替代测试冒充通过。
+- 不能在零 Mock 条件下完成的流程，在Handover记录阻塞，不用低保真替代测试冒充通过。

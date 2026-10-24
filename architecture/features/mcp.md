@@ -544,43 +544,8 @@ flowchart TD
   不新增Session、协议解析器或对Client整连接的强制关闭。响应的取消关联保持到流结束/取消，不在SSE
   headers返回时提前移除，也不为了收尾缓冲全量响应。
 - 官方Client和真实VS Code/Copilot、Claude Desktop是不同验收对象。Client显示名为`VS Code E2E`不能证明真实Host兼容；Host更新后必须重新核对。
-- 既有VS Code Copilot CLI/SDK Host验收覆盖官方AHP配置、注册/重连与公开`mcp://`的`serverTools`通道。
-  由当前Agent选取实际目录中的Tool，调用仍经真实Host SDK、Bearer与同一Main/Core链路；App的
-  Deny/Allow/Auto、自产正文、真实POST和退出有独立断言。不另起Agent或把直连产品的官方Client冒充Host。
-  此结论不包含聊天工具搜索热刷新、Host自身审批UI、其他Host，也不表示全部69项Tool都在Host逐项验收。
-- macOS签名`0.1.1-alpha.1`与VS Code`1.143.0`/AHP`1.1.0`还已验证当前Host原生工具入口：
-  正式配置加载后，由当前Agent发现并调用Capture查询/正文、Deny/Allow/Auto、Composer、
-  Rules/Breakpoints/Diagnostics与Core状态的代表Tool，最后真实Clear、撤销Client并正常退出。
-  [原生调用与恢复证据](../../../../.copilot/session-state/110ad12a-fedc-47bb-9369-c786f9527723/files/item16-current-host/verified-current-host.json)
-  核对自产正文完整字节、Cookie脱敏、Composer仅一次POST且不进入Capture，以及profile、Host配置与端口清理。
-  原生发现不等于活跃轮次热刷新，未调用Tool和其他Host不据此通过；原中文App图片未替代Guidebook的English图片要求。
-- 同一签名App的[English Host流程](../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/verified-current-host.json)
-  已复用保留Client完成原生调用、完整正文、Deny/Allow/Auto、Composer及真实Clear。原图与标注经过对应workflow和宿主恢复门禁；
-  Client、profile及其Host配置已清理，旧恢复命令不再适用。[逐Tool范围](../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/native-tool-coverage.json)从实际Host发现目录生成，未调用的Tool保持`not-run`。
-  教程图片单独验收并按固定摘要保留，不把自动SDK截图流程当作真实Host重拍。
-- 原Tool workflow的当前Host入口已在VS Code`1.143.x`/AHP`1.1.0`上完成17条SDK/Host成对Green：
-  公开证书Reveal/View、语言/主题/导出隐私、Rules导入/导出、Composer Collection读写与导入/导出、
-  Breakpoint批处理、Diagnostics查询/导出、Capture传输任务、正文导出及HAR导入/导出；
-  原[扩展核对](../../../../.copilot/session-state/45191cff-dea3-4a02-97b4-515d33bd7ef1/files/item16/current-host-workflow-expansion.json)
-  与[Windows补充核对](../../../../.copilot/session-state/cab53ba7-29cc-4a1d-a698-254405325e80/files/item16-windows/verification.json)
-  汇总20次Host连接代际、41种Tool、189次调用、Tool目录、逐调用结果、Server停止/配置删除、两代App正常退出和端口释放。
-  与English代表流程合并后的69项范围为54项`passed`、15项`not-run`；已通过项不因重验重复计数。
-  VS Code现版本要求配置应用后在一次性同Host session执行官方`/mcp reload`；一次性session不创建worktree且验收后删除。
-  Tool撤权的Host包装错误保持实际`-32603`与`MCP tool not found`，不伪装成SDK的`-32602`。
-- Windows当前Host的精准筛选版本已完成代表Tool、App审批、真实Clear及退出恢复：
-  workflow通过产品Keyword限定自产路径，查询Tool使用同一路径和Method filter并按返回的`exchangeId`读取。
-  Clear的真实调用返回零Exchange/Body，完整筛选列表为空、Keyword保持且Recording不变；
-  Client、Host配置、临时CA与系统设置均已清理恢复。旧workflow的虚拟行假阳性仍保留并排除，
-  不把这一主线的Green扩大为全部Tool或其他Host通过。
-- Windows AppContainer补充流程已通过同一公开Host通道真实调用查询、单项启停和全量启停五项Tool，
-  覆盖Ask/Auto、撤权、两代App与系统exemption精确恢复；Server、root配置和一次性session均在结束时移除。
-- Windows补充还覆盖Archive导入/导出、Recording启动、系统代理启用/恢复、TLS insecure/passthrough替换和HTTPS解密启停；
-  原生文件窗口、代理、TLS名单、共享CA及宿主状态均在每条流程结束时恢复。
-- 双Host同时读取同一Capture、正式Tool中间进度SSE仍待真实Host验收；普通JSON响应或Client测试不能替代。
-  当前开发Agent的识别、配置、Tool清单与恢复步骤见[真实Host workflow](../../apps/desktop/tests/e2e-workflow-tests/docs/mcp.md#当前开发agent的真实host验收)；
-  当前宿主条件与待办由[Handover](../HANDOVER.md)跟踪。
 
-### 10.1 三版协议兼容与本轮验收边界
+### 10.1 三版协议兼容边界
 
 产品按以下契约实现；各平台与真实Host的验收状态仍以Handover为准：
 
@@ -592,16 +557,12 @@ flowchart TD
 - 三版复用同一Bearer认证、在线Tool目录、Ask/Auto、参数校验、结果脱敏和Main/Core业务。停用、撤权、
   凭据轮换、HTTP断开和App退出都必须终止所属在途调用与审批；重启保持endpoint和Client凭据。
 - Settings > Agent > MCP Server已增加静态版本支持说明，列明三版协议及自动适配；位于Header与Endpoint
-  之间，不改变Server开关、endpoint、Client执行模式或凭据命令。已提供前后预览，用户要求提交后集中复审。
+  之间，不改变Server开关、endpoint、Client执行模式或凭据命令。
 - SDK/Main测试和真实Electron workflow按三版分别验证，保留当前2026回归。真实VS Code/Copilot、
   Codex、Claude Code与Claude Desktop仍是不同Host，官方Client不能冒充其中任何一个。
-- 当前VS Code `1.140.0`/Copilot `0.68.0`以`2025-11-25`发起initialize；Codex CLI `0.159.3`默认首选
-  `2025-06-18`、2026实验开关默认关闭；Claude Code `2.1.274+`官方记录确认直连HTTP默认协商2026。
-  这些是本机源码或官方记录核对，不是真实Host Green。
 - Claude Desktop的远程connector由Anthropic云端发起，不能直接访问本机loopback；本地MCPB走stdio。
-  本轮不新增stdio bridge、旧式HTTP+SSE endpoint或有状态Session，Desktop接入方案仍需单独确认。
+  产品不提供stdio bridge、旧式HTTP+SSE endpoint或有状态Session。
 
-Playground保留现有人工MCP入口，不新增模型配置、Agent Runtime或另一套MCP E2E。用户已明确本轮
-真实Host workflow由当前开发Agent执行：确认Host身份与配置入口，通过产品UI生成MCP配置，由真实
+Playground保留现有人工MCP入口，不新增模型配置、Agent Runtime或另一套MCP E2E。真实Host workflow由当前开发Agent执行：确认Host身份与配置入口，通过产品UI生成MCP配置，由真实
 Host发现、调用Tool，测试代码核对业务状态、协议事实和退出恢复。模型配置留在当前Host，不读取IDE
 私有凭据，也不以模型总结代替断言。三版SDK/Main与真实Electron回归分别保存，不能冒充当前Host证据。

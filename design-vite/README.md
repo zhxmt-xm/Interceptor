@@ -107,7 +107,7 @@ window.__setState({
 - 双端配对后，Application增加`Pixel 8 · Android`来源样例。Android图标复用现有`simple-icons`品牌数据；普通控件使用Lucide。Android零条流量不伪造请求，来源勾选保留OR、All、分组清除与全局清除。
 - 手机九种主状态及指纹展开、CA步骤、系统授权等待，与PC设备/配对/授权/停止/来源等场景共用typed state。切换端、USB样例与模拟系统结果的控制栏位于画布外，截图时隐藏。
 - 断线策略已固定为保留VPN阻断、手机手动停止恢复；未知TCP发送RST，非DNS UDP/QUIC关闭。真实拔线和恢复仍须物理设备E2E，不把PC的Rules、Breakpoints和Capture搬到手机。
-- 手机改前图只保留历史评审用途，不是产品截图；PC设计SPA是产品还原基准。Renderer已安装/配对态与APK缺失态共8场景48目标严格零差异，真实Android系统授权另行验收。
+- PC设计SPA是产品还原基准；手机与PC设计预览不代表产品截图或真实Android系统授权。
 
 从未连接状态打开，再通过设计控制栏切换场景；不要只修改`androidConnection`来拼出不一致的VPN/配对状态：
 
@@ -265,7 +265,7 @@ node design-vite/tools/compare-shots.mjs design-vite/shots --current-dir="$env:T
 
 截图与parity使用的`design-preview.mjs`为每次预览创建独占临时构建目录，关闭服务后删除，不覆盖共享`dist/`；并行预览不会替换另一个页面正在加载的动态模块。手工`npm run build/preview`仍使用自身命令的正常产物，与这些临时预览分开。
 
-2026-09-27已确认的gRPC/WebSocket普通展开消息compact Monaco按组件传入`resizable`，全屏禁用，不保留全局候选开关。初始高度为内容高度与所属滚动容器可用空间的较小值，短正文自然高度；右下角使用CSS `resize: vertical`，滚轮到正文边界后继续滚外层。窗口变小会clamp，恢复后还原用户拖高；隐藏初始化、字体加载与换行重排不能误作用户resize。`12px/20px`、上下`13px`padding、实际边框、控件与Copy保持不变。2026-09-28确认的HTTP Original/File样式见下节；Hex、Tree、全屏、普通WebSocket断点及Composer保持各自既有布局。
+gRPC/WebSocket普通展开消息compact Monaco按组件传入`resizable`，全屏禁用，不保留全局候选开关。初始高度为内容高度与所属滚动容器可用空间的较小值，短正文自然高度；右下角使用CSS `resize: vertical`，滚轮到正文边界后继续滚外层。窗口变小会clamp，恢复后还原用户拖高；隐藏初始化、字体加载与换行重排不能误作用户resize。`12px/20px`、上下`13px`padding、实际边框、控件与Copy保持不变。HTTP Original/File样式见下节；Hex、Tree、全屏、普通WebSocket断点及Composer保持各自既有布局。
 
 `grpcMessageSource`继续作为可交互长/短消息fixture，不修改产品协议或正文读取上限。`inspector-grpc-long-text`使用`catalog-stream-4281`文本标题、一个换行及原评审JSON正文（2729 UTF-8字节、134行，无末尾换行），通过真实点击Text切换；整体不是合法JSON，正常内容嗅探后仍使用Text/Hex与plaintext，不为fixture修改产品JSON嗅探。原批准图保留；`inspector-grpc-long-text-full`生成同场景的滚动全展开图。自定义source按UTF-8字节数同步第二条消息大小与第三条payload offset（前一条payload offset + payload长度 + 5字节gRPC帧头），正文沿用正常`+proto`的`raw protobuf`与`application/octet-stream · 大小`展示口径；该长场景为`2.7 KB`、第三条`0x0add`。原消息的压缩标记不变，清除source后恢复原fixture；不把自定义source称为另一种产品格式。现有`inspector-grpc`仍为默认Hex，`inspector-websocket`仍为Pretty。例如：
 
@@ -280,7 +280,7 @@ node design-vite/shoot.mjs --feature=capture --variant=inspector-grpc-long-text-
 
 截图依赖已随仓库存在的 `@playwright/test` + 系统 Edge（`channel: 'msedge'`），无需额外安装浏览器。不在每次小改后重出全量截图；只在用户明确要求或一个设计里程碑结束时生成并评审。
 
-## HTTP正文设计（2026-09-28已确认）
+## HTTP正文设计
 
 HTTP `PayloadEditor`的Original正文与File预览正式使用内容/可用空间限高、内滚与原生vertical resize，不保留默认关闭的候选开关。File预览无内层边框，采用`12px/20px`和上下`13px`padding，预览上方保留完整文件用途说明。Text说明条强调编辑value不受只读预览上限裁剪，现有受控Ant `Input.TextArea`、`autoSize: { minRows: 4, maxRows: 8 }`及字体不变；不设`maxLength`。`contentKind:'message'`保留WebSocket断点原设计；普通gRPC/WebSocket、Hex/Tree、全屏和Composer填充不变。
 
@@ -299,7 +299,7 @@ window.__setState({
 
 ## 相关
 
-- Updates已按2026-09-30确认稿移除GitHub access、Private和账号文案，正式fixture直接保留Version、Delivery和原更新状态，不再使用`updatesWithoutSignIn`候选或`githubAuth`设计态。`updates-checking/available/downloading/downloaded/up-to-date/failed/unsupported`覆盖现有浅深色更新场景。
+- Updates移除GitHub access、Private和账号文案，正式fixture直接保留Version、Delivery和原更新状态，不再使用`updatesWithoutSignIn`候选或`githubAuth`设计态。`updates-checking/available/downloading/downloaded/up-to-date/failed/unsupported`覆盖现有浅深色更新场景。
 - 生成/迭代设计稿的完整流程与陷阱见 `ui-design-mockup` skill（`.github/skills/ui-design-mockup/`）。
 - React实现与设计稿的元素几何、样式、文本和状态验证见[Data Parity](../apps/desktop/tests/visual-parity/README.md)。它直接驱动本SPA的preview和真实Renderer页面，独立严格比较并生成数据报告，不需要Agent、保存的PNG或预先运行截图脚本。
 - SPA 内含的 feature 视图（均有 light/dark，截图存于 `shots/`）：

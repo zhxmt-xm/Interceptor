@@ -10,7 +10,7 @@
 | --- | --- |
 | [development.md](development.md) | 初始化、模块分工、开发调试、验证、打包发布与常见问题 |
 | [release-guide.md](release-guide.md) | 交互发版命令、版本递增、平台/架构/包类型选择、GitHub逐步点击与失败恢复 |
-| [HANDOVER.md](HANDOVER.md) | 当前任务、进度、下一步、阻塞与必要验收结论 |
+| [HANDOVER.md](HANDOVER.md) | 未完成任务、当前阻塞、下一步与必要运行约束 |
 | `platform/` | 跨feature的进程、Renderer、存储、打包和测试架构 |
 | `features/` | 功能职责、调用流程、数据契约、交互和限制 |
 
@@ -35,7 +35,7 @@ Handover只列未完成任务、当前阻塞和运行约束；完成项从任务
 | 文档 | 覆盖范围 | Core 模块 | Renderer 模块 |
 | --- | --- | --- | --- |
 | [features/capture.md](features/capture.md) | 流量捕获、Exchange 生命周期、正文存储与预览渲染矩阵、事件推送、客户端应用归属、筛选分栏 | `proxy/`、`capture/`、`client-app/` | `features/capture/`、`components/BodyViewer/` |
-| [Android repo：USB 接入架构](https://github.com/zhxmt-xm/Interceptor-Android/blob/main/architecture/features/usb-capture.md) | 独立 Android repo 的正式方案：协议副本、native/DNS、VpnService/TUN、USB、配对与发布；emulator双端闭环已完成，物理USB/ARM64/Windows仍待环境验收 | `android-ingress/`、`http-interception/`；复用 `rules/`、`capture/` | Capture设备入口与Android来源已实现 |
+| [Android repo：USB 接入架构](https://github.com/zhxmt-xm/Interceptor-Android/blob/main/architecture/features/usb-capture.md) | 独立 Android repo 的正式方案：协议副本、native/DNS、VpnService/TUN、USB、配对与发布 | `android-ingress/`、`http-interception/`；复用 `rules/`、`capture/` | Capture设备入口与Android来源 |
 | [features/rules.md](features/rules.md) | 规则模型、编译、执行、证据采集、热更新 | `rules/` | `features/rules/` |
 | [features/breakpoints.md](features/breakpoints.md) | 请求/响应/WebSocket 断点挂起与编辑 | `rules/internal/breakpoint-queue.ts` | `features/breakpoints/` |
 | [features/composer.md](features/composer.md) | 手工构造请求、连接探测 | `composer/`、`tls-probe/` | `features/composer/` |

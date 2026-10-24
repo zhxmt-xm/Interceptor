@@ -3,7 +3,6 @@
 <a id="capture-android-single-device"></a>
 ## `capture.android.single-device`
 
-**状态**：planned · 产品接线中
 **策略**：macOS/Windows共享业务步骤；真实Android设备、USB、系统VPN授权与CA授权；零seed
 
 ### Steps
@@ -26,7 +25,6 @@
 <a id="capture-android-disconnect"></a>
 ## `capture.android.disconnect`
 
-**状态**：planned · 产品接线中
 **策略**：真实USB拔线/重连；手机保留VPN阻断；不重放
 
 ### Steps
@@ -70,20 +68,20 @@ USB异常不把受控流量绕过PC发送；重连创建新会话且不重放；
 | --- | --- | --- |
 | [recording-pause-resume](../workflows/capture/recording-pause-resume.workflow.ts) | 搜索自产路径、Recording开启/暂停/恢复、暂停时已录制WebSocket继续收消息、恢复后新连接 | `/e2e/recording-boundary` |
 | [body-fullscreen](../workflows/capture/body-fullscreen.workflow.ts) | 自产POST、Headers、空Query、Request/Response、Raw、全屏Copy/Close、全屏Hex与Escape返回 | 逐条使用`/e2e/fullscreen-json`或`/e2e/fullscreen-html` |
-| [facets-clear-menu](../workflows/capture/facets-clear-menu.workflow.ts)、[clear-facets](../workflows/capture/clear-facets.workflow.ts) | Method GET/POST组内OR、Status跨组AND、关键词、逐项取消、Clear search、Clear filters、完整Clear记录 | macOS已完整通过：开始Recording后经Settings Restore恢复原路由，控件显示Paused但不能据此推断Core状态；此后不再切换Recording。原显式客户端仍使用8888，完整计数和同帧Clear断言不变 |
+| [facets-clear-menu](../workflows/capture/facets-clear-menu.workflow.ts)、[clear-facets](../workflows/capture/clear-facets.workflow.ts) | Method GET/POST组内OR、Status跨组AND、关键词、逐项取消、Clear search、Clear filters、完整Clear记录 | 开始Recording后经Settings Restore恢复原路由，控件显示Paused但不能据此推断Core状态；此后不再切换Recording。原显式客户端仍使用8888，完整计数和同帧Clear断言不变 |
 | [http-scenarios](../workflows/capture/http-scenarios.workflow.ts) | H1请求选择、Headers、Request/Response Raw、已有SSE和上传/下载进行中状态 | 默认场景使用其原`path`；SSE、上传、下载与413使用`requestPath`，间隔保留`/e2e/http-`；Clear后的新旧请求分别使用自身路径验证 |
 | [http2-scenarios](../workflows/capture/http2-scenarios.workflow.ts) | H2 JSON、Headers/trailers、Raw；Range接收前后；错误GOAWAY部分正文及独立恢复行 | 首条`/playground/h2-json`；其余使用原`requestPrefix`，间隔保留`/e2e/h2/` |
 | [playground-traffic](../workflows/capture/playground-traffic.workflow.ts) | 两端错误GOAWAY后，原POST的Headers声明512KiB、Response实际保留256KiB | `/playground/h1-json`、`/playground/ws/text`及各`/playground/h2/error-goaway-*`；步骤截图仍只取App，不以Playground页面代替 |
 | [tls-scenarios](../workflows/capture/tls-scenarios.workflow.ts) | Tunnel、HTTPS Setup打开/取消、解密H1/H2正文与TLS详情、Map Remote往返、产品Save后Map Local缺失/修正/停用 | Tunnel使用`localhost`并保留唯一行和本轮端口断言；解密后使用原`expected.path`，映射只看`/e2e/rules/`内的自产请求，浏览器阶段使用`/playground/tls/browser-trust` |
 | [body-scenarios](../workflows/capture/body-scenarios.workflow.ts)、[body-preview-limits](../workflows/capture/body-preview-limits.workflow.ts) | 现有请求/响应查看模式、HTTP JSON Tree、Markdown Preview/Split/Source及全屏返回、手动Format、格式化前后Copy、2MiB预览与禁用Format | 原场景`path`、UTF-8原`requestPath`及`/e2e/body-limits/<scenario>`；新模式操作不改变原正文输入 |
-| [body-media-scenarios](../workflows/capture/body-media-scenarios.workflow.ts) | PNG预览、二进制Hex、音视频MIME/大小/Save，原生保存和返回状态 | 原五个场景和固定字节全部不变；逐个原path筛选并收起无关facet；音频48 B `audio/wav`、视频24 B `video/mp4`只说明元信息/保存，不宣称播放器或解码成功；新增macOS检查点已通过 |
+| [body-media-scenarios](../workflows/capture/body-media-scenarios.workflow.ts) | PNG预览、二进制Hex、音视频MIME/大小/Save，原生保存和返回状态 | 原五个场景和固定字节全部不变；逐个原path筛选并收起无关facet；音频48 B `audio/wav`、视频24 B `video/mp4`只说明元信息/保存，不宣称播放器或解码成功 |
 | [section-collapse](../workflows/capture/section-collapse.workflow.ts)、[detail-body-fill](../workflows/capture/detail-body-fill.workflow.ts) | Headers独立折叠/展开、Timing、非空Query检查/折叠/展开、左右分栏拖拽/恢复、Request正文真实滚轮/滑块和外层交接 | `/e2e/capture/section-collapse`或`/e2e/detail-body-fill`；Query追加同源`/query`请求，不改旧请求和前置布局断言；后者保留`macos-scroll-boundary`项目 |
 | [websocket-scenarios](../workflows/capture/websocket-scenarios.workflow.ts)、[grpc-scenarios](../workflows/capture/grpc-scenarios.workflow.ts) | Messages/gRPC页、方向、展开与真实Copy；WebSocket JSON Tree和全屏；gRPC在途消息 | 原场景`path`或自产`requestPath`；gRPC生命周期间隔保留`/e2e/grpc/` |
 | [compact-message-layout](../workflows/capture/compact-message-layout.workflow.ts) | 两协议短/长消息Raw与Copy、高度拖拽、正文滚轮、键盘末尾、外层交接、正文Copy与消息Copy、全屏返回；205条加载/展开/完整正文/Copy，gRPC用Raw、WebSocket Text帧用Text | `/e2e/<protocol>/compact-message-layout`同时覆盖原连接和`/pagination`；按实际消息格式选择查看模式，不为Text帧强求不存在的Raw |
-| [tools-har-transfer](../workflows/capture/tools-har-transfer.workflow.ts) | 原Capture Export菜单、HAR All/Filter/Selected范围、保留/去除正文、隐私默认与单次覆盖、原生Save、返回Capture、同一GUI文件Import及正文 | 原`/e2e/har-tools/`；All导出四条到`ui.har`，最后UI Import选择这份同次GUI导出的文件，4→8且保留原四条身份；Filter/Selected仍为两条/一条，原Agent/MCP断言不变；新增macOS回导已通过 |
-| [tools-archive-transfer](../workflows/capture/tools-archive-transfer.workflow.ts) | Archive菜单、完整数据警告、取消/确认、原生Save/Open、追加后HTTP正文与WebSocket消息 | 公开Restore与Clear隔离两条自产输入；UI导出`ui.iarchive`含8条，再导入同一文件追加到16条，不能替换为此前Tool导出的`complete.iarchive`；新增macOS流程已通过 |
-| [tools-transfer-jobs](../workflows/capture/tools-transfer-jobs.workflow.ts) | 真实运行进度、产品Cancel、清理完成后Clear，再重新产生大正文进行运行中退出 | 同样先通过正常UI Restore与Clear隔离；取消运行中任务和取消原生Dialog分别验证，不靠测试专用延迟；新增macOS流程已通过 |
-| [navigate-tls-passthrough](../workflows/capture/navigate-tls-passthrough.workflow.ts) | 保留原TCP隧道导航，再拍CA/源站例外、HTTPS正文、精确透传添加/命中/定位/移除及恢复正文 | 同一受控`localhost` HTTPS URL建立三次新连接：解密→精确透传→移除后恢复；不是三个不同URL，原TCP回显也不代替真实HTTPS；新增macOS流程已通过 |
+| [tools-har-transfer](../workflows/capture/tools-har-transfer.workflow.ts) | 原Capture Export菜单、HAR All/Filter/Selected范围、保留/去除正文、隐私默认与单次覆盖、原生Save、返回Capture、同一GUI文件Import及正文 | 原`/e2e/har-tools/`；All导出四条到`ui.har`，最后UI Import选择这份同次GUI导出的文件，4→8且保留原四条身份；Filter/Selected仍为两条/一条，原Agent/MCP断言不变 |
+| [tools-archive-transfer](../workflows/capture/tools-archive-transfer.workflow.ts) | Archive菜单、完整数据警告、取消/确认、原生Save/Open、追加后HTTP正文与WebSocket消息 | 公开Restore与Clear隔离两条自产输入；UI导出`ui.iarchive`含8条，再导入同一文件追加到16条，不能替换为此前Tool导出的`complete.iarchive` |
+| [tools-transfer-jobs](../workflows/capture/tools-transfer-jobs.workflow.ts) | 真实运行进度、产品Cancel、清理完成后Clear，再重新产生大正文进行运行中退出 | 同样先通过正常UI Restore与Clear隔离；取消运行中任务和取消原生Dialog分别验证，不靠测试专用延迟 |
+| [navigate-tls-passthrough](../workflows/capture/navigate-tls-passthrough.workflow.ts) | 保留原TCP隧道导航，再拍CA/源站例外、HTTPS正文、精确透传添加/命中/定位/移除及恢复正文 | 同一受控`localhost` HTTPS URL建立三次新连接：解密→精确透传→移除后恢复；不是三个不同URL，原TCP回显也不代替真实HTTPS |
 
 运行与采用边界：
 
@@ -108,49 +106,30 @@ USB异常不把受控流量绕过PC发送；重连创建新会话且不重放；
 | 正文滚轮交接 | `workflows/capture/detail-body-fill.workflow.ts` | `macos-scroll-boundary` |
 | 筛选与Clear的公开路由隔离 | `workflows/capture/(facets-clear-menu\|clear-facets)\.workflow\.ts` | `macos` |
 
-#### 实拍操作映射与边界
+#### 截图操作映射与边界
 
-- 教程已经按各原流程的真实输入重新绑定搜索与详情，不保留`orders`或旧GET的示例值来拼接另一条POST。输入、图序与未显示终态的说明见[最终发布核对](../../../test-results/capture-english-handoff/publication-final-capture.json)。
-- HTTP Tree、Markdown Split/Source与左右分栏已由各自原workflow真实执行，来源记录保留在上述核对文件。Query示例为追加的四个参数，不保留旧教程24字段或96条entries的声称。
+- 教程搜索、详情和示例值使用同一流程的真实输入，不能跨请求拼接。HTTP Tree、Markdown Split/Source与分栏图片由各自workflow产生；Query示例使用下述四个参数。
 - 七维facet的图片区分操作入口与操作结果：Application Unknown、Host、Content type及筛选栏按钮有尚未选择/收起的画面，不能称为已完成的终态。HTTP/2 Protocol另有真实选择/取消来源。`facets-clear-menu`验证Application/Status/Type的Pending与Method/Status组合，输入为五条自产记录，非旧教程四条`/guide/filters`；非必要组收起不能代替其他维度完整验收。
-- `http2-scenarios`已验证实际Protocol HTTP/2选择/取消，以及独立`/e2e/h2/body-progress`的64KiB→128KiB但未结束→完整128KiB可读/Copy/trailer步骤；两条6MiB Range原断言保持，不混称同一响应。
-- 错误GOAWAY已在同一原POST的Response Headers核对声明512KiB，再查看实际256KiB响应；独立恢复GET打开Response Raw并Copy核对同一真实响应。不跨`/playground`与`/e2e`拼接同一次请求。Headers/trailer内容先正常滚入Inspector，再拍可见目标。
+- `http2-scenarios`验证实际Protocol HTTP/2选择/取消，以及独立`/e2e/h2/body-progress`的64KiB→128KiB但未结束→完整128KiB可读/Copy/trailer步骤；两条6MiB Range原断言保持，不混称同一响应。
+- 错误GOAWAY在同一POST的Response Headers核对声明512KiB，再查看实际256KiB响应；独立恢复GET打开Response Raw并Copy核对同一真实响应。不跨`/playground`与`/e2e`拼接同一次请求。Headers/trailer内容先正常滚入Inspector，再拍可见目标。
 - `compact-message-layout`补两协议短JSON的真实Copy与剪贴板逐字核对。原长消息输入、尺寸、滚轮、全屏与两种Copy断言不变，不把长消息图标成短消息复制。
 - 分页继续使用独立`/pagination`连接；gRPC保留205条Response JSON，WebSocket真实发送并逐条收到205条Text JSON回声，再筛选Sent。正文均为`{"index":0..204,"state":"complete"}`。滚轮加载末条后展开：gRPC切Raw，WebSocket Text帧选择Text；滚入完整可见区域并逐字核对正文，再从消息专用Copy核对完整原文。WebSocket从真实公开行ID读取末条seq，不把第205条Sent等同全连接seq205。Text帧不提供Raw时不增加产品模式、不提高时限、不删除完整正文/Copy断言。
 - 大正文Save body与Format由各自原workflow验证，`body-preview-limits`没有保存操作。Clear后的真实Pause/Resume与新POST复用Storage来源；列表图片只说明新行出现，不声称尚未打开的Response已在图中显示。
 - Original/Final、Rules快捷Block/Breakpoint和Transfer引用图继续由其所属原流程负责，不在本轮Capture检查点中制造替代图。
 
-#### 最后采用的macOS来源
-
-以下独立测试均为`passed`、`hostRestored=true`及正常退出；不将同批失败测试的局部图片混入。Windows、独立环境及未执行分支仍按原验收边界保留。
-
-| Workflow | Run |
-| --- | --- |
-| `facets-clear-menu`、`clear-facets` | [2026-10-21T20-08-04-942Z-jn72KP](../../../test-results/workflow-screenshots/2026-10-21T20-08-04-942Z-jn72KP/) |
-| `compact-message-layout` WebSocket | [2026-10-21T20-00-22-713Z-s76DnT](../../../test-results/workflow-screenshots/2026-10-21T20-00-22-713Z-s76DnT/) |
-| `compact-message-layout` gRPC | [2026-10-21T19-09-11-384Z-9vboiX](../../../test-results/workflow-screenshots/2026-10-21T19-09-11-384Z-9vboiX/)中的独立gRPC通过结果 |
-| `http2-scenarios`、`http2-origin-goaway` | [2026-10-21T19-20-21-252Z-OBUvxl](../../../test-results/workflow-screenshots/2026-10-21T19-20-21-252Z-OBUvxl/) |
-| `breakpoint-menu-hierarchy` | [2026-10-21T19-33-47-163Z-5INkK1](../../../test-results/workflow-screenshots/2026-10-21T19-33-47-163Z-5INkK1/) |
-| `breakpoint-submenu-lifecycle`与Manager | [2026-10-21T19-44-10-238Z-JNfI58](../../../test-results/workflow-screenshots/2026-10-21T19-44-10-238Z-JNfI58/) |
-| `body-media-scenarios`、`tools-har-transfer` | [2026-10-21T19-01-48-619Z-tbNOPz](../../../test-results/workflow-screenshots/2026-10-21T19-01-48-619Z-tbNOPz/) |
-| `tools-archive-transfer` | [2026-10-21T17-26-41-702Z-Sz4VPq](../../../test-results/workflow-screenshots/2026-10-21T17-26-41-702Z-Sz4VPq/)中的独立Archive通过结果 |
-| `tools-transfer-jobs` | [2026-10-21T18-51-41-246Z-vWvRUk](../../../test-results/workflow-screenshots/2026-10-21T18-51-41-246Z-vWvRUk/) |
-| `navigate-tls-passthrough` | [2026-10-21T18-54-54-381Z-if8Bkz](../../../test-results/workflow-screenshots/2026-10-21T18-54-54-381Z-if8Bkz/) |
-| `tls-scenarios`末尾清理 | [2026-10-21T15-08-55-695Z-hFPcCP](../../../test-results/workflow-screenshots/2026-10-21T15-08-55-695Z-hFPcCP/) |
-
 #### 常用正文与详情操作契约
 
 - `body-scenarios`保留原`body-json`上传/响应和Raw复制断言，然后点击Tree核对`ready`、`items`及数组索引；真实折叠/展开根节点，Copy必须等于同一份原JSON，最后返回Raw。每步先验证DOM/剪贴板，再截图。
-- 同一个`body-json`补齐入门所需画面：Keyword输入后、列表出现、选中记录、Headers、Tree→Raw→Hex→Fullscreen→Raw/Copy→Escape全部沿用这一次POST和同一行身份；Headers保留实际JSON MIME。`body-json-example.json`只记录本轮真实URL、方法、请求/响应及行ID，不发送第二条请求凑图。补充序列须重跑原`body-scenarios.workflow.ts`，旧43张步骤图不能充当新增动作的实拍。
+- 同一个`body-json`提供入门所需画面：Keyword输入后、列表出现、选中记录、Headers、Tree→Raw→Hex→Fullscreen→Raw/Copy→Escape全部沿用这一次POST和同一行身份；Headers保留实际JSON MIME。`body-json-example.json`只记录本轮真实URL、方法、请求/响应及行ID，不发送第二条请求凑图。
 - 全屏Header Copy之后，先真实点击弹窗内Raw模式按钮，确认该按钮获得焦点、仍选中Raw且Copy tooltip已关闭，再发送一次Escape。不能把先关闭tooltip当成关闭dialog；保持原dialog消失、Raw保留和正文一致断言，不改用Close或增加等待时间。
 - 同流程的原Markdown输入仍为`# Capture Lab\n\n- request\n- response\n`。Preview核对标题/列表后，通过模式组真实右方向键依次选Split和Source；Split必须同时显示渲染预览和带`#`的源码，Source只有源码。Source的Copy逐字核对原文，再打开Fullscreen、Escape返回并核对Source保留，最后恢复Preview。没有给产品补模式ID或使用显示文案定位控件。
 - `section-collapse`的原无Query GET、Header独立折叠、Timing布局与全部断言保持先执行。随后通过同一真实origin/client追加`/e2e/capture/section-collapse/query?orderId=ord_42&tag=books&tag=featured&message=hello%20capture`，仅切换Keyword到该自产子路径；Request的Query必须显示四行、保留两个`tag`并将空格解码为`hello capture`。真实折叠/展开Query，保持同一行身份。
 - 同一Query请求中通过`capture.inspector.splitter`真实向左拖120px，验证Inspector变宽且Query内容不变；在`finally`通过真实拖拽恢复原宽度并再次核对。原Header/Timing尺寸断言不移到扩宽后，也不以截图延迟替代边界断言。
 - `tls-scenarios`的跨协议映射继续使用原`E2E HTTPS to HTTP mapping`、源Host `localhost`、Path `/e2e/rules/tls-mapping`与HTTP目标`127.0.0.1:<本轮端口>/e2e/rules/mapped-http`。分别拍真实字段、scheme选择、启用和Apply；原客户端200/`owned-http-mapping-result`及目标GET断言之后，通过Capture的`/e2e/rules/`筛选查看本次响应。停用/Apply后保留原`/disabled`请求的404断言并在Capture查看该行，`https-http-mapping.json`记录真实两端URL。不能用之前的Tunnel或解密JSON图代表映射结果。
-- Rules旧`rules-routing`的14张可见图中，前6张由Map Remote覆盖。Map Local文件步骤扩在同一个原`tls-scenarios`内：先从映射成功的Capture Response点击Save，经原生Dialog写入本轮`https-map-local-response.txt`；文件原先必须不存在，产品完成后逐字节/hash核对`owned-http-mapping-result`，不可由测试预写导入文件。
+- Map Local文件步骤在同一个`tls-scenarios`内：先从映射成功的Capture Response点击Save，经原生Dialog写入本轮`https-map-local-response.txt`；文件原先必须不存在，产品完成后逐字节/hash核对`owned-http-mapping-result`，不可由测试预写导入文件。
 - 保留Map Remote原`/disabled`的404及所有断言后，在同一规则中移除Map Remote、添加Map Local，Host和原路径前缀不变。填写不存在的`https-map-local-missing.txt`、启用并Save；新HTTPS `/map-local-missing`必须返回404与`Map Local target not found.`，Capture通过该完整自产path筛选并查看实际Response。
 - 再通过Map Local的真实可编辑路径输入框改为上述产品Save的文件并Save；新HTTPS `/map-local-enabled`必须返回200，实际响应字节必须等于已保存文件，Capture显示同一正文。这里没有文件选择按钮，不用原生Open或内部API假装选择文件。
-- 最后停用并Save，再发新HTTPS `/map-local-disabled`；实际结果必须恢复原TLS服务的404和空正文，不再返回缺失文件提示或文件内容。`https-map-local.json`保存真实URL、原Save来源行、文件字节/hash和三次请求的行身份；产品生成的文件作为attachment保留，原路径在`finally`删除。保留原Edge系统信任、CA/Root和宿主退出恢复。macOS原流程已在`2026-10-21T13-36-04-054Z-XO6oHx`通过，38帧均为英文，`hostRestored`与`gracefulDestroyVerified`均为true；新增文件段尚无Windows结果。
+- 最后停用并Save，再发新HTTPS `/map-local-disabled`；实际结果必须恢复原TLS服务的404和空正文，不再返回缺失文件提示或文件内容。`https-map-local.json`保存真实URL、原Save来源行、文件字节/hash和三次请求的行身份；产品生成的文件作为attachment保留，原路径在`finally`删除。保留原Edge系统信任、CA/Root和宿主退出恢复。
 - `/enabled`、`/disabled`与三个`/map-local-*`后缀属于不同的完整URL，不能把它们说成重复同一URL。不用共享HTTPS清理结束后的页面代替缺失的Certificates步骤图，也不在Map Local实机通过前采用旧本地文件图的替代素材。
 - `tools-har-transfer`只扩原UI阶段，不新增教程workflow或HAR输入。采集自产POST时用真实Keyword `/e2e/har-tools/`并折叠非必要facet；原Agent/MCP的授权、取消、暂停/Clear、两次产品Import及All范围不变。Capture UI的All导出实际四条，Filter实际两条文本记录，Selected实际一条。选中后通过真实Response页查看自产正文，截图不展示Request Headers内的测试凭据。
 - HAR弹窗先检查Authorization/Cookie默认遮罩、`strip bodies`未勾选，再记录All/Filter/Selected和原生Save；原全局Privacy关闭后的override/plain/stripped三次导出分别核对真实checkbox状态、文件条数、Headers与正文，最后恢复Privacy默认。每张图的编号对应菜单项、范围按钮、checkbox或实际返回页控件，不将Export按钮当成完成状态标志。
@@ -179,8 +158,6 @@ USB异常不把受控流量绕过PC发送；重连创建新会话且不重放；
 <a id="capture-http2-origin-goaway"></a>
 ## `capture.http2-origin-goaway`
 
-**状态**：Windows实机已验；macOS保留既有记录。
-
 1. 独立profile、trace和宿主基线启动真实Electron/Core/8888，复用共享受信任CA；经Certificates UI只添加测试localhost例外并开启MITM，经Capture UI开启Recording。
 2. 通过Rules UI创建只匹配本轮自产路径的响应断点并Apply。使用TrafficLab的真实TLS/H2 origin，POST正文固定且只发送一次；响应为4MiB、Content-Length精确匹配，并带自产校验trailer。Core integration另覆盖384KiB边界。
 3. Capture以`/e2e/h2/origin-goaway/`搜索，正常折叠非必要facet；等待真实暂停行与Continue unmodified按钮并以该按钮作截图标注。源站在响应未放行时发送正常GOAWAY并结束全部正文/trailer；不通过Preload或Store解除断点。
@@ -188,14 +165,13 @@ USB异常不把受控流量绕过PC发送；重连创建新会话且不重放；
 5. 在同一下游连接上发送另一个自产路径的新请求；源站须使用新的上游session，两个POST各只出现一次，不重放原请求、不换下游连接掩盖旧请求失败。选中新`/next` POST并打开Response Raw，核对该路径的JSON后截图；不是旧响应的另一张图，也不是GET。
 6. 保存wire字节/hash、源站次数/session、Capture身份、截图、trace及每代metadata；真实删除本轮规则、关闭MITM并移除localhost例外，产品Close后验证Main/Core/Worker全退、8888与完整代理/CA/Root恢复，再删除profile。
 
-此流程的前置Red必须是正文、trailer或终态不满足，不以构建、选择器、授权或清理失败代替。DATA.END_STREAM、真正提前EOF、并发和生命周期边界由Core integration交叉覆盖；Windows实机归第8项。
+此流程的前置Red必须是正文、trailer或终态不满足，不以构建、选择器、授权或清理失败代替。DATA.END_STREAM、真正提前EOF、并发和生命周期边界由Core integration交叉覆盖；Windows使用本平台driver与真实原生环境验收。
 
 <a id="capture-body-fullscreen"></a>
 ## `capture.body.fullscreen`
 
 末行Copy：origin在JSON/HTML响应中返回`x-copy-wrap: private, max-age=60, s-maxage=60, stale-while-revalidate=300`；通过自产Header key定位实际行。离开行Copy透明、hover显示，Copy所属末行18px且flex居中，紧随文字4px；原生跨行选择及按钮Copy均为完整Header值。保存`header-copy-last-line-{json,html}.json/png`再断言。
 
-**状态**：Windows的URL就绪门禁已有前置Red与最终Green；精准筛选后JSON/HTML的Header hover、标题和General复制及完整退出恢复通过。既有失败保留，不以最终Green改写历史。
 **策略**：真实Capture Request/Response；共享BodyViewer/BodyFullscreen；真实剪贴板
 
 General的POST值使用共享IconButton inline档，按钮18x18px、Lucide图标实际14x14px、padding0；离开行opacity0、hover后1且复制完整POST。保存`header-copy-{json,html}.json/png`；不修改语言、不强制显示所有Copy。
@@ -207,14 +183,6 @@ General的POST值使用共享IconButton inline档，按钮18x18px、Lucide图标
 3. 正文分组标题按设计使用normal字体行高；MIME/大小计数不继承标题的uppercase和字距，保留原本大小写与normal字距。Request的空Query提示使用当前ConfigProvider正文行高token，不继承Shell压缩行高。真实点击弹层Header的Copy，剪贴板必须逐字等于原始正文；Header的Close退出后保持Raw与相同正文。
 4. 再次打开并切Hex，用Escape关闭后仍选中Hex；返回Raw并通过内联Copy确认原始字节不变。响应HTML只作为代码显示。
 5. 保存每个正文的身份、Copy/模式断言、trace与截图；Renderer不得有page error，fixture正常退出Main/Core/Worker并恢复8888、WinINet/journal。
-
-### URL就绪门禁与Windows证据
-
-- `inspector-url-copy.test.ts`覆盖详情未加载、当前URL就绪、保留上一条详情和同一请求刷新；前置2项失败，修复后同组全绿，Inspector tab/行摘要相关测试共27项通过。
-- 真实前置`fullscreen-before`在已精准筛选后仍把`http://127.0.0.1:55192/e2e/fullscreen-json`复制为`127.0.0.1/e2e/fullscreen-json`；这是产品行为Red，不是筛选或环境失败。
-- 最终`fullscreen-final`核对标题与General的完整URL、两种响应的Header hover、完整Header值和正文复制、Raw/Hex及Fullscreen模式保持。URL截图在实际复制及断言之后保存，不用截图等待掩盖快速点击竞态。
-- 两代metadata均确认正常退出；最终通过产品卸载/删除本轮唯一CA，宿主代理、Root、journal和8888恢复。原始report、trace、截图与恢复结果保留在会话files的`item8-url-ready-202610112240`。
-- Capture浅/深色parity的84个目标全部匹配，无缺失或flagged项，最大几何偏差0.5px；像素差异仍分别报告，不将像素diff视为零。未修改正式设计截图或Header CSS。
 
 ## 多协议测试输入
 
@@ -236,7 +204,6 @@ General的POST值使用共享IconButton inline档，按钮18x18px、Lucide图标
 <a id="capture-scenarios-http"></a>
 ## `capture.scenarios.http`
 
-**状态**：passed
 **策略**：真实Electron；复用Playground流量库；不启动Playground页面，不新增流量工具的测试
 
 ### Steps
@@ -259,7 +226,7 @@ General的POST值使用共享IconButton inline档，按钮18x18px、Lucide图标
 - 只新增现有产品行为的E2E覆盖，不人为制造Red；若发现产品故障，先保存真实失败证据并补所属模块测试，再修改产品。
 - 长上传取消在两个2 MiB分块已由origin接收并由Capture显示后，由client真实断开；origin必须关闭且未完整接收，Capture保留4 MB及同一行且不再显示进行中占位，不要求生成未收到的200或响应正文。
 - SSE证据保存响应头发出前及两次事件到达后的行内容、公共行身份、实际字节数与origin/client结束状态；三种结束方式分别记录，不以正常结束通过替代取消/reset。本步骤不代表Rule命中、H2大Range或gRPC streaming通过。
-- 通过一个场景不提升整组或39项总量；逐场景记录实际Green及退出恢复证据。
+- 每个场景分别记录运行结果及退出恢复证据，不以单个场景代表整组通过。
 - early response必须在Request区块显示38字节并可读完整`{"request":"continues-after-response"}`；响应为`sent-before-request-completed`。413例外独立验收，不能用普通提前200场景的通过替代。
 - 413验收不以中断事件为前提，也不把所有错误状态视为同一规则；完整413响应接收后可读取已捕获上传正文，迟到事件不改写终态。真实请求是否继续发送或关闭仍由客户端和origin决定，Core只调整Capture记录。
 - 应用归属迟到不得覆盖终态或耗时，`h1-abort`等待占位断言保留。
@@ -267,7 +234,6 @@ General的POST值使用共享IconButton inline档，按钮18x18px、Lucide图标
 <a id="capture-scenarios-http2"></a>
 ## `capture.scenarios.http2`
 
-**状态**：passed；源站正常GOAWAY另行跟踪，不在本流程通过范围
 **策略**：真实Electron；正式Certificates UI；复用已初始化共享CA；host-safety-guard
 
 ### Steps
@@ -279,7 +245,7 @@ General的POST值使用共享IconButton inline档，按钮18x18px、Lucide图标
 5. 保存trace、截图和协议/行身份；`finally`通过UI停用MITM、删除localhost例外，保留共享CA材料与信任并比较完整Root集合。
 6. fixture正常退出Electron，验证Main/Core/Worker、8888、WinINet/journal恢复；失败保留profile。fixture不新增unit/integration测试。
 
-同一workflow先补单流正文过程：`GET /e2e/h2/body-progress`返回`text/plain; charset=utf-8`，声明131072字节。源站先写64KiB的`a`，再写64KiB的`b`但不结束；客户端与同一Capture行分别到64/128KiB，两次均未收到END。真实打开Response观察两阶段，再结束响应；同一行保持身份、显示128KB与结束耗时，Text可读。Copy按长度和SHA核对完整128KiB，再在Headers查看`x-capture-end: complete`。不更改下面Range输入，不以另一个请求或复制预览代替完整正文；新检查点待真实Green。
+同一workflow验证单流正文过程：`GET /e2e/h2/body-progress`返回`text/plain; charset=utf-8`，声明131072字节。源站先写64KiB的`a`，再写64KiB的`b`但不结束；客户端与同一Capture行分别到64/128KiB，两次均未收到END。真实打开Response观察两阶段，再结束响应；同一行保持身份、显示128KB与结束耗时，Text可读。Copy按长度和SHA核对完整128KiB，再在Headers查看`x-capture-end: complete`。不更改下面Range输入，不以另一个请求或复制预览代替完整正文。
 
 同一workflow补充三种多stream场景：每种使用一个真实CONNECT/TLS/H2 session，同时请求两个6 MiB Range。共享TLS origin各先发送2 MiB，尚未结束时通过真实Capture列表核对两条独立H2/GET/206记录及2 MB，在Headers核对Range、Content-Range和Content-Length，保存stream ID、公共行身份、字节数及进行中截图。正常完成后客户端逐流hash一致、原行变为6 MB且Time不再占位；Clear必须点击产品按钮，剩余数据继续完整转发、旧行不恢复，同一连接的新请求仍可录制；取消只发送首条stream的NGHTTP2_CANCEL，源站对应响应关闭、Capture保留2 MB及结束耗时，另一条仍完整接收6 MiB。确定性Core终态由已有H2集成覆盖，UI不虚构未展示的协议字段。每种保存`h2-ranges-<action>.json`和前后截图，最后仍由同一workflow通过真实UI恢复CA/Root及宿主，不增加产品测试专用入口。
 
@@ -292,7 +258,6 @@ General的POST值使用共享IconButton inline档，按钮18x18px、Lucide图标
 <a id="capture-scenarios-bodies"></a>
 ## `capture.scenarios.bodies`
 
-**状态**：passed
 **策略**：真实Electron；现有TrafficLab；不新增Playground工具测试
 
 ### Steps
@@ -313,7 +278,6 @@ UTF-8场景使预览边界落在2/3/4字节字符内，分别检查普通文本�
 <a id="capture-scenarios-body-media"></a>
 ## `capture.scenarios.body-media`
 
-**状态**：Windows媒体布局与真实Save原记录保留；macOS新增全窗口英文元信息与保存前后检查点已通过，来源`2026-10-21T19-01-48-619Z-tbNOPz`。
 **策略**：真实Capture UI；Windows原生Save Dialog；现有流量库
 
 ### Steps
@@ -329,7 +293,6 @@ UTF-8场景使预览边界落在2/3/4字节字符内，分别检查普通文本�
 <a id="capture-scenarios-encoding"></a>
 ## `capture.scenarios.encoding`
 
-**状态**：passed；五种编码/损坏场景Green，原始字节与错误信息均保留
 **策略**：真实Capture UI；现有压缩/损坏场景；host-safety-guard
 
 ### Steps
@@ -345,8 +308,6 @@ UTF-8追加步骤：通过同一真实origin发送超过预览上限的gzip输�
 <a id="capture-scenarios-websocket"></a>
 ## `capture.messages.compact-layout`（普通WebSocket与gRPC正文）
 
-**状态**：Windows消息布局、拖拽、Copy、全屏与gRPC分页已验；窗口缩放子步骤保留macOS原记录。
-
 1. 每种协议独立fresh profile、trace及完整宿主基线；通过真实UI启动Recording。WebSocket使用现有loopback echo；gRPC通过Certificates复用共享CA、添加localhost源站例外并开启MITM，使用现有TLS/H2 origin，不能生成/清理日常CA。
 2. 经真实8888发送一条短消息和一条含末尾唯一标记的长消息。客户端/origin核对完整字节与协议结束，再由Capture自产路径定位连接，使用公共消息ID展开载荷，选择Text/Raw或默认Pretty，不注入Store或正文。
 3. 短消息外框等于Monaco内容高加实际上下边框，字体12px/行高20px/上下padding13px保持；长消息初始外框不能超过所属滚动容器当前可用空间且必须存在内部滚动，不能使用固定441px或360px断言代替容器计算。
@@ -361,7 +322,6 @@ WebSocket输入使用binary JSON消息以沿用内容探测与Pretty/Raw，正�
 
 ## `capture.scenarios.websocket`
 
-**状态**：passed
 **策略**：真实Capture Messages；现有WebSocket流量库；方向/载荷/连接隔离
 
 Binary行排版目标：在原ws-binary的Sent/Received两方向各保存`websocket-binary-row-{sent,received}.json/png`，核对消息行38px、mono10.5px、自然行高和父行center。该值来自设计消息行，不用固定像素补偿单个Binary标签；现有内容/Copy/方向和Tree/UTF-8步骤不变。
@@ -385,7 +345,6 @@ Compact正文尺寸：在真实binary JSON消息默认Pretty档、切Tree之前�
 <a id="capture-scenarios-grpc"></a>
 ## `capture.scenarios.grpc`
 
-**状态**：passed
 **策略**：真实gRPC Inspector；正式CA/MITM UI；现有H2流量库
 
 ### Steps
@@ -407,7 +366,6 @@ Compact正文尺寸：在真实binary JSON消息默认Pretty档、切Tree之前�
 <a id="capture-scenarios-tls"></a>
 ## `capture.scenarios.tls`
 
-**状态**：macOS原38帧流程及新增末尾Certificates清理已完整通过，最新来源`2026-10-21T15-08-55-695Z-hFPcCP`；包含产品Save生成25字节文件、缺失路径404/27字节提示、修正后200/25字节原文、停用后404/空正文、Edge系统信任及正常退出/宿主恢复。原`2026-10-21T13-36-04-054Z-XO6oHx`保留；新增Map Local文件段的Windows验证尚未执行。
 **策略**：真实TLS/CONNECT；正式Certificates UI；同代解密前后对比
 
 ### Steps
@@ -426,7 +384,6 @@ Compact正文尺寸：在真实binary JSON消息默认Pretty档、切Tree之前�
 <a id="capture-tools-archive-transfer"></a>
 ## `capture.tools.archive-transfer`
 
-**状态**：既有流程passed；新增公开路由隔离、UI同文件8→16追加与English检查点已通过，来源`2026-10-21T17-26-41-702Z-Sz4VPq`中的Archive独立测试
 **策略**：native-ui；Windows/macOS；两代真实Electron；host-safety-guard
 
 ### Steps
@@ -448,8 +405,6 @@ Compact正文尺寸：在真实binary JSON消息默认Pretty档、切Tree之前�
 
 <a id="capture-playground-traffic"></a>
 ## `capture.playground-traffic`
-
-**状态**：passed
 
 **策略**：os-side-effect
 
@@ -473,7 +428,6 @@ Playground不是直接构造Core状态的测试后门；真实Browser点击自�
 <a id="capture-recording-pause-resume"></a>
 ## `capture.recording.pause-resume`
 
-**状态**：passed
 **策略**：os-side-effect
 
 ### Steps
@@ -496,7 +450,6 @@ Core录制所有权调整时，先后运行本流程与`capture.clear-facets`，
 <a id="capture-proxy-readiness-resolve"></a>
 ## `capture.proxy-readiness.resolve`
 
-**状态**：planned
 **策略**：os-side-effect
 
 ### Steps
@@ -519,7 +472,6 @@ Cancel和打开设置均无隐式系统写入；只有用户点击Enable后才�
 <a id="capture-traffic-capture-select"></a>
 ## `capture.traffic.capture-select`
 
-**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -542,7 +494,6 @@ Cancel和打开设置均无隐式系统写入；只有用户点击Enable后才�
 <a id="capture-inspector-section-collapse"></a>
 ## `capture.inspector.section-collapse`
 
-**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -561,7 +512,6 @@ Cancel和打开设置均无隐式系统写入；只有用户点击Enable后才�
 <a id="capture-filter-keyword"></a>
 ## `capture.filter.keyword`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -584,7 +534,6 @@ Keyword只过滤视图，不删除全量Capture；计数与可见row同步；清
 <a id="capture-filter-structured"></a>
 ## `capture.filter.structured`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -607,7 +556,6 @@ Keyword只过滤视图，不删除全量Capture；计数与可见row同步；清
 <a id="capture-filter-group-selection"></a>
 ## `capture.filter-group-selection`
 
-**状态**：passed
 **策略**：shared
 
 ### Steps
@@ -626,7 +574,6 @@ option选择与分组展开是正交状态；选择或取消option只更新筛�
 <a id="capture-filter-protocol"></a>
 ## `capture.filter.protocol`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -649,7 +596,6 @@ option选择与分组展开是正交状态；选择或取消option只更新筛�
 <a id="capture-facet-stable-ordering"></a>
 ## `capture.facet-stable-ordering`
 
-**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -671,7 +617,6 @@ option选择与分组展开是正交状态；选择或取消option只更新筛�
 <a id="capture-clear-facets"></a>
 ## `capture.clear-facets`
 
-**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -690,7 +635,6 @@ Clear是空rows的同步边界：列表、selection与facet snapshot在同一次
 <a id="capture-breakpoint-menu-hierarchy"></a>
 ## `capture.breakpoint-menu-hierarchy`
 
-**状态**：原几何断言与新增Block/Endpoint实际执行检查点已完整通过，来源`2026-10-21T19-33-47-163Z-5INkK1`
 **策略**：privileged UI
 
 ### Steps
@@ -712,7 +656,6 @@ Breakpoint submenu与Block同属Control group，icon、语义label与hint使用�
 <a id="capture-breakpoint-submenu-lifecycle"></a>
 ## `capture.breakpoint-submenu-lifecycle`
 
-**状态**：原菜单生命周期及新增Manager/Undo、HTTP客户端取消均已通过，来源`2026-10-21T19-44-10-238Z-JNfI58`
 **策略**：privileged UI
 
 ### Steps
@@ -743,7 +686,6 @@ Breakpoint submenu由同一Ant Menu树管理：hover展开不会用第二页替�
 <a id="capture-navigate-tls-passthrough"></a>
 ## `capture.navigate-tls-passthrough`
 
-**状态**：既有导航、列表布局和同URL三连接HTTPS透传往返均已通过，来源`2026-10-21T18-54-54-381Z-if8Bkz`
 **策略**：privileged UI
 
 ### Steps
@@ -770,7 +712,6 @@ Tunnel入口导航到实际覆盖当前host的最具体持久化pattern；Settin
 <a id="capture-facets-clear-menu"></a>
 ## `capture.facets-clear-menu`
 
-**状态**：planned
 **策略**：privileged UI
 
 ### Steps
@@ -797,7 +738,6 @@ Tunnel入口导航到实际覆盖当前host的最具体持久化pattern；Settin
 <a id="capture-detail-body-fill"></a>
 ## `capture.detail-body-fill`
 
-**状态**：passed
 **策略**：privileged UI
 
 ### Steps
@@ -817,7 +757,6 @@ Response tab只有一个Body section时，toolbar保持40px，正文pane吃满In
 <a id="capture-list-virtual-scroll"></a>
 ## `capture.list.virtual-scroll`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -840,7 +779,6 @@ TanStack Virtual只渲染有限row；大量数据下选择、滚动和跨workspa
 <a id="capture-inspector-body-modes"></a>
 ## `capture.inspector.body-modes`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -863,7 +801,6 @@ Auto/Text/JSON/Hex语义准确；真实body range与显示一致；非法内容�
 <a id="capture-protocols-without-mitm"></a>
 ## `capture.protocols.without-mitm`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -908,7 +845,6 @@ Auto/Text/JSON/Hex语义准确；真实body range与显示一致；非法内容�
 <a id="capture-protocols-with-mitm"></a>
 ## `capture.protocols.with-mitm`
 
-**状态**：planned
 **策略**：privileged UI；headed；需要本机UAC/macOS Authorization
 
 ### Steps
@@ -972,7 +908,6 @@ Auto/Text/JSON/Hex语义准确；真实body range与显示一致；非法内容�
 <a id="capture-inspector-resize"></a>
 ## `capture.inspector.resize`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -995,7 +930,6 @@ Inspector/List遵守最小宽度；splitter拖动线性且受限；summary、tab
 <a id="capture-clear"></a>
 ## `capture.clear`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -1020,7 +954,6 @@ Clear是唯一删除Capture入口；它删除Exchange、Body和spill，原子重
 <a id="capture-tools-body-export"></a>
 ## `capture.tools.body-export`
 
-**状态**：passed
 **策略**：native-ui；Windows；两代真实Electron；host-safety-guard
 
 ### Steps
@@ -1053,8 +986,7 @@ owning unit/integration覆盖，真实Electron锁定用户流程；原生焦点�
 <a id="capture-tools-transfer-jobs"></a>
 ## `capture.tools.transfer-jobs`
 
-**状态**：既有运行中取消与窗口退出passed；新增公开路由隔离、UI Cancel→Clear→重新录制和English检查点已通过，来源`2026-10-21T18-51-41-246Z-vWvRUk`；取消提交点竞态未验
-**策略**：native-ui；保留Windows基线，macOS新增检查点已验；两代真实Electron；host-safety-guard
+**策略**：native-ui；Windows/macOS；两代真实Electron；host-safety-guard
 
 ### Steps
 
@@ -1087,7 +1019,6 @@ AbortSignal并清理I/O，而不是仅将界面改为cancelled。保存各阶段
 <a id="capture-tools-har-transfer"></a>
 ## `capture.tools.har-transfer`
 
-**状态**：既有HAR警示、真实Save/Open、Agent/MCP与双代恢复验收保留；新增同次GUI `ui.har` 四条导出→追加到八条及完整正文检查点已通过，来源`2026-10-21T19-01-48-619Z-tbNOPz`。旧`complete.har`来源继续保留，不将其冒充新的同文件回导。
 **策略**：native-ui；Windows/macOS；两代真实Electron；host-safety-guard
 
 ### Steps
@@ -1119,16 +1050,11 @@ AbortSignal并清理I/O，而不是仅将界面改为cancelled。保存各阶段
 读取文件内容。任务摘要不宣称开始即完成；范围、脱敏和正文完整性分别以输出文件和实际Capture结果交叉证明。
 损坏HAR、流式内存及提交点竞态不在本workflow造故障验收。
 
-English截图复验记录：
-
-- `2026-10-21T13-24-29-192Z-q56kfT`在UI All计数断言失败：按钮文本是`All traffic4`，`\b4\b`不能匹配连写文本。这是selector失败，不是产品Red；12张失败图不采用。All/Filter/Selected统一改读公共范围按钮末尾的独立计数`span`，用`toHaveText('4'/'2'/'1')`精确比较，不能误接受`14`。
-- 同次`437380ms`包含原`420000ms`预算与`17380ms`截图开销。原生Save/Open及业务已在`13:26:14Z`推进到UI Export；计数断言失败后进入原先停trace的清理区间，直到`13:32:08Z`才恢复trace。`closeGeneration()`此前没有处理失败后留存的HAR弹窗，却先点击其遮罩后的Settings；现在先通过真实Cancel/Close移除该弹窗，再转Settings和正常退出，不增加timeout。
-- 中间敏感区间未录BrowserContext trace，不能把整段空窗称为单个原生Dialog或网络请求的测量耗时。保留原输入、文件/隐私断言、双代恢复与失败错误传播；修正后的原HAR流程及最新同文件回导已由上述完整来源验证，历史失败不采用。
+All/Filter/Selected的计数读取公共范围按钮内的独立计数`span`并精确比较，不从包含标签的整段文本猜测。清理先通过真实Cancel/Close关闭HAR弹窗，再进入Settings恢复状态并正常退出。隐私保护期间未录制的trace区间不能作为原生Dialog或网络请求的耗时证据。
 
 <a id="capture-transfer-har-roundtrip"></a>
 ## `capture.transfer.har-roundtrip`
 
-**状态**：planned
 **策略**：native-ui + os-side-effect
 
 ### Steps
@@ -1151,7 +1077,6 @@ HAR输入由同一workflow的真实Capture生成；标准HAR可解析，Clear后
 <a id="capture-transfer-archive-roundtrip"></a>
 ## `capture.transfer.archive-roundtrip`
 
-**状态**：planned
 **策略**：native-ui + privileged UI
 
 ### Steps

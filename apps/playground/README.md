@@ -121,6 +121,6 @@ OpenAI-compatible 模型模拟继续由 Agent fixture 所有，不并入不接 L
 | `abortable-attempts` | 取消与页面失效后的迟到结果不能覆盖当前场景，主动取消仍能呈现终态 |
 | HTTP / TLS / WebSocket controls及`traffic-lab` integration | 验证真实wire字节、握手、帧/流、取消、断开和端口释放，保护供产品E2E使用的流量源及证据真实性 |
 
-recipe名称全量清单测试已移除：键集合由`CurrentToolName`和`satisfies Record`约束，非空文字检查不能证明人工步骤正确。Capture workspace的宽度常量、JSON往返及协议文案派生测试也已移除：以实际页面拖拽、编辑Draft和协议场景检查为准，服务端Draft边界测试仍保留。
+recipe键集合由`CurrentToolName`和`satisfies Record`约束，非空文字检查不能证明人工步骤正确。Capture workspace的宽度、JSON往返和协议文案以实际页面拖拽、编辑Draft及协议场景检查为准，服务端Draft边界由既有测试保护。
 
-辅助测试精简不修改工具或产品实现，也不修改真实workflow。`traffic-lab` integration的临时proxy独立登记入站与上游socket，停止listener后销毁本轮连接并等待关闭；清理按创建的反序执行，错误聚合报告，不用`allSettled`吞掉失败。TLS场景保留，不以删除场景或扩大超时处理清理问题。
+`traffic-lab` integration的临时proxy独立登记入站与上游socket，停止listener后销毁测试连接并等待关闭；清理按创建的反序执行，错误聚合报告，不用`allSettled`吞掉失败。TLS场景保留，不以删除场景或扩大超时处理清理问题。

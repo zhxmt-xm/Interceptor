@@ -19,7 +19,6 @@ Diagnostics只保留原`tools-queries-export.workflow.ts`，截图由同一流�
 <a id="diagnostics-tools-queries-export"></a>
 ## `diagnostics.tools.queries-export`
 
-**状态**：passed
 **策略**：native-ui；Windows；两代真实Electron；host-safety-guard
 
 ### Steps
@@ -47,7 +46,6 @@ Diagnostics只保留原`tools-queries-export.workflow.ts`，截图由同一流�
 <a id="diagnostics-list-detail"></a>
 ## `diagnostics.list-detail`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -70,7 +68,6 @@ Diagnostics展示真实Core/Main命令链，不使用静态fixture；List与Deta
 <a id="diagnostics-filters"></a>
 ## `diagnostics.filters`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -93,7 +90,6 @@ Filter变化触发权威Core query；组合条件准确；selection与轮询合�
 <a id="diagnostics-pagination"></a>
 ## `diagnostics.pagination`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
@@ -116,7 +112,6 @@ Keyset pagination稳定；历史追加、新记录头部合并和去重同时成
 <a id="diagnostics-export"></a>
 ## `diagnostics.export`
 
-**状态**：planned
 **策略**：native-ui
 
 ### Steps
@@ -139,7 +134,6 @@ Keyset pagination稳定；历史追加、新记录头部合并和去重同时成
 <a id="diagnostics-resize"></a>
 ## `diagnostics.resize`
 
-**状态**：planned
 **策略**：shared
 
 ### Steps
