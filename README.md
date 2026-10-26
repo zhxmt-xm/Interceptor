@@ -2,34 +2,44 @@
   <img src="apps/desktop/assets/interceptor-icon.png" width="80" height="80" alt="Interceptor logo">
 </p>
 
-# Interceptor
+<h1 align="center">Interceptor</h1>
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+<p align="center"><b>Open-source HTTP(S) debugging proxy for Windows &amp; macOS</b><br>
+See what your app sends. Change what it receives.</p>
 
-**See what your app sends. Change what it receives. Reproduce the problem.**
+<p align="center">
+  <a href="https://github.com/zhxmt-xm/Interceptor/releases"><img alt="Release" src="https://img.shields.io/github/v/release/zhxmt-xm/Interceptor?include_prereleases&amp;label=release&amp;color=6a5bf0"></a>
+  <a href="https://github.com/zhxmt-xm/Interceptor/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/zhxmt-xm/Interceptor/total?color=6a5bf0"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/zhxmt-xm/Interceptor?color=6a5bf0"></a>
+  <img alt="Platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS-6a5bf0">
+</p>
 
-Interceptor is a desktop HTTP(S) debugging proxy for web/API developers and QA engineers on **Windows and macOS**. Inspect HTTP/1.1, HTTP/2, WebSocket and gRPC traffic, test a different response without changing the server, and replay requests from one workspace. Agent and MCP add optional AI assistance; ordinary debugging needs no model account.
+<p align="center">
+  <a href="https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-win32-x64.exe"><b>Download for Windows</b></a> ·
+  <a href="https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-darwin-arm64.dmg"><b>Download for macOS</b></a><br>
+  <sub>Alpha preview · Windows x64 · macOS Apple Silicon &amp; Intel · <a href="https://github.com/zhxmt-xm/Interceptor/releases">all builds and notes</a></sub>
+</p>
 
-[Website](https://www.interceptor.cn/) | [Download](#download) | [Quick Start](#quick-start) | [Features](#features) | [Illustrated Guide](https://www.interceptor.cn/en/guide) | [Feedback](https://github.com/zhxmt-xm/Interceptor/issues)
+[简体中文](README.zh-CN.md) | [Website](https://www.interceptor.cn/) | [Quick Start](#quick-start) | [Features](#features) | [Illustrated Guide](https://www.interceptor.cn/en/guide) | [Feedback](https://github.com/zhxmt-xm/Interceptor/issues)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-capture-dark.png">
   <img src="architecture/assets/readme-capture-light.png" alt="Capture showing six local HTTP requests and the selected order response as formatted JSON" width="1600">
 </picture>
 
-*Real App screenshots from the macOS release, with a Chinese interface and controlled local traffic, not design mockups. Light and dark images use the App's themes. [Screenshot sources and demonstration limits](architecture/assets/readme-media.json).*
+*Screenshots from v0.1.1-alpha.1 on macOS. [Source and limits](architecture/assets/readme-media.json).*
+
+Interceptor is a desktop HTTP(S) debugging proxy for web/API developers and QA engineers on **Windows and macOS**. Inspect HTTP/1.1, HTTP/2, WebSocket and gRPC traffic, test a different response without changing the server, and replay requests from one workspace. Agent and MCP add optional AI assistance; ordinary debugging needs no model account.
 
 ## Download
 
-Available pre-release: [v0.1.1-alpha.1](https://github.com/zhxmt-xm/Interceptor/releases/tag/v0.1.1-alpha.1). Choose your OS and CPU below, or see [all releases and compatibility notes](https://github.com/zhxmt-xm/Interceptor/releases).
+Alpha preview: [v0.1.1-alpha.1](https://github.com/zhxmt-xm/Interceptor/releases/tag/v0.1.1-alpha.1). Choose your OS and CPU below, or see [all releases and compatibility notes](https://github.com/zhxmt-xm/Interceptor/releases). Alpha builds may still change data formats and interface details.
 
 | Platform | Downloads | Installation |
 | --- | --- | --- |
 | macOS · Apple Silicon (arm64) | [DMG](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-darwin-arm64.dmg) · [ZIP](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-darwin-arm64.zip) | Copy Interceptor to Applications before opening it. |
 | macOS · Intel (x64) | [DMG](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-darwin-x64.dmg) · [ZIP](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-darwin-x64.zip) | Copy Interceptor to Applications before opening it. |
 | Windows · x64 | [EXE](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-win32-x64.exe) · [MSI](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-win32-x64.msi) · [ZIP](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-win32-x64.zip) | Run an installer, or extract the entire ZIP before launching the App. |
-
-**Access:** the product repository, release downloads, issues and the published Guidebook are anonymously accessible. The separate website source repository remains private.
 
 <details>
 <summary>Installation permissions, signing and updates</summary>
@@ -40,8 +50,6 @@ Available pre-release: [v0.1.1-alpha.1](https://github.com/zhxmt-xm/Interceptor/
 - Updates use GitHub Releases. Checks are anonymous; the App does not request a GitHub login or token. Downloading and opening an installer remain explicit user actions.
 
 </details>
-
-Release assets are not a claim that every platform-specific workflow has been verified. Read the release's validation notes and the guide's platform prerequisites. These screenshots show macOS, not Windows or Android.
 
 ## Quick Start
 
@@ -115,7 +123,7 @@ Composer sends directly: its requests do not enter Capture or run through Rules.
   <img src="architecture/assets/readme-agent-light.png" alt="The built-in Agent beside Capture, displaying a response from a clearly labeled local demonstration model" width="1600">
 </picture>
 
-*This screenshot uses a deterministic, keyless local demonstration model, not a commercial model performance or compatibility test.*
+*Local demonstration model, not a commercial model test.*
 
 [Agent setup and conversation walkthrough](https://www.interceptor.cn/en/guide/agent)
 
@@ -130,7 +138,7 @@ Composer sends directly: its requests do not enter Capture or run through Rules.
   <img src="architecture/assets/readme-mcp-light.png" alt="Settings showing a running loopback MCP server, a local demonstration client and separate Agent and MCP Tool switches" width="1600">
 </picture>
 
-*This screenshot shows real local server/client configuration, not acceptance of a particular external host. MCP is off by default.*
+*Local configuration; MCP is off by default.*
 
 [MCP setup and compatibility guide](https://www.interceptor.cn/en/guide/mcp) · [Tool reference](https://www.interceptor.cn/en/guide/tool-reference)
 
@@ -173,7 +181,13 @@ Report reproducible problems or suggest improvements through [GitHub Issues](htt
 
 Code, documentation, translations and focused bug reports are welcome. Start with the [development guide (Chinese)](architecture/development.md) for source builds, setup, debugging and validation. The [architecture index (Chinese)](architecture/README.md) describes modules and feature contracts.
 
-After setup, run `npm start` to choose Development, Test, Build or Release. Test offers normal E2E runs or step screenshots; screenshots remain local evidence, not automatic website publications. See the [release guide (Chinese)](architecture/release-guide.md) before publishing a build.
+After setup, run `npm start` to choose Development, Test, Build or Release. Test offers normal E2E runs or step screenshots. See the [release guide (Chinese)](architecture/release-guide.md) before publishing a build.
+
+## Platform support
+
+- Windows x64 and macOS on Apple Silicon and Intel. Check each release's notes for the platform scope it was validated on.
+- README screenshots come from the macOS build. Windows and Android have separate prerequisites and limits in the [guide](https://www.interceptor.cn/en/guide).
+- This alpha preview may still change interfaces, data formats and behavior before a stable release.
 
 ## Acknowledgements
 
@@ -181,4 +195,4 @@ Interceptor builds on [Electron](https://www.electronjs.org/), [Mockttp](https:/
 
 ## License
 
-Interceptor's original code is licensed under [Apache-2.0](LICENSE), with attribution in [NOTICE](NOTICE). Third-party components retain their own licenses and notices; the application includes its license and dependency notices. Using the software does not require sponsorship.
+Interceptor's original code is licensed under [Apache-2.0](LICENSE), with attribution in [NOTICE](NOTICE). Third-party components retain their own licenses and notices; the application includes its license and dependency notices.
