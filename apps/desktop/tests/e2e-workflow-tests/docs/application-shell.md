@@ -113,22 +113,33 @@ Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；
 
 **策略**：shared
 
+六个顶层view是 capture、rules、composer、diagnostics、guidebook、settings；Sidebar的workspace组只放前四项，Guidebook与Settings是底部独立入口。Breakpoint是Capture列表栏（`CaptureListbar`）里的manager浮层，不是view，也不产生workspace状态。
+
+Shell用三个语言无关标记表达当前view：`app.root`的`data-view`、`app.header.title`的`data-view`、`app.statusbar`的`data-view`。工作流不读取Header文案、`aria-label`或CSS class判断当前view。
+
 ### Steps
 
-1. 创建空profile/evidence，启动trace/Electron并等待App root、Core和listener。
-2. 检查Shell相关默认态：Capture active、Sidebar expanded、Header/Main/Statusbar一致；点击readiness Cancel。
-3. 依次点击 `shell.workspace.rules`、`shell.workspace.composer`、`shell.workspace.diagnostics`。
-4. 继续点击 `shell.workspace.settings`，每次确认Header/Main/Statusbar属于同一view；Breakpoint 只从Capture workbar进入，不是workspace。
-5. 在Settings访问两个section后点击 `shell.workspace.capture` 返回。
-6. 确认active navigation和Capture初始空列表/Inspector状态未被导航改变。
-7. 检查各workspace无错误overlay或页面级溢出。
-8. 保存evidence并点击Close。
-9. 验证进程/8888销毁。
-10. 删除profile。
+1. 创建空profile/evidence，启动trace/Electron并等待App root、Core和listener；driver通过真实UI收起首次readiness弹窗，确认System Proxy未被修改。
+2. 检查默认态：`app.root[data-view=capture]`、`app.header.title[data-view=capture]`、`app.statusbar[data-view=capture]`，且 `shell.workspace.capture` 是唯一带 `aria-current=page` 的Sidebar入口。
+3. 通过 `capture.recording.toggle` 暂停Recording并确认 `aria-pressed=false`，记录Capture当前行数作为基线；导航期间不得新增Exchange。
+4. 依次点击 `shell.workspace.rules`、`shell.workspace.composer`、`shell.workspace.diagnostics`；每步断言同一view的三处标记一致，且目标入口成为唯一current page。
+5. 点击 `shell.workspace.guidebook`：断言三个标记为 `guidebook`、`guidebook.root` 可见、`guidebook.status` 位于Statusbar。允许 `guidebook.root` 处于loading或error，离开时不等待在线frame成功；App退出也不依赖它是否加载完成（Main服务停止后直接结束进程）。教程内容、搜索与图片由 `shell.guidebook.online` 和 `shell.guidebook.i18n` 独立验收。
+6. 点击 `shell.workspace.settings`：断言三个标记为 `settings`、`settings.section.certificates` 可见；Settings内部的十个section由 `settings.navigation` 独立验收。
+7. 每次切换后检查 `app.main` 内目标view的公共控件可见，且页面根节点没有横向或纵向溢出。
+8. 点击 `shell.workspace.capture` 返回：三个标记回到 `capture`，Capture列表行数与暂停前基线一致，未因导航产生Exchange。
+9. 点击 `capture.breakpoint-manager` 打开浮层，断言 `breakpoints.toggle` 可见、三个view标记仍为 `capture`，按Escape关闭后 `aria-expanded=false`。
+10. 保存各view的标记evidence并点击 `shell.window.close`。
+11. 验证进程/8888销毁；删除profile。
 
 ### 预期效果
 
-五个workspace通过正式导航切换；Shell三层上下文一致；导航不会修改无关业务状态。
+六个顶层view通过正式入口切换；Sidebar、Header、Main、Statusbar使用同一view标记；Guidebook的导航验收不依赖外网在线；导航不修改无关业务状态。
+
+### 验收要求
+
+- evidence逐项记录view、Sidebar `aria-current`、`app.header.title[data-view]`与`app.statusbar[data-view]`，不记录翻译文案。
+- Guidebook允许loading/error，只要 `guidebook.root` 与 `guidebook.status` 存在即可通过本契约。
+- 六个入口之外不得出现新的workspace入口；Breakpoint manager只作为Capture浮层出现。
 
 <a id="shell-sidebar-collapse"></a>
 ## `shell.sidebar.collapse`

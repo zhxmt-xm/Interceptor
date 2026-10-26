@@ -27,13 +27,23 @@ export function ResponsePane({ request }: ResponsePaneProps): React.JSX.Element 
   );
   const setResponseTab = useComposerStore((state) => state.setResponseTab);
   const response = runtime.response;
+  // Core 以 ok=false 返回网络/URL失败；它不是可展示的HTTP响应，按错误态而不是空响应壳呈现。
+  const failed = response !== null && !response.ok;
 
-  if (runtime.sending || !response) {
+  if (runtime.sending || !response || failed) {
     return (
-      <div className={styles.response}>
+      <div
+        className={styles.response}
+        data-automation-id={AUTOMATION_IDS.composer.response}
+        data-send-state={runtime.sending ? 'sending' : failed ? 'failed' : 'empty'}
+      >
         <ResponsePlaceholder
           sending={runtime.sending}
-          sendError={runtime.sendError}
+          sendError={runtime.sending
+            ? runtime.sendError
+            : failed
+              ? response.error ?? t('composer.sendFailed')
+              : runtime.sendError}
         />
       </div>
     );
@@ -42,7 +52,11 @@ export function ResponsePane({ request }: ResponsePaneProps): React.JSX.Element 
   const tone = statusTone(response.status);
 
   return (
-    <div className={styles.response}>
+    <div
+      className={styles.response}
+      data-automation-id={AUTOMATION_IDS.composer.response}
+      data-send-state="ready"
+    >
       <ComposerTabBar
         tabs={[
           {

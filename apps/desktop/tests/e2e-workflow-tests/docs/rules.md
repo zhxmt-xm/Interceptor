@@ -260,22 +260,30 @@ Create、rename、toggle、delete只修改选中草稿并准确维护dirty；App
 
 **策略**：shared
 
+RuleSet只保存在当前profile的 `workspace.sqlite`，每个App/Core各自一份，不存在两个App共享RuleStore的产品路径。冲突由同一个Core的乐观revision产生；第二写入者使用真实MCP Client，不使用共享存储、第二个App或测试后门。本契约由 `mcp.desktop.streamable-http` 的真实MCP写入流程承载。
+
 ### Steps
 
-1. 创建独立测试根目录和evidence，准备两个真实App实例可安全访问同一RuleStore但使用独立Chromium profile的环境；若无法满足，workflow保持blocked。
-2. 启动实例A和B各自的trace/Electron，等待两边App/Core及各自真实listener；在两边点击readiness Cancel并确认系统代理未修改。
-3. 两边从UI检查dirty=false并加载同一revision；A、B各自通过UI编辑不同内容。
-4. 在A点击 `rules.apply`，等待revision+1和成功状态。
-5. 在B点击 `rules.apply`。
-6. 验证B收到真实conflict，不覆盖A；UI显示conflict/reload状态。
-7. 在B通过真实UI重新加载权威RuleSet，确认展示A的内容与新revision。
-8. 分别保存A/B evidence并点击各自Close。
-9. 验证两套Main/Core/Worker/listener全部销毁。
-10. 删除两个profile和共享测试存储。
+1. 创建profile/evidence和loopback HTTP origin；启动trace/Electron，等待App/Core/8888；确认冷启动自动进入Recording（未进入时才点击readiness Enable）。
+2. 通过Rules UI创建并Apply一条唯一测试rule，让真实请求命中该值；记录revision与origin观察值。
+3. 通过 Settings → Agent 开启MCP Server；创建两个真实MCP Client（草稿流程一个、第二写入者一个），由第二写入者读取当前revision。
+4. 在Renderer修改该rule的名称与action值但不Apply，确认 `rules.status.state` 为 `data-state=dirty` 且草稿保留。
+5. 由第二写入者以记录的revision调用 `rules_replace_tree` 写入不同内容；确认返回revision+1，且真实请求命中MCP写入的值。
+6. 确认Renderer进入 `data-state=conflict`、本地草稿值未被覆盖；此时Core数据面仍是MCP写入的值。
+7. 在冲突态点击 `rules.apply`：确认Core以过期revision拒绝，状态仍为conflict、revision未变、数据面不变，本地草稿保留。
+8. 点击 `rules.reload`：确认编辑器显示MCP写入的revision与值，状态回到applied。
+9. 在最新revision上重新编辑并Apply成功；真实请求命中新值。
+10. 保存evidence并点击Close；验证Main/Core/Worker退出、8888释放与系统代理恢复；删除profile并关闭两个Client。
 
 ### 预期效果
 
-真实乐观并发冲突被发现；旧revision无法覆盖新RuleSet；恢复过程不使用service mock或直接Store注入。
+过期revision无法覆盖已更新的RuleSet；冲突在Renderer可见且不丢草稿；显式Reload后可在最新版本上继续编辑；全程使用真实MCP Client与真实数据面。
+
+### 验收要求
+
+- 失败位置必须是Core的revision冲突或Renderer冲突状态；selector、网络fixture或环境失败不算产品冲突。
+- 冲突后点击Apply必须保留草稿、revision与数据面值，不能用自动Reload掩盖。
+- 本地草稿、revision、origin观察值与 `data-state` 均记录在evidence中，不使用翻译文案判断。
 
 <a id="rules-runtime-hit"></a>
 ## `rules.runtime-hit`

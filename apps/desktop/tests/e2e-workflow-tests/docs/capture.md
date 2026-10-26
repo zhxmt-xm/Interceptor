@@ -910,22 +910,32 @@ Auto/Text/JSON/Hex语义准确；真实body range与显示一致；非法内容�
 
 **策略**：shared
 
+Inspector 宽度由 `capture.inspector.splitter` 调整，并通过 `--capture-inspector-width` 作用于列表与 Inspector 的网格轨道。默认 `448px`；最小 `360px`；筛选分栏收起时最大为 `app.main.clientWidth − 512 − 1`（列表最小宽 512 加 1px 轨道）。窗口缩小时 Renderer 的 `ResizeObserver` 按新的容器宽度重新 clamp，窗口放大后保持当前宽度、不自动扩张。
+
 ### Steps
 
-1. 创建profile/evidence和HTTP origin；启动trace/Electron，等待App/Core/8888/readiness；检查Inspector width=500、selection=null。
-2. 点击readiness Enable并完成授权，等待Recording；制造并选择一条含long URL和body的request。
-3. 拖动 `capture.inspector.splitter` 到最小Inspector宽度，检查List与Inspector。
-4. 拖到中间位置，再拖到最大允许位置。
-5. 切换多个Inspector tab和body mode。
-6. 重新选择另一条request，确认布局仍可用。
-7. 检查页面无横向/纵向溢出或文字遮挡。
-8. 在Proxy点击Restore，确认非owned；保存evidence并点击Close。
-9. 验证销毁和系统代理恢复。
-10. 关闭origin并删除profile。
+1. 创建空 profile/evidence 和 HTTP origin；启动 trace/Electron，等待 App/Core/8888；确认冷启动 bootstrap 已自动接管系统代理并进入 Recording（`capture.recording.toggle` 的 `aria-pressed=true`）；selection=null，且 `capture.inspector.splitter` 不存在（未选择请求时不渲染 Inspector）。
+2. 通过 8888 发送一条带长 URL 与 POST body 的真实请求，点击动态 `capture.request-row.<exchangeId>`；若启动时尚未 Recording，才通过 toggle 与 `capture.readiness.enable` 完成接管。
+3. 确认 Inspector 初始宽 `448`、`capture.inspector.splitter` 宽 `1`；点击 `capture.filters.toggle` 收起筛选分栏，确认 `capture.filters.splitter` 消失，记录 `app.main` 的 clientWidth 与由此得到的最大宽度。
+4. 连续向右拖动 splitter 到极限：Inspector 停在 `360`，列表与 Inspector 不重叠；继续同向拖动宽度不再减小。
+5. 在 `360` 宽度下切到 Response，依次选择 Default/Tree/Raw/Hex body mode：正文控件始终位于 Inspector 内，Tree/Hex 不残留 CodeViewer pane；`app.root`、`app.main` 与 Inspector 均无横向溢出。
+6. 从 `360` 向左拖动 `340px`：宽度增加量与 pointer 位移比为 1:1，误差不超过 1px，落在中间位置。
+7. 继续向左连续拖动到极限：Inspector 等于 `app.main.clientWidth − 512 − 1`，此时 `capture.list` 宽 `512`；继续同向拖动宽度不再增大。在该宽度下依次切换 Headers、Request、Response、Timing、Cookies tab，确认目标 section 出现、6 个 tab 互不重叠且完整位于 Inspector 内。
+8. 调整本轮真实窗口内容尺寸：先缩到 `1200×900`，Inspector 按新容器重新 clamp 到新的最大宽度；再缩到 `880×900`，Inspector 保持 `360` 下限。恢复 `1600×900` 后宽度仍为 `360`，证明不会自动扩张。
+9. 把 Inspector 拖回 `448`；再发送并选择第二条真实请求，确认宽度、tab 与 body mode 布局保持可用。
+10. 进入 Settings → Proxy 点击 `settings.proxy.restore`，确认系统代理恢复为 workflow 启动快照且 journal 移除；保存 evidence 并点击 `shell.window.close`。
+11. 验证 Main/Core/Worker 退出、8888 释放；关闭 origin 并删除 profile。
 
 ### 预期效果
 
-Inspector/List遵守最小宽度；splitter拖动线性且受限；summary、tabs、headers、CodeMirror和Hex不重叠或撑破布局。
+splitter 拖动线性且受上下限约束；Inspector 在 `360` 到可用宽度之间完整显示 summary、tabs、headers 与正文控件；窗口缩小时重新 clamp，放大后不自动恢复；resize 不改变 Capture 数据或 selection。
+
+### 验收要求
+
+- 每次拖动记录 splitter 与 Inspector 的 boundingBox；最小值、最大值分别用连续同向拖动证明不再变化，不写死除契约 `360`/`512`/`448` 外的像素。
+- 上限用同一时刻 `app.main` 的 clientWidth 计算；列表宽与 1px 轨道从真实几何读取。
+- 窗口调整只通过平台真实 BrowserWindow/原生窗口完成，不修改 Renderer 样式、viewport 或注入宽度；selector、构建、UAC 或 fixture 失败不算产品故障。
+- 必须同时验证拖动、tab/body mode、两次窗口缩小、恢复后不扩张、系统代理恢复、Main/Core/Worker 销毁与 8888 释放。
 
 <a id="capture-clear"></a>
 ## `capture.clear`

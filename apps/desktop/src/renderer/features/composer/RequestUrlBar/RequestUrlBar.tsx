@@ -47,7 +47,14 @@ export function RequestUrlBar({ request }: RequestUrlBarProps): React.JSX.Elemen
       <InputBox
         className={styles.url}
         value={rest}
-        onValueChange={(next) => updateRequest({ ...request, url: scheme + next })}
+        onValueChange={(next) => {
+          // 地址框只显示scheme之后的部分；粘贴完整URL时整体替换，避免拼成 http://http://…。
+          const [nextScheme] = splitScheme(next);
+          updateRequest({
+            ...request,
+            url: nextScheme ? next : scheme + next,
+          });
+        }}
         placeholder={t('composer.requestUrlPlaceholder')}
         ariaLabel={t('composer.requestUrl')}
         automationId={AUTOMATION_IDS.composer.url}

@@ -6,6 +6,7 @@ import { findLeaf } from '@interceptor/core-protocol';
 import { IconButton } from '../../../components/IconButton/IconButton';
 import { MethodBadge } from '../../../components/MethodBadge/MethodBadge';
 import { cx } from '../../../components/share/cx';
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { useComposerStore } from '../data/composerStore';
 
 import styles from './DocumentTabs.module.css';
@@ -23,7 +24,10 @@ export function DocumentTabs(): React.JSX.Element {
   const createRequest = useComposerStore((state) => state.createRequest);
 
   return (
-    <div className={styles.docs}>
+    <div
+      className={styles.docs}
+      data-automation-id={AUTOMATION_IDS.composer.documentTabs}
+    >
       <IconButton
         icon={PanelLeft}
         label={t('composer.toggleCollection')}

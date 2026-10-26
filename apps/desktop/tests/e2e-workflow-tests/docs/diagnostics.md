@@ -2,7 +2,7 @@
 
 ## 原流程与可选步骤截图
 
-Diagnostics只保留原`tools-queries-export.workflow.ts`，截图由同一流程的option开启。
+Diagnostics在原`tools-queries-export.workflow.ts`之外新增`pagination.workflow.ts`；截图由各自流程的option开启。
 
 - 原Recent/Trace静默查询、顺序、脱敏、Ask/Auto、真实Save取消/确认和文件过滤保持不变。
 
@@ -92,22 +92,30 @@ Filter变化触发权威Core query；组合条件准确；selection与轮询合�
 
 **策略**：shared
 
+首页固定拉取最近 `RECENT_LIMIT=200` 条 records；Diagnostics 打开期间每 `POLL_INTERVAL_MS=2000` 轮询一次并使用 `process:timestamp:sequence` 去重后合并。列表按真实 sequence 升序显示：轮询的新记录出现在底部，Load earlier 的旧记录出现在顶部，已加载历史不因轮询丢失。
+
 ### Steps
 
-1. 创建profile/evidence，启动trace/Electron，等待App/Core/8888；点击 `capture.readiness.cancel`，确认System Proxy仍未owned。
-2. 进入Diagnostics，检查filters=All(null)、selection=null和当前真实startup records；再通过UI重复执行足够多命令，产生超过一页的记录。
-3. 进入Diagnostics，记录首页keys和next-cursor对应的UI状态。
-4. 点击 `diagnostics.load-earlier`，确认旧records追加在尾部。
-5. 在App其他workspace产生一条新记录，返回Diagnostics等待轮询合并到头部。
-6. 再次点击Load earlier，确认无重复/跳页且已加载历史不被首页轮询覆盖。
-7. 重复直到按钮消失。
-8. 保存evidence并Close。
-9. 验证销毁。
-10. 删除profile。
+1. 创建 profile/evidence 和 HTTP origin；启动 trace/Electron，等待 App/Core/8888；冷启动 bootstrap 会接管系统代理，本流程不依赖 Capture。
+2. 进入 Composer 新建请求，通过真实 UI 重复发送同一 loopback 请求；每批后进入 Diagnostics 读取 `diagnostics.list[data-record-count]` 与 `data-has-more`，直到首页满 200 且出现 `diagnostics.load-earlier`。记录累计发送次数。
+3. 等待并记录首页：`data-record-count=200`、`data-has-more=true`、`data-loading-more=false`；记录全部 `diagnostics.row.<key>` 的 `data-automation-id` 与 `data-seq`，确认按 seq 升序且无重复。
+4. Diagnostics 打开期间，App 常驻的 Rules 命中轮询（`rules.hits`，每 4000ms）继续发出真实命令：等待新的 `rules.hits` row 由 2000ms 轮询合并到列表底部，原有 keys 全部保留、row 集合无重复、顺序仍按 seq 升序。
+5. 再等待至少两个轮询周期：已合并的 keys 全部保留且集合仍无重复，证明轮询按 key 去重且不覆盖已加载历史。
+6. 点击 `diagnostics.load-earlier`：等待 `data-loading-more=false` 且 row 增加；更早的 rows 按 seq 排在列表顶部，已加载 rows 全部保留、无重复、无跳页；`data-has-more` 反映服务端结果。
+7. 若仍有更早页则继续点击直到 `data-has-more=false` 且 `diagnostics.load-earlier` 消失；再等待两个轮询周期，确认按钮不会重新出现、已加载 rows 不丢失、集合仍无重复。
+8. 保存 evidence 并点击 `shell.window.close`。
+9. 验证 Main/Core/Worker 退出、8888 释放与系统代理恢复；关闭 origin 并删除 profile。
 
 ### 预期效果
 
-Keyset pagination稳定；历史追加、新记录头部合并和去重同时成立；hasMore=false后停止加载。
+Keyset 分页稳定；首页、轮询合并与 Load earlier 都以真实 Core 结果为准；新记录与旧记录按 sequence 合并到正确位置，key 去重；`hasMore=false` 后不再加载更早页。
+
+### 验收要求
+
+- 首页未满时 `data-record-count<200`；满页且 `data-has-more=true` 时为 200；不写死除 `200`/`2000` 外的像素或时长假设。
+- 用 `diagnostics.list` 的 `data-record-count`/`data-has-more`/`data-loading-more` 和动态 row 的 `data-seq` 判定分页，不读翻译文案。
+- 轮询新增来自 App 常驻 Rules 命中轮询在 Diagnostics 打开期间完成的真实命令，不用测试注入记录、改写 store 或伪造时间。
+- selector、构建或 fixture 失败不算产品故障；必须同时验证真实发送、轮询、分页、终态、系统代理恢复与 8888 释放。
 
 <a id="diagnostics-export"></a>
 ## `diagnostics.export`

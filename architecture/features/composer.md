@@ -4,7 +4,7 @@
 
 > Core 模块：`apps/proxy-core/src/proxy-core/composer/`、`apps/proxy-core/src/proxy-core/tls-probe/`
 > Renderer 模块：`apps/desktop/src/renderer/features/composer/`
-> UI设计：`design-vite/`的Composer视图与`design-vite/design-system.md`的「Composer工作区」。
+> UI设计：`design-vite/`的Composer视图与`design-vite/design-system/README.md`的「Composer工作区」。
 
 ## 1. 职责与边界
 
@@ -229,6 +229,8 @@ Import / Export 使用与 Rules 相同的不可关闭文件操作遮罩；确认
 
 URL行的`Recent sends`是独立于Collection的内存重放记录，两者不互相写入；列表显示method、URL、状态码和相对时间，点击恢复为请求。
 
+发送失败（非法URL或网络错误）时Core返回`ok=false`，响应区按错误态显示原因，不生成响应tab或伪成功正文；失败仍以status=0进入Recent sends，下一次成功发送清除错误。URL行只显示scheme之后的部分，粘贴完整URL时整体替换，不重复拼接scheme。
+
 ### 5.3 请求 Body 的四档
 
 | 档位 | 形态 | 协议影响 |
@@ -245,7 +247,7 @@ URL行的`Recent sends`是独立于Collection的内存重放记录，两者不�
 `ResponsePane/ResponseBodyPane` 直接渲染共享内核 `components/BodyViewer/`，与 Capture Inspector 是**同一实现**：
 档位由响应 MIME 派生（JSON `Pretty/Tree/Raw/Hex`、代码 `Code/Raw/Hex`、图片 `Preview/Hex` …），
 Format、JSON Tree 右键复制、Hex 虚拟化与四个阈值常量全部一致。完整矩阵见
-[capture.md 10.2](capture.md)，此处不重复。
+[capture.md 10.2](capture/README.md)，此处不重复。
 
 Composer 与 Capture 的差别只在**外壳**：Capture 侧的 `BodyView` 要按需拉字节、跟踪解码与截断状态、驱动
 Save body；Composer 的响应正文随 `composer.send` 一次性返回，外壳只把字节交给内核。因此内核签名是

@@ -2,6 +2,7 @@
 export const AUTOMATION_IDS = {
   app: {
     root: 'app.root',
+    headerTitle: 'app.header.title',
     main: 'app.main',
     statusbar: 'app.statusbar',
   },
@@ -98,6 +99,8 @@ export const AUTOMATION_IDS = {
       root: 'capture.context-menu.root',
       breakpointSubmenu: 'capture.context-menu.breakpoint-submenu',
     },
+    list: 'capture.list',
+    listScroll: 'capture.list.scroll',
     keywordFilter: 'capture.filter.keyword',
     clearSearch: 'capture.filter.clear-search',
     filtersToggle: 'capture.filters.toggle',
@@ -315,6 +318,7 @@ export const AUTOMATION_IDS = {
     url: 'composer.url',
     send: 'composer.send',
     history: 'composer.history',
+    historyList: 'composer.history-list',
     collection: 'composer.collection',
     collectionTree: 'composer.collection.tree',
     collectionSplitter: 'composer.collection-splitter',
@@ -371,6 +375,8 @@ export const AUTOMATION_IDS = {
     username: 'composer.auth.username',
     password: 'composer.auth.password',
     splitter: 'composer.splitter',
+    response: 'composer.response',
+    documentTabs: 'composer.document-tabs',
     responseSection: {
       responseHeaders: 'composer.response-section.response-headers',
       requestHeaders: 'composer.response-section.request-headers',
@@ -416,6 +422,7 @@ export const AUTOMATION_IDS = {
     queuedDetail: 'breakpoints.queued-detail',
   },
   diagnostics: {
+    list: 'diagnostics.list',
     processFilter: 'diagnostics.filter.process',
     levelFilter: 'diagnostics.filter.level',
     outcomeFilter: 'diagnostics.filter.outcome',
@@ -596,6 +603,7 @@ export const AUTOMATION_IDS = {
 /** Stable prefixes for data-backed rows whose full IDs are only known at runtime. */
 export const AUTOMATION_ID_PREFIXES = {
   captureRequestRow: 'capture.request-row.',
+  captureRuleEffect: 'capture.rule-effect.',
   captureBodyRuleEffect: 'capture.body-rule-effect.',
   breakpointPending: 'breakpoints.pending.',
   websocketFrame: 'capture.websocket.frame.',
@@ -607,6 +615,7 @@ export const AUTOMATION_ID_PREFIXES = {
   composerCollectionRequest: 'composer.collection.request.',
   composerCollectionFolder: 'composer.collection.folder.',
   composerCollectionFolderRename: 'composer.collection.folder-rename.',
+  composerHistoryRow: 'composer.history-row.',
   diagnosticRow: 'diagnostics.row.',
   agentToolGroup: 'agent.tools.group.',
 } as const;
@@ -660,7 +669,7 @@ export class AutomationIdFactory {
 
   /** Identify one persisted Rule effect shown in the Capture Inspector. */
   static captureRuleEffect(ruleId: string, effect: string, headerName: string): string {
-    return `capture.rule-effect.${ruleId}.${effect}.${encodeURIComponent(headerName.toLowerCase())}`;
+    return `${AUTOMATION_ID_PREFIXES.captureRuleEffect}${ruleId}.${effect}.${encodeURIComponent(headerName.toLowerCase())}`;
   }
 
   /** Identify the final body writer shown in the Capture Inspector. */
@@ -843,7 +852,7 @@ export class AutomationIdFactory {
 
   /** Identify one Composer history row by its local history ID. */
   static composerHistoryRow(historyId: string): string {
-    return `composer.history-row.${historyId}`;
+    return `${AUTOMATION_ID_PREFIXES.composerHistoryRow}${historyId}`;
   }
 
   /** Identify one Composer header control by row and field. */

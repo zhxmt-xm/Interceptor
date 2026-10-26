@@ -1,5 +1,5 @@
 import { gunzipSync } from 'node:zlib';
-import { readFile, rm } from 'node:fs/promises';
+import { access, readFile, rm } from 'node:fs/promises';
 import { request, type IncomingHttpHeaders } from 'node:http';
 
 import type { Locator, Page, TestInfo } from '@playwright/test';
@@ -166,7 +166,7 @@ async function inspectFinalRequestBody(
 async function breakpointHeader(
   page: Page,
   headerName: string,
-): Promise<{ name: Locator; value: Locator; effect: Locator }> {
+): Promise<{ name: Locator; value: Locator; effect: Locator; remove: Locator }> {
   const header = await findBreakpointHeader(page, headerName);
   if (!header) {
     throw new Error(`Breakpoint header not found: ${headerName}`);
@@ -178,7 +178,12 @@ async function breakpointHeader(
 async function findBreakpointHeader(
   page: Page,
   headerName: string,
-): Promise<{ name: Locator; value: Locator; effect: Locator } | null> {
+): Promise<{
+  name: Locator;
+  value: Locator;
+  effect: Locator;
+  remove: Locator;
+} | null> {
   const names = page.locator(
     '[data-automation-id^="breakpoints.header."][data-automation-id$=".name"]',
   );
@@ -196,6 +201,7 @@ async function findBreakpointHeader(
       name,
       value: getByAutomationId(page, nameAutomationId.replace(/\.name$/, '.value')),
       effect: getByAutomationId(page, nameAutomationId.replace(/\.name$/, '.effect')),
+      remove: getByAutomationId(page, nameAutomationId.replace(/\.name$/, '.remove')),
     };
   }
   return null;
@@ -304,6 +310,7 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
         'content-type': 'application/json',
         'content-length': String(headerOnlyBody.byteLength),
         'x-edit-stage': 'original',
+        'x-e2e-remove': 'doomed',
       },
     },
   );
@@ -321,7 +328,11 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
   await contentType.value.fill('application/x-header-only');
   const stageHeader = await breakpointHeader(page, 'x-edit-stage');
   await stageHeader.value.fill('edited');
-  await screenshotStep('仅编辑暂停请求的Headers / Edit only the paused request headers', {
+  const removedHeader = await breakpointHeader(page, 'x-e2e-remove');
+  await removedHeader.remove.click();
+  await expect(removedHeader.remove).toHaveCount(0);
+  await addBreakpointHeader(page, 'x-e2e-added', 'added-value');
+  await screenshotStep('编辑已有Header、删除一个Header并新增一个Header / Edit existing headers, remove one and add one', {
     highlights: [
       { target: contentType.value, label: '1' },
       { target: stageHeader.value, label: '2' },
@@ -334,16 +345,46 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
   expect(headerOnlyObservation.body).toEqual(headerOnlyBody);
   expect(headerOnlyObservation.headers['content-type']).toBe('application/x-header-only');
   expect(headerOnlyObservation.headers['x-edit-stage']).toBe('edited');
+  expect(headerOnlyObservation.headers['x-e2e-remove']).toBeUndefined();
+  expect(headerOnlyObservation.headers['x-e2e-added']).toBe('added-value');
+  expect(headerOnlyObservation.headers['content-length']).toBe(String(headerOnlyBody.byteLength));
   await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.headers).click();
-  await expect.soft(getByAutomationId(
+  // 修改已有header：旧值产生replace，新值产生set。
+  for (const headerName of ['content-type', 'x-edit-stage']) {
+    await expect(getByAutomationId(
+      page,
+      AutomationIdFactory.captureRuleEffect(breakpointRuleId, 'replace', headerName),
+    )).toBeVisible();
+    await expect(getByAutomationId(
+      page,
+      AutomationIdFactory.captureRuleEffect(breakpointRuleId, 'set', headerName),
+    )).toBeVisible();
+  }
+  // 删除header产生remove；新增header只产生set。
+  await expect(getByAutomationId(
     page,
-    AutomationIdFactory.captureRuleEffect(
-      breakpointRuleId,
-      'set',
-      'x-edit-stage',
-    ),
+    AutomationIdFactory.captureRuleEffect(breakpointRuleId, 'remove', 'x-e2e-remove'),
   )).toBeVisible();
-  await screenshotStep('执行后核对Headers规则效果 / Inspect header effects after execution');
+  await expect(getByAutomationId(
+    page,
+    AutomationIdFactory.captureRuleEffect(breakpointRuleId, 'set', 'x-e2e-added'),
+  )).toBeVisible();
+  await expect(getByAutomationId(
+    page,
+    AutomationIdFactory.captureRuleEffect(breakpointRuleId, 'replace', 'x-e2e-added'),
+  )).toHaveCount(0);
+  // 未编辑的继承Content-Length不产生breakpoint effect；普通Rule的效果仍独立存在。
+  for (const effect of ['replace', 'set', 'remove']) {
+    await expect(getByAutomationId(
+      page,
+      AutomationIdFactory.captureRuleEffect(breakpointRuleId, effect, 'content-length'),
+    )).toHaveCount(0);
+  }
+  await expect(getByAutomationId(
+    page,
+    AutomationIdFactory.captureRuleEffect(rewriteRuleId, 'set', 'x-e2e-before-breakpoint'),
+  )).toBeVisible();
+  await screenshotStep('核对replace/set/remove效果与未编辑Header / Inspect replace, set and remove effects plus untouched headers');
 
   const bodyOnlyPath = '/e2e/body-only';
   const bodyOnlyOriginal = Buffer.from('{"stage":"body-original"}');
@@ -383,6 +424,16 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
   );
   await screenshotStep('执行后保留正确的正文长度 / Preserve the correct body length after execution');
   await inspectFinalRequestBody(page, 'body-edited', 'raw');
+  await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.headers).click();
+  // body-only不得产生breakpoint header effect；普通Rule的set effect仍独立存在。
+  await expect(page.locator(
+    `[data-automation-id^="${AUTOMATION_ID_PREFIXES.captureRuleEffect}${breakpointRuleId}."]`,
+  )).toHaveCount(0);
+  await expect(getByAutomationId(
+    page,
+    AutomationIdFactory.captureRuleEffect(rewriteRuleId, 'set', 'x-e2e-before-breakpoint'),
+  )).toBeVisible();
+  await screenshotStep('body-only没有任何breakpoint Header效果 / A body-only edit creates no breakpoint header effect');
 
   const headerAndBodyPath = '/e2e/header-and-body';
   const headerAndBodyOriginal = Buffer.from('{"stage":"combined-original"}');
@@ -476,6 +527,10 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
   expect(chunkedObservation.headers['content-length']).toBeUndefined();
   await screenshotStep('核对chunked传输不添加Content-Length / Verify chunked transfer omits Content-Length');
   await inspectFinalRequestBody(page, 'chunked-edited', 'default');
+  await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.headers).click();
+  await expect(page.locator(
+    `[data-automation-id^="${AUTOMATION_ID_PREFIXES.captureRuleEffect}${breakpointRuleId}."]`,
+  )).toHaveCount(0);
 
   // Verify HTTP header-phase empty Text and binary File without changing the original four cases.
   // 保留原四组案例，另核对HTTP头阶段空Text和完整二进制File。
@@ -555,6 +610,11 @@ test('breakpoints.execute-edited preserves user intent end to end', async ({
   });
   await getByAutomationId(page, AUTOMATION_IDS.rules.apply).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.rules.apply)).toBeDisabled();
+  await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
+  await getByAutomationId(page, AUTOMATION_IDS.settings.section.proxy).click();
+  await getByAutomationId(page, AUTOMATION_IDS.settings.proxy.restore).click();
+  await expect(getByAutomationId(page, AUTOMATION_IDS.settings.proxy.enable)).toBeEnabled();
+  await expect(access(desktopApp.systemProxyJournalPath())).rejects.toMatchObject({ code: 'ENOENT' });
   await attachOriginEvidence(loopbackLab, testInfo);
   await rm(binaryFilePath, { force: true });
 });
