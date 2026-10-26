@@ -28,6 +28,19 @@ See what your app sends. Change what it receives.</p>
 
 Interceptor is a desktop HTTP(S) debugging proxy for web/API developers and QA engineers on **Windows and macOS**. Inspect HTTP/1.1, HTTP/2, WebSocket and gRPC traffic, test a different response without changing the server, and replay requests from one workspace. Agent and MCP add optional AI assistance; ordinary debugging needs no model account.
 
+## How it compares
+
+| | Interceptor | Charles | Proxyman |
+| --- | --- | --- | --- |
+| License | Apache-2.0 | Proprietary | Proprietary |
+| Price | Free | Paid | Paid |
+| Breakpoints with edit and continue | Yes | Yes | Yes |
+| Rules, mock and map | Yes | Yes | Yes |
+| Built-in Composer | Yes | Yes | Yes |
+| MCP and Agent | Yes | — | — |
+
+Charles and Proxyman are mature commercial tools with their own strengths. Interceptor covers the same capture, breakpoint, rewrite and replay workflow with open-source code, Windows and macOS builds, and optional MCP/Agent access. Summary as of October 2026; check each vendor's current documentation for features and pricing.
+
 ## Download
 
 Alpha preview: [v0.1.1-alpha.1](https://github.com/zhxmt-xm/Interceptor/releases/tag/v0.1.1-alpha.1). Choose your OS and CPU below, or see [all releases and compatibility notes](https://github.com/zhxmt-xm/Interceptor/releases). Alpha builds may still change data formats and interface details.
