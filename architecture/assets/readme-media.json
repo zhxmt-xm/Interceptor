@@ -17,7 +17,72 @@
     "appLanguage": "en",
     "workflow": "capture/recording-pause-resume.workflow.ts",
     "test": "capture.recording.pause-resume fixes recording at request and WebSocket upgrade start",
-    "manifestSha256": "0c5a8c9f672dcb11196592632ee8e9e9b99d52c41ee30f4a7ac6be3ba5356cb2"
+    "manifestSha256": "0c5a8c9f672dcb11196592632ee8e9e9b99d52c41ee30f4a7ac6be3ba5356cb2",
+    "width": 3200,
+    "height": 1800
+  },
+  "englishFeatures": {
+    "rules": {
+      "image": "readme-rules-en.png",
+      "imageSha256": "f1cb3b2014de1992df236c95c9233cb5fe93809a4d8f34ffa2d956910943c471",
+      "source": "guidebook/media/v0.1.1-alpha.1/rules-root-results-workflow-en/step-018.png",
+      "sourceSha256": "f1cb3b2014de1992df236c95c9233cb5fe93809a4d8f34ffa2d956910943c471",
+      "width": 3200,
+      "height": 1800,
+      "platform": "macOS x64",
+      "appLanguage": "en",
+      "workflow": "rules/root-toolbar.workflow.ts",
+      "test": "rules.root-toolbar exposes the root commands end to end",
+      "manifestSha256": "14d2186d5fe401bcdd4c3909851ef3f801f23b11236f8d404c50e3a619c60f74"
+    },
+    "breakpoints": {
+      "image": "readme-breakpoints-en.png",
+      "imageSha256": "2f4ad5a78eb113d40a3892f6bd307ecb987271b6cbe57bd8687d313c1c729edd",
+      "source": "guidebook/media/v0.1.1-alpha.1/breakpoints-request-edits-english/step-016.png",
+      "sourceSha256": "2f4ad5a78eb113d40a3892f6bd307ecb987271b6cbe57bd8687d313c1c729edd",
+      "width": 3200,
+      "height": 1800,
+      "platform": "macOS x64",
+      "appLanguage": "en",
+      "workflow": "breakpoints/execute-edited.workflow.ts",
+      "manifestSha256": "5605002e78dd9f7a7a14d42c34a964e0e46d6cdae7c099a216e5ce536c240c07"
+    },
+    "composer": {
+      "image": "readme-composer-en.png",
+      "imageSha256": "85c2ff9019a46c164409250c599781ac623b4ebfaf5f35073b0f234872800bc6",
+      "source": "guidebook/media/v0.1.1-alpha.1/composer-saved-request-english/step-048.png",
+      "sourceSha256": "85c2ff9019a46c164409250c599781ac623b4ebfaf5f35073b0f234872800bc6",
+      "width": 3200,
+      "height": 1800,
+      "platform": "macOS x64",
+      "appLanguage": "en",
+      "workflow": "composer/tools-collection.workflow.ts",
+      "manifestSha256": "c3f80136487222115b3275ca7028fe56d3b53fffd9ee5679b90ab0d7ccaecf4d"
+    },
+    "agent": {
+      "image": "readme-agent-en.png",
+      "imageSha256": "0d66e543d64890befbc8360d2e46cfa75f852b4c74a0e938ede97f88a4694ff9",
+      "source": "guidebook/media/v0.1.1-alpha.1/agent-chat-english/step-005.png",
+      "sourceSha256": "0d66e543d64890befbc8360d2e46cfa75f852b4c74a0e938ede97f88a4694ff9",
+      "width": 3200,
+      "height": 1800,
+      "platform": "macOS x64",
+      "appLanguage": "en",
+      "workflow": "agent/restart-recovery.workflow.ts",
+      "manifestSha256": "48ba86da71e007b05e45cb81711bc5086b13064b24077a8a809e9b49941c8d37"
+    },
+    "mcp": {
+      "image": "readme-mcp-en.png",
+      "imageSha256": "9b761c5b3c61c8f5f39de90f5c1ae92a8483b8d5160dd87f5863642191b21669",
+      "source": "guidebook/media/v0.1.1-alpha.1/mcp-streamable-english/step-002.png",
+      "sourceSha256": "9b761c5b3c61c8f5f39de90f5c1ae92a8483b8d5160dd87f5863642191b21669",
+      "width": 3200,
+      "height": 1800,
+      "platform": "macOS x64",
+      "appLanguage": "en",
+      "workflow": "mcp/streamable-http.workflow.ts",
+      "manifestSha256": "5d215a762cf13a5dd7f6982444964e36085bea0d11b500a07b3577d928b44282"
+    }
   },
   "imageWidth": 3200,
   "imageHeight": 1800,
