@@ -2,34 +2,44 @@
   <img src="apps/desktop/assets/interceptor-icon.png" width="80" height="80" alt="Interceptor 标识">
 </p>
 
-# Interceptor
+<h1 align="center">Interceptor</h1>
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+<p align="center"><b>开源 HTTP(S) 调试代理，支持 Windows 与 macOS</b><br>
+看清应用发了什么，改变它收到什么。</p>
 
-**看清应用发了什么，改变它收到什么，复现问题。**
+<p align="center">
+  <a href="https://github.com/zhxmt-xm/Interceptor/releases"><img alt="Release" src="https://img.shields.io/github/v/release/zhxmt-xm/Interceptor?include_prereleases&amp;label=release&amp;color=6a5bf0"></a>
+  <a href="https://github.com/zhxmt-xm/Interceptor/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/zhxmt-xm/Interceptor/total?color=6a5bf0"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/zhxmt-xm/Interceptor?color=6a5bf0"></a>
+  <img alt="Platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS-6a5bf0">
+</p>
 
-Interceptor 是面向 Web/API 开发者和测试工程师的桌面 HTTP(S) 调试代理，运行于 **Windows 和 macOS**。在一个工作区检查 HTTP/1.1、HTTP/2、WebSocket 和 gRPC 流量，不改服务端即可测试不同响应、重放请求。Agent 与 MCP 提供可选的 AI 辅助，日常调试不需要模型账号。
+<p align="center">
+  <a href="https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-win32-x64.exe"><b>下载 Windows 版</b></a> ·
+  <a href="https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-darwin-arm64.dmg"><b>下载 macOS 版</b></a><br>
+  <sub>Alpha 预览 · Windows x64 · macOS Apple Silicon 与 Intel · <a href="https://github.com/zhxmt-xm/Interceptor/releases">全部构建与说明</a></sub>
+</p>
 
-[官网](https://www.interceptor.cn/) | [下载](#下载) | [快速上手](#快速上手) | [功能](#功能) | [图文使用指南](https://www.interceptor.cn/guide) | [反馈](https://github.com/zhxmt-xm/Interceptor/issues)
+[English](README.md) | [官网](https://www.interceptor.cn/) | [快速上手](#快速上手) | [功能](#功能) | [图文使用指南](https://www.interceptor.cn/guide) | [反馈](https://github.com/zhxmt-xm/Interceptor/issues)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-capture-dark.png">
   <img src="architecture/assets/readme-capture-light.png" alt="Capture 展示六条本地 HTTP 请求，以及选中订单响应的格式化 JSON" width="1600">
 </picture>
 
-*截图来自 macOS 发布版的真实 App，保留中文界面，使用受控的本地流量，不是设计稿。浅色与深色图片使用 App 自身主题。[截图来源与演示边界](architecture/assets/readme-media.json)。*
+*截图来自 macOS 上的 v0.1.1-alpha.1。[来源与边界](architecture/assets/readme-media.json)。*
+
+Interceptor 是面向 Web/API 开发者和测试工程师的桌面 HTTP(S) 调试代理，运行于 **Windows 和 macOS**。在一个工作区检查 HTTP/1.1、HTTP/2、WebSocket 和 gRPC 流量，不改服务端即可测试不同响应、重放请求。Agent 与 MCP 提供可选的 AI 辅助，日常调试不需要模型账号。
 
 ## 下载
 
-可下载的预发布版本：[v0.1.1-alpha.1](https://github.com/zhxmt-xm/Interceptor/releases/tag/v0.1.1-alpha.1)。按操作系统与 CPU 选择下列安装包，或查看[全部 Release 与兼容性说明](https://github.com/zhxmt-xm/Interceptor/releases)。
+Alpha 预览：[v0.1.1-alpha.1](https://github.com/zhxmt-xm/Interceptor/releases/tag/v0.1.1-alpha.1)。按操作系统与 CPU 选择下列安装包，或查看[全部 Release 与兼容性说明](https://github.com/zhxmt-xm/Interceptor/releases)。Alpha 版本仍可能改变数据格式和界面细节。
 
 | 平台 | 下载 | 安装方式 |
 | --- | --- | --- |
 | macOS · Apple Silicon（arm64） | [DMG](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-darwin-arm64.dmg) · [ZIP](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-darwin-arm64.zip) | 先将 Interceptor 复制到 Applications，再打开应用。 |
 | macOS · Intel（x64） | [DMG](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-darwin-x64.dmg) · [ZIP](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-darwin-x64.zip) | 先将 Interceptor 复制到 Applications，再打开应用。 |
 | Windows · x64 | [EXE](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-win32-x64.exe) · [MSI](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-win32-x64.msi) · [ZIP](https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1-alpha.1/Interceptor-0.1.1-alpha.1-win32-x64.zip) | 运行安装器，或完整解压 ZIP 后再启动 App。 |
-
-**访问权限：** 产品仓库、Release 下载、Issue 与已发布 Guidebook 均可匿名访问；独立官网源码仓库仍保持私有。
 
 <details>
 <summary>安装权限、签名与更新</summary>
@@ -40,8 +50,6 @@ Interceptor 是面向 Web/API 开发者和测试工程师的桌面 HTTP(S) 调�
 - 更新来自 GitHub Releases。检查匿名进行，App 不要求 GitHub 登录或 token。下载和打开安装器都由用户主动操作。
 
 </details>
-
-存在安装包不代表所有平台专项流程均已验收，请同时阅读 Release 的验证说明和教程中的平台前提。这些截图展示的是 macOS，不是 Windows 或 Android。
 
 ## 快速上手
 
@@ -115,7 +123,7 @@ Composer 直接发送请求，不进入 Capture，也不经过 Rules。[Composer
   <img src="architecture/assets/readme-agent-light.png" alt="Capture 旁的内置 Agent，展示明确标注为本地演示模型的回复" width="1600">
 </picture>
 
-*截图使用无 Key、确定性回复的本地演示模型，不代表商业模型的效果或兼容性验收。*
+*本地演示模型，不代表商业模型效果。*
 
 [Agent 配置与对话图文教程](https://www.interceptor.cn/guide/agent)
 
@@ -130,7 +138,7 @@ Composer 直接发送请求，不进入 Capture，也不经过 Rules。[Composer
   <img src="architecture/assets/readme-mcp-light.png" alt="Settings 中运行的本机 MCP Server、本地演示客户端，以及独立的 Agent 和 MCP Tool 开关" width="1600">
 </picture>
 
-*截图展示真实的本机服务与客户端配置，不代表某个外部 Host 已验收。MCP 默认关闭。*
+*本机配置；MCP 默认关闭。*
 
 [MCP 配置与兼容性指南](https://www.interceptor.cn/guide/mcp) · [Tool 操作速查](https://www.interceptor.cn/guide/tool-reference)
 
@@ -173,7 +181,13 @@ AI 是可选能力，模型请求可能产生服务商费用。Agent 与 MCP 提
 
 欢迎代码、文档、翻译和具体的问题反馈。从源码构建、初始化、调试与验证见[中文开发指南](architecture/development.md)，模块职责和功能契约见[架构文档索引](architecture/README.md)。
 
-完成初始化后，运行 `npm start`，选择 Development、Test、Build 或 Release。Test 提供普通 E2E 验收或逐步截图；截图保留为本地证据，不自动发布到官网。发布安装包前请阅读[发版指南](architecture/release-guide.md)。
+完成初始化后，运行 `npm start`，选择 Development、Test、Build 或 Release。Test 提供普通 E2E 验收或逐步截图。发布安装包前请阅读[发版指南](architecture/release-guide.md)。
+
+## 平台支持
+
+- Windows x64 与 macOS（Apple Silicon 和 Intel）。各 Release 的验证平台范围见对应说明。
+- README 截图来自 macOS 构建；Windows 与 Android 的前提和限制见[图文使用指南](https://www.interceptor.cn/guide)。
+- Alpha 预览仍可能改变界面、数据格式和行为。
 
 ## 致谢
 
@@ -181,4 +195,4 @@ Interceptor 基于 [Electron](https://www.electronjs.org/)、[Mockttp](https://g
 
 ## 许可证
 
-Interceptor 自有代码采用 [Apache-2.0](LICENSE)，版权归属见 [NOTICE](NOTICE)。第三方组件保留各自的许可证和归属声明，应用安装包同时携带自有许可及依赖声明。使用软件不以赞助为前提。
+Interceptor 自有代码采用 [Apache-2.0](LICENSE)，版权归属见 [NOTICE](NOTICE)。第三方组件保留各自的许可证和归属声明，应用安装包同时携带自有许可及依赖声明。
