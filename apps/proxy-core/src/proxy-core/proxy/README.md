@@ -58,7 +58,7 @@ PAC加载成功不等于选路正确。既有Mockttp patch为TLS stub提供HTTPS
 公开resolver适配保留实际目标端口，端口属于Agent缓存key。PAC不复用请求结束后的空闲socket，
 避免后续请求沿用首次DIRECT/PROXY而跳过求值；固定代理keep-alive和在途长连接不改变。
 两份上游Agent源码保持原版；目标原故障及相关边界有真实集成覆盖，完整交付状态见
-[Settings发送契约](../../../../../architecture/features/settings.md#upstream-request-adapter)。
+[Settings发送契约](../../../../../architecture/features/settings/upstream-config.md#upstream-request-adapter)。
 
 ## ExchangeTracker 的顺序前提
 

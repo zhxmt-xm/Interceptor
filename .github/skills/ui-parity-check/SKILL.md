@@ -78,4 +78,4 @@ description: "Verify implemented React UI against the design SPA using standalon
 ## 参考
 
 - 设计稿工作流(维护已确认源码、手工评审):`ui-design-mockup` skill。
-- 权威 token:`design-vite/design-system.md`。
+- 权威 token:`design-vite/design-system/README.md`。

@@ -1,7 +1,7 @@
 # 平台架构：Renderer Shell
 
 > 范围：跨 feature 的 Renderer 结构——应用外壳、窗口 chrome、冷启动、共享组件库、主题与语言、automation 契约。
-> 单个 feature 工作区的内部设计见对应的 `../features/*.md`；视觉取值以 [../../design-vite/design-system.md](../../design-vite/design-system.md) 为准。
+> 单个 feature 工作区的内部设计见对应的 `../features/*.md`；视觉取值以 [../../design-vite/design-system/README.md](../../design-vite/design-system/README.md) 为准。
 >
 > Renderer 只通过 `window.interceptor` 意图 API 访问 Main，不触达 Electron / Node / MessagePort。
 

@@ -226,7 +226,7 @@ npm run compare --workspace @interceptor/design-vite -- $baselineDir capture
 
 - 截图和交互测试使用系统 Edge，无需额外安装 Playwright 浏览器。
 - 手工截图输出到被Git忽略的`design-vite/shots/`或指定目录，用于设计评审，不是parity输入；不提交全量截图，不为修复产品还原偏差而修改设计源码。
-- 组件与 token 以 [设计系统](../design-vite/design-system.md) 为准，截图输出与完整规则见 [设计稿指南](../design-vite/README.md)。
+- 组件与 token 以 [设计系统](../design-vite/design-system/README.md) 为准，截图输出与完整规则见 [设计稿指南](../design-vite/README.md)。
 
 <br>
 
@@ -510,7 +510,7 @@ npm run release
 
 本机已有签名资质时，Forge仍可使用`WINDOWS_CERTIFICATE_FILE/PASSWORD`或`APPLE_SIGN_IDENTITY`；Apple公证还需`APPLE_ID`、`APPLE_ID_PASSWORD`和`APPLE_TEAM_ID`。它们不是当前macOS CI前提。密钥、密码和证书私钥不得进入仓库或产物。
 
-依赖随包、Fuses、CSP、签名与 CI 细节见 [发布架构](platform/release.md)，更新行为见 [Settings](features/settings.md)。
+依赖随包、Fuses、CSP、签名与 CI 细节见 [发布架构](platform/release.md)，更新行为见 [Settings](features/settings/README.md)。
 
 <br>
 
@@ -603,4 +603,4 @@ Vite 可能仅监听 IPv6 localhost，应以终端显示的实际地址为准，
 2. 若强杀后系统代理仍指向 `127.0.0.1:8888`，先恢复原代理设置，再启动新实例。
 3. 不要清空不属于本次运行的配置或证书。
 
-接管期间其他代理软件改写系统设置会触发 ownership-lost 保护，Interceptor 不会反复抢回。恢复边界见 [Settings](features/settings.md)。
+接管期间其他代理软件改写系统设置会触发 ownership-lost 保护，Interceptor 不会反复抢回。恢复边界见 [Settings](features/settings/README.md)。

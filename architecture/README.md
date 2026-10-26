@@ -27,6 +27,7 @@ Handover只列未完成任务、当前阻塞和运行约束；完成项从任务
 | [platform/processes.md](platform/processes.md) | 进程拓扑、parentPort 与 MessagePort 两条通道、故障分类与重启、Workflow 详细表、关键数据结构 |
 | [platform/renderer.md](platform/renderer.md) | App shell、冷启动、窗口 chrome、共享组件库、automation 契约、主题与 15 语言 |
 | [platform/storage.md](platform/storage.md) | Core 组合根与模块组织约定、三份存储的所有权、Recording 生命周期、正文边界 |
+| [platform/coding.md](platform/coding.md) | 实现原则、命名、分层、前端结构、Core module 结构 |
 | [platform/release.md](platform/release.md) | Core 运行时依赖随包、Main external 与懒加载、安装器、Fuses、产物安全、发布 CI |
 | [platform/testing.md](platform/testing.md) | 三层测试职责、Local E2E driver、执行约束与常用命令 |
 
@@ -34,7 +35,7 @@ Handover只列未完成任务、当前阻塞和运行约束；完成项从任务
 
 | 文档 | 覆盖范围 | Core 模块 | Renderer 模块 |
 | --- | --- | --- | --- |
-| [features/capture.md](features/capture.md) | 流量捕获、Exchange 生命周期、正文存储与预览渲染矩阵、事件推送、客户端应用归属、筛选分栏 | `proxy/`、`capture/`、`client-app/` | `features/capture/`、`components/BodyViewer/` |
+| [features/capture/](features/capture/README.md) | 流量捕获、Exchange 生命周期、正文存储与预览渲染矩阵、事件推送、客户端应用归属、筛选分栏；子文档按契约、状态机、流程拆分 | `proxy/`、`capture/`、`client-app/` | `features/capture/`、`components/BodyViewer/` |
 | [Android repo：USB 接入架构](https://github.com/zhxmt-xm/Interceptor-Android/blob/main/architecture/features/usb-capture.md) | 独立 Android repo 的正式方案：协议副本、native/DNS、VpnService/TUN、USB、配对与发布 | `android-ingress/`、`http-interception/`；复用 `rules/`、`capture/` | Capture设备入口与Android来源 |
 | [features/rules.md](features/rules.md) | 规则模型、编译、执行、证据采集、热更新 | `rules/` | `features/rules/` |
 | [features/breakpoints.md](features/breakpoints.md) | 请求/响应/WebSocket 断点挂起与编辑 | `rules/internal/breakpoint-queue.ts` | `features/breakpoints/` |
@@ -43,11 +44,11 @@ Handover只列未完成任务、当前阻塞和运行约束；完成项从任务
 | [features/transfer.md](features/transfer.md) | HAR、Native Archive、Body 导出的异步文件任务 | `transfer/`、`har/`、`archive/` | Capture 导入导出菜单 |
 | [features/diagnostics.md](features/diagnostics.md) | 三进程结构化日志、查询、导出 | `diagnostics/` | `features/diagnostics/` |
 | [features/guidebook.md](features/guidebook.md) | Desktop 在线使用指南入口、远程 frame 安全边界、主题/语言同步与外部浏览器跳转 | 无 | `features/guidebook/` |
-| [features/settings.md](features/settings.md) | 证书/MITM、系统代理与上游代理、更新、存储状态、语言主题 | `workspace/`、Main使用的`@interceptor/platform-capabilities`、`updates/` | `features/settings/` |
+| [features/settings/](features/settings/README.md) | 证书/MITM、系统代理与上游代理、更新、存储状态、语言主题；子文档按证书、代理、更新、Tool 拆分 | `workspace/`、Main使用的`@interceptor/platform-capabilities`、`updates/` | `features/settings/` |
 | [features/tool-capabilities.md](features/tool-capabilities.md) | Agent/MCP共用的Tool目录、Settings开关和`ask`/`auto`契约 | 复用既有command；共享registry位于`packages/interceptor-tools/` | Settings > Agent Tool capabilities |
 | [features/mcp.md](features/mcp.md) | 对外 AI Host 接入、调用方认证、transport 与共享 Tool Catalog 消费 | 无新增 Core 业务；transport 已接入 Main `mcp/` | Settings > Agent MCP 配置 + App 级问询弹层 |
 | [features/playground.md](features/playground.md) | Web人工验收工作台、Browser MCP/CORS、Traffic Lab与手工证据 | 复用正式MCP与Proxy入口；开发代码位于`apps/playground/` | 独立Browser UI，不进入产品包 |
-| [features/agent.md](features/agent.md) | 内置持久化 Chat Agent、DeepSeek Model、Session History 与 Tool Loop | 复用既有 command；Runtime 位于 `packages/agent-runtime/` | `features/agent/` + Settings > Agent |
+| [features/agent/](features/agent/README.md) | 内置持久化 Chat Agent、DeepSeek Model、Session History 与 Tool Loop；子文档按概念、执行、会话、Tool 拆分 | 复用既有 command；Runtime 位于 `packages/agent-runtime/` | `features/agent/` + Settings > Agent |
 
 ## 进程边界
 

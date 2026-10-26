@@ -21,7 +21,7 @@ Tool名称固定使用`<feature>_<verb>[_<object>]`，前缀等于拥有该业�
 
 Updates属于产品控制面，不注册为业务Tool。
 
-授权设置的Main归属、双列开关与原子持久化见[进程文档](../platform/processes.md)及[Agent配置](agent.md)。落盘record的两个字段为`agentDisabledToolNames`、`mcpDisabledToolNames`；非法schema、重复名称及额外字段拒绝，合法数组中的未知名称只从内存快照丢弃，读取不改文件、不迁移或映射旧名。写入只保留当前registry名称并按registry顺序规范化；搜索不改变开关或持久化。这些校验仍由`ToolCapabilitySettingsService`完成，不让Renderer维护第二套目录。
+授权设置的Main归属、双列开关与原子持久化见[进程文档](../platform/processes.md)及[Agent配置](agent/README.md)。落盘record的两个字段为`agentDisabledToolNames`、`mcpDisabledToolNames`；非法schema、重复名称及额外字段拒绝，合法数组中的未知名称只从内存快照丢弃，读取不改文件、不迁移或映射旧名。写入只保留当前registry名称并按registry顺序规范化；搜索不改变开关或持久化。这些校验仍由`ToolCapabilitySettingsService`完成，不让Renderer维护第二套目录。
 
 <a id="shared-main-actions-acceptance"></a>
 ## 2. 共用业务入口

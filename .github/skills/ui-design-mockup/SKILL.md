@@ -21,7 +21,7 @@ description: 'Create and iterate high-fidelity UI design mockups for the Interce
   - `src/state/` 是 typed `DesignState` + reducer + `data-*` 映射。
   - `src/fixtures/` 是 fixture 渲染器、`ICON_BY_ID` 图标注册表与 `generated/` 静态 DOM 快照。
 - 新增/修改任何 feature UI 都在这里改，不再新建 per-feature 目录，也不再有第二套设计路径。
-- 视觉取值一律引用 `design-vite/design-system.md`（权威 token：颜色/排版/尺寸/组件/交互）。
+- 视觉取值一律引用 `design-vite/design-system/README.md`（权威 token：颜色/排版/尺寸/组件/交互）。
 - 目录约定与命令见 `design-vite/README.md`。
 
 ## 流程
@@ -48,6 +48,6 @@ description: 'Create and iterate high-fidelity UI design mockups for the Interce
 
 ## 参考
 
-- 设计规范：`design-vite/design-system.md`
+- 设计规范：`design-vite/design-system/README.md`
 - 目录约定与命令：`design-vite/README.md`
 - 落地实现的一致性验证：`.github/skills/ui-parity-check/`
