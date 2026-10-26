@@ -101,7 +101,7 @@ The opening screenshot shows a selected WebSocket connection and its messages. M
 
 <img src="architecture/assets/readme-breakpoints-demo.gif" alt="Pause a request, edit the JSON body, forward it, and see the server receive the edited request" width="1200">
 
-*10-second demo: pause, edit and forward a request. No server change. [Watch with sound (MP4)](architecture/assets/readme-breakpoints-demo.mp4).*
+*10-second demo with Chinese and English captions: pause, edit and forward a request. No server change. [Watch with sound (MP4)](architecture/assets/readme-breakpoints-demo.mp4).*
 
 [Breakpoints walkthrough: pause, edit, continue and drop](https://www.interceptor.cn/en/guide/breakpoints)
 
