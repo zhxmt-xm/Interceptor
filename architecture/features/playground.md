@@ -317,7 +317,7 @@ Playground按服务端目录动态列出Tool。人工检查流程为：
 Capture验证按HTTP、Bodies、Encoding、WebSocket、gRPC、TLS六组复用Playground的场景目录和流量库，不强制每条workflow经过Browser。
 验证Playground页面时通过公开UI运行；其余可直接使用Node流量API。E2E复用场景ID、默认Draft与流量发生器，
 但独立断言Capture结果；不得把Playground自己的origin/client断言复用成产品预期，也不建立一个39项巨型workflow。
-HTTP和H2的收尾规则由[Capture契约](capture.md)定义；不为Playground新增“测试的测试”。
+HTTP和H2的收尾规则由[Capture契约](capture/README.md)定义；不为Playground新增“测试的测试”。
 
 ### 9.1 `capture.playground-traffic`真实E2E
 

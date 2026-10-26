@@ -9,9 +9,9 @@ Interceptor内部平台能力package，负责系统代理、证书、AppContaine
 - 证书公开方法：`getCertificateInfo / generateCertificate / installCertificate / uninstallCertificate / deleteCertificate / revealCertificate / viewCertificate / openCertificateManager`；唯一内部CertificateService管理材料、TrustStore、MITM意图与Core同步。Windows DER/PEM与macOS前台helper保持各自实现。
 - 系统代理公开方法：`getSystemProxyStatus / enableSystemProxy / restoreSystemProxy`；内部SystemProxyService拥有listener检查、操作状态、journal、Core upstream同步和探活。
 - 上游公开方法：`getUpstreamSettings / applyUpstreamSettings`；同一SystemProxyService协调Core中的持久化偏好、运行路线、操作状态与变化通知。系统接管前先准备已选上游，Restore不清空独立上游；探活只报告健康状态，不自动改成直连。
-- Windows WPAD由`system-proxy/windows/`独立实现：现有C# helper的`discover-wpad`调用WinHTTP，按DHCP优先、DNS后备只返回PAC URL；WindowsSystemProxyService使用30秒、64KiB上限的只读子进程调用。`12180`映射为发现失败，其他原生错误和超时明确报告；System仅Auto Detect时在接管前发现，失败不直连、不覆盖旧路线。公共API、macOS原调用及Core PAC引擎保持不变；独立DNS/DHCP正向验收边界见[Settings](../../architecture/features/settings.md#windows-wpad-research)。
+- Windows WPAD由`system-proxy/windows/`独立实现：现有C# helper的`discover-wpad`调用WinHTTP，按DHCP优先、DNS后备只返回PAC URL；WindowsSystemProxyService使用30秒、64KiB上限的只读子进程调用。`12180`映射为发现失败，其他原生错误和超时明确报告；System仅Auto Detect时在接管前发现，失败不直连、不覆盖旧路线。公共API、macOS原调用及Core PAC引擎保持不变；独立DNS/DHCP正向验收边界见[Settings](../../architecture/features/settings/upstream-wpad.md#windows-wpad-research)。
 - Windows WinINet读取使用`INTERNET_PER_CONN_FLAGS_UI`，写入/恢复继续使用`INTERNET_PER_CONN_FLAGS`；六字段快照及journal格式不变，发现的URL不写回原系统配置。
-- macOS只读`system-proxy.read-discovery`返回主网络的搜索域及系统缓存的DHCP 252 URL，不修改DNS或代理、不主动请求租约；DHCP由macOS客户端获取，DNS发现使用系统解析器。真实DNS/DHCP选路和恢复范围见[Settings](../../architecture/features/settings.md#upstream-request-adapter)，不能用注入缓存或读取字段代替端到端验收。
+- macOS只读`system-proxy.read-discovery`返回主网络的搜索域及系统缓存的DHCP 252 URL，不修改DNS或代理、不主动请求租约；DHCP由macOS客户端获取，DNS发现使用系统解析器。真实DNS/DHCP选路和恢复范围见[Settings](../../architecture/features/settings/upstream-config.md#upstream-request-adapter)，不能用注入缓存或读取字段代替端到端验收。
 - AppContainer公开方法：`listAppContainers / enableAppContainer / disableAppContainer / enableAllAppContainers / disableAllAppContainers`；内部单项/批量写入共用同组互斥，保留Windows Network Isolation与UAC命令，macOS明确不支持。
 - `getSupportedCapabilities()`：按业务module名称返回支持列表，不把Trust Store、连接归属或图标拆成平级capability；helper是内部执行设施，不列为业务能力。supported不随helper是否已构建或安装改变，也不是ready、owned或authorized。
 - `prepare()`顺序完成helper组件检查、异常退出journal读取和共享CA准备；helper准备忙时不能重复调用或退出。Windows不增加授权步骤，macOS按真实`app.isPackaged`选择生产/开发入口，失败不回退到开发。
@@ -122,7 +122,7 @@ Main/Core连接适配、平台组合和Certificate材料的既有回归位于Des
 - macOS尚不支持`client-app`，即本机连接归属与应用图标；AppContainer仅适用于Windows，不为macOS提供伪实现。
 - macOS证书View使用只读系统面板显示目标证书；Finder识别系统返回的已知路径引号，不依赖列表模式，复用窗口不关闭用户已有窗口。
 - WinINet与SystemConfiguration、UAC与macOS系统确认是必要原生差异。CA私钥按Windows用户目录PEM/macOS Keychain支持的safeStorage分别保存；macOS保存完整service快照和接管前生效上游，按HTTP/HTTPS分别下发，Windows保留原单一上游结构及journal版本。
-- 仅Auto Detect由各平台原发现链路处理：Windows现用WinHTTP，macOS保留系统生效PAC及原DHCP缓存/DNS逻辑。Windows的DNS/DHCP、System Auto Detect及代际恢复已独立验收；两端发现算法和bypass格式不统一，证据见[Settings](../../architecture/features/settings.md#windows-wpad-research)。
+- 仅Auto Detect由各平台原发现链路处理：Windows现用WinHTTP，macOS保留系统生效PAC及原DHCP缓存/DNS逻辑。Windows的DNS/DHCP、System Auto Detect及代际恢复已独立验收；两端发现算法和bypass格式不统一，证据见[Settings](../../architecture/features/settings/upstream-wpad.md#windows-wpad-research)。
 
 ### 聚合与迁移状态
 
@@ -197,7 +197,7 @@ Certificate模块通过`MacosHelperServiceClient.trustCertificate()`/`untrustCer
 - import失联确认结束但尚未请求trust时，只撤回安装前不存在的精确公开CA；已有CA、未知import和已经拒绝的授权不清理。回滚失败同时保留原错误，不能假装操作成功或安全恢复。
 - `requestSent`独立记录是否已向服务socket提交帧；连接前失败虽然已结束，但没有发出import，不请求回滚删除。该标记不进入native协议，也不用于判断前台授权进程的完成状态。
 
-不能把安装helper的授权等同于修改admin trust的授权，也不能假定root可绕过系统确认。不提供临时授权规则写入、后台trust/untrust或旧macOS兼容分支，不关闭SIP、使用私有entitlement或改成user trust；当前权限与收尾契约见[Settings](../../architecture/features/settings.md#24-窄-api)。
+不能把安装helper的授权等同于修改admin trust的授权，也不能假定root可绕过系统确认。不提供临时授权规则写入、后台trust/untrust或旧macOS兼容分支，不关闭SIP、使用私有entitlement或改成user trust；当前权限与收尾契约见[Settings](../../architecture/features/settings/certificates.md#24-窄-api)。
 
 ## 首次启动部署
 

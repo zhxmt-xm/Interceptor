@@ -95,6 +95,16 @@ node apps/desktop/tests/visual-parity/parity.mjs
 
 普通差异继续汇总余下批次；环境错误不能继续时明确记录未运行范围。browser、Vite与design preview统一在`finally`关闭，关闭失败写入错误报告，不得吞掉后声称通过。SIGINT/SIGTERM分别以130/143退出并清理本次资源。最终报告不混入运行中的中间状态，生成报告与批量截图不进入Git，手工设计评审和真实E2E的截图机制保持独立。
 
+<a id="windows-android-local-environment"></a>
+Windows Android本机环境：
+
+- Android构建使用JDK17、Go、SDK36、Build Tools `35.0.0`、NDK `29.0.14206865`和Platform-Tools `37.0.1`；SDK许可由用户确认，`local.properties`中的Windows盘符需要转义，例如`C\:/Users/zhang/AppData/Local/Android/Sdk`。
+- 设备验证使用API35、API29、API26及API35 ps16k的Google官方x86_64镜像；ps16k镜像不能替代ARM64或真实16KiB硬件验收。
+- 本机工具安装目录为`%LOCALAPPDATA%\interceptor-android\`，现有PowerShell通过`. "$env:LOCALAPPDATA\interceptor-android\activate.ps1"`加载工具与APK环境变量；新启动的终端使用用户环境变量。
+- Android仓库执行`./gradlew.bat --no-daemon :app:nativeApkAudit :app:testDebugUnitTest :app:lintDebug :app:assembleDebugAndroidTest`，设备instrumentation另外执行；报告保留在Android仓库`app/build/reports/`和`app/build/test-results/`。
+- Desktop执行`npm run build:native --workspace @interceptor/platform-capabilities`、`npm run e2e:prepare-local --workspace @interceptor/desktop`、`npm run package`和`npm run test:package-audit`；本机未签名Desktop包不能替代正式签名或完整packaged smoke，随包Android APK仍须使用原正式签名与固定摘要。
+- 模拟器使用`Windows Hypervisor Platform`加速，启用后按系统要求手动重启，并用`emulator -accel-check`核对；编译、JVM测试及真机USB验证不依赖电脑虚拟化。物理USB验证要求手机开启并授权USB调试，不停止共享ADB Server或清理其他设备的reverse映射。
+
 涉及 Main / Preload / IPC / Fuses / CSP / 打包边界时追加：
 
 ```powershell

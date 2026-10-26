@@ -437,7 +437,7 @@ ClashX保持运行，执行前读取真实系统代理状态，不将旧的开�
 5. 通过产品正常Close关闭B，确认完整代理回到外部改写后的配置；记录两代metadata、trace和只含哈希/布尔值的证据。
 6. 通过ClashX真实菜单恢复该workflow的上游基线，外层host guard验证两代Main/Core/Worker、8888、journal和证书信任，再删除profile。整轮结束还须恢复准备前的最初完整代理状态。
 
-ClashX三条属于`settings.proxy.upstream`，另一条为既有跨profile crash；四条均须保留实际数据流、完整代理和退出恢复证据，现行字段与恢复约定见[macOS生效上游](../../../../../architecture/features/settings.md#macos生效上游)。
+ClashX三条属于`settings.proxy.upstream`，另一条为既有跨profile crash；四条均须保留实际数据流、完整代理和退出恢复证据，现行字段与恢复约定见[macOS生效上游](../../../../../architecture/features/settings/proxy-platform.md#macos-effective-upstream)。
 
 <a id="settings-upstream-windows"></a>
 ## `settings.upstream.windows`
@@ -543,7 +543,7 @@ npm run test:e2e:workflow --workspace @interceptor/desktop -- wpad-network.workf
 
 ### 预期与证据
 
-- 本轮按[发送适配契约](../../../../../architecture/features/settings.md#upstream-request-adapter)验证Mockttp补丁：
+- 本轮按[发送适配契约](../../../../../architecture/features/settings/upstream-config.md#upstream-request-adapter)验证Mockttp补丁：
   原PAC HTTP和HTTPS scheme场景先保留产品Red，修改后用同样的请求、PAC条件及上游限制取得Green。
   代理真实收到的目标与源站实际收到的headers/body分别断言；不以按钮切换或HTTP200代替正确选路。
   H1字段名可小写、同名行可归组，但字段值、同名值顺序、空值和正文必须保留；Cookie/Set-Cookie及framing
@@ -588,7 +588,7 @@ npm run test:e2e:workflow --workspace @interceptor/desktop -- wpad-network.workf
   核对原服务配置/顺序、默认路由和本轮DHCP服务文件恢复。授权或环境失败记blocked，不算产品Red或验收Green。
   实验代理端口由外部协调器提供给测试fixture，不进入产品参数。明文HTTP经PAC HTTP上游的独立场景保留原协议、
   headers、PAC和断言。DNS-WPAD、显式PAC与DHCP分别核对上游CONNECT及DIRECT流量，不能只断言响应正文成功。
-  协议边界见[Settings上游代理](../../../../../architecture/features/settings.md#34-上游代理链式转发)。
+  协议边界见[Settings上游代理](../../../../../architecture/features/settings/upstream-config.md#34-上游代理链式转发)。
 - 同一fixture另提供`/tls-proxy.pac`，通过真实UI直接选择显式PAC，不需要DNS搜索域或Auto Detect变更。
   PAC对HTTPS返回PROXY、对HTTP返回DIRECT；HTTPS正文成功必须同时有且仅有一条正确CONNECT记录，
   HTTP正文只到达自产origin、不新增上游连接。该场景独立验证TLS scheme与实际选路，
@@ -875,7 +875,7 @@ Local诚实显示unsupported；packaged匿名请求固定仓库，HTTP 404或请
 
 **策略**：shared（有效available/downloaded仅packaged真实检查）
 
-执行时需要packaged App和可匿名访问的新release。不注入Update store或伪造状态，也不把404失败检查作为通知下载通过。布局契约见[更新通知按钮](../../../../../architecture/features/settings.md#更新通知按钮)。
+执行时需要packaged App和可匿名访问的新release。不注入Update store或伪造状态，也不把404失败检查作为通知下载通过。布局契约见[更新通知按钮](../../../../../architecture/features/settings/updates.md#更新通知按钮)。
 
 ### Steps
 

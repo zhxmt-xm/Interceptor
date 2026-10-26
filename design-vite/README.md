@@ -6,7 +6,7 @@
 
 ```text
 design-vite/
-├── design-system.md         # 权威视觉规范（颜色/排版/尺寸/组件/交互）
+├── design-system/README.md         # 权威视觉规范（颜色/排版/尺寸/组件/交互）
 ├── README.md                # 本文件
 ├── index.html               # React 挂载点
 ├── vite.config.ts           # CSS Modules 配置为 generateScopedName: '[local]'，保留语义类名
@@ -40,7 +40,7 @@ design-vite/
 - 状态统一由 typed `DesignStateProvider` / `window.__setState(patch)` 驱动。人点击 UI 与截图脚本必须驱动同一套状态，不允许只为截图加一条假路径。
 - `reduceDesignState` 在收到 `view` 时会重置浮层类瞬态字段；`shoot.mjs` 的重置态也必须列全每个瞬态字段，漏一个就会让某场景的浮层泄漏进之后所有截图。
 - `src/fixtures/generated/*` 是**定稿的静态 DOM 快照**，描述旧稿抢救下来的结构；改设计时直接改它或改对应组件，已不存在再生成它的脚本。
-- 所有视觉取值以 [design-system.md](./design-system.md) 为准；设计稿与代码都引用同一套 token。字体走 Google Fonts CDN。
+- 所有视觉取值以 [design-system/README.md](./design-system/README.md) 为准；设计稿与代码都引用同一套 token。字体走 Google Fonts CDN。
 - 设计稿要完整实现用户可见的状态与交互（展开、选择、菜单、loading、empty、warning、disabled、成功/失败）；网络、Core、IPC、持久化用 fixture/adapter 模拟，不复制业务后端。
 - 这些是**设计资产**，非产品运行代码；落地到 `apps/desktop` 后保留供回归比对。
 
@@ -53,7 +53,7 @@ design-vite/
 - `upstreamFixtureOutcome` 仅用于设计演示成功/失败，不访问 DNS、代理或产品 API；`upstreamHealth` 演示生效上游不可达。
 - `upstreamOperation` 可展示静态 applying/discovering；实际点击 Apply 才设置 `upstreamApplyRequested` 并演示结果。
 - `upstreamPopoverOpen` 控制同一快捷浮层，Open in Settings 保留草稿并定位到对应区域。
-- WPAD系统模式、DHCP和产品E2E的实际能力以[Settings](../architecture/features/settings.md#upstream-request-adapter)为准；设计交互不替代真实网络验收。
+- WPAD系统模式、DHCP和产品E2E的实际能力以[Settings](../architecture/features/settings/upstream-config.md#upstream-request-adapter)为准；设计交互不替代真实网络验收。
 
 ## Rules 菜单
 
