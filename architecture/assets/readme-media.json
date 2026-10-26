@@ -84,6 +84,22 @@
       "manifestSha256": "5d215a762cf13a5dd7f6982444964e36085bea0d11b500a07b3577d928b44282"
     }
   },
+  "englishDemo": {
+    "gif": "readme-breakpoints-demo.gif",
+    "gifSha256": "1d7b6d1728eade5876ce89a028fd384c7651bf6f693a13f69b3d55ad4a3d0131",
+    "mp4": "readme-breakpoints-demo.mp4",
+    "mp4Sha256": "17c3d9f7861f2b56573eab309de04af784c4449775262f7f90a71956f0ee215f",
+    "width": 1200,
+    "height": 768,
+    "durationMs": 10582,
+    "captions": [
+      "Pause a request before it reaches the server.",
+      "Edit the JSON body in place.",
+      "Forward it — the server stays unchanged.",
+      "The server receives the edited request."
+    ],
+    "source": "Packaged App automated through the archived Playwright workflow test-results/readme-demo/readme-demo.workflow.ts; frames captured with CDP Page.startScreencast."
+  },
   "imageWidth": 3200,
   "imageHeight": 1800,
   "capture": "Actual native App windows with owned loopback traffic under /showcase/. Themes selected through product UI. Images copied byte-for-byte; no recoloring, cropping or compositing.",
