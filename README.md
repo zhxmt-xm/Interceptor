@@ -89,10 +89,7 @@ The opening screenshot shows a selected WebSocket connection and its messages. M
 - Mock a response, map to a local file or another server, block traffic, or add a delay.
 - Organize rules in folders and inspect their hits and recorded effects.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-rules-dark.png">
-  <img src="architecture/assets/readme-rules-light.png" alt="Rules matching a local host and path and adding an x-interceptor-demo request header, with one recorded hit" width="1600">
-</picture>
+<img src="architecture/assets/readme-rules-en.png" alt="Rules matching a local host and path and rewriting a request header to x-e2e-action" width="1600">
 
 [Rules walkthrough: matching, rewriting, mocking and mapping](https://www.interceptor.cn/en/guide/rules)
 
@@ -102,10 +99,7 @@ The opening screenshot shows a selected WebSocket connection and its messages. M
 - Continue unchanged, forward edited content or drop it; manage multiple paused items from the queue.
 - HTTP pauses occur at the header stage, so the original body may not yet be available.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-breakpoints-dark.png">
-  <img src="architecture/assets/readme-breakpoints-light.png" alt="A paused local order request with original JSON, an edited replacement body and continue, forward edited and drop controls" width="1600">
-</picture>
+<img src="architecture/assets/readme-breakpoints-en.png" alt="A paused request showing the original JSON body, a replacement body and Continue, Forward edited and Drop controls" width="1600">
 
 [Breakpoints walkthrough: pause, edit, continue and drop](https://www.interceptor.cn/en/guide/breakpoints)
 
@@ -115,10 +109,7 @@ The opening screenshot shows a selected WebSocket connection and its messages. M
 - Edit query parameters, headers, authentication and bodies; inspect the response and timing.
 - Save reusable requests in collections, use request history, or probe a TLS connection.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-composer-dark.png">
-  <img src="architecture/assets/readme-composer-light.png" alt="Composer sending a GET with a custom header and showing a 200 JSON response" width="1600">
-</picture>
+<img src="architecture/assets/readme-composer-en.png" alt="Composer sending a POST with a JSON body and showing a 200 JSON response" width="1600">
 
 Composer sends directly: its requests do not enter Capture or run through Rules. [Composer and collection walkthrough](https://www.interceptor.cn/en/guide/composer).
 
@@ -128,10 +119,7 @@ Composer sends directly: its requests do not enter Capture or run through Rules.
 - Discuss traffic and let the Agent use only the Tools you enable; review changes in `Ask` mode.
 - Keep encrypted local conversation history, switch chats, stop a turn or retry.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-agent-dark.png">
-  <img src="architecture/assets/readme-agent-light.png" alt="The built-in Agent beside Capture, displaying a response from a clearly labeled local demonstration model" width="1600">
-</picture>
+<img src="architecture/assets/readme-agent-en.png" alt="The built-in Agent beside Settings, answering a question with the configured local model" width="1600">
 
 *Local demonstration model, not a commercial model test.*
 
@@ -143,12 +131,9 @@ Composer sends directly: its requests do not enter Capture or run through Rules.
 - Copy the connection configuration to a host supporting the required Streamable HTTP protocol.
 - Control MCP Tools independently of the built-in Agent; rotate or revoke client access in Settings.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-mcp-dark.png">
-  <img src="architecture/assets/readme-mcp-light.png" alt="Settings showing a running loopback MCP server, a local demonstration client and separate Agent and MCP Tool switches" width="1600">
-</picture>
+<img src="architecture/assets/readme-mcp-en.png" alt="Settings showing a running loopback MCP server, endpoint, clients and separate Agent and MCP Tool switches" width="1600">
 
-*Local configuration; MCP is off by default.*
+*Local loopback configuration, not an external-host compatibility test.*
 
 [MCP setup and compatibility guide](https://www.interceptor.cn/en/guide/mcp) · [Tool reference](https://www.interceptor.cn/en/guide/tool-reference)
 
