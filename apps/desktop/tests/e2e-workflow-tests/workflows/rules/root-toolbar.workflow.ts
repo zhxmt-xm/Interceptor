@@ -269,8 +269,11 @@ test('rules.root-toolbar exposes the root commands end to end', async ({
       await expect(headers).toContainText('x-e2e-action');
       await expect(headers).toContainText(operation === 'remove' ? 'original' : 'from-rule');
       if (operation === 'append') await expect(headers).toContainText('original');
+      await effect.scrollIntoViewIfNeeded();
+      await effect.hover();
+      await page.mouse.wheel(0, 120);
       await screenshotStep(`Capture中的${phase} Header ${operation}结果 / The ${phase} Header ${operation} result in Capture`, {
-        highlights: [{ target: headers, label: '1' }],
+        highlights: [{ target: effect, label: '1' }],
       });
       await returnToRule();
       await screenshotStep(`${phase} Header执行${operation} / ${operation} the ${phase} Header`);

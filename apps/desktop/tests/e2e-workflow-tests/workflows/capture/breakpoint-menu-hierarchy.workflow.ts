@@ -189,8 +189,11 @@ test('capture.breakpoint-menu-hierarchy aligns Block and Breakpoint labels', asy
     expect(originalOriginCount).toBe(1);
     await expect(loopbackLab.requestThroughProxy(desktopApp.capturePort(), requestPath)).rejects.toThrow();
     expect(loopbackLab.evidence()).toHaveLength(originalOriginCount);
-    const blockedRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
-      .filter({ hasText: requestPath }).last();
+    const newRequestRow = (...previousIds: string[]) => getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
+      .filter({ has: page.getByText(requestPath, { exact: true }) })
+      .and(page.locator(previousIds.map(id => `:not([data-automation-id="${AutomationIdFactory.captureRequestRow(id)}"])`).join('')));
+    const blockedRow = newRequestRow(capturedExchangeId);
+    await expect(blockedRow).toHaveCount(1);
     await expect(blockedRow).toBeVisible();
     const blockedExchangeId = await exchangeId(blockedRow);
     expect(blockedExchangeId).not.toBe(capturedExchangeId);
@@ -214,8 +217,9 @@ test('capture.breakpoint-menu-hierarchy aligns Block and Breakpoint labels', asy
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
     await expect(loopbackLab.requestThroughProxy(desktopApp.capturePort(), requestPath)).resolves.toMatchObject({ statusCode: 200 });
     expect(loopbackLab.evidence()).toHaveLength(originalOriginCount + 1);
-    const recoveredRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
-      .filter({ hasText: requestPath }).last();
+    const recoveredRow = newRequestRow(capturedExchangeId, blockedExchangeId);
+    await expect(recoveredRow).toHaveCount(1);
+    const recoveredExchangeId = await exchangeId(recoveredRow);
     await expect(recoveredRow).toContainText('200');
     await screenshotStep('停用Block后的新请求恢复200 / A new request returns 200 after disabling Block', {
       highlights: [{ target: recoveredRow, label: '1' }],
@@ -292,8 +296,8 @@ test('capture.breakpoint-menu-hierarchy aligns Block and Breakpoint labels', asy
     await expect(activeRequest.result).resolves.toMatchObject({ statusCode: 200 });
     activeRequest = null;
     expect(loopbackLab.evidence()).toHaveLength(4);
-    const finalRow = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
-      .filter({ hasText: requestPath }).last();
+    const finalRow = newRequestRow(capturedExchangeId, blockedExchangeId, recoveredExchangeId, pendingExchangeId);
+    await expect(finalRow).toHaveCount(1);
     await expect(finalRow).toContainText('200');
     await expect(finalRow).not.toHaveAttribute('data-breakpoint-id');
     await screenshotStep('停用快捷断点后，新请求直接完成 / A new request completes directly after disabling the shortcut breakpoint', {

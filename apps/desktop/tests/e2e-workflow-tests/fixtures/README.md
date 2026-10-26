@@ -56,11 +56,12 @@ VS Code 1.143应用配置后，当前Agent须在该一次性session执行官方`
 - 启动页已进入公开的`data-phase="error"`时，driver立即报告启动失败并保留Main日志/trace，不再继续等待hidden直到耗尽120秒，也不自动点击Retry把失败改成通过。
 - `LocalElectronApplicationDriver.launch()`为每代App的Page注册TLS兼容性提示handler，保留到Page关闭；准备、业务操作、清理和relaunch使用相同策略。仅激活“暂不”，不添加规则；macOS以仍存在的host行为触发条件，异步handler只取得当前公共按钮的ElementHandle并发送真实Enter，不用locator等待已经关闭提示的替代按钮。按钮已经不存在或该具体节点已detach表示旧提示消失；超时、页面关闭和其他错误仍抛出，handle始终释放。新提示由原操作的actionability检查重新触发，不等待可能被新事件重新占据的selector消失。Windows保留dismiss按钮触发/click。普通清理不再重复点击同一按钮。专门验证该提示的workflow声明`test.use({ dismissTlsCompatibilityDialogs: false })`，不自动关闭待测弹窗；策略只在测试端，不进入产品。
 - Windows宿主guard使用原六字段比较；macOS完整比较network service快照，并额外保存/复核admin trust。该检查只属于Macos宿主操作，不在TLS/gRPC/H2 workflow追加Windows证书读取。
-- macOS driver按Playwright项目配置准备真实窗口：常规`macos`使用1600x900，只有body-fill滚轮边界用`macos-scroll-boundary`的1600x800，两个项目不重复运行workflow。先校验Main PID/启动时间并等待System Events看到窗口，再调整和验证内容尺寸。Windows不增加项目或窗口调整；业务workflow不通过产品CSS或额外请求数据制造滚动。
+- macOS driver按Playwright项目配置准备真实窗口：常规`macos`使用1600x900，只有body-fill滚轮边界用`macos-scroll-boundary`的1600x800，两个项目不重复运行workflow。先校验Main PID/启动时间并等待System Events看到窗口，再调整和验证内容尺寸。Windows保留既有项目与默认窗口准备；缩小消息窗口的场景共用`desktopApp.resizeWindow()`并恢复原尺寸。业务workflow不通过产品CSS或额外请求数据制造滚动。
 - macOS每代App启动前，通过CoreGraphics只读确认登录完成且桌面未锁定；锁屏时明确要求解锁，不创建测试profile或启动App，避免先自动接管代理后才发现原生窗口不可访问。packaged smoke共用同一前置检查；通过前置检查不代表后续窗口或授权验收已通过。
 - macOS Electron stdout/stderr继承profile内0600日志文件，runner退出时保留App仍能写日志，不因断开的pipe产生EPIPE。附加证据前扫描完整日志中的敏感值，只输出有界末尾；保留profile的私有日志不直接作为附件。主动crash确认后立即保存该代metadata/trace/log，不能等同profile的下一代删除日志后再采集。Windows仍使用原Playwright日志通道。
 - [settings-workflow.ts](ui/settings-workflow.ts)分别验证Windows AppContainer搜索控件与macOS不支持状态；共同导航顺序和当前section断言不变。
-- [file-dialog.ts](ui/file-dialog.ts)只分派原生操作：Windows调用原有UI Automation，macOS按PID/启动时间定位`save-panel / open-panel`，以真实键鼠打开GoTo、粘贴并核对完整路径/文件名后提交。macOS坐标click发给目标process，不发给System Events应用；文件名选区必须包含扩展名，只读直接textFields，避免遍历文件列表阻塞。失败只取消本轮面板，让产品正常退出，不写原生返回值。
+- [file-dialog.ts](ui/file-dialog.ts)只分派原生操作：Windows调用原有UI Automation，macOS按PID/启动时间定位`save-panel / open-panel`，以真实键鼠打开GoTo、输入并核对完整路径/文件名后提交。macOS坐标click发给目标process，不发给System Events应用；文件名选区必须包含扩展名，只读直接textFields，避免遍历文件列表阻塞。失败只取消本轮面板，让产品正常退出，不写原生返回值。
+- Windows原生文件driver在点击前核对所属Main进程代际、对话框可见性、前台焦点和实际鼠标命中的控件；文件名输入不重复点击，Cancel与Save/Open各点击一次后只等待对话框关闭，不用`ShowWindow()`重新显示窗口。
 - macOS每次发送键鼠前前置并raise所属Open/Save或GoTo面板，确认进程代际与焦点；使用CoreGraphics真实键鼠事件，按键按下/抬起之间留原生处理间隔。仍从原生面板读取并核对路径/文件名，不写AX值或改原生返回结果。
 - macOS GoTo读取完整输入路径后，从其原生建议表中精确匹配测试自产文件/目录名，要求唯一命中并真实双击；只查询GoTo的`AXScrollArea → AXTable → AXRow → AXCell → AXList → AXStaticText`，不递归遍历文件浏览区。Save/Open类型取面板AXIdentifier，不能由文件名控件是否已出现暗示。
 - GoTo、Save/Open分别通过实际`CloseButton`、`OKButton`、`CancelButton`位置发送鼠标按下/抬起，明确清除修饰键并设置单击/双击计数。避免在关闭GoTo时按Return触发本机SCIM的text-storage越界、使系统Open/Save XPC服务崩溃；不修改输入法、应用语言、系统服务或dialog返回值。此处只改验收操作，不宣称修复了macOS系统服务。

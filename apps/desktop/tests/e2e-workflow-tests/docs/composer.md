@@ -234,20 +234,20 @@ Core 对非法 URL 与网络错误返回 `ok=false`；Renderer 以 `composer.res
 
 ### Steps
 
-1. 创建空profile/evidence和HTTP fixture；启动trace/Electron，等待App/Core/8888/readiness；检查System Proxy未owned，点击 `capture.readiness.cancel`并确认系统设置未修改。
-2. 进入Composer，确认默认history为空、编辑器为GET/`https://`/Auto。
-3. 通过UI发送GET请求A和POST+body请求B。
+1. 创建空profile/evidence和HTTP fixture；启动trace/Electron，等待App/Core/8888；冷启动bootstrap自动接管系统代理并进入Recording，本流程不依赖Capture，退出时由Main恢复。
+2. 进入Composer，确认默认history为空、编辑器为GET/空URL/Auto。
+3. 通过UI发送GET请求A和POST+body请求B；B同时设置自定义Header与Bearer。
 4. 打开History，确认两个动态rows按时间降序且method/URL/status准确。
-5. 依次选择A、B，确认method、URL、headers、query、body、auth和各自response完整恢复。
-6. 点击 `composer.new`。
-7. 确认恢复GET、`https://`、Auto、两个默认enabled headers、空body/auth/response；History中的A/B仍存在。
-8. 再加载A，确认New没有删除或串改历史记录。
+5. 依次选择A、B，确认method与URL回填到编辑器；History不保存headers/body/auth，response保持当前会话结果，加载历史不自动发送。
+6. 点击 `composer.collection.new-request`。
+7. 确认恢复GET、空URL、Auto、空body/auth/response；History中的A/B仍存在。
+8. 再加载A，确认New没有删除或串改历史记录，且加载不发送。
 9. 保存evidence并点击Close。
 10. 验证销毁，关闭fixture并删除profile。
 
 ### 预期效果
 
-History只保存真实Composer发送；加载恢复完整请求；New重置编辑器和response但不删除history；无系统代理副作用。
+History只保存真实Composer发送；加载历史恢复method与URL，不恢复headers/body/auth或response；New重置编辑器和response但不删除history；完整请求模型由Collection流程验证；无系统代理副作用。
 
 <a id="composer-resize"></a>
 ## `composer.resize`

@@ -35,10 +35,25 @@ describe('i18n catalogs', () => {
 
   it('uses the approved anonymous update copy without claiming repository visibility', () => {
     expect(resources.en.translation).toMatchObject({
-      'settings.updateDescription': 'Stable releases from GitHub. Downloads start only when you choose.',
-      'settings.latestReleaseHint': 'Newest stable release',
-      'settings.stableChannelHint': 'Stable release channel',
+      'settings.updateDescription': 'Published GitHub releases, including alpha. Downloads start only when you choose.',
+      'settings.latestReleaseHint': 'Highest published version by SemVer, including alpha',
+      'settings.publishedReleaseHint': 'Published versions, including alpha',
+      'settings.publishedVersions': 'All published versions',
     });
+  });
+
+  it.each(LANGUAGE_IDS)('preserves readable published-release messages in %s', (language) => {
+    for (const key of [
+      'settings.updateDescription',
+      'settings.installed',
+      'settings.latestReleaseHint',
+      'settings.readingMetadata',
+      'settings.publishedVersions',
+      'settings.publishedReleaseHint',
+    ] as const) {
+      expect(resources[language].translation[key], `${language}:${key}`)
+        .not.toMatch(/[?\uFFFD]/);
+    }
   });
 
   it.each(LANGUAGE_IDS)('removes GitHub account messages from %s', (language) => {

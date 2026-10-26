@@ -19,7 +19,7 @@
 - 既有客户端请求、origin响应定义、规则输入和网络断言保持不变。完成原网络断言后，再通过真实Capture导航、Keyword和自产请求行检查结果；不为截图再发一条请求，不把Rules编辑器当作Capture结果图。
 - Capture请求行的公共选中属性是`aria-pressed`；再次点击已选中的行会取消选择。补图步骤先读取当前属性，仅在未选中时点击，之后仍须断言`aria-pressed=true`；不能删除选择断言或改猜其他aria属性。
 - 重复Path按当前请求的公共行ID区分；GET/POST使用协议方法区分。匹配反例必须清除Rule facet限制，不能因只显示命中项而漏掉未命中的请求。
-- Header截图显示对应request/response区块及`data-effect`来源；Query使用既有origin echo响应中的`path`证明实际改写，不把Capture保留的入站Query说成最终转发地址。Map Remote检查同一入口exchange的映射响应，不伪造第二条target Capture记录。
+- Header截图显示对应request/response区块及`data-effect`来源；root-toolbar的Header set/append/remove结果高亮实际来源标记，截图前将标记滚入视口后，在标记上用真实滚轮向下滚动120px，确保标记离开滚动区底边并完整可见。Query使用既有origin echo响应中的`path`证明实际改写，不把Capture保留的入站Query说成最终转发地址。Map Remote检查同一入口exchange的映射响应，不伪造第二条target Capture记录。
 - root-toolbar的正文内容通过Raw模式下正式Copy取得并逐字比较完整文本；Monaco DOM的软换行、缩进和分片不能作为响应正文。Query另行核对解析出的完整`path`及remove后的参数缺失，不通过全局剥空白修正断言。
 - 所有高亮控件或区块在截图前完整滚入视口。检查后返回进入Capture前选中的同一Rule ID，不改草稿、启用状态、条件或动作顺序。
 - 普通Body的Raw、Copy、Fullscreen和Save均操作当前选中的Original/Final。保存副本通过真实Save Dialog产生，核对完整字节后清理，不替代原File replacement步骤使用的源文件。
@@ -152,20 +152,20 @@ Rule row始终为名称、命中数和树缩进保留空间；超过两个action
 
 ### Steps
 
-1. 创建profile/evidence，启动trace/Electron，等待App/Core/8888；点击 `capture.readiness.cancel`，确认System Proxy仍未owned。
-2. 点击 `shell.workspace.rules`，检查revision=0、rules=[]、dirty=false、selection=null并记录row count。
-3. 在 Rules tree 空白处打开根级右键菜单，点击 `rules.create`，确认新rule自动选中、dirty=true、detail Save 可用。
-4. 在 `rules.editor.name` 输入唯一名称；切换 `rules.editor.enabled` off/on，确认列表同步。
-5. 点击 `rules.more`→`rules.delete`，确认只删除新rule。
-6. 验证未点击Apply前，离开再返回Rules时草稿状态符合当前Renderer约定，Core revision未增加。
-7. 若需要清理草稿，重新加载权威RuleSet；确认初始rules未改变。
+1. 创建profile/evidence，启动trace/Electron，等待App root、Core Running和8888；冷启动自动接管系统代理并进入Recording。
+2. 点击 `shell.workspace.rules`，检查rules=[]、selection=null并记录row count。
+3. 点击 `rules.toolbar.create` 新建规则A；填写唯一名称、host与Header动作并启用，点击 `rules.apply`，确认applied。
+4. 修改 `rules.editor.name` 并再次Apply，确认列表显示新名称。
+5. 新建第二条规则B并Apply，保证删除A后编辑器仍有可Apply的规则。
+6. 选中A并点击 `rules.delete`，确认只删除A、B保留；选中B并Apply，确认applied。
+7. 切换到Capture再返回Rules，确认Core仍只返回B。
 8. 保存evidence，点击Close。
 9. 验证进程/8888销毁。
 10. 删除profile。
 
 ### 预期效果
 
-Create、rename、toggle、delete只修改选中草稿并准确维护dirty；Apply前不写Core RuleStore；删除不会误伤相邻rule。
+Create、rename、toggle、delete只修改选中草稿并准确维护dirty；Apply后Core只保留预期规则；删除不会误伤相邻规则。
 
 <a id="rules-matcher-variants"></a>
 ## `rules.matcher-variants`
@@ -334,7 +334,7 @@ Rule不仅能编辑和保存，也真实作用于Proxy数据面；匹配/不匹�
 2. loopback请求和响应均包含普通Header；选择真实paused行，确认快照存在相应effect且value为`from-rule`。
 3. 保存每个阶段的Header区域截图与几何JSON；断言所有name/value输入框等宽，effect距value下方2px、右对齐、9px字号和12px高，普通行30px、effect行44px，行内没有横向溢出。
 4. 通过input临时修改value再恢复，通过Add/Remove增删一行；Continue unmodified放行，request在origin验证set值，response在客户端验证append值，确认布局调整未改变规则结果。
-   - 原网络断言结束后，在Capture Headers选择对应request/response区块，显示`x-effect-layout`与真实set/append来源；点击Header来源标记返回同一Rule ID，核对选中状态和editor名称，再执行原停用步骤。
+   - 原网络断言结束后，在Capture Headers选择对应request/response区块，显示`x-effect-layout`与真实set/append来源；把来源标记本身滚入完整可见区域后截图，点击标记返回同一Rule ID，核对选中状态和editor名称，再执行原停用步骤。
 5. 两阶段均完成后停用测试规则，保存trace/metadata并正常Close；fixture验证Main/Core/Worker、8888、WinINet和journal恢复。
 
 ### 预期效果

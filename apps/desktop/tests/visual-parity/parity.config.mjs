@@ -4536,7 +4536,7 @@ export const views = [
         { type: 'clickText', text: 'Updates' },
       ],
       targets: [
-        'Stable releases from GitHub. Downloads start only when you choose.',
+        'Published GitHub releases, including alpha. Downloads start only when you choose.',
         'Version',
         'Delivery',
         'Current application',
@@ -4555,7 +4555,7 @@ export const views = [
         'Release source',
         'Check policy',
         'Download policy',
-        ...(updateState === 'checking' ? ['Check', 'Reading the latest stable release metadata'].map((name) => ({
+        ...(updateState === 'checking' ? ['Check', 'Reading published release metadata, including alpha'].map((name) => ({
           name,
           designSelector: `:text-is("${name}")`,
           appSelector: `:text-is("${name}")`,

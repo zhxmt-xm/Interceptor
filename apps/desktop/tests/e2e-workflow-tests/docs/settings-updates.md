@@ -513,10 +513,10 @@ npm run test:e2e:workflow --workspace @interceptor/desktop -- wpad-network.workf
 再开始下一条独立workflow；不能只改变量而不改网络，也不能注入发现URL。
 测试工具、Node/Electron和Main的所有开发runtime依赖须先就绪，准备失败或原生授权失败不算产品Red。
 
-<a id="settings-upstream-macos"></a>
-## `settings.upstream.macos`
+<a id="settings-upstream"></a>
+## `settings.upstream`
 
-**策略**：macOS；真实Electron；系统代理宿主保护；WPAD网络调整另行授权
+**策略**：Windows/macOS 共用真实Electron与系统代理宿主保护；Manual、Direct、显式PAC及重启场景使用当前平台driver，不限定平台。读取macOS helper、系统生效字典与journal的失败保持、DNS/DHCP发现和Auto Detect崩溃恢复场景仅在macOS运行；真实WPAD选路需先准备受保护网络，网络调整另行授权。
 
 ### Steps
 
@@ -837,16 +837,16 @@ Privacy defaults即时持久并真实驱动HAR Export初始状态；风险组合
 2. 点击 `shell.workspace.settings`→`settings.section.updates`。
 3. 在local未打包目标确认真实unsupported/development状态，不伪造available。
 4. packaged fresh profile无需登录即可检查；Updates不再显示GitHub access、设备码、登录/退出或Private文案，不打开GitHub授权浏览器。
-5. 点击 `settings.updates.check`，匿名请求固定`zhxmt-xm/Interceptor`的stable Release；不改变远端可见性、来源或个人Git/CI凭据，不注入响应或更新状态。
+5. 点击 `settings.updates.check`，匿名读取固定`zhxmt-xm/Interceptor`的全部Release分页，排除draft并按SemVer选择最高版本，包括alpha等预发布；不改变远端可见性、来源或个人Git/CI凭据，不注入响应或更新状态。
 6. 等待Checking结束：成功响应按实际版本进入Up-to-date或Available；HTTP 404、其他非成功HTTP响应或请求失败必须进入Failed，不回到Sign in required，也不把失败显示为无更新。失败后再次真实点击Check，验证仍可重试且不触发登录。
-7. 检查current/latest version、固定release source、policy、lastCheckedAt和纯文本release notes；只记录实际返回的数据。保存终态、失败提示、截图和trace，明确本次覆盖的是成功还是失败分支。
+7. 检查current/latest version、固定release source、policy、lastCheckedAt和纯文本release notes；只记录实际返回的数据。Available时latest必须按SemVer高于current，Up-to-date时latest不得高于current。当前只有alpha时，只要最高版本有匹配安装包也须正常比较；相同alpha不能提示升级。保存终态、失败提示、截图和trace，明确本次覆盖的是成功还是失败分支。
 8. 正常退出并确认宿主恢复后，重启同一profile；仍无需账号或Device Flow即可检查，退出取消本轮更新请求和timer。确认不生成产品GitHub凭据或发起token刷新。
 9. 确认公开Preload API不再含GitHub账号操作、Renderer无运行时错误；保存两代状态、lastCheckedAt、截图与trace并Close。有真实release notes时确认纯文本，不把404路径算作远端body渲染已验。
 10. 验证两代Main/Core/Worker销毁、8888释放及完整系统代理/journal/Root恢复，再删除profile；保留已有日常CA和信任。
 
 ### 预期效果
 
-Local诚实显示unsupported；packaged匿名请求固定仓库，HTTP 404或请求失败诚实显示Failed，不要求登录、不伪装成无更新。Close取消timer与活动请求，状态机和纯文本changelog准确，无远程代码执行。产品unit/integration覆盖匿名请求不带Authorization、各HTTP/网络失败及有效Release处理；真实404只证明失败路径，不替代下载、打开安装器或通知成功路径的E2E。
+Local诚实显示unsupported；packaged匿名请求固定仓库，HTTP 404或请求失败诚实显示Failed，不要求登录、不伪装成无更新。最高有效SemVer包括alpha，版本比较不受发布时间、列表顺序或分页位置影响；draft不参与更新，相同或更旧版本不提供降级。Close取消timer与活动请求，状态机和纯文本changelog准确，无远程代码执行。产品unit/integration覆盖匿名请求不带Authorization、分页、版本选择、各HTTP/网络失败及有效Release处理；真实404只证明失败路径，不替代下载、打开安装器或通知成功路径的E2E。
 
 <a id="settings-updates-download-open"></a>
 ## `settings.updates.download-open`

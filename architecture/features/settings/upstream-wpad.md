@@ -98,7 +98,7 @@ Windows WPAD验收需要获准的隔离网络及恢复保护。网络环境提�
   正向网络workflow在隔离环境就绪后运行，不补造不存在的正向历史Red。
   [现有Main上游测试](../../../packages/platform-capabilities/src/system-proxy/tests/unit/upstream-settings.test.ts)和
   [现有上游workflow](../../../apps/desktop/tests/e2e-workflow-tests/workflows/settings/upstream-settings.workflow.ts)
-  仍限定macOS；不能移除平台保护便宣称已有Windows覆盖。
+  的Manual、Direct与显式PAC场景共用当前平台driver；读取macOS helper、系统生效字典与journal的原生场景仍限定macOS。解除共享场景的平台限制后仍须实际执行Windows流程取得证据，不能用macOS结果代替。
   纯转换器在没有URL时仍返回`null`，Main现在先通过Windows发现与解析入口准备URL再调用转换器；
   Windows测试覆盖完整链路，不把纯转换器改成网络客户端。
 官方依据：

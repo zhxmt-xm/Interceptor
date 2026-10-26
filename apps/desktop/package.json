@@ -1,7 +1,7 @@
 {
   "name": "@interceptor/desktop",
   "productName": "Interceptor",
-  "version": "0.1.0",
+  "version": "0.1.1-alpha.1",
   "private": true,
   "license": "Apache-2.0",
   "author": "zhxmt-xm",

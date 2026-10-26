@@ -13,13 +13,13 @@ sequenceDiagram
     participant Shell as 系统
 
     Note over Main: packaged Windows/macOS<br/>启动一次 + 每小时
-    Main->>GH: 固定仓库 releases/latest（匿名）
+    Main->>GH: 固定仓库 releases?per_page=100&page=N（匿名）
     alt HTTP 或网络请求失败
         GH-->>Main: 404 / 其他非成功响应 / 请求失败
         Main-->>UI: failed + 错误信息，可显式重新检查
     else 成功
-        GH-->>Main: metadata
-        Note over Main: 只接受非 draft/非 prerelease SemVer
+        GH-->>Main: 分页 Release 列表
+        Note over Main: 排除 draft，按 SemVer 选择最高版本<br/>包括 alpha 等预发布，不按发布时间排序
         Main-->>UI: available / up-to-date + 纯文本 changelog
     end
     Note over UI: React 不用 HTML 渲染
@@ -37,7 +37,9 @@ sequenceDiagram
 
 **匿名请求**：产品不包含GitHub登录、Device Flow、Client ID、token读取/刷新/持久化或授权状态。检查和下载使用固定来源，`credentials: omit`且不发送`Authorization`；个人Git/CI凭据和仓库可见性不变。HTTP 404、其他非成功响应或网络错误均进入`failed`，不显示无更新或要求登录；失败后可从现有Check按钮显式重试。
 
-**安全校验**：SemVer、draft/prerelease、固定 `api.github.com/repos/zhxmt-xm/Interceptor`、asset ID/name/basename、平台扩展名、显式架构、声明 size、SHA-256。拒绝路径编码逃逸、外域、重复候选；用户只能打开本进程内完整校验并原子保存成功的安装包。
+**版本选择**：匿名读取固定仓库的全部 Release 分页，每页100项；非数组响应或任一页请求失败均进入`failed`，不把部分列表当作完整结果。忽略draft和无效SemVer tag，接受已发布的正式版及alpha等预发布。去除tag开头的`v`后按SemVer比较，选择最高版本；例如`0.1.1-alpha.10 > 0.1.1-alpha.2`、`0.1.1 > 0.1.1-alpha.10`，发布时间与列表位置不改变结果。没有有效版本时进入`failed`；最高版本只有比当前版本新才进入`available`，相同或更旧均为`up-to-date`，不提供降级。
+
+**安全校验**：所选Release的draft/prerelease字段、纯文本notes、固定 `api.github.com/repos/zhxmt-xm/Interceptor`、asset ID/name/basename、平台扩展名、显式架构、声明 size、SHA-256。最高版本缺少受支持安装包或校验失败时进入`failed`，不回退到更旧Release。拒绝路径编码逃逸、外域、重复候选；用户只能打开本进程内完整校验并原子保存成功的安装包。
 
 **Renderer 永远拿不到 URL 或 path。**
 
@@ -47,7 +49,7 @@ sequenceDiagram
 
 **生命周期**：`DesktopApplication`初始化updater并广播`update:status`；packaged Windows/macOS启动一次检查，此后每小时检查，正在下载或已下载时不自动覆盖结果。退出停止timer并取消检查/下载，已取消请求的迟到响应不能发布新状态或保留安装器，临时`.part`清理。未打包目标为`unsupported`。packaged Renderer从受保护ASAR经`interceptor://app`加载，不存在远程代码覆盖层。
 
-**UI**：Updates从Version开始，Delivery保留固定来源、检查/下载策略、进度和显式Check/Download/Open installer，GitHub access、Private及账号文案已移除。公开`settings.updates.status`只反映`data-state`、`data-supported`和`data-last-checked-at`，不增加业务接口。Main safeStorage仍用于macOS CA及Agent/MCP凭据；macOS Keychain访问许可不是GitHub登录。
+**UI**：Updates从Version开始，Delivery保留固定来源、检查/下载策略、进度和显式Check/Download/Open installer，GitHub access、Private及账号文案已移除。已安装版本标记为Installed，版本策略说明包含alpha。公开`settings.updates.status`只反映`data-state`、`data-supported`、`data-last-checked-at`、`data-current-version`和`data-latest-version`，不增加业务接口。Main safeStorage仍用于macOS CA及Agent/MCP凭据；macOS Keychain访问许可不是GitHub登录。
 
 ### 更新通知按钮
 

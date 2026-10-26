@@ -1,8 +1,9 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { glob, lstat, readFile, realpath } from 'node:fs/promises';
+import { glob, lstat, readFile, readlink, realpath } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import path from 'node:path';
+import { extractFile } from '@electron/asar';
 
 export const root = path.resolve(import.meta.dirname, '..');
 export const desktop = path.join(root, 'apps/desktop');
@@ -21,7 +22,7 @@ export function captureCommand(cwd, executable, args) {
   try {
     return execFileSync(executable, args, {
       cwd, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
     }).trimEnd();
   } catch (error) {
     throw new Error(`${executable} failed: ${String(error.stderr ?? error.message).trim()}`, { cause: error });
@@ -29,7 +30,9 @@ export function captureCommand(cwd, executable, args) {
 }
 
 export function runCommand(cwd, executable, args, environment = {}) {
-  const result = spawnSync(executable, args, { cwd, stdio: 'inherit', env: { ...process.env, ...environment } });
+  const env = { ...process.env, ...environment };
+  delete env.ELECTRON_RUN_AS_NODE;
+  const result = spawnSync(executable, args, { cwd, stdio: 'inherit', env, windowsHide: true });
   if (result.error) throw result.error;
   check(result.status === 0, `${executable} failed (${result.signal ?? result.status}); publication stopped.`);
 }
@@ -45,85 +48,96 @@ export async function readJson(file) {
   return JSON.parse(await readFile(file, 'utf8'));
 }
 
+function checkFields(object, fields, name) {
+  check(object && typeof object === 'object' && !Array.isArray(object)
+    && Object.keys(object).every(key => fields.includes(key)), `Unsupported fields: ${name}`);
+}
+
 export function parsePublicationPlan(plan) {
-  check(plan.schemaVersion === 1 && plan.repository === 'zhxmt-xm/Interceptor-Homepage'
-    && plan.branch === 'main', 'Unsupported Homepage publication contract.');
-  check(plan.platform === 'darwin' && plan.locale === 'en-US' && typeof plan.appVersion === 'string'
-    && ['x64', 'arm64'].includes(plan.architecture), 'Invalid native App publication identity.');
-  check(Array.isArray(plan.sources) && plan.sources.length > 0 && Array.isArray(plan.groups) && plan.groups.length > 0,
+  check(plan.schemaVersion === 2, 'Unsupported Homepage publication contract.');
+  checkFields(plan, ['schemaVersion', 'appVersion', 'locale', 'workflows', 'retainedMedia'], 'publication');
+  check(plan.locale === 'en-US' && typeof plan.appVersion === 'string' && plan.appVersion.length > 0,
+    'Invalid App publication identity.');
+  check(Array.isArray(plan.workflows) && plan.workflows.length > 0,
     'The screenshot publication contract is empty.');
-  const sources = new Map();
-  for (const source of plan.sources) {
-    check(/^[a-z0-9][a-z0-9.-]+$/.test(source.key) && !sources.has(source.key), `Invalid source key: ${source.key}`);
-    check(typeof source.test === 'string' && source.test.length > 0 && source.workflow.endsWith('.workflow.ts'), `Invalid test: ${source.key}`);
-    relativeFile(source.workflow);
-    check(['macos', 'macos-scroll-boundary'].includes(source.project)
-      && /^[a-f0-9]{64}$/.test(source.workflowSha256), `Invalid source contract: ${source.key}`);
-    check(Array.isArray(source.checkpoints) && source.checkpoints.length > 0, `Missing checkpoints: ${source.key}`);
-    const keys = new Set();
-    for (const point of source.checkpoints) {
-      check(/^[a-z0-9][a-z0-9.-]+$/.test(point.key) && !keys.has(point.key), `Duplicate checkpoint: ${source.key}/${point.key}`);
-      check(typeof point.title === 'string' && ['app', 'native-dialog'].includes(point.window)
-        && ['light', 'dark', 'warm', 'ember'].includes(point.theme), `Invalid checkpoint state: ${point.key}`);
-      check(Array.isArray(point.labels) && new Set(point.labels).size === point.labels.length
-        && point.labels.every(label => /^[1-9]\d*$/.test(label)), `Invalid highlight labels: ${point.key}`);
-      check(Array.isArray(point.dimensions) && point.dimensions.length === 2
-        && point.dimensions.every(value => Number.isInteger(value) && value > 0), `Invalid dimensions: ${point.key}`);
-      keys.add(point.key);
-    }
-    sources.set(source.key, source);
-  }
   const destinations = new Set();
-  const directories = new Set();
-  for (const group of plan.groups) {
-    relativeFile(group.directory);
-    check(group.directory.startsWith('guidebook/media/') && !directories.has(group.directory), `Invalid media group: ${group.directory}`);
-    directories.add(group.directory);
-    const source = sources.get(group.source);
-    check(source && Array.isArray(group.images) && group.images.length > 0, `Unknown group source: ${group.source}`);
-    const ids = new Set();
-    for (const image of group.images) {
-      check(typeof image.id === 'string' && !ids.has(image.id)
-        && source.checkpoints.some(point => point.key === image.checkpoint), `Invalid image mapping: ${group.directory}/${image.id}`);
-      ids.add(image.id);
-      check(/^[\w.-]+\.png$/.test(image.image) && /^[\w.-]+\.png$/.test(image.rawImage), `Invalid image path: ${image.id}`);
-      for (const name of new Set([image.image, image.rawImage])) {
-        const file = `${group.directory}/${name}`;
+  const directoryOwners = new Map();
+  const identities = new Set();
+  for (const workflow of plan.workflows) {
+    checkFields(workflow, ['file', 'testName', 'workflowSha256', 'steps', 'examples'], 'workflow');
+    relativeFile(workflow.file);
+    check(workflow.file.endsWith('.workflow.ts') && typeof workflow.testName === 'string'
+      && workflow.testName.length > 0, `Invalid test: ${workflow.file}`);
+    const identity = JSON.stringify([workflow.file, workflow.testName]);
+    check(!identities.has(identity), `Duplicate workflow test: ${identity}`);
+    identities.add(identity);
+    check(/^[a-f0-9]{64}$/.test(workflow.workflowSha256), `Invalid workflow digest: ${workflow.file}`);
+    check(Array.isArray(workflow.steps) && workflow.steps.length > 0, `Missing steps: ${workflow.file}`);
+    for (const [index, step] of workflow.steps.entries()) {
+      const name = `${workflow.file}/${workflow.testName}/step ${index + 1}`;
+      checkFields(step, ['title', 'window', 'theme', 'image'], name);
+      check(typeof step.title === 'string' && step.title.length > 0 && ['app', 'native-dialog'].includes(step.window)
+        && ['light', 'dark', 'warm', 'ember'].includes(step.theme), `Invalid step state: ${name}`);
+      checkFields(step.image, ['target', 'rawTarget', 'labels'], `${name}/image`);
+      check(Array.isArray(step.image.labels) && new Set(step.image.labels).size === step.image.labels.length
+        && step.image.labels.every(label => typeof label === 'string' && /^[1-9]\d*$/.test(label)), `Invalid highlight labels: ${name}`);
+      if (step.image.target === null) {
+        check(step.image.rawTarget === undefined, `Unpublished step has destinations: ${name}`);
+        continue;
+      }
+      const image = step.image;
+      relativeFile(image.target);
+      relativeFile(image.rawTarget);
+      const directory = path.posix.dirname(image.target);
+      check(directory.startsWith('guidebook/media/') && directory === path.posix.dirname(image.rawTarget)
+        && /^[\w.-]+\.png$/.test(path.posix.basename(image.target))
+        && /^[\w.-]+\.png$/.test(path.posix.basename(image.rawTarget)), `Invalid image destination: ${name}`);
+      check(!directoryOwners.has(directory) || directoryOwners.get(directory) === workflow,
+        `Media directory belongs to multiple tests: ${directory}`);
+      directoryOwners.set(directory, workflow);
+      for (const file of new Set([image.target, image.rawTarget])) {
         check(!destinations.has(file), `Duplicate image destination: ${file}`);
         destinations.add(file);
       }
     }
+    check(Array.isArray(workflow.examples), `Missing explicit example bindings: ${workflow.file}`);
+    for (const example of workflow.examples) {
+      checkFields(example, ['name', 'port', 'documents'], `${workflow.file}/example`);
+      const name = `${workflow.file}/${example.name}`;
+      check(typeof example.name === 'string' && /^[a-z][a-z0-9-]*$/.test(example.name)
+        && typeof example.port === 'string' && /^[1-9]\d{0,4}$/.test(example.port)
+        && Number(example.port) <= 65535, `Invalid example: ${name}`);
+      check(Array.isArray(example.documents) && example.documents.length > 0, `Unbound example: ${name}`);
+      for (const document of example.documents) {
+        checkFields(document, ['file', 'regions'], `${name}/document`);
+        check(/^guidebook\/(?:zh-CN|en)\/[\w-]+\.md$/.test(document.file)
+          && Array.isArray(document.regions) && document.regions.length > 0, `Invalid example document: ${name}`);
+        for (const region of document.regions) checkFields(region, ['anchor', 'occurrences'], `${name}/region`);
+        check(document.regions.every(region => (region.anchor === null || typeof region.anchor === 'string')
+          && Number.isInteger(region.occurrences) && region.occurrences > 0)
+          && new Set(document.regions.map(region => region.anchor)).size === document.regions.length,
+        `Invalid anchored example counts: ${name}`);
+      }
+    }
   }
-  if (plan.retainedHostGroups !== undefined) {
-    check(Array.isArray(plan.retainedHostGroups), 'Invalid retained Host media list.');
-    for (const group of plan.retainedHostGroups) {
-      relativeFile(group.directory);
-      check(group.directory.startsWith('guidebook/media/') && !directories.has(group.directory),
-        `Duplicate or invalid retained Host directory: ${group.directory}`);
+  check(destinations.size > 0, 'The screenshot publication contract has no image destinations.');
+  if (plan.retainedMedia !== undefined) {
+    check(Array.isArray(plan.retainedMedia), 'Invalid retained media list.');
+    const directories = new Set(directoryOwners.keys());
+    for (const group of plan.retainedMedia) {
+      checkFields(group, ['manifest', 'manifestSha256'], 'retained media');
+      relativeFile(group.manifest);
+      const directory = path.posix.dirname(group.manifest);
+      check(group.manifest.startsWith('guidebook/media/') && path.posix.basename(group.manifest) === 'manifest.json'
+        && ![...directories].some(existing => existing === directory
+          || existing.startsWith(`${directory}/`) || directory.startsWith(`${existing}/`)),
+      `Duplicate or invalid retained media directory: ${directory}`);
       check(/^[a-f0-9]{64}$/.test(group.manifestSha256),
-        `Missing reviewed Host manifest digest: ${group.directory}`);
-      directories.add(group.directory);
+        `Missing reviewed media manifest digest: ${group.manifest}`);
+      directories.add(directory);
     }
   }
-  check(Array.isArray(plan.values), 'Missing explicit example bindings.');
-  const valueKeys = new Set();
-  for (const value of plan.values) {
-    check(typeof value.key === 'string' && !valueKeys.has(value.key) && sources.has(value.source)
-      && /^[a-z][a-z0-9-]*$/.test(value.example) && /^[1-9]\d{0,4}$/.test(value.port)
-      && Number(value.port) <= 65535, `Invalid example: ${value.key}`);
-    valueKeys.add(value.key);
-    check(Array.isArray(value.documents) && value.documents.length > 0, `Unbound example: ${value.key}`);
-    for (const document of value.documents) {
-      check(/^guidebook\/(?:zh-CN|en)\/[\w-]+\.md$/.test(document.file)
-        && Number.isInteger(document.occurrences) && document.occurrences > 0
-        && Array.isArray(document.regions) && document.regions.length > 0, `Invalid example document: ${value.key}`);
-      check(document.regions.every(region => (region.anchor === null || typeof region.anchor === 'string')
-        && Number.isInteger(region.occurrences) && region.occurrences > 0)
-        && document.regions.reduce((total, region) => total + region.occurrences, 0) === document.occurrences,
-      `Invalid anchored example counts: ${value.key}`);
-    }
-  }
-  return { plan, sources, destinations };
+  return { plan, destinations, mediaDirectories: new Set(directoryOwners.keys()) };
 }
 
 export function documentRegions(text) {
@@ -141,8 +155,6 @@ export function verifyDiscoveredTests(plan) {
   const listing = JSON.parse(captureCommand(desktop, process.execPath, [
     process.env.npm_execpath, 'exec', '--no', '--', 'playwright', 'test',
     '--config', 'tests/e2e-workflow-tests/playwright.config.ts', '--list', '--reporter=json',
-    ...new Set(plan.sources.map(source => `workflows/${source.workflow}`)),
-    '--grep', `(?:^|\\s)(?:${plan.sources.map(source => escapeRegex(source.test)).join('|')})$`,
   ]));
   const discovered = [];
   const visit = suite => {
@@ -152,12 +164,15 @@ export function verifyDiscoveredTests(plan) {
     for (const child of suite.suites ?? []) visit(child);
   };
   for (const suite of listing.suites ?? []) visit(suite);
-  check(discovered.length === plan.sources.length, 'Discovered tests differ from the complete registered set.');
-  for (const source of plan.sources) {
-    check(discovered.filter(test => test.title === source.test && test.project === source.project
-      && (test.file === source.workflow || test.file.endsWith(`/${source.workflow}`))).length === 1,
-    `Registered test is missing or ambiguous: ${source.key}`);
+  const projects = new Map();
+  for (const workflow of plan.workflows) {
+    const matches = discovered.filter(test => test.title === workflow.testName
+      && (test.file === workflow.file || test.file.endsWith(`/${workflow.file}`)));
+    check(matches.length === 1,
+    `Registered test is missing or ambiguous: ${workflow.file}/${workflow.testName}`);
+    projects.set(workflow, matches[0].project);
   }
+  return projects;
 }
 
 async function verifyImage(directory, image) {
@@ -171,46 +186,55 @@ async function verifyImage(directory, image) {
   return { file, width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20), bytes: bytes.length, sha256: image.sha256 };
 }
 
-export async function verifySourceRun(output, source, plan) {
+export async function verifyWorkflowRun(output, workflow, plan, application) {
+  const name = `${workflow.file}/${workflow.testName}`;
   const manifests = [];
   for await (const relative of glob('**/step-screenshots/manifest.json', { cwd: output })) manifests.push(path.join(output, relative));
-  check(manifests.length === 1, `Expected one complete manifest for ${source.key}, found ${manifests.length}.`);
+  check(manifests.length === 1, `Expected one complete manifest for ${name}, found ${manifests.length}.`);
   const bytes = await readFile(manifests[0]);
   const manifest = JSON.parse(bytes.toString('utf8'));
-  check(manifest.workflow === source.workflow && manifest.test === source.test
-    && manifest.workflowSha256 === source.workflowSha256, `Executed source differs from its contract: ${source.key}`);
+  check(manifest.workflow === workflow.file && manifest.test === workflow.testName
+    && manifest.workflowSha256 === workflow.workflowSha256, `Executed test differs from its contract: ${name}`);
   check(manifest.status === 'passed' && manifest.hostRestored === true
-    && manifest.appVersion === plan.appVersion && manifest.platform === plan.platform, `Incomplete or incompatible run: ${source.key}`);
+    && manifest.appVersion === plan.appVersion && manifest.platform === application.platform, `Incomplete or incompatible run: ${name}`);
   const directory = path.dirname(manifests[0]);
   const generations = [];
   for await (const file of glob('{metadata.json,*-metadata.json}', { cwd: path.dirname(directory) })) {
     const data = await readFile(path.join(path.dirname(directory), file));
     const metadata = JSON.parse(data.toString('utf8'));
-    check(metadata.target === 'macos-signed-app' && metadata.platform === plan.platform
-      && metadata.architecture === plan.architecture && metadata.gracefulDestroyVerified === true,
-    `App generation did not exit normally: ${source.key}/${file}`);
+    check(metadata.target === application.target && metadata.platform === application.platform
+      && metadata.architecture === application.architecture && metadata.gracefulDestroyVerified === true,
+    `App generation did not exit normally: ${name}/${file}`);
     generations.push({ file, sha256: digest(data) });
   }
-  check(generations.length > 0 && manifest.steps.length === source.checkpoints.length, `Missing exit evidence or changed screenshot sequence: ${source.key}`);
-  const images = new Map();
-  for (const [index, expected] of source.checkpoints.entries()) {
+  check(generations.length > 0 && manifest.steps.length === workflow.steps.length, `Missing exit evidence or changed screenshot sequence: ${name}`);
+  const images = [];
+  for (const [index, expected] of workflow.steps.entries()) {
     const step = manifest.steps[index];
     check(step.language === 'en' && step.title === expected.title && step.window === expected.window
-      && step.theme === expected.theme && same([step.width, step.height], expected.dimensions)
-      && same((step.annotated?.highlights ?? []).map(highlight => highlight.label), expected.labels),
-    `Checkpoint changed: ${source.key}/${expected.key}. Update the mapping; no image was guessed.`);
+      && step.theme === expected.theme
+      && same((step.annotated?.highlights ?? []).map(highlight => highlight.label), expected.image.labels),
+    `Step ${index + 1} changed: ${name}. Review the step and its image destinations.`);
     const raw = await verifyImage(directory, step);
     const annotated = step.annotated ? await verifyImage(directory, step.annotated) : undefined;
-    check(same([raw.width, raw.height], expected.dimensions)
-      && (!annotated || (annotated.width === raw.width && annotated.height === raw.height)), `PNG size differs: ${expected.key}`);
-    images.set(expected.key, { step, raw, annotated });
+    check(raw.width > 0 && raw.height > 0 && same([raw.width, raw.height], [step.width, step.height])
+      && (!annotated || (annotated.width === raw.width && annotated.height === raw.height)), `PNG size differs: ${name}/step ${index + 1}`);
+    images.push({ step, raw, annotated });
   }
-  return { manifest, manifestSha256: digest(bytes), images, generations };
+  return { manifest, manifestSha256: digest(bytes), images, generations, application };
 }
 
 export async function assertHostAvailable() {
-  const processes = captureCommand(root, 'ps', ['-axo', 'pid=,command=']).split('\n').filter(line =>
-    /\/Contents\/MacOS\/(?:Electron|Interceptor)(?:\s|$)/.test(line) || /node .*e2e-workflow-tests\/run\.mjs/.test(line));
+  const listing = process.platform === 'win32'
+    ? captureCommand(root, 'powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+      'Get-CimInstance Win32_Process | Where-Object { $_.Name -in @("electron.exe", "Interceptor.exe", "node.exe") } | Select-Object ProcessId,Name,CommandLine | ConvertTo-Json -Compress'])
+    : captureCommand(root, 'ps', ['-axo', 'pid=,command=']);
+  const processes = process.platform === 'win32'
+    ? (listing ? [JSON.parse(listing)].flat() : []).filter(item =>
+      /^(?:electron|Interceptor)\.exe$/i.test(item.Name) || /e2e-workflow-tests[\\/](?:run\.mjs|playwright\.config\.ts)/.test(item.CommandLine ?? ''))
+      .map(item => `${item.ProcessId} ${item.Name} ${item.CommandLine ?? ''}`)
+    : listing.split('\n').filter(line =>
+      /\/Contents\/MacOS\/(?:Electron|Interceptor)(?:\s|$)/.test(line) || /node .*e2e-workflow-tests\/(?:run\.mjs|playwright\.config\.ts)/.test(line));
   check(processes.length === 0, `Another App/workflow owns the host; do not terminate it:\n${processes.join('\n')}`);
   const server = createServer();
   await new Promise((resolve, reject) => {
@@ -219,22 +243,82 @@ export async function assertHostAvailable() {
   }).catch(error => { throw new Error('Port 8888 is occupied; close the other App and restore the host first.', { cause: error }); });
 }
 
+export async function captureApplication(app) {
+  const platform = process.platform;
+  const architecture = process.arch;
+  if (app) {
+    check(platform === 'darwin' || platform === 'win32', 'Packaged workflows require a native Windows executable or macOS .app.');
+    const appPath = await realpath(path.resolve(app));
+    let version;
+    let directory;
+    if (platform === 'darwin') {
+      check(appPath.endsWith('.app') && (await lstat(appPath)).isDirectory(), 'Select a macOS .app directory.');
+      version = captureCommand(root, '/usr/libexec/PlistBuddy', ['-c', 'Print :CFBundleShortVersionString', path.join(appPath, 'Contents/Info.plist')]);
+      runCommand(root, 'codesign', ['--verify', '--deep', '--strict', '--all-architectures', appPath]);
+      directory = appPath;
+    } else {
+      check(appPath.toLowerCase().endsWith('.exe') && (await lstat(appPath)).isFile(), 'Select the Windows Interceptor.exe, not an installer.');
+      directory = path.dirname(appPath);
+      const bytes = await readFile(appPath);
+      check(bytes.length >= 64 && bytes.readUInt16LE(0) === 0x5a4d, 'Invalid Windows executable.');
+      const peOffset = bytes.readUInt32LE(0x3c);
+      check(peOffset + 6 <= bytes.length && bytes.readUInt32LE(peOffset) === 0x00004550, 'Invalid Windows PE header.');
+      const machine = bytes.readUInt16LE(peOffset + 4);
+      check((architecture === 'x64' && machine === 0x8664) || (architecture === 'arm64' && machine === 0xaa64),
+        `Windows executable architecture differs from ${architecture}.`);
+      const metadata = JSON.parse(extractFile(path.join(directory, 'resources/app.asar'), 'package.json').toString('utf8'));
+      check(metadata.name === '@interceptor/desktop' && typeof metadata.version === 'string', 'Not an Interceptor application package.');
+      version = metadata.version;
+    }
+    const hashes = [];
+    for await (const file of glob('**/*', { cwd: directory })) {
+      const absolute = path.join(directory, file);
+      const info = await lstat(absolute);
+      if (info.isFile()) hashes.push([file.split(path.sep).join('/'), digest(await readFile(absolute))]);
+      else if (info.isSymbolicLink()) hashes.push([file.split(path.sep).join('/'), 'symlink', await readlink(absolute)]);
+    }
+    hashes.sort(([left], [right]) => left.localeCompare(right));
+    return { path: appPath, version, platform, architecture, target: 'packaged-app', sha256: digest(JSON.stringify(hashes)) };
+  }
+  const version = (await readJson(path.join(desktop, 'package.json'))).version;
+  const files = new Set(['apps/desktop/.vite/build/main.cjs', 'apps/desktop/.vite/build/preload.cjs',
+    'apps/desktop/.vite/renderer/main_window/index.html', 'apps/proxy-core/dist/proxy-core/entry.cjs']);
+  for await (const file of glob(['apps/desktop/.vite/**/*', 'apps/proxy-core/dist/**/*',
+    'packages/core-protocol/dist/**/*', 'packages/platform-capabilities/dist/**/*'], { cwd: root })) {
+    if ((await lstat(path.join(root, file))).isFile()) files.add(file.split(path.sep).join('/'));
+  }
+  const hashes = [];
+  for (const file of [...files].sort()) hashes.push([file, digest(await readFile(path.join(root, file)))]);
+  return { path: desktop, version, platform, architecture, target: 'local-electron', sha256: digest(JSON.stringify(hashes)) };
+}
+
 export async function captureInputs(plan) {
   const files = new Set([
-    ...plan.sources.map(source => `workflows/${source.workflow}`),
+    ...plan.workflows.map(workflow => `workflows/${workflow.file}`),
     'run.mjs', 'playwright.config.ts',
   ]);
   const directory = path.join(desktop, 'tests/e2e-workflow-tests');
   for await (const file of glob('fixtures/**/*.{ts,swift,mjs}', { cwd: directory })) files.add(file.split(path.sep).join('/'));
   const inputs = {};
-  for (const file of [...files].sort()) inputs[file] = digest(await readFile(path.join(directory, file)));
+  for (const file of [...files].sort()) {
+    const bytes = await readFile(path.join(directory, file));
+    inputs[file] = digest(file.endsWith('.workflow.ts') ? bytes.toString('utf8').replaceAll('\r\n', '\n') : bytes);
+  }
   const sharedFiles = new Set([
     'package.json', 'package-lock.json', 'apps/desktop/package.json', 'apps/playground/package.json',
     'apps/desktop/src/shared/automation-ids.ts',
   ]);
   for await (const file of glob('apps/playground/server/**/*.ts', { cwd: root })) sharedFiles.add(file.split(path.sep).join('/'));
   for (const file of [...sharedFiles].sort()) inputs[`repository/${file}`] = digest(await readFile(path.join(root, file)));
-  for (const source of plan.sources) check(inputs[`workflows/${source.workflow}`] === source.workflowSha256,
-    `Workflow changed since mapping approval: ${source.workflow}`);
+  for (const workflow of plan.workflows) check(inputs[`workflows/${workflow.file}`] === workflow.workflowSha256,
+    `Workflow changed since mapping approval: ${workflow.file}`);
   return inputs;
+}
+
+export function workflowCaptureInputs(inputs, workflow) {
+  const source = `workflows/${workflow.file}`;
+  check(typeof inputs?.[source] === 'string', `Missing capture source: ${workflow.file}`);
+  return Object.fromEntries(Object.entries(inputs)
+    .filter(([file]) => !file.startsWith('workflows/') || file === source)
+    .sort(([left], [right]) => left.localeCompare(right)));
 }

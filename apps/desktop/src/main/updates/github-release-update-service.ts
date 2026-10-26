@@ -15,8 +15,8 @@ import type {
 /** Checks and manually downloads installers anonymously from one fixed GitHub repository. */
 export class GitHubReleaseUpdateService implements UpdateService {
   /** Fixed repository API endpoint; no Renderer-controlled URL is accepted. */
-  private static readonly latestReleaseApi =
-    'https://api.github.com/repos/zhxmt-xm/Interceptor/releases/latest';
+  private static readonly releasesApi =
+    'https://api.github.com/repos/zhxmt-xm/Interceptor/releases';
   /** Current immutable status exposed through the narrow desktop API. */
   private statusValue: UpdateStatus;
   /** Status subscribers owned by Main. */
@@ -98,7 +98,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
     return { ...this.statusValue };
   }
 
-  /** Check the latest stable GitHub Release without account credentials. */
+  /** Check the highest published SemVer, including prereleases, without credentials. */
   check(): Promise<UpdateStatus> {
     if (!this.supportedValue) {
       return Promise.resolve(this.status());
@@ -161,7 +161,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
     this.listeners.clear();
   }
 
-  /** Fetch, validate and compare one release without downloading it. */
+  /** Select, validate and compare the highest release without downloading it. */
   private async checkInternal(): Promise<UpdateStatus> {
     this.availableAsset = null;
     this.downloadedInstallerPath = null;
@@ -180,28 +180,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
     try {
       await rm(this.downloadDirectory, { recursive: true, force: true });
       abortController.signal.throwIfAborted();
-      const response = await this.fetcher(
-        GitHubReleaseUpdateService.latestReleaseApi,
-        {
-          method: 'GET',
-          headers: {
-            accept: 'application/vnd.github+json',
-            'x-github-api-version': '2026-03-10',
-          },
-          redirect: 'error',
-          cache: 'no-store',
-          credentials: 'omit',
-          referrerPolicy: 'no-referrer',
-          signal: abortController.signal,
-        },
-      );
-      abortController.signal.throwIfAborted();
-      if (!response.ok) {
-        throw new Error(`GitHub returned HTTP ${response.status}.`);
-      }
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      abortController.signal.throwIfAborted();
-      const release = this.parseRelease(new TextDecoder().decode(bytes));
+      const release = this.parseRelease(await this.fetchLatestRelease(abortController.signal));
       const currentVersion = this.statusValue.currentVersion;
       if (semver.gt(release.version, currentVersion)) {
         this.availableAsset = release.asset;
@@ -244,6 +223,75 @@ export class GitHubReleaseUpdateService implements UpdateService {
     } finally {
       this.checkAbortController = null;
     }
+  }
+
+  /** Read every fixed-source page before selecting the highest published SemVer. */
+  private async fetchLatestRelease(signal: AbortSignal): Promise<Record<string, unknown>> {
+    let latestRelease: Record<string, unknown> | null = null;
+    let latestVersion: string | null = null;
+    for (let page = 1; ; page += 1) {
+      signal.throwIfAborted();
+      const response = await this.fetcher(
+        `${GitHubReleaseUpdateService.releasesApi}?per_page=100&page=${page}`,
+        {
+          method: 'GET',
+          headers: {
+            accept: 'application/vnd.github+json',
+            'x-github-api-version': '2026-03-10',
+          },
+          redirect: 'error',
+          cache: 'no-store',
+          credentials: 'omit',
+          referrerPolicy: 'no-referrer',
+          signal,
+        },
+      );
+      signal.throwIfAborted();
+      if (!response.ok) {
+        throw new Error(`GitHub returned HTTP ${response.status}.`);
+      }
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      signal.throwIfAborted();
+      let values: unknown;
+      try {
+        values = JSON.parse(new TextDecoder().decode(bytes));
+      } catch {
+        throw new Error('GitHub release metadata is not valid JSON.');
+      }
+      if (!Array.isArray(values)) {
+        throw new Error('GitHub release list is invalid.');
+      }
+      for (const value of values) {
+        if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+          throw new Error('GitHub release metadata is invalid.');
+        }
+        const release = value as Record<string, unknown>;
+        if (
+          typeof release.tag_name !== 'string' ||
+          typeof release.draft !== 'boolean' ||
+          typeof release.prerelease !== 'boolean'
+        ) {
+          throw new Error('GitHub release metadata fields are invalid.');
+        }
+        if (release.draft) {
+          continue;
+        }
+        const version = semver.valid(release.tag_name.startsWith('v')
+          ? release.tag_name.slice(1)
+          : release.tag_name);
+        if (version && (!latestVersion || semver.gt(version, latestVersion))) {
+          latestRelease = release;
+          latestVersion = version;
+        }
+      }
+      if (values.length < 100) {
+        break;
+      }
+    }
+    if (!latestRelease) {
+      throw new Error('No published GitHub Release has a semantic version.');
+    }
+    return latestRelease;
   }
 
   /** Stream one installer to a private temporary directory with bounded progress. */
@@ -372,25 +420,15 @@ export class GitHubReleaseUpdateService implements UpdateService {
   }
 
   /** Parse only the GitHub fields required for changelog and installer download. */
-  private parseRelease(text: string): {
+  private parseRelease(release: Record<string, unknown>): {
     version: string;
     notes: string | null;
     asset: GitHubReleaseAsset;
   } {
-    let value: unknown;
-    try {
-      value = JSON.parse(text);
-    } catch {
-      throw new Error('GitHub release metadata is not valid JSON.');
-    }
-    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-      throw new Error('GitHub release metadata is invalid.');
-    }
-    const release = value as Record<string, unknown>;
     if (
       typeof release.tag_name !== 'string' ||
       release.draft !== false ||
-      release.prerelease !== false ||
+      typeof release.prerelease !== 'boolean' ||
       !(typeof release.body === 'string' || release.body === null) ||
       !Array.isArray(release.assets)
     ) {
@@ -405,12 +443,12 @@ export class GitHubReleaseUpdateService implements UpdateService {
     return {
       version,
       notes: this.plainText(release.body ?? ''),
-      asset: this.selectAsset(release.tag_name, release.assets),
+      asset: this.selectAsset(release.assets),
     };
   }
 
   /** Select exactly one safe MSI/DMG for the current platform and architecture. */
-  private selectAsset(tagName: string, values: unknown[]): GitHubReleaseAsset {
+  private selectAsset(values: unknown[]): GitHubReleaseAsset {
     const extension = this.platform === 'win32' ? '.msi' : '.dmg';
     const candidates = values
       .map((value) => this.parseAsset(value))

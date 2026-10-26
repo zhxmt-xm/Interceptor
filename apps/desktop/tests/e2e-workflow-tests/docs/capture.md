@@ -93,18 +93,18 @@ USB异常不把受控流量绕过PC发送；重连创建新会话且不重放；
 - 共享`prepareHttpsCapture()`与`cleanHttpsCapture()`内部不添加逐步截图。`tls-scenarios`在原浏览器系统信任断言完成后，通过正常Settings/Certificates操作补MITM停用、localhost例外移除前后的检查点；`finally`仍调用原`cleanHttpsCapture()`完成指纹/信任复核与异常恢复。Generate、Install、添加例外和开启解密的逐步画面仍需所属原流程提供，不能用返回Capture的状态代替。
 - Typecheck与Playwright `--list`仅证明检查点可编译、原测试可发现。真实English App、目标几何稳定、业务Green及正常Close/进程/8888/宿主恢复，仍由拥有App的串行运行取得；没有实拍结果不得标为已采用。
 
-#### 父任务分批运行
+#### 分组运行
 
-沿用已经配置的English签名App和原`--screenshots`入口，串行执行以下selectors；不把`--list`结果当作真实App或退出恢复验收。除滚轮专项外使用`macos`；两条facet流程的Restore隔离仍须完整Green和逐图审核：
+选择当前平台的packaged App，使用`--screenshots`入口串行执行以下selectors；Playwright配置选择当前平台的project。两条facet流程均核对Restore隔离、真实操作、逐图内容和退出恢复；`--list`结果不能替代真实运行。
 
-| 批次 | Playwright selectors | Project |
-| --- | --- | --- |
-| Recording与全屏 | `workflows/capture/(recording-pause-resume\|body-fullscreen)\.workflow\.ts` | `macos` |
-| 正文与Headers | `workflows/capture/(body-preview-limits\|body-scenarios\|section-collapse)\.workflow\.ts` | `macos` |
-| 消息 | `workflows/capture/(websocket-scenarios\|grpc-scenarios\|compact-message-layout)\.workflow\.ts` | `macos` |
-| HTTP与TLS | `workflows/capture/(http-scenarios\|http2-scenarios\|playground-traffic\|tls-scenarios)\.workflow\.ts` | `macos` |
-| 正文滚轮交接 | `workflows/capture/detail-body-fill.workflow.ts` | `macos-scroll-boundary` |
-| 筛选与Clear的公开路由隔离 | `workflows/capture/(facets-clear-menu\|clear-facets)\.workflow\.ts` | `macos` |
+| 分组 | Playwright selectors |
+| --- | --- |
+| Recording与全屏 | `workflows/capture/(recording-pause-resume\|body-fullscreen)\.workflow\.ts` |
+| 正文与Headers | `workflows/capture/(body-preview-limits\|body-scenarios\|section-collapse)\.workflow\.ts` |
+| 消息 | `workflows/capture/(websocket-scenarios\|grpc-scenarios\|compact-message-layout)\.workflow\.ts` |
+| HTTP与TLS | `workflows/capture/(http-scenarios\|http2-scenarios\|playground-traffic\|tls-scenarios)\.workflow\.ts` |
+| 正文滚轮交接 | `workflows/capture/detail-body-fill.workflow.ts` |
+| 筛选与Clear的公开路由隔离 | `workflows/capture/(facets-clear-menu\|clear-facets)\.workflow\.ts` |
 
 #### 截图操作映射与边界
 
@@ -311,9 +311,9 @@ UTF-8追加步骤：通过同一真实origin发送超过预览上限的gzip输�
 1. 每种协议独立fresh profile、trace及完整宿主基线；通过真实UI启动Recording。WebSocket使用现有loopback echo；gRPC通过Certificates复用共享CA、添加localhost源站例外并开启MITM，使用现有TLS/H2 origin，不能生成/清理日常CA。
 2. 经真实8888发送一条短消息和一条含末尾唯一标记的长消息。客户端/origin核对完整字节与协议结束，再由Capture自产路径定位连接，使用公共消息ID展开载荷，选择Text/Raw或默认Pretty，不注入Store或正文。
 3. 短消息外框等于Monaco内容高加实际上下边框，字体12px/行高20px/上下padding13px保持；长消息初始外框不能超过所属滚动容器当前可用空间且必须存在内部滚动，不能使用固定441px或360px断言代替容器计算。
-4. 实际鼠标拖动右下角缩小正文，外框高度随拖拽改变；真实滚轮先移动正文而不滚消息标题，到末行后继续滚外层。键盘到首/尾均可达。窗口或Inspector可用空间缩小后按容器clamp，恢复后保留手动高度。
+4. 实际鼠标从正文右下角向上拖120px，外框高度须减少超过40px，保存拖拽前后真实边界；不以鼠标位移代替实际高度变化。真实滚轮先移动正文而不滚消息标题，到末行后继续滚外层。键盘到首/尾均可达。通过`desktopApp.resizeWindow()`调整本轮真实窗口：可用空间缩小后正文按容器clamp，恢复后保留手动高度；Windows与macOS执行相同断言，由`LocalElectronApplicationDriver`分派原生窗口操作。
 5. 拖拽/滚动后点击正文Copy，结果与该模式应有的完整消息一致；消息专用Copy和客户端记录仍保真。切Hex、Tree、全屏以及切换/收起消息，不错误套用可拖拽布局或向下一条消息泄漏手动高度；现有协议专项继续覆盖消息保存与完整字节。
-6. gRPC额外生成205条真实消息，经同一Inspector滚动加载第三页，定位并复制第205条，验证虚拟化的scrollMargin及分页不会因移除内部固定360px上限而失效。
+6. 两协议额外生成205条真实消息，经同一Inspector滚动加载第三页，展开第205条方向消息并显示完整正文；WebSocket选择Text后经真实滚轮使正文底边完整进入消息列表，gRPC选择Raw。核对JSON的`index: 204`并用该条消息专用Copy逐字比较，验证虚拟化的scrollMargin及分页不会因移除内部固定360px上限而失效；保存正文与滚动容器边界证据。
 7. 保存同主题/尺寸的改前/改后PNG、实际高度、内外scroll位置、Copy长度/hash与trace。gRPC通过真实UI关闭本profile的MITM及测试host配置；正常Close后验证Main/Core/Worker全退、8888释放、完整系统代理与CA/Root/admin trust保持，不能把fixture/授权失败当产品目标Red。
 
 WebSocket输入使用binary JSON消息以沿用内容探测与Pretty/Raw，正文Copy是完整UTF-8，而消息专用Copy仍是原binary Hex；不能为了统一断言修改产品语义。内外滚动使用足够的后续真实消息确保外层确有溢出，不给产品注入高度。gRPC第三页加载保持loadMore回调稳定，避免虚拟列表滚动触发同步重渲染时移除同一事件上的分页监听；失败与修复均保留真实证据。
@@ -454,20 +454,16 @@ Core录制所有权调整时，先后运行本流程与`capture.clear-facets`，
 
 ### Steps
 
-1. 创建fresh profile/evidence，启动trace和新Electron；等待App/Core/8888。
-2. 验证Proxy not ready modal及 `capture.readiness.close/cancel/open-proxy-settings/enable`，状态为System Proxy off或ownership lost。
-3. 点击 `capture.readiness.cancel`；确认modal关闭、Paused/Not recording，系统代理UI状态未改变。
-4. 点击 `capture.recording.toggle` 重新触发modal，再点击 `capture.readiness.open-proxy-settings`。
-5. 验证Settings自动进入Proxy section：Listener=Listening、Address=8888、非Owned、journal=Protected、Enable可用。
-6. 返回Capture，重新触发modal并点击 `capture.readiness.enable`；完成App发起的原生授权。
-7. 等待Recording；进入Proxy page确认Owned、Owned by Interceptor、Current configuration=8888及真实bypass/PAC字段。
-8. 点击 `settings.proxy.restore`；确认原系统配置恢复、ownership清除；返回Capture确认Paused。
-9. 保存evidence，点击 `shell.window.close`。
-10. 验证Main/Core/Worker全退、8888释放、journal清理，再删除profile。
+1. 创建fresh profile/evidence，启动trace和新Electron；等待App root、Core Running和8888。
+2. 正常环境下冷启动自动接管系统代理并进入Recording，readiness弹窗不出现；进入Settings Proxy确认Owned、Address=8888、journal受保护且Enable/Restore对应当前ownership。
+3. 点击 `settings.proxy.restore`；确认原系统配置恢复、ownership清除；返回Capture确认Paused。
+4. 再次点击 `capture.recording.toggle` 由产品自动重新接管；确认Recording为true且Proxy重新Owned。
+5. 保存evidence，点击 `shell.window.close`。
+6. 验证Main/Core/Worker全退、8888释放、journal清理，再删除profile。
 
 ### 预期效果
 
-Cancel和打开设置均无隐式系统写入；只有用户点击Enable后才接管代理；失败显示有界错误且不循环静默重试；Restore遵守ownership guard。
+正常启动自动接管系统代理；Restore遵守ownership guard并恢复原配置；再次Resume重新接管；关闭后无进程、端口或journal残留。readiness弹窗的Cancel/Open settings/Enable失败分支只在接管失败时出现，正常环境无法稳定复现，由启动失败与授权失败的unit/初始化测试覆盖，不在本workflow伪造。
 
 <a id="capture-traffic-capture-select"></a>
 ## `capture.traffic.capture-select`
@@ -516,20 +512,18 @@ Cancel和打开设置均无隐式系统写入；只有用户点击Enable后才�
 
 ### Steps
 
-1. 创建profile/evidence和HTTP origin；启动trace/Electron，等待App/Core/8888/readiness；只检查Capture相关默认态：列表空、keyword空、System Proxy未owned、Paused。
-2. 点击 `capture.readiness.enable`并完成授权，等待Recording；通过8888制造 `/e2e/filter/alpha` 与 `/e2e/filter/beta` 两条真实请求。
-3. 等待两个动态request row和`2 of 2`。
-4. 在 `capture.filter.keyword` 输入 `alpha`。
-5. 验证alpha可见、beta隐藏、计数为`1 of 2`。
-6. 把输入改成host片段，验证两条均按host匹配。
-7. 清空输入，验证两条恢复、顺序和选择不变、计数回到`2 of 2`。
-8. 进入Proxy点击Restore，确认非owned；保存evidence并点击Close。
-9. 验证进程/8888销毁和系统代理恢复。
-10. 关闭origin并删除profile。
+1. 创建profile/evidence和HTTP origin；启动trace/Electron，等待App root、Core Running和8888；冷启动自动接管系统代理并进入Recording。
+2. 通过8888制造 `/e2e/filter/alpha`（200）与 `/e2e/filter/beta`（404）两条真实请求，等待两个动态request row。
+3. 在 `capture.filter.keyword` 输入 `alpha`：alpha可见、beta隐藏。
+4. 把输入改成host片段`127.0.0.1`：两条均按host匹配。
+5. 清空输入：两条恢复，顺序和选择不变，全量Capture未被删除。
+6. 进入Proxy点击 `settings.proxy.restore`，确认非owned；保存evidence并点击Close。
+7. 验证进程/8888销毁和系统代理恢复。
+8. 关闭origin并删除profile。
 
 ### 预期效果
 
-Keyword只过滤视图，不删除全量Capture；计数与可见row同步；清空后完整恢复。
+Keyword只过滤视图，不删除全量Capture；匹配`host + path`；清空后完整恢复。
 
 <a id="capture-filter-structured"></a>
 ## `capture.filter.structured`
@@ -538,20 +532,20 @@ Keyword只过滤视图，不删除全量Capture；计数与可见row同步；清
 
 ### Steps
 
-1. 创建profile/evidence和loopback origin；启动trace/Electron，等待App/Core/8888/readiness；检查结构化filters均为空、列表空、Paused。
-2. 点击 `capture.readiness.enable`并完成授权，等待Recording；制造method与status各不相同的真实请求集合。
-3. 点击 `capture.filter.add` 打开Add filter；确认只列出Method与Status两项，hint预览当前列表出现的值。
-4. 点击 `capture.filter.option.method` 进入级联，从列表实际出现的值中点选（如POST）；确认生成method pill、可见row与计数同步收窄。
-5. 再次打开Add filter→`capture.filter.option.status`，从实际出现的值中点选（如404）；`capture.filter.back` 可返回上一级。
-6. 通过 `capture.filter.remove.method` 与 `capture.filter.remove.status` 逐项移除。
-7. 验证每次只清目标字段，最终恢复全量与原排序。
-8. 进入Proxy点击Restore，确认非owned；保存evidence并点击Close。
+1. 创建profile/evidence和loopback origin；启动trace/Electron，等待App root、Core Running和8888；冷启动自动接管系统代理并进入Recording。
+2. 通过8888制造GET 200的`/e2e/filter/alpha`与POST 404的`/e2e/filter/beta`。
+3. 在keyword填入`/e2e/filter/`隔离本轮流量；确认两条row存在。
+4. 展开Method facet，点 `capture.filter.option.method.POST`：只剩beta，组保持展开，group计数与option计数同步收窄。
+5. 展开Status facet并点 `404`：仍只有beta；再点 `capture.filter.option.method.GET`：组间AND后列表为空。
+6. 取消Status选择：GET行恢复；取消Method选择：两条恢复。
+7. 清空keyword：完整列表恢复，顺序不变。
+8. 进入Proxy点击 `settings.proxy.restore`，确认非owned；保存evidence并点击Close。
 9. 验证Main/Core/Worker销毁、8888释放和系统代理恢复。
 10. 关闭origin并删除profile。
 
 ### 预期效果
 
-五类结构化条件正确规范化并以AND组合；非法值不污染filter；pill移除精确；列表和计数始终一致。
+Method/Status/Host/Type等facet按组内OR、组间AND组合；每次点选只收窄对应字段；取消与清空精确恢复；列表、facet计数与可见行始终一致。
 
 <a id="capture-filter-group-selection"></a>
 ## `capture.filter-group-selection`
@@ -578,20 +572,20 @@ option选择与分组展开是正交状态；选择或取消option只更新筛�
 
 ### Steps
 
-1. 创建profile/evidence和H1/WS/H2 origins；启动trace/Electron，等待App/Core/8888/readiness；检查protocol=All、列表空、CA absent、MITM off。
-2. 点击readiness Enable并完成授权；从App UI Generate、Install CA，添加`localhost`例外并Start decrypting，等待Recording和MITM active。
-3. 制造真实HTTP/1.1、HTTP/2和WS记录；等待三个动态rows。
-4. 点击 `capture.protocol.h1`，验证只显示H1。
-5. 点击 `capture.protocol.h2`，验证只显示H2。
-6. 点击 `capture.protocol.ws`，验证只显示WS handshake。
-7. 点击 `capture.protocol.all`，验证全部恢复与计数正确。
-8. 从UI关闭MITM、移除host例外、Uninstall/Delete CA并点击 `settings.proxy.restore`；确认非owned、Not generated、Paused。
-9. 保存evidence并点击Close；验证进程/8888销毁和系统副作用恢复。
-10. 关闭lab并删除profile。
+1. 创建profile/evidence和HTTP/WS/TLS origins；启动trace/Electron，等待App root、Core Running和8888；冷启动自动接管系统代理并进入Recording。
+2. 制造真实HTTP/1.1请求`/e2e/filter/alpha`、WebSocket握手`/e2e/filter/ws`和未解密的`localhost` TLS tunnel。
+3. 清空keyword；展开Protocol facet，确认HTTP/1.1、WebSocket、TLS tunnel均出现。
+4. 点 `capture.filter.option.protocol.HTTP/1.1`：只显示H1请求，WS与tunnel隐藏。
+5. 点 `WebSocket`：只显示WS handshake。
+6. 点 `TLS tunnel`：只显示CONNECT tunnel。
+7. 再次点这三个option取消选择：全部恢复。
+8. 进入Proxy点击 `settings.proxy.restore`，确认非owned；保存evidence并点击Close。
+9. 验证进程/8888销毁和系统副作用恢复。
+10. 关闭origin并删除profile。
 
 ### 预期效果
 
-协议段基于规范化protocol筛选；All/H1/H2/WS互不混淆；TLS tunnel保持独立。
+Protocol facet使用规范化协议值；H1、WebSocket与TLS tunnel互不混淆；All恢复全部。H2的协议筛选由 `capture.scenarios.http2` 的MITM流程覆盖，本workflow不重复CA/MITM。
 
 <a id="capture-facet-stable-ordering"></a>
 ## `capture.facet-stable-ordering`
@@ -761,20 +755,20 @@ Response tab只有一个Body section时，toolbar保持40px，正文pane吃满In
 
 ### Steps
 
-1. 创建profile/evidence和HTTP origin；启动trace/Electron，等待App/Core/8888/readiness；检查列表空、selection=null、scrollTop初始。
-2. 点击readiness Enable并完成授权，等待Recording；一次制造超过viewport和overscan的真实请求，等待总计数稳定。
-3. 检查DOM中的request row数量远小于总记录数。
-4. 滚动到中间，点击一个动态request row并记录scrollTop/selection。
-5. 点击 `shell.workspace.rules`，再点击 `shell.workspace.capture`。
-6. 确认selection、Inspector和scrollTop保持。
-7. 在停靠底部时产生新请求，确认自动跟随；离开底部后再产生请求，确认不抢滚动位置。
-8. 在Proxy点击Restore，确认非owned；保存evidence并点击Close。
-9. 验证销毁、8888释放和系统代理恢复。
+1. 创建profile/evidence和HTTP origin；启动trace/Electron，等待App root、Core Running和8888；用 `startRecording()` 等到真实Recording，确认selection=null且`capture.list.scroll`的scrollTop为0。宿主自身流量可能已进入列表，不要求Capture为空。
+2. 在Keyword筛选填入本轮唯一路径前缀，以有限并发产生240条真实请求；等待虚拟列表总高度等于240行，确认本轮记录全部进入列表。宿主自身流量可能同时存在，不要求总列表为空。
+3. 检查DOM中的 `capture.request-row.*` 数量大于0且小于100，并远小于240条本轮记录。
+4. 把 `capture.list.scroll` 滚到中部，等待虚拟行稳定；点击一条可见row，记录scrollTop、该行identity和请求path，确认Inspector打开并显示同一path。
+5. 点击 `shell.workspace.rules`，再点击 `shell.workspace.capture`；确认同一条row仍为选中态、Inspector显示同一path、scrollTop与离开前一致。
+6. 把列表滚到底部，发送一条唯一marker请求；确认列表总高度增加一行、scrollTop增加且marker row可见，证明停在底部时自动跟随。
+7. 从底部上滚3行后发送另一条marker请求；确认列表总高度增加一行、scrollTop保持上滚后的值，且新marker row仍位于列表可视区之外（向下的overscan可能保留其DOM，因此不以DOM数量判定）。
+8. 在Proxy点击 `settings.proxy.restore`，确认restore按钮消失、journal不存在且系统代理等于workflow启动快照。
+9. 保存evidence并点击Close；验证销毁、8888释放和系统代理恢复。
 10. 关闭origin并删除profile。
 
 ### 预期效果
 
-TanStack Virtual只渲染有限row；大量数据下选择、滚动和跨workspace状态稳定；实时追加遵守stick-to-bottom语义。
+TanStack Virtual只渲染有限row；大量数据下选择、滚动和跨workspace状态稳定；实时追加遵守stick-to-bottom语义。本轮请求用唯一路径前缀与宿主流量隔离，总数从虚拟列表高度核对，不解析任一语言的计数文案。
 
 <a id="capture-inspector-body-modes"></a>
 ## `capture.inspector.body-modes`
@@ -785,9 +779,9 @@ TanStack Virtual只渲染有限row；大量数据下选择、滚动和跨workspa
 
 1. 创建profile/evidence和HTTP origin；启动trace/Electron，等待App/Core/8888/readiness；检查Inspector=Headers、selection=null、MITM off。
 2. 点击readiness Enable并完成授权，等待Recording；制造一条JSON response并点击其request row→Response tab。
-3. 点击 `capture.inspector.body-mode.auto`，验证MIME探测和pretty JSON。
-4. 点击 `capture.inspector.body-mode.text`，验证原始UTF-8文本。
-5. 点击 `capture.inspector.body-mode.json`，验证显式格式化；另用非法JSON验证保留原文。
+3. 点击 `capture.inspector.body-mode.default`，验证MIME探测和默认显示。
+4. 点击 `capture.inspector.body-mode.raw`，验证原始UTF-8文本。
+5. 点击 `capture.inspector.body-mode.tree`，验证JSON树；另用非法JSON验证保留原文。
 6. 点击 `capture.inspector.body-mode.hex`，逐字节比对offset、hex和ASCII。
 7. 制造大 body，验证完整正文仍可查看与复制。
 8. 在Proxy点击Restore，确认非owned；保存evidence并点击Close。
@@ -796,7 +790,7 @@ TanStack Virtual只渲染有限row；大量数据下选择、滚动和跨workspa
 
 ### 预期效果
 
-Auto/Text/JSON/Hex语义准确；真实body range与显示一致；非法内容和preview上限不会被误报或撑破布局。
+Default/Raw/Tree/Hex语义准确；真实body range与显示一致；非法内容和preview上限不会被误报或撑破布局。
 
 <a id="capture-protocols-without-mitm"></a>
 ## `capture.protocols.without-mitm`
@@ -1069,16 +1063,15 @@ All/Filter/Selected的计数读取公共范围按钮内的独立计数`span`并�
 
 ### Steps
 
-1. 创建profile/evidence、HTTP origin和预定输出目录；启动trace/Electron，等待App/Core/8888/readiness；只检查Privacy的HAR默认值和Capture空态。
-2. 点击readiness Enable并完成授权，等待Recording；制造含Authorization、Cookie、query、request/response headers及文本/二进制body的多条真实Capture，记录可由HAR表达的基线字段。
-3. 点击 `capture.export-menu`→`capture.transfer.har-export`；依次检查all/filter/selected scope计数，选择All并保留body且不遮罩，使用真实Save Dialog导出round-trip HAR。
-4. 等待completed；外部只读解析HAR 1.2，确认entries、timings、headers、query、cookies、文本与base64 body对应基线，且Renderer未获得绝对路径。
-5. 再次由UI导出一份开启Authorization/Cookie遮罩和strip bodies的HAR，外部只读验证脱敏输出与原文件不同且无敏感值/body。
-6. 通过 `capture.clear` 的真实确认框清空Capture；进入Storage Refresh确认Exchange/Body归零。
-7. 点击 `capture.import-menu`→`capture.transfer.har-import`，在真实Open Dialog选择步骤3由本workflow导出的HAR；点击Start并等待completed。
-8. 在App逐条选择导入记录，将method/URL/status/headers/query/cookies/body与步骤2基线对比；只要求HAR可表达字段等价，并确认脚本文本保持inert。
-9. 复制并破坏导出HAR后再次Import，确认failed且当前已恢复列表不变；进入Proxy点击Restore，确认非owned；保存evidence并Close。
-10. 验证销毁和系统代理恢复；删除两份HAR及损坏副本，关闭origin并删除profile。
+1. 创建profile/evidence、HTTP origin和预定输出目录；启动trace/Electron，等待App root、Core Running和8888；冷启动自动接管系统代理并进入Recording。
+2. 制造含Authorization、Cookie、query、request/response headers及文本/二进制body的真实Capture，记录可由HAR表达的基线字段。
+3. 点击 `capture.export-menu`→`capture.transfer.har-export`；选择All、关闭Authorization/Cookie遮罩并保留body，使用真实Save Dialog导出round-trip HAR。
+4. 等待completed；外部只读解析HAR 1.2，确认entries、headers、query、文本与二进制body对应基线。
+5. 再次由UI导出开启Authorization/Cookie遮罩和strip bodies的HAR，外部只读验证脱敏输出与原文件不同且无敏感值/body。
+6. 暂停Recording后点击 `capture.clear` 清空Capture；点击 `capture.import-menu`→`capture.transfer.har-import`，在真实Open Dialog选择步骤3由本workflow导出的HAR并Start。
+7. 在App选择导入记录，将method/URL/status/headers/query对比步骤2基线；只要求HAR可表达字段等价，并确认脚本文本保持inert。
+8. 复制并破坏导出HAR后再次Import，确认failed且当前已恢复列表不变；进入Proxy点击 `settings.proxy.restore`，确认非owned；保存evidence并点击Close。
+9. 验证销毁和系统代理恢复；删除两份HAR及损坏副本，关闭origin并删除profile。
 
 ### 预期效果
 
@@ -1091,17 +1084,16 @@ HAR输入由同一workflow的真实Capture生成；标准HAR可解析，Clear后
 
 ### Steps
 
-1. 创建profile/evidence、HTTPS/H2/WS origins和输出目录；启动trace/Electron，等待App/Core/8888/readiness；只检查Capture空态、CA absent、MITM off和Proxy未owned。
-2. 点击readiness Enable并完成授权，等待Recording；从App UI Generate/Install CA、添加localhost例外并Start decrypting。
-3. 制造含HTTPS/H2 pseudo headers、trailers、文本/二进制body和WS frames的真实Capture；逐项记录列表、Inspector及frame基线。
-4. 点击 `capture.export-menu`→`capture.transfer.archive-save`；在真实Save Dialog选择`.iarchive`并Start，等待completed；外部只读检查ZIP manifest、snapshot、body entries、size/hash/CRC。
-5. 通过 `capture.clear` 的真实确认框清空Capture，确认列表/Inspector为空；点击 `capture.import-menu`→`capture.transfer.archive-open`，在真实Open Dialog选择步骤4由本workflow保存的archive。
-6. 点击Start并等待completed；在App逐条选择恢复记录，对比协议、pseudo headers、trailers、headers、timings、文本/二进制body、WS帧方向/顺序/payload及Session元数据，要求全保真等价。
-7. 复制并篡改同一archive的hash/CRC或加入路径穿越entry，再次Open；确认failed、错误有界、当前已恢复Capture不污染且Worker进入终态。
-8. 在App确认任务状态未暴露绝对路径；从UI关闭MITM、移除localhost例外、Uninstall/Delete CA并在Proxy Restore。
-9. 保存evidence并Close；验证App/Core/Worker/8888销毁、系统代理恢复且信任库无测试CA残留。
-10. 删除archive及损坏副本，关闭origins并删除profile。
+1. 创建profile/evidence、HTTP origin和输出目录；启动trace/Electron，等待App root、Core Running和8888；冷启动自动接管系统代理并进入Recording。
+2. 制造HTTP文本、HTTP二进制与WebSocket记录，逐项记录列表、Inspector与WS session基线。
+3. 点击 `capture.export-menu`→`capture.transfer.archive-save`，在真实Save Dialog保存`.iarchive`并等待任务完成；外部只读确认ZIP头、文件大小与任务终态。
+4. 暂停Recording后点击 `capture.clear` 清空Capture；点击 `capture.import-menu`→`capture.transfer.archive-open`，在真实Open Dialog选择步骤3由本workflow保存的archive。
+5. 等待completed；在App选择恢复记录，对比method、URL、status、自定义Header与文本/二进制body，并确认WS session行恢复。
+6. 截断同一archive后再次Open；确认failed、错误有界且当前已恢复Capture不污染。
+7. 在Proxy点击 `settings.proxy.restore`，确认非owned；保存evidence并Close。
+8. 验证App/Core/Worker/8888销毁和系统代理恢复。
+9. 删除archive及损坏副本，关闭origins并删除profile。
 
 ### 预期效果
 
-Archive输入由同一workflow的真实Capture生成；保存文件结构自洽，Clear后通过UI打开可全保真恢复Interceptor专有数据；损坏或恶意ZIP被拒绝并回滚；所有系统副作用在结束前恢复。
+Archive输入由同一workflow的真实Capture生成；保存文件是可识别的ZIP，Clear后通过UI打开可恢复HTTP与WebSocket记录；损坏或截断的ZIP被拒绝且不污染已恢复列表。H2、HTTPS/trailers与MITM全保真由 `capture.scenarios.http2` 和 `capture.scenarios.tls` 覆盖，本workflow不重复CA/MITM，也不删除共享CA。

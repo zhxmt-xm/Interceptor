@@ -146,8 +146,6 @@ const test = workflowTest.extend<{ upstreamLab: UpstreamLab }>({
   }, { auto: true }],
 });
 
-test.skip(process.platform !== 'darwin', 'macOS upstream settings workflow');
-
 function requestThroughCapture(port: number, target: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const request = http.get({
@@ -196,7 +194,7 @@ function requestTlsThroughCapture(capturePort: number, originPort: number, reque
 
 test('settings.upstream applies shared Manual PAC and Direct routes and reloads the saved mode', async ({ desktopApp, upstreamLab }, testInfo) => {
   test.setTimeout(180_000);
-  testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.upstream.macos' });
+  testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.upstream' });
   const { page } = desktopApp;
   const ids = AUTOMATION_IDS.upstream;
   const marker = randomUUID();
@@ -377,7 +375,7 @@ test('settings.upstream applies shared Manual PAC and Direct routes and reloads 
 
 test('settings.upstream preserves Manual Direct System choices across a real restart', async ({ desktopApp, upstreamLab }, testInfo) => {
   test.setTimeout(180_000);
-  testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.upstream.macos.fixed-routes' });
+  testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.upstream.fixed-routes' });
   const ids = AUTOMATION_IDS.upstream;
   const marker = randomUUID();
   const { page } = desktopApp;
@@ -458,7 +456,10 @@ test('settings.upstream preserves Manual Direct System choices across a real res
   }
 });
 
-test('settings.upstream keeps the Manual route after unavailable PAC or WPAD', async ({ desktopApp, upstreamLab }, testInfo) => {
+// These cases read the macOS helper, effective system proxy snapshot or journal.
+const macosNativeTest = process.platform === 'darwin' ? test : test.skip;
+
+macosNativeTest('settings.upstream keeps the Manual route after unavailable PAC or WPAD', async ({ desktopApp, upstreamLab }, testInfo) => {
   test.setTimeout(180_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.upstream.macos.failure-preservation' });
   const { page } = desktopApp;
@@ -523,7 +524,7 @@ test('settings.upstream keeps the Manual route after unavailable PAC or WPAD', a
   await screenshotStep('清理：关闭浮层后由标准fixture点击产品Close并检查完整进程和宿主恢复。 / Cleanup: dismiss the flyout; the standard fixture uses product Close and verifies complete process and host recovery.');
 });
 
-test('settings.upstream discovers DNS WPAD and reloads its saved mode through a real restart', async ({ desktopApp, upstreamLab }, testInfo) => {
+macosNativeTest('settings.upstream discovers DNS WPAD and reloads its saved mode through a real restart', async ({ desktopApp, upstreamLab }, testInfo) => {
   test.setTimeout(60_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.upstream.macos.dns-discovery' });
   const { page } = desktopApp;
@@ -607,7 +608,7 @@ test('settings.upstream discovers DNS WPAD and reloads its saved mode through a 
   }
 });
 
-test('settings.upstream discovers DHCP WPAD and reloads its routes through a real restart', async ({ desktopApp, upstreamLab }, testInfo) => {
+macosNativeTest('settings.upstream discovers DHCP WPAD and reloads its routes through a real restart', async ({ desktopApp, upstreamLab }, testInfo) => {
   test.setTimeout(60_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.upstream.macos.dhcp-discovery' });
   const { page } = desktopApp;
@@ -700,7 +701,7 @@ test('settings.upstream discovers DHCP WPAD and reloads its routes through a rea
   }
 });
 
-test('settings.upstream inherits system Auto Detect and restores it after a real crash', async ({ desktopApp, upstreamLab }, testInfo) => {
+macosNativeTest('settings.upstream inherits system Auto Detect and restores it after a real crash', async ({ desktopApp, upstreamLab }, testInfo) => {
   test.setTimeout(60_000);
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.upstream.macos.system-auto-detect' });
   desktopApp.preserveUserDataOnFailure();
@@ -787,7 +788,7 @@ test('settings.upstream inherits system Auto Detect and restores it after a real
 
 test('settings.upstream applies an explicit PAC to HTTPS PROXY and HTTP DIRECT', async ({ desktopApp, upstreamLab }, testInfo) => {
   test.setTimeout(90_000);
-  testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.upstream.macos.explicit-pac-routing' });
+  testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.upstream.explicit-pac-routing' });
   const { page } = desktopApp;
   const ids = AUTOMATION_IDS.upstream;
 
@@ -836,9 +837,12 @@ test('settings.upstream applies an explicit PAC to HTTPS PROXY and HTTP DIRECT',
   // Cleanup: the standard fixture uses product Close and verifies all processes, port 8888 and original proxy settings.
 });
 
-test('settings.upstream routes HTTPS PROXY and HTTP DIRECT through discovered WPAD and explicit PAC', async ({ desktopApp, upstreamLab }, testInfo) => {
+// A protected DNS/PAC lab is required; the routing assertions have no native OS dependency.
+const wpadRoutingTest = process.env.INTERCEPTOR_E2E_WPAD_PROXY_PORT ? test : test.skip;
+
+wpadRoutingTest('settings.upstream routes HTTPS PROXY and HTTP DIRECT through discovered WPAD and explicit PAC', async ({ desktopApp, upstreamLab }, testInfo) => {
   test.setTimeout(60_000);
-  testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.upstream.macos.pac-routing' });
+  testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.upstream.pac-routing' });
   const { page } = desktopApp;
   const ids = AUTOMATION_IDS.upstream;
 

@@ -1,8 +1,6 @@
 import { createHash } from 'node:crypto';
-import { execFile } from 'node:child_process';
 import { once } from 'node:events';
 import { writeFile } from 'node:fs/promises';
-import { promisify } from 'node:util';
 import type { Locator } from '@playwright/test';
 
 import { AUTOMATION_ID_PREFIXES, AUTOMATION_IDS, AutomationIdFactory } from '../../../../src/shared/automation-ids';
@@ -12,9 +10,6 @@ import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId, getByAutomationIdPrefix } from '../../fixtures/ui/automation';
 import { startRecording } from '../../fixtures/ui/capture-workflow';
 import { cleanHttpsCapture, prepareHttpsCapture } from '../../fixtures/ui/https-capture';
-import { MacosWorkflowHostSafetyOperations } from '../../fixtures/safety/macos-workflow-host-safety-operations';
-
-const execute = promisify(execFile);
 
 async function messageGeometry(pane: Locator) {
   return pane.evaluate(element => {
@@ -149,10 +144,15 @@ for (const protocol of ['grpc', 'websocket'] as const) {
       expect(initial.height).toBeGreaterThan(100);
       const box = await pane.boundingBox();
       if (!box) throw new Error('The message pane is not visible.');
+      evidence.beforeDrag = { ...await messageGeometry(pane), bounds: box, pointerTravel: 120 };
       await page.mouse.move(box.x + box.width - 3, box.y + box.height - 3);
       await page.mouse.down();
-      await page.mouse.move(box.x + box.width - 3, box.y + box.height - 63, { steps: 12 });
-      await page.mouse.up();
+      try {
+        await page.mouse.move(box.x + box.width - 3, box.y + box.height - 123, { steps: 12 });
+      } finally {
+        await page.mouse.up();
+        evidence.afterDrag = await messageGeometry(pane);
+      }
       await expect.poll(async () => (await messageGeometry(pane)).height).toBeLessThan(initial.height - 40);
       const resized = await messageGeometry(pane);
       evidence.resized = resized;
@@ -190,49 +190,41 @@ for (const protocol of ['grpc', 'websocket'] as const) {
       const messageId = await messages.nth(1).getAttribute('data-automation-id');
       if (!messageId) throw new Error('Missing selected message identity.');
       const sequence = Number(messageId.slice(messageId.lastIndexOf('.') + 1));
-      await getByAutomationId(page, protocol === 'grpc'
+      const messageCopyControl = getByAutomationId(page, protocol === 'grpc'
         ? AutomationIdFactory.grpcPayloadCopy(exchangeId, 'response', 1)
-        : AutomationIdFactory.websocketPayloadCopy(exchangeId, sequence)).click();
+        : AutomationIdFactory.websocketPayloadCopy(exchangeId, sequence));
+      await messageCopyControl.scrollIntoViewIfNeeded();
+      const messageCopyBounds = await messageCopyControl.boundingBox();
+      if (!messageCopyBounds) throw new Error('The message-specific Copy control is not visible.');
+      await page.mouse.move(messageCopyBounds.x + messageCopyBounds.width / 2, messageCopyBounds.y + messageCopyBounds.height / 2);
+      await page.mouse.wheel(0, -120);
+      await expect(messageCopyControl).toBeInViewport({ ratio: 1 });
+      await messageCopyControl.click();
       const messageCopy = protocol === 'grpc' ? long
         : [...Buffer.from(long)].map(byte => byte.toString(16).padStart(2, '0')).join(' ');
       await expect.poll(readCopiedText).toBe(messageCopy);
       evidence.copy = { length: long.length, sha256: createHash('sha256').update(long).digest('hex') };
+      await messageCopyControl.scrollIntoViewIfNeeded();
       await screenshotStep(`${protocol}使用消息专用Copy / Use the ${protocol} message-specific Copy control`, {
-        highlights: [{ target: getByAutomationId(page, protocol === 'grpc'
-          ? AutomationIdFactory.grpcPayloadCopy(exchangeId, 'response', 1)
-          : AutomationIdFactory.websocketPayloadCopy(exchangeId, sequence)), label: '1' }],
+        highlights: [{ target: messageCopyControl, label: '1' }],
       });
 
       // 窗口尺寸：只调整本轮真实Main窗口，恢复空间后保留手动正文高度。
       // Window sizing: resize only the owned Main window and restore its manually selected body height.
-      if (process.platform === 'darwin') {
-        const owner = desktopApp.nativeFileDialogOwner();
-        expect(await MacosWorkflowHostSafetyOperations.readProcessIdentity(owner.processId)).toEqual(owner);
-        const originalSize = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
-        const resizeWindow = async (height: number): Promise<void> => {
-          await execute('/usr/bin/osascript', ['-e', `
-tell application "System Events"
-  tell first application process whose unix id is ${owner.processId}
-    set size of window 1 to {${originalSize.width}, ${height}}
-  end tell
-end tell
-`], { encoding: 'utf8', timeout: 5_000 });
-          await expect.poll(() => page.evaluate(() => innerHeight)).toBe(height);
-        };
-        try {
-          await resizeWindow(originalSize.height - 200);
-          await expect.poll(async () => (await messageGeometry(pane)).height).toBeLessThan(resized.height);
-          const smaller = await messageGeometry(pane);
-          expect(smaller.height).toBeLessThanOrEqual(smaller.available + 1);
-          evidence.smallerWindow = smaller;
-        } finally {
-          await resizeWindow(originalSize.height);
-        }
-        await expect.poll(async () => (await messageGeometry(pane)).height).toBeCloseTo(resized.height, 1);
-        await screenshotStep(`${protocol}恢复窗口后保留手动正文高度 / Restore the window and retain the manual ${protocol} body height`, {
-          highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.scroll), label: '1' }],
-        });
+      const originalSize = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
+      try {
+        await desktopApp.resizeWindow(originalSize.width, originalSize.height - 200);
+        await expect.poll(async () => (await messageGeometry(pane)).height).toBeLessThan(resized.height);
+        const smaller = await messageGeometry(pane);
+        expect(smaller.height).toBeLessThanOrEqual(smaller.available + 1);
+        evidence.smallerWindow = smaller;
+      } finally {
+        await desktopApp.resizeWindow(originalSize.width, originalSize.height);
       }
+      await expect.poll(async () => (await messageGeometry(pane)).height).toBeCloseTo(resized.height, 1);
+      await screenshotStep(`${protocol}恢复窗口后保留手动正文高度 / Restore the window and retain the manual ${protocol} body height`, {
+        highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.scroll), label: '1' }],
+      });
 
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyMode.hex).click();
       await expect(pane).toHaveCount(0);
@@ -318,6 +310,13 @@ end tell
           highlights: [{ target: scroll, label: '1' }],
         });
         await lastMessage.click();
+        await expect(pane).toBeVisible();
+        await lastMessage.scrollIntoViewIfNeeded();
+        if (protocol === 'websocket') {
+          await lastMessage.hover();
+          await page.mouse.wheel(0, 120);
+          await expect(lastMessage).toBeInViewport({ ratio: 1 });
+        }
         await screenshotStep(`展开第205条${protocol}方向消息 / Expand message 205 in the selected ${protocol} direction`, {
           highlights: [{ target: lastMessage, label: '1' }],
         });
@@ -329,6 +328,30 @@ end tell
           await expect(textMode).toHaveAttribute('aria-checked', 'true');
         }
         await pane.scrollIntoViewIfNeeded();
+        if (protocol === 'websocket') {
+          // 真实滚轮使正文底边完整进入虚拟消息列表，避免scrollIntoView的亚像素截断。
+          // Wheel input fully reveals the body in the virtual list after subpixel scrollIntoView alignment.
+          await pane.hover({ position: { x: 100, y: 10 } });
+          await page.mouse.wheel(0, 120);
+        }
+        evidence.lastMessageViewport = await pane.evaluate(element => {
+          const bounds = (target: Element) => {
+            const box = target.getBoundingClientRect();
+            return { x: box.x, y: box.y, width: box.width, height: box.height };
+          };
+          const ancestors = [];
+          for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+            const style = getComputedStyle(parent);
+            if (/auto|scroll|hidden|clip/.test(`${style.overflowX} ${style.overflowY}`)) {
+              ancestors.push({
+                bounds: bounds(parent), clientWidth: parent.clientWidth, clientHeight: parent.clientHeight,
+                scrollTop: parent.scrollTop, scrollLeft: parent.scrollLeft, scrollHeight: parent.scrollHeight,
+                overflowX: style.overflowX, overflowY: style.overflowY,
+              });
+            }
+          }
+          return { bounds: bounds(element), viewport: { width: innerWidth, height: innerHeight }, ancestors };
+        });
         await expect(pane).toBeInViewport({ ratio: 1 });
         await expect(pane).toContainText(pagePayloads[204]!);
         const lastMessageView = protocol === 'grpc' ? 'Raw' : 'Text';

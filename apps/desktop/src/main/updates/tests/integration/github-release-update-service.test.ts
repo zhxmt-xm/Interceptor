@@ -19,7 +19,9 @@ describe('GitHubReleaseUpdateService', () => {
 
   it.runIf(process.platform === 'win32')('downloads a newer installer on demand and opens only the completed file', async () => {
     const fixture = await GitHubReleaseFixture.create(roots, {
-      tagName: 'v0.1.1',
+      tagName: 'v0.1.1-alpha.1',
+      prerelease: true,
+      currentVersion: '0.1.1-alpha.0',
       body: '<b>Capture fixes</b>\n\nDownload is user controlled.',
     });
     const states: string[] = [];
@@ -27,7 +29,7 @@ describe('GitHubReleaseUpdateService', () => {
 
     expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
       state: 'available',
-      latestVersion: '0.1.1',
+      latestVersion: '0.1.1-alpha.1',
       releaseNotes: 'Capture fixes\n\nDownload is user controlled.',
       totalBytes: fixture.installer.length,
     });
@@ -46,7 +48,7 @@ describe('GitHubReleaseUpdateService', () => {
     expect(fixture.openPath).toHaveBeenCalledWith(installerPath);
     expect(states).toContain('downloading');
     expect(states.at(-1)).toBe('downloaded');
-    expect(fixture.requestFor('/releases/latest')?.headers.get('authorization'))
+    expect(fixture.requestFor('/releases?')?.headers.get('authorization'))
       .toBeNull();
     const assetRequest = fixture.requestFor('/releases/assets/42');
     expect(assetRequest?.headers.get('authorization')).toBeNull();
@@ -68,7 +70,7 @@ describe('GitHubReleaseUpdateService', () => {
     ))).toEqual(fixture.installer);
   });
 
-  it('reports the latest stable version without downloading when already current', async () => {
+  it('reports the highest published version without downloading when already current', async () => {
     const fixture = await GitHubReleaseFixture.create(roots, {
       tagName: '0.1.0',
       body: null,
@@ -81,6 +83,128 @@ describe('GitHubReleaseUpdateService', () => {
     });
     await expect(fixture.gitHubReleaseUpdateService.download()).rejects.toThrow('No GitHub');
     await expect(fixture.gitHubReleaseUpdateService.openDownloaded()).rejects.toThrow('No downloaded');
+  });
+
+  it('selects alpha versions numerically from an unordered release list', async () => {
+    const fixture = await GitHubReleaseFixture.create(roots, {
+      currentVersion: '0.1.1-alpha.0',
+      releasePages: [[
+        { tagName: 'v0.1.1-alpha.2', prerelease: true },
+        { tagName: 'v0.1.0' },
+        { tagName: 'v0.1.1-alpha.10', prerelease: true },
+      ]],
+    });
+
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
+      state: 'available',
+      latestVersion: '0.1.1-alpha.10',
+    });
+  });
+
+  it('promotes an alpha to the same stable version and ignores draft and invalid tags', async () => {
+    const fixture = await GitHubReleaseFixture.create(roots, {
+      currentVersion: '0.1.1-alpha.10',
+      releasePages: [[
+        { tagName: 'v0.2.0', draft: true },
+        { tagName: 'not-a-version' },
+        { tagName: 'v0.1.1-alpha.10', prerelease: true },
+        { tagName: 'v0.1.1' },
+      ]],
+    });
+
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
+      state: 'available',
+      latestVersion: '0.1.1',
+    });
+  });
+
+  it('offers an alpha with a higher base version to a stable installation', async () => {
+    const fixture = await GitHubReleaseFixture.create(roots, {
+      currentVersion: '0.1.1',
+      tagName: 'v0.1.2-alpha.1',
+      prerelease: true,
+    });
+
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
+      state: 'available',
+      latestVersion: '0.1.2-alpha.1',
+    });
+  });
+
+  it.each(['0.1.1-alpha.1', '0.1.1-alpha.10', '0.1.1', '0.1.1-alpha.1+local'])
+    ('does not offer an alpha downgrade or reinstall from %s', async (currentVersion) => {
+      const fixture = await GitHubReleaseFixture.create(roots, {
+        currentVersion,
+        tagName: 'v0.1.1-alpha.1',
+        prerelease: true,
+      });
+
+      expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
+        state: 'up-to-date',
+        latestVersion: '0.1.1-alpha.1',
+      });
+      await expect(fixture.gitHubReleaseUpdateService.download()).rejects.toThrow('No GitHub');
+    });
+
+  it('finds the highest version on a later release page', async () => {
+    const fixture = await GitHubReleaseFixture.create(roots, {
+      currentVersion: '0.1.1-alpha.0',
+      releasePages: [
+        Array.from({ length: 100 }, () => ({ tagName: 'v0.1.1-alpha.2', prerelease: true })),
+        [{ tagName: 'v0.1.1-alpha.10', prerelease: true }],
+      ],
+    });
+
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
+      state: 'available',
+      latestVersion: '0.1.1-alpha.10',
+    });
+    expect(fixture.metadataRequests()).toBe(2);
+    expect(fixture.requestFor('page=2')).toBeDefined();
+  });
+
+  it('fails instead of choosing an older version when the newest installer is unsafe', async () => {
+    const fixture = await GitHubReleaseFixture.create(roots, {
+      currentVersion: '0.1.1-alpha.0',
+      releasePages: [[
+        { tagName: 'v0.1.1-alpha.1', prerelease: true },
+        { tagName: 'v0.1.1-alpha.10', prerelease: true, assetUrl: 'https://example.com/unsafe.msi' },
+      ]],
+    });
+
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
+      state: 'failed',
+      latestVersion: null,
+    });
+    await expect(fixture.gitHubReleaseUpdateService.download()).rejects.toThrow('No GitHub');
+  });
+
+  it('fails when no published semantic version exists', async () => {
+    const fixture = await GitHubReleaseFixture.create(roots, { releasePages: [[]] });
+
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({ state: 'failed' });
+  });
+
+  it('rejects a non-array release response', async () => {
+    const fixture = await GitHubReleaseFixture.create(roots);
+    fixture.fetcher.mockResolvedValueOnce(Response.json({ tag_name: 'v0.1.1' }));
+
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({ state: 'failed' });
+  });
+
+  it('does not publish a partial version selection when a later page fails', async () => {
+    const fixture = await GitHubReleaseFixture.create(roots, {
+      releasePages: [Array.from({ length: 100 }, () => ({ tagName: 'v0.1.1' }))],
+    });
+    const fetchMetadata = fixture.fetcher.getMockImplementation()!;
+    fixture.fetcher.mockImplementationOnce(fetchMetadata)
+      .mockResolvedValueOnce(new Response('request failed', { status: 500 }));
+
+    expect(await fixture.gitHubReleaseUpdateService.check()).toMatchObject({
+      state: 'failed',
+      latestVersion: null,
+      message: 'GitHub returned HTTP 500.',
+    });
   });
 
   it.each([401, 403, 404, 429, 500])('reports HTTP %s without requiring authorization', async (status) => {
@@ -102,7 +226,7 @@ describe('GitHubReleaseUpdateService', () => {
       latestVersion: '0.1.1',
     });
     expect(fixture.fetcher).toHaveBeenCalledWith(
-      'https://api.github.com/repos/zhxmt-xm/Interceptor/releases/latest',
+      'https://api.github.com/repos/zhxmt-xm/Interceptor/releases?per_page=100&page=1',
       expect.objectContaining({ credentials: 'omit', redirect: 'error' }),
     );
   });
@@ -262,14 +386,21 @@ describe('GitHubReleaseUpdateService', () => {
   });
 });
 
-interface GitHubReleaseFixtureOptions {
-  readonly status?: number;
+interface GitHubReleaseMetadataOptions {
   readonly tagName?: string;
   readonly body?: string | null;
-  readonly packaged?: boolean;
+  readonly draft?: boolean;
+  readonly prerelease?: boolean;
   readonly assetUrl?: string;
   readonly assetName?: string;
   readonly digest?: string | null;
+}
+
+interface GitHubReleaseFixtureOptions extends GitHubReleaseMetadataOptions {
+  readonly status?: number;
+  readonly packaged?: boolean;
+  readonly currentVersion?: string;
+  readonly releasePages?: readonly (readonly GitHubReleaseMetadataOptions[])[];
   readonly downloadBody?: Buffer;
   readonly platform?: NodeJS.Platform;
   readonly architecture?: NodeJS.Architecture;
@@ -298,38 +429,22 @@ class GitHubReleaseFixture {
     options: GitHubReleaseFixtureOptions,
   ) {
     this.root = root;
-    const tagName = options.tagName ?? 'v0.1.1';
-    const assetName = options.assetName ?? 'Interceptor.msi';
-    const assetUrl = options.assetUrl ??
-      'https://api.github.com/repos/zhxmt-xm/Interceptor/releases/assets/42';
-    const digest = options.digest === undefined
-      ? `sha256:${createHash('sha256').update(this.installer).digest('hex')}`
-      : options.digest;
-    const metadata = options.status !== undefined
-      ? new Response('request failed', { status: options.status })
-      : Response.json({
-          tag_name: tagName,
-          draft: false,
-          prerelease: false,
-          body: options.body ?? '',
-          assets: [{
-            id: 42,
-            name: assetName,
-            url: assetUrl,
-            state: 'uploaded',
-            size: this.installer.length,
-            digest,
-          }],
-        });
+    const pages = (options.releasePages ?? [[options]])
+      .map((page) => page.map((release) => this.releaseMetadata(release)));
     const downloadBody = options.downloadBody ?? this.installer;
     this.fetcher = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input);
       this.requests.push({ url, headers: new Headers(init?.headers) });
-      if (url.includes('/releases/latest')) {
+      const parsedUrl = new URL(url);
+      if (parsedUrl.pathname === '/repos/zhxmt-xm/Interceptor/releases') {
         if (this.metadataGate) {
           await this.metadataGate;
         }
-        return metadata.clone();
+        if (options.status !== undefined) {
+          return new Response('request failed', { status: options.status });
+        }
+        const page = Number(parsedUrl.searchParams.get('page') ?? '1');
+        return Response.json(pages[page - 1] ?? []);
       }
       return new Response(new Uint8Array(downloadBody), {
         status: 200,
@@ -340,13 +455,33 @@ class GitHubReleaseFixture {
       platform: options.platform ?? 'win32',
       architecture: options.architecture ?? 'x64',
       packaged: options.packaged ?? true,
-      currentVersion: '0.1.0',
+      currentVersion: options.currentVersion ?? '0.1.0',
       dataDirectory: root,
       diagnostics: { info: vi.fn(), error: vi.fn() },
       fetcher: this.fetcher as unknown as typeof fetch,
       openPath: this.openPath,
       now: () => new Date('2026-07-18T00:00:00.000Z'),
     });
+  }
+
+  /** Build public release metadata with installer bytes matching the fixture. */
+  private releaseMetadata(options: GitHubReleaseMetadataOptions): Record<string, unknown> {
+    return {
+      tag_name: options.tagName ?? 'v0.1.1',
+      draft: options.draft ?? false,
+      prerelease: options.prerelease ?? false,
+      body: options.body === undefined ? '' : options.body,
+      assets: [{
+        id: 42,
+        name: options.assetName ?? 'Interceptor.msi',
+        url: options.assetUrl ?? 'https://api.github.com/repos/zhxmt-xm/Interceptor/releases/assets/42',
+        state: 'uploaded',
+        size: this.installer.length,
+        digest: options.digest === undefined
+          ? `sha256:${createHash('sha256').update(this.installer).digest('hex')}`
+          : options.digest,
+      }],
+    };
   }
 
   /** Create one temporary fixture and register its root for cleanup. */
@@ -359,9 +494,9 @@ class GitHubReleaseFixture {
     return new GitHubReleaseFixture(root, options);
   }
 
-  /** Count only GitHub latest-release metadata requests. */
+  /** Count only GitHub release metadata requests. */
   metadataRequests(): number {
-    return this.requests.filter((request) => request.url.includes('/releases/latest')).length;
+    return this.requests.filter((request) => new URL(request.url).pathname === '/repos/zhxmt-xm/Interceptor/releases').length;
   }
 
   /** Return one captured request matching a fixed URL fragment. */

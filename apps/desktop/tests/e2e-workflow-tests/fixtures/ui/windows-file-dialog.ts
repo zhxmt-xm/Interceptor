@@ -208,6 +208,15 @@ public static class NativeFileDialogCapture {
   [DllImport("user32.dll")]
   private static extern bool SetProcessDpiAwarenessContext(IntPtr value);
 
+  [DllImport("user32.dll", SetLastError = true)]
+  private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr value);
+
+  public static void UsePhysicalCoordinates() {
+    if (SetThreadDpiAwarenessContext(new IntPtr(-4)) == IntPtr.Zero) {
+      throw new Win32Exception(Marshal.GetLastWin32Error());
+    }
+  }
+
   public static void SavePng(
     IntPtr windowHandle,
     string destination,
@@ -311,6 +320,7 @@ public static class NativeFileDialogCapture {
 Add-Type -TypeDefinition $nativeCaptureSource -ReferencedAssemblies @(
   [System.Drawing.Bitmap].Assembly.Location
 )
+[NativeFileDialogCapture]::UsePhysicalCoordinates()
 
 $owner = [System.Text.Encoding]::UTF8.GetString(
   [System.Convert]::FromBase64String('${encodedOwner}')
@@ -526,7 +536,7 @@ public static class NativeForegroundWindow {
   private static readonly IntPtr HwndNotTopmost = new IntPtr(-2);
   private const uint SwpNoSize = 0x0001;
   private const uint SwpNoMove = 0x0002;
-  private const uint SwpShowWindow = 0x0040;
+  private const uint SwpNoActivate = 0x0010;
 
   [StructLayout(LayoutKind.Sequential)]
   private struct KeyboardInput {
@@ -588,7 +598,7 @@ public static class NativeForegroundWindow {
     };
   }
 
-  [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr windowHandle);
+  [DllImport("user32.dll", SetLastError = true)] public static extern bool BringWindowToTop(IntPtr windowHandle);
   [DllImport("user32.dll")] private static extern bool AttachThreadInput(
     uint sourceThreadId,
     uint targetThreadId,
@@ -600,12 +610,46 @@ public static class NativeForegroundWindow {
     IntPtr windowHandle,
     IntPtr processId
   );
+  [DllImport("user32.dll", EntryPoint = "GetWindowThreadProcessId")]
+  private static extern uint ReadWindowProcessId(IntPtr windowHandle, out uint processId);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+  private static extern int GetClassName(IntPtr windowHandle, System.Text.StringBuilder value, int length);
+  [StructLayout(LayoutKind.Sequential)]
+  private struct WindowRectangle {
+    public int Left;
+    public int Top;
+    public int Right;
+    public int Bottom;
+  }
+  [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr handle, out WindowRectangle rectangle);
+  [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr handle);
+  public static string LastRaiseResult = "not-called";
+  public static string ForegroundSummary() {
+    return WindowSummary(GetForegroundWindow());
+  }
+  private static string WindowSummary(IntPtr handle) {
+    uint processId;
+    ReadWindowProcessId(handle, out processId);
+    var className = new System.Text.StringBuilder(256);
+    GetClassName(handle, className, className.Capacity);
+    WindowRectangle rectangle;
+    GetWindowRect(handle, out rectangle);
+    return "handle=" + handle + "; pid=" + processId + "; class=" + className
+      + "; rect=" + rectangle.Left + "," + rectangle.Top + "," + rectangle.Right + "," + rectangle.Bottom
+      + "; dpi=" + GetDpiForWindow(handle);
+  }
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr windowHandle);
-  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr windowHandle, int command);
   [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr windowHandle);
   [DllImport("user32.dll")] public static extern bool IsWindowEnabled(IntPtr windowHandle);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr windowHandle);
-  [DllImport("user32.dll")] public static extern bool SetWindowPos(
+  [DllImport("user32.dll", SetLastError = true)]
+  private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr value);
+  public static void UsePhysicalCoordinates() {
+    if (SetThreadDpiAwarenessContext(new IntPtr(-4)) == IntPtr.Zero) {
+      throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+    }
+  }
+  [DllImport("user32.dll", SetLastError = true)] public static extern bool SetWindowPos(
     IntPtr windowHandle,
     IntPtr insertAfter,
     int x,
@@ -614,7 +658,45 @@ public static class NativeForegroundWindow {
     int height,
     uint flags
   );
-  [DllImport("user32.dll")] public static extern bool SetPhysicalCursorPos(int x, int y);
+  [DllImport("user32.dll", SetLastError = true)] private static extern bool SetPhysicalCursorPos(int x, int y);
+  [StructLayout(LayoutKind.Sequential)]
+  private struct PhysicalPoint {
+    public int X;
+    public int Y;
+  }
+  [DllImport("user32.dll", SetLastError = true)] private static extern bool GetPhysicalCursorPos(out PhysicalPoint point);
+  [DllImport("user32.dll")] private static extern IntPtr WindowFromPhysicalPoint(PhysicalPoint point);
+  [DllImport("user32.dll")] private static extern bool IsChild(IntPtr parent, IntPtr child);
+  public static void MoveCursor(int x, int y) {
+    if (!SetPhysicalCursorPos(x, y)) {
+      int nativeError = Marshal.GetLastWin32Error();
+      throw new System.ComponentModel.Win32Exception(
+        nativeError,
+        "当前Windows桌面无法定位真实文件对话框鼠标；请确认桌面已解锁并允许原生输入。Win32=" + nativeError
+      );
+    }
+  }
+  public static void VerifyCursorTarget(IntPtr dialogHandle, IntPtr controlHandle, int x, int y, bool requireForeground) {
+    PhysicalPoint point;
+    if (!GetPhysicalCursorPos(out point)) {
+      throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+    }
+    IntPtr hit = WindowFromPhysicalPoint(point);
+    if (point.X != x || point.Y != y
+      || (requireForeground && GetForegroundWindow() != dialogHandle)
+      || (hit != dialogHandle && !IsChild(dialogHandle, hit))
+      || (hit != controlHandle && !IsChild(controlHandle, hit))) {
+      throw new InvalidOperationException(
+        "Native dialog cursor hit mismatch: expected=" + x + "," + y
+        + "; actual=" + point.X + "," + point.Y + "; hit=" + hit
+        + "; dialog=" + dialogHandle + "; control=" + controlHandle
+        + "; hitDetails=" + WindowSummary(hit)
+        + "; dialogDetails=" + WindowSummary(dialogHandle)
+        + "; controlDetails=" + WindowSummary(controlHandle)
+        + "; foregroundDetails=" + ForegroundSummary()
+        + "; raiseResult=" + LastRaiseResult);
+    }
+  }
   [DllImport("user32.dll")] public static extern void mouse_event(
     uint flags,
     uint dx,
@@ -624,6 +706,9 @@ public static class NativeForegroundWindow {
   );
 
   public static void RaiseWindow(IntPtr windowHandle) {
+    if (!IsWindow(windowHandle) || !IsWindowVisible(windowHandle) || !IsWindowEnabled(windowHandle)) {
+      throw new InvalidOperationException("The owned native dialog is no longer visible and enabled.");
+    }
     uint currentThread = GetCurrentThreadId();
     uint targetThread = GetWindowThreadProcessId(windowHandle, IntPtr.Zero);
     IntPtr foregroundWindow = GetForegroundWindow();
@@ -636,10 +721,15 @@ public static class NativeForegroundWindow {
       && foregroundThread != targetThread
       && AttachThreadInput(foregroundThread, targetThread, true);
     try {
-      ShowWindow(windowHandle, 5);
-      SetWindowPos(windowHandle, HwndTopmost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpShowWindow);
-      BringWindowToTop(windowHandle);
-      SetForegroundWindow(windowHandle);
+      bool positioned = SetWindowPos(windowHandle, HwndTopmost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
+      int positionError = positioned ? 0 : Marshal.GetLastWin32Error();
+      bool raised = BringWindowToTop(windowHandle);
+      int raiseError = raised ? 0 : Marshal.GetLastWin32Error();
+      bool activated = SetForegroundWindow(windowHandle);
+      LastRaiseResult = "activated=" + activated + "; attachedCurrent=" + attachedCurrent
+        + "; attachedForeground=" + attachedForeground
+        + "; positioned=" + positioned + "; positionError=" + positionError
+        + "; raised=" + raised + "; raiseError=" + raiseError + "; " + ForegroundSummary();
     } finally {
       if (attachedForeground) AttachThreadInput(foregroundThread, targetThread, false);
       if (attachedCurrent) AttachThreadInput(currentThread, targetThread, false);
@@ -647,11 +737,14 @@ public static class NativeForegroundWindow {
   }
 
   public static void ReleaseWindow(IntPtr windowHandle) {
-    SetWindowPos(windowHandle, HwndNotTopmost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpShowWindow);
+    if (IsWindow(windowHandle) && IsWindowVisible(windowHandle)) {
+      SetWindowPos(windowHandle, HwndNotTopmost, 0, 0, 0, 0, SwpNoMove | SwpNoSize | SwpNoActivate);
+    }
   }
 }
 '@
 
+[NativeForegroundWindow]::UsePhysicalCoordinates()
 $owner = [System.Text.Encoding]::UTF8.GetString(
   [System.Convert]::FromBase64String('${encodedOwner}')
 ) | ConvertFrom-Json
@@ -832,14 +925,51 @@ function Close-FileDialog(
   }
 }
 
-function Click-Control($bounds) {
-  [void][NativeForegroundWindow]::SetPhysicalCursorPos(
-    [int]($bounds.Left + $bounds.Width / 2),
-    [int]($bounds.Top + $bounds.Height / 2)
-  )
+function Click-Control($control, [switch]$ActivateDialog) {
+  if (
+    -not (Test-OwnerProcessGeneration $dialogProcessId) -or
+    -not [NativeForegroundWindow]::IsWindowVisible($dialogWindowHandle) -or
+    -not [NativeForegroundWindow]::IsWindowEnabled($dialogWindowHandle)
+  ) {
+    throw '真实文件对话框在点击前已失效。'
+  }
+  if (-not $ActivateDialog -and -not (Wait-FocusedOwnedDialog $dialogWindowHandle $dialogProcessId)) {
+    throw ("Native file dialog lost focus before click: action=$dialogAction; " +
+      "dialog=$dialogWindowHandle; foreground=$([NativeForegroundWindow]::GetForegroundWindow()); " +
+      "exists=$([NativeForegroundWindow]::IsWindow($dialogWindowHandle)); " +
+      "visible=$([NativeForegroundWindow]::IsWindowVisible($dialogWindowHandle)); " +
+      "enabled=$([NativeForegroundWindow]::IsWindowEnabled($dialogWindowHandle)); " +
+      "ownerValid=$(Test-OwnerProcessGeneration $dialogProcessId); " +
+      "foregroundDetails=$([NativeForegroundWindow]::ForegroundSummary()); " +
+      "raiseResult=$([NativeForegroundWindow]::LastRaiseResult)")
+  }
+  $bounds = $control.Current.BoundingRectangle
+  $controlHandle = [IntPtr]$control.Current.NativeWindowHandle
+  if ($bounds.Width -le 0 -or $bounds.Height -le 0 -or $controlHandle -eq [IntPtr]::Zero) {
+    throw '真实文件对话框控件在点击前没有有效边界或窗口。'
+  }
+  $clickX = [int]($bounds.Left + $bounds.Width / 2)
+  $clickY = [int]($bounds.Top + $bounds.Height / 2)
+  [NativeForegroundWindow]::MoveCursor($clickX, $clickY)
+  [NativeForegroundWindow]::VerifyCursorTarget($dialogWindowHandle, $controlHandle, $clickX, $clickY, -not $ActivateDialog)
   [NativeForegroundWindow]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
   [NativeForegroundWindow]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
   [System.Threading.Thread]::Sleep(100)
+  if ($ActivateDialog -and -not (Wait-FocusedOwnedDialog $dialogWindowHandle $dialogProcessId)) {
+    throw ("Native file dialog did not gain focus after clicking its file name field: " +
+      "dialog=$dialogWindowHandle; foregroundDetails=$([NativeForegroundWindow]::ForegroundSummary()); " +
+      "raiseResult=$([NativeForegroundWindow]::LastRaiseResult)")
+  }
+}
+
+function Focus-FileDialog {
+  if (Test-FocusedOwnedDialog $dialogWindowHandle $dialogProcessId) {
+    return
+  }
+  [NativeForegroundWindow]::RaiseWindow($dialogWindowHandle)
+  if (-not (Wait-FocusedOwnedDialog $dialogWindowHandle $dialogProcessId)) {
+    Click-Control $fileNameField -ActivateDialog
+  }
 }
 
 function Wait-AddressField {
@@ -931,16 +1061,8 @@ if ($dialogAction -eq 'cancel') {
     ) {
       throw '真实文件对话框在取消前已失效。'
     }
-    $cancelFocused = $false
-    for ($attempt = 0; $attempt -lt 3 -and -not $cancelFocused; $attempt += 1) {
-      [NativeForegroundWindow]::RaiseWindow($dialogWindowHandle)
-      Click-Control $fileNameBounds
-      $cancelFocused = Wait-FocusedOwnedDialog $dialogWindowHandle $dialogProcessId
-    }
-    if (-not $cancelFocused) {
-      throw '取消前真实文件对话框没有获得焦点或所有权。'
-    }
-    Click-Control $cancelBounds
+    Focus-FileDialog
+    Click-Control $cancelButton
   } catch {
     Close-FileDialog $dialog $dialogWindowHandle $dialogProcessId
     throw
@@ -956,19 +1078,11 @@ try {
   ) {
     throw '真实文件对话框在输入前已失效。'
   }
-  [NativeForegroundWindow]::RaiseWindow($dialogWindowHandle)
+  Focus-FileDialog
   $previousClipboard = [System.Windows.Forms.Clipboard]::GetDataObject()
   try {
-    $addressField = $null
-    for ($attempt = 0; $attempt -lt 3 -and -not $addressField; $attempt += 1) {
-      [NativeForegroundWindow]::RaiseWindow($dialogWindowHandle)
-      Click-Control $fileNameBounds
-      if (-not (Wait-FocusedOwnedDialog $dialogWindowHandle $dialogProcessId)) {
-        continue
-      }
-      [NativeForegroundWindow]::SendControlShortcut(0x4C)
-      $addressField = Wait-AddressField
-    }
+    [NativeForegroundWindow]::SendControlShortcut(0x4C)
+    $addressField = Wait-AddressField
     if (-not $addressField) {
       throw '真实文件对话框没有打开目录输入框。'
     }
@@ -1032,34 +1146,28 @@ try {
     $valuePattern = $fileNameField.GetCurrentPattern(
       [System.Windows.Automation.ValuePattern]::Pattern
     )
-    $fileNameAccepted = $false
-    for ($attempt = 0; $attempt -lt 3 -and -not $fileNameAccepted; $attempt += 1) {
-      [NativeForegroundWindow]::RaiseWindow($dialogWindowHandle)
-      Click-Control $fileNameBounds
-      if (-not (Wait-FocusedOwnedDialog $dialogWindowHandle $dialogProcessId)) {
-        continue
-      }
-      $focusedElement = [System.Windows.Automation.AutomationElement]::FocusedElement
-      if (
-        -not $focusedElement -or
-        $focusedElement.Current.ClassName -ne 'Edit' -or
-        @('1001', '1148') -notcontains $focusedElement.Current.AutomationId -or
-        $focusedElement.Current.NativeWindowHandle -ne $fileNameField.Current.NativeWindowHandle
-      ) {
-        continue
-      }
-      [NativeForegroundWindow]::SendControlShortcut(0x41)
-      [System.Windows.Forms.Clipboard]::SetText($targetFileName)
-      [NativeForegroundWindow]::SendControlShortcut(0x56)
-      $pasteDeadline = [DateTime]::UtcNow.AddSeconds(1)
-      do {
-        $fileNameAccepted = $valuePattern.Current.Value -eq $targetFileName
-        if ($fileNameAccepted) {
-          break
-        }
-        [System.Threading.Thread]::Sleep(50)
-      } while ([DateTime]::UtcNow -lt $pasteDeadline)
+    Click-Control $fileNameField
+    $focusedElement = [System.Windows.Automation.AutomationElement]::FocusedElement
+    if (
+      -not $focusedElement -or
+      $focusedElement.Current.ClassName -ne 'Edit' -or
+      @('1001', '1148') -notcontains $focusedElement.Current.AutomationId -or
+      $focusedElement.Current.NativeWindowHandle -ne $fileNameField.Current.NativeWindowHandle
+    ) {
+      throw '真实文件对话框的文件名输入框没有获得焦点。'
     }
+    [NativeForegroundWindow]::SendControlShortcut(0x41)
+    [System.Windows.Forms.Clipboard]::SetText($targetFileName)
+    [NativeForegroundWindow]::SendControlShortcut(0x56)
+    $pasteDeadline = [DateTime]::UtcNow.AddSeconds(3)
+    $fileNameAccepted = $false
+    do {
+      $fileNameAccepted = $valuePattern.Current.Value -eq $targetFileName
+      if ($fileNameAccepted) {
+        break
+      }
+      [System.Threading.Thread]::Sleep(50)
+    } while ([DateTime]::UtcNow -lt $pasteDeadline)
     if (-not $fileNameAccepted) {
       throw "真实文件对话框没有收到目标文件名。actual=$($valuePattern.Current.Value)"
     }
@@ -1091,33 +1199,11 @@ try {
   $valuePattern = $fileNameField.GetCurrentPattern(
     [System.Windows.Automation.ValuePattern]::Pattern
   )
-  $submitted = $false
-  for ($attempt = 0; $attempt -lt 3 -and -not $submitted; $attempt += 1) {
-    [NativeForegroundWindow]::RaiseWindow($dialogWindowHandle)
-    Click-Control $fileNameBounds
-    if (-not (Wait-FocusedOwnedDialog $dialogWindowHandle $dialogProcessId)) {
-      continue
-    }
-    if ($valuePattern.Current.Value -ne $targetFileName) {
-      throw '截图后真实文件对话框中的目标路径发生变化。'
-    }
-    Click-Control $submitBounds
-    $submitDeadline = [DateTime]::UtcNow.AddSeconds(2)
-    while (
-      [NativeForegroundWindow]::IsWindow($dialogWindowHandle) -and
-      [NativeForegroundWindow]::IsWindowVisible($dialogWindowHandle) -and
-      [DateTime]::UtcNow -lt $submitDeadline
-    ) {
-      [System.Threading.Thread]::Sleep(50)
-    }
-    $submitted = -not (
-      [NativeForegroundWindow]::IsWindow($dialogWindowHandle) -and
-      [NativeForegroundWindow]::IsWindowVisible($dialogWindowHandle)
-    )
+  Focus-FileDialog
+  if ($valuePattern.Current.Value -ne $targetFileName) {
+    throw '截图后真实文件对话框中的目标路径发生变化。'
   }
-  if (-not $submitted) {
-    throw '完成操作后，真实文件对话框没有关闭。'
-  }
+  Click-Control $submitButton
 } catch {
   Close-FileDialog $dialog $dialogWindowHandle $dialogProcessId
   throw

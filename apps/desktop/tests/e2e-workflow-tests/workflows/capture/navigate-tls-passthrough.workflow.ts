@@ -325,15 +325,22 @@ test('capture.navigate-tls-passthrough locates the persisted pattern', async ({
     const inspectDecryptedResponse = async (title: string): Promise<void> => {
       await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
       await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(requestPath);
+      const pathRows = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
+        .filter({ has: page.getByText(requestPath, { exact: true }) });
+      const previousRowIds = await pathRows.evaluateAll(elements => elements.map(element => element.getAttribute('data-automation-id')!));
       await sendHttps();
-      const row = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
-        .filter({ hasText: requestPath }).last();
+      const row = previousRowIds.length
+        ? pathRows.and(page.locator(previousRowIds.map(id => `:not([data-automation-id="${id}"])`).join('')))
+        : pathRows;
+      await expect(row).toHaveCount(1);
       await expect(row).toBeVisible();
       if (await row.getAttribute('aria-pressed') !== 'true') await row.click();
+      await expect(row).toHaveAttribute('aria-pressed', 'true');
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.response).click();
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyMode.raw).click();
       await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyAction.copy).click();
-      expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(expectedBody);
+      await expect.poll(async () => (await page.evaluate(() => navigator.clipboard.readText())).replaceAll('\r\n', '\n'))
+        .toBe(expectedBody);
       await screenshotStep(title, {
         highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.inspector.tab.response), label: '1' }],
       });

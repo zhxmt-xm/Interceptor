@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UpdateStatus } from '../../../../../shared/desktop-api';
 import type { ButtonProps } from '../../../../components/Button/Button';
 import type { IconButtonProps } from '../../../../components/IconButton/IconButton';
-import { Button, IconButton } from '../../../../components';
+import { Button, IconButton, StatusBadge } from '../../../../components';
 import { UpdateNotification } from '../../UpdateNotification/UpdateNotification';
 import { UpdatesPanel } from '../../SettingsContent/UpdatesPanel';
 import { SettingsGroup } from '../../SettingsContent/SettingsGroup';
@@ -98,6 +98,13 @@ describe('Update notification controls', () => {
 });
 
 describe('Updates anonymous controls', () => {
+  it('labels the installed alpha version without claiming it is stable', () => {
+    state.status!.currentVersion = '0.1.1-alpha.1';
+    const group = findControl<{ title: string; children: ReactNode }>(UpdatesPanel(), SettingsGroup);
+    const badge = findControl<{ children: ReactNode }>(group.props.children, StatusBadge);
+    expect(badge.props.children).toBe('settings.installed');
+  });
+
   it.each([
     ['idle', RefreshCw, 'settings.checkNow', 'check'],
     ['failed', RefreshCw, 'settings.checkNow', 'check'],
