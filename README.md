@@ -22,10 +22,7 @@ See what your app sends. Change what it receives.</p>
 
 [简体中文](README.zh-CN.md) | [Website](https://www.interceptor.cn/) | [Quick Start](#quick-start) | [Features](#features) | [Illustrated Guide](https://www.interceptor.cn/en/guide) | [Feedback](https://github.com/zhxmt-xm/Interceptor/issues)
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-capture-dark.png">
-  <img src="architecture/assets/readme-capture-light.png" alt="Capture showing six local HTTP requests and the selected order response as formatted JSON" width="1600">
-</picture>
+<img src="architecture/assets/readme-capture-en.png" alt="Capture showing HTTP and WebSocket traffic with the selected WebSocket connection and its messages" width="1600">
 
 *Screenshots from v0.1.1-alpha.1 on macOS. [Source and limits](architecture/assets/readme-media.json).*
 
@@ -71,7 +68,7 @@ Certificate pinning and separate trust stores can prevent decryption. TLS passth
 - Inspect headers, cookies, request/response bodies, timing and TLS details; switch between JSON trees, formatted text, raw content, images and hex.
 - Read WebSocket frames and gRPC messages alongside HTTP/1.1 and HTTP/2 exchanges.
 
-The opening screenshot shows a selected order response. More real steps: [Capture](https://www.interceptor.cn/en/guide/capture) · [HTTP/2](https://www.interceptor.cn/en/guide/capture#walkthrough-capture-http2) · [WebSocket](https://www.interceptor.cn/en/guide/capture#walkthrough-capture-websocket-messages) · [gRPC](https://www.interceptor.cn/en/guide/capture#walkthrough-capture-grpc-messages)
+The opening screenshot shows a selected WebSocket connection and its messages. More real steps: [Capture](https://www.interceptor.cn/en/guide/capture) · [HTTP/2](https://www.interceptor.cn/en/guide/capture#walkthrough-capture-http2) · [WebSocket](https://www.interceptor.cn/en/guide/capture#walkthrough-capture-websocket-messages) · [gRPC](https://www.interceptor.cn/en/guide/capture#walkthrough-capture-grpc-messages)
 
 ### Rules: test a different outcome without changing the server
 
