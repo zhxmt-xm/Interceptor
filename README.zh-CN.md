@@ -31,6 +31,19 @@
 
 Interceptor 是面向 Web/API 开发者和测试工程师的桌面 HTTP(S) 调试代理，运行于 **Windows 和 macOS**。在一个工作区检查 HTTP/1.1、HTTP/2、WebSocket 和 gRPC 流量，不改服务端即可测试不同响应、重放请求。Agent 与 MCP 提供可选的 AI 辅助，日常调试不需要模型账号。
 
+## 和其他工具的比较
+
+| | Interceptor | Charles | Proxyman |
+| --- | --- | --- | --- |
+| 许可证 | Apache-2.0 | 闭源 | 闭源 |
+| 价格 | 免费 | 付费 | 付费 |
+| 断点编辑后继续 | 支持 | 支持 | 支持 |
+| 规则、模拟与映射 | 支持 | 支持 | 支持 |
+| 内置 Composer | 支持 | 支持 | 支持 |
+| MCP 与 Agent | 支持 | — | — |
+
+Charles、Proxyman 是成熟的商业工具，各有自己的强项。Interceptor 用开源代码、Windows 与 macOS 构建，以及可选的 MCP/Agent 覆盖同一套抓包、断点、改写与重放流程。以上对比截至 2026 年 10 月，功能与价格以各产品当前页面为准。
+
 ## 下载
 
 Alpha 预览：[v0.1.1-alpha.1](https://github.com/zhxmt-xm/Interceptor/releases/tag/v0.1.1-alpha.1)。按操作系统与 CPU 选择下列安装包，或查看[全部 Release 与兼容性说明](https://github.com/zhxmt-xm/Interceptor/releases)。Alpha 版本仍可能改变数据格式和界面细节。
