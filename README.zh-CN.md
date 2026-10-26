@@ -42,7 +42,7 @@ Interceptor 是面向 Web/API 开发者和测试工程师的桌面 HTTP(S) 调�
 | 内置 Composer | 支持 | 支持 | 支持 |
 | MCP 与 Agent | 支持 | — | — |
 
-Charles、Proxyman 是成熟的商业工具，各有自己的强项。Interceptor 用开源代码、Windows 与 macOS 构建，以及可选的 MCP/Agent 覆盖同一套抓包、断点、改写与重放流程。以上对比截至 2026 年 10 月，功能与价格以各产品当前页面为准。
+Charles、Proxyman 是成熟的商业工具，各有自己的强项。Interceptor 用开源代码、Windows 与 macOS 构建，以及可选的 MCP/Agent 覆盖同一套抓包、断点、改写与重放流程。如果你用过 Charles、Fiddler、Proxyman、Whistle 或 mitmproxy，核心流程会很熟悉。以上对比截至 2026 年 10 月，功能与价格以各产品当前页面为准。
 
 ## 下载
 
