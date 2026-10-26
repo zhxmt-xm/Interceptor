@@ -39,7 +39,7 @@ Interceptor is a desktop HTTP(S) debugging proxy for web/API developers and QA e
 | Built-in Composer | Yes | Yes | Yes |
 | MCP and Agent | Yes | — | — |
 
-Charles and Proxyman are mature commercial tools with their own strengths. Interceptor covers the same capture, breakpoint, rewrite and replay workflow with open-source code, Windows and macOS builds, and optional MCP/Agent access. Summary as of October 2026; check each vendor's current documentation for features and pricing.
+Charles and Proxyman are mature commercial tools with their own strengths. Interceptor covers the same capture, breakpoint, rewrite and replay workflow with open-source code, Windows and macOS builds, and optional MCP/Agent access. If you have used Charles, Fiddler, Proxyman, Whistle or mitmproxy before, the core workflow will feel familiar. Summary as of October 2026; check vendor documentation for current features and pricing.
 
 ## Download
 
