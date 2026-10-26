@@ -64,17 +64,15 @@ async function createBreakpointRule(
       page,
       AutomationIdFactory.ruleActionField(ruleId, 0, 'phase'),
     ).click();
-    await getByAutomationId(
+    const responseOption = getByAutomationId(
       page,
       AutomationIdFactory.ruleActionField(ruleId, 0, 'phase-option.response'),
-    ).click();
-    await getByAutomationId(
-      page,
-      AutomationIdFactory.ruleActionField(ruleId, 0, 'phase'),
-    ).scrollIntoViewIfNeeded();
+    );
+    await responseOption.scrollIntoViewIfNeeded();
     await screenshotStep('为Breakpoint选择响应阶段 / Select response phase for the Breakpoint', {
-      highlights: [{ target: getByAutomationId(page, AutomationIdFactory.ruleActionField(ruleId, 0, 'phase')), label: '1' }],
+      highlights: [{ target: responseOption, label: '1' }],
     });
+    await responseOption.click();
   }
   await getByAutomationId(page, AutomationIdFactory.ruleToggle(ruleId)).click();
   await screenshotStep(`启用${phase} Breakpoint规则 / Enable the ${phase} Breakpoint Rule`, {
@@ -918,7 +916,7 @@ test('rules.body-effect-evidence keeps breakpoint header effects aligned', async
     );
     await expect(capturedHeaders).toContainText('from-rule');
     await expect(capturedHeaderEffect).toHaveAttribute('data-effect', operation);
-    await capturedHeaders.scrollIntoViewIfNeeded();
+    await capturedHeaderEffect.scrollIntoViewIfNeeded();
     await screenshotStep(`Capture中查看${phase} Header来源 / Inspect the ${phase} Header source in Capture`, {
       highlights: [{ target: capturedHeaderEffect, label: '1' }],
     });

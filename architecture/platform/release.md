@@ -53,7 +53,7 @@ external模块在顶层`require`可能阻塞packaged Main与CDP初始化，因�
 前者决定Forge/maker元数据，后者决定最终ASAR和原生版本，避免Packager在归档前写回源码版本。
 只有构建副本使用发版版本，源码manifest保持原值；产物审计检查实际ASAR，不以文件名代替。
 
-- **稳定身份/版本**：Desktop `0.1.0`，`com.zhxmt.interceptor` 作为 Bundle ID / AppUserModelId；Windows executable 为 `asInvoker`。MSI 固定 UpgradeCode，x64、per-user，不把 auto-update feature 耦合进安装器。
+- **App版本与身份**：Desktop源码版本为`0.1.1-alpha.1`；发布构建使用`INTERCEPTOR_BUILD_VERSION`指定的完整SemVer。`com.zhxmt.interceptor`作为Bundle ID / AppUserModelId；Windows executable为`asInvoker`。MSI固定UpgradeCode，x64、per-user，不把auto-update feature耦合进安装器。
 - **Windows maker**：Forge WiX maker + 固定校验的 portable WiX 3.14.1；`make` 产出 MSI/ZIP。可选 `WINDOWS_CERTIFICATE_FILE/PASSWORD` 同时签 app 与 MSI。生命周期 smoke 构建两版，验证 install → launch → major-upgrade → launch → uninstall。
   - 安装生命周期runner复用workflow的Windows宿主guard，运行前要求共享CA已就绪；每版等待真实App/Core/8888，点击公共Close并复核进程、完整WinINet、journal和Root集合。失败保留profile，恢复未确认时不移除安装树，不把强杀当作正常退出。
   - npm入口仅为测试runner启用Node 24的`--experimental-transform-types`，直接加载既有TypeScript guard；不增加依赖，也不将此参数传给产品Electron。

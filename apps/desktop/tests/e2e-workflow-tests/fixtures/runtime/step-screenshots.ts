@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { extractFile } from '@electron/asar';
 import { test as playwrightTest, type TestInfo } from '@playwright/test';
 
 import type { LocalElectronApplicationDriver } from './local-electron-driver';
@@ -62,7 +63,7 @@ export function startStepScreenshots(testInfo: TestInfo, enabled: boolean): void
     overheadMs: 0,
     steps: [],
     directory: testInfo.outputPath('step-screenshots'),
-    workflowSha256: createHash('sha256').update(readFileSync(testInfo.file)).digest('hex'),
+    workflowSha256: createHash('sha256').update(readFileSync(testInfo.file, 'utf8').replaceAll('\r\n', '\n')).digest('hex'),
     examples: {},
   });
 }
@@ -246,7 +247,7 @@ export async function finishStepScreenshots(testInfo: TestInfo): Promise<void> {
   if (!run) return;
   try {
     await mkdir(run.directory, { recursive: true });
-    const appPath = process.env.INTERCEPTOR_E2E_MACOS_APP_PATH;
+    const appPath = process.env.INTERCEPTOR_E2E_APP_PATH ?? process.env.INTERCEPTOR_E2E_MACOS_APP_PATH;
     let appVersion: string;
     if (process.platform === 'darwin' && appPath) {
       const { stdout } = await execute('/usr/libexec/PlistBuddy', [
@@ -254,14 +255,16 @@ export async function finishStepScreenshots(testInfo: TestInfo): Promise<void> {
       ], { encoding: 'utf8' });
       appVersion = stdout.trim();
     } else {
-      const manifest: unknown = JSON.parse(await readFile(path.resolve(__dirname, '../../../../package.json'), 'utf8'));
+      const manifest: unknown = JSON.parse(appPath
+        ? extractFile(path.join(path.dirname(appPath), 'resources/app.asar'), 'package.json').toString('utf8')
+        : await readFile(path.resolve(__dirname, '../../../../package.json'), 'utf8'));
       if (typeof manifest !== 'object' || manifest === null
         || !('version' in manifest) || typeof manifest.version !== 'string') {
         throw new Error('The App package omitted its version.');
       }
       appVersion = manifest.version;
     }
-    if (createHash('sha256').update(await readFile(testInfo.file)).digest('hex') !== run.workflowSha256) {
+    if (createHash('sha256').update((await readFile(testInfo.file, 'utf8')).replaceAll('\r\n', '\n')).digest('hex') !== run.workflowSha256) {
       throw new Error('The workflow source changed during screenshot capture.');
     }
     const passed = testInfo.status === 'passed' && run.hostRestored;

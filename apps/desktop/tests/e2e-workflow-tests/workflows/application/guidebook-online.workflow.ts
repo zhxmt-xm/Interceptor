@@ -27,6 +27,8 @@ interface GuidebookEvidence {
   synchronizedTheme: string;
   restoredFrameUrl: string;
   refreshedFrameUrl: string;
+  offlineErrorObserved: boolean;
+  retriedFrameUrl: string;
   browserPagesBefore: number;
   browserPagesAfter: number;
   sandbox: string | null;
@@ -109,6 +111,8 @@ test('shell.guidebook.online keeps remote reading inside the secure App shell', 
     synchronizedTheme: '',
     restoredFrameUrl: '',
     refreshedFrameUrl: '',
+    offlineErrorObserved: false,
+    retriedFrameUrl: '',
     browserPagesBefore: 0,
     browserPagesAfter: 0,
     sandbox: await frameElement.getAttribute('sandbox'),
@@ -155,10 +159,10 @@ test('shell.guidebook.online keeps remote reading inside the secure App shell', 
   await expect(guidebookFrame.getByRole('dialog')).toBeVisible();
   await expect(guidebookLocator(guidebookFrame, 'image.preview.image')).toBeVisible();
   evidence.imagePreviewOpened = true;
+  await screenshotStep('打开真实教程步骤图的放大预览 / Open the larger preview of a real Guidebook step image.');
   await page.keyboard.press('Escape');
   await expect(guidebookFrame.getByRole('dialog')).toHaveCount(0);
   await expect(getByAutomationId(page, AUTOMATION_IDS.app.statusbar)).toBeVisible();
-  await screenshotStep('打开并关闭真实教程步骤图，App外壳保持可见 / Open and close a real Guidebook image while the App shell stays visible.');
 
   // 主题同步：保持初始App语言，真实切换主题并核对远程frame。
   // Theme sync: keep the initial App language, switch the real theme and verify the remote frame.
@@ -175,8 +179,8 @@ test('shell.guidebook.online keeps remote reading inside the secure App shell', 
   await expect(page.locator('html')).toHaveAttribute('lang', initialLanguage);
   await screenshotStep('保持App语言并核对远程Guidebook主题同步 / Keep the App language and verify remote Guidebook theme synchronization.');
 
-  // 恢复：回到初始主题，再通过Refresh验证新frame代际重新加载固定入口。
-  // Restore: return to the initial theme, then use Refresh to reload the fixed entry in a new frame generation.
+  // 恢复：回到初始主题，再通过Refresh验证新frame代际重新加载当前章节。
+  // Restore: return to the initial theme, then use Refresh to reload the current chapter in a new frame generation.
   await selectShellPreference(
     page,
     AUTOMATION_IDS.shell.theme.trigger,
@@ -200,7 +204,8 @@ test('shell.guidebook.online keeps remote reading inside the secure App shell', 
     .toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
   guidebookFrame = await waitForGuidebookFrame(page, initialLanguage);
   evidence.refreshedFrameUrl = guidebookFrame.url();
-  await screenshotStep('刷新固定Guidebook入口并等待新frame恢复Ready / Refresh the fixed Guidebook entry and wait for the new frame to return to Ready.');
+  expect(evidence.refreshedFrameUrl).toBe(evidence.restoredFrameUrl);
+  await screenshotStep('刷新当前Guidebook章节并等待新frame恢复Ready / Refresh the current Guidebook chapter and wait for the new frame to return to Ready.');
 
   // 浏览器出口与证据：点击固定外部入口，不产生Electron新窗口或Renderer错误。
   // Browser exit and evidence: open the fixed external entry without creating an Electron window or Renderer error.
@@ -211,6 +216,42 @@ test('shell.guidebook.online keeps remote reading inside the secure App shell', 
   evidence.browserPagesAfter = desktopApp.context.pages().length;
   expect(evidence.browserPagesAfter).toBe(evidence.browserPagesBefore);
   expect(desktopApp.rendererPageErrors()).toEqual([]);
+  await screenshotStep('点击浏览器入口后Guidebook外壳保持正常 / Keep the Guidebook shell ready after opening the browser entry.');
+
+  // 环境故障：真实断网触发Error；恢复网络后由用户Retry创建新frame。
+  // Environment failure: a real offline state enters Error; the user retries after connectivity returns.
+  const frameBeforeRetry = await frameElement.elementHandle();
+  const guidebookRoot = getByAutomationId(page, AUTOMATION_IDS.guidebook.root);
+  try {
+    await desktopApp.context.setOffline(true);
+    await expect(guidebookRoot).toHaveAttribute('data-state', 'error');
+    await expect(getByAutomationId(page, AUTOMATION_IDS.guidebook.error)).toBeVisible();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.guidebook.retry)).toBeVisible();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.guidebook.search)).toBeDisabled();
+    evidence.offlineErrorObserved = true;
+    await screenshotStep('断网后显示Error与Retry入口 / Show Error and the Retry action while offline', {
+      highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.guidebook.retry), label: '1' }],
+    });
+  } finally {
+    await desktopApp.context.setOffline(false);
+  }
+  await expect(guidebookRoot).toHaveAttribute('data-state', 'error');
+  await getByAutomationId(page, AUTOMATION_IDS.guidebook.retry).click();
+  await expect.poll(async () => frameBeforeRetry === null
+    || await frameBeforeRetry.evaluate((element) => !element.isConnected).catch(() => true))
+    .toBe(true);
+  await expect(guidebookRoot).toHaveAttribute('data-state', 'ready', { timeout: 30_000 });
+  guidebookFrame = await waitForGuidebookFrame(page, initialLanguage);
+  evidence.retriedFrameUrl = guidebookFrame.url();
+  expect(evidence.retriedFrameUrl).toBe(evidence.refreshedFrameUrl);
+  await expect(page.locator('html')).toHaveAttribute('lang', initialLanguage);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', initialTheme);
+  await expect(guidebookFrame.locator('html')).toHaveAttribute('lang', expectedGuidebookLocale(initialLanguage));
+  await expect(guidebookFrame.locator('html')).toHaveAttribute('data-theme', initialTheme);
+  await expect(getByAutomationId(page, AUTOMATION_IDS.guidebook.search)).toBeEnabled();
+  await expect(guidebookLocator(guidebookFrame, 'guide.article')).toBeVisible();
+  expect(desktopApp.rendererPageErrors()).toEqual([]);
+  await screenshotStep('恢复网络并Retry后当前章节重新就绪 / Restore connectivity and retry the current chapter successfully');
 
   const evidencePath = testInfo.outputPath('guidebook-online.json');
   await writeFile(evidencePath, JSON.stringify(evidence, null, 2), 'utf8');
@@ -218,5 +259,4 @@ test('shell.guidebook.online keeps remote reading inside the secure App shell', 
     path: evidencePath,
     contentType: 'application/json',
   });
-  await screenshotStep('保留Guidebook终态与固定浏览器出口证据 / Preserve the Guidebook final state and fixed browser-exit evidence.');
 });

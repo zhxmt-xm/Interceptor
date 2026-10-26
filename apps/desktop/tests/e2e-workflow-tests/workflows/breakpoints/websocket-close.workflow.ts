@@ -32,6 +32,8 @@ test('breakpoints.websocket-close forwards a close-code-only edit end to end', a
     desktopApp.capturePort(),
     requestPath,
   );
+  const clientCloseCodes: number[] = [];
+  client.on('close', (code: number) => clientCloseCodes.push(code));
 
   const row = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
     .filter({ hasText: requestPath })
@@ -123,6 +125,8 @@ test('breakpoints.websocket-close forwards a close-code-only edit end to end', a
   await expect.poll(() => frameScroll.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
   const pausedFrame = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.breakpointPending);
   await expect(pausedFrame).toHaveCount(1);
+  await expect.poll(() => clientCloseCodes).toEqual([1000]);
+  expect(webSocketLab.latestCloseCode()).toBeUndefined();
   await expect(pausedFrame).toBeInViewport({ ratio: 0.9 });
   await pausedFrame.click();
   await screenshotStep('选中挂起的Close帧并读取关闭码 / Select the paused Close frame and inspect its code', {
@@ -165,28 +169,20 @@ test('breakpoints.websocket-close forwards a close-code-only edit end to end', a
       { target: getByAutomationId(page, AUTOMATION_IDS.breakpoints.executeEdited), label: '2' },
     ],
   });
-  const sentCloseId = await pausedFrame.getAttribute('data-automation-id');
-  if (sentCloseId === null) throw new Error('The paused Close frame has no public identifier.');
   await getByAutomationId(page, AUTOMATION_IDS.breakpoints.executeEdited).click();
 
   await expect.poll(() => webSocketLab.latestCloseCode()).toBe(1001);
-  await testInfo.attach('websocket-origin-observation', {
-    body: Buffer.from(JSON.stringify(webSocketLab.evidence(), null, 2)),
+  await testInfo.attach('websocket-origin-observation.json', {
+    body: Buffer.from(JSON.stringify({ clientCloseCodes, origin: webSocketLab.evidence() }, null, 2)),
     contentType: 'application/json',
   });
   await screenshotStep('替换标题由模式控件决定高度，折叠图标不得用30px按钮把它撑高。 / The mode control sets the replacement heading height; the collapse icon must not enlarge it.');
 
-  // Release the returning Close before moving the active configuration to another connection.
-  // 将活动配置移到另一连接前，先放行返回方向的Close。
-  await expect(pausedFrame).toHaveCount(1);
-  await expect(pausedFrame).not.toHaveAttribute('data-automation-id', sentCloseId);
-  await expect(closeCode).toHaveValue('1001');
-  await screenshotStep('Both中的返回Close仍需单独放行 / Continue the returning Close separately in Both mode', {
-    highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.breakpoints.continueUnmodified), label: '1' }],
-  });
-  await getByAutomationId(page, AUTOMATION_IDS.breakpoints.continueUnmodified).click();
+  // The client handshake already ended; verify the edited origin result before moving connections.
+  // 客户端握手已结束；先核对源站编辑结果和空队列，再切换连接。
+  expect(clientCloseCodes).toEqual([1000]);
   await expect(pausedFrame).toHaveCount(0);
-  await screenshotStep('两个Close方向均已处理 / Both Close directions have been resolved');
+  await screenshotStep('核对两端关闭结果并确认没有等待项 / Verify both endpoints closed and no pending frames remain');
 
   // 用户操作：另一真实连接使用Both，补充空Text和ping/pong，不重跑关闭码场景。
   // User actions: use Both on another real connection to verify empty Text and ping/pong without repeating close-code coverage.

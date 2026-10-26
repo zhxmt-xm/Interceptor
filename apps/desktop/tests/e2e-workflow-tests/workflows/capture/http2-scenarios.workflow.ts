@@ -519,7 +519,7 @@ test('capture.scenarios.http2 captures decrypted H2 headers trailers and body', 
           });
           const recoveryCopy = getByAutomationId(desktopApp.page, AUTOMATION_IDS.capture.inspector.bodyAction.copy);
           await recoveryCopy.click();
-          await expect.poll(() => desktopApp.page.evaluate(() => navigator.clipboard.readText()))
+          await expect.poll(async () => (await desktopApp.page.evaluate(() => navigator.clipboard.readText())).replaceAll('\r\n', '\n'))
             .toBe(next.response!.body);
           await screenshotStep(`${direction}错误GOAWAY后复制独立GET的响应 / Copy the separate GET response after ${direction} error GOAWAY`, {
             highlights: [{ target: recoveryCopy, label: '1' }],

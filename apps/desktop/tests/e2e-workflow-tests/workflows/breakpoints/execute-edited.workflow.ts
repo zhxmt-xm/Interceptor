@@ -126,8 +126,9 @@ async function selectPausedRequest(page: Page, requestPath: string): Promise<voi
     AUTOMATION_IDS.capture.keywordFilter,
   ).fill(requestPath);
   const row = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
-    .filter({ hasText: requestPath })
-    .last();
+    .filter({ has: page.getByText(requestPath, { exact: true }) })
+    .and(page.locator('[data-breakpoint-state="head"]'));
+  await expect(row).toHaveCount(1);
   await expect(row).toBeVisible();
   if (await row.getAttribute('aria-pressed') !== 'true') await row.click();
   await expect(row).toHaveAttribute('aria-pressed', 'true');

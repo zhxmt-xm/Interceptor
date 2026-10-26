@@ -77,6 +77,30 @@ export async function publishHomepageChanges(snapshot, changes, report, saveRepo
   const uploaded = new Set(report.uploadedBlobs ?? []);
   const tree = [];
   const updates = [...changes].filter(([file, content]) => content.sha !== snapshot.entries.get(file)?.sha);
+  if (report.commit) {
+    const expected = updates.map(([file, content]) => ({ path: file, mode: '100644', type: 'blob', sha: content.sha }));
+    if (!/^[a-f0-9]{40}$/.test(report.candidateTree)
+      || JSON.stringify(report.candidateChanges) !== JSON.stringify(expected)) {
+      throw new Error('Saved candidate metadata differs from the verified files; no ref was updated.');
+    }
+    for (const [file, content] of updates) {
+      const entry = snapshot.entries.get(file);
+      if (entry && (entry.type !== 'blob' || entry.mode !== '100644')) throw new Error(`Remote target is not a regular file: ${file}`);
+      if (gitBlobSha(await content.read()) !== content.sha) throw new Error(`Generated content changed before resuming: ${file}`);
+    }
+    const candidate = githubApi(`${endpoint}/git/commits/${report.commit}`);
+    if (candidate.sha !== report.commit || candidate.parents?.length !== 1
+      || candidate.parents[0].sha !== snapshot.head || candidate.tree?.sha !== report.candidateTree) {
+      throw new Error('Saved candidate commit differs from the verified publication; no ref was updated.');
+    }
+    if (readHomepageHead() !== snapshot.head) throw new Error('Homepage main changed before resuming; no ref was updated.');
+    githubApi(`${endpoint}/git/refs/heads/${homepageBranch}`, 'PATCH', { sha: report.commit, force: false });
+    if (readHomepageHead() !== report.commit) throw new Error('Homepage main does not point to the saved commit; inspect the remote before retrying.');
+    report.state = 'pushed';
+    report.websiteChecks = 'The existing Check website workflow runs after this main update; it is not awaited by this command.';
+    await saveReport();
+    return report.commit;
+  }
   report.state = 'uploading';
   await saveReport();
   let count = 0;
@@ -115,6 +139,8 @@ export async function publishHomepageChanges(snapshot, changes, report, saveRepo
     throw new Error('GitHub created an unexpected candidate commit; main was not changed.');
   }
   report.commit = commit.sha;
+  report.candidateTree = candidate.sha;
+  report.candidateChanges = tree;
   report.changedFiles = tree.map(entry => entry.path);
   report.state = 'committed-without-ref';
   await saveReport();

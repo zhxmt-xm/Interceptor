@@ -81,6 +81,14 @@ npm exec --workspace @interceptor/desktop playwright test -- --config tests/e2e-
 
 `INTERCEPTOR_E2E_MACOS_APP_PATH`仅在测试driver中选择已构建的签名App，此时Main必须通过生产App路径/CDHash、完整资源和运行时验证，不能回退到开发socket。设置该变量后直接运行Playwright，prepare会拒绝混用产物。packaged smoke和产物安全验收仍独立执行，开发授权不替代生产核准。
 
+`INTERCEPTOR_E2E_APP_PATH`选择当前平台的已有packaged App：Windows填写`Interceptor.exe`完整路径，macOS填写`.app`完整路径。`run.mjs`跳过prepare，driver以`spawn()`启动App并通过Renderer CDP执行同一份workflow；生产Fuses保持关闭Main debugger。Windows窗口状态、恢复和尺寸调整由核对PID及启动时间的原生窗口操作完成。该变量优先于macOS旧变量，实际App版本从产物读取。
+
+```powershell
+$env:INTERCEPTOR_E2E_APP_PATH = 'C:\code\Interceptor\apps\desktop\out\Interceptor-win32-x64\Interceptor.exe'
+$env:INTERCEPTOR_E2E_LOCALE = 'en-US'
+npm run test:e2e:workflow --workspace @interceptor/desktop -- workflows/settings/updates-check.workflow.ts --screenshots
+```
+
 每条workflow仍独立profile/trace，系统授权由本机用户处理；常驻helper跨workflow保留，Main/Core/Worker、前台helper子进程和8888仍必须退出恢复。macOS失败清理先确认完整代理已恢复，否则保留App、listener和profile，不再让测试侧重复弹旧代理授权后强杀。证书admin trust由同一已部署helper的前台固定入口执行，仍有独立系统权限；不以Main的security写命令代替。组件卸载不等于业务恢复，整轮结束按已确认的保留/卸载范围处理。
 
 macOS业务窗口由driver按项目配置准备：常规场景保持真实1600x900，只有body-fill滚轮边界场景使用1600x800。Windows项目默认尺寸不变，body-fill保留默认尺寸布局检查后，仅在滚动阶段调整本轮真实窗口高度到800px。macOS admin trust前后检查统一在宿主guard；TLS/gRPC/H2保持相同业务步骤。GoTo使用唯一原生建议项的真实双击，Save/Open及取消真实点击原生按钮，不改输入法、语言或dialog返回值。
@@ -344,7 +352,7 @@ npm exec --no --workspace @interceptor/desktop -- playwright test --config tests
 | `settings.app-containers.bulk-access` | 对称批量启用/停用并精确恢复AppContainer exemption | os-side-effect |
 | `settings.proxy.enable-restore` | 系统代理Enable/Restore ownership | os-side-effect |
 | `settings.proxy.upstream` | macOS接续ClashX上游，外部改写后退出/跨profile重启不覆盖新配置 | macOS / external proxy / os-side-effect |
-| `settings.upstream.macos` | System/Direct/Manual/PAC/WPAD双入口、DNS/DHCP选路、重启与完整宿主恢复 | macOS / isolated network / os-side-effect |
+| `settings.upstream` | System/Direct/Manual/PAC双入口、真实选路、重启；macOS原生DNS/DHCP、Auto Detect与完整宿主恢复 | 两端共享路由 / 原生场景macOS / isolated network / os-side-effect |
 | `settings.upstream.windows` | Windows原生WPAD/PAC失败保持，DNS/DHCP、优先级、System Auto Detect和代际恢复 | Windows / isolated network / os-side-effect |
 | `settings.system-proxy.crash-recovery` | App A异常退出后由顺序启动的App B加载首次快照并完整恢复 | os-side-effect |
 | `settings.proxy-mitm.persistence` | 异常退出后恢复系统代理并跨进程恢复MITM/TLS配置 | os-side-effect |
@@ -444,7 +452,7 @@ npm run test:e2e:workflow --workspace @interceptor/desktop -- \
   --output /absolute/path/to/a-new-run
 ```
 
-`run.mjs`通过上述npm script运行，消费`--screenshots`并在需要时补充独立输出目录，其余参数交给原Playwright配置；使用npm提供的CLI路径逐参数启动Node，不交给Windows shell解释正则或含空格路径。默认先执行已有prepare；macOS设置`INTERCEPTOR_E2E_MACOS_APP_PATH`时使用该签名App并跳过prepare。直接运行Playwright时可设置测试环境变量`INTERCEPTOR_E2E_STEP_SCREENSHOTS=1`并自行指定输出目录；它只配置测试fixture，不进入产品。
+`run.mjs`通过上述npm script运行，消费`--screenshots`并在需要时补充独立输出目录，其余参数交给原Playwright配置；使用npm提供的CLI路径逐参数启动Node，不交给Windows shell解释正则或含空格路径。默认先执行已有prepare；设置`INTERCEPTOR_E2E_APP_PATH`或macOS的`INTERCEPTOR_E2E_MACOS_APP_PATH`时使用该packaged App并跳过prepare。直接运行Playwright时可设置测试环境变量`INTERCEPTOR_E2E_STEP_SCREENSHOTS=1`并自行指定输出目录；它只配置测试fixture，不进入产品。
 
 - workflow在已完成的操作/断言块后调用`screenshotStep('中文 / English')`。一项可包含同一目的下的多次输入；不是拦截每次click，也不会给任意`test.step()`自动取景。新的用户步骤应在原workflow中明确标记，不新增教程副本。
 - 需要教学标注时传入`{ highlights: [{ target: locator, label: '1' }] }`。控件必须属于本次App且完整可见，编号为唯一正整数；工具在原图捕获前后核对真实矩形与`IntersectionObserver`的完整交集，滚动祖先裁切不能仅因矩形仍在App视口内就算可见。比例必须为`1`，不使用容差；需要空间时通过正常折叠或滚动露出控件。按实际PNG与窗口尺寸换算，不向App注入样式。输出保留`step-001.png`，另生成`step-001.annotated.png`及原图/标注图独立摘要和像素坐标。普通模式不加载合成器；原生窗口当前只输出原图，不将Renderer坐标用于原生控件。
@@ -453,10 +461,13 @@ npm run test:e2e:workflow --workspace @interceptor/desktop -- \
 - macOS 14+首次使用时以现有Xcode工具链编译`fixtures/ui/window-screenshot.swift`，由`SCScreenshotManager`一次性捕获所属窗口，不启动持续录屏或FFmpeg。每次核对Main PID/代际、唯一窗口及解锁状态，不回退为整屏或其他App。
 - 原生Save/Open在真实文件路径已定位后单独截图；取消的截图记录回到App后的状态，不取景尚未定位的个人目录。普通模式仍走相同的原生确认/取消操作。
 - Windows普通App步骤使用真实Renderer截图，不宣称包含原生边框；原生Open/Save面板先导航到测试自产目录并把文件名限制为basename，通过owner PID/启动时间与唯一`#32770`窗口核对，再用`PrintWindow`只捕获该窗口。写盘前遮盖导航侧栏和地址breadcrumb，不截桌面、其他应用或个人路径；取消步骤仍拍返回App后的状态。Windows正常无截图workflow保持原入口，完整实机复验仍按Windows矩阵跟踪。
+- Windows原生文件对话框需要可接收真实键鼠的交互桌面。`SetPhysicalCursorPos`失败时立即报告原生错误，不继续发送鼠标点击；确认桌面已解锁、前台程序未阻止原生输入后，使用新的输出目录重跑原workflow。输入失败属于环境阻塞，不能算产品Red或验收通过。
 - 普通逐步截图只是私有测试证据，不自动复制或上传。显式选择`npm start → Test → E2E → 教程截图更新并发布 Homepage`才从GitHub读取发布清单并重跑全部自动来源；独立验收的真实Host组明确显示保留、不重拍，不能用SDK替代。截图和映射通过后，使用`gh`的Git Data API创建Homepage commit并非强制推进`main`。不需要本地Homepage或新的Actions流程，不操作App仓库的Git index；Homepage原网站CI在更新后运行，不由此入口等待。来源、隐私、语言和恢复要求不放宽。
-- Homepage的`guidebook/screenshot-publication.json`为发布契约：固定`source.key`和`checkpoint.key`映射目标原图/标注文件，全序列检查标题、窗口、主题、尺寸与编号，源文件摘要另行锁定。插入或修改原workflow后必须更新对应契约，保留原checkpoint key；不把新的`step-007`直接当成旧的`step-007`。新运行缺图或有歧义立即停止，不用旧素材补齐。
-- `retainedHostGroups`只登记已由真实Host完成并审核的独立图片组，固定manifest摘要并逐文件核对原图、标注、字节及尺寸。其图片不得与自动来源重叠；更新App版本或图片需要重新进行真实Host验收和审核。没有该字段表示没有独立Host组，非法字段或变化的证据不能当作空列表跳过；报告明确记录这些图片未在批量流程重拍。
-- 发布运行在`test-results/guidebook-publications/<run>/`保留各原测试证据及schema 2的`publication.json`。向导可选只生成验收、不写远端；全部通过后可在同一入口继续发布该完整目录，前提是远端基线、映射、App和workflow/fixture、各代退出证据摘要仍一致。不复用旧本地仓库模式或部分完成的批次。
+- Homepage的`guidebook/screenshot-publication.json`为schema 2发布契约：顶层只有一份自动测试`workflows`列表，每项用`file`、`testName`选择原workflow中的一个`test()`，`workflowSha256`锁定源文件；`steps`直接包含标题、窗口、主题及`image`。`image.target`、`rawTarget`是完整Homepage目标路径，`labels`是红框编号；多个教程复用截图时直接引用同一个`target`，不增加发布副本，不跨列表查`source`、`checkpoint`或`id`。未采用的step写`image.target: null`且不写`rawTarget`，仍校验截图。Homepage仓库与分支只在`guidebook-github.mjs`固定；动态示例文档只记录各region的锚点和准确次数，不另存文档总次数。
+- 教程发布入口默认先打包当前平台App，并通过Renderer CDP跑原workflow，Updates据此执行真实版本检查。`INTERCEPTOR_E2E_APP_PATH`或CLI `--app`可选择已有Windows `Interceptor.exe`或macOS `.app`；记录实际版本与整个产物摘要，macOS保留签名验证。普通业务E2E仍可用未打包production bundle。
+- 发布器按完整`steps`顺序核对标题、窗口、主题、语言、PNG尺寸与编号；标题允许重复，不能用标题寻找另一张图。插入或修改原workflow后必须更新对应步骤及源码摘要，并把发布路径留在用途对应的step中；不把新的`step-007`直接当成旧的`step-007`。正文动态端口绑定直接放在所属workflow的`examples`中，保存`name`、旧`port`和明确的正文文件、锚点、出现次数。新运行缺图或有歧义立即停止，不用旧素材补齐。
+- `retainedMedia`登记已审核的独立实录，每项保存原`manifest.json`路径和`manifestSha256`，涵盖真实Host、本地原生面板/App Containers、公开Release页面及已发布App实录。发布器保留原来源与版本，核对全部图片的SHA-256、字节、PNG尺寸、全局尺寸和中英引用；真实Host须有原生调用与Host验收摘要，本地workflow实录须声明业务断言、正常退出及宿主恢复。其目标不得与自动来源重叠，报告记`reexecuted: false`。摘要变化、字段非法或证据缺失都停止；没有该字段表示没有独立实录，保留图不算本次验收。
+- 发布运行在`test-results/guidebook-publications/<run>/`保留各原测试证据，schema 4的`publication.json`用`completedWorkflows`记录每项的`file`、`testName`、本地`directory`、`captureInputs`及manifest/退出证据摘要。向导可选只生成验收、不写远端；同一入口可继续部分批次，逐条重新核对App、本workflow源码、全部共用运行输入、完整PNG和每代退出恢复证据。只补缺失或输入失效的workflow，在新子目录保留本次证据；无关workflow改变不使已有成功项失效。只有当前清单全部通过才生成或发布；失败、缺图、摘要改变和旧报告格式不能算成功。候选commit恢复还须保持原远端基线及清单。
 
 每条workflow独立保留：
 
@@ -481,7 +492,7 @@ Trace不得包含真实凭据、CA私钥或真实用户流量。
 
 默认 `workers: 1`。系统代理、信任库、8888 listener和UtilityProcess属于进程/OS级资源；只有全部改为独立资源并经过证明后才能提高并发。
 
-平台专属workflow在创建App/fixture前限定平台：AppContainer仅Windows；macOS helper、Keychain授权、上游/WPAD及macOS窗口专项仅macOS。共享流程使用当前平台driver，未执行平台不记通过。
+平台专属workflow在创建App/fixture前限定平台：AppContainer仅Windows；macOS helper、Keychain授权、系统生效字典/journal和macOS窗口专项仅macOS。共享Manual/Direct/显式PAC流程使用当前平台driver；WPAD网络场景按实际原生接口与实验网络前提限制，未执行平台不记通过。
 
 普通fixture使用loopback origin；privileged workflow必须headed运行，并在Close前通过UI恢复全部系统副作用。
 

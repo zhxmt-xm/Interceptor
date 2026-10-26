@@ -20,7 +20,7 @@
 - `queue-commands`用本轮Path限定Capture列表，分别记录可见Manager、HTTP等待数量、未提交Text草稿、Continue rule/Continue queue/Drop queue菜单及执行后剩余队首；原POST/PUT作用域、忽略草稿、完整原始正文与不抵达origin的断言保留。
 
 - `websocket-close.workflow.ts`保留38px历史/暂停布局及close-code编辑，补Both双向、非空消息明确替换为空Text、独立返回方向和真实ping/pong逐个放行。关闭连接的两端结果按各自真实事实描述。
-  - Both的关闭码示例先完成发送方向的`1001`修改，再核对不同public pending ID的返回Close并通过Continue原样放行；确认该连接无等待项后才配置另一条连接。不将移动活动配置当作释放旧等待项。
+  - 关闭码示例分别核对客户端已完成的`1000`关闭和源站收到的`1001`编辑结果，再确认无等待项后配置另一条连接。Both不保证关闭握手的返回Close再独立暂停；Message、Ping、Pong仍分别验证返回方向。
   - 同一连接随后分别选择Sent、Received与Message，保留原样Continue、Text完整替换及单帧Drop。停用后发送一条实际可送达的新消息作为顺序屏障，再确认被Drop的内容没有抵达客户端或源站；不使用固定等待时间冒充未转发证据。
 
 - WebSocket步骤图明确配置入口、Close类型/启用、关闭码、Replacement收起、Both与Message/Ping/Pong、空Text和逐个Continue；`queue-stepping`补队首放行前入口，`lifecycle-release`补断开和有等待项时的真实Close入口。所有示例限定本轮路径，不改原队列、字节、时间顺序或销毁断言。
@@ -368,8 +368,11 @@ Drop真实中止目标数据面；请求不继续转发；pending badge、client
 5. 断言`capture.websocket.breakpoint.frame.message`初始`aria-pressed=true`；点击它取消，再点击`capture.websocket.breakpoint.frame.close`并断言选中。保持默认Both directions，点击`capture.websocket.breakpoint.enable`。
 	鼠标移开后记录已启用按钮颜色与背景，再hover并断言二者不变，保留黄色状态；默认/启用两态均保持30×30px。边框按当前devicePixelRatio核对一条CSS像素的实际物理像素，150%缩放的0.666667px不当作缺失边框。
 6. 客户端调用`sendCloseFrame(1000)`，由`ws.Sender`编码masked Close帧，不提前改变连接状态或开始关闭超时。等待`breakpoints.close-code`可见且value=1000；队首编辑时消息列表外框126px，真实滚轮可访问底部暂停帧。暂停说明、方向和队列按钮必须由同一层`display:flex; align-items:center`排布，箭头与phase文字也使用flex center，不用baseline或字形位置容差代替。Replacement标题36px、折叠控件13px，折叠/恢复仅改变内容可见性，Off始终选中；保存暂停布局截图。
-7. 只把`breakpoints.close-code`填为1001，不切换Replacement mode；点击`breakpoints.execute-edited`。轮询真实origin的`close`事件并要求code=1001。
-8. 附加`websocket-origin-observation.json`、最终截图、trace、Main/Renderer日志和metadata。fixture销毁客户端与server-side sockets，进入Settings→Proxy恢复owned配置，再正常Close并验证Main/Core PID退出、8888可重新bind和profile删除。
+7. 客户端的真实`close`事件已返回1000，源站还没有关闭结果。只把`breakpoints.close-code`填为1001，不切换Replacement mode；点击`breakpoints.execute-edited`。轮询真实origin的`close`事件并要求code=1001，核对暂停队列为空。编辑尚未关闭的源站端，不会改写客户端已完成的关闭确认。
+8. 建立另一条`/e2e/websocket-controls`连接，使用Both并启用Message、Ping、Pong。非空发送消息以明确的空Text编辑后，源站必须收到空消息且没收到原文；返回空消息以不同public pending ID单独暂停，Continue后客户端才收到。
+9. 发送真实Ping，分别Continue发送Ping和返回Pong；在两次放行前客户端均未收到Pong，最终只收到对应payload。停用后新消息直接通过且无等待项。
+10. 分别配置Sent和Received的普通Message断点，每个方向验证Continue原文、Forward edited替换和Drop。Drop后停用断点并发送新消息作为送达屏障，核对丢弃内容未补发。
+11. 附加包含客户端与源站关闭码的`websocket-origin-observation.json`、最终截图、trace、Main/Renderer日志和metadata。fixture销毁客户端与server-side sockets，进入Settings→Proxy恢复owned配置，再正常Close并验证Main/Core PID退出、8888可重新bind和profile删除。
 
 ### 预期效果
 

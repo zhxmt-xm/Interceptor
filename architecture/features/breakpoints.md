@@ -183,6 +183,8 @@ WebSocket 断点是**当前连接的临时开关**，与 HTTP 的 break-on-match
 启用必须给出完整配置（`exchangeId` / `direction` / `frames`），因此不存在“开了但不知道拦什么”的中间态。
 ping / pong / close 与应用消息走同一条方向内串行链，断点 await 不会打乱到达顺序。
 
+Close 由 `ws` 完成该端关闭握手后发出的 `close` 事件进入 bridge。关闭码编辑作用于尚未关闭的另一端；发起端已收到的关闭确认不会被改写。Both 不保证关闭握手的返回 Close 再进入独立暂停，两个 socket 都关闭后连接 owner 会释放队列。Message、Ping、Pong 的两个方向仍分别等待用户决定。
+
 每对真实socket拥有一个AbortController，异常断开、bridge停止或双端都结束时解除当前等待；
 已排队但未处理的帧不再创建断点。共享决定在等待Capture时也能立即取消，并在Continue之后再次
 核对signal，不把迟到继续当作可转发结果。Android WS通过正式通道复用同一业务方法。

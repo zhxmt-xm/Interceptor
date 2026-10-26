@@ -38,6 +38,8 @@ export function UpdatesPanel(): React.JSX.Element {
         data-state={status.state}
         data-supported={status.supported}
         data-last-checked-at={status.lastCheckedAt ?? undefined}
+        data-current-version={status.currentVersion}
+        data-latest-version={status.latestVersion ?? undefined}
       >
         {t('settings.updates')}
         <StatusBadge tone={UpdateFormat.stateTone(status)}>
@@ -51,7 +53,7 @@ export function UpdatesPanel(): React.JSX.Element {
       <Group title={t('settings.version')}>
         <Row label={t('settings.currentApplication')} hint={t('settings.installedVersionHint')}>
           <span className={styles.mono}>{status.currentVersion}</span>
-          <StatusBadge>{t('settings.stable')}</StatusBadge>
+          <StatusBadge>{t('settings.installed')}</StatusBadge>
         </Row>
         <Row label={t('settings.latestGithubRelease')} hint={t('settings.latestReleaseHint')}>
           <span className={styles.mono}>{status.latestVersion ?? t('settings.unknown')}</span>
@@ -65,7 +67,7 @@ export function UpdatesPanel(): React.JSX.Element {
           <span className={styles.mono}>zhxmt-xm/Interceptor</span>
         </Row>
         <Row label={t('settings.checkPolicy')} hint={t('settings.checkPolicyHint')}>
-          <span className={styles.mono}>stable</span>
+          <span className={styles.mono}>{t('settings.publishedVersions')}</span>
           <StatusBadge>{t('settings.notify')}</StatusBadge>
         </Row>
         <Row label={t('settings.downloadPolicy')} hint={t('settings.downloadPolicyHint')}>
@@ -107,7 +109,7 @@ export function UpdatesPanel(): React.JSX.Element {
         {!working && status.supported ? (
           <Row
             label={t('settings.updateAction')}
-            hint={t('settings.stableChannelHint')}
+            hint={t('settings.publishedReleaseHint')}
           >
             {status.state !== 'available' && status.state !== 'downloaded' ? (
               <Button

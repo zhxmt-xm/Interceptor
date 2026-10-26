@@ -99,20 +99,32 @@ npm start -- --help
 入口为`npm start → Test → E2E → 教程截图更新并发布 Homepage`。本地只需要Interceptor仓库和已登录的`gh`，不需要clone或准备Homepage目录；发布工具的定向及代表性来源验收见下文，不等同于重新验收全部App功能。
 
 - `gh auth login`使用对`zhxmt-xm/Interceptor-Homepage`有写入权限的账号；脚本通过GitHub API读取远端`main`、图片映射和必要文稿，不读取本地Homepage、不复制整个仓库，也不操作Interceptor的index或分支。
-- 复用原workflow，不创建截图专用测试；一次执行远端`guidebook/screenshot-publication.json`的`sources`登记的全部自动测试和检查点。清单给每张自动更新图片固定身份，明确原测试、检查点、目标文件及同源变体，不根据文件序号、图片相似度或LLM猜测用途。
-- 真实Host图片需要当前Host实际交互，独立完成原workflow、原生调用、正常退出与图片审核后，才可登记为`retainedHostGroups`。清单固定媒体目录与审核后manifest的SHA-256；发布器核对实际Host证据摘要、全部原图/标注的SHA-256、字节、PNG尺寸、全局尺寸和中英引用，明确显示“保留，不重拍”，报告记`reexecuted: false`。任何变化、缺失或与自动目标重叠都停止，不用SDK代替真实Host，也不把保留图算作本次Host验收。
-- 自动原测试必须完整通过，实际App版本、平台、语言、窗口尺寸、红框和操作序列符合登记契约，所有代际正常退出且宿主恢复。运行缺项、重复身份或不匹配均失败，不沿用旧图补足；独立Host来源是预先声明的边界，不是自动运行失败后的回退。
+- 复用原workflow，不创建截图专用测试；一次执行远端`guidebook/screenshot-publication.json`中`workflows`登记的全部测试。清单schema为2；Homepage仓库和分支由`guidebook-github.mjs`固定，不在清单重复配置。每项通过`file`和`testName`选择原文件中的一个`test()`，直接包含完整`steps`。每个step保存`title`、`window`、`theme`和`image`；`image`包含红框`labels`及完整目标路径`target`、`rawTarget`。多个教程需要同一张截图时，Markdown直接引用同一个`target`路径，不增加发布副本。不维护`source`、`checkpoint`或`id`的交叉引用；未采用到教程的step写`image.target: null`，仍须校验其真实截图。动态示例的`documents`只保存文件与`regions`，每个region保存锚点和准确出现次数，不重复记录文档总次数。
+- 按完整`steps`顺序核对实际标题、窗口、主题与红框，不用标题作唯一键，也不把新运行的文件序号当作发布路径。插入或修改截图步骤时，先更新完整步骤契约和用途对应的`image`，保留已有正文目标路径。媒体目录从目标路径得到，不另维护图片组列表。正文动态端口绑定放在所属workflow的`examples`，通过`name`读取该次截图manifest中的同名示例，并核对明确的正文文件、锚点及出现次数。
+- `workflowSha256`按UTF-8源码统一CRLF为LF后计算，Windows checkout的换行差异不算流程改变。恢复逐条核对本workflow源码、全部共用运行输入和App产物；无关workflow改变不使该条证据失效。依赖、fixture和App产物摘要保持实际字节。
+- 独立实录登记在`retainedMedia`，每项只保存原`manifest.json`路径和审核后的`manifestSha256`。适用于实际Host、已审核的本地原生面板/App Containers、公开Release页面及已发布App实录；发布器保留原来源与版本，核对全部图片的SHA-256、字节、PNG尺寸、全局尺寸和中英引用。真实Host还必须具备原生调用与Host验收摘要，本地workflow实录必须声明业务断言、正常退出及宿主恢复。报告记`reexecuted: false`；变化、缺失或与自动目标重叠都停止，不把保留图算作本次验收。
+- 教程截图默认先执行根目录`npm run package`，再使用当前平台`out/Interceptor-<platform>-<arch>/`中的App；Updates的真实检查需要packaged App。显式设置`INTERCEPTOR_E2E_APP_PATH`或CLI `--app`时使用已有Windows `Interceptor.exe`或macOS `.app`，不重新打包；macOS仍验证产物签名，旧`INTERCEPTOR_E2E_MACOS_APP_PATH`保留为macOS入口。清单不指定平台、CPU架构或Playwright project，project由本机配置的测试发现结果确定。
+- 自动原测试必须完整通过，实际App版本、语言、窗口种类、红框和操作序列符合登记契约，所有代际正常退出且宿主恢复。运行缺项、重复身份或不匹配均失败，不沿用旧图补足；独立Host来源是预先声明的边界，不是自动运行失败后的回退。平台、架构、启动目标、截图方式和PNG实际尺寸记录为来源证据，Windows Renderer图标记`renderer`，原生面板与macOS原生窗口标记`native-window`；图片尺寸索引取自实际PNG，不锁历史macOS尺寸。
 - 新运行先保存在`apps/desktop/test-results/guidebook-publications/<run>/`；完整校验后按固定路径准备图片、来源、尺寸和明确锚点内的双语端口替换。只验证模式不上传或更新远端。
 - 图片来源、发布清单、全局及分组尺寸JSON使用与Homepage相同版本的Biome开发工具及远端格式配置生成，不靠手写换行规则模拟格式；不需要本地Homepage安装。格式配置或工具版本不匹配时明确停止，不上传不能通过既有网站格式检查的元数据。
-- 完整批次恢复还核对依赖清单、Playground流量源码、automation ID及截图fixture摘要；这些输入改变后，不把原截图结果当作当前代码的验证。
-- 发布通过GitHub Git Data API上传变化的blob、以Homepage原`main`为父创建commit，最后以`force:false`推进它的`main`。上传或测试失败不更新分支；远端`main`中途变化立即停止，不覆盖其他提交。记录上传进度，完整证据且输入未变时可通过同一菜单“继续发布”恢复。
+- schema 4的`publication.json`为每条成功workflow保存运行输入、manifest和退出证据摘要。恢复重新读取并校验原PNG和每代App退出证据，核对packaged App全部文件及符号链接、平台/架构/启动目标、依赖、Playground源码、automation ID及全部共用fixture。缺失或输入失效的workflow在新子目录重跑；失败项不复用。校验及上传脚本不属于App运行输入，恢复始终执行当前校验器。
+- 发布通过GitHub Git Data API上传变化的blob、以Homepage原`main`为父创建commit，最后以`force:false`推进它的`main`。只有当前清单全部workflow证据通过才准备发布。上传或测试失败不更新分支；可在同一菜单继续部分批次，保留兼容证据及已上传的blob。候选commit创建前可按当前远端清单重新核对映射；运行中远端`main`变化立即停止。若commit已创建而ref未更新，恢复必须保持原基线和清单，核对原文件、tree与父commit后复用；远端已指向它时直接确认成功。
 - Homepage已有网站CI会在`main`更新后自动运行，本入口不新增或等待另一套Actions流程，不运行本地Homepage构建，不自动部署。终端区分截图已保存、候选commit已创建、远端已更新，不把上传了blob或创建了未发布commit当作推送成功。
 - 不创建其他worktree、clone或分支，不修改remote、不强推、不改写历史。共享系统代理、8888、原生授权及退出恢复仍遵守原E2E约定。
+
+在Windows复用现有包运行菜单：
+
+```powershell
+$env:INTERCEPTOR_E2E_APP_PATH = 'C:\code\Interceptor\apps\desktop\out\Interceptor-win32-x64\Interceptor.exe'
+npm start
+```
+
+选择`Test → E2E → 教程截图更新并发布 Homepage`。移除`INTERCEPTOR_E2E_APP_PATH`后，下一次新截图批次恢复为先打包。macOS同一变量填写`.app`完整路径；原生API和产物类型按本机执行，不要求通用workflow换平台重跑。
 
 #### 发布工具验收范围
 
 - workflow场景、截图检查点和教程步骤不是一一对应；一个测试会覆盖多次操作和图片，运行进度不是教程内容完成百分比。
-- 定向验收覆盖真实Start菜单与取消、权限/失败来源/部分批次/过期基线拒绝、无变化不创建commit，以及真实来源生成后的图片/端口绑定、原文保留和重复生成一致性。
+- 定向验收覆盖真实Start菜单与取消、失败来源拒绝、部分批次只补缺项、运行输入变化使对应证据失效、候选commit过期基线拒绝、无变化不创建commit，以及真实来源生成后的图片/端口绑定、原文保留和重复生成一致性。
 
 ### Desktop
 

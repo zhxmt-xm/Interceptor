@@ -333,6 +333,8 @@ test('composer.collection.import appends product-exported requests with fresh id
       .click();
     await originalFolderTarget.click();
     await expect(originalFolderTarget).toHaveAttribute('aria-pressed', 'true');
+    // Capture the selected folder after the pointer has left its hover-only actions.
+    await getByAutomationId(page, AUTOMATION_IDS.app.statusbar).hover();
     await screenshotStep('导入前保留当前请求与目录落点 / Retain the active request and target folder before importing', {
       highlights: [{ target: originalFolderTarget, label: '1' }],
     });

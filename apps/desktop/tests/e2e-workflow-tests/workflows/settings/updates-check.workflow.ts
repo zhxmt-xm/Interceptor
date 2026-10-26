@@ -1,5 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import type { TestInfo } from '@playwright/test';
+import semver from 'semver';
 
 import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../fixtures/ui/automation';
@@ -10,7 +11,7 @@ async function verifyAnonymousUpdateCheck(
   desktopApp: LocalElectronApplicationDriver,
   testInfo: TestInfo,
   generation: string,
-): Promise<{ generation: string; supported: boolean; state: string | null; lastCheckedAt: string | null }> {
+): Promise<{ generation: string; supported: boolean; state: string | null; currentVersion: string | null; latestVersion: string | null; lastCheckedAt: string | null }> {
   const { page } = desktopApp;
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await getByAutomationId(page, AUTOMATION_IDS.settings.section.updates).click();
@@ -28,8 +29,9 @@ async function verifyAnonymousUpdateCheck(
   const supported = await updateStatus.getAttribute('data-supported') === 'true';
   await screenshotStep(`打开更新设置 / Open update settings (${generation})`);
   if (supported) {
-    await expect(updateStatus).toHaveAttribute('data-state', 'failed', { timeout: 90_000 });
+    await expect(updateStatus).toHaveAttribute('data-state', /^(up-to-date|available|failed)$/, { timeout: 90_000 });
     for (let attempt = 0; attempt < 2; attempt += 1) {
+      if (await updateStatus.getAttribute('data-state') === 'available') break;
       const lastCheckedAt = await updateStatus.getAttribute('data-last-checked-at');
       const check = getByAutomationId(page, AUTOMATION_IDS.settings.updates.check);
       await expect(check).toBeEnabled();
@@ -39,11 +41,21 @@ async function verifyAnonymousUpdateCheck(
       await check.click();
       await expect.poll(() => updateStatus.getAttribute('data-last-checked-at'))
         .not.toBe(lastCheckedAt);
-      await expect(updateStatus).toHaveAttribute('data-state', 'failed', { timeout: 90_000 });
-      await expect(check).toBeEnabled();
-      await screenshotStep(`检查更新失败后仍可重试 / Retry after an unavailable update check (${generation}, ${attempt + 1})`);
+      await expect(updateStatus).toHaveAttribute('data-state', /^(up-to-date|available|failed)$/, { timeout: 90_000 });
+      if (await updateStatus.getAttribute('data-state') !== 'available') await expect(check).toBeEnabled();
+      await screenshotStep(`核对实际版本与检查结果 / Verify versions and the update check result (${generation}, ${attempt + 1})`);
     }
-    await expect(getByAutomationId(page, AUTOMATION_IDS.settings.updates.download)).toHaveCount(0);
+    const state = await updateStatus.getAttribute('data-state');
+    const currentVersion = await updateStatus.getAttribute('data-current-version');
+    const latestVersion = await updateStatus.getAttribute('data-latest-version');
+    expect(semver.valid(currentVersion)).not.toBeNull();
+    if (state === 'available' || state === 'up-to-date') {
+      expect(semver.valid(latestVersion)).not.toBeNull();
+      expect(semver.gt(latestVersion!, currentVersion!)).toBe(state === 'available');
+    }
+    await expect(getByAutomationId(page, AUTOMATION_IDS.settings.updates.download))
+      .toHaveCount(state === 'available' ? 1 : 0);
+    if (state === 'available') await expect(getByAutomationId(page, AUTOMATION_IDS.settings.updates.check)).toHaveCount(0);
     await expect(getByAutomationId(page, AUTOMATION_IDS.settings.updates.openInstaller)).toHaveCount(0);
   } else {
     await expect(updateStatus).toHaveAttribute('data-state', 'unsupported');
@@ -56,11 +68,13 @@ async function verifyAnonymousUpdateCheck(
     generation,
     supported,
     state: await updateStatus.getAttribute('data-state'),
+    currentVersion: await updateStatus.getAttribute('data-current-version'),
+    latestVersion: await updateStatus.getAttribute('data-latest-version'),
     lastCheckedAt: await updateStatus.getAttribute('data-last-checked-at'),
   };
 }
 
-test('settings.updates.check reports unavailable releases and retries without signing in', async ({
+test('settings.updates.check compares published versions and checks without signing in', async ({
   desktopApp,
 }, testInfo) => {
   testInfo.annotations.push({ type: 'renderer-workflow', description: 'settings.updates.check' });
@@ -80,8 +94,8 @@ test('settings.updates.check reports unavailable releases and retries without si
   try {
     await restartedApp.waitUntilReady();
 
-    // 业务断言：重启后仍可匿名检查和失败重试，未打包目标明确保持 unsupported。
-    // Assert: anonymous checks and failure retries survive restart; unpackaged builds remain unsupported.
+    // 业务断言：重启后仍按真实版本与终态检查，未打包目标明确保持 unsupported。
+    // Assert: real version comparisons and terminal states survive restart; unpackaged builds remain unsupported.
     evidence.push(await verifyAnonymousUpdateCheck(restartedApp, testInfo, 'restarted'));
     expect(evidence[1]?.supported).toBe(evidence[0]?.supported);
 

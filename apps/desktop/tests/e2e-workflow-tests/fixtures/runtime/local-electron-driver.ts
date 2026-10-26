@@ -98,7 +98,7 @@ interface LocalElectronLaunchOptions {
 export class LocalElectronApplicationDriver {
   /** Electron application controlled through Playwright's native Electron protocol. */
   readonly application: ElectronApplication | null;
-  private readonly macosApplication: { browser: Browser; process: ChildProcess; outputPath: string; owner: WorkflowProcessIdentity } | null;
+  private readonly cdpApplication: { browser: Browser; process: ChildProcess; outputPath: string; owner: WorkflowProcessIdentity } | null;
 
   /** Browser context shared by every BrowserWindow in this Electron application. */
   readonly context: BrowserContext;
@@ -176,11 +176,11 @@ export class LocalElectronApplicationDriver {
     windowsMainOwner: WindowsFileDialogOwner | null,
     evidencePrefix: string,
     workflowHostSafetyGuard: WorkflowHostSafetyGuard | null,
-    macosApplication: { browser: Browser; process: ChildProcess; outputPath: string; owner: WorkflowProcessIdentity } | null = null,
+    cdpApplication: { browser: Browser; process: ChildProcess; outputPath: string; owner: WorkflowProcessIdentity } | null = null,
   ) {
     this.application = application;
-    this.macosApplication = macosApplication;
-    this.context = application?.context() ?? macosApplication!.browser.contexts()[0]!;
+    this.cdpApplication = cdpApplication;
+    this.context = application?.context() ?? cdpApplication!.browser.contexts()[0]!;
     this.page = page;
     this.desktopDirectory = desktopDirectory;
     this.userDataDirectory = userDataDirectory;
@@ -188,7 +188,7 @@ export class LocalElectronApplicationDriver {
     this.workflowHostSafetyGuard = workflowHostSafetyGuard;
     this.mainPid = mainProcessId;
     this.windowsMainOwner = windowsMainOwner;
-    (application ?? macosApplication!.process).once('close', () => {
+    (application ?? cdpApplication!.process).once('close', () => {
       this.applicationClosed = true;
     });
     this.captureProcessOutput();
@@ -200,7 +200,7 @@ export class LocalElectronApplicationDriver {
     testInfo: TestInfo,
     options: LocalElectronLaunchOptions = {},
   ): Promise<LocalElectronApplicationDriver> {
-    if (process.platform === 'darwin') return this.launchMacosApplication(testInfo, options);
+    if (process.platform === 'darwin' || process.env.INTERCEPTOR_E2E_APP_PATH) return this.launchCdpApplication(testInfo, options);
     const desktopDirectory = resolveDesktopDirectory();
     const userDataDirectory = options.userDataDirectory
       ?? await LocalElectronApplicationDriver.createUserDataDirectory();
@@ -278,14 +278,16 @@ export class LocalElectronApplicationDriver {
     }
   }
 
-  private static async launchMacosApplication(
+  private static async launchCdpApplication(
     testInfo: TestInfo, options: LocalElectronLaunchOptions,
   ): Promise<LocalElectronApplicationDriver> {
-    await MacosWorkflowHostSafetyOperations.assertDesktopUnlocked();
+    if (process.platform === 'darwin') await MacosWorkflowHostSafetyOperations.assertDesktopUnlocked();
     const desktopDirectory = resolveDesktopDirectory();
-    const applicationPath = process.env.INTERCEPTOR_E2E_MACOS_APP_PATH ? resolveMacosApplicationPath() : null;
+    const applicationPath = process.env.INTERCEPTOR_E2E_APP_PATH
+      ? path.resolve(process.env.INTERCEPTOR_E2E_APP_PATH)
+      : process.env.INTERCEPTOR_E2E_MACOS_APP_PATH ? resolveMacosApplicationPath() : null;
     const executablePath = applicationPath
-      ? path.join(applicationPath, 'Contents/MacOS/Interceptor')
+      ? process.platform === 'darwin' ? path.join(applicationPath, 'Contents/MacOS/Interceptor') : applicationPath
       : createRequire(path.join(desktopDirectory, 'package.json'))('electron') as string;
     const userDataDirectory = options.userDataDirectory ?? await this.createUserDataDirectory();
     const workflowHostSafetyGuard = workflowHostSafetyGuardByTestInfo.get(testInfo) ?? null;
@@ -296,10 +298,12 @@ export class LocalElectronApplicationDriver {
       '--remote-debugging-port=0', `--user-data-dir=${userDataDirectory}`,
       ...(testInfo.project.use.locale ? [
         `--lang=${testInfo.project.use.locale}`,
-        '-AppleLanguages', `(${JSON.stringify(testInfo.project.use.locale)})`,
-        '-AppleLocale', testInfo.project.use.locale.replaceAll('-', '_'),
+        ...(process.platform === 'darwin' ? [
+          '-AppleLanguages', `(${JSON.stringify(testInfo.project.use.locale)})`,
+          '-AppleLocale', testInfo.project.use.locale.replaceAll('-', '_'),
+        ] : []),
       ] : []),
-    ], { cwd: applicationPath ?? desktopDirectory, env: this.createLaunchEnvironment(), stdio: ['ignore', outputFile.fd, outputFile.fd] });
+    ], { cwd: applicationPath ? process.platform === 'darwin' ? applicationPath : path.dirname(applicationPath) : desktopDirectory, env: this.createLaunchEnvironment(), stdio: ['ignore', outputFile.fd, outputFile.fd] });
     let output = '';
     let browser: Browser | null = null;
     try {
@@ -314,12 +318,12 @@ export class LocalElectronApplicationDriver {
       let endpoint = '';
       await expect.poll(async () => {
         if (child.exitCode !== null || child.signalCode !== null) {
-          throw new Error(`macOS App exited before CDP (${child.exitCode ?? child.signalCode}).`);
+          throw new Error(`App exited before CDP (${child.exitCode ?? child.signalCode}).`);
         }
         output = (await readFile(outputPath, 'utf8')).slice(-128_000);
         endpoint = /DevTools listening on (ws:\/\/127\.0\.0\.1:\d+\/[^\s]+)/.exec(output)?.[1] ?? '';
         return endpoint;
-      }, { message: 'macOS App did not expose Renderer CDP.', timeout: 30_000 }).not.toBe('');
+      }, { message: 'App did not expose Renderer CDP.', timeout: 30_000 }).not.toBe('');
       browser = await chromium.connectOverCDP(endpoint);
       const context = browser.contexts()[0]!;
       await context.tracing.start({ screenshots: true, snapshots: true, sources: true, title: testInfo.title });
@@ -327,11 +331,11 @@ export class LocalElectronApplicationDriver {
       if (dismissTlsCompatibilityByTestInfo.get(testInfo) !== false) {
         await registerTlsCompatibilityDismissal(page);
       }
-      if (testInfo.project.use.viewport) {
+      if (process.platform === 'darwin' && testInfo.project.use.viewport) {
         await this.resizeMacosWorkflowWindow(page, owner, testInfo.project.use.viewport);
       }
       const driver = new LocalElectronApplicationDriver(null, page, desktopDirectory, userDataDirectory,
-        mainProcessId, null, options.evidencePrefix ?? '', workflowHostSafetyGuard, { browser, process: child, outputPath, owner });
+        mainProcessId, process.platform === 'win32' ? owner : null, options.evidencePrefix ?? '', workflowHostSafetyGuard, { browser, process: child, outputPath, owner });
       driver.mainOutput = output;
       useScreenshotDriver(testInfo, driver);
       return driver;
@@ -342,11 +346,11 @@ export class LocalElectronApplicationDriver {
       if (workflowHostSafetyGuard) {
         try { await workflowHostSafetyGuard.cleanupRegisteredApplications(); }
         catch (cleanupError) {
-          throw new AggregateError([error, cleanupError], 'macOS startup failed; application and profile retained because proxy restoration is unresolved.');
+          throw new AggregateError([error, cleanupError], 'App startup failed; application and profile retained because proxy restoration is unresolved.');
         }
       }
       else if (child.exitCode === null && child.signalCode === null) {
-        throw new AggregateError([error], 'macOS startup failed without a host guard; application and profile retained for recovery.');
+        throw new AggregateError([error], 'App startup failed without a host guard; application and profile retained for recovery.');
       }
       await browser?.close().catch(() => undefined);
       throw error;
@@ -395,7 +399,7 @@ end tell
   }
 
   nativeFileDialogOwner(): WorkflowProcessIdentity {
-    return this.macosApplication?.owner ?? this.windowsMainProcessOwner();
+    return this.cdpApplication?.owner ?? this.windowsMainProcessOwner();
   }
 
   /** Read and register the exact Core generation currently exposed by public UI state. */
@@ -606,7 +610,7 @@ end tell
     }
     await expect(getByAutomationId(this.page, AUTOMATION_IDS.app.root)).toBeVisible({ timeout: 120_000 });
     if (process.platform === 'darwin') {
-      const applicationPath = process.env.INTERCEPTOR_E2E_MACOS_APP_PATH ? resolveMacosApplicationPath() : null;
+      const applicationPath = (process.env.INTERCEPTOR_E2E_APP_PATH || process.env.INTERCEPTOR_E2E_MACOS_APP_PATH) ? resolveMacosApplicationPath() : null;
       const helperPath = applicationPath
         ? path.join(applicationPath, 'Contents/Resources/system-proxy/macos-proxy-helper')
         : path.join(this.desktopDirectory, '../../packages/platform-capabilities/dist/system-proxy/macos-proxy-helper');
@@ -696,6 +700,7 @@ end tell
 
   /** Read the owned primary window through the driver's native platform boundary. */
   async windowState(): Promise<DesktopWindowState> {
+    if (!this.application && process.platform === 'win32') return this.runWindowsWindowOperation('state');
     if (!this.application) {
       const available = await this.page.evaluate(() => ({ width: screen.availWidth, height: screen.availHeight }));
       const output = await this.runMacosWindowScript(`
@@ -727,6 +732,11 @@ JSON.stringify({
 
   /** Restore and focus the primary BrowserWindow after a minimize assertion. */
   async restoreWindow(): Promise<void> {
+    if (!this.application && process.platform === 'win32') {
+      await this.runWindowsWindowOperation('restore');
+      await this.page.bringToFront();
+      return;
+    }
     if (!this.application) {
       await this.runMacosWindowScript(`
 const minimized = window.attributes.whose({ name: "AXMinimized" })()[0];
@@ -750,7 +760,9 @@ owned.frontmost = true;
     width: number,
     height: number,
   ): Promise<{ width: number; height: number }> {
-    if (!this.application) {
+    if (!this.application && process.platform === 'win32') {
+      await this.runWindowsWindowOperation('resize', { width, height });
+    } else if (!this.application) {
       const owner = this.nativeFileDialogOwner();
       const current = await MacosWorkflowHostSafetyOperations.readProcessIdentity(owner.processId);
       if (current.processStartedAt !== owner.processStartedAt) {
@@ -787,6 +799,69 @@ end tell
   }
 
   /** Restrict native window assertions and restoration to this exact workflow Main. */
+  private async runWindowsWindowOperation(
+    operation: 'state' | 'restore' | 'resize',
+    size?: { width: number; height: number },
+  ): Promise<DesktopWindowState> {
+    const nativeSize = size ? await this.page.evaluate(({ width, height }) => ({
+      width: Math.round(width * devicePixelRatio),
+      height: Math.round(height * devicePixelRatio),
+    }), size) : undefined;
+    const payload = Buffer.from(JSON.stringify({ owner: this.windowsMainProcessOwner(), operation, size: nativeSize }), 'utf8').toString('base64');
+    const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-Command', `
+$ErrorActionPreference = 'Stop'
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class WorkflowOwnedWindow {
+  [StructLayout(LayoutKind.Sequential)] public struct Rect { public int Left, Top, Right, Bottom; }
+  [DllImport("user32.dll", SetLastError=true)] public static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
+  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr handle);
+  [DllImport("user32.dll")] public static extern bool IsZoomed(IntPtr handle);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr handle);
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr handle, int command);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr handle);
+  [DllImport("user32.dll", SetLastError=true)] public static extern bool GetWindowRect(IntPtr handle, out Rect rect);
+  [DllImport("user32.dll", SetLastError=true)] public static extern bool GetClientRect(IntPtr handle, out Rect rect);
+  [DllImport("user32.dll", SetLastError=true)] public static extern bool SetWindowPos(IntPtr handle, IntPtr after, int x, int y, int width, int height, uint flags);
+}
+'@
+$request = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${payload}')) | ConvertFrom-Json
+$ownedProcess = Get-Process -Id $request.owner.processId
+$expectedStart = [DateTimeOffset]::Parse($request.owner.processStartedAt).UtcDateTime
+if ($ownedProcess.StartTime.ToUniversalTime() -ne $expectedStart) { throw 'Workflow Main process generation changed.' }
+$handle = $ownedProcess.MainWindowHandle
+if ($handle -eq [IntPtr]::Zero) { throw 'Workflow Main has no native window.' }
+if ([WorkflowOwnedWindow]::SetThreadDpiAwarenessContext([IntPtr]::new(-4)) -eq [IntPtr]::Zero) {
+  throw [ComponentModel.Win32Exception]::new([Runtime.InteropServices.Marshal]::GetLastWin32Error())
+}
+if ($request.operation -eq 'restore') {
+  [void][WorkflowOwnedWindow]::ShowWindow($handle, 9)
+  if (-not [WorkflowOwnedWindow]::SetForegroundWindow($handle)) { throw 'Workflow Main window could not receive focus.' }
+} elseif ($request.operation -eq 'resize') {
+  $outer = New-Object WorkflowOwnedWindow+Rect
+  $client = New-Object WorkflowOwnedWindow+Rect
+  if (-not [WorkflowOwnedWindow]::GetWindowRect($handle, [ref]$outer) -or -not [WorkflowOwnedWindow]::GetClientRect($handle, [ref]$client)) {
+    throw [ComponentModel.Win32Exception]::new([Runtime.InteropServices.Marshal]::GetLastWin32Error())
+  }
+  $width = [int]$request.size.width + $outer.Right - $outer.Left - $client.Right + $client.Left
+  $height = [int]$request.size.height + $outer.Bottom - $outer.Top - $client.Bottom + $client.Top
+  if (-not [WorkflowOwnedWindow]::SetWindowPos($handle, [IntPtr]::Zero, 0, 0, $width, $height, 0x16)) {
+    throw [ComponentModel.Win32Exception]::new([Runtime.InteropServices.Marshal]::GetLastWin32Error())
+  }
+}
+@{ minimized = [WorkflowOwnedWindow]::IsIconic($handle); maximized = [WorkflowOwnedWindow]::IsZoomed($handle); visible = [WorkflowOwnedWindow]::IsWindowVisible($handle) } | ConvertTo-Json -Compress
+`], { encoding: 'utf8', windowsHide: true, timeout: 10_000 });
+    const state: unknown = JSON.parse(stdout);
+    if (typeof state !== 'object' || state === null
+      || !('minimized' in state) || typeof state.minimized !== 'boolean'
+      || !('maximized' in state) || typeof state.maximized !== 'boolean'
+      || !('visible' in state) || typeof state.visible !== 'boolean') {
+      throw new Error('The owned Windows window returned invalid state.');
+    }
+    return { minimized: state.minimized, maximized: state.maximized, visible: state.visible };
+  }
+
   private async runMacosWindowScript(operation: string): Promise<string> {
     const owner = this.nativeFileDialogOwner();
     const identity = await MacosWorkflowHostSafetyOperations.readProcessIdentity(owner.processId);
@@ -831,13 +906,13 @@ ${operation}
       await this.application.waitForEvent('close', { timeout: 15_000 });
       return;
     }
-    const child = this.macosApplication!.process;
+    const child = this.cdpApplication!.process;
     if (child.exitCode !== null || child.signalCode !== null) return;
     let timeout: ReturnType<typeof setTimeout>;
     try {
       await Promise.race([
         once(child, 'close'),
-        new Promise<never>((_resolve, reject) => { timeout = setTimeout(() => reject(new Error('macOS App did not exit after product Close.')), 120_000); }),
+        new Promise<never>((_resolve, reject) => { timeout = setTimeout(() => reject(new Error('App did not exit after product Close.')), 120_000); }),
       ]);
     } finally { clearTimeout(timeout!); }
   }
@@ -854,7 +929,7 @@ ${operation}
     if (this.applicationClosed || this.page.isClosed()) return;
     await this.page.bringToFront();
     const encodedOwner = Buffer.from(JSON.stringify(this.windowsMainProcessOwner()), 'utf8').toString('base64');
-    const closed = this.application!.waitForEvent('close', { timeout: 15_000 });
+    const closed = this.waitForApplicationClose();
     void closed.catch(() => undefined);
     this.shutdownKind = 'graceful';
     await execFileAsync('powershell.exe', ['-NoProfile', '-STA', '-Command', `
@@ -885,7 +960,7 @@ if ($windowHandle -eq [IntPtr]::Zero -or $foregroundProcessId -ne $owner.process
 
   private async closeMacosFromNativeShortcut(): Promise<void> {
     if (this.applicationClosed || this.page.isClosed()) return;
-    const owner = this.macosApplication!.owner;
+    const owner = this.cdpApplication!.owner;
     const current = await MacosWorkflowHostSafetyOperations.readProcessIdentity(owner.processId);
     if (current.processStartedAt !== owner.processStartedAt) throw new Error('Test Main process generation changed.');
     const closed = this.waitForApplicationClose();
@@ -915,13 +990,13 @@ events.keyCode(12, { using: ["command down"] });
     }
     if (this.workflowHostSafetyGuard) {
       await this.workflowHostSafetyGuard.terminateRegisteredApplications();
-    } else if (!(this.application?.process() ?? this.macosApplication!.process).kill('SIGKILL')) {
+    } else if (!(this.application?.process() ?? this.cdpApplication!.process).kill('SIGKILL')) {
       throw new Error('Electron Main rejected the intentional abrupt termination.');
     }
     await this.verifyProcessesAndListenerReleased();
     this.applicationClosed = true;
     this.abruptDestroyVerified = true;
-    if (this.macosApplication) await this.writeEvidence(testInfo);
+    if (this.cdpApplication) await this.writeEvidence(testInfo);
   }
 
   /** Capture the final visible Renderer state for attachment after evidence auditing. */
@@ -987,7 +1062,7 @@ events.keyCode(12, { using: ["command down"] });
   private async assertSensitiveTextsAbsentFromEvidence(
     sensitiveTexts: readonly string[],
   ): Promise<void> {
-    await this.collectMacosProcessOutput(sensitiveTexts);
+    await this.collectCdpProcessOutput(sensitiveTexts);
     if (sensitiveTexts.length === 0) return;
     if (this.tracePaths.length === 0) {
       throw new Error('Trace must be stopped before sensitive evidence is audited.');
@@ -1047,8 +1122,8 @@ events.keyCode(12, { using: ["command down"] });
       writeFile(
         metadataPath,
         JSON.stringify({
-          target: this.macosApplication && process.env.INTERCEPTOR_E2E_MACOS_APP_PATH
-            ? 'macos-signed-app' : 'local-electron',
+          target: process.env.INTERCEPTOR_E2E_APP_PATH ? 'packaged-app'
+            : this.cdpApplication && process.env.INTERCEPTOR_E2E_MACOS_APP_PATH ? 'macos-signed-app' : 'local-electron',
           platform: process.platform,
           architecture: process.arch,
           workflow: testInfo.annotations.find(
@@ -1097,15 +1172,15 @@ events.keyCode(12, { using: ["command down"] });
 
   /** Force only this test's known Electron/Core processes to stop after cleanup failure. */
   async forceCleanup(): Promise<void> {
-    if (this.macosApplication) {
+    if (this.cdpApplication) {
       try {
-        if (!this.workflowHostSafetyGuard) throw new Error('macOS forced cleanup requires a captured host baseline.');
+        if (!this.workflowHostSafetyGuard) throw new Error('CDP App forced cleanup requires a captured host baseline.');
         await this.workflowHostSafetyGuard.cleanupRegisteredApplications();
       } catch (error) {
         this.preserveUserDataAfterFailure = true;
         throw error;
       }
-      await this.macosApplication.browser.close().catch(() => undefined);
+      await this.cdpApplication.browser.close().catch(() => undefined);
       return;
     }
     if (!this.applicationClosed) {
@@ -1134,13 +1209,13 @@ events.keyCode(12, { using: ["command down"] });
 
   /** Collect bounded stdout/stderr and Electron Main console output. */
   private captureProcessOutput(): void {
-    if (this.macosApplication) return;
+    if (this.cdpApplication) return;
     const append = (value: string): void => {
       const output = `${this.mainOutput}${value}`;
       this.recordSensitiveTextMatch(output);
       this.mainOutput = output.slice(-128_000);
     };
-    const child = this.application?.process() ?? this.macosApplication!.process;
+    const child = this.application?.process() ?? this.cdpApplication!.process;
     child.stdout?.on('data', (chunk: Buffer | string) => {
       append(chunk.toString());
     });
@@ -1152,10 +1227,10 @@ events.keyCode(12, { using: ["command down"] });
     });
   }
 
-  private async collectMacosProcessOutput(sensitiveTexts: readonly string[]): Promise<void> {
-    if (!this.macosApplication) return;
+  private async collectCdpProcessOutput(sensitiveTexts: readonly string[]): Promise<void> {
+    if (!this.cdpApplication) return;
     this.mainOutput = '';
-    for await (const chunk of createReadStream(this.macosApplication.outputPath, { encoding: 'utf8' })) {
+    for await (const chunk of createReadStream(this.cdpApplication.outputPath, { encoding: 'utf8' })) {
       const output = this.mainOutput + chunk;
       this.recordSensitiveTextMatch(output);
       if (sensitiveTexts.some((text) => output.includes(text))) this.sensitiveTextFoundInProcessOutput = true;
@@ -1521,8 +1596,8 @@ function resolveDesktopDirectory(): string {
 }
 
 export function resolveMacosApplicationPath(): string {
-  return process.env.INTERCEPTOR_E2E_MACOS_APP_PATH
-    ? path.resolve(process.env.INTERCEPTOR_E2E_MACOS_APP_PATH)
+  return process.env.INTERCEPTOR_E2E_APP_PATH || process.env.INTERCEPTOR_E2E_MACOS_APP_PATH
+    ? path.resolve((process.env.INTERCEPTOR_E2E_APP_PATH ?? process.env.INTERCEPTOR_E2E_MACOS_APP_PATH)!)
     : path.resolve(__dirname, '../../../../out', `Interceptor-darwin-${process.arch}`, 'Interceptor.app');
 }
 
@@ -1531,7 +1606,7 @@ async function createWorkflowHostSafetyGuard(): Promise<WorkflowHostSafetyGuard 
   if (process.platform === 'darwin') {
     return new WorkflowHostSafetyGuard(
       new MacosWorkflowHostSafetyOperations(resolveDesktopDirectory(),
-        process.env.INTERCEPTOR_E2E_MACOS_APP_PATH
+        (process.env.INTERCEPTOR_E2E_APP_PATH || process.env.INTERCEPTOR_E2E_MACOS_APP_PATH)
           ? path.join(resolveMacosApplicationPath(), 'Contents/Resources/system-proxy/macos-proxy-helper')
           : undefined),
       'macOS',

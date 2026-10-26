@@ -130,7 +130,7 @@ async function chooseWorkflow(workspaces) {
     const mode = await choose('E2E：选择运行方式', [
       { name: '普通验收（不生成步骤图）', value: 'standard' },
       { name: '逐步截图（同时执行业务断言）', value: 'screenshots' },
-      { name: '教程截图更新并发布 Homepage', value: 'guidebook', disabled: process.platform !== 'darwin' ? '当前教程清单使用已验证的macOS原生窗口' : false },
+      { name: '教程截图更新并发布 Homepage', value: 'guidebook' },
     ]);
     if (mode === back) return;
     if (mode === 'guidebook') {
@@ -171,42 +171,40 @@ async function chooseWorkflow(workspaces) {
 async function chooseGuidebookPublication() {
   console.log('通过当前gh账号读取Homepage的main及截图映射，不需要本地Homepage仓库。');
   const { readRemotePublication } = await import('./guidebook-publish.mjs');
-  const { plan, retainedHostGroups } = readRemotePublication();
-  if (retainedHostGroups.length > 0) {
-    console.log(`${plan.sources.length}条原测试自动重拍；${retainedHostGroups.length}组真实Host图片单独验收、校验后保留，不在本次重拍。`);
+  const { homepageRepository, homepageBranch } = await import('./guidebook-github.mjs');
+  const { plan, retainedMedia } = readRemotePublication();
+  if (retainedMedia.length > 0) {
+    console.log(`清单登记${plan.workflows.length}条自动截图流程；${retainedMedia.length}组独立实录校验后保留。`);
   }
   const source = await choose('教程截图：选择来源', [
-    { name: '重拍全部自动来源（独立Host图片校验后保留）', value: 'capture' },
-    { name: '继续发布已经完整通过的本地截图', value: 'resume' },
+    { name: '重拍全部自动来源（独立实录校验后保留）', value: 'capture' },
+    { name: '继续截图并发布（复用有效流程，只补缺项）', value: 'resume' },
   ]);
   if (source === back) return;
-  const location = await input(source === 'capture' ? {
-    message: `已签名的 Interceptor ${plan.appVersion} .app 路径`,
-    ...(process.env.INTERCEPTOR_E2E_MACOS_APP_PATH ? { default: process.env.INTERCEPTOR_E2E_MACOS_APP_PATH } : {}),
+  const location = source === 'resume' ? await input({
+    message: '截图发布目录（含 publication.json，可部分完成）',
     required: true,
-  } : {
-    message: '完整通过的截图发布目录（含 publication.json）',
-    required: true,
-  });
+  }) : undefined;
   const publish = await confirm({
     message: '全部校验通过后自动 commit 并 push Homepage？',
     default: true,
   });
   return {
-    title: `${publish ? '发布' : '只验证'}教程截图更新 · ${plan.sources.length}条原测试 · ${plan.repository}/${plan.branch}`,
+    title: `${publish ? '发布' : '只验证'}教程截图更新 · ${plan.workflows.length}条原测试 · ${homepageRepository}/${homepageBranch}`,
     commands: [nodeCommand('scripts/guidebook-publish.mjs', [
-      source === 'capture' ? '--app' : '--resume', path.resolve(location),
+      ...(location ? ['--resume', path.resolve(location)] : []),
       ...(!publish ? ['--verify-only'] : []),
     ])],
     notices: [
-      `使用English App ${plan.appVersion}，逐条运行清单中的全部原workflow，不拍设计稿或创建测试副本。`,
+      `使用English App ${plan.appVersion}，核对清单中的全部原workflow；恢复时只运行缺失或输入失效项。`,
+      '默认先打包当前平台App；INTERCEPTOR_E2E_APP_PATH可选择已有Windows exe或macOS .app，来源如实记录。',
       '固定映射逐项核对截图、来源、红框及正文动态示例；缺图、步骤改变、失败或宿主未恢复均停止。',
-      ...(retainedHostGroups.length > 0 ? [
-        `${retainedHostGroups.length}组独立真实Host图片只核对审核清单、完整PNG与尺寸，不标为本次重拍；任何变化停止发布。`,
+      ...(retainedMedia.length > 0 ? [
+        `${retainedMedia.length}组独立实录核对审核清单、完整PNG与尺寸，不标为本次重拍；任何变化停止发布。`,
       ] : []),
       '拍摄期间自动操作真实窗口和原生文件面板，请保持桌面解锁，不要同时操作其他应用。',
       publish
-        ? `全部截图及映射通过后，使用GitHub API提交到 ${plan.repository}/${plan.branch}；不提交App代码、不新建分支或强推。`
+        ? `全部截图及映射通过后，使用GitHub API提交到 ${homepageRepository}/${homepageBranch}；不提交App代码、不新建分支或强推。`
         : '只生成完整截图集并核对映射，不上传图片、不创建commit、不更新远端。',
       '需要gh已登录且有Homepage写入权限；远端main中途变化立即停止，不clone、不操作本机Git暂存区。',
       'Homepage已有网站CI在更新main后自动运行，本命令不新增或等待另一套Actions流程。',

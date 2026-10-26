@@ -7,7 +7,7 @@
 | 层 | 位置 | 驱动方式 | 职责 |
 | --- | --- | --- | --- |
 | 单元 / 集成 | 各 workspace 的 `tests/` | Vitest（`environment: node`） | 纯逻辑、真实 worker_threads、真实 `node:sqlite`、真实 HTTP/2 |
-| E2E workflow | `apps/desktop/tests/e2e-workflow-tests/` | Windows `_electron.launch()`；macOS未打包Electron+Renderer CDP，可显式选择签名产物 | 从真实 App UI 出发的端到端 workflow |
+| E2E workflow | `apps/desktop/tests/e2e-workflow-tests/` | Windows未打包`_electron.launch()`；macOS及显式packaged App使用Renderer CDP | 从真实 App UI 出发的端到端 workflow |
 | Packaged smoke | `apps/desktop/tests/packaged-smoke/` | 最终 package + CDP | 打包产物的综合验证 |
 | 设计一致性 | `apps/desktop/tests/visual-parity/` | 独立Node命令、测试目录内fake Preload | Renderer与`design-vite/`声明元素的几何、样式、状态严格一致性，不依赖Agent或截图 |
 | 人工验收工具 | `apps/playground/` | Browser手动点击 + Node Traffic Lab | 最新MCP全部详情、逐Tool人工结论与可控协议流量；不替代任何自动层 |
@@ -30,6 +30,7 @@ Windows实机验收的方法与前提见[Windows执行要求](../../apps/desktop
 
 - **平台启动driver**：Windows继续用`_electron.launch()`启动未打包production bundle，prepare复用Forge Vite配置；macOS默认spawn同一项目的未打包Electron，以Renderer CDP驱动相同workflow。两者都由测试拥有进程，不附着人工Forge实例；协议/Core/native按正式构建顺序准备，业务E2E不要求每次package。
 - **Windows启动失败**：Windows保留原`_electron.launch()`与`firstWindow()`入口，按原门禁检查App root、Core PID和listener。启动异常保留profile及原始错误，关闭异常一并报告；不删除仍占用中的Chromium文件，也不将清理的`EBUSY`替代启动失败。
+- **已有packaged App**：`INTERCEPTOR_E2E_APP_PATH`显式选择当前平台Windows `Interceptor.exe`或macOS `.app`；`run.mjs`跳过prepare，driver以`spawn()`和Renderer CDP运行同一份workflow。生产Fuses不启用Main debugger，实际版本从App产物读取；未指定产物时保留原未打包入口。
 - **平台差异归属**：业务workflow共用操作、输入和结果。helper读取、journal位置、窗口准备、超时、故障观察/profile选择及独立系统权限检查归driver/fixture的Windows/Macos方法，不把macOS适配扩成Windows业务步骤。Windows保留WinINet六字段宿主比较、JSON证据比较和原恢复顺序；macOS完整结构比较与admin trust检查独立执行。
 - **macOS窗口与日志**：业务E2E由driver按配置准备真实窗口，常规`macos`项目保持1600x900；只有body-fill滚轮边界用独立`macos-scroll-boundary`项目的1600x800，两者互斥匹配。等待System Events就绪并验证DOM尺寸，不改变Windows窗口或产品布局。macOS日志使用profile内0600文件继承给子进程，避免runner结束后保留App遭遇pipe EPIPE；日志附加前仍扫描敏感内容，证据保持有界。正常结束删除profile；恢复未完成保留profile及私有日志。
 - **macOS helper**：开发与业务E2E按`app.isPackaged=false`共用获准UID的开发socket，不核准每次App构建，不因新profile/HMR/rs/重编译业务代码重新安装。原生构建按源码、工具链、签名参数及产物哈希缓存，helper自身变更才更新组件。生产App仍使用独立严格鉴权；`INTERCEPTOR_E2E_MACOS_APP_PATH`只供driver显式选择已有签名App，非产品参数，设置它时直接运行Playwright，不运行prepare。
@@ -48,7 +49,7 @@ macOS常驻helper独立于每条workflow的Main/Core，不作为它们的子进�
 
 `apps/playground`不是测试Runner。Browser MCP流程需要真实Electron与浏览器之间的链路；Playground人工报告由使用者实际操作并观察产品与origin后填写，自动结果不能代填。
 
-业务workflow从`npm start → Test → E2E`选择普通验收或逐步截图，仍执行同一份操作与断言。截图模式自动建立独立运行目录，普通测试不会清理其产物；在明确检查点记录PNG，在原driver及宿主guard结束后生成带结果、语言/主题、尺寸和SHA-256的清单。不维护单独Guidebook制作/导入菜单或跨仓发布脚本，截图不绑定Homepage。macOS使用独立的一次性原生窗口截图工具，不需要录屏器或FFmpeg；Windows原生Open/Save面板使用owner-scoped `PrintWindow`，进入测试目录并遮盖导航侧栏与地址breadcrumb后写PNG，不捕获桌面或个人路径。直接CLI/CI参数、目录和平台范围见[步骤截图说明](../../apps/desktop/tests/e2e-workflow-tests/README.md#trace-与证据)。原图不自动发布，使用前仍须审核隐私与实际验证范围。
+业务workflow从`npm start → Test → E2E`选择普通验收或逐步截图，仍执行同一份操作与断言。截图模式自动建立独立运行目录，普通测试不会清理其产物；在明确检查点记录PNG，在原driver及宿主guard结束后生成带结果、语言/主题、尺寸和SHA-256的清单。教程发布入口复用这些workflow，按Homepage的`workflows → steps → image`契约校验和生成图片；完整步骤、实际版本及退出恢复不符时停止，操作方法见[开发工作流](../development.md#全部教程截图与homepage发布)。macOS使用独立的一次性原生窗口截图工具，不需要录屏器或FFmpeg；Windows原生Open/Save面板使用owner-scoped `PrintWindow`，进入测试目录并遮盖导航侧栏与地址breadcrumb后写PNG，不捕获桌面或个人路径。直接CLI/CI参数、目录和平台范围见[步骤截图说明](../../apps/desktop/tests/e2e-workflow-tests/README.md#trace-与证据)。普通逐步截图只保存在本地；发布入口只在完整校验后按所选模式生成候选或更新Homepage。
 
 ## 4. 执行约束
 

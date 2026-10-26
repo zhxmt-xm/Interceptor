@@ -29,7 +29,7 @@
 2. 启动trace并用 `_electron.launch()` 启动新的本地production bundle。
 3. 等待 `app.root`、`app.main`、`app.statusbar` 和 `shell.navigation` 可见，确认URL=`interceptor://app/index.html`。
 4. 只检查启动相关默认态：active workspace=Capture、Sidebar expanded、窗口1600x900且未最大化/最小化、Core Running并显示真实PID、listener Listening `127.0.0.1:8888`。
-5. 检查Proxy readiness显示System Proxy off，UI Paused/Not recording；点击 `capture.readiness.cancel`，确认系统代理未被修改。
+5. 检查Proxy状态：正常环境下产品冷启动已自动接管系统代理并进入Recording，断言 `capture.recording.toggle` 的`aria-pressed=true`且状态栏显示系统代理已开启；若环境未能接管，则readiness弹窗出现，点击 `capture.readiness.cancel`并确认系统代理未被修改。
 6. 确认首窗、Header、Main、Statusbar可操作且无错误overlay。
 7. 保存final screenshot、trace、Main/Renderer日志和PID/端口metadata。
 8. 点击 `shell.window.close`。
@@ -38,7 +38,7 @@
 
 ### 预期效果
 
-新的未打包production App可以从空profile完整启动；Shell、Core和listener ready；初始readiness诚实显示未接管系统代理；关闭后无进程或端口残留。
+新的未打包production App可以从空profile完整启动；Shell、Core和listener ready；系统代理按产品设计在冷启动自动接管并进入Recording，无法接管时由readiness诚实提示且Cancel不修改系统设置；关闭后无进程或端口残留。
 
 <a id="application-lifecycle-core-restart"></a>
 ## `application.lifecycle.core-restart`
@@ -94,19 +94,19 @@ Main能检测Core异常退出并创建新代际；Renderer/RPC/listener恢复；
 ### Steps
 
 1. 创建Profile A、B两个独立目录、各自evidence和HTTP origin；确认宿主无遗留ownership/测试CA。
-2. 启动A的trace/Electron，等待Core/8888；只检查本流程相关默认态：Light、English、Capture空、Rules无测试rule、Proxy未owned。
-3. 从Theme/Language UI选择非默认主题和语言。
-4. 点击 `capture.readiness.enable`并完成授权，等待Recording；发送真实请求形成Capture；进入Rules创建并Apply唯一测试rule。
-5. 进入Proxy点击 `settings.proxy.restore`；保存A evidence，点击Close并验证A销毁/8888释放，但保留Profile A。
-6. 启动Profile B的新trace/Electron，等待Core/8888。
-7. 检查B仍为默认主题/语言，Capture不含A请求，Rules不含A规则，Proxy未owned。
-8. 点击readiness Cancel；保存B evidence并点击Close。
-9. 验证B进程/8888销毁，检查A/B无交叉文件写入。
-10. 关闭origin并删除A/B profiles。
+2. 启动A的trace/Electron，等待App root、Core Running和8888；记录首次启动语言作为基线，只检查本流程相关默认态：Light、本轮请求尚不存在、Rules无测试rule。
+3. 从Theme UI选择dark、从Language UI选择与基线不同的语言（默认`ja`，基线为`ja`时选`de`），分别断言`html[data-theme]`和`html[lang]`。
+4. 通过 `startRecording()` 等到真实Recording（产品冷启动已自动接管时直接复用）；通过8888发送一条唯一路径的请求并确认row出现。
+5. 进入Rules新建规则，填写唯一名称、host与request header，启用并Apply；确认 `rules.status.state` 为`applied`。
+6. 记录A的`userData`和系统代理journal；在Proxy点击 `settings.proxy.restore`，确认restore按钮消失、journal不存在且系统代理等于workflow启动快照；保存A evidence后点击Close，验证A销毁/8888释放，但保留Profile A。
+7. 启动Profile B的新trace/Electron（不同`userData`），等待App root、Core Running和8888。
+8. 检查B为Light、`html[lang]`等于第2步基线（不是`ja`）、不含A的请求路径、Rules为0行；确认B的`userData`与A不同。产品冷启动会自动接管系统代理，B仍可能捕获宿主自身流量，因此不要求列表为空。
+9. 直接读取两个profile目录：A的profile（含Core `workspace.sqlite`）必须包含本轮唯一规则标记，B的整个profile目录不得包含同一标记。
+10. 保存B evidence并点击Close；验证B进程/8888销毁、系统代理journal被清除，关闭origin并删除A/B profiles。
 
 ### 预期效果
 
-只有本workflow实际写入的主题、语言、Capture和RuleSet用于隔离对比；A状态不进入B；两次App运行独立销毁并恢复系统代理。
+Theme、Language、Capture和RuleSet只出现在写入它们的profile；B既不继承A的UI偏好，也不含A的Capture或RuleSet；A关闭后系统代理回到原始配置，两次运行各自完整销毁。
 
 <a id="shell-navigation-workspaces"></a>
 ## `shell.navigation.workspaces`
@@ -193,19 +193,18 @@ Shell用三个语言无关标记表达当前view：`app.root`的`data-view`、`a
 ### Steps
 
 1. 创建空profile和两段evidence，启动第一份trace/Electron。
-2. 等待App/Core/listener；只检查语言相关默认态：English、`html lang=en`、当前Shell文案；点击readiness Cancel。
-3. 从Language UI依次选择15种语言，每次检查`html[lang]`、Header、Sidebar、Workbar和当前modal。
-4. 每种语言检查页面无溢出，最长译文不遮挡交互控件；保留最后语言。
-5. 保存第一段evidence并Close，验证销毁但保留profile。
+2. 等待App root、Core Running和8888；记录首次启动语言作为基线（首次运行按系统语言匹配，必属15种之一）；若 `app.root` 的`data-collapsed=true`，点击 `shell.sidebar.toggle` 展开Sidebar。
+3. 从Language UI依次选择15种语言，每次断言`html[lang]`、`app.header.title`文案、Sidebar分组与六个入口文案、Language/Theme控件文案、`capture.keywordFilter`占位与Recording文案。
+4. 每种语言断言`documentElement`无横向/纵向溢出，且Header、Sidebar、Language/Theme控件与Recording按钮的可见文本没有被裁切（`scrollWidth <= clientWidth`）。
+5. 保留最后语言；保存第一段evidence并点击Close，验证销毁但保留profile。
 6. 使用同一profile启动第二份trace/Electron。
-7. 确认最后语言、Ant locale和Main dialog language intent恢复。
-8. 点击readiness Cancel，保存第二段evidence并Close。
-9. 验证第二份销毁/8888释放。
-10. 删除profile。
+7. 断言 `html[lang]`、Header与Sidebar代表文案恢复为最后语言。
+8. 保存第二段evidence并点击Close，验证第二份销毁/8888释放。
+9. 删除profile。
 
 ### 预期效果
 
-15种语言从真实UI切换并持久化；Renderer/Ant/Main语言意图同步；不重复检查与语言无关的业务数据。
+15种语言通过真实Language菜单切换，完整语言矩阵下外壳与列表栏文案正确、无页面溢出或文字裁切；保存的语言跨重启恢复。Ant locale与Main原生对话框语言不在本workflow断言：产品界面没有Ant locale文案，Main原生对话框标题固定英文，语言ID的对齐由 `i18n.test.ts` 的unit契约约束。
 
 <a id="shell-guidebook-online"></a>
 ## `shell.guidebook.online`
@@ -216,14 +215,15 @@ Shell用三个语言无关标记表达当前view：`app.root`的`data-view`、`a
 
 1. 创建空 profile/evidence，启动 trace 和真实 Electron；等待 App root、Core Running 与 8888 listener。
 2. 点击 readiness Cancel，确认未修改系统代理；从 Sidebar 点击 `shell.workspace.guidebook`。
-3. 检查 Guidebook toolbar、固定官方地址和 Loading 状态；等待 sandboxed iframe 加载 `https://www.interceptor.cn/guide?embed=desktop`，确认网页 Header/Footer 不出现，概览目录和正文可见；进入具体章节后确认本章导航可见。
+3. 检查 Guidebook toolbar 和固定官方地址；按初始App语言等待sandboxed iframe Ready，`zh-CN`使用`https://www.interceptor.cn/guide?embed=desktop`，其余语言使用`https://www.interceptor.cn/en/guide?embed=desktop`。确认网页Header/Footer不出现，概览目录和正文可见；进入具体章节后确认本章导航可见。
 4. 点击 App toolbar Search，确认 iframe 内既有 Guidebook 搜索弹窗打开；输入测试自产查询，选择结果并确认正文导航仍保留 `embed=desktop`。
 5. 点击真实教程图片并关闭官网大图预览，确认 App 外壳、Sidebar、Header 与 Statusbar 始终保留。
 6. 保持初始App语言，通过真实 Theme UI 切换当前主题，确认 iframe 使用相同主题，再恢复初始主题；语言同步由下述独立i18n workflow验证。
-7. 点击 Refresh，确认新 frame 代际重新进入 Loading 后恢复 Ready；点击 `guidebook.open-browser`，只读确认 Main 请求操作系统打开固定官方 Guidebook URL，不允许测试覆盖 URL。
-8. 保存 trace、final screenshot、Main/Renderer 日志及 frame URL evidence。
-9. 点击 `shell.window.close`；验证 Main、Renderer、Core、Worker 全退且 8888 释放。
-10. 删除 profile；网络不可用、远程页面结构不匹配或强制 kill 均使 workflow 失败。
+7. 点击 Refresh，确认旧iframe断开、新frame重新进入Loading后恢复Ready，URL仍是当前官方章节；点击`guidebook.open-browser`，确认不新增Electron页面、不出现错误提示且Renderer无未处理错误。Main调用操作系统的固定URL另须原生只读证据：Windows将实际浏览器启动命令的父PID、创建时间与本轮Main PID、UI点击trace对应；记录固定官方URL，不读取其他浏览器历史。其他平台使用对应原生观察，不能用Electron页面数量代替。
+8. 通过BrowserContext网络环境设置离线，确认`guidebook.root[data-state=error]`、错误区域与Retry可见、Search禁用。用finally恢复网络，确认仍需用户Retry；点击`guidebook.retry`，核对旧iframe断开、新frame Ready、当前章节URL与初始主题/语言恢复。
+9. 保存trace、final screenshot、Main/Renderer日志及frame URL、离线与Retry evidence。
+10. 点击 `shell.window.close`；验证 Main、Renderer、Core、Worker 全退且 8888 释放。
+11. 删除profile；Retry后网络仍不可用、远程页面结构不匹配或强制kill均使workflow失败。
 
 ### 预期效果
 

@@ -3535,7 +3535,7 @@ export const settingsFixture: FixtureNode = {
               "children": [
                 {
                   "type": "text",
-                  "value": "Stable releases from GitHub. Downloads start only when you choose."
+                  "value": "Published GitHub releases, including alpha. Downloads start only when you choose."
                 }
               ]
             },
@@ -3650,7 +3650,7 @@ export const settingsFixture: FixtureNode = {
                             },
                             {
                               "type": "text",
-                              "value": "Stable"
+                              "value": "Installed"
                             }
                           ]
                         }
@@ -3694,7 +3694,7 @@ export const settingsFixture: FixtureNode = {
                           "children": [
                             {
                               "type": "text",
-                              "value": "Newest stable release"
+                              "value": "Highest published version by SemVer, including alpha"
                             }
                           ]
                         }
@@ -3965,7 +3965,7 @@ export const settingsFixture: FixtureNode = {
                           "children": [
                             {
                               "type": "text",
-                              "value": "stable"
+                              "value": "All published versions"
                             }
                           ]
                         },
@@ -4104,7 +4104,7 @@ export const settingsFixture: FixtureNode = {
                           "children": [
                             {
                               "type": "text",
-                              "value": "Reading the latest stable release metadata"
+                              "value": "Reading published release metadata, including alpha"
                             }
                           ]
                         }
@@ -4418,7 +4418,7 @@ export const settingsFixture: FixtureNode = {
                           "children": [
                             {
                               "type": "text",
-                              "value": "Stable release channel"
+                              "value": "Published versions, including alpha"
                             }
                           ]
                         }

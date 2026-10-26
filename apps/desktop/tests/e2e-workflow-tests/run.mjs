@@ -22,7 +22,7 @@ const run = async (parameters) => {
   if (code === null) throw new Error(`Workflow command terminated by ${signal}.`);
   return code;
 };
-if (!(process.platform === 'darwin' && process.env.INTERCEPTOR_E2E_MACOS_APP_PATH)) {
+if (!process.env.INTERCEPTOR_E2E_APP_PATH && !(process.platform === 'darwin' && process.env.INTERCEPTOR_E2E_MACOS_APP_PATH)) {
   const prepared = await run(['run', 'e2e:prepare-local']);
   if (prepared !== 0) process.exit(prepared);
 }

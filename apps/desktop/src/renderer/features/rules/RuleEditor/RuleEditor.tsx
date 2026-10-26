@@ -159,6 +159,7 @@ export function RuleEditor({ onShowRuleRequests }: RuleEditorProps): React.JSX.E
           label={t('rules.deleteRule')}
           size="sm"
           onClick={() => removeNode(rule.id)}
+          automationId={AUTOMATION_IDS.rules.delete}
         />
         {conflict ? (
           <IconButton

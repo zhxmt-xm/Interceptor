@@ -11,7 +11,7 @@ Guidebook 使用固定 origin `https://www.interceptor.cn`：
 - 简体中文入口：`/guide?embed=desktop`；
 - 其他 App 语言入口：`/en/guide?embed=desktop`；
 - App 不提供离线副本，也不把远程 URL 作为用户输入；
-- 刷新只重新加载当前固定入口，浏览器打开只交给 Main 打开同一官方页面。
+- 刷新重新加载当前正在阅读的官方教程页，浏览器打开由 Main 按 App 语言打开固定官方入口。
 
 官网的 `embed=desktop` 模式只移除网站 Header/Footer，保留 Guidebook 自己的目录、正文、本章导航、搜索和图片预览。Guidebook 内部导航继续保留 `embed=desktop`，正文滚动由 iframe 自身负责。
 
@@ -51,7 +51,7 @@ Renderer 显示 Loading、Ready 与 Error 三种独立状态：
 - iframe `load` 前显示 Loading；
 - 官方页面完成 `load` 后显示 Ready；
 - iframe 加载错误、浏览器离线或超时进入 Error，并提供 Retry；
-- Retry 创建新的 frame 代际并重新同步当前主题与语言。
+- Retry 重新加载当前官方章节，创建新的 frame 代际并重新同步当前主题与语言；恢复网络本身不会替代 Retry。
 
 错误态不能伪装成成功，也不能静默切换到第三方页面或本地占位文档。
 
@@ -69,4 +69,4 @@ Renderer 显示 Loading、Ready 与 Error 三种独立状态：
 
 - Windows安装、升级、更新打开和原生授权使用对应平台的实际发布产物；图片发布前核对版本、平台和语言，不能用未打包workflow图片冒充Release。
 - 证书生命周期操作使用共享材料为空的隔离用户或VM及正常系统授权；DNS/DHCP WPAD使用获准的隔离网络和恢复保护，不能破坏日常CA或网络设置。
-- 外部MCP Host和商业模型需要明确目标、账号、凭据与服务授权。教程按实际行为说明限制，不能用隐藏API、篡改发布包或修改截图掩盖；只有pre-release时，稳定版更新REST入口按GitHub语义返回`404`。
+- 外部MCP Host和商业模型需要明确目标、账号、凭据与服务授权。教程按实际行为说明限制，不能用隐藏API、篡改发布包或修改截图掩盖。
