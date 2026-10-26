@@ -99,7 +99,9 @@ The opening screenshot shows a selected WebSocket connection and its messages. M
 - Continue unchanged, forward edited content or drop it; manage multiple paused items from the queue.
 - HTTP pauses occur at the header stage, so the original body may not yet be available.
 
-<img src="architecture/assets/readme-breakpoints-en.png" alt="A paused request showing the original JSON body, a replacement body and Continue, Forward edited and Drop controls" width="1600">
+<img src="architecture/assets/readme-breakpoints-demo.gif" alt="Pause a request, edit the JSON body, forward it, and see the server receive the edited request" width="1200">
+
+*10-second demo: pause, edit and forward a request. No server change. [Watch with sound (MP4)](architecture/assets/readme-breakpoints-demo.mp4).*
 
 [Breakpoints walkthrough: pause, edit, continue and drop](https://www.interceptor.cn/en/guide/breakpoints)
 
