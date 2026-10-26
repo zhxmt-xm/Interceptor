@@ -745,6 +745,47 @@ owned.frontmost = true;
     await this.page.bringToFront();
   }
 
+  /** Resize the owned workflow window through its native platform boundary and return the settled content size. */
+  async resizeWindow(
+    width: number,
+    height: number,
+  ): Promise<{ width: number; height: number }> {
+    if (!this.application) {
+      const owner = this.nativeFileDialogOwner();
+      const current = await MacosWorkflowHostSafetyOperations.readProcessIdentity(owner.processId);
+      if (current.processStartedAt !== owner.processStartedAt) {
+        throw new Error('The workflow window owner changed generation.');
+      }
+      await MacosWorkflowHostSafetyOperations.assertDesktopUnlocked();
+      await execFileAsync('/usr/bin/osascript', ['-e', `
+tell application "System Events"
+  tell first application process whose unix id is ${owner.processId}
+    set size of window 1 to {${width}, ${height}}
+  end tell
+end tell
+`], { encoding: 'utf8', timeout: 10_000 });
+    } else {
+      const browserWindow = await this.application.browserWindow(this.page);
+      try {
+        await browserWindow.evaluate(
+          (window, size) => window.setContentSize(size.width, size.height),
+          { width, height },
+        );
+      } finally {
+        await browserWindow.dispose();
+      }
+    }
+    // 平台窗口管理器可能把内容尺寸吸附到相邻的整数，按真实结果继续。
+    // Platform window managers may snap the content size to a neighbouring integer; continue with the real result.
+    await expect.poll(async () => {
+      const size = await this.page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
+      return Math.abs(size.width - width) <= 2 && Math.abs(size.height - height) <= 2;
+    }, {
+      message: 'The workflow window did not reach the requested content size.',
+    }).toBe(true);
+    return this.page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
+  }
+
   /** Restrict native window assertions and restoration to this exact workflow Main. */
   private async runMacosWindowScript(operation: string): Promise<string> {
     const owner = this.nativeFileDialogOwner();

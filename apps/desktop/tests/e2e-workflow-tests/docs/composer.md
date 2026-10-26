@@ -203,22 +203,29 @@ code正文按语言使用既有formatter；自动与手动路径共享同一结�
 
 **策略**：shared
 
+Core 对非法 URL 与网络错误返回 `ok=false`；Renderer 以 `composer.response[data-send-state=failed]` 的错误态显示原因，不生成可切换的响应 tab 或伪成功正文。失败记录仍进入 History（status=0），成功后清除旧错误。
+
 ### Steps
 
-1. 创建空profile、evidence、有效HTTP fixture和一个未监听的loopback端口；确认宿主无遗留Proxy ownership/测试CA。
-2. 启动trace与新Electron，等待Core Running和8888；点击 `capture.readiness.cancel`并确认System Proxy未owned；进入Composer。
-3. 检查Composer默认URL/method/protocol、空response和空history。
-4. 输入格式非法URL并点击Send，验证有界validation/error、无假response且Send恢复可用。
-5. 输入未监听端口的合法URL再次Send，验证连接失败信息与duration，response区域无伪成功内容。
-6. 改为真实fixture URL并再次Send。
-7. 验证旧error清除、显示200真实响应，History准确反映发送终态。
-8. 确认失败/重试未修改System Proxy，也未创建无关Rules或Breakpoints状态。
-9. 保存evidence并点击 `shell.window.close`。
-10. 验证进程/8888销毁，关闭fixture、释放端口并删除profile。
+1. 创建空 profile/evidence、有效 HTTP fixture，并取得一个当前未监听的 loopback 端口；启动 trace/Electron，等待 App/Core/8888；冷启动 bootstrap 会接管系统代理，本流程不依赖 Capture。
+2. 进入 Composer 新建请求：确认 method=GET、protocol=Auto、URL 为空且 Send disabled、`composer.response[data-send-state=empty]`、History 为空。
+3. 输入无 scheme 的非法 URL 并点击 Send：等待出现 `data-send-state=failed`，错误文本非空，不存在 `composer.response-tab.*` 与 `composer.response-body`，Send 恢复可用。
+4. 输入 `http://127.0.0.1:<未监听端口>/` 再次 Send：同样进入 failed 错误态，不出现响应 tab、状态码或正文。
+5. 改为有效 fixture URL 并再次 Send：等待 `data-send-state=ready`、真实 200 与响应正文；旧错误消失，Headers/Cookies/Timing 与 body mode 可用。
+6. 打开 `composer.history`：3 条动态 `composer.history-row.<id>` 按发送倒序；最新 `data-ok=true`/`data-status=200`，前两条 `data-ok=false`/`data-status=0`，且都带数值 `data-duration-ms`。
+7. 比较三次发送前后的 System Proxy 快照，确认内容未变；进入 Rules 确认没有创建 Rule 行，再返回 Composer。
+8. 保存 evidence 并点击 `shell.window.close`。
+9. 验证 Main/Core/Worker 退出、8888 释放与系统代理恢复；关闭 fixture、释放未监听端口并删除 profile。
 
 ### 预期效果
 
-非法URL和网络失败不会产生成功假象或锁死表单；修正后可立即重试成功；错误只影响Composer当前请求状态。
+非法 URL 和网络失败不会产生成功假象、响应 tab 或锁死表单；失败原因可见；修正后可立即重试成功；History 保留每次真实发送的终态；错误只影响当前 Composer 文档。
+
+### 验收要求
+
+- 错误态只按 `composer.response[data-send-state]` 判定，不读翻译文案；History 用动态 row 的 `data-ok`/`data-status`/`data-duration-ms` 判定。
+- 必须验证两次失败、一次成功、旧错误清除、Send 恢复、三条 History 终态、未监听端口、System Proxy 未变、Main/Core/Worker 销毁与 8888 释放。
+- selector、构建或 fixture 失败不算产品故障。
 
 <a id="composer-history-new"></a>
 ## `composer.history-new`
@@ -247,22 +254,35 @@ History只保存真实Composer发送；加载恢复完整请求；New重置编�
 
 **策略**：shared
 
+Composer有两个独立splitter：`composer.collection-splitter`是竖直分隔条，拖X改Collection宽度；`composer.splitter`是水平分隔条，拖Y改Response高度。两者都只在容器空间内clamp；窗口缩小时重新clamp，窗口放大后保持当前值、不自动扩张。
+
+尺寸契约：Collection初始320、最小160、最大为Composer主容器宽度减工作区最小宽480再减1；Response初始368、最小160、最大为主容器高度减标签条40、URL行56、请求区最小180与轨道1。工作流以 `app.main` 的实际client尺寸计算上限，不写死像素。
+
 ### Steps
 
-1. 创建空profile/evidence和返回大JSON/header集合的HTTP fixture；启动trace/Electron，等待App/Core/8888/readiness；检查System Proxy未owned，点击 `capture.readiness.cancel`并确认系统设置未修改。
-2. 进入Composer，确认默认splitter布局、method/URL/Send和空response可见。
-3. 通过UI发送真实请求并等待大response。
-4. 拖动 `composer.splitter` 到请求面板最小宽度，检查method/URL/Send、tabs、header editor和body无重叠。
-5. 拖到中间，再拖到response面板最小宽度。
-6. 依次打开Response Body/Headers/Raw，确认CodeMirror和长header正确换行或滚动。
-7. 再次发送请求，确认动态内容不改变布局轨道、selection或草稿。
-8. 恢复splitter到中间位置，确认窗口状态和Core未变化。
-9. 保存evidence并点击Close。
-10. 验证销毁，关闭fixture并删除profile。
+1. 创建空profile/evidence和返回大JSON、长header与Cookie的HTTP fixture；启动trace/Electron，等待App/Core/8888；冷启动bootstrap会接管系统代理，本流程不依赖Capture，退出时由Main恢复。
+2. 进入Composer：fresh profile没有打开文档，只有Collection与`NoOpenRequest`，`composer.splitter`不存在；点击 `composer.newRequest` 后确认 `composer.collection-splitter`、`composer.splitter`、`composer.url`、`composer.send` 和空`composer.response`出现。
+3. 通过UI发送真实请求，等待真实响应正文与header集合。
+4. 记录初始几何：`composer.collection`宽320、`composer.response`高368、`app.main`的client宽高。
+5. 向左拖动 `composer.collection-splitter` 到最小：Collection宽=160，URL/Send、请求tab、header editor与正文无重叠；继续向左拖宽度不再减小。
+6. 拖到中间，再向右拖到最大：Collection宽=`app.main`宽−480−1，工作区仍可用；继续向右拖宽度不再增大。
+7. 向下拖动 `composer.splitter` 到最小：Response高=160，请求区仍可用；继续向下拖高度不再减小。
+8. 拖到中间，再向上拖到最大：Response高=`app.main`高−40−56−180−1；继续向上拖高度不再增大。
+9. 把真实窗口调小到`1200×700`：两个区域分别按新宽高重新clamp，不低过最小值也不超出新上限；恢复`1600×900`后保持clamp后的值，不自动扩张。
+10. 把两个splitter恢复到初始320/368；依次打开Response Body/Headers/Cookies/Timing，在Body切换Pretty/Tree/Raw/Hex，确认长header可换行或滚动、各tab与正文控件不重叠、页面无横向溢出。
+11. 通过 `composer.newRequest` 建立第二个文档，切回第一个文档：document tab的`aria-selected`与response正文保持，body mode仍可切换。
+12. 保存evidence并点击 `shell.window.close`；验证Main/Core/Worker退出、8888释放与系统代理恢复，关闭fixture并删除profile。
 
 ### 预期效果
 
-Composer splitter遵守两侧最小宽度；请求/响应控件在极限宽度可用；resize只影响布局，不影响业务状态或系统代理。
+两个splitter分别控制在上下限内且互不影响；请求/响应控件在极限尺寸可用；窗口缩放只触发clamp，恢复后不自动扩张；resize与文档切换不改变业务状态。
+
+### 验收要求
+
+- 每次拖动记录splitter与目标区域的boundingBox，并连续同向拖动验证最小值不再减小、最大值不再增大。
+- 上限用同一时刻 `app.main` 的client宽高计算，误差不超过1px；不写死除契约320/160/368/480/40/56/180/1外的像素。
+- 窗口调整只通过平台真实BrowserWindow/原生窗口完成，不修改Renderer样式、viewport或注入宽度；selector、构建或fixture失败不算产品故障。
+- 必须同时验证两个splitter的上下限、窗口双向缩小与恢复不扩张、tab/body mode/文档切换、系统代理恢复、Main/Core/Worker销毁与8888释放。
 
 <a id="composer-collection-import"></a>
 ## `composer.collection.import`

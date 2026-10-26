@@ -54,6 +54,20 @@ describe('HttpMessageService', () => {
     });
   });
 
+  it('does not add a content-length that the original request never had', async () => {
+    const prepared = await new HttpMessageService().prepareReplacement({
+      body: 'updated',
+      source: 'text',
+      originalHeaders: { 'content-type': 'text/plain' },
+      headers: { 'content-type': 'text/plain' },
+      editedHeaderNames: new Set(),
+    });
+
+    expect(Object.keys(prepared.headers).map((name) => name.toLowerCase()))
+      .not.toContain('content-length');
+    expect(prepared.content).toEqual(new TextEncoder().encode('updated'));
+  });
+
   it('keeps file bytes independent from the Content-Type charset', async () => {
     await expect(new HttpMessageService().buildContent(
       new Uint8Array([0x00, 0x80, 0xff]),

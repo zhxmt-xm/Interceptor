@@ -2,6 +2,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import type { CaptureExchangeSummary, RuleActionType } from '../../../../shared/desktop-api';
 import type { BreakpointScope } from '../../rules/interfaces';
 import {
@@ -102,7 +103,7 @@ export function RequestList({
       onCreateRule={onCreateRequestRule}
       onCreateBreakpoint={onCreateBreakpoint}
     >
-      <div className={styles.list}>
+      <div className={styles.list} data-automation-id={AUTOMATION_IDS.capture.list}>
       <div
         className={styles.head}
         style={{ paddingRight: 14 + scrollbarWidth }}
@@ -117,7 +118,12 @@ export function RequestList({
         <span data-parity="capture-list-time-header">{t('capture.time')}</span>
       </div>
 
-      <div className={styles.scroll} ref={parentRef} onScroll={handleScroll}>
+      <div
+        className={styles.scroll}
+        ref={parentRef}
+        onScroll={handleScroll}
+        data-automation-id={AUTOMATION_IDS.capture.listScroll}
+      >
         {visible.length === 0 ? (
           <div className={styles.empty}>{t('capture.emptyRequests')}</div>
         ) : (

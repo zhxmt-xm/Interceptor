@@ -309,7 +309,12 @@ export function App(): React.JSX.Element {
             <Menu size={15} strokeWidth={1.9} />
           </button>
         </Tooltip>
-        <span className={styles.featureName} data-parity="window-header-title">
+        <span
+          className={styles.featureName}
+          data-parity="window-header-title"
+          data-automation-id={AUTOMATION_IDS.app.headerTitle}
+          data-view={view}
+        >
           {t(VIEW_LABEL_KEYS[view])}
         </span>
         <AgentPanelToggle open={agentPanelOpen} onToggle={toggleAgentPanel} />
@@ -325,7 +330,13 @@ export function App(): React.JSX.Element {
           onConfigure={openAgentSettings}
         />
       )}
-      <footer className={styles.footer} data-automation-id={AUTOMATION_IDS.app.statusbar}>{feature.statusbar}</footer>
+      <footer
+        className={styles.footer}
+        data-automation-id={AUTOMATION_IDS.app.statusbar}
+        data-view={view}
+      >
+        {feature.statusbar}
+      </footer>
     </div>
   );
 

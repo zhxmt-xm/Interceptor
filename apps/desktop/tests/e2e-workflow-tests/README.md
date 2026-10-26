@@ -96,7 +96,7 @@ Windows使用本平台的原生/E2E流程，macOS结果不能替代，也不免�
 | 协议/交互 | `capture/{tls-scenarios,http2-scenarios,http2-origin-goaway,grpc-scenarios,navigate-tls-passthrough}.workflow.ts`；`settings/{tls-compatibility,proxy-mitm-persistence}.workflow.ts`；`agent/body-messages.workflow.ts` | 首请求源站例外、暂停响应正常GOAWAY完整排空、Edge证书校验、Raw/Copy长度及hash、每代Page；取消背景host默认选择，Capture discovery精确17项 |
 | 导入/只读 | `composer/{collection-import,tools-transfer}.workflow.ts`；`rules/{import-tree,tools-import}.workflow.ts`；`settings/tools-readonly.workflow.ts` | 真实signal、原生/预览Cancel与Confirm、退出取消、重启零重放；六项无审批查询及CA不变 |
 | 构建/路径 | `npm run build:native --workspace @interceptor/platform-capabilities`及该package所属测试；[Client App](../../../proxy-core/src/proxy-core/client-app/tests/unit/service.test.ts)、[Transfer](../../../proxy-core/src/proxy-core/transfer/tests/unit/job-manager.test.ts)；Windows文件窗口通过上述原生导入/导出workflow验收 | package开发资源与App同包路径、共用runner、8 MiB枚举、certutil/UAC、Windows路径解析、互斥拒绝与无重放；不使用macOS skip或脚本文本断言替代真实原生操作 |
-| 纯Auto Detect/WPAD | [上游契约](../../../../architecture/features/settings.md#windows-wpad-research)；`settings/wpad-failure-preservation.workflow.ts`及`settings/wpad-network.workflow.ts` | 本机原生失败保持；隔离Windows中DNS-only、DHCP-only、双来源优先级分别覆盖WPAD/System，HTTP/TLS选路、App/Core代际和完整恢复，不以手填PAC或macOS结果替代 |
+| 纯Auto Detect/WPAD | [上游契约](../../../../architecture/features/settings/upstream-wpad.md#windows-wpad-research)；`settings/wpad-failure-preservation.workflow.ts`及`settings/wpad-network.workflow.ts` | 本机原生失败保持；隔离Windows中DNS-only、DHCP-only、双来源优先级分别覆盖WPAD/System，HTTP/TLS选路、App/Core代际和完整恢复，不以手填PAC或macOS结果替代 |
 | 产物/全量 | 全部适用workflow、[packaged smoke](../packaged-smoke/startup.spec.ts)及[Windows安装器smoke](../installer/windows-installer-smoke.mjs) | ready门禁、精确Preload白名单、Core重启、截图矩阵、签名/资源、安装升级卸载、系统设置/进程恢复 |
 
 ## 目录结构
@@ -123,31 +123,19 @@ apps/desktop/tests/e2e-workflow-tests/
 │  └─ agent/
 ├─ workflows/
 │  ├─ application/
-│  │  ├─ core-restart.workflow.ts
-│  │  ├─ guidebook-online.workflow.ts
-│  │  └─ guidebook-i18n.workflow.ts
 │  ├─ capture/
-│  │  ├─ breakpoint-menu-hierarchy.workflow.ts
-│  │  ├─ clear-facets.workflow.ts
-│  │  ├─ detail-body-fill.workflow.ts
-│  │  ├─ facet-stable-ordering.workflow.ts
-│  │  ├─ facets-clear-menu.workflow.ts
-│  │  ├─ filter-group-selection.workflow.ts
-│  │  └─ section-collapse.workflow.ts
-│  ├─ composer/
-│  │  ├─ body-formatting.workflow.ts
-│  │  ├─ collection-import.workflow.ts
-│  │  ├─ collection-tree-interactions.workflow.ts
-│  │  └─ response-section-collapse.workflow.ts
 │  ├─ rules/
-│  │  ├─ import-tree.workflow.ts
-│  │  └─ root-toolbar.workflow.ts
-│  └─ breakpoints/
-│     ├─ execute-edited.workflow.ts
-│     └─ websocket-close.workflow.ts
+│  ├─ composer/
+│  ├─ breakpoints/
+│  ├─ diagnostics/
+│  ├─ agent/
+│  ├─ mcp/
+│  └─ settings/
 ├─ playwright.config.ts
 └─ prepare-local.mjs
 ```
+
+各 feature 目录下每条 `*.workflow.ts` 是一个独立用例，可执行清单以 Playwright `--list` 为准，不在本文维护文件枚举。
 
 详细文档索引见 [`docs/README.md`](docs/README.md)。
 fixture 职责与协议复用入口见 [fixtures/README.md](fixtures/README.md)。HTTP、HTTPS/H2、WebSocket、
@@ -206,7 +194,7 @@ npm exec --no --workspace @interceptor/desktop -- playwright test --config tests
 | `application.lifecycle.core-restart` | Core被结束后恢复UI/RPC、系统代理并验证故障与退出竞争 | os-side-effect |
 | `application.lifecycle.graceful-close` | 产品 Close 完整销毁 Main/Core/Renderer/Worker/listener | shared |
 | `application.lifecycle.profile-isolation` | 两个 profile 的持久/临时状态严格隔离 | shared |
-| `shell.navigation.workspaces` | 五个 workspace 的 Header/Main/Statusbar 同步切换 | shared |
+| `shell.navigation.workspaces` | 六个顶层 view 的 Header/Main/Statusbar 同步切换 | shared |
 | `shell.sidebar.collapse` | 折叠态导航可用并可恢复展开 | shared |
 | `shell.appearance.theme` | 四主题切换与跨重启持久化 | shared |
 | `shell.appearance.language` | 15语言切换、布局与持久化 | shared |

@@ -69,6 +69,7 @@ interface McpWorkflowEvidence {
   readonly protocolVersion: string | null;
   readonly oldTokenStatus: number;
   readonly rulesRevision: number;
+  readonly staleApplyRejected: boolean;
   readonly breakpointToolCount: number;
   readonly breakpointDataPlanesVerified: boolean;
 }
@@ -288,6 +289,7 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
     let protocolVersion: string | null = null;
     let oldTokenStatus = -1;
     let rulesRevision = -1;
+    let staleApplyRejected = false;
     let breakpointToolCount = 0;
     let breakpointDataPlanesVerified = false;
     let activeSensitiveTexts: string[] = [];
@@ -347,10 +349,14 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
         ],
       });
       await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.client.create).click();
-      const clientRow = desktopApp.page.locator('[data-automation-id^="mcp.client.row."]');
-      await expect(clientRow).toHaveCount(1);
-      const clientId = (await clientRow.getAttribute('data-client-id')) ?? '';
+      const initialClientRows = desktopApp.page.locator('[data-automation-id^="mcp.client.row."]');
+      await expect(initialClientRows).toHaveCount(1);
+      const clientId = (await initialClientRows.getAttribute('data-client-id')) ?? '';
       expect(clientId.length).toBeGreaterThan(0);
+      const clientRow = getByAutomationId(
+        desktopApp.page,
+        AutomationIdFactory.mcpClientRow(clientId),
+      );
       await expect(clientRow).toHaveAttribute('data-execution-mode', 'ask');
       await screenshotStep('用户操作：显式开启listener并通过产品Dialog创建默认Ask的workflow Client。 / User actions: explicitly enable the listener and create a default-Ask workflow Client in the product dialog.');
 
@@ -563,7 +569,36 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
           { target: getByAutomationId(desktopApp.page, AutomationIdFactory.ruleActionField(mcpRuleId, 0, 'value')), label: '2' },
         ],
       });
-      const concurrentWrite = await actionClient.callTool({
+      // 第二个真实写入者：通过Settings再创建一个独立MCP Client并设为Auto，用于与Renderer草稿产生真实revision冲突。
+      // Second real writer: create another independent MCP Client in Settings with Auto execution to conflict with the Renderer draft.
+      await openMcpSettings(desktopApp.page);
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.client.add).click();
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.client.label).fill('MCP second writer');
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.mcp.client.create).click();
+      const allClientRows = desktopApp.page.locator('[data-automation-id^="mcp.client.row."]');
+      await expect(allClientRows).toHaveCount(2);
+      const secondClientRow = allClientRows.filter({ hasText: 'MCP second writer' });
+      const secondClientId = await secondClientRow.getAttribute('data-client-id');
+      if (!secondClientId) throw new Error('The second MCP Client omitted its public identity.');
+      await getByAutomationId(
+        desktopApp.page,
+        AutomationIdFactory.mcpClientAuto(secondClientId),
+      ).click();
+      await expect(secondClientRow).toHaveAttribute('data-execution-mode', 'auto');
+      const secondWriterConfiguration = await copyMcpClientConfiguration(
+        desktopApp,
+        testInfo,
+        secondClientId,
+      );
+      activeSensitiveTexts = [...activeSensitiveTexts, secondWriterConfiguration.token];
+      const secondWriter = await connectClient(secondWriterConfiguration, expectedProtocolVersion);
+      clients.push(secondWriter);
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.shell.workspace.rules).click();
+      await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName))
+        .toHaveValue('MCP local draft');
+      await screenshotStep('通过Settings创建第二个真实MCP写入者 / Create a second real MCP writer in Settings');
+
+      const concurrentWrite = await secondWriter.callTool({
         name: 'rules_replace_tree', arguments: { baseRevision: rulesRevision, nodes: nextRuleNodes },
       });
       rulesRevision += 1;
@@ -571,11 +606,34 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
       await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.state))
         .toHaveAttribute('data-state', 'conflict');
       await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName)).toHaveValue('MCP local draft');
+
+      // stale Apply：Renderer仍用旧revision提交，Core拒绝；草稿、revision与数据面保持不变。
+      // Stale Apply: Renderer still submits the old revision; Core rejects it and draft, revision and data plane stay unchanged.
+      const localRevisionBeforeReject = Number(await getByAutomationId(
+        desktopApp.page,
+        AUTOMATION_IDS.rules.status.revision,
+      ).getAttribute('data-revision'));
+      expect(localRevisionBeforeReject).toBe(rulesRevision - 1);
+      const draftNameBeforeReject = await getByAutomationId(
+        desktopApp.page,
+        AUTOMATION_IDS.rules.editorName,
+      ).inputValue();
+      await getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.apply).click();
+      await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.revision))
+        .toHaveAttribute('data-revision', String(localRevisionBeforeReject));
+      await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.state))
+        .toHaveAttribute('data-state', 'conflict');
+      await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName))
+        .toHaveValue(draftNameBeforeReject);
+      staleApplyRejected = true;
       const conflictPath = `${MCP_RULE_PATH}/conflict`;
       expect((await loopbackLab.requestThroughProxy(desktopApp.capturePort(), conflictPath)).statusCode).toBe(200);
       expect(loopbackLab.observation(conflictPath)?.headers[MCP_RULE_HEADER]).toBe(MCP_RULE_UPDATED_VALUE);
-      await screenshotStep('第二写入者生效时保留未Apply的本地草稿 / Retain the unapplied local draft while the second writer takes effect', {
-        highlights: [{ target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName), label: '1' }],
+      await screenshotStep('stale Apply被Core拒绝，数据面保留第二写入者的值 / Core rejects the stale Apply and the data plane keeps the second writer’s value', {
+        highlights: [
+          { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.state), label: '1' },
+          { target: getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.revision), label: '2' },
+        ],
       });
       const reload = getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName).locator('..')
         .locator(`[data-automation-id="${AUTOMATION_IDS.rules.reload}"]`);
@@ -583,12 +641,14 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
         highlights: [{ target: reload, label: '1' }],
       });
       await reload.click();
+      await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.revision))
+        .toHaveAttribute('data-revision', String(rulesRevision));
       await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.editorName)).toHaveValue(MCP_RULE_UPDATED_NAME);
       await expect(getByAutomationId(desktopApp.page, AutomationIdFactory.ruleActionField(mcpRuleId, 0, 'value')))
         .toHaveValue(MCP_RULE_UPDATED_VALUE);
       await expect(getByAutomationId(desktopApp.page, AUTOMATION_IDS.rules.status.state))
         .toHaveAttribute('data-state', 'applied');
-      await screenshotStep('显式Reload后采用Core最新版本 / Explicitly Reload the latest Core revision');
+      await screenshotStep('显式Reload后采用第二写入者的最新revision / Explicitly Reload the latest revision from the second writer');
       await expectMcpRuleEffect(desktopApp, loopbackLab, 'updated', MCP_RULE_UPDATED_VALUE);
       await screenshotStep('外部交互：产品UI自产Rule后，官方Client在Auto下读取并替换完整树；Renderer与真实origin同步更新。 / External interaction: after product UI creates a Rule, the official Client reads and replaces the full tree in Auto; Renderer and origin update.');
 
@@ -1153,6 +1213,7 @@ for (const expectedProtocolVersion of MCP_PROTOCOL_VERSIONS) {
         protocolVersion,
         oldTokenStatus,
         rulesRevision,
+        staleApplyRejected,
         breakpointToolCount,
         breakpointDataPlanesVerified,
       };

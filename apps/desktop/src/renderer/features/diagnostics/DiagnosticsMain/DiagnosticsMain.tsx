@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 
 import { Splitter } from '../../../components';
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { TraceDetail } from '../TraceDetail/TraceDetail';
 import { TraceList } from '../TraceList/TraceList';
 import styles from './DiagnosticsMain.module.css';
@@ -34,7 +35,10 @@ export function DiagnosticsMain(): React.JSX.Element {
       style={{ gridTemplateColumns: `minmax(0, 1fr) 1px ${detailWidth}px` }}
     >
       <TraceList />
-      <Splitter onPointerDown={startDrag} />
+      <Splitter
+        onPointerDown={startDrag}
+        automationId={AUTOMATION_IDS.diagnostics.splitter}
+      />
       <TraceDetail />
     </div>
   );

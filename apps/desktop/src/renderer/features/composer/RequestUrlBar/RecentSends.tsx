@@ -1,6 +1,7 @@
 import { Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
 import { IconButton } from '../../../components/IconButton/IconButton';
 import { MethodBadge } from '../../../components/MethodBadge/MethodBadge';
 import { cx } from '../../../components/share/cx';
@@ -22,7 +23,10 @@ export function RecentSends({ onReplay }: RecentSendsProps): React.JSX.Element {
   const clearHistory = useComposerStore((state) => state.clearHistory);
 
   return (
-    <div className={styles.history}>
+    <div
+      className={styles.history}
+      data-automation-id={AUTOMATION_IDS.composer.historyList}
+    >
       <div className={styles.head}>
         {t('composer.recentSends')}
         <IconButton
@@ -40,6 +44,10 @@ export function RecentSends({ onReplay }: RecentSendsProps): React.JSX.Element {
             key={entry.id}
             type="button"
             className={styles.row}
+            data-automation-id={AutomationIdFactory.composerHistoryRow(entry.id)}
+            data-ok={entry.ok}
+            data-status={entry.status}
+            data-duration-ms={entry.durationMs}
             onClick={() => onReplay(entry)}
           >
             <MethodBadge method={entry.method} />

@@ -114,7 +114,7 @@ Capture、Rules、Composer、Breakpoints、Diagnostics、Settings所有权分组
 证书生成、安装、卸载、删除、定位和查看的IPC/Agent/MCP共用`DesktopApplication`的对应方法。
 生成前检查当前CA未受信任；删除先卸载当前信任。四项状态变更完成Core同步后广播既有`tlsSettingsChanged`，
 已挂载面板重读正式状态；Tool只投影公开身份和信任字段，定位/查看仅返回`requested`，路径只由Main使用。
-证书Tool的参数与副作用边界见[证书契约](../features/settings.md#certificate-tool-acceptance)。
+证书Tool的参数与副作用边界见[证书契约](../features/settings/agent-tools.md#certificate-tool-acceptance)。
 `capture.body.export`由Main验证当前Exchange/Body归属与Core代际，再经原生Save Dialog和既有
 `body.export.start`保存完整编码字节；对话框返回后重新确认身份，路径只在Main/Core内流转。UI与Tool共用
 文件名推导和任务启动，Tool只返回安全任务摘要，不读取正文、不增加Preload API或第二套文件写入。
@@ -125,11 +125,11 @@ gRPC在途消息载荷经`window.interceptor.readGrpcBody({ exchangeId, side, of
 - 语言、主题和导出隐私的IPC/Agent/MCP共用`UiPreferencesService.setLanguage/setTheme/setExportPrivacyDefaults`。
   - Main只保存待执行请求及生命周期；Renderer的`UiPreferencesActions`常驻串行领取、应用并写入既有localStorage，再回传窄确认，Main通知其他Renderer。
   - 领取前取消使晚到请求无效，领取后完成已开始的提交；窗口关闭/Renderer退出清理所有pending。请求与响应都在Main校验，不暴露执行脚本、任意Store或存储路径接口。
-  - `setUiLanguage`、`setUiTheme`、`setExportPrivacyDefaults`及领取/确认/请求/完成事件构成窄Preload API，只有前三项设置意图注册为Tool。[偏好契约](../features/settings.md#ui-preferences-acceptance)。
+  - `setUiLanguage`、`setUiTheme`、`setExportPrivacyDefaults`及领取/确认/请求/完成事件构成窄Preload API，只有前三项设置意图注册为Tool。[偏好契约](../features/settings/README.md#ui-preferences-acceptance)。
 - AppContainer单项/批量启停的IPC/Agent/MCP共用`DesktopApplication.enableAppContainer/disableAppContainer/enableAllAppContainers/disableAllAppContainers`。
   - Main调用PlatformCapabilitiesService，所属AppContainerService执行提权helper和读回验证，完成后通知Main广播`app-container:changed`；调用方取消只在进入平台前检查。
   - `onAppContainersChanged`只提供变更订阅；Renderer重读正式列表并按请求序号拒绝迟到结果，原生授权、退出后保留exemption的语义不变。
-  - 四项Tool仅返回公开AppContainer字段，不包含helper路径、binaries、workingDirectory或完整原始exemption集合。[AppContainer契约](../features/settings.md#app-container-tool-acceptance)。
+  - 四项Tool仅返回公开AppContainer字段，不包含helper路径、binaries、workingDirectory或完整原始exemption集合。[AppContainer契约](../features/settings/agent-tools.md#app-container-tool-acceptance)。
 - `TransferService`在HAR/Archive导入成功后通知`CoreApplication`，后者通过`event-batch.captureImported`发送信号。
   - Main和Preload转发给`onCaptureImported`，Renderer常驻`useCaptureData`重新查询summaries。
   - 发送失败时Core保留待发送信号；失败、取消的文件任务不发成功通知。
@@ -184,8 +184,9 @@ macOS 使用`~/Library/Application Support/Interceptor Platform/system-proxy/jou
 
 用户Enable/Restore冲突立即返回当前operation，不留请求；Core故障由SystemProxyService
 合并必要恢复，等待已开始的操作明确结算。正常退出先询问平台是否仍忙，忙时拒绝本次Quit且不自动重放；允许退出后
-通过Action Gate拒绝新IPC、排空已接受命令，再调用平台stop恢复代理。完整参与者、当场比较表、正常启动、崩溃重启、正常退出、启动失败与
-Core 故障时序见 [../features/settings.md](../features/settings.md) §3.2。
+通过Action Gate拒绝新IPC、排空已接受命令，再调用平台stop恢复代理。平台与Core停止完成后Main调用`app.exit(0)`
+结束进程，不再触发第二次`app.quit()`，因此退出不等待Renderer页面卸载、iframe/网页加载或调试器断开。完整参与者、当场比较表、正常启动、崩溃重启、正常退出、启动失败与
+Core 故障时序见 [../features/settings/README.md](../features/settings/README.md) §3.2。
 
 macOS Main在窗口显示后先创建只依赖safeStorage、随包runtime和ADB的`AndroidDeviceService`，再调用`PlatformCapabilitiesService.prepare()`；Android状态查询、APK安装和打开Launcher可在平台helper/共享CA仍准备时使用，Android connect/disconnect仍等全局`ready`和Core启动，不提前创建业务listener。这样原生helper授权或代理恢复不会阻止用户准备手机，同时不绕过全局业务启动门禁。
 
@@ -279,7 +280,7 @@ Main 创建 frameless `BrowserWindow` 时以 `useContentSize: true` 配置 `1600
 | 16 | explicit timeout/cancel | Caller → Main → Core | `cancel` + AbortController | `PendingRpcRequest`、`CoreRpcServer` | 只有调用方显式 timeout/abort 才取消；无默认业务 timeout | Cancel 发送失败时本地 Promise 仍清理 |
 | 17 | CoreProcess heartbeat 观测 | `CoreApplication` → `CoreRuntime` | 每秒 heartbeat；首个 ready 前 30 秒启动期限 | `core-application.ts`、`core-runtime.ts` | ready 后只更新 lastHeartbeatAt | 运行期暂停 heartbeat 不改变状态或重启 |
 | 18 | CoreProcess restart | OS/CoreProcess → `CoreRuntime` | `exit(code)` → backoff → new fork/port | `core-runtime.ts` | 新 PID、新 MessagePort，后续 RPC 正常 | 旧 port 上 pending Promise 被内部 `CoreRpcClient` 拒绝 |
-| 19 | graceful shutdown | Renderer/Electron → DesktopApplication → 平台/Core | `app:quit`、`before-quit`、`shutdown`、`stopped` | `main.ts`、`lifecycle/application-shutdown.ts`、`core-runtime.ts`、`core-application.ts` | 平台空闲后由action gate拒绝新IPC并收尾已接受命令/Agent Turn；平台恢复首次original、验证并清journal，再停止服务/Core | 平台忙时拒绝本次Quit且不重放；外部修改零系统写入；恢复失败保留journal并恢复命令、Agent和窗口 |
+| 19 | graceful shutdown | Renderer/Electron → DesktopApplication → 平台/Core | `app:quit`、`before-quit`、`shutdown`、`stopped`、`app.exit(0)` | `main.ts`、`lifecycle/application-shutdown.ts`、`core-runtime.ts`、`core-application.ts` | 平台空闲后由action gate拒绝新IPC并收尾已接受命令/Agent Turn；平台恢复首次original、验证并清journal，再停止服务/Core；服务停止后直接结束进程 | 平台忙时拒绝本次Quit且不重放；外部修改零系统写入；恢复失败保留journal并恢复命令、Agent和窗口；退出不等待Renderer页面或网络加载 |
 | 20 | build/package/runtime | npm → esbuild → Forge → package/maker | 0-map Core + native helper → ASAR/extraResource → strict Fuses → sign → MSI/DMG/ZIP | root scripts、`proxy-core/build.mjs`、`forge.config.ts`、installer tests | package audit + packaged workflow smoke + platform installer smoke | 缺 tool/凭据、资源泄漏、Fuse 漂移、安装/升级失败均使门禁失败 |
 | 22 | 匿名检查并手动下载更新 | Renderer → Preload → Main → GitHub Releases | get/check/download/openDownloaded + status event | `desktop-api.ts`、`preload.ts`、`main.ts`、`updates/github-release-update-service.ts`、Settings Updates | 不带账号凭据读取固定仓库；app内changelog/进度；完整安装包原子落盘后由系统打开 | HTTP/网络错误为failed，不转登录；非stable、外域/Asset API/架构/size/hash错误拒绝；退出取消请求，失败清`.part`且当前应用不变 |
 | 23 | TLS compatibility 全局处理 | Core → Main → App shell → Core | ACK event batch → `tls:compatibility` → global list dialog → get/replace settings | `proxy/entry.ts`、`core-rpc-server.ts`、`main.ts`、`tlsCompatibilityStore.ts`、`TlsCompatibilityDialog.tsx` | 任意工作区按 host 累积去重事件；每个 host 列出精确值与逐级父域 wildcard，选中项一次 revision replace 后导航 TLS Settings，已挂载面板由 change sequence 立即刷新 | wildcard 已覆盖的 host 不重复写；保存失败保留 dialog；保存旧批次期间到达的新事件不被旧完成路径清除；异步旧 load 不覆盖新名单 |

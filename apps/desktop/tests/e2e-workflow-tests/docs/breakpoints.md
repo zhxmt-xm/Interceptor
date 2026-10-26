@@ -274,16 +274,19 @@ Continue unmodified只释放等待，不改字节；pending badge、Core、clien
 
 1. 创建profile/evidence和能记录 raw request headers/body 的HTTP origin；启动trace/Electron，等待App/Core/8888/readiness；检查Capture无paused行。
 2. 确认冷启动自动进入Recording；若当前尚未Recording，才点击recording toggle并通过readiness Enable完成接管。随后通过Rules UI先创建request Breakpoint rule，再创建priority更晚的request header rewrite，分别启用并Apply。
-3. **Header-only**：客户端发送带固定body、`Content-Type`、`Content-Length`和普通header；同一请求还命中一个
-	priority 晚于 breakpoint rule 的 header rewrite。选择动态row，先确认暂停快照已包含该 rewrite 的最终值和
-	`Rule set` / `Rule appended` marker，
+3. **Header-only**：客户端发送带固定body、`Content-Type`、`Content-Length`、普通header和可删除的 `x-e2e-remove`；同一请求还命中一个
+	priority 晚于 breakpoint rule 的 header rewrite。选择动态row，先确认暂停快照已包含该 rewrite 的最终值，且
+	`breakpoints.header.<headerId>.effect` 上的 `data-effect` 为普通 Rule 的 `set` 或 `append`，
 	保持Replacement=Off，通过动态 `breakpoints.header.<headerId>.name/value` 修改普通header与`Content-Type`，
+	用 `breakpoints.header.<headerId>.remove` 删除 `x-e2e-remove`，再用 `breakpoints.addHeader` 新增 `x-e2e-added`，
 	点击 `breakpoints.execute-edited`。
-4. 验证origin收到用户最终headers，body bytes与客户端发送值完全一致；客户端完成，Capture记录实际转发结果，
-	并只为用户显式编辑的字段显示绑定 breakpoint rule 的 replace / set / remove effect。
+4. 验证origin收到用户最终headers、`x-e2e-remove` 不再出现、`x-e2e-added` 精确存在，body bytes与客户端发送值完全一致且未编辑的`Content-Length`保持；客户端完成，Capture记录实际转发结果，
+	并只为用户显式编辑且值发生变化的字段显示绑定 breakpoint rule 的 `replace` / `set` / `remove` effect：
+	修改已有header值产生`replace`+`set`，新增header产生`set`，删除header产生`remove`；未编辑的header（例如继承的`Content-Length`）不出现effect。
 5. **Body-only**：客户端再次发送匹配请求；不编辑任何header，选择Text replacement并通过 `breakpoints.body` 输入新正文，点击Execute edited。
-6. 验证origin收到新正文；原本存在且未编辑的`Content-Length`按最终content bytes更新，原本缺失的字段不新增，
-	其余headers保持，且body-only提交不制造任何header effect。
+6. 验证origin收到新正文；原本存在且未编辑的`Content-Length`按最终content bytes更新，其余headers保持，且body-only提交在目标Exchange上不产生该 breakpoint rule 的任何 header effect（`capture.rule-effect.<breakpointRuleId>.*` 为空；普通Rule自己的set effect仍按规则存在）。
+	原本缺失`Content-Length`且非chunked的分支不要求E2E构造：本套件client在无长度时自动chunked，该分支由
+	`HttpMessageService.prepareReplacement` 的unit测试覆盖。
 7. **Header+Body**：客户端第三次发送匹配请求；选择Text replacement，同时把`Content-Encoding`改成`gzip`且不编辑原`Content-Length`，点击Execute edited。
 8. 验证origin收到`Content-Encoding: gzip`、可gunzip为用户新正文，继承的`Content-Length`更新为gzip后字节长度；Capture反映实际转发headers/body。
 9. **Body-only inherited chunked**：客户端第四次发送不含`Content-Length`且使用`Transfer-Encoding: chunked`的匹配请求；不编辑header，选择Text replacement并点击Execute edited。
@@ -299,10 +302,11 @@ Mockttp/origin，Core state=edited，Capture反映实际转发结果。
 
 ### 验收要求
 
-- 暂停快照包含priority更晚的rewrite header/marker；Forward edited后Capture保留绑定breakpoint rule的effect。
+- 暂停快照包含priority更晚的rewrite header，并以 `data-effect` 断言普通Rule的 `set`/`append`；Forward edited后Capture保留绑定breakpoint rule的effect。
+- Header-only分别覆盖 `replace`、`set`、`remove` 三种effect，且未编辑header没有effect；body-only断言目标Exchange在该 breakpoint rule 下没有 `capture.rule-effect.<breakpointRuleId>.*`（普通Rule自身的effect不受影响）。
 - 最终state、暂停marker、origin wire与Capture effect均须通过，并确认代理恢复、进程销毁和8888释放。selector、UAC、构建或fixture失败不算产品故障。
 
-HTTP framing矩阵必须逐项断言origin实际收到的headers和body；final Rule state与header effect不能替代线上字节验收。
+HTTP framing矩阵必须逐项断言origin实际收到的headers和body；final Rule state与header effect不能替代线上字节验收。无`Content-Length`且非chunked的“不新增”分支由Core unit覆盖，不要求E2E伪造framing。
 
 ### Automation Contract
 
@@ -320,7 +324,7 @@ HTTP framing矩阵必须逐项断言origin实际收到的headers和body；final 
 | Apply / enable | `rules.apply`、`rules.toggle.<ruleId>` |
 | 返回 Capture / 选择 pending exchange | `shell.workspace.capture`、`capture.request-row.<exchangeId>` |
 | 打开 manager / 切换总开关 | `capture.breakpoint-manager`、`breakpoints.toggle` |
-| 编辑 header | `breakpoints.header.<headerId>.name`、`breakpoints.header.<headerId>.value` |
+| 编辑 header | `breakpoints.header.<headerId>.name`、`breakpoints.header.<headerId>.value`、`breakpoints.header.<headerId>.remove` |
 | 暂停/落库 effect | `breakpoints.header.<headerId>.effect`、`capture.rule-effect.<ruleId>.<effect>.<headerName>` |
 | Replacement 模式 | `breakpoints.replacement.off`、`breakpoints.replacement.text`、`breakpoints.replacement.file` |
 | 编辑/提交正文 | `breakpoints.body`、`breakpoints.execute-edited` |

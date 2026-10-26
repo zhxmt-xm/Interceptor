@@ -465,7 +465,8 @@ class DesktopApplication {
       },
       complete: () => {
         this.shutdownComplete = true;
-        app.quit();
+        // 服务、代理和存储已收尾：直接结束进程，不等待 Renderer 页面卸载或网络请求。
+        app.exit(0);
       },
     });
   }

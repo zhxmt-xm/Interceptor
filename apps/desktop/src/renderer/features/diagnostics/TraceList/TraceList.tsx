@@ -2,6 +2,7 @@ import { Download } from 'lucide-react';
 import { useMemo } from 'react';
 
 import { Count, cx, FilterChip, IconButton } from '../../../components';
+import { AUTOMATION_IDS, AutomationIdFactory } from '../../../../shared/automation-ids';
 import { useTranslation } from 'react-i18next';
 import { aggregateTraces } from '../utils';
 import { useDiagnostics } from '../data/diagnosticsContext';
@@ -40,7 +41,13 @@ export function TraceList(): React.JSX.Element {
   );
 
   return (
-    <div className={styles.list}>
+    <div
+      className={styles.list}
+      data-automation-id={AUTOMATION_IDS.diagnostics.list}
+      data-record-count={records.length}
+      data-has-more={hasMore}
+      data-loading-more={loadingMore}
+    >
       <div className={styles.toolbar}>
         <Count>
           {t('diagnostics.records', {
@@ -48,13 +55,22 @@ export function TraceList(): React.JSX.Element {
           })}
         </Count>
         <span className={styles.spacer} />
-        <FilterChip onClick={cycleProcess}>
+        <FilterChip
+          onClick={cycleProcess}
+          automationId={AUTOMATION_IDS.diagnostics.processFilter}
+        >
           {processFilter ? `${t('diagnostics.process')}: ${processFilter}` : t('diagnostics.process')}
         </FilterChip>
-        <FilterChip onClick={cycleLevel}>
+        <FilterChip
+          onClick={cycleLevel}
+          automationId={AUTOMATION_IDS.diagnostics.levelFilter}
+        >
           {levelFilter ? `${t('diagnostics.level')}: ${levelFilter}` : t('diagnostics.level')}
         </FilterChip>
-        <FilterChip onClick={cycleOutcome}>
+        <FilterChip
+          onClick={cycleOutcome}
+          automationId={AUTOMATION_IDS.diagnostics.outcomeFilter}
+        >
           {outcomeFilter ? `${t('diagnostics.outcome')}: ${outcomeFilter}` : t('diagnostics.outcome')}
         </FilterChip>
         <IconButton
@@ -68,6 +84,7 @@ export function TraceList(): React.JSX.Element {
           className={exportError ? styles.exportError : undefined}
           disabled={exporting}
           onClick={exportJsonl}
+          automationId={AUTOMATION_IDS.diagnostics.export}
         />
       </div>
       <div className={styles.head}>
@@ -87,6 +104,12 @@ export function TraceList(): React.JSX.Element {
               type="button"
               key={row.key}
               className={cx(styles.row, row.key === selectedKey && styles.selected)}
+              data-automation-id={AutomationIdFactory.diagnosticRow(row.key)}
+              data-seq={row.seq}
+              data-process={row.process}
+              data-command={row.command}
+              data-level={row.level}
+              data-outcome={row.outcome}
               onClick={() => setSelectedKey(row.key)}
             >
               <span className={styles.time}>{row.time}</span>
@@ -111,6 +134,7 @@ export function TraceList(): React.JSX.Element {
             className={styles.loadMore}
             disabled={loadingMore}
             onClick={loadMore}
+            data-automation-id={AUTOMATION_IDS.diagnostics.loadEarlier}
           >
             {loadingMore ? t('diagnostics.loading') : t('diagnostics.loadEarlier')}
           </button>
