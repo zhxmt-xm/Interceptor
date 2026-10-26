@@ -8,6 +8,17 @@
   "releaseAssetSha256": "129e3c3105ebcaf3464d97c47d207912fd13defa26fe719851db92e0f2532c48",
   "platform": "macOS x64",
   "appLanguage": "zh-CN",
+  "englishHero": {
+    "image": "readme-capture-en.png",
+    "imageSha256": "5056859d3f7910cfdb77809cb8fe31cd45d44d551f7f607d604e217a92c4cdb6",
+    "source": "guidebook/media/v0.1.1-alpha.1/capture-recording-english/step-006.png",
+    "sourceSha256": "5056859d3f7910cfdb77809cb8fe31cd45d44d551f7f607d604e217a92c4cdb6",
+    "platform": "macOS x64",
+    "appLanguage": "en",
+    "workflow": "capture/recording-pause-resume.workflow.ts",
+    "test": "capture.recording.pause-resume fixes recording at request and WebSocket upgrade start",
+    "manifestSha256": "0c5a8c9f672dcb11196592632ee8e9e9b99d52c41ee30f4a7ac6be3ba5356cb2"
+  },
   "imageWidth": 3200,
   "imageHeight": 1800,
   "capture": "Actual native App windows with owned loopback traffic under /showcase/. Themes selected through product UI. Images copied byte-for-byte; no recoloring, cropping or compositing.",
