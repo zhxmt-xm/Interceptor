@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
@@ -21,6 +21,10 @@ const features = readdirSync(featureRoot)
   .filter((file) => file.endsWith('.workflow.ts'))
   .map((file) => file.replace(/\.workflow\.ts$/, ''))
   .sort();
+const featureConfigFile = path.join(directory, 'features.json');
+const featureConfig = existsSync(featureConfigFile)
+  ? JSON.parse(readFileSync(featureConfigFile, 'utf8'))
+  : {};
 const feature = argument('feature');
 if (!feature) fail(`Missing --feature. Available: ${features.join(', ')}`);
 if (!features.includes(feature)) fail(`Unknown feature: ${feature}. Available: ${features.join(', ')}`);
@@ -72,7 +76,10 @@ if (playwright.status !== 0) {
   process.exit(playwright.status ?? 1);
 }
 
-const assemble = spawnSync(process.execPath, [path.join(directory, 'assemble.mjs'), '--run', output], {
+const assembleArgs = [path.join(directory, 'assemble.mjs'), '--run', output];
+const readmeAsset = featureConfig[feature]?.readmeAsset;
+if (readmeAsset) assembleArgs.push('--asset', readmeAsset);
+const assemble = spawnSync(process.execPath, assembleArgs, {
   cwd: desktop,
   stdio: 'inherit',
 });
@@ -81,4 +88,5 @@ if (assemble.status !== 0) process.exit(assemble.status ?? 1);
 
 console.log(`[demo] video: ${path.join(output, 'video.mp4')}`);
 console.log(`[demo] subtitles: ${path.join(output, 'captions.ass')}`);
+if (readmeAsset) console.log(`[demo] README asset: ${path.join(desktop, '..', '..', readmeAsset)}`);
 console.log(`[demo] output: ${output}`);

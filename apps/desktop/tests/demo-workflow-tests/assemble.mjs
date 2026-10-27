@@ -110,6 +110,32 @@ if (encoded.error) throw encoded.error;
 if (encoded.status !== 0) throw new Error(`ffmpeg failed with status ${encoded.status}`);
 if (!existsSync(video) || statSync(video).size === 0) throw new Error('ffmpeg did not produce video.mp4');
 
+const readme = path.join(run, 'readme.png');
+const apng = spawnSync(ffmpegExecutable, [
+  '-y',
+  '-i', 'video.mp4',
+  '-vf', 'fps=10,scale=1200:-2:flags=lanczos,format=rgba',
+  '-c:v', 'apng',
+  '-plays', '0',
+  '-f', 'apng',
+  'readme.png',
+], { cwd: run, stdio: 'inherit' });
+if (apng.error) throw apng.error;
+if (apng.status !== 0) throw new Error(`APNG encoding failed with status ${apng.status}`);
+if (!existsSync(readme) || statSync(readme).size === 0) throw new Error('ffmpeg did not produce readme.png');
+
+const repositoryRoot = path.resolve(import.meta.dirname, '../../../..');
+const assetIndex = args.indexOf('--asset');
+const asset = assetIndex >= 0 ? args[assetIndex + 1] : undefined;
+let readmeAsset;
+if (asset) {
+  const target = path.resolve(repositoryRoot, asset);
+  mkdirSync(path.dirname(target), { recursive: true });
+  copyFileSync(readme, target);
+  readmeAsset = path.relative(repositoryRoot, target).split(path.sep).join('/');
+  console.log(`[demo] README asset ${target}`);
+}
+
 writeFileSync(path.join(run, 'manifest.json'), `${JSON.stringify({
   feature: process.env.INTERCEPTOR_DEMO_FEATURE ?? path.basename(run),
   locale: process.env.INTERCEPTOR_E2E_LOCALE ?? null,
@@ -118,8 +144,11 @@ writeFileSync(path.join(run, 'manifest.json'), `${JSON.stringify({
   fps,
   frames: count,
   video: 'video.mp4',
+  readme: 'readme.png',
+  readmeAsset: readmeAsset ?? null,
   subtitles: ['captions.ass', 'captions-en.srt', 'captions-zh.srt'],
   captions,
 }, null, 2)}\n`, 'utf8');
 
 console.log(`[demo] encoded ${video} (${statSync(video).size} bytes)`);
+console.log(`[demo] APNG ${readme} (${statSync(readme).size} bytes)`);
