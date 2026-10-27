@@ -86,11 +86,11 @@
   },
   "englishDemo": {
     "image": "readme-breakpoints-demo.png",
-    "sha256": "5acd3a175a2c506f8a526a648545ae7ec67b93911d10c13c7631d3f1a412ad2c",
+    "sha256": "f11e278236797bf061d4fff11dacdb3908b070d3485930db737517a2180b79a1",
     "width": 1200,
     "height": 676,
     "fps": 10,
-    "durationMs": 8480,
+    "durationMs": 8373,
     "source": "apps/desktop/tests/demo-workflow-tests/workflows/breakpoints.workflow.ts",
     "captions": [
       {

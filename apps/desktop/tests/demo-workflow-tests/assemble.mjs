@@ -48,53 +48,56 @@ function assText(text) {
   return text.replace(/\\/g, '\\\\').replace(/[{}]/g, '').replace(/\r?\n/g, '\\N');
 }
 
-const fontName = process.platform === 'win32'
+const englishFont = process.platform === 'win32'
+  ? 'Segoe UI Semibold'
+  : process.platform === 'darwin' ? 'Helvetica Neue' : 'DejaVu Sans';
+const chineseFont = process.platform === 'win32'
   ? 'Microsoft YaHei'
   : process.platform === 'darwin' ? 'PingFang SC' : 'Noto Sans CJK SC';
 
 const ass = [
   '[Script Info]',
   'ScriptType: v4.00+',
-  'PlayResX: 1600',
-  'PlayResY: 900',
+  'PlayResX: 1200',
+  'PlayResY: 676',
   'WrapStyle: 0',
   'ScaledBorderAndShadow: yes',
   '',
   '[V4+ Styles]',
   'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
-  `Style: Bilingual,${fontName},34,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,0,2,80,80,36,1`,
+  `Style: EN,${englishFont},30,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,60,60,58,1`,
+  `Style: ZH,${chineseFont},24,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,60,60,26,1`,
   '',
   '[Events]',
   'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
-  ...captions.map((caption) => `Dialogue: 0,${assTime(caption.start)},${assTime(caption.end)},Bilingual,,0,0,0,,${assText(caption.en)}\\N${assText(caption.zh)}`),
+  ...captions.flatMap((caption) => [
+    `Dialogue: 0,${assTime(caption.start)},${assTime(caption.end)},EN,,0,0,0,,${assText(caption.en)}`,
+    `Dialogue: 0,${assTime(caption.start)},${assTime(caption.end)},ZH,,0,0,0,,${assText(caption.zh)}`,
+  ]),
   '',
 ].join('\n');
 writeFileSync(path.join(run, 'captions.ass'), ass, 'utf8');
 
 const ffmpegExecutable = process.env.FFMPEG_PATH || ffmpeg.path;
-const temporaryVideo = path.join(run, 'video.tmp.mp4');
+const captioned = path.join(run, 'captioned');
+rmSync(captioned, { recursive: true, force: true });
+mkdirSync(captioned, { recursive: true });
 const encoded = spawnSync(ffmpegExecutable, [
   '-y',
   '-framerate', String(fps),
   '-i', path.join('sequence', 'frame-%05d.jpg'),
-  '-vf', 'ass=captions.ass',
-  '-c:v', 'libx264',
-  '-pix_fmt', 'yuv420p',
-  '-crf', '20',
-  '-preset', 'medium',
-  'video.tmp.mp4',
+  '-vf', 'fps=10,scale=1200:-2:flags=lanczos,ass=captions.ass',
+  '-c:v', 'png',
+  path.join('captioned', 'frame-%05d.png'),
 ], { cwd: run, stdio: 'inherit' });
 if (encoded.error) throw encoded.error;
-if (encoded.status !== 0) throw new Error(`ffmpeg failed with status ${encoded.status}`);
-if (!existsSync(temporaryVideo) || statSync(temporaryVideo).size === 0) {
-  throw new Error('ffmpeg did not produce the temporary video.');
-}
+if (encoded.status !== 0) throw new Error(`caption rendering failed with status ${encoded.status}`);
 
 const readme = path.join(run, 'readme.png');
 const apng = spawnSync(ffmpegExecutable, [
   '-y',
-  '-i', 'video.tmp.mp4',
-  '-vf', 'fps=10,scale=1200:-2:flags=lanczos,format=rgba',
+  '-framerate', '10',
+  '-i', path.join('captioned', 'frame-%05d.png'),
   '-c:v', 'apng',
   '-plays', '0',
   '-f', 'apng',
@@ -103,7 +106,7 @@ const apng = spawnSync(ffmpegExecutable, [
 if (apng.error) throw apng.error;
 if (apng.status !== 0) throw new Error(`APNG encoding failed with status ${apng.status}`);
 if (!existsSync(readme) || statSync(readme).size === 0) throw new Error('ffmpeg did not produce readme.png');
-rmSync(temporaryVideo, { force: true });
+rmSync(captioned, { recursive: true, force: true });
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../../../..');
 const assetIndex = args.indexOf('--asset');
