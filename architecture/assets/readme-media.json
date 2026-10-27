@@ -84,32 +84,61 @@
       "manifestSha256": "5d215a762cf13a5dd7f6982444964e36085bea0d11b500a07b3577d928b44282"
     }
   },
-  "englishDemo": {
-    "image": "readme-breakpoints-demo.png",
-    "sha256": "f11e278236797bf061d4fff11dacdb3908b070d3485930db737517a2180b79a1",
-    "width": 1200,
-    "height": 676,
-    "fps": 10,
-    "durationMs": 8373,
-    "source": "apps/desktop/tests/demo-workflow-tests/workflows/breakpoints.workflow.ts",
-    "captions": [
-      {
-        "en": "Pause a request before it reaches the server.",
-        "zh": "在请求到达服务端前暂停它。"
-      },
-      {
-        "en": "Edit the JSON body in place.",
-        "zh": "直接修改 JSON 正文。"
-      },
-      {
-        "en": "Forward it — the server stays unchanged.",
-        "zh": "放行；服务端无需改动。"
-      },
-      {
-        "en": "The server receives the edited request.",
-        "zh": "服务端收到修改后的请求。"
-      }
-    ]
+  "englishDemos": {
+    "capture": {
+      "image": "readme-capture-demo.png",
+      "sha256": "ce20fca63013473a4649e58eac2c773221ae4d216520c3acc16245c8a8940853",
+      "width": 1200,
+      "height": 676,
+      "fps": 10,
+      "durationMs": 5965,
+      "source": "apps/desktop/tests/demo-workflow-tests/workflows/capture.workflow.ts"
+    },
+    "rules": {
+      "image": "readme-rules-demo.png",
+      "sha256": "203fbd0d26c45453ae72949f4ba98f65de004fcd2aab5fcea9432e114c948e48",
+      "width": 1200,
+      "height": 676,
+      "fps": 10,
+      "durationMs": 9732,
+      "source": "apps/desktop/tests/demo-workflow-tests/workflows/rules.workflow.ts"
+    },
+    "breakpoints": {
+      "image": "readme-breakpoints-demo.png",
+      "sha256": "08039c284ee6bc328f372f5d68c4dc340ee6b382a4eab8b819eaf7b6fee3bb0e",
+      "width": 1200,
+      "height": 676,
+      "fps": 10,
+      "durationMs": 12941,
+      "source": "apps/desktop/tests/demo-workflow-tests/workflows/breakpoints.workflow.ts"
+    },
+    "composer": {
+      "image": "readme-composer-demo.png",
+      "sha256": "090abf2cb96788f68af4fd3886cef475701ed69a8c29c08ecb33b6267c379e94",
+      "width": 1200,
+      "height": 676,
+      "fps": 10,
+      "durationMs": 5350,
+      "source": "apps/desktop/tests/demo-workflow-tests/workflows/composer.workflow.ts"
+    },
+    "agent": {
+      "image": "readme-agent-demo.png",
+      "sha256": "fda27aa0ca5bd7048d07dc1bdd9484b8e2d5d8b9c363d872c5da5d130378caf4",
+      "width": 1200,
+      "height": 676,
+      "fps": 10,
+      "durationMs": 6023,
+      "source": "apps/desktop/tests/demo-workflow-tests/workflows/agent.workflow.ts"
+    },
+    "mcp": {
+      "image": "readme-mcp-demo.png",
+      "sha256": "b8e58909eb2b12c85692a78448c2747d81665347b58aa448f1d09621e4255f05",
+      "width": 1200,
+      "height": 676,
+      "fps": 10,
+      "durationMs": 7782,
+      "source": "apps/desktop/tests/demo-workflow-tests/workflows/mcp.workflow.ts"
+    }
   },
   "imageWidth": 3200,
   "imageHeight": 1800,
