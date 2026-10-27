@@ -89,6 +89,19 @@ $env:INTERCEPTOR_E2E_LOCALE = 'en-US'
 npm run test:e2e:workflow --workspace @interceptor/desktop -- workflows/settings/updates-check.workflow.ts --screenshots
 ```
 
+更新类workflow的真实下载与通知需要被测App低于真实已发布版本，同时代码保持当前源码。用`INTERCEPTOR_BUILD_IDENTIFIER`隔离输出、用`INTERCEPTOR_BUILD_VERSION`注入更低版本（例如`0.1.1-alpha.0`）；源码`package.json`保持当前版本，构建仍走Android签名APK门禁：
+
+```powershell
+$env:INTERCEPTOR_BUILD_IDENTIFIER = 'updates-previous-alpha'
+$env:INTERCEPTOR_BUILD_VERSION = '0.1.1-alpha.0'
+npm run package
+$env:INTERCEPTOR_E2E_APP_PATH = 'C:\code\Interceptor\apps\desktop\out\updates-previous-alpha\Interceptor-win32-x64\Interceptor.exe'
+npm run test:e2e:workflow --workspace @interceptor/desktop -- workflows/settings/updates-download-open.workflow.ts workflows/settings/update-notification.workflow.ts --screenshots
+Remove-Item Env:INTERCEPTOR_BUILD_VERSION, Env:INTERCEPTOR_BUILD_IDENTIFIER
+```
+
+被测App是本地release-grade构建而不是已发布产物；匿名检查、下载和安装包仍来自真实公开Release。非packaged或真实检查不是`available`时，workflow记录前提并跳过，不把检查失败算作下载通过。若宿主直连GitHub不可用，可只给本次E2E进程设置`NODE_USE_ENV_PROXY=1`和`HTTPS_PROXY`，让被测App的Main经宿主代理访问固定Release来源；不改产品代码，也不改变匿名请求断言。
+
 每条workflow仍独立profile/trace，系统授权由本机用户处理；常驻helper跨workflow保留，Main/Core/Worker、前台helper子进程和8888仍必须退出恢复。macOS失败清理先确认完整代理已恢复，否则保留App、listener和profile，不再让测试侧重复弹旧代理授权后强杀。证书admin trust由同一已部署helper的前台固定入口执行，仍有独立系统权限；不以Main的security写命令代替。组件卸载不等于业务恢复，整轮结束按已确认的保留/卸载范围处理。
 
 macOS业务窗口由driver按项目配置准备：常规场景保持真实1600x900，只有body-fill滚轮边界场景使用1600x800。Windows项目默认尺寸不变，body-fill保留默认尺寸布局检查后，仅在滚动阶段调整本轮真实窗口高度到800px。macOS admin trust前后检查统一在宿主guard；TLS/gRPC/H2保持相同业务步骤。GoTo使用唯一原生建议项的真实双击，Save/Open及取消真实点击原生按钮，不改输入法、语言或dialog返回值。

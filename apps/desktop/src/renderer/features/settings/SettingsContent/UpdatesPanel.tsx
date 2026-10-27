@@ -80,7 +80,14 @@ export function UpdatesPanel(): React.JSX.Element {
               ? t('settings.readingMetadata')
               : t('settings.signedInstaller')}
           >
-            <div className={styles.updateProgress}>
+            <div
+              className={styles.updateProgress}
+              data-automation-id={AUTOMATION_IDS.settings.updates.progress}
+              data-state={status.state}
+              data-progress={status.progress ?? undefined}
+              data-downloaded-bytes={status.downloadedBytes ?? undefined}
+              data-total-bytes={status.totalBytes ?? undefined}
+            >
               <span
                 className={styles.updateProgressValue}
                 style={{ width: `${Math.max(4, (status.progress ?? 0.15) * 100)}%` }}
