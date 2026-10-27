@@ -17,7 +17,7 @@ npm run test:demo:workflow --workspace @interceptor/desktop -- --feature breakpo
 
 默认使用 `apps/desktop/out/Interceptor-<platform>-<arch>` 的 packaged App；也可用 `--app` 或 `INTERCEPTOR_E2E_APP_PATH` 指定。
 
-当前 feature：`capture`、`breakpoints`。新增 feature 时在 `workflows/` 放入同名 `*.workflow.ts`，`npm start` 会自动列出。
+当前 feature：`capture`、`rules`、`breakpoints`、`composer`、`agent`、`mcp`。新增 feature 时在 `workflows/` 放入同名 `*.workflow.ts`，`npm start` 会自动列出。
 
 ## 输出
 

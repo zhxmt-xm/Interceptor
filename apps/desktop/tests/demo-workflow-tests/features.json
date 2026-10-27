@@ -2,7 +2,19 @@
   "capture": {
     "readmeAsset": "architecture/assets/readme-capture-demo.png"
   },
+  "rules": {
+    "readmeAsset": "architecture/assets/readme-rules-demo.png"
+  },
   "breakpoints": {
     "readmeAsset": "architecture/assets/readme-breakpoints-demo.png"
+  },
+  "composer": {
+    "readmeAsset": "architecture/assets/readme-composer-demo.png"
+  },
+  "agent": {
+    "readmeAsset": "architecture/assets/readme-agent-demo.png"
+  },
+  "mcp": {
+    "readmeAsset": "architecture/assets/readme-mcp-demo.png"
   }
 }

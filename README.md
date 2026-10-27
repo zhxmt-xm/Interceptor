@@ -22,9 +22,9 @@ See what your app sends. Change what it receives.</p>
 
 [简体中文](README.zh-CN.md) | [Website](https://www.interceptor.cn/) | [Quick Start](#quick-start) | [Features](#features) | [Illustrated Guide](https://www.interceptor.cn/en/guide) | [Feedback](https://github.com/zhxmt-xm/Interceptor/issues)
 
-<img src="architecture/assets/readme-capture-en.png" alt="Capture showing HTTP and WebSocket traffic with the selected WebSocket connection and its messages" width="1600">
+<img src="architecture/assets/readme-capture-demo.png" alt="Capture filtering HTTP traffic and inspecting a JSON response" width="1200">
 
-*Screenshots from v0.1.1-alpha.1 on macOS. [Source and limits](architecture/assets/readme-media.json).*
+*Screenshots from v0.1.1-alpha.1 on macOS; animated demos recorded on Windows. [Source and limits](architecture/assets/readme-media.json).*
 
 Interceptor is a desktop HTTP(S) debugging proxy for web/API developers and QA engineers on **Windows and macOS**. Inspect HTTP/1.1, HTTP/2, WebSocket and gRPC traffic, test a different response without changing the server, and replay requests from one workspace. Agent and MCP add optional AI assistance; ordinary debugging needs no model account.
 
@@ -89,7 +89,9 @@ The opening screenshot shows a selected WebSocket connection and its messages. M
 - Mock a response, map to a local file or another server, block traffic, or add a delay.
 - Organize rules in folders and inspect their hits and recorded effects.
 
-<img src="architecture/assets/readme-rules-en.png" alt="Rules matching a local host and path and rewriting a request header to x-e2e-action" width="1600">
+<img src="architecture/assets/readme-rules-demo.png" alt="Create a Rule, apply a 418 status rewrite, and see the client response" width="1200">
+
+*Animated demo with Chinese and English subtitles.*
 
 [Rules walkthrough: matching, rewriting, mocking and mapping](https://www.interceptor.cn/en/guide/rules)
 
@@ -99,7 +101,7 @@ The opening screenshot shows a selected WebSocket connection and its messages. M
 - Continue unchanged, forward edited content or drop it; manage multiple paused items from the queue.
 - HTTP pauses occur at the header stage, so the original body may not yet be available.
 
-<img src="architecture/assets/readme-breakpoints-demo.png" alt="Pause a request, edit the JSON body, forward it, and see the server receive the edited request" width="1200">
+<img src="architecture/assets/readme-breakpoints-demo.png?v=2" alt="Create a Rule breakpoint, edit the request body and forward it" width="1200">
 
 *Animated demo with Chinese and English subtitles.*
 
@@ -111,7 +113,9 @@ The opening screenshot shows a selected WebSocket connection and its messages. M
 - Edit query parameters, headers, authentication and bodies; inspect the response and timing.
 - Save reusable requests in collections, use request history, or probe a TLS connection.
 
-<img src="architecture/assets/readme-composer-en.png" alt="Composer sending a POST with a JSON body and showing a 200 JSON response" width="1600">
+<img src="architecture/assets/readme-composer-demo.png" alt="Compose and send a POST request with a JSON body and read the 200 response" width="1200">
+
+*Animated demo with Chinese and English subtitles.*
 
 Composer sends directly: its requests do not enter Capture or run through Rules. [Composer and collection walkthrough](https://www.interceptor.cn/en/guide/composer).
 
@@ -121,9 +125,9 @@ Composer sends directly: its requests do not enter Capture or run through Rules.
 - Discuss traffic and let the Agent use only the Tools you enable; review changes in `Ask` mode.
 - Keep encrypted local conversation history, switch chats, stop a turn or retry.
 
-<img src="architecture/assets/readme-agent-en.png" alt="The built-in Agent beside Settings, answering a question with the configured local model" width="1600">
+<img src="architecture/assets/readme-agent-demo.png" alt="Configure a local OpenAI-compatible model and ask the Agent about captured traffic" width="1200">
 
-*Local demonstration model, not a commercial model test.*
+*Animated demo with Chinese and English subtitles; local demonstration model, not a commercial model test.*
 
 [Agent setup and conversation walkthrough](https://www.interceptor.cn/en/guide/agent)
 
@@ -133,9 +137,9 @@ Composer sends directly: its requests do not enter Capture or run through Rules.
 - Copy the connection configuration to a host supporting the required Streamable HTTP protocol.
 - Control MCP Tools independently of the built-in Agent; rotate or revoke client access in Settings.
 
-<img src="architecture/assets/readme-mcp-en.png" alt="Settings showing a running loopback MCP server, endpoint, clients and separate Agent and MCP Tool switches" width="1600">
+<img src="architecture/assets/readme-mcp-demo.png" alt="Enable the loopback MCP server, create a client and copy its configuration" width="1200">
 
-*Local loopback configuration, not an external-host compatibility test.*
+*Animated demo with Chinese and English subtitles; local loopback configuration, not an external-host compatibility test.*
 
 [MCP setup and compatibility guide](https://www.interceptor.cn/en/guide/mcp) · [Tool reference](https://www.interceptor.cn/en/guide/tool-reference)
 

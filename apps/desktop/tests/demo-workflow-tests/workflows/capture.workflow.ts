@@ -63,14 +63,24 @@ test('demo.capture selects real traffic and reads the response', async ({
     en: 'Capture real HTTP traffic without changing the client.',
     zh: '无需改客户端，直接捕获真实 HTTP 流量。',
   });
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(1000);
   for (const entry of REQUESTS) {
     await requestThroughProxy(desktopApp.capturePort(), httpTrafficRunner.url(entry.path));
   }
   await expect.poll(
     () => getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow).count(),
   ).toBe(REQUESTS.length);
-  await page.waitForTimeout(800);
+  await page.waitForTimeout(1000);
+
+  demo.caption({
+    en: 'Filter the stream by path or host.',
+    zh: '按 Path 或 Host 过滤流量。',
+  });
+  await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill('/orders');
+  await expect.poll(
+    () => getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow).count(),
+  ).toBe(1);
+  await page.waitForTimeout(1200);
 
   demo.caption({
     en: 'Select a request to inspect headers, body and timing.',
@@ -84,6 +94,6 @@ test('demo.capture selects real traffic and reads the response', async ({
   await getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyMode.default).click();
   await expect(getByAutomationId(page, AUTOMATION_IDS.capture.inspector.bodyPane))
     .toContainText('ready', { timeout: 5000 });
-  await page.waitForTimeout(1800);
+  await page.waitForTimeout(2000);
   await demo.stop();
 });
