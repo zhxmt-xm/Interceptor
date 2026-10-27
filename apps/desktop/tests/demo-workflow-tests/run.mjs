@@ -42,7 +42,12 @@ if (!existsSync(app)) {
 }
 if (!process.env.npm_execpath) fail('Run this entry through npm run test:demo:workflow.');
 
-const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+const now = new Date();
+const pad = (value) => String(value).padStart(2, '0');
+const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+  + `T${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+const startedAt = now.toISOString();
+const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const output = path.resolve(argument('output', path.join(desktop, 'test-results/demo-readme', `${stamp}-${feature}`)));
 const capture = path.join(output, 'capture');
 const playwrightOutput = path.join(output, 'playwright');
@@ -68,6 +73,8 @@ const playwright = spawnSync(process.execPath, [
     INTERCEPTOR_E2E_LOCALE: locale,
     INTERCEPTOR_DEMO_FEATURE: feature,
     INTERCEPTOR_DEMO_OUTPUT: capture,
+    INTERCEPTOR_DEMO_STARTED_AT: startedAt,
+    INTERCEPTOR_DEMO_TIMEZONE: timeZone,
   },
 });
 if (playwright.error) throw playwright.error;
@@ -87,6 +94,8 @@ const assemble = spawnSync(process.execPath, assembleArgs, {
     INTERCEPTOR_DEMO_FEATURE: feature,
     INTERCEPTOR_E2E_LOCALE: locale,
     INTERCEPTOR_E2E_APP_PATH: app,
+    INTERCEPTOR_DEMO_STARTED_AT: startedAt,
+    INTERCEPTOR_DEMO_TIMEZONE: timeZone,
   },
 });
 if (assemble.error) throw assemble.error;

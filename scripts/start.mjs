@@ -3,7 +3,7 @@ import { glob, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { parseArgs, styleText } from 'node:util';
 
-import { confirm, input, select } from '@inquirer/prompts';
+import { checkbox, confirm, input, select } from '@inquirer/prompts';
 import stringWidth from 'string-width';
 import wrapAnsi from 'wrap-ansi';
 
@@ -242,16 +242,32 @@ async function chooseDemo(workspaces) {
     console.log('没有可用的 demo workflow。');
     return;
   }
-  const feature = await choose('Demo：选择 feature', features.map((name) => ({ name, value: name })));
-  if (feature === back) return;
+  const selected = await checkbox({
+    message: 'Demo：选择 feature（空格多选，Enter 执行；空选返回）',
+    pageSize: 12,
+    choices: [
+      ...features.map((name) => ({ name, value: name })),
+      { name: '返回上一级', value: back },
+    ],
+    theme: {
+      icon: {
+        checked: styleText('green', '[x]'),
+        unchecked: '[ ]',
+        cursor: '>',
+        disabledChecked: '[x]',
+        disabledUnchecked: '[-]',
+      },
+    },
+  });
+  if (selected.length === 0 || selected.includes(back)) return;
   return {
-    title: `README Demo · ${feature}`,
-    commands: [npmCommand('test:demo:workflow', desktop, ['--feature', feature])],
+    title: `README Demo · ${selected.join(', ')}`,
+    commands: selected.map((feature) => npmCommand('test:demo:workflow', desktop, ['--feature', feature])),
     notices: [
-      '使用packaged App录制单个feature，生成README用APNG和中英字幕；不进入E2E全量套件。',
+      '按选择顺序逐个运行；每个 feature 使用 packaged App 生成README用APNG和中英字幕。',
       '默认使用apps/desktop/out/Interceptor-<platform>-<arch>；可用INTERCEPTOR_E2E_APP_PATH或--app指定。',
-      '输出到apps/desktop/test-results/demo-readme/<run>/；APNG会覆盖features.json登记的architecture/assets文件。',
-      '录制会临时接管系统代理，结束后核对恢复。',
+      '输出到apps/desktop/test-results/demo-readme/<本地时间>-<feature>/；APNG会覆盖features.json登记的architecture/assets文件。',
+      '每段录制会临时接管系统代理，结束后核对恢复；一次只启动一个App。',
       '首次使用或App产物变化后先执行npm run package。',
       ...appNotices,
     ],
@@ -264,7 +280,7 @@ async function chooseChecks(workspaces) {
       { name: 'Typecheck 类型检查', value: 'typecheck' },
       { name: 'Unit / Integration 代码测试', value: 'vitest' },
       { name: 'E2E 用户流程测试', value: 'e2e', disabled: platformRestriction },
-      { name: 'README Demo（单 feature，中英字幕）', value: 'demo', disabled: platformRestriction },
+      { name: 'README Demo（可多选 feature，中英字幕）', value: 'demo', disabled: platformRestriction },
       { name: 'Parity 设计还原检查', value: 'parity' },
       { name: 'Packaged smoke 打包后验收', value: 'smoke', disabled: platformRestriction },
       { name: 'Artifact audit 打包资源检查', value: 'audit', disabled: platformRestriction },
@@ -380,7 +396,7 @@ async function main() {
     console.log('Development / Test / Build / Release → 目标或必要范围 → 确认执行');
     console.log('Desktop / Design 选择后直接启动；构建准备自动完成，不询问缓存模式。');
     console.log('Test → E2E可选普通验收、逐步截图或教程截图更新并发布Homepage；最后一项按固定清单验收后自动commit/push。');
-    console.log('Test → README Demo可选单个feature，生成APNG和中英字幕并覆盖architecture/assets；不并入E2E全量套件。');
+    console.log('Test → README Demo可多选feature，按顺序生成APNG和中英字幕并覆盖architecture/assets；空选或返回上一级即取消，不并入E2E全量套件。');
     console.log('教程发布重拍全部自动来源；独立真实Host图片按审核摘要校验后保留，不用SDK冒充重拍。');
     console.log('教程发布直接使用gh调用GitHub API；不需要本地Homepage仓库，不clone或推送App分支。');
     console.log('执行摘要分列显示，确认默认 Yes，仍需按 Enter；输入 n 取消。');

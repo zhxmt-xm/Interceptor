@@ -51,7 +51,7 @@ function createDemoRecorder(page: Page, directory: string): DemoRecorder {
       session.on('Page.screencastFrame', (event) => {
         if (stopped) return;
         const index = String(frames.length).padStart(5, '0');
-        const file = path.join(directory, `frame-${index}.jpg`);
+        const file = path.join(directory, `frame-${index}.png`);
         frames.push({ at: Date.now() - startedAt, file });
         writes.push(writeFile(file, Buffer.from(event.data, 'base64'))
           .catch((error: unknown) => { writeErrors.push(error); }));
@@ -59,8 +59,7 @@ function createDemoRecorder(page: Page, directory: string): DemoRecorder {
           .catch(() => undefined);
       });
       await session.send('Page.startScreencast', {
-        format: 'jpeg',
-        quality: 85,
+        format: 'png',
         maxWidth: 1600,
         maxHeight: 900,
         everyNthFrame: 1,
