@@ -84,6 +84,33 @@
       "manifestSha256": "5d215a762cf13a5dd7f6982444964e36085bea0d11b500a07b3577d928b44282"
     }
   },
+  "englishDemo": {
+    "image": "readme-breakpoints-demo.png",
+    "sha256": "57f067f40e27b71e5baff1d324922cf8c8e72e4c5eaa533670f327d4925df826",
+    "width": 1200,
+    "height": 676,
+    "fps": 10,
+    "durationMs": 8700,
+    "source": "apps/desktop/tests/demo-workflow-tests/workflows/breakpoints.workflow.ts",
+    "captions": [
+      {
+        "en": "Pause a request before it reaches the server.",
+        "zh": "在请求到达服务端前暂停它。"
+      },
+      {
+        "en": "Edit the JSON body in place.",
+        "zh": "直接修改 JSON 正文。"
+      },
+      {
+        "en": "Forward it — the server stays unchanged.",
+        "zh": "放行；服务端无需改动。"
+      },
+      {
+        "en": "The server receives the edited request.",
+        "zh": "服务端收到修改后的请求。"
+      }
+    ]
+  },
   "imageWidth": 3200,
   "imageHeight": 1800,
   "capture": "Actual native App windows with owned loopback traffic under /showcase/. Themes selected through product UI. Images copied byte-for-byte; no recoloring, cropping or compositing.",

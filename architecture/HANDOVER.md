@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `02f3172f`
+> Tracked commit: `e220371e`
 > Homepage guidebook: `07645818`
 
 ## 维护规则
@@ -33,8 +33,8 @@
   - 下一步：具备更高版本的公开 Release 后，用对应平台 packaged App 续验下载、打开安装器和通知，保留 trace、各代进程退出、8888 释放及系统设置恢复证据。
 
 - **19. 分功能 Demo 视频与中英字幕 · 代码完成 · 待补 rules/composer**
-  - 目标：在`apps/desktop/tests/demo-workflow-tests/`建立与E2E平级的独立录制workflow；入口为`npm start → Test → Demo 视频`，按feature选择，输出MP4和中英字幕（可附SRT/GIF）。不进入E2E日常套件，不要求全量维护。
-  - 当前步骤：独立Playwright config、CDP抓帧fixture、runner、ASS/SRT/ffmpeg assembly和start菜单入口已就位；`capture`、`breakpoints` 两个feature已生成中英字幕MP4。旧README视频与MP4已删除。
-  - 下一步：补`rules`、`composer` feature；在真实终端核对start菜单选择与输出路径；按Windows/macOS验证ffmpeg和字幕字体；确定官网/视频平台托管位置后再更新README或官网链接。
-  - 约束：只操作真实App；视频不入库，官网/视频平台托管，README只放GIF或可播放页面链接；ffmpeg和字体按平台检测，缺依赖时明确失败；录制接管系统代理后核对恢复；单feature运行，不因本项扩大E2E套件。
-  - 完成条件：`npm start`可选择feature并生成可播放MP4与中英字幕；同一feature可重复生成；输出目录含video、字幕和manifest；README/官网/渠道引用一致。
+  - 目标：在`apps/desktop/tests/demo-workflow-tests/`建立与E2E平级的独立录制workflow；入口为`npm start → Test → Demo 视频`，按feature选择，输出MP4、README用APNG和中英字幕。不进入E2E日常套件，不要求全量维护。
+  - 当前步骤：独立Playwright config、CDP抓帧fixture、runner、ASS/SRT/ffmpeg assembly和start菜单入口已就位；`capture`、`breakpoints` 两个feature已生成中英字幕MP4和APNG；APNG按`features.json`覆盖`architecture/assets/readme-<feature>-demo.png`，breakpoints的APNG已接入英文README。
+  - 下一步：补`rules`、`composer` feature；在真实终端核对start菜单选择与输出路径；确认GitHub实际渲染APNG；按Windows/macOS验证ffmpeg和字幕字体；确定MP4的外部托管位置。
+  - 约束：只操作真实App；MP4只作官网/视频平台源文件，不入库；README用APNG或可播放页面链接，不用GIF；ffmpeg和字体按平台检测，缺依赖时明确失败；录制接管系统代理后核对恢复；单feature运行，不因本项扩大E2E套件。
+  - 完成条件：`npm start`可选择feature并生成可播放MP4、APNG与中英字幕；同一feature可重复生成并覆盖固定asset；输出目录含video、APNG、字幕和manifest；README/官网/渠道引用一致。

@@ -1,0 +1,8 @@
+{
+  "capture": {
+    "readmeAsset": "architecture/assets/readme-capture-demo.png"
+  },
+  "breakpoints": {
+    "readmeAsset": "architecture/assets/readme-breakpoints-demo.png"
+  }
+}
