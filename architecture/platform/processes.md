@@ -260,6 +260,11 @@ Main 创建 frameless `BrowserWindow` 时以 `useContentSize: true` 配置 `1600
 `setContentSize(1600, 900)`，确保 Windows 不可见 resize border 不把 Renderer viewport 扩成 `1600 × 902`。
 最小窗口仍为 `880 × 560`；`1600 × 900` 是 fresh profile 与 Design/Parity 的唯一初始基线。
 
+Packaged App 在 `onReady` 只安装 app/edit/window 菜单：Windows/Linux 设为 null，macOS 不含 View/Reload；
+每个窗口在 `app.isPackaged` 时用 `before-input-event` 拦截 F5、Ctrl/Cmd+R、Ctrl/Cmd+Shift+R 和 DevTools
+快捷键。开发态保留 reload/HMR；`will-navigate` / `will-redirect` 仍只放行精确 Vite origin 或 packaged
+entry，程序化 `loadURL` / `reload()` 不受影响。
+
 | # | Workflow | 发起方 → 接收方 | 数据/调用 | 代码位置 | 成功结果 | 失败与清理 |
 | ---: | --- | --- | --- | --- | --- | --- |
 | 1 | Desktop 启动 | Electron → `DesktopApplication` | `app.whenReady()` | `apps/desktop/src/main/main.ts` | 先配置安全IPC并显示启动页，再调用readonly平台对象的prepare；内部准备helper、按共享journal三态加载/清理恢复记录并校验/授信共享CA，随后初始化Agent/更新/Core | 外部修改零系统代理写入；平台忙时Quit立即拒绝；后续初始化失败先尝试恢复当前系统代理接管，再逐项清理并明确退出 |
