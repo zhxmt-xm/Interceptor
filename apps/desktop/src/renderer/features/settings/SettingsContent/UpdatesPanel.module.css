@@ -42,6 +42,73 @@
   background: var(--accent);
   transition: width 160ms ease;
 }
+.downloadCard {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.downloadCard:last-child {
+  border-bottom: 0;
+}
+.downloadTitle {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.downloadTitle b {
+  flex: 0 0 auto;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 550;
+  line-height: 15px;
+}
+.downloadBar {
+  flex: 1 1 auto;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--panel-2);
+}
+.downloadPercent {
+  flex: 0 0 42px;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.downloadStats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.downloadSpeed,
+.downloadEta,
+.downloadSize {
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.downloadSpeed {
+  flex: 0 0 96px;
+}
+.downloadEta {
+  flex: 0 0 88px;
+}
+.downloadSize {
+  flex: 1 1 auto;
+  text-align: right;
+}
+.downloadActions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
 .releaseNotes {
   max-width: 720px;
   white-space: pre-wrap;

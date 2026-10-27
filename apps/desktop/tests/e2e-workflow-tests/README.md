@@ -100,7 +100,7 @@ npm run test:e2e:workflow --workspace @interceptor/desktop -- workflows/settings
 Remove-Item Env:INTERCEPTOR_BUILD_VERSION, Env:INTERCEPTOR_BUILD_IDENTIFIER
 ```
 
-被测App是本地release-grade构建而不是已发布产物；匿名检查、下载和安装包仍来自真实公开Release。非packaged或真实检查不是`available`时，workflow记录前提并跳过，不把检查失败算作下载通过。若宿主直连GitHub不可用，可只给本次E2E进程设置`NODE_USE_ENV_PROXY=1`和`HTTPS_PROXY`，让被测App的Main经宿主代理访问固定Release来源；不改产品代码，也不改变匿名请求断言。
+被测App是本地release-grade构建而不是已发布产物；匿名检查、下载和安装包仍来自真实公开Release。非packaged或真实检查不是`available`时，workflow记录前提并跳过，不把检查失败算作下载通过。若宿主直连GitHub不可用，可只给本次E2E进程设置`NODE_USE_ENV_PROXY=1`和`HTTPS_PROXY`，让被测App的Main经宿主代理访问固定Release来源；不改产品代码，也不改变匿名请求断言。`settings.updates.download-cancel`要求下载在点击取消时仍未完成；若下载先完成则记录前提并跳过，不把“已下载完”算作取消通过。
 
 每条workflow仍独立profile/trace，系统授权由本机用户处理；常驻helper跨workflow保留，Main/Core/Worker、前台helper子进程和8888仍必须退出恢复。macOS失败清理先确认完整代理已恢复，否则保留App、listener和profile，不再让测试侧重复弹旧代理授权后强杀。证书admin trust由同一已部署helper的前台固定入口执行，仍有独立系统权限；不以Main的security写命令代替。组件卸载不等于业务恢复，整轮结束按已确认的保留/卸载范围处理。
 
@@ -382,7 +382,8 @@ npm exec --no --workspace @interceptor/desktop -- playwright test --config tests
 | `settings.storage.refresh-clear` | 单项正文用量、右上Refresh及两处Clear同步、取消和录制状态保持 | os-side-effect |
 | `settings.privacy.defaults` | Export隐私默认值与持久化 | os-side-effect |
 | `settings.updates.check` | 匿名检查、请求失败重试和同profile重启；无账号API/控件，退出恢复 | native-ui |
-| `settings.updates.download-open` | 真实下载、校验和打开安装器 | native-ui |
+| `settings.updates.download-open` | 真实下载、速度/剩余时间、复制链接、校验和打开安装器 | native-ui |
+| `settings.updates.download-cancel` | 真实下载中途取消、清理临时文件并回到 Available | native-ui |
 | `settings.update-notification` | Header通知与Settings状态同步 | shared |
 
 详细步骤：[docs/settings-updates.md](docs/settings-updates.md)

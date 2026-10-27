@@ -135,7 +135,9 @@ export interface UpdateService {
   status(): UpdateStatus;
   check(): Promise<UpdateStatus> | UpdateStatus;
   download(): Promise<UpdateStatus>;
+  cancelDownload(): Promise<UpdateStatus>;
   openDownloaded(): Promise<void>;
+  copyDownloadLink(): Promise<void>;
   onStatusChange(listener: (status: UpdateStatus) => void): () => void;
   stop(): void;
 }
@@ -162,6 +164,7 @@ export interface GitHubReleaseUpdateServiceOptions {
   readonly diagnostics: GitHubReleaseUpdateDiagnostics;
   readonly fetcher?: typeof fetch;
   readonly openPath: (filePath: string) => Promise<string>;
+  readonly copyText: (text: string) => void;
   readonly now?: () => Date;
 }
 

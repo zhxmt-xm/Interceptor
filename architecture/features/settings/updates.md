@@ -45,15 +45,15 @@ sequenceDiagram
 
 八态：`unsupported` / `idle` / `checking` / `available` / `downloading` / `downloaded` / `up-to-date` / `failed`。
 
-`UpdateStatus`只含`supported` / `state` / `currentVersion` / `latestVersion` / `progress` / `downloadedBytes` / `totalBytes` / `releaseNotes` / `message` / `lastCheckedAt`。Preload保留`getUpdateStatus`、`checkForUpdates`、`downloadUpdate`、`openDownloadedUpdate`及`onUpdateStatusChange`，没有GitHub账号API。
+`UpdateStatus`只含`supported` / `state` / `currentVersion` / `latestVersion` / `progress` / `downloadedBytes` / `totalBytes` / `bytesPerSecond` / `etaSeconds` / `releaseNotes` / `message` / `lastCheckedAt`；速度与剩余时间只由Main按自己的字节和时间采样计算。Preload保留`getUpdateStatus`、`checkForUpdates`、`downloadUpdate`、`cancelUpdateDownload`、`copyUpdateDownloadLink`、`openDownloadedUpdate`及`onUpdateStatusChange`，没有GitHub账号API。
 
-**生命周期**：`DesktopApplication`初始化updater并广播`update:status`；packaged Windows/macOS启动一次检查，此后每小时检查，正在下载或已下载时不自动覆盖结果。退出停止timer并取消检查/下载，已取消请求的迟到响应不能发布新状态或保留安装器，临时`.part`清理。未打包目标为`unsupported`。packaged Renderer从受保护ASAR经`interceptor://app`加载，不存在远程代码覆盖层。
+**生命周期**：`DesktopApplication`初始化updater并广播`update:status`；packaged Windows/macOS启动一次检查，此后每小时检查，正在下载或已下载时不自动覆盖结果。退出停止timer并取消检查/下载，已取消请求的迟到响应不能发布新状态或保留安装器，临时`.part`清理。用户取消下载时停止当前流、删除`.part`并回到`available`，下次从头下载；已完成的安装包保留下次检查时随下载目录清理。未打包目标为`unsupported`。packaged Renderer从受保护ASAR经`interceptor://app`加载，不存在远程代码覆盖层。
 
-**UI**：Updates从Version开始，Delivery保留固定来源、检查/下载策略、进度和显式Check/Download/Open installer，GitHub access、Private及账号文案已移除。已安装版本标记为Installed，版本策略说明包含alpha。公开`settings.updates.status`只反映`data-state`、`data-supported`、`data-last-checked-at`、`data-current-version`和`data-latest-version`，不增加业务接口；检查/下载进度另由`settings.updates.progress`暴露`data-state`、`data-progress`、`data-downloaded-bytes`和`data-total-bytes`。Main safeStorage仍用于macOS CA及Agent/MCP凭据；macOS Keychain访问许可不是GitHub登录。
+**UI**：Updates从Version开始，Delivery保留固定来源、检查/下载策略、进度和显式Check/Download/Cancel/Open installer，GitHub access、Private及账号文案已移除。已安装版本标记为Installed，版本策略说明包含alpha。公开`settings.updates.status`只反映`data-state`、`data-supported`、`data-last-checked-at`、`data-current-version`和`data-latest-version`，不增加业务接口；检查/下载进度另由`settings.updates.progress`暴露`data-state`、`data-progress`、`data-downloaded-bytes`、`data-total-bytes`、`data-bytes-per-second`和`data-eta-seconds`。`downloading` 使用独立进度区：标题行是下载标签、进度条与固定 42px 百分比；第二行固定槽位显示速度、剩余时间、大小，右侧固定 Copy/Cancel；数值用 mono + tabular-nums，未知值显示 `--`。速度与剩余时间由 Main 节流到约 500ms 一次并随 `update:status` 下发，提供 `settings.updates.cancel` 和 `settings.updates.copy-link`；复制由 Main 写入系统剪贴板，Renderer 仍不接收 URL 或 path。Main safeStorage 仍用于 macOS CA 及 Agent/MCP 凭据；macOS Keychain 访问许可不是 GitHub 登录。
 
 ### 更新通知按钮
 
-- `UpdatesPanel`通过共享Button的icon参数传入RefreshCw、Download和ExternalLink图标，label只放文字；装饰图标和spinner使用`aria-hidden`。
+- `UpdatesPanel`通过共享Button的icon参数传入RefreshCw、Download、Copy、X和ExternalLink图标，label只放文字；装饰图标和spinner使用`aria-hidden`。
 - `UpdateNotification`使用`Button size="compact"`：高32px、水平padding为11px；字号12.5px、字重550、图标15px、gap为7px，不在通知CSS覆盖共享按钮样式。
 - `available`仍调用`UpdateActions.download()`，`downloaded`仍调用`UpdateActions.openDownloaded()`；busy时禁用动作，Dismiss独立可用，其余状态不显示通知。没有新增IPC、下载或安装步骤。`downloading`属于不显示通知的状态，因此busy禁用由组件测试覆盖；通知根`settings.update-notification`带`data-state`，动作和Dismiss分别为`settings.update-notification.action`与`settings.update-notification.dismiss`。
 - button和独立label使用`inline-flex`与`align-items: center`；图标固定且不收缩，内容间距来自gap，不以字形测量、位移或独立行高补偿。

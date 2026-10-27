@@ -595,6 +595,8 @@ export const AUTOMATION_IDS = {
       status: 'settings.updates.status',
       check: 'settings.updates.check',
       download: 'settings.updates.download',
+      cancel: 'settings.updates.cancel',
+      copyLink: 'settings.updates.copy-link',
       openInstaller: 'settings.updates.open-installer',
       progress: 'settings.updates.progress',
     },

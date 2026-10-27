@@ -32,12 +32,6 @@
   - 下一步：在 macOS 跑 packaged smoke 的 refresh 断言，检查菜单栏与 Copy/Paste/Quit；跑一个 demo feature，确认字幕字体、1440×810 APNG 和 FFMPEG_PATH；必要时补 arm64 处理。
   - 约束：必须用真实 macOS packaged App，不用 Windows 结果代替；无机器时保持待验证，不伪造。
 
-- **21. Updates 下载速度、剩余时间与复制下载链接 · 待实现**
-  - 目标：`downloading` 时在 Updates 面板显示实时下载速度与预计剩余时间；悬停展示下载入口，并提供复制下载链接动作。
-  - 约束：Renderer 仍不接收 Asset URL 或 path；复制由 Main 写系统剪贴板，hover 只显示固定 releases 页面或 Main 提供的安全显示值，不新增 Renderer 直连下载 URL。
-  - 下一步：先确定复制入口契约（Main `copyUpdateDownloadLink` 或固定 release 页面），再同步 `architecture/features/settings/updates.md` 与 E2E spec，补 unit 和真实下载/通知验收。
-  - 完成条件：真实下载时可读速度与剩余时间；复制成功且 Renderer 与 DOM 不出现 asset URL；浅深主题和通知布局不变。
-
 - **22. Updates 下载/通知 macOS E2E · 待 macOS**
   - 目标：在真实 macOS packaged App 上执行 `settings.updates.download-open` 与 `settings.update-notification`，覆盖 DMG 打开、中断/卸载与更高的真实 Release。
   - 现状：两条 workflow 的 Windows MSI 分支已验收；macOS 分支当前 skip，DMG 挂载与卸载断言尚未实现。

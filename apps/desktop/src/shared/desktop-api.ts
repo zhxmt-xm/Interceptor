@@ -603,6 +603,8 @@ export const DESKTOP_IPC_CHANNELS = {
   updateGetStatus: 'update:get-status',
   updateCheck: 'update:check',
   updateDownload: 'update:download',
+  updateCancel: 'update:cancel',
+  updateCopyLink: 'update:copy-link',
   updateOpenDownloaded: 'update:open-downloaded',
   updateStatus: 'update:status',
   guidebookOpenBrowser: 'guidebook:open-browser',
@@ -762,6 +764,8 @@ export interface InterceptorDesktopApi {
   getUpdateStatus(): Promise<UpdateStatus>;
   checkForUpdates(): Promise<UpdateStatus>;
   downloadUpdate(): Promise<UpdateStatus>;
+  cancelUpdateDownload(): Promise<UpdateStatus>;
+  copyUpdateDownloadLink(): Promise<void>;
   openDownloadedUpdate(): Promise<void>;
   openGuidebookInBrowser(language: DesktopUiLanguage): Promise<void>;
   onUpdateStatusChange(listener: (status: UpdateStatus) => void): () => void;
@@ -915,6 +919,8 @@ export interface UpdateStatus {
   progress: number | null;
   downloadedBytes: number | null;
   totalBytes: number | null;
+  bytesPerSecond: number | null;
+  etaSeconds: number | null;
   releaseNotes: string | null;
   message: string | null;
   lastCheckedAt: string | null;

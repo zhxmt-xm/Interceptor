@@ -115,7 +115,7 @@ Capture 请求菜单包在稳定的 RequestList 上，而不是虚拟化 Request
 
 Storage现有Refresh按钮使用`automationId`传入公共ID；Exchange/Body引用数分别通过`settings.storage.exchange-count`、`settings.storage.body-count`及`data-count`暴露原始计数，正文占用通过`settings.storage.blob-bytes`及`data-bytes`暴露原始字节数。属性只在读取成功时存在，显示文本仍按当前语言格式化；不增加业务入口，也不允许以零代替加载失败。真实Pause/Resume workflow使用这些属性验证未录制连接不产生孤立正文。
 
-Updates标题通过`settings.updates.status`及`data-state/data-supported/data-last-checked-at/data-current-version/data-latest-version`暴露实际更新状态；Check、Download和Open沿用原automation ID。检查/下载进度通过`settings.updates.progress`的`data-state/data-progress/data-downloaded-bytes/data-total-bytes`暴露原始值；Header通知通过`settings.update-notification`（`data-state`）、`settings.update-notification.action`和`settings.update-notification.dismiss`暴露状态与动作。属性只读，不支持状态注入；GitHub账号与设备码控件及其ID已删除。
+Updates标题通过`settings.updates.status`及`data-state/data-supported/data-last-checked-at/data-current-version/data-latest-version`暴露实际更新状态；Check、Download、Cancel（`settings.updates.cancel`）、Copy（`settings.updates.copy-link`）和Open沿用原automation ID。检查/下载进度通过`settings.updates.progress`的`data-state/data-progress/data-downloaded-bytes/data-total-bytes/data-bytes-per-second/data-eta-seconds`暴露原始值；Header通知通过`settings.update-notification`（`data-state`）、`settings.update-notification.action`和`settings.update-notification.dismiss`暴露状态与动作。属性只读，不支持状态注入；GitHub账号与设备码控件及其ID已删除。
 
 Capture通过`capture.filter.group-count.<facet>`、`capture.filter.all-count.<facet>`及`capture.filter.option-count.<facet>.<value>`暴露组头、All与选项的request计数。组头不是选项数量；Rule组按request去重。ID由`AutomationIdFactory`生成，仅标识界面已经显示的数字，不提供数据注入或业务入口。
 

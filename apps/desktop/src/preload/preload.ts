@@ -222,6 +222,10 @@ const api: InterceptorDesktopApi = {
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.updateCheck),
   downloadUpdate: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.updateDownload),
+  cancelUpdateDownload: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.updateCancel),
+  copyUpdateDownloadLink: () =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.updateCopyLink),
   openDownloadedUpdate: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.updateOpenDownloaded),
   openGuidebookInBrowser: (language) =>

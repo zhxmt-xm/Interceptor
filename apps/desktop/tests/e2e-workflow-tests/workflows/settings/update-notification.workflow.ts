@@ -133,7 +133,7 @@ test.skip(!process.env.INTERCEPTOR_E2E_APP_PATH,
 test('settings.update-notification opens and dismisses the real installer notification', async ({
   desktopApp,
 }, testInfo: TestInfo) => {
-  testInfo.setTimeout(25 * 60_000);
+  testInfo.setTimeout(5 * 60_000);
   testInfo.annotations.push({
     type: 'renderer-workflow',
     description: 'settings.update-notification',
@@ -170,7 +170,7 @@ test('settings.update-notification opens and dismisses the real installer notifi
   const status = getByAutomationId(page, AUTOMATION_IDS.settings.updates.status);
   await expect(status).toHaveAttribute('data-state', 'downloading', { timeout: 60_000 });
   await expect(notice).toHaveCount(0);
-  await expect(status).toHaveAttribute('data-state', 'downloaded', { timeout: 20 * 60_000 });
+  await expect(status).toHaveAttribute('data-state', 'downloaded', { timeout: 5 * 60_000 });
   await expect(notice).toHaveAttribute('data-state', 'downloaded');
   const downloadedMetrics = await readNotificationMetrics(page, AUTOMATION_IDS.settings.updates.openInstaller);
   expectCompactNotification(downloadedMetrics, 34);

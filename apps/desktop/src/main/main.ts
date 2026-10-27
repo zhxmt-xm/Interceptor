@@ -1414,6 +1414,18 @@ class DesktopApplication {
         this.requireUpdateService().download());
     });
 
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.updateCancel, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return this.runMainAction('main.update.cancel', () =>
+        this.requireUpdateService().cancelDownload());
+    });
+
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.updateCopyLink, async (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      await this.runMainAction('main.update.copy-link', () =>
+        this.requireUpdateService().copyDownloadLink());
+    });
+
     ipcMain.handle(DESKTOP_IPC_CHANNELS.updateOpenDownloaded, async (event) => {
       this.assertTrustedSender(event.senderFrame?.url);
       await this.runMainAction('main.update.open-downloaded', () =>
@@ -2381,6 +2393,7 @@ class DesktopApplication {
       dataDirectory: app.getPath('userData'),
       diagnostics: this.diagnostics,
       openPath: (filePath) => shell.openPath(filePath),
+      copyText: (text) => clipboard.writeText(text),
     });
   }
 
