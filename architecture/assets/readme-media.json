@@ -84,35 +84,6 @@
       "manifestSha256": "5d215a762cf13a5dd7f6982444964e36085bea0d11b500a07b3577d928b44282"
     }
   },
-  "englishDemo": {
-    "gif": "readme-breakpoints-demo.gif",
-    "gifSha256": "44ad082d128239a9b7ba1c136c2082a09fa55e60669ec4c5668f4973af070b7e",
-    "mp4": "readme-breakpoints-demo.mp4",
-    "mp4Sha256": "6345dbe38f8daea47191579662e011794557d4af7c31e2345d99ebb2da87ec44",
-    "width": 1200,
-    "height": 796,
-    "durationMs": 10582,
-    "voiceover": "English (Microsoft Zira)",
-    "captions": [
-      {
-        "english": "Pause a request before it reaches the server.",
-        "chinese": "在请求到达服务端前暂停它。"
-      },
-      {
-        "english": "Edit the JSON body in place.",
-        "chinese": "直接修改 JSON 正文。"
-      },
-      {
-        "english": "Forward it — the server stays unchanged.",
-        "chinese": "放行；服务端无需改动。"
-      },
-      {
-        "english": "The server receives the edited request.",
-        "chinese": "服务端收到修改后的请求。"
-      }
-    ],
-    "source": "Packaged App automated through the archived Playwright workflow test-results/readme-demo/readme-demo.workflow.ts; frames captured with CDP Page.startScreencast."
-  },
   "imageWidth": 3200,
   "imageHeight": 1800,
   "capture": "Actual native App windows with owned loopback traffic under /showcase/. Themes selected through product UI. Images copied byte-for-byte; no recoloring, cropping or compositing.",
