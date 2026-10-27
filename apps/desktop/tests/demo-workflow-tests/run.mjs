@@ -30,6 +30,8 @@ if (!feature) fail(`Missing --feature. Available: ${features.join(', ')}`);
 if (!features.includes(feature)) fail(`Unknown feature: ${feature}. Available: ${features.join(', ')}`);
 
 const locale = argument('locale', 'en-US');
+const chinese = locale.toLowerCase().startsWith('zh');
+const localeTag = chinese ? 'zh-CN' : 'en-US';
 const app = argument('app', process.env.INTERCEPTOR_E2E_APP_PATH
   ?? path.join(
     desktop,
@@ -48,7 +50,7 @@ const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate
   + `T${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
 const startedAt = now.toISOString();
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-const output = path.resolve(argument('output', path.join(desktop, 'test-results/demo-readme', `${stamp}-${feature}`)));
+const output = path.resolve(argument('output', path.join(desktop, 'test-results/demo-readme', `${stamp}-${feature}-${localeTag}`)));
 const capture = path.join(output, 'capture');
 const playwrightOutput = path.join(output, 'playwright');
 
@@ -84,7 +86,9 @@ if (playwright.status !== 0) {
 }
 
 const assembleArgs = [path.join(directory, 'assemble.mjs'), '--run', output];
-const readmeAsset = featureConfig[feature]?.readmeAsset;
+const readmeAsset = chinese
+  ? featureConfig[feature]?.readmeAssetZh
+  : featureConfig[feature]?.readmeAsset;
 if (readmeAsset) assembleArgs.push('--asset', readmeAsset);
 const assemble = spawnSync(process.execPath, assembleArgs, {
   cwd: desktop,

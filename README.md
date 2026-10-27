@@ -93,7 +93,7 @@ The opening screenshot shows a selected WebSocket connection and its messages. M
 - Mock a response, map to a local file or another server, block traffic, or add a delay.
 - Organize rules in folders and inspect their hits and recorded effects.
 
-<img src="architecture/assets/readme-rules-demo.png?v=2" alt="Create a Rule, apply a 418 status rewrite, and see the client response" width="1440">
+<img src="architecture/assets/readme-rules-demo.png?v=3" alt="Create a Rule, apply a 418 status rewrite, and see the client response" width="1440">
 
 *Animated demo with Chinese and English subtitles.*
 
@@ -105,7 +105,7 @@ The opening screenshot shows a selected WebSocket connection and its messages. M
 - Continue unchanged, forward edited content or drop it; manage multiple paused items from the queue.
 - HTTP pauses occur at the header stage, so the original body may not yet be available.
 
-<img src="architecture/assets/readme-breakpoints-demo.png?v=3" alt="Create a Rule breakpoint, edit the request body and forward it" width="1440">
+<img src="architecture/assets/readme-breakpoints-demo.png?v=4" alt="Create a Rule breakpoint, edit the request body and forward it" width="1440">
 
 *Animated demo with Chinese and English subtitles.*
 
