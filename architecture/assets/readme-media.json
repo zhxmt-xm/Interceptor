@@ -96,20 +96,20 @@
     },
     "rules": {
       "image": "readme-rules-demo.png",
-      "sha256": "ca68388fe96eda93b38e10ab3a1280dfdc49f4eda3360b2a5692d38f81106b4f",
+      "sha256": "ca36e32c3b3b3ba56116908190457872d0d727ca059aa8f2f39c05bd94d416bd",
       "width": 1440,
       "height": 810,
       "fps": 10,
-      "durationMs": 9895,
+      "durationMs": 9689,
       "source": "apps/desktop/tests/demo-workflow-tests/workflows/rules.workflow.ts"
     },
     "breakpoints": {
       "image": "readme-breakpoints-demo.png",
-      "sha256": "ee455f6b8c4666b0c69018f04148777df77ce0e9891c4184912aba85a2b7b60b",
+      "sha256": "42d5242af3d41d682c0cbbfb6e322791f3cc29886deffa810a2d12e1b65452f8",
       "width": 1440,
       "height": 810,
       "fps": 10,
-      "durationMs": 13026,
+      "durationMs": 12831,
       "source": "apps/desktop/tests/demo-workflow-tests/workflows/breakpoints.workflow.ts"
     },
     "composer": {
@@ -201,5 +201,61 @@
     "troubleshooting.md",
     "tool-permissions.md",
     "tool-reference.md"
-  ]
+  ],
+  "chineseDemos": {
+    "capture": {
+      "image": "readme-capture-demo-zh.png",
+      "sha256": "986c572f68310817e2e99c4d8cb23cadd0a53857681c4e34189d1402cd7eb93b",
+      "width": 1440,
+      "height": 810,
+      "fps": 10,
+      "durationMs": 5980,
+      "source": "apps/desktop/tests/demo-workflow-tests/workflows/capture.workflow.ts"
+    },
+    "rules": {
+      "image": "readme-rules-demo-zh.png",
+      "sha256": "5622555169a59d7d78d53db3e837f756894c5b5615ab6d774e9e5c5c7b01a7a7",
+      "width": 1440,
+      "height": 810,
+      "fps": 10,
+      "durationMs": 9769,
+      "source": "apps/desktop/tests/demo-workflow-tests/workflows/rules.workflow.ts"
+    },
+    "breakpoints": {
+      "image": "readme-breakpoints-demo-zh.png",
+      "sha256": "75fd00dfc4be3250d97c62fd6cd2bbba8521036aa8664cdcae98787923e2c9df",
+      "width": 1440,
+      "height": 810,
+      "fps": 10,
+      "durationMs": 13001,
+      "source": "apps/desktop/tests/demo-workflow-tests/workflows/breakpoints.workflow.ts"
+    },
+    "composer": {
+      "image": "readme-composer-demo-zh.png",
+      "sha256": "c1773c9f34afba26efcb42cf40a6d7ceb4f229e069c26e0739cdc561c7eff56b",
+      "width": 1440,
+      "height": 810,
+      "fps": 10,
+      "durationMs": 5344,
+      "source": "apps/desktop/tests/demo-workflow-tests/workflows/composer.workflow.ts"
+    },
+    "agent": {
+      "image": "readme-agent-demo-zh.png",
+      "sha256": "35e7f8ed5f78e81c5ff65cd90948967818d2499b31d0ff5f1a98387dae98fb94",
+      "width": 1440,
+      "height": 810,
+      "fps": 10,
+      "durationMs": 6296,
+      "source": "apps/desktop/tests/demo-workflow-tests/workflows/agent.workflow.ts"
+    },
+    "mcp": {
+      "image": "readme-mcp-demo-zh.png",
+      "sha256": "5d3e19cafd029b1c629f3870d0a6cf11bf6f1683b7fa35cf3b2034065a2e31b6",
+      "width": 1440,
+      "height": 810,
+      "fps": 10,
+      "durationMs": 7091,
+      "source": "apps/desktop/tests/demo-workflow-tests/workflows/mcp.workflow.ts"
+    }
+  }
 }

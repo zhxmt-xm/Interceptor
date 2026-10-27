@@ -6,13 +6,15 @@
 
 ```powershell
 npm start
-# Test → README Demo（可多选 feature，中英字幕）
+# Test → README Demo（先选语言，可多选 feature，中英字幕）
 ```
 
 或直接运行：
 
 ```powershell
 npm run test:demo:workflow --workspace @interceptor/desktop -- --feature breakpoints
+# 中文界面并写入中文 asset：
+npm run test:demo:workflow --workspace @interceptor/desktop -- --feature breakpoints --locale zh-CN
 ```
 
 默认使用 `apps/desktop/out/Interceptor-<platform>-<arch>` 的 packaged App；也可用 `--app` 或 `INTERCEPTOR_E2E_APP_PATH` 指定。
@@ -21,16 +23,16 @@ npm run test:demo:workflow --workspace @interceptor/desktop -- --feature breakpo
 
 ## 输出
 
-`npm start` 里空格多选 feature，Enter 后按选择顺序逐个运行；直接空选 Enter 或选择“返回上一级”都会返回上层菜单。
+`npm start` 先选界面语言，再空格多选 feature，Enter 后按选择顺序逐个运行；直接空选 Enter 或选择“返回上一级”都会返回上层菜单。
 
-`apps/desktop/test-results/demo-readme/<local-time>-<feature>/`
+`apps/desktop/test-results/demo-readme/<local-time>-<feature>-<locale>/`
 
 - `readme.png`：1440×810 的 APNG，PNG 抓帧，中英字幕已烧录，供 README 内联
 - `captions.ass`：字幕源文件
 - `capture/frames.json`、`capture/captions.json`
 - `manifest.json`
 
-`features.json` 登记的 `readmeAsset` 会在生成后自动覆盖 `architecture/assets` 下的同名 APNG；提交前先看一帧确认字幕和 UI。不输出 MP4 或 SRT，并同步更新 `readme-media.json` 的 hash 和时长。
+`features.json` 登记的 `readmeAsset`（英文）或 `readmeAssetZh`（中文）会在生成后自动覆盖 `architecture/assets` 下的同名 APNG；提交前先看一帧确认字幕和 UI。不输出 MP4 或 SRT，并同步更新 `readme-media.json` 的 `englishDemos` / `chineseDemos` hash 和时长。
 
 ## 约束
 

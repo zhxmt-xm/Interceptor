@@ -1,20 +1,26 @@
 {
   "capture": {
-    "readmeAsset": "architecture/assets/readme-capture-demo.png"
+    "readmeAsset": "architecture/assets/readme-capture-demo.png",
+    "readmeAssetZh": "architecture/assets/readme-capture-demo-zh.png"
   },
   "rules": {
-    "readmeAsset": "architecture/assets/readme-rules-demo.png"
+    "readmeAsset": "architecture/assets/readme-rules-demo.png",
+    "readmeAssetZh": "architecture/assets/readme-rules-demo-zh.png"
   },
   "breakpoints": {
-    "readmeAsset": "architecture/assets/readme-breakpoints-demo.png"
+    "readmeAsset": "architecture/assets/readme-breakpoints-demo.png",
+    "readmeAssetZh": "architecture/assets/readme-breakpoints-demo-zh.png"
   },
   "composer": {
-    "readmeAsset": "architecture/assets/readme-composer-demo.png"
+    "readmeAsset": "architecture/assets/readme-composer-demo.png",
+    "readmeAssetZh": "architecture/assets/readme-composer-demo-zh.png"
   },
   "agent": {
-    "readmeAsset": "architecture/assets/readme-agent-demo.png"
+    "readmeAsset": "architecture/assets/readme-agent-demo.png",
+    "readmeAssetZh": "architecture/assets/readme-agent-demo-zh.png"
   },
   "mcp": {
-    "readmeAsset": "architecture/assets/readme-mcp-demo.png"
+    "readmeAsset": "architecture/assets/readme-mcp-demo.png",
+    "readmeAssetZh": "architecture/assets/readme-mcp-demo-zh.png"
   }
 }

@@ -16,6 +16,8 @@ import { expect, test } from '../fixtures/demo-recorder';
 
 const DEMO_PATH = '/demo/rules/42';
 const ORIGINAL_BODY = JSON.stringify({ orderId: 'demo-001', status: 'ready', total: 128 });
+const CHINESE = (process.env.INTERCEPTOR_E2E_LOCALE ?? '').toLowerCase().startsWith('zh');
+const RULE_NAME = CHINESE ? 'README 状态演示' : 'README demo status';
 
 async function getThroughProxy(
   proxyPort: number,
@@ -78,7 +80,7 @@ test('demo.rules creates and applies a status rewrite Rule', async ({
   const ruleId = await ruleRow.getAttribute('data-automation-id');
   if (!ruleId?.startsWith(AUTOMATION_ID_PREFIXES.ruleRow)) throw new Error('The Rule omitted its public identity.');
   const id = ruleId.slice(AUTOMATION_ID_PREFIXES.ruleRow.length);
-  await getByAutomationId(page, AUTOMATION_IDS.rules.editorName).fill('README demo status');
+  await getByAutomationId(page, AUTOMATION_IDS.rules.editorName).fill(RULE_NAME);
   await getByAutomationId(page, AutomationIdFactory.ruleMatcherField(id, 0, 'value'))
     .fill('127.0.0.1');
   await page.waitForTimeout(800);
@@ -124,6 +126,7 @@ test('demo.rules creates and applies a status rewrite Rule', async ({
   expect(result.statusCode).toBe(418);
   expect(result.body.toString('utf8')).toBe(ORIGINAL_BODY);
   await page.waitForTimeout(900);
+  await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(DEMO_PATH);
 
   const row = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
     .filter({ hasText: DEMO_PATH })

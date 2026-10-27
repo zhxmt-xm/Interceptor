@@ -125,8 +125,10 @@ const feature = process.env.INTERCEPTOR_DEMO_FEATURE;
 if (feature && readmeAsset) {
   const mediaPath = path.join(repositoryRoot, 'architecture/assets/readme-media.json');
   const media = JSON.parse(readFileSync(mediaPath, 'utf8'));
-  media.englishDemos ??= {};
-  media.englishDemos[feature] = {
+  const chinese = (process.env.INTERCEPTOR_E2E_LOCALE ?? '').toLowerCase().startsWith('zh');
+  const demosKey = chinese ? 'chineseDemos' : 'englishDemos';
+  media[demosKey] ??= {};
+  media[demosKey][feature] = {
     image: path.basename(asset),
     sha256: createHash('sha256').update(readFileSync(readme)).digest('hex'),
     width: 1440,

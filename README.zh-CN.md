@@ -27,7 +27,7 @@
   <img src="architecture/assets/readme-capture-light.png" alt="Capture 展示六条本地 HTTP 请求，以及选中订单响应的格式化 JSON" width="1600">
 </picture>
 
-*截图来自 macOS 上的 v0.1.1-alpha.1。[来源与边界](architecture/assets/readme-media.json)。*
+*截图来自 macOS 上的 v0.1.1-alpha.1；动图在 Windows 录制。[来源与边界](architecture/assets/readme-media.json)。*
 
 Interceptor 是面向 Web/API 开发者和测试工程师的桌面 HTTP(S) 调试代理，运行于 **Windows 和 macOS**。在一个工作区检查 HTTP/1.1、HTTP/2、WebSocket 和 gRPC 流量，不改服务端即可测试不同响应、重放请求。Agent 与 MCP 提供可选的 AI 辅助，日常调试不需要模型账号。
 
@@ -84,6 +84,13 @@ Alpha 预览：[v0.1.1-alpha.1](https://github.com/zhxmt-xm/Interceptor/releases
 - 检查请求头、Cookie、请求与响应正文、耗时和 TLS 信息；切换 JSON 树、格式化文本、原文、图片和十六进制视图。
 - 在 HTTP/1.1、HTTP/2 请求之外查看 WebSocket 帧和 gRPC 消息。
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-capture-dark.png">
+  <img src="architecture/assets/readme-capture-demo-zh.png" alt="Capture 过滤 HTTP 流量并查看 JSON 响应" width="1440">
+</picture>
+
+*中文界面演示，字幕中英双语。*
+
 开头截图展示了选中的订单响应。更多真实步骤：[Capture](https://www.interceptor.cn/guide/capture) · [HTTP/2](https://www.interceptor.cn/guide/capture#walkthrough-capture-http2) · [WebSocket](https://www.interceptor.cn/guide/capture#walkthrough-capture-websocket-messages) · [gRPC](https://www.interceptor.cn/guide/capture#walkthrough-capture-grpc-messages)
 
 ### Rules：不改服务端，测试不同结果
@@ -94,8 +101,10 @@ Alpha 预览：[v0.1.1-alpha.1](https://github.com/zhxmt-xm/Interceptor/releases
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-rules-dark.png">
-  <img src="architecture/assets/readme-rules-light.png" alt="Rules 按本地域名和路径匹配，为请求添加 x-interceptor-demo Header，并显示一次命中" width="1600">
+  <img src="architecture/assets/readme-rules-demo-zh.png" alt="创建一个把响应状态改写为 418 的 Rule 并查看结果" width="1440">
 </picture>
+
+*中文界面演示，字幕中英双语。*
 
 [Rules 图文教程：匹配、改写、模拟与映射](https://www.interceptor.cn/guide/rules)
 
@@ -107,8 +116,10 @@ Alpha 预览：[v0.1.1-alpha.1](https://github.com/zhxmt-xm/Interceptor/releases
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-breakpoints-dark.png">
-  <img src="architecture/assets/readme-breakpoints-light.png" alt="暂停的本地订单请求，展示原始 JSON、替换正文以及继续、转发已编辑内容和丢弃按钮" width="1600">
+  <img src="architecture/assets/readme-breakpoints-demo-zh.png" alt="创建 Breakpoint Rule，修改请求正文并放行" width="1440">
 </picture>
+
+*中文界面演示，字幕中英双语。*
 
 [Breakpoints 图文教程：暂停、编辑、放行与丢弃](https://www.interceptor.cn/guide/breakpoints)
 
@@ -120,8 +131,10 @@ Alpha 预览：[v0.1.1-alpha.1](https://github.com/zhxmt-xm/Interceptor/releases
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-composer-dark.png">
-  <img src="architecture/assets/readme-composer-light.png" alt="Composer 发送带自定义 Header 的 GET 请求，并展示 200 JSON 响应" width="1600">
+  <img src="architecture/assets/readme-composer-demo-zh.png" alt="构造并发送带 JSON 正文的 POST 请求，查看 200 响应" width="1440">
 </picture>
+
+*中文界面演示，字幕中英双语。*
 
 Composer 直接发送请求，不进入 Capture，也不经过 Rules。[Composer 与 Collection 图文教程](https://www.interceptor.cn/guide/composer)。
 
@@ -133,10 +146,10 @@ Composer 直接发送请求，不进入 Capture，也不经过 Rules。[Composer
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-agent-dark.png">
-  <img src="architecture/assets/readme-agent-light.png" alt="Capture 旁的内置 Agent，展示明确标注为本地演示模型的回复" width="1600">
+  <img src="architecture/assets/readme-agent-demo-zh.png" alt="配置本地 OpenAI-compatible 模型并向 Agent 提问" width="1440">
 </picture>
 
-*本地演示模型，不代表商业模型效果。*
+*中文界面演示，字幕中英双语；本地演示模型，不代表商业模型效果。*
 
 [Agent 配置与对话图文教程](https://www.interceptor.cn/guide/agent)
 
@@ -148,10 +161,10 @@ Composer 直接发送请求，不进入 Capture，也不经过 Rules。[Composer
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="architecture/assets/readme-mcp-dark.png">
-  <img src="architecture/assets/readme-mcp-light.png" alt="Settings 中运行的本机 MCP Server、本地演示客户端，以及独立的 Agent 和 MCP Tool 开关" width="1600">
+  <img src="architecture/assets/readme-mcp-demo-zh.png" alt="开启 loopback MCP Server，创建 Client 并复制连接配置" width="1440">
 </picture>
 
-*本机配置；MCP 默认关闭。*
+*中文界面演示，字幕中英双语；本机配置，MCP 默认关闭。*
 
 [MCP 配置与兼容性指南](https://www.interceptor.cn/guide/mcp) · [Tool 操作速查](https://www.interceptor.cn/guide/tool-reference)
 

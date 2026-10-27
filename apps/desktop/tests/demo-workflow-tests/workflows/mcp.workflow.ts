@@ -3,6 +3,9 @@ import { getByAutomationId } from '../../e2e-workflow-tests/fixtures/ui/automati
 import { openMcpSettings } from '../../e2e-workflow-tests/fixtures/ui/mcp-workflow';
 import { expect, test } from '../fixtures/demo-recorder';
 
+const CHINESE = (process.env.INTERCEPTOR_E2E_LOCALE ?? '').toLowerCase().startsWith('zh');
+const CLIENT_LABEL = CHINESE ? '演示 MCP Host' : 'Demo MCP host';
+
 test('demo.mcp enables the server, creates a client and copies its configuration', async ({
   desktopApp,
   demo,
@@ -30,7 +33,7 @@ test('demo.mcp enables the server, creates a client and copies its configuration
     zh: '为每个 Host 创建独立凭据。',
   });
   await getByAutomationId(page, AUTOMATION_IDS.mcp.client.add).click();
-  await getByAutomationId(page, AUTOMATION_IDS.mcp.client.label).fill('Demo MCP host');
+  await getByAutomationId(page, AUTOMATION_IDS.mcp.client.label).fill(CLIENT_LABEL);
   await getByAutomationId(page, AUTOMATION_IDS.mcp.client.create).click();
   const row = page.locator('[data-automation-id^="mcp.client.row."]');
   await expect(row).toHaveCount(1);
