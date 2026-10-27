@@ -12,6 +12,8 @@ import type {
   UpdateService,
 } from '../interfaces';
 
+import { DownloadRateMeter } from './download-rate';
+
 /** Checks and manually downloads installers anonymously from one fixed GitHub repository. */
 export class GitHubReleaseUpdateService implements UpdateService {
   /** Fixed repository API endpoint; no Renderer-controlled URL is accepted. */
@@ -27,6 +29,14 @@ export class GitHubReleaseUpdateService implements UpdateService {
   private readonly fetcher: typeof fetch;
   /** Opens one downloaded installer through the operating system. */
   private readonly openPath: (filePath: string) => Promise<string>;
+  /** Writes the fixed browser download URL to the system clipboard. */
+  private readonly copyText: (text: string) => void;
+  /** Smoothed transfer-rate samples for the active download. */
+  private readonly downloadRate = new DownloadRateMeter();
+  /** Whether the active abort belongs to the explicit user cancel action. */
+  private cancelRequested = false;
+  /** Last time the public transfer-rate values changed. */
+  private lastRateAt = 0;
   /** Fixed private directory for transient installer downloads. */
   private readonly downloadDirectory: string;
   /** Host platform used to select exactly one installer asset. */
@@ -55,6 +65,7 @@ export class GitHubReleaseUpdateService implements UpdateService {
     this.diagnostics = options.diagnostics;
     this.fetcher = options.fetcher ?? fetch;
     this.openPath = options.openPath;
+    this.copyText = options.copyText;
     this.downloadDirectory = path.join(options.dataDirectory, 'updates/downloads');
     this.now = options.now ?? (() => new Date());
     this.platform = options.platform ?? process.platform;
@@ -69,6 +80,8 @@ export class GitHubReleaseUpdateService implements UpdateService {
       progress: null,
       downloadedBytes: null,
       totalBytes: null,
+      bytesPerSecond: null,
+      etaSeconds: null,
       releaseNotes: null,
       message: this.supportedValue
         ? 'Downloads start only when you choose.'
@@ -142,6 +155,44 @@ export class GitHubReleaseUpdateService implements UpdateService {
     }
   }
 
+  /** Cancel the active explicit download and return to a retryable availability state. */
+  async cancelDownload(): Promise<UpdateStatus> {
+    if (this.statusValue.state !== 'downloading') {
+      return this.status();
+    }
+    const operation = this.operation;
+    this.cancelRequested = true;
+    this.downloadAbortController?.abort();
+    try {
+      if (operation) {
+        await operation.catch(() => undefined);
+      }
+    } finally {
+      this.cancelRequested = false;
+    }
+    if (this.statusValue.state === 'downloading') {
+      this.transition({
+        state: 'available',
+        progress: null,
+        downloadedBytes: null,
+        bytesPerSecond: null,
+        etaSeconds: null,
+        message: 'Download canceled.',
+      });
+    }
+    return this.status();
+  }
+
+  /** Copy the fixed browser download URL without exposing it to Renderer. */
+  async copyDownloadLink(): Promise<void> {
+    if (!this.availableAsset || this.statusValue.latestVersion === null) {
+      throw new Error('No GitHub Release installer is available.');
+    }
+    this.copyText(
+      `https://github.com/zhxmt-xm/Interceptor/releases/download/v${this.statusValue.latestVersion}/${encodeURIComponent(this.availableAsset.name)}`,
+    );
+  }
+
   /** Subscribe to status changes and return an explicit unsubscribe function. */
   onStatusChange(listener: (status: UpdateStatus) => void): () => void {
     this.listeners.add(listener);
@@ -171,6 +222,8 @@ export class GitHubReleaseUpdateService implements UpdateService {
       progress: null,
       downloadedBytes: null,
       totalBytes: null,
+      bytesPerSecond: null,
+      etaSeconds: null,
       releaseNotes: null,
       message: 'Checking GitHub Releases…',
       lastCheckedAt: this.now().toISOString(),
@@ -188,6 +241,8 @@ export class GitHubReleaseUpdateService implements UpdateService {
           state: 'available',
           latestVersion: release.version,
           totalBytes: release.asset.size,
+          bytesPerSecond: null,
+          etaSeconds: null,
           releaseNotes: release.notes,
           message: 'A newer installer is available from GitHub Releases.',
         });
@@ -195,6 +250,12 @@ export class GitHubReleaseUpdateService implements UpdateService {
         this.transition({
           state: 'up-to-date',
           latestVersion: release.version,
+          progress: null,
+          downloadedBytes: null,
+          totalBytes: null,
+          bytesPerSecond: null,
+          etaSeconds: null,
+          releaseNotes: null,
           message: 'Interceptor is up to date.',
         });
       }
@@ -216,6 +277,8 @@ export class GitHubReleaseUpdateService implements UpdateService {
         progress: null,
         downloadedBytes: null,
         totalBytes: null,
+        bytesPerSecond: null,
+        etaSeconds: null,
         releaseNotes: null,
         message: error instanceof Error ? error.message : String(error),
       });
@@ -299,11 +362,15 @@ export class GitHubReleaseUpdateService implements UpdateService {
     asset: GitHubReleaseAsset,
     version: string,
   ): Promise<UpdateStatus> {
+    this.downloadRate.reset();
+    this.lastRateAt = 0;
     this.transition({
       state: 'downloading',
       progress: 0,
       downloadedBytes: 0,
       totalBytes: asset.size,
+      bytesPerSecond: null,
+      etaSeconds: null,
       message: 'Downloading the signed installer from GitHub Releases…',
     });
     const temporaryPath = path.join(
@@ -370,7 +437,26 @@ export class GitHubReleaseUpdateService implements UpdateService {
           const progress = received / asset.size;
           if (progress - lastProgress >= 0.01 || received === asset.size) {
             lastProgress = progress;
-            this.transition({ progress, downloadedBytes: received });
+            const sampledAt = this.now().getTime();
+            const downloadRate = this.downloadRate.sample(
+              received,
+              asset.size,
+              sampledAt,
+            );
+            const includeRate = sampledAt - this.lastRateAt >= 500;
+            if (includeRate) {
+              this.lastRateAt = sampledAt;
+            }
+            this.transition({
+              progress,
+              downloadedBytes: received,
+              ...(includeRate
+                ? {
+                    bytesPerSecond: downloadRate.bytesPerSecond,
+                    etaSeconds: downloadRate.etaSeconds,
+                  }
+                : {}),
+            });
           }
         }
         await handle.sync();
@@ -395,12 +481,25 @@ export class GitHubReleaseUpdateService implements UpdateService {
         state: 'downloaded',
         progress: 1,
         downloadedBytes: asset.size,
+        bytesPerSecond: null,
+        etaSeconds: null,
         message: `Interceptor ${version} is downloaded and ready to open.`,
       });
       return this.status();
     } catch (error) {
       await rm(temporaryPath, { force: true }).catch(() => undefined);
       if (abortController.signal.aborted) {
+        if (this.cancelRequested) {
+          this.downloadRate.reset();
+          this.transition({
+            state: 'available',
+            progress: null,
+            downloadedBytes: null,
+            bytesPerSecond: null,
+            etaSeconds: null,
+            message: 'Download canceled.',
+          });
+        }
         return this.status();
       }
       this.diagnostics.error('main.update.github.download.failed', {
@@ -411,6 +510,8 @@ export class GitHubReleaseUpdateService implements UpdateService {
         state: 'failed',
         progress: null,
         downloadedBytes: null,
+        bytesPerSecond: null,
+        etaSeconds: null,
         message: error instanceof Error ? error.message : String(error),
       });
       return this.status();

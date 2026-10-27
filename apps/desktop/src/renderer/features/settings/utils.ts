@@ -243,6 +243,27 @@ export class UpdateFormat {
       : `${this.fileSize(status.downloadedBytes, locale)} / ${total}`;
   }
 
+  /** Return Main's smoothed transfer rate in compact binary units. */
+  static speed(status: UpdateStatus, locale = 'en'): string | null {
+    if (status.bytesPerSecond === null || status.bytesPerSecond <= 0) {
+      return null;
+    }
+    return `${this.fileSize(status.bytesPerSecond, locale)}/s`;
+  }
+
+  /** Return the remaining download time in compact units. */
+  static eta(status: UpdateStatus): string | null {
+    if (status.etaSeconds === null || status.etaSeconds < 0) {
+      return null;
+    }
+    if (status.etaSeconds < 60) {
+      return `${status.etaSeconds}s`;
+    }
+    const minutes = Math.floor(status.etaSeconds / 60);
+    const seconds = status.etaSeconds % 60;
+    return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
+  }
+
   /** Format one non-negative byte count without exposing locale variance. */
   private static fileSize(bytes: number, locale: string): string {
     const format = (value: number, digits: number): string =>

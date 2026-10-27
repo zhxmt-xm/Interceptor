@@ -859,18 +859,36 @@ Local诚实显示unsupported；packaged匿名请求固定仓库，HTTP 404或请
 
 1. 保存完整宿主与已就绪日常CA基线，创建profile/evidence，启动packaged App的trace/CDP driver，等待App/Core/8888/readiness；系统代理遵循产品正常启动/退出流程，下载不另行修改系统路由。
 2. 无需GitHub授权，进入Updates点击 `settings.updates.check`，等待真实Available和目标Asset API metadata；若实际返回404或请求失败，记录本workflow前提不满足，不把检查失败路径算作下载/打开通过。
-3. 点击 `settings.updates.download`。
-4. 观察state=downloading；`settings.updates.progress`的`data-progress`、`data-downloaded-bytes`单调不减且`data-total-bytes`恒定；下载期间`settings.updates.download`不存在，UI不允许重复下载。
-5. 等待size和SHA-256校验、fsync和原子rename完成，状态为Downloaded；下载目录只剩本次MSI且无`.part`残留，文件字节数等于`data-total-bytes`。
-6. 点击 `settings.updates.open-installer`，核对新出现的msiexec命令行只含本次下载成功的MSI/DMG。
-7. 通过原生安装器窗口取消；若出现“确定要取消安装”的确认，选择确认取消。不安装/修改当前App，安装器进程退出且默认安装目录未变化，当前App仍运行。
-8. 保存evidence并Close。
-9. 验证App销毁并清测试下载目录。
-10. 删除profile。
+3. 点击 `settings.updates.copy-link`，核对系统剪贴板为固定仓库的浏览器下载 URL（如 `https://github.com/zhxmt-xm/Interceptor/releases/download/v<version>/<asset>`）；该 URL 不通过 UpdateStatus、进度属性或动作暴露（Release notes 若含纯文本链接不受此限制）。
+4. 点击 `settings.updates.download`，观察 state=downloading；`settings.updates.progress` 的 `data-progress`、`data-downloaded-bytes` 单调不减，`data-total-bytes` 恒定，`data-bytes-per-second` 与 `data-eta-seconds` 可读；下载期间 `settings.updates.download` 不存在，UI 不允许重复下载。
+5. 等待 size 和 SHA-256 校验、fsync 和原子 rename 完成，状态为 Downloaded；下载目录只剩本次 MSI 且无 `.part` 残留，文件字节数等于 `data-total-bytes`。
+6. 点击 `settings.updates.open-installer`，核对新出现的 msiexec 命令行只含本次下载成功的 MSI/DMG。
+7. 通过原生安装器窗口取消；若出现“确定要取消安装”的确认，选择确认取消。不安装/修改当前 App，安装器进程退出且默认安装目录未变化，当前 App 仍运行。
+8. 保存 evidence 并 Close。
+9. 验证 App 销毁并清测试下载目录。
+10. 删除 profile。
 
 ### 预期效果
 
-下载只由用户点击触发且不携带产品GitHub凭据；固定Asset API/size/hash/架构安全边界生效；404或请求失败进入Failed并清理临时文件，不转入登录；Open不能提交任意path。
+下载只由用户点击触发且不携带产品GitHub凭据；固定Asset API/size/hash/架构安全边界生效；404或请求失败进入Failed并清理临时文件，不转入登录；Open不能提交任意path。复制链接只写系统剪贴板，Renderer 不接收URL。
+
+<a id="settings-updates-download-cancel"></a>
+## `settings.updates.download-cancel`
+
+**策略**：native-ui；需要真实更高版本
+
+实现入口为[updates-download-cancel.workflow.ts](../workflows/settings/updates-download-cancel.workflow.ts)。下载在点击取消前完成时本次前提不满足，记录并跳过，不把“下载已结束”当作取消失败。下载/复制/打开仍由 `settings.updates.download-open` 覆盖。
+
+### Steps
+
+1. packaged App + 独立 profile；真实检查进入 Available，记录 current/latest。
+2. 点击 `settings.updates.download`，在 `settings.updates.cancel` 可用后立即点击。
+3. 断言状态回到 Available，下载目录没有 `.part` 和 `.msi`，没有可打开的安装器，App 仍运行。
+4. 保存 evidence 并 Close；验证 Main/Core/Worker 退出、8888 释放和宿主恢复。
+
+### 预期效果
+
+取消只中止当前下载并清理临时文件，不保留安装器；取消后可以从头重新下载，不续传；Renderer 不接收 URL 或 path。
 
 <a id="settings-update-notification"></a>
 ## `settings.update-notification`

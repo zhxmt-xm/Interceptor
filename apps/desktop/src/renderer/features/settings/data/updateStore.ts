@@ -35,6 +35,30 @@ export class UpdateActions {
     await this.run(() => window.interceptor.downloadUpdate());
   }
 
+  /** Cancel the active download; Main removes the partial file and returns to available. */
+  static async cancel(): Promise<void> {
+    // The download action keeps busy set for its whole duration, so cancel must
+    // not go through run(); otherwise the click would be dropped while downloading.
+    const store = useUpdateStore.getState();
+    store.setError(null);
+    try {
+      store.applyStatus(await window.interceptor.cancelUpdateDownload());
+    } catch (error) {
+      store.setError(this.describeError(error));
+    }
+  }
+
+  /** Ask Main to copy the fixed browser download URL to the system clipboard. */
+  static async copyLink(): Promise<void> {
+    const store = useUpdateStore.getState();
+    store.setError(null);
+    try {
+      await window.interceptor.copyUpdateDownloadLink();
+    } catch (error) {
+      store.setError(this.describeError(error));
+    }
+  }
+
   /** Open the completely downloaded installer through the operating system. */
   static async openDownloaded(): Promise<void> {
     const store = useUpdateStore.getState();

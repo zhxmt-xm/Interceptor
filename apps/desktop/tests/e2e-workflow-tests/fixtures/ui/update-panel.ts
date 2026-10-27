@@ -21,6 +21,8 @@ export interface DownloadSample {
   readonly progress: number;
   readonly downloadedBytes: number;
   readonly totalBytes: number;
+  readonly bytesPerSecond: number | null;
+  readonly etaSeconds: number | null;
 }
 
 /** Open Updates through public navigation without injecting responses or state. */
@@ -52,7 +54,7 @@ export async function waitForTerminalUpdateStatus(page: Page): Promise<UpdateSna
   const status = getByAutomationId(page, AUTOMATION_IDS.settings.updates.status);
   for (let attempt = 0; attempt < 2; attempt += 1) {
     await expect(status).toHaveAttribute('data-state', /^(up-to-date|available|failed)$/, {
-      timeout: 180_000,
+      timeout: 120_000,
     });
     const snapshot = await readUpdateStatus(page);
     if (snapshot.state !== 'failed') {
@@ -80,6 +82,8 @@ export async function readDownloadSample(page: Page): Promise<{
     const progress = progressElement?.getAttribute('data-progress');
     const downloaded = progressElement?.getAttribute('data-downloaded-bytes');
     const total = progressElement?.getAttribute('data-total-bytes');
+    const bytesPerSecond = progressElement?.getAttribute('data-bytes-per-second');
+    const etaSeconds = progressElement?.getAttribute('data-eta-seconds');
     return {
       state: statusElement?.getAttribute('data-state') ?? null,
       sample: progress === null || progress === undefined ||
@@ -90,6 +94,12 @@ export async function readDownloadSample(page: Page): Promise<{
             progress: Number(progress),
             downloadedBytes: Number(downloaded),
             totalBytes: Number(total),
+            bytesPerSecond: bytesPerSecond === null || bytesPerSecond === undefined
+              ? null
+              : Number(bytesPerSecond),
+            etaSeconds: etaSeconds === null || etaSeconds === undefined
+              ? null
+              : Number(etaSeconds),
           },
     };
   }, [AUTOMATION_IDS.settings.updates.status, AUTOMATION_IDS.settings.updates.progress] as const);

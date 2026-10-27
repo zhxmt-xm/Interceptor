@@ -1,8 +1,8 @@
-import { Download, ExternalLink, RefreshCw } from 'lucide-react';
+import { Copy, Download, ExternalLink, RefreshCw, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
-import { Button, cx, StatusBadge } from '../../../components';
+import { Button, cx, IconButton, StatusBadge } from '../../../components';
 import { UpdateActions, useUpdateStore } from '../data/updateStore';
 import { UpdateFormat } from '../utils';
 
@@ -73,13 +73,8 @@ export function UpdatesPanel(): React.JSX.Element {
         <Row label={t('settings.downloadPolicy')} hint={t('settings.downloadPolicyHint')}>
           <StatusBadge>{t('settings.manual')}</StatusBadge>
         </Row>
-        {working ? (
-          <Row
-            label={status.state === 'checking' ? t('settings.check') : t('settings.download')}
-            hint={status.state === 'checking'
-              ? t('settings.readingMetadata')
-              : t('settings.signedInstaller')}
-          >
+        {status.state === 'checking' ? (
+          <Row label={t('settings.check')} hint={t('settings.readingMetadata')}>
             <div
               className={styles.updateProgress}
               data-automation-id={AUTOMATION_IDS.settings.updates.progress}
@@ -87,18 +82,71 @@ export function UpdatesPanel(): React.JSX.Element {
               data-progress={status.progress ?? undefined}
               data-downloaded-bytes={status.downloadedBytes ?? undefined}
               data-total-bytes={status.totalBytes ?? undefined}
+              data-bytes-per-second={status.bytesPerSecond ?? undefined}
+              data-eta-seconds={status.etaSeconds ?? undefined}
             >
               <span
                 className={styles.updateProgressValue}
                 style={{ width: `${Math.max(4, (status.progress ?? 0.15) * 100)}%` }}
               />
             </div>
-            <span className={styles.mono}>
-              {status.state === 'checking'
-                ? 'GitHub'
-                : `${UpdateFormat.progress(status, i18n.language, t('settings.update.waiting'))} · ${UpdateFormat.bytes(status, i18n.language, t('settings.update.sizeUnavailable'))}`}
-            </span>
+            <span className={styles.mono}>GitHub</span>
           </Row>
+        ) : null}
+        {status.state === 'downloading' ? (
+          <div className={styles.downloadCard}>
+            <div className={styles.downloadTitle}>
+              <b>{t('settings.download')}</b>
+              <div
+                className={styles.downloadBar}
+                data-automation-id={AUTOMATION_IDS.settings.updates.progress}
+                data-state={status.state}
+                data-progress={status.progress ?? undefined}
+                data-downloaded-bytes={status.downloadedBytes ?? undefined}
+                data-total-bytes={status.totalBytes ?? undefined}
+                data-bytes-per-second={status.bytesPerSecond ?? undefined}
+                data-eta-seconds={status.etaSeconds ?? undefined}
+              >
+                <span
+                  className={styles.updateProgressValue}
+                  style={{ width: `${Math.max(2, (status.progress ?? 0) * 100)}%` }}
+                />
+              </div>
+              <span className={styles.downloadPercent}>
+                {UpdateFormat.progress(status, i18n.language, t('settings.update.waiting'))}
+              </span>
+            </div>
+            <div className={styles.downloadStats}>
+              <span className={styles.downloadSpeed}>
+                {UpdateFormat.speed(status, i18n.language) ?? '--'}
+              </span>
+              <span className={styles.downloadEta}>
+                {UpdateFormat.eta(status) === null
+                  ? '--'
+                  : t('settings.downloadEta', { time: UpdateFormat.eta(status) })}
+              </span>
+              <span className={styles.downloadSize}>
+                {UpdateFormat.bytes(status, i18n.language, t('settings.update.sizeUnavailable'))}
+              </span>
+              <span className={styles.downloadActions}>
+                <IconButton
+                  icon={Copy}
+                  label={t('settings.copyDownloadLink')}
+                  size="sm"
+                  automationId={AUTOMATION_IDS.settings.updates.copyLink}
+                  onClick={() => void UpdateActions.copyLink()}
+                />
+                <Button
+                  icon={X}
+                  size="compact"
+                  automationId={AUTOMATION_IDS.settings.updates.cancel}
+                  onClick={() => void UpdateActions.cancel()}
+                >
+                  {t('settings.cancelDownload')}
+                </Button>
+              </span>
+            </div>
+          </div>
         ) : null}
         {status.state === 'failed' ? (
           <Row label={t('settings.lastUpdateAction')} hint={status.message ?? t('settings.appNotChanged')}>
@@ -149,6 +197,15 @@ export function UpdatesPanel(): React.JSX.Element {
               >
                 {t('settings.openInstaller')}
               </Button>
+            ) : null}
+            {status.state === 'available' || status.state === 'downloaded' ? (
+              <IconButton
+                icon={Copy}
+                label={t('settings.copyDownloadLink')}
+                size="sm"
+                automationId={AUTOMATION_IDS.settings.updates.copyLink}
+                onClick={() => void UpdateActions.copyLink()}
+              />
             ) : null}
           </Row>
         ) : null}

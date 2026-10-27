@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -298,6 +298,95 @@ describe('GitHubReleaseUpdateService', () => {
       .rejects.toMatchObject({ code: 'ENOENT' });
   });
 
+  it('cancels an in-flight installer download and returns to a retryable available state', async () => {
+    const fixture = await GitHubReleaseFixture.create(roots);
+    await fixture.gitHubReleaseUpdateService.check();
+    const controller = fixture.streamNextAsset();
+    controller.enqueue(fixture.installer.subarray(0, 4));
+
+    const download = fixture.gitHubReleaseUpdateService.download();
+    await vi.waitFor(() => expect(fixture.fetcher).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(fixture.gitHubReleaseUpdateService.status().state)
+      .toBe('downloading'));
+    const cancel = fixture.gitHubReleaseUpdateService.cancelDownload();
+    controller.close();
+
+    expect(await cancel).toMatchObject({
+      state: 'available',
+      progress: null,
+      downloadedBytes: null,
+      bytesPerSecond: null,
+      etaSeconds: null,
+      message: 'Download canceled.',
+    });
+    expect(await download).toMatchObject({ state: 'available' });
+    const downloadsDirectory = path.join(fixture.root, 'updates/downloads');
+    expect(await readdir(downloadsDirectory).catch(() => [])).toEqual([]);
+    await expect(fixture.gitHubReleaseUpdateService.openDownloaded())
+      .rejects.toThrow('No downloaded');
+    const retry = await fixture.gitHubReleaseUpdateService.download();
+    expect(retry).toMatchObject({ state: 'downloaded' });
+  });
+
+  it('treats a cancel request outside a download as a no-op', async () => {
+    const fixture = await GitHubReleaseFixture.create(roots);
+    await fixture.gitHubReleaseUpdateService.check();
+
+    expect(await fixture.gitHubReleaseUpdateService.cancelDownload())
+      .toMatchObject({ state: 'available' });
+  });
+
+  it('publishes a smoothed transfer rate and remaining time during a download', async () => {
+    const clock = { at: Date.parse('2026-07-18T00:00:00.000Z') };
+    const fixture = await GitHubReleaseFixture.create(roots, {
+      downloadChunks: 4,
+      now: () => new Date((clock.at += 1_000)),
+    });
+    await fixture.gitHubReleaseUpdateService.check();
+    const statuses: Array<{
+      state: string;
+      bytesPerSecond: number | null;
+      etaSeconds: number | null;
+    }> = [];
+    fixture.gitHubReleaseUpdateService.onStatusChange((status) => statuses.push(status));
+
+    expect(await fixture.gitHubReleaseUpdateService.download())
+      .toMatchObject({ state: 'downloaded' });
+
+    const downloading = statuses.filter((status) => status.state === 'downloading');
+    const rates = downloading
+      .map((status) => status.bytesPerSecond)
+      .filter((rate): rate is number => rate !== null);
+    expect(rates.length).toBeGreaterThan(0);
+    expect(rates.every((rate) => rate > 0)).toBe(true);
+    const remaining = downloading
+      .map((status) => status.etaSeconds)
+      .filter((eta): eta is number => eta !== null);
+    expect(remaining.length).toBeGreaterThan(0);
+    expect(remaining.at(-1)).toBeLessThanOrEqual(remaining[0]!);
+    expect(statuses.at(-1)).toMatchObject({
+      state: 'downloaded',
+      bytesPerSecond: null,
+      etaSeconds: null,
+    });
+  });
+
+  it('copies the fixed browser download URL without exposing it in the public status', async () => {
+    const fixture = await GitHubReleaseFixture.create(roots);
+    await fixture.gitHubReleaseUpdateService.check();
+
+    await fixture.gitHubReleaseUpdateService.copyDownloadLink();
+
+    expect(fixture.copyText).toHaveBeenCalledWith(
+      'https://github.com/zhxmt-xm/Interceptor/releases/download/v0.1.1/Interceptor.msi',
+    );
+    expect(JSON.stringify(fixture.gitHubReleaseUpdateService.status()))
+      .not.toContain('releases/download');
+    const empty = await GitHubReleaseFixture.create(roots);
+    await expect(empty.gitHubReleaseUpdateService.copyDownloadLink())
+      .rejects.toThrow('No GitHub Release installer is available.');
+  });
+
   it('removes an installer left by a previous application process', async () => {
     const fixture = await GitHubReleaseFixture.create(roots, { tagName: 'v0.1.0' });
     const stalePath = path.join(fixture.root, 'updates/downloads/Interceptor.msi');
@@ -402,8 +491,10 @@ interface GitHubReleaseFixtureOptions extends GitHubReleaseMetadataOptions {
   readonly currentVersion?: string;
   readonly releasePages?: readonly (readonly GitHubReleaseMetadataOptions[])[];
   readonly downloadBody?: Buffer;
+  readonly downloadChunks?: number;
   readonly platform?: NodeJS.Platform;
   readonly architecture?: NodeJS.Architecture;
+  readonly now?: () => Date;
 }
 
 /** Isolated fake GitHub API and installer source for update service tests. */
@@ -416,6 +507,8 @@ class GitHubReleaseFixture {
   readonly fetcher: ReturnType<typeof vi.fn>;
   /** Fake operating-system installer opener. */
   readonly openPath = vi.fn(async () => '');
+  /** Fake clipboard writer used by the download-link action. */
+  readonly copyText = vi.fn();
   /** Service under test. */
   readonly gitHubReleaseUpdateService: GitHubReleaseUpdateService;
   /** Captured requests and security-relevant headers. */
@@ -446,7 +539,24 @@ class GitHubReleaseFixture {
         const page = Number(parsedUrl.searchParams.get('page') ?? '1');
         return Response.json(pages[page - 1] ?? []);
       }
-      return new Response(new Uint8Array(downloadBody), {
+      if (options.downloadChunks === undefined) {
+        return new Response(new Uint8Array(downloadBody), {
+          status: 200,
+          headers: { 'content-length': String(downloadBody.length) },
+        });
+      }
+      const chunkSize = Math.ceil(downloadBody.length / options.downloadChunks);
+      return new Response(new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (let index = 0; index < downloadBody.length; index += chunkSize) {
+            controller.enqueue(downloadBody.subarray(
+              index,
+              Math.min(downloadBody.length, index + chunkSize),
+            ));
+          }
+          controller.close();
+        },
+      }), {
         status: 200,
         headers: { 'content-length': String(downloadBody.length) },
       });
@@ -460,7 +570,8 @@ class GitHubReleaseFixture {
       diagnostics: { info: vi.fn(), error: vi.fn() },
       fetcher: this.fetcher as unknown as typeof fetch,
       openPath: this.openPath,
-      now: () => new Date('2026-07-18T00:00:00.000Z'),
+      copyText: this.copyText,
+      now: options.now ?? (() => new Date('2026-07-18T00:00:00.000Z')),
     });
   }
 
@@ -492,6 +603,21 @@ class GitHubReleaseFixture {
     const root = await mkdtemp(path.join(os.tmpdir(), 'interceptor-github-update-'));
     roots.push(root);
     return new GitHubReleaseFixture(root, options);
+  }
+
+  /** Replace the next asset response with a test-controlled stream. */
+  streamNextAsset(): ReadableStreamDefaultController<Uint8Array> {
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    const stream = new ReadableStream<Uint8Array>({
+      start: (next) => {
+        controller = next;
+      },
+    });
+    this.fetcher.mockImplementationOnce(async () => new Response(stream, {
+      status: 200,
+      headers: { 'content-length': String(this.installer.length) },
+    }));
+    return controller;
   }
 
   /** Count only GitHub release metadata requests. */

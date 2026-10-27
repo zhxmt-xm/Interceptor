@@ -10,6 +10,7 @@ import { Button, IconButton, StatusBadge } from '../../../../components';
 import { UpdateNotification } from '../../UpdateNotification/UpdateNotification';
 import { UpdatesPanel } from '../../SettingsContent/UpdatesPanel';
 import { SettingsGroup } from '../../SettingsContent/SettingsGroup';
+import { UpdateFormat } from '../../utils';
 
 const state = vi.hoisted(() => ({
   status: null as UpdateStatus | null,
@@ -18,12 +19,20 @@ const state = vi.hoisted(() => ({
   dismiss: vi.fn(),
   check: vi.fn(),
   download: vi.fn(),
+  cancel: vi.fn(),
+  copyLink: vi.fn(),
   openDownloaded: vi.fn(),
 }));
 
 vi.mock('../../data/updateStore', () => ({
   useUpdateStore: (select: (value: typeof state) => unknown) => select(state),
-  UpdateActions: { check: state.check, download: state.download, openDownloaded: state.openDownloaded },
+  UpdateActions: {
+    check: state.check,
+    download: state.download,
+    cancel: state.cancel,
+    copyLink: state.copyLink,
+    openDownloaded: state.openDownloaded,
+  },
 }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ i18n: { language: 'en' }, t: (key: string) => key }) }));
 vi.mock('../../../../components', () => ({
@@ -69,6 +78,8 @@ beforeEach(() => {
     progress: null,
     downloadedBytes: null,
     totalBytes: null,
+    bytesPerSecond: null,
+    etaSeconds: null,
     releaseNotes: null,
     message: null,
     lastCheckedAt: null,
@@ -130,6 +141,8 @@ describe('Update automation surface', () => {
       progress: 0.42,
       downloadedBytes: 70_000_000,
       totalBytes: 167_000_000,
+      bytesPerSecond: 2_500_000,
+      etaSeconds: 39,
     });
 
     const progress = findByAutomationId(UpdatesPanel(), AUTOMATION_IDS.settings.updates.progress);
@@ -137,6 +150,52 @@ describe('Update automation surface', () => {
     expect(progress.props['data-progress']).toBe(0.42);
     expect(progress.props['data-downloaded-bytes']).toBe(70_000_000);
     expect(progress.props['data-total-bytes']).toBe(167_000_000);
+    expect(progress.props['data-bytes-per-second']).toBe(2_500_000);
+    expect(progress.props['data-eta-seconds']).toBe(39);
+  });
+});
+
+describe('Updates download controls', () => {
+  it('offers cancel and copy actions while downloading', () => {
+    Object.assign(state.status!, {
+      state: 'downloading',
+      progress: 0.5,
+      downloadedBytes: 83_000_000,
+      totalBytes: 167_000_000,
+      bytesPerSecond: 2_500_000,
+      etaSeconds: 34,
+    });
+    const tree = UpdatesPanel();
+
+    const cancel = findControl<ButtonProps>(tree, Button);
+    expect(cancel.props.automationId).toBe(AUTOMATION_IDS.settings.updates.cancel);
+    expect(cancel.props.children).toBe('settings.cancelDownload');
+    cancel.props.onClick?.();
+    expect(state.cancel).toHaveBeenCalledOnce();
+
+    const copy = findControl<IconButtonProps>(tree, IconButton);
+    expect(copy.props.automationId).toBe(AUTOMATION_IDS.settings.updates.copyLink);
+    expect(copy.props.label).toBe('settings.copyDownloadLink');
+    copy.props.onClick?.();
+    expect(state.copyLink).toHaveBeenCalledOnce();
+  });
+
+  it('offers the copy action next to an available installer', () => {
+    const copy = findControl<IconButtonProps>(UpdatesPanel(), IconButton);
+
+    expect(copy.props.automationId).toBe(AUTOMATION_IDS.settings.updates.copyLink);
+    copy.props.onClick?.();
+    expect(state.copyLink).toHaveBeenCalledOnce();
+  });
+
+  it('formats the transfer rate and remaining time', () => {
+    Object.assign(state.status!, { bytesPerSecond: 1_310_720, etaSeconds: 65 });
+
+    expect(UpdateFormat.speed(state.status!, 'en')).toBe('1.3 MB/s');
+    expect(UpdateFormat.eta(state.status!)).toBe('1m 5s');
+    Object.assign(state.status!, { bytesPerSecond: null, etaSeconds: null });
+    expect(UpdateFormat.speed(state.status!, 'en')).toBeNull();
+    expect(UpdateFormat.eta(state.status!)).toBeNull();
   });
 });
 
@@ -170,7 +229,7 @@ describe('Updates anonymous controls', () => {
     expect(group.props.title).toBe('settings.version');
   });
 
-  it.each(['checking', 'downloading', 'unsupported'] as const)('does not offer actions while %s', (updateState) => {
+  it.each(['checking', 'unsupported'] as const)('does not offer actions while %s', (updateState) => {
     state.status!.state = updateState;
     state.status!.supported = updateState !== 'unsupported';
     expect(() => findControl<ButtonProps>(UpdatesPanel(), Button)).toThrow('Missing notification control.');

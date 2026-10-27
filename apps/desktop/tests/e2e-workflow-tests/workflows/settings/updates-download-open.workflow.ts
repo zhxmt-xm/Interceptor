@@ -8,6 +8,7 @@ import { AUTOMATION_IDS } from '../../../../src/shared/automation-ids';
 import { expect, test } from '../../fixtures/runtime/local-electron-driver';
 import { screenshotStep } from '../../fixtures/runtime/step-screenshots';
 import { getByAutomationId } from '../../fixtures/ui/automation';
+import { readWindowsClipboardText } from '../../fixtures/ui/windows-clipboard';
 import {
   listTree,
   openUpdatesPanel,
@@ -28,7 +29,7 @@ test.skip(!process.env.INTERCEPTOR_E2E_APP_PATH,
 test('settings.updates.download-open downloads, verifies and opens the real installer', async ({
   desktopApp,
 }, testInfo: TestInfo) => {
-  testInfo.setTimeout(25 * 60_000);
+  testInfo.setTimeout(5 * 60_000);
   testInfo.annotations.push({
     type: 'renderer-workflow',
     description: 'settings.updates.download-open',
@@ -51,17 +52,30 @@ test('settings.updates.download-open downloads, verifies and opens the real inst
   expect(semver.gt(initial.latestVersion!, initial.currentVersion!)).toBe(true);
   await screenshotStep('准备：真实检查发现更高的已发布版本 / Arrange: the real check finds a newer published release');
 
-  // 用户操作：显式点击 Download，采样公开进度后等待校验与原子落盘完成。
-  // User action: click Download; sample public progress, then wait for verification and the atomic rename.
+  // 用户操作：复制固定浏览器下载链接；剪贴板由 Main 写入，Renderer 不接收 URL。
+  // User action: copy the fixed browser download URL written by Main; Renderer never receives it.
+  const expectedDownloadUrl = `https://github.com/zhxmt-xm/Interceptor/releases/download/v${initial.latestVersion}/Interceptor-${initial.latestVersion}-win32-x64.msi`;
+  await getByAutomationId(page, AUTOMATION_IDS.settings.updates.copyLink).click();
+  await expect.poll(() => readWindowsClipboardText()).toBe(expectedDownloadUrl);
+
+  // 用户操作：显式点击 Download，采样速度/剩余时间与进度后等待校验与原子落盘完成。
+  // User action: click Download; sample speed/ETA and progress, then wait for verification and the atomic rename.
   const download = getByAutomationId(page, AUTOMATION_IDS.settings.updates.download);
+  const status = getByAutomationId(page, AUTOMATION_IDS.settings.updates.status);
+  const downloadsDirectory = path.join(desktopApp.userDataDirectory, 'updates/downloads');
   await expect(download).toBeEnabled();
   await download.click();
   await expect(download).toHaveCount(0);
-  const status = getByAutomationId(page, AUTOMATION_IDS.settings.updates.status);
   await expect(status).toHaveAttribute('data-state', 'downloading', { timeout: 60_000 });
+  const progress = getByAutomationId(page, AUTOMATION_IDS.settings.updates.progress);
+  await expect(progress).toBeVisible({ timeout: 60_000 });
+  await expect.poll(async () => Number(await progress.getAttribute('data-bytes-per-second')))
+    .toBeGreaterThan(0);
+  await expect(progress).toHaveAttribute('data-eta-seconds', /^\d+$/);
+  await screenshotStep('用户操作：下载中显示速度、剩余时间与取消 / User action: speed, remaining time and cancel while downloading');
   const samples: DownloadSample[] = [];
   let lastState: string | null = 'downloading';
-  const deadline = Date.now() + 20 * 60_000;
+  const deadline = Date.now() + 5 * 60_000;
   while (Date.now() < deadline) {
     const { state, sample } = await readDownloadSample(page);
     lastState = state;
@@ -83,12 +97,21 @@ test('settings.updates.download-open downloads, verifies and opens the real inst
     expect(samples[index]!.progress).toBeGreaterThanOrEqual(samples[index - 1]!.progress);
     expect(samples[index]!.downloadedBytes).toBeGreaterThanOrEqual(samples[index - 1]!.downloadedBytes);
   }
+  const rates = samples
+    .map((sample) => sample.bytesPerSecond)
+    .filter((rate): rate is number => rate !== null);
+  expect(rates.length).toBeGreaterThan(0);
+  expect(rates.every((rate) => rate > 0)).toBe(true);
+  const etas = samples
+    .map((sample) => sample.etaSeconds)
+    .filter((eta): eta is number => eta !== null);
+  expect(etas.length).toBeGreaterThan(0);
+  expect(etas.at(-1)).toBeLessThanOrEqual(etas[0]!);
   expect(samples.at(-1)!.progress).toBeGreaterThan(samples[0]!.progress);
   await screenshotStep('用户操作：显式下载并等待校验完成 / User action: download explicitly and wait for verification');
 
   // 业务断言：只剩本次下载的 MSI，没有 .part 残留，尺寸与声明的 totalBytes 一致。
   // Business assertion: only this MSI remains, with no .part residue and the declared byte size.
-  const downloadsDirectory = path.join(desktopApp.userDataDirectory, 'updates/downloads');
   const names = (await readdir(downloadsDirectory, { withFileTypes: true }))
     .filter((entry) => entry.isFile())
     .map((entry) => entry.name);
@@ -128,6 +151,12 @@ test('settings.updates.download-open downloads, verifies and opens the real inst
     currentVersion: initial.currentVersion,
     latestVersion: initial.latestVersion,
     targetState: 'downloaded',
+    copiedDownloadUrl: expectedDownloadUrl,
+    transfer: {
+      firstBytesPerSecond: rates[0] ?? null,
+      lastEtaSeconds: etas.at(-1) ?? null,
+      rateSamples: rates.length,
+    },
     installer: {
       fileName: names[0]!,
       bytes: totalBytes,
