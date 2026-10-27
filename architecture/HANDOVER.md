@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `03b78383`
+> Tracked commit: `172d1fc9`
 > Homepage guidebook: `07645818`
 
 ## 维护规则
@@ -25,13 +25,6 @@
   - 下一步：重启 Windows 后核对加速与模拟器并续验 Windows 流程；连接物理设备后验证拔线/重连与旧请求不重放；具备 ARM64 与专用网络后分别续验。
   - 待修：`capture-{import,export}-menu{-dark}` 场景缺 Android toolbar 按钮，产生位置差异。
   - 约束：正式发版必须指定私有 Release asset、APK SHA-256 与签名证书 SHA-256，拒绝 debug 证书、换签和降级，见[发布架构](platform/release.md#21-android-apk-与-adb-runtime)。缺环境时保持 `blocked`，不伪造 Network 或绕过系统授权。本机环境见[测试文档](platform/testing.md#windows-android-local-environment)。
-
-- **19. 分功能 README 演示 APNG 与中英字幕 · 6 个 feature 中英双版完成 · 待 GitHub 验证**
-  - 目标：在`apps/desktop/tests/demo-workflow-tests/`建立与E2E平级的独立录制workflow；入口为`npm start → Test → README Demo`，按feature选择，生成README用APNG和中英字幕并覆盖`architecture/assets`固定文件。不进入E2E日常套件，不要求全量维护。
-  - 当前步骤：六个workflow用PNG抓帧生成1440×810 APNG，输出目录用本地时间；`npm start` 先选界面语言，再支持多选、空选返回；英文与中文各六张已接入对应README；Rules/Breakpoints 在查看 Capture 前先按路径过滤；Agent 提问/回答和 demo 名称按 locale 本地化。
-  - 下一步：确认GitHub英文与中文README实际播放APNG并处理缓存；检查两套README各自约7MB的下载量；菜单多选与语言选择已在本地实际运行。
-  - 约束：只操作真实App；本轮只产出README用APNG，不生成MP4或SRT；不用GIF；APNG必须覆盖固定asset，不新增每轮文件名；英文/中文asset分开；Agent/MCP使用本地lab，不接外部账号；ffmpeg和字体按平台检测，缺依赖时明确失败；录制接管系统代理后核对恢复；每个feature单独启动App，多选按顺序执行，不因本项扩大E2E套件；查看Capture选择前先filter。
-  - 完成条件：`npm start`可选语言并多选feature生成可播放APNG与中英字幕；同一feature可重复生成并覆盖对应语言asset；输出目录含APNG、字幕源和manifest；英文/中文README引用各自路径。
 
 - **20. macOS packaged 刷新保护与 demo 渲染验证 · 待 macOS**
   - 目标：在 macOS packaged App 验证 Cmd+R、F5、Cmd+Shift+R 不 reload，应用菜单无 View/Reload，app/edit/window 菜单正常；开发态 Cmd+R/HMR 保留。
