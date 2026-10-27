@@ -23,13 +23,12 @@ npm run test:demo:workflow --workspace @interceptor/desktop -- --feature breakpo
 
 `apps/desktop/test-results/demo-videos/<timestamp>-<feature>/`
 
-- `video.mp4`：H.264，中英字幕已烧录
-- `readme.png`：1200 宽的 APNG，给 README 内联使用
-- `captions.ass`、`captions-en.srt`、`captions-zh.srt`
+- `readme.png`：1200 宽的 APNG，中英字幕已烧录，供 README 内联
+- `captions.ass`：字幕源文件
 - `capture/frames.json`、`capture/captions.json`
 - `manifest.json`
 
-`features.json` 登记的 `readmeAsset` 会在生成后自动覆盖 `architecture/assets` 下的同名 APNG；提交前先看一帧确认字幕和 UI。视频不进入仓库；官网或视频平台托管，README 只放 APNG 或可播放页面链接。
+`features.json` 登记的 `readmeAsset` 会在生成后自动覆盖 `architecture/assets` 下的同名 APNG；提交前先看一帧确认字幕和 UI。不输出 MP4 或 SRT。
 
 ## 约束
 

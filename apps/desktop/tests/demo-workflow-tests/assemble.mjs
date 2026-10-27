@@ -44,15 +44,6 @@ function assTime(milliseconds) {
   return `${hours}:${String(minutes).padStart(2, '0')}:${seconds.toFixed(2).padStart(5, '0')}`;
 }
 
-function srtTime(milliseconds) {
-  const total = Math.max(0, Math.round(milliseconds));
-  const hours = Math.floor(total / 3_600_000);
-  const minutes = Math.floor((total % 3_600_000) / 60_000);
-  const seconds = Math.floor((total % 60_000) / 1000);
-  const millis = total % 1000;
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')},${String(millis).padStart(3, '0')}`;
-}
-
 function assText(text) {
   return text.replace(/\\/g, '\\\\').replace(/[{}]/g, '').replace(/\r?\n/g, '\\N');
 }
@@ -80,20 +71,8 @@ const ass = [
 ].join('\n');
 writeFileSync(path.join(run, 'captions.ass'), ass, 'utf8');
 
-function writeSrt(file, field) {
-  const blocks = captions.map((caption, index) => [
-    String(index + 1),
-    `${srtTime(caption.start)} --> ${srtTime(caption.end)}`,
-    caption[field],
-    '',
-  ].join('\n'));
-  writeFileSync(path.join(run, file), `${blocks.join('\n')}\n`, 'utf8');
-}
-writeSrt('captions-en.srt', 'en');
-writeSrt('captions-zh.srt', 'zh');
-
-const video = path.join(run, 'video.mp4');
 const ffmpegExecutable = process.env.FFMPEG_PATH || ffmpeg.path;
+const temporaryVideo = path.join(run, 'video.tmp.mp4');
 const encoded = spawnSync(ffmpegExecutable, [
   '-y',
   '-framerate', String(fps),
@@ -103,17 +82,18 @@ const encoded = spawnSync(ffmpegExecutable, [
   '-pix_fmt', 'yuv420p',
   '-crf', '20',
   '-preset', 'medium',
-  '-movflags', '+faststart',
-  'video.mp4',
+  'video.tmp.mp4',
 ], { cwd: run, stdio: 'inherit' });
 if (encoded.error) throw encoded.error;
 if (encoded.status !== 0) throw new Error(`ffmpeg failed with status ${encoded.status}`);
-if (!existsSync(video) || statSync(video).size === 0) throw new Error('ffmpeg did not produce video.mp4');
+if (!existsSync(temporaryVideo) || statSync(temporaryVideo).size === 0) {
+  throw new Error('ffmpeg did not produce the temporary video.');
+}
 
 const readme = path.join(run, 'readme.png');
 const apng = spawnSync(ffmpegExecutable, [
   '-y',
-  '-i', 'video.mp4',
+  '-i', 'video.tmp.mp4',
   '-vf', 'fps=10,scale=1200:-2:flags=lanczos,format=rgba',
   '-c:v', 'apng',
   '-plays', '0',
@@ -123,6 +103,7 @@ const apng = spawnSync(ffmpegExecutable, [
 if (apng.error) throw apng.error;
 if (apng.status !== 0) throw new Error(`APNG encoding failed with status ${apng.status}`);
 if (!existsSync(readme) || statSync(readme).size === 0) throw new Error('ffmpeg did not produce readme.png');
+rmSync(temporaryVideo, { force: true });
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../../../..');
 const assetIndex = args.indexOf('--asset');
@@ -141,14 +122,12 @@ writeFileSync(path.join(run, 'manifest.json'), `${JSON.stringify({
   locale: process.env.INTERCEPTOR_E2E_LOCALE ?? null,
   app: process.env.INTERCEPTOR_E2E_APP_PATH ?? null,
   durationMs: end,
-  fps,
-  frames: count,
-  video: 'video.mp4',
+  fps: 10,
+  sequenceFrames: count,
   readme: 'readme.png',
   readmeAsset: readmeAsset ?? null,
-  subtitles: ['captions.ass', 'captions-en.srt', 'captions-zh.srt'],
-  captions,
+  captions: 'captions.ass',
+  captionsText: captions,
 }, null, 2)}\n`, 'utf8');
 
-console.log(`[demo] encoded ${video} (${statSync(video).size} bytes)`);
-console.log(`[demo] APNG ${readme} (${statSync(readme).size} bytes)`);
+console.log(`[demo] README APNG ${readme} (${statSync(readme).size} bytes)`);

@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `e220371e`
+> Tracked commit: `d3202680`
 > Homepage guidebook: `07645818`
 
 ## 维护规则
@@ -32,9 +32,9 @@
   - 当前阻塞：`settings.updates.download-open` 与 `settings.update-notification` 需要可匿名访问且高于当前 `0.1.1-alpha.1` 的 Release 及对应平台安装包；现有最高 alpha 与当前 App 同版，真实检查为 `up-to-date`，下载和通知分支未验收。
   - 下一步：具备更高版本的公开 Release 后，用对应平台 packaged App 续验下载、打开安装器和通知，保留 trace、各代进程退出、8888 释放及系统设置恢复证据。
 
-- **19. 分功能 Demo 视频与中英字幕 · 代码完成 · 待补 rules/composer**
-  - 目标：在`apps/desktop/tests/demo-workflow-tests/`建立与E2E平级的独立录制workflow；入口为`npm start → Test → Demo 视频`，按feature选择，输出MP4、README用APNG和中英字幕。不进入E2E日常套件，不要求全量维护。
-  - 当前步骤：独立Playwright config、CDP抓帧fixture、runner、ASS/SRT/ffmpeg assembly和start菜单入口已就位；`capture`、`breakpoints` 两个feature已生成中英字幕MP4和APNG；APNG按`features.json`覆盖`architecture/assets/readme-<feature>-demo.png`，breakpoints的APNG已接入英文README。
-  - 下一步：补`rules`、`composer` feature；在真实终端核对start菜单选择与输出路径；确认GitHub实际渲染APNG；按Windows/macOS验证ffmpeg和字幕字体；确定MP4的外部托管位置。
-  - 约束：只操作真实App；MP4只作官网/视频平台源文件，不入库；README用APNG或可播放页面链接，不用GIF；ffmpeg和字体按平台检测，缺依赖时明确失败；录制接管系统代理后核对恢复；单feature运行，不因本项扩大E2E套件。
-  - 完成条件：`npm start`可选择feature并生成可播放MP4、APNG与中英字幕；同一feature可重复生成并覆盖固定asset；输出目录含video、APNG、字幕和manifest；README/官网/渠道引用一致。
+- **19. 分功能 README 演示 APNG 与中英字幕 · 代码完成 · 待补 rules/composer**
+  - 目标：在`apps/desktop/tests/demo-workflow-tests/`建立与E2E平级的独立录制workflow；入口为`npm start → Test → README Demo`，按feature选择，生成README用APNG和中英字幕并覆盖`architecture/assets`固定文件。不进入E2E日常套件，不要求全量维护。
+  - 当前步骤：独立Playwright config、CDP抓帧fixture、runner、ASS/APNG assembly和start菜单入口已就位；`capture`、`breakpoints` 两个feature已生成中英字幕APNG；APNG按`features.json`覆盖`architecture/assets/readme-<feature>-demo.png`，breakpoints的APNG已接入英文README。
+  - 下一步：补`rules`、`composer` feature；在真实终端核对start菜单选择与输出路径；确认GitHub实际渲染APNG；按Windows/macOS验证ffmpeg和字幕字体。
+  - 约束：只操作真实App；本轮只产出README用APNG，不生成MP4或SRT；不用GIF；APNG必须覆盖固定asset，不新增每轮文件名；ffmpeg和字体按平台检测，缺依赖时明确失败；录制接管系统代理后核对恢复；单feature运行，不因本项扩大E2E套件。
+  - 完成条件：`npm start`可选择feature并生成可播放APNG与中英字幕；同一feature可重复生成并覆盖固定asset；输出目录含APNG、字幕源和manifest；README引用同一路径。

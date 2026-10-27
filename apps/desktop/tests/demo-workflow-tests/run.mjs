@@ -43,7 +43,7 @@ if (!existsSync(app)) {
 if (!process.env.npm_execpath) fail('Run this entry through npm run test:demo:workflow.');
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-const output = path.resolve(argument('output', path.join(desktop, 'test-results/demo-videos', `${stamp}-${feature}`)));
+const output = path.resolve(argument('output', path.join(desktop, 'test-results/demo-readme', `${stamp}-${feature}`)));
 const capture = path.join(output, 'capture');
 const playwrightOutput = path.join(output, 'playwright');
 
@@ -82,11 +82,16 @@ if (readmeAsset) assembleArgs.push('--asset', readmeAsset);
 const assemble = spawnSync(process.execPath, assembleArgs, {
   cwd: desktop,
   stdio: 'inherit',
+  env: {
+    ...process.env,
+    INTERCEPTOR_DEMO_FEATURE: feature,
+    INTERCEPTOR_E2E_LOCALE: locale,
+    INTERCEPTOR_E2E_APP_PATH: app,
+  },
 });
 if (assemble.error) throw assemble.error;
 if (assemble.status !== 0) process.exit(assemble.status ?? 1);
 
-console.log(`[demo] video: ${path.join(output, 'video.mp4')}`);
-console.log(`[demo] subtitles: ${path.join(output, 'captions.ass')}`);
+console.log(`[demo] README APNG: ${path.join(output, 'readme.png')}`);
 if (readmeAsset) console.log(`[demo] README asset: ${path.join(desktop, '..', '..', readmeAsset)}`);
 console.log(`[demo] output: ${output}`);
