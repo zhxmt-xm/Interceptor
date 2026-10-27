@@ -231,12 +231,39 @@ async function chooseParity() {
   };
 }
 
+async function chooseDemo(workspaces) {
+  const desktop = workspaces.find((workspace) => workspace.name === desktopName);
+  const workflowRoot = path.join(repositoryRoot, desktop.directory, 'tests/demo-workflow-tests/workflows');
+  const features = (await readdir(workflowRoot, { withFileTypes: true }))
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.workflow.ts'))
+    .map((entry) => entry.name.replace(/\.workflow\.ts$/, ''))
+    .sort();
+  if (features.length === 0) {
+    console.log('没有可用的 demo workflow。');
+    return;
+  }
+  const feature = await choose('Demo：选择 feature', features.map((name) => ({ name, value: name })));
+  if (feature === back) return;
+  return {
+    title: `Demo 视频 · ${feature}`,
+    commands: [npmCommand('test:demo:workflow', desktop, ['--feature', feature])],
+    notices: [
+      '使用packaged App录制单个feature，生成MP4、中英字幕和SRT；不进入E2E全量套件。',
+      '默认使用apps/desktop/out/Interceptor-<platform>-<arch>；可用INTERCEPTOR_E2E_APP_PATH或--app指定。',
+      '输出到apps/desktop/test-results/demo-videos/<run>/；录制会临时接管系统代理，结束后核对恢复。',
+      '首次使用或App产物变化后先执行npm run package。',
+      ...appNotices,
+    ],
+  };
+}
+
 async function chooseChecks(workspaces) {
   while (true) {
     const action = await choose('Test：选择项目', [
       { name: 'Typecheck 类型检查', value: 'typecheck' },
       { name: 'Unit / Integration 代码测试', value: 'vitest' },
       { name: 'E2E 用户流程测试', value: 'e2e', disabled: platformRestriction },
+      { name: 'Demo 视频（单 feature，中英字幕）', value: 'demo', disabled: platformRestriction },
       { name: 'Parity 设计还原检查', value: 'parity' },
       { name: 'Packaged smoke 打包后验收', value: 'smoke', disabled: platformRestriction },
       { name: 'Artifact audit 打包资源检查', value: 'audit', disabled: platformRestriction },
@@ -267,6 +294,7 @@ async function chooseChecks(workspaces) {
     }
     const task = action === 'vitest' ? await chooseVitest(workspaces)
       : action === 'e2e' ? await chooseWorkflow(workspaces)
+      : action === 'demo' ? await chooseDemo(workspaces)
       : await chooseParity();
     if (task) return task;
   }
@@ -351,6 +379,7 @@ async function main() {
     console.log('Development / Test / Build / Release → 目标或必要范围 → 确认执行');
     console.log('Desktop / Design 选择后直接启动；构建准备自动完成，不询问缓存模式。');
     console.log('Test → E2E可选普通验收、逐步截图或教程截图更新并发布Homepage；最后一项按固定清单验收后自动commit/push。');
+    console.log('Test → Demo 视频可选单个feature，生成MP4、中英字幕和SRT；独立目录运行，不并入E2E全量套件。');
     console.log('教程发布重拍全部自动来源；独立真实Host图片按审核摘要校验后保留，不用SDK冒充重拍。');
     console.log('教程发布直接使用gh调用GitHub API；不需要本地Homepage仓库，不clone或推送App分支。');
     console.log('执行摘要分列显示，确认默认 Yes，仍需按 Enter；输入 n 取消。');
