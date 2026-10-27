@@ -205,56 +205,56 @@
   "chineseDemos": {
     "capture": {
       "image": "readme-capture-demo-zh.png",
-      "sha256": "986c572f68310817e2e99c4d8cb23cadd0a53857681c4e34189d1402cd7eb93b",
+      "sha256": "9b25689d1172103eca1389174bf7695d2e0e588869a18b9bf06df0ce43438f70",
       "width": 1440,
       "height": 810,
       "fps": 10,
-      "durationMs": 5980,
+      "durationMs": 5830,
       "source": "apps/desktop/tests/demo-workflow-tests/workflows/capture.workflow.ts"
     },
     "rules": {
       "image": "readme-rules-demo-zh.png",
-      "sha256": "5622555169a59d7d78d53db3e837f756894c5b5615ab6d774e9e5c5c7b01a7a7",
+      "sha256": "c7aea36ea3e5bee7bf0d460c550de745087798f1a0df45373eefb65047c36772",
       "width": 1440,
       "height": 810,
       "fps": 10,
-      "durationMs": 9769,
+      "durationMs": 9784,
       "source": "apps/desktop/tests/demo-workflow-tests/workflows/rules.workflow.ts"
     },
     "breakpoints": {
       "image": "readme-breakpoints-demo-zh.png",
-      "sha256": "75fd00dfc4be3250d97c62fd6cd2bbba8521036aa8664cdcae98787923e2c9df",
+      "sha256": "4937b89eecd033bbc88ffd86dfdd3d4ce26109cf2aa48de75278f02958c4992d",
       "width": 1440,
       "height": 810,
       "fps": 10,
-      "durationMs": 13001,
+      "durationMs": 12969,
       "source": "apps/desktop/tests/demo-workflow-tests/workflows/breakpoints.workflow.ts"
     },
     "composer": {
       "image": "readme-composer-demo-zh.png",
-      "sha256": "c1773c9f34afba26efcb42cf40a6d7ceb4f229e069c26e0739cdc561c7eff56b",
+      "sha256": "42e4a089506f1167f4a4c3db95ee71c9173fd61f33e3e32f1901247f4f97374e",
       "width": 1440,
       "height": 810,
       "fps": 10,
-      "durationMs": 5344,
+      "durationMs": 5318,
       "source": "apps/desktop/tests/demo-workflow-tests/workflows/composer.workflow.ts"
     },
     "agent": {
       "image": "readme-agent-demo-zh.png",
-      "sha256": "35e7f8ed5f78e81c5ff65cd90948967818d2499b31d0ff5f1a98387dae98fb94",
+      "sha256": "e8ce1909832039698e9b96cec76d518485646b61e7700fbb1cae8d99709af685",
       "width": 1440,
       "height": 810,
       "fps": 10,
-      "durationMs": 6296,
+      "durationMs": 6339,
       "source": "apps/desktop/tests/demo-workflow-tests/workflows/agent.workflow.ts"
     },
     "mcp": {
       "image": "readme-mcp-demo-zh.png",
-      "sha256": "5d3e19cafd029b1c629f3870d0a6cf11bf6f1683b7fa35cf3b2034065a2e31b6",
+      "sha256": "28362ea8285803b48e3d8825ee20287e3cde131a46a05a4c23aa70fd21661b1d",
       "width": 1440,
       "height": 810,
       "fps": 10,
-      "durationMs": 7091,
+      "durationMs": 7052,
       "source": "apps/desktop/tests/demo-workflow-tests/workflows/mcp.workflow.ts"
     }
   }
