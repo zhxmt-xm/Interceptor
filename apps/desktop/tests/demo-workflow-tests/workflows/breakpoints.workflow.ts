@@ -18,6 +18,8 @@ const DEMO_PATH = '/demo/orders/42';
 const ORIGINAL_BODY = JSON.stringify({ orderId: 'demo-001', status: 'pending', total: 128 });
 const EDITED_COMPACT = JSON.stringify({ orderId: 'demo-001', status: 'shipped', total: 128 });
 const EDITED_BODY = JSON.stringify({ orderId: 'demo-001', status: 'shipped', total: 128 }, null, 2);
+const CHINESE = (process.env.INTERCEPTOR_E2E_LOCALE ?? '').toLowerCase().startsWith('zh');
+const RULE_NAME = CHINESE ? 'README 断点演示' : 'README demo breakpoint';
 
 async function requestThroughProxy(
   proxyPort: number,
@@ -96,7 +98,7 @@ test('demo.breakpoints creates a Rule breakpoint, edits the request and forwards
   const ruleId = await ruleRow.getAttribute('data-automation-id');
   if (!ruleId?.startsWith(AUTOMATION_ID_PREFIXES.ruleRow)) throw new Error('The Rule omitted its public identity.');
   await getByAutomationId(page, AUTOMATION_IDS.rules.editorName)
-    .fill('README demo breakpoint');
+    .fill(RULE_NAME);
   await getByAutomationId(
     page,
     AutomationIdFactory.ruleMatcherField(ruleId.slice(AUTOMATION_ID_PREFIXES.ruleRow.length), 0, 'value'),
@@ -149,6 +151,7 @@ test('demo.breakpoints creates a Rule breakpoint, edits the request and forwards
     'POST',
     ORIGINAL_BODY,
   );
+  await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill(DEMO_PATH);
   const paused = getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow)
     .filter({ hasText: DEMO_PATH })
     .and(page.locator('[data-breakpoint-state="head"]'));

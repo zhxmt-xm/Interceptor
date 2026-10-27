@@ -2,7 +2,12 @@ import { AUTOMATION_IDS } from '../../../src/shared/automation-ids';
 import { getByAutomationId } from '../../e2e-workflow-tests/fixtures/ui/automation';
 import { expect, test } from '../fixtures/demo-recorder';
 
-const ANSWER = 'Interceptor can explain the captured traffic and the Rules that matched it.';
+const CHINESE = (process.env.INTERCEPTOR_E2E_LOCALE ?? '').toLowerCase().startsWith('zh');
+const PROFILE_NAME = CHINESE ? 'README 演示模型' : 'README demo model';
+const PROMPT = CHINESE ? 'Interceptor 正在捕获什么？' : 'What is Interceptor capturing?';
+const ANSWER = CHINESE
+  ? 'Interceptor 可以解释捕获的流量以及命中的 Rules。'
+  : 'Interceptor can explain the captured traffic and the Rules that matched it.';
 
 test('demo.agent configures a local model and asks about traffic', async ({
   desktopApp,
@@ -27,7 +32,7 @@ test('demo.agent configures a local model and asks about traffic', async ({
     en: 'Point it at an OpenAI-compatible endpoint.',
     zh: '填入 OpenAI 兼容接口地址。',
   });
-  await getByAutomationId(page, AUTOMATION_IDS.agent.provider.profileName).fill('README demo model');
+  await getByAutomationId(page, AUTOMATION_IDS.agent.provider.profileName).fill(PROFILE_NAME);
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.baseUrl)
     .fill(openAiCompatibleLab.baseUrl('demo-agent'));
   await getByAutomationId(page, AUTOMATION_IDS.agent.provider.modelId).fill('demo-model');
@@ -48,7 +53,7 @@ test('demo.agent configures a local model and asks about traffic', async ({
   await getByAutomationId(page, AUTOMATION_IDS.agent.panel.toggle).click();
   await getByAutomationId(page, AUTOMATION_IDS.agent.chat.new).click();
   await getByAutomationId(page, AUTOMATION_IDS.agent.message.input)
-    .fill('What is Interceptor capturing?');
+    .fill(PROMPT);
   openAiCompatibleLab.enqueueTurn({ textChunks: [ANSWER] });
   await getByAutomationId(page, AUTOMATION_IDS.agent.message.send).click();
 

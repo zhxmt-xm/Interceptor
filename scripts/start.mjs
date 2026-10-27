@@ -242,6 +242,11 @@ async function chooseDemo(workspaces) {
     console.log('没有可用的 demo workflow。');
     return;
   }
+  const language = await choose('Demo：选择界面语言', [
+    { name: 'English UI', value: 'en-US' },
+    { name: '中文 UI', value: 'zh-CN' },
+  ]);
+  if (language === back) return;
   const selected = await checkbox({
     message: 'Demo：选择 feature（空格多选，Enter 执行；空选返回）',
     pageSize: 12,
@@ -261,12 +266,12 @@ async function chooseDemo(workspaces) {
   });
   if (selected.length === 0 || selected.includes(back)) return;
   return {
-    title: `README Demo · ${selected.join(', ')}`,
-    commands: selected.map((feature) => npmCommand('test:demo:workflow', desktop, ['--feature', feature])),
+    title: `README Demo · ${language === 'zh-CN' ? '中文' : 'English'} · ${selected.join(', ')}`,
+    commands: selected.map((feature) => npmCommand('test:demo:workflow', desktop, ['--feature', feature, '--locale', language])),
     notices: [
       '按选择顺序逐个运行；每个 feature 使用 packaged App 生成README用APNG和中英字幕。',
       '默认使用apps/desktop/out/Interceptor-<platform>-<arch>；可用INTERCEPTOR_E2E_APP_PATH或--app指定。',
-      '输出到apps/desktop/test-results/demo-readme/<本地时间>-<feature>/；APNG会覆盖features.json登记的architecture/assets文件。',
+      `输出到apps/desktop/test-results/demo-readme/<本地时间>-<feature>-${language}/；APNG会覆盖features.json登记的architecture/assets文件。`,
       '每段录制会临时接管系统代理，结束后核对恢复；一次只启动一个App。',
       '首次使用或App产物变化后先执行npm run package。',
       ...appNotices,
