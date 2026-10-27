@@ -1,12 +1,12 @@
 # Demo workflow tests
 
-按 feature 录制真实 App 演示视频，生成中英双语字幕。和 `e2e-workflow-tests` 平级，但不属于 E2E 日常套件。
+按 feature 录制真实 App 演示，生成 README 用 APNG 和中英双语字幕。和 `e2e-workflow-tests` 平级，但不属于 E2E 日常套件。
 
 ## 入口
 
 ```powershell
 npm start
-# Test → Demo 视频（单 feature，中英字幕）
+# Test → README Demo（单 feature，中英字幕）
 ```
 
 或直接运行：
@@ -21,7 +21,7 @@ npm run test:demo:workflow --workspace @interceptor/desktop -- --feature breakpo
 
 ## 输出
 
-`apps/desktop/test-results/demo-videos/<timestamp>-<feature>/`
+`apps/desktop/test-results/demo-readme/<timestamp>-<feature>/`
 
 - `readme.png`：1200 宽的 APNG，中英字幕已烧录，供 README 内联
 - `captions.ass`：字幕源文件
