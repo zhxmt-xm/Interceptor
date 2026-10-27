@@ -9,6 +9,7 @@ import {
   clipboard,
   dialog,
   ipcMain as electronIpcMain,
+  Menu,
   safeStorage,
   session,
   shell,
@@ -72,6 +73,7 @@ import {
 } from './lifecycle/application-shutdown';
 import { TrustedRendererUrl } from './security/trusted-renderer-url';
 import { PackagedRendererProtocol } from './security/packaged-renderer-protocol';
+import { isBlockedPackagedShortcut } from './security/keyboard-guard';
 import { ToolCapabilitySettingsService } from './tool-capabilities/entry';
 import { McpDesktopService } from './mcp/entry';
 import { exportCollection, exportSavedCollection } from './composer/export-collection';
@@ -208,6 +210,7 @@ class DesktopApplication {
   }
 
   private async onReady(): Promise<void> {
+    this.configurePackagedMenu();
     this.configureSessionSecurity();
     if (!MAIN_WINDOW_VITE_DEV_SERVER_URL) {
       this.packagedRendererProtocol = new PackagedRendererProtocol(
@@ -534,6 +537,19 @@ class DesktopApplication {
     });
   }
 
+  private configurePackagedMenu(): void {
+    if (!app.isPackaged) return;
+    if (process.platform === 'darwin') {
+      Menu.setApplicationMenu(Menu.buildFromTemplate([
+        { role: 'appMenu' },
+        { role: 'editMenu' },
+        { role: 'windowMenu' },
+      ]));
+      return;
+    }
+    Menu.setApplicationMenu(null);
+  }
+
   private createMainWindow(): BrowserWindow {
     const mainWindow = new BrowserWindow({
       autoHideMenuBar: process.platform !== 'darwin',
@@ -560,6 +576,9 @@ class DesktopApplication {
       mainWindow.setMenuBarVisibility(false);
     }
     mainWindow.setContentSize(1600, 900);
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (app.isPackaged && isBlockedPackagedShortcut(input)) event.preventDefault();
+    });
 
     mainWindow.once('ready-to-show', () => mainWindow.show());
     mainWindow.once('closed', () => {

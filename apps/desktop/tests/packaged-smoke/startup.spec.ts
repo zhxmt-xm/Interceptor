@@ -537,6 +537,19 @@ test('packaged app starts with an isolated renderer and running core', async ({
     await expect(page.getByRole('banner')).toContainText('Capture');
     await expect(page.getByRole('navigation', { name: 'Workspaces' })).toBeVisible();
     await expect(page.getByRole('main')).toBeVisible();
+    await rendererPage.evaluate(() => {
+      (window as Window & { __refreshMarker?: string }).__refreshMarker = 'kept';
+    });
+    const reloadShortcuts = process.platform === 'darwin'
+      ? ['Meta+R', 'F5', 'Meta+Shift+R']
+      : ['Control+R', 'F5', 'Control+Shift+R'];
+    for (const shortcut of reloadShortcuts) {
+      await rendererPage.keyboard.press(shortcut);
+      await rendererPage.waitForTimeout(500);
+      await expect.poll(async () => rendererPage.evaluate(() => (
+        window as Window & { __refreshMarker?: string }
+      ).__refreshMarker).catch(() => 'reloaded')).toBe('kept');
+    }
     await settleProxyReadiness(page);
     await workflowHostSafetyGuard?.captureProcessTrees();
 
