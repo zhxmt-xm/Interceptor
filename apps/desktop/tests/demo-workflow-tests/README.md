@@ -6,7 +6,7 @@
 
 ```powershell
 npm start
-# Test → README Demo（单 feature，中英字幕）
+# Test → README Demo（可多选 feature，中英字幕）
 ```
 
 或直接运行：
@@ -21,14 +21,16 @@ npm run test:demo:workflow --workspace @interceptor/desktop -- --feature breakpo
 
 ## 输出
 
-`apps/desktop/test-results/demo-readme/<timestamp>-<feature>/`
+`npm start` 里空格多选 feature，Enter 后按选择顺序逐个运行；直接空选 Enter 或选择“返回上一级”都会返回上层菜单。
 
-- `readme.png`：1200 宽的 APNG，中英字幕已烧录，供 README 内联
+`apps/desktop/test-results/demo-readme/<local-time>-<feature>/`
+
+- `readme.png`：1440×810 的 APNG，PNG 抓帧，中英字幕已烧录，供 README 内联
 - `captions.ass`：字幕源文件
 - `capture/frames.json`、`capture/captions.json`
 - `manifest.json`
 
-`features.json` 登记的 `readmeAsset` 会在生成后自动覆盖 `architecture/assets` 下的同名 APNG；提交前先看一帧确认字幕和 UI。不输出 MP4 或 SRT。
+`features.json` 登记的 `readmeAsset` 会在生成后自动覆盖 `architecture/assets` 下的同名 APNG；提交前先看一帧确认字幕和 UI。不输出 MP4 或 SRT，并同步更新 `readme-media.json` 的 hash 和时长。
 
 ## 约束
 

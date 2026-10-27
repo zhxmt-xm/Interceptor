@@ -22,7 +22,7 @@ See what your app sends. Change what it receives.</p>
 
 [简体中文](README.zh-CN.md) | [Website](https://www.interceptor.cn/) | [Quick Start](#quick-start) | [Features](#features) | [Illustrated Guide](https://www.interceptor.cn/en/guide) | [Feedback](https://github.com/zhxmt-xm/Interceptor/issues)
 
-<img src="architecture/assets/readme-capture-demo.png" alt="Capture filtering HTTP traffic and inspecting a JSON response" width="1200">
+<img src="architecture/assets/readme-capture-demo.png" alt="Capture filtering HTTP traffic and inspecting a JSON response" width="1440">
 
 *Screenshots from v0.1.1-alpha.1 on macOS; animated demos recorded on Windows. [Source and limits](architecture/assets/readme-media.json).*
 
@@ -89,7 +89,7 @@ The opening screenshot shows a selected WebSocket connection and its messages. M
 - Mock a response, map to a local file or another server, block traffic, or add a delay.
 - Organize rules in folders and inspect their hits and recorded effects.
 
-<img src="architecture/assets/readme-rules-demo.png" alt="Create a Rule, apply a 418 status rewrite, and see the client response" width="1200">
+<img src="architecture/assets/readme-rules-demo.png" alt="Create a Rule, apply a 418 status rewrite, and see the client response" width="1440">
 
 *Animated demo with Chinese and English subtitles.*
 
@@ -101,7 +101,7 @@ The opening screenshot shows a selected WebSocket connection and its messages. M
 - Continue unchanged, forward edited content or drop it; manage multiple paused items from the queue.
 - HTTP pauses occur at the header stage, so the original body may not yet be available.
 
-<img src="architecture/assets/readme-breakpoints-demo.png?v=2" alt="Create a Rule breakpoint, edit the request body and forward it" width="1200">
+<img src="architecture/assets/readme-breakpoints-demo.png?v=3" alt="Create a Rule breakpoint, edit the request body and forward it" width="1440">
 
 *Animated demo with Chinese and English subtitles.*
 
@@ -113,7 +113,7 @@ The opening screenshot shows a selected WebSocket connection and its messages. M
 - Edit query parameters, headers, authentication and bodies; inspect the response and timing.
 - Save reusable requests in collections, use request history, or probe a TLS connection.
 
-<img src="architecture/assets/readme-composer-demo.png" alt="Compose and send a POST request with a JSON body and read the 200 response" width="1200">
+<img src="architecture/assets/readme-composer-demo.png" alt="Compose and send a POST request with a JSON body and read the 200 response" width="1440">
 
 *Animated demo with Chinese and English subtitles.*
 
@@ -125,7 +125,7 @@ Composer sends directly: its requests do not enter Capture or run through Rules.
 - Discuss traffic and let the Agent use only the Tools you enable; review changes in `Ask` mode.
 - Keep encrypted local conversation history, switch chats, stop a turn or retry.
 
-<img src="architecture/assets/readme-agent-demo.png" alt="Configure a local OpenAI-compatible model and ask the Agent about captured traffic" width="1200">
+<img src="architecture/assets/readme-agent-demo.png" alt="Configure a local OpenAI-compatible model and ask the Agent about captured traffic" width="1440">
 
 *Animated demo with Chinese and English subtitles; local demonstration model, not a commercial model test.*
 
@@ -137,7 +137,7 @@ Composer sends directly: its requests do not enter Capture or run through Rules.
 - Copy the connection configuration to a host supporting the required Streamable HTTP protocol.
 - Control MCP Tools independently of the built-in Agent; rotate or revoke client access in Settings.
 
-<img src="architecture/assets/readme-mcp-demo.png" alt="Enable the loopback MCP server, create a client and copy its configuration" width="1200">
+<img src="architecture/assets/readme-mcp-demo.png" alt="Enable the loopback MCP server, create a client and copy its configuration" width="1440">
 
 *Animated demo with Chinese and English subtitles; local loopback configuration, not an external-host compatibility test.*
 

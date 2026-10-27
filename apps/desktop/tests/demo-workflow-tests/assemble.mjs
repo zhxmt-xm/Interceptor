@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -33,7 +34,7 @@ for (let index = 0; index < count; index += 1) {
     if (candidate.at <= time) frame = candidate;
     else break;
   }
-  copyFileSync(frame.file, path.join(sequence, `frame-${String(index).padStart(5, '0')}.jpg`));
+  copyFileSync(frame.file, path.join(sequence, `frame-${String(index).padStart(5, '0')}.png`));
 }
 
 function assTime(milliseconds) {
@@ -58,15 +59,15 @@ const chineseFont = process.platform === 'win32'
 const ass = [
   '[Script Info]',
   'ScriptType: v4.00+',
-  'PlayResX: 1200',
-  'PlayResY: 676',
+  'PlayResX: 1440',
+  'PlayResY: 810',
   'WrapStyle: 0',
   'ScaledBorderAndShadow: yes',
   '',
   '[V4+ Styles]',
   'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
-  `Style: EN,${englishFont},30,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,60,60,58,1`,
-  `Style: ZH,${chineseFont},24,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,60,60,26,1`,
+  `Style: EN,${englishFont},36,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1.5,0,2,72,72,70,1`,
+  `Style: ZH,${chineseFont},29,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1.5,0,2,72,72,31,1`,
   '',
   '[Events]',
   'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
@@ -85,8 +86,8 @@ mkdirSync(captioned, { recursive: true });
 const encoded = spawnSync(ffmpegExecutable, [
   '-y',
   '-framerate', String(fps),
-  '-i', path.join('sequence', 'frame-%05d.jpg'),
-  '-vf', 'fps=10,scale=1200:-2:flags=lanczos,ass=captions.ass',
+  '-i', path.join('sequence', 'frame-%05d.png'),
+  '-vf', 'fps=10,scale=1440:810:flags=lanczos,ass=captions.ass',
   '-c:v', 'png',
   path.join('captioned', 'frame-%05d.png'),
 ], { cwd: run, stdio: 'inherit' });
@@ -120,10 +121,30 @@ if (asset) {
   console.log(`[demo] README asset ${target}`);
 }
 
+const feature = process.env.INTERCEPTOR_DEMO_FEATURE;
+if (feature && readmeAsset) {
+  const mediaPath = path.join(repositoryRoot, 'architecture/assets/readme-media.json');
+  const media = JSON.parse(readFileSync(mediaPath, 'utf8'));
+  media.englishDemos ??= {};
+  media.englishDemos[feature] = {
+    image: path.basename(asset),
+    sha256: createHash('sha256').update(readFileSync(readme)).digest('hex'),
+    width: 1440,
+    height: 810,
+    fps: 10,
+    durationMs: end,
+    source: `apps/desktop/tests/demo-workflow-tests/workflows/${feature}.workflow.ts`,
+  };
+  writeFileSync(mediaPath, `${JSON.stringify(media, null, 2)}\n`, 'utf8');
+  console.log(`[demo] README metadata ${mediaPath}`);
+}
+
 writeFileSync(path.join(run, 'manifest.json'), `${JSON.stringify({
   feature: process.env.INTERCEPTOR_DEMO_FEATURE ?? path.basename(run),
   locale: process.env.INTERCEPTOR_E2E_LOCALE ?? null,
   app: process.env.INTERCEPTOR_E2E_APP_PATH ?? null,
+  startedAt: process.env.INTERCEPTOR_DEMO_STARTED_AT ?? null,
+  timeZone: process.env.INTERCEPTOR_DEMO_TIMEZONE ?? null,
   durationMs: end,
   fps: 10,
   sequenceFrames: count,
