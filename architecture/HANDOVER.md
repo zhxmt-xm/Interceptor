@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `c672e291`
+> Tracked commit: `b82a5dce`
 > Homepage guidebook: `07645818`
 
 ## 维护规则
@@ -32,9 +32,9 @@
   - 当前阻塞：`settings.updates.download-open` 与 `settings.update-notification` 需要可匿名访问且高于当前 `0.1.1-alpha.1` 的 Release 及对应平台安装包；现有最高 alpha 与当前 App 同版，真实检查为 `up-to-date`，下载和通知分支未验收。
   - 下一步：具备更高版本的公开 Release 后，用对应平台 packaged App 续验下载、打开安装器和通知，保留 trace、各代进程退出、8888 释放及系统设置恢复证据。
 
-- **19. 产品总览演示视频 · 进行中**
-  - 目标：30–35 秒 MP4，依次覆盖 Capture、Rules、Breakpoints、Composer，结尾放 Logo、定位和官网/下载入口；英文旁白 + 中英双语字幕，作为 item 12 的首发素材。第一版不拍 Agent/MCP，只在结尾用一行带过。
-  - 当前进度：Breakpoints 场景已用真实 packaged App 自动录制；README 的 10 秒 GIF 已用同一管线生成中英字幕版。抓帧、字幕、旁白和编码脚本可复用，完整片尚未开始。
-  - 下一步：在同一 workflow 中补 Rules 改写响应和 Composer 发送两个场景，统一 1600×900、英文界面、light 主题；四段按同一时间线拼接并补结尾卡；输出 1200×675 或 1080p MP4，旁白与字幕对齐后放入官网/仓库，并更新 README 链接。
-  - 约束：只用真实 App，不做合成 UI；录制会临时接管系统代理，结束后核对宿主恢复；第一版不包含 Agent/MCP；字幕中英双语，旁白英文。可复用的录制 workflow、帧和组装脚本归档在 `test-results/readme-demo/`，清理后需按同一步骤重建。
-  - 完成条件：完整片可播放，四段内容与真实 UI 一致，字幕/旁白对齐；README、官网和渠道引用同一个文件，且不宣称未验证功能。
+- **19. 分功能 Demo 视频与中英字幕 · 待实现**
+  - 目标：在`apps/desktop/tests/demo-workflow-tests/`建立与E2E平级的独立录制workflow；入口为`npm start → Test → Demo 视频`，按feature选择，输出MP4和中英字幕（可附SRT/GIF）。不进入E2E日常套件，不要求全量维护。
+  - 当前步骤：录制、CDP抓帧、字幕和编码管线已用Breakpoints一次性跑通；旧README视频与MP4已删除，等待按新结构重建。
+  - 下一步：先搭`demo-workflow-tests`目录、独立runner和start菜单入口，复用packaged App驱动与CDP抓帧；先实现breakpoints，再补capture、rules、composer；生成ASS/SRT并用ffmpeg输出到`apps/desktop/test-results/demo-videos/<run>/`。
+  - 约束：只操作真实App；视频不入库，官网/视频平台托管，README只放GIF或可播放页面链接；ffmpeg和字体按平台检测，缺依赖时明确失败；录制接管系统代理后核对恢复；单feature运行，不因本项扩大E2E套件。
+  - 完成条件：`npm start`可选择feature并生成可播放MP4与中英字幕；同一feature可重复生成；输出目录含video、字幕和manifest；README/官网/渠道引用一致。
