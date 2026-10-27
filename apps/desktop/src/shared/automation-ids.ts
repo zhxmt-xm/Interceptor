@@ -596,6 +596,12 @@ export const AUTOMATION_IDS = {
       check: 'settings.updates.check',
       download: 'settings.updates.download',
       openInstaller: 'settings.updates.open-installer',
+      progress: 'settings.updates.progress',
+    },
+    updateNotification: {
+      root: 'settings.update-notification',
+      action: 'settings.update-notification.action',
+      dismiss: 'settings.update-notification.dismiss',
     },
   },
 } as const;

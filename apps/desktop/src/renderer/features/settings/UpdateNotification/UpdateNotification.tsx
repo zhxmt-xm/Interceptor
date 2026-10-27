@@ -1,6 +1,7 @@
 import { Download, ExternalLink, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
+import { AUTOMATION_IDS } from '../../../../shared/automation-ids';
 import { Button, IconButton } from '../../../components';
 import { UpdateActions, useUpdateStore } from '../data/updateStore';
 import styles from './UpdateNotification.module.css';
@@ -22,7 +23,12 @@ export function UpdateNotification(): React.JSX.Element | null {
   }
   const downloaded = status.state === 'downloaded';
   return (
-    <div className={styles.notice} role="status">
+    <div
+      className={styles.notice}
+      role="status"
+      data-automation-id={AUTOMATION_IDS.settings.updateNotification.root}
+      data-state={status.state}
+    >
       <span className={styles.icon}><Download aria-hidden="true" /></span>
       <span className={styles.caption}>
         <b>{downloaded ? t('settings.installerDownloaded') : t('settings.updateAvailable')}</b>
@@ -35,13 +41,20 @@ export function UpdateNotification(): React.JSX.Element | null {
         variant="primary"
         size="compact"
         disabled={busy}
+        automationId={AUTOMATION_IDS.settings.updateNotification.action}
         onClick={() => void (
           downloaded ? UpdateActions.openDownloaded() : UpdateActions.download()
         )}
       >
         {downloaded ? t('settings.open') : t('settings.download')}
       </Button>
-      <IconButton icon={X} label={t('settings.dismissUpdate')} size="sm" onClick={dismiss} />
+      <IconButton
+        icon={X}
+        label={t('settings.dismissUpdate')}
+        size="sm"
+        automationId={AUTOMATION_IDS.settings.updateNotification.dismiss}
+        onClick={dismiss}
+      />
     </div>
   );
 }

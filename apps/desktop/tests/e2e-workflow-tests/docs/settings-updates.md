@@ -853,15 +853,17 @@ Local诚实显示unsupported；packaged匿名请求固定仓库，HTTP 404或请
 
 **策略**：native-ui；匿名更新，仅packaged且存在真实可匿名访问的新release时可执行
 
+实现入口为[updates-download-open.workflow.ts](../workflows/settings/updates-download-open.workflow.ts)。被测App必须低于真实已发布版本，但代码是当前源码：可用独立`INTERCEPTOR_BUILD_IDENTIFIER`和更低的`INTERCEPTOR_BUILD_VERSION`构建release-grade包，源码版本、Fuses和Android签名门禁不变。真实检查不是`available`时记录前提并跳过，不把检查失败算作下载/打开通过。当前实现覆盖Windows MSI的打开与原生取消；macOS DMG 的挂载/卸载分支随macOS验收补齐。
+
 ### Steps
 
 1. 保存完整宿主与已就绪日常CA基线，创建profile/evidence，启动packaged App的trace/CDP driver，等待App/Core/8888/readiness；系统代理遵循产品正常启动/退出流程，下载不另行修改系统路由。
 2. 无需GitHub授权，进入Updates点击 `settings.updates.check`，等待真实Available和目标Asset API metadata；若实际返回404或请求失败，记录本workflow前提不满足，不把检查失败路径算作下载/打开通过。
 3. 点击 `settings.updates.download`。
-4. 观察state=downloading、bytes与progress单调增长，UI不允许重复下载。
-5. 等待size和SHA-256校验、fsync和原子rename完成，状态为Downloaded；确认无`.part`残留。
-6. 点击 `settings.updates.open-installer`，确认仅打开本次下载成功的MSI/DMG。
-7. 取消安装器，不安装/修改当前App；确认当前App仍运行。
+4. 观察state=downloading；`settings.updates.progress`的`data-progress`、`data-downloaded-bytes`单调不减且`data-total-bytes`恒定；下载期间`settings.updates.download`不存在，UI不允许重复下载。
+5. 等待size和SHA-256校验、fsync和原子rename完成，状态为Downloaded；下载目录只剩本次MSI且无`.part`残留，文件字节数等于`data-total-bytes`。
+6. 点击 `settings.updates.open-installer`，核对新出现的msiexec命令行只含本次下载成功的MSI/DMG。
+7. 通过原生安装器窗口取消；若出现“确定要取消安装”的确认，选择确认取消。不安装/修改当前App，安装器进程退出且默认安装目录未变化，当前App仍运行。
 8. 保存evidence并Close。
 9. 验证App销毁并清测试下载目录。
 10. 删除profile。
@@ -877,6 +879,8 @@ Local诚实显示unsupported；packaged匿名请求固定仓库，HTTP 404或请
 
 执行时需要packaged App和可匿名访问的新release。不注入Update store或伪造状态，也不把404失败检查作为通知下载通过。布局契约见[更新通知按钮](../../../../../architecture/features/settings/updates.md#更新通知按钮)。
 
+实现入口为[update-notification.workflow.ts](../workflows/settings/update-notification.workflow.ts)。通知根为`settings.update-notification`并带`data-state`，动作为`settings.update-notification.action`，Dismiss为`settings.update-notification.dismiss`；通知在`downloading`时按契约隐藏，因此busy禁用由组件测试覆盖，不把不可观察的瞬时状态写成E2E结论。当前实现覆盖Windows；macOS通知布局在同平台验收时补齐。
+
 ### Steps
 
 1. 创建profile/evidence，由host-safety-guard保存宿主基线；启动packaged App和trace/CDP driver，等待Core、8888及冷启动系统代理自动接管。保持当前语言，使用能显示通知的窗口宽度，并检查通知只受真实Update状态控制。
@@ -885,7 +889,7 @@ Local诚实显示unsupported；packaged匿名请求固定仓库，HTTP 404或请
 4. 确认Settings Updates和Header notification共享同一状态，不重复创建任务。
 5. 等待下载完成进入Downloaded，确认notification文案/action同步，Open同样使用32px紧凑规格，普通Settings Open installer按钮保持34px。
 6. 点击notification的Open installer action并取消安装器。
-7. 返回各workspace，确认available/downloaded显示通知、其余状态隐藏；点击Dismiss后通知隐藏但Settings动作仍可用。busy时通知动作禁用，Dismiss不随之禁用。
+7. 返回各workspace，确认available/downloaded显示通知、其余状态隐藏；下载期间通知不存在，点击Dismiss后通知隐藏但Settings动作仍可用。busy时通知动作禁用不在此断言。
 8. 保存evidence并Close。
 9. 验证Main/Core/Worker全退、8888释放、完整WinINet/journal恢复和本次下载临时文件清理。
 10. 删除profile。

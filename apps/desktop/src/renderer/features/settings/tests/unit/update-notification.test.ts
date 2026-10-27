@@ -2,6 +2,7 @@ import { Download, ExternalLink, RefreshCw } from 'lucide-react';
 import { Children, isValidElement, type ReactElement, type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { AUTOMATION_IDS } from '../../../../../shared/automation-ids';
 import type { UpdateStatus } from '../../../../../shared/desktop-api';
 import type { ButtonProps } from '../../../../components/Button/Button';
 import type { IconButtonProps } from '../../../../components/IconButton/IconButton';
@@ -40,6 +41,20 @@ function findControl<Props>(tree: ReactNode, component: unknown): ReactElement<P
     pending.push(...Children.toArray(candidate.props.children));
   }
   throw new Error('Missing notification control.');
+}
+
+function findByAutomationId(tree: ReactNode, automationId: string): ReactElement<Record<string, unknown>> {
+  if (!automationId) throw new Error('Missing automation id constant.');
+  const pending = Children.toArray(tree);
+  while (pending.length > 0) {
+    const candidate = pending.shift();
+    if (!isValidElement<{ children?: ReactNode }>(candidate)) continue;
+    if ((candidate.props as Record<string, unknown>)['data-automation-id'] === automationId) {
+      return candidate as ReactElement<Record<string, unknown>>;
+    }
+    pending.push(...Children.toArray(candidate.props.children));
+  }
+  throw new Error(`Missing automation element ${automationId}.`);
 }
 
 beforeEach(() => {
@@ -94,6 +109,34 @@ describe('Update notification controls', () => {
   it('hides the notification until a status is available', () => {
     state.status = null;
     expect(UpdateNotification()).toBeNull();
+  });
+});
+
+describe('Update automation surface', () => {
+  it('exposes stable automation ids for the notification and its real actions', () => {
+    const tree = UpdateNotification();
+
+    expect(findByAutomationId(tree, AUTOMATION_IDS.settings.updateNotification.root)
+      .props['data-state']).toBe('available');
+    expect(findControl<ButtonProps>(tree, Button).props.automationId)
+      .toBe(AUTOMATION_IDS.settings.updateNotification.action);
+    expect(findControl<IconButtonProps>(tree, IconButton).props.automationId)
+      .toBe(AUTOMATION_IDS.settings.updateNotification.dismiss);
+  });
+
+  it('exposes byte and progress values while the installer downloads', () => {
+    Object.assign(state.status!, {
+      state: 'downloading',
+      progress: 0.42,
+      downloadedBytes: 70_000_000,
+      totalBytes: 167_000_000,
+    });
+
+    const progress = findByAutomationId(UpdatesPanel(), AUTOMATION_IDS.settings.updates.progress);
+
+    expect(progress.props['data-progress']).toBe(0.42);
+    expect(progress.props['data-downloaded-bytes']).toBe(70_000_000);
+    expect(progress.props['data-total-bytes']).toBe(167_000_000);
   });
 });
 

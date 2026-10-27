@@ -49,11 +49,11 @@ sequenceDiagram
 
 **生命周期**：`DesktopApplication`初始化updater并广播`update:status`；packaged Windows/macOS启动一次检查，此后每小时检查，正在下载或已下载时不自动覆盖结果。退出停止timer并取消检查/下载，已取消请求的迟到响应不能发布新状态或保留安装器，临时`.part`清理。未打包目标为`unsupported`。packaged Renderer从受保护ASAR经`interceptor://app`加载，不存在远程代码覆盖层。
 
-**UI**：Updates从Version开始，Delivery保留固定来源、检查/下载策略、进度和显式Check/Download/Open installer，GitHub access、Private及账号文案已移除。已安装版本标记为Installed，版本策略说明包含alpha。公开`settings.updates.status`只反映`data-state`、`data-supported`、`data-last-checked-at`、`data-current-version`和`data-latest-version`，不增加业务接口。Main safeStorage仍用于macOS CA及Agent/MCP凭据；macOS Keychain访问许可不是GitHub登录。
+**UI**：Updates从Version开始，Delivery保留固定来源、检查/下载策略、进度和显式Check/Download/Open installer，GitHub access、Private及账号文案已移除。已安装版本标记为Installed，版本策略说明包含alpha。公开`settings.updates.status`只反映`data-state`、`data-supported`、`data-last-checked-at`、`data-current-version`和`data-latest-version`，不增加业务接口；检查/下载进度另由`settings.updates.progress`暴露`data-state`、`data-progress`、`data-downloaded-bytes`和`data-total-bytes`。Main safeStorage仍用于macOS CA及Agent/MCP凭据；macOS Keychain访问许可不是GitHub登录。
 
 ### 更新通知按钮
 
 - `UpdatesPanel`通过共享Button的icon参数传入RefreshCw、Download和ExternalLink图标，label只放文字；装饰图标和spinner使用`aria-hidden`。
 - `UpdateNotification`使用`Button size="compact"`：高32px、水平padding为11px；字号12.5px、字重550、图标15px、gap为7px，不在通知CSS覆盖共享按钮样式。
-- `available`仍调用`UpdateActions.download()`，`downloaded`仍调用`UpdateActions.openDownloaded()`；busy时禁用动作，Dismiss独立可用，其余状态不显示通知。没有新增IPC、下载或安装步骤。
+- `available`仍调用`UpdateActions.download()`，`downloaded`仍调用`UpdateActions.openDownloaded()`；busy时禁用动作，Dismiss独立可用，其余状态不显示通知。没有新增IPC、下载或安装步骤。`downloading`属于不显示通知的状态，因此busy禁用由组件测试覆盖；通知根`settings.update-notification`带`data-state`，动作和Dismiss分别为`settings.update-notification.action`与`settings.update-notification.dismiss`。
 - button和独立label使用`inline-flex`与`align-items: center`；图标固定且不收缩，内容间距来自gap，不以字形测量、位移或独立行高补偿。
