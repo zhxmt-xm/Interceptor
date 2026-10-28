@@ -37,6 +37,7 @@ npm run test:demo:workflow --workspace @interceptor/desktop -- --feature breakpo
 ## 约束
 
 - 只操作真实 App，不用合成 UI。
+- 操作 Capture 列表前先用 `capture.keyword.filter` 收窄到本 demo 的流量，再断言行数；系统后台流量也会进入列表。
 - 录制会临时接管系统代理；测试结束后 driver 负责恢复。
 - 同一时间只跑一个 feature；不并入 E2E 全量套件。
 - `@ffmpeg-installer/ffmpeg` 提供默认编码器；可用 `FFMPEG_PATH` 指向系统 ffmpeg，缺字体时字幕可能回退，先在目标平台看一帧再发布。

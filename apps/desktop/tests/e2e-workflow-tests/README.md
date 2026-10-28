@@ -454,6 +454,8 @@ test('composer sends a request', async ({ desktopApp, httpTrafficRunner }) => {
 
 交互只通过automation ID；结果可以通过UI文本、ARIA状态、真实客户端结果、输出文件、进程和端口断言。
 
+操作Capture列表时先用`capture.keyword.filter`收窄到本workflow的流量，再断言行数；系统后台流量也会进入列表，不能用全量行数代表测试输入。
+
 ## Trace 与证据
 
 日常使用`npm start → Test → E2E 用户流程测试`，先选“普通验收”或“逐步截图”，再选功能/workflow并确认；不需要手写截图参数。截图模式自动在`apps/desktop/test-results/workflow-screenshots/<run>/`创建独立运行目录并显示路径，普通测试不会清空这些截图。两种模式运行同一份业务步骤和断言；普通模式保留原trace、final.png及退出恢复证据，不生成`step-screenshots/`。
