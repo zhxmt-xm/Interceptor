@@ -6,6 +6,8 @@ export const plCatalog = {
   'app.coreStatusUnavailable': 'Stan Proxy Core jest niedostępny',
   'app.minimizeWindow': 'Minimalizuj',
   'app.toggleMaximizeWindow': 'Maksymalizuj lub przywróć',
+  'app.menu': 'Menu',
+  'app.checkForUpdates': 'Sprawdź aktualizacje',
   'common.language': 'Język',
   'common.close': 'Zamknij',
   'common.undo': 'Cofnij',

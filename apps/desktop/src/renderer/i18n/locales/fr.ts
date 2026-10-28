@@ -6,6 +6,8 @@ export const frCatalog = {
   'app.coreStatusUnavailable': 'État de Proxy Core indisponible',
   'app.minimizeWindow': 'Réduire',
   'app.toggleMaximizeWindow': 'Agrandir ou restaurer',
+  'app.menu': 'Menu',
+  'app.checkForUpdates': 'Rechercher des mises à jour',
   'common.language': 'Langue',
   'common.close': 'Fermer',
   'common.undo': 'Annuler',

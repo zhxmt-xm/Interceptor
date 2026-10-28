@@ -1,0 +1,42 @@
+.trigger {
+  display: inline-flex;
+  align-items: center;
+}
+
+.panel {
+  min-width: 208px;
+  overflow: hidden;
+  background: var(--ant-color-bg-elevated, #fff);
+  border-radius: 8px;
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.08),
+    0 3px 6px -4px rgba(0, 0, 0, 0.12),
+    0 9px 28px 8px rgba(0, 0, 0, 0.05);
+}
+
+.panel :global(.ant-dropdown-menu) {
+  background: transparent;
+  box-shadow: none;
+}
+
+.version {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--border);
+}
+
+.versionName {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+.versionNumber {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.01em;
+  color: var(--text-3);
+}

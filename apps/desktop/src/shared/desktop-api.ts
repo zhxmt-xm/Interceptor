@@ -528,6 +528,7 @@ export interface PlatformOperationConflict {
 }
 
 export const DESKTOP_IPC_CHANNELS = {
+  appGetVersion: 'app:get-version',
   startupGetStage: 'startup:get-stage',
   startupStageChanged: 'startup:stage-changed',
   platformOperationConflict: 'platform:operation-conflict',
@@ -686,6 +687,7 @@ export const DESKTOP_IPC_CHANNELS = {
 } as const;
 
 export interface InterceptorDesktopApi {
+  getAppVersion(): Promise<string>;
   getStartupStage(): Promise<ApplicationStartupStage>;
   onStartupStageChange(listener: (stage: ApplicationStartupStage) => void): () => void;
   onPlatformOperationConflict(listener: (conflict: PlatformOperationConflict) => void): () => void;

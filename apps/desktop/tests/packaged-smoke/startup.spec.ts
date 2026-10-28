@@ -623,6 +623,7 @@ test('packaged app starts with an isolated renderer and running core', async ({
         'getAgentModels',
         'getAgentSession',
         'getAndroidStatus',
+        'getAppVersion',
         'getCaptureStatus',
         'getCaptureUsage',
         'getCertificateStatus',
@@ -737,6 +738,18 @@ test('packaged app starts with an isolated renderer and running core', async ({
     });
     expect(securitySnapshot.csp).toContain('frame-src https://www.interceptor.cn');
     expect(securitySnapshot.csp).not.toContain('frame-ancestors');
+
+    const headerTitle = getByAutomationId(page, AUTOMATION_IDS.app.headerTitle);
+    await getByAutomationId(page, AUTOMATION_IDS.shell.menu.trigger).click();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.shell.menu.version))
+      .toContainText(`v${PackagedWorkflowSmoke.expectedVersion()}`);
+    await expect(getByAutomationId(page, AUTOMATION_IDS.shell.menu.guidebook)).toBeVisible();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.shell.menu.updates)).toBeVisible();
+    await expect(getByAutomationId(page, AUTOMATION_IDS.shell.menu.settings)).toBeVisible();
+    await getByAutomationId(page, AUTOMATION_IDS.shell.menu.settings).click();
+    await expect(headerTitle).toHaveAttribute('data-view', 'settings');
+    await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.capture).click();
+    await expect(headerTitle).toHaveAttribute('data-view', 'capture');
 
     await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
     await getByAutomationId(page, AUTOMATION_IDS.settings.section.updates).click();

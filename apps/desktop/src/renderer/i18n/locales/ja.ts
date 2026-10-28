@@ -6,6 +6,8 @@ export const jaCatalog = {
   'app.coreStatusUnavailable': 'Proxy Core の状態を取得できません',
   'app.minimizeWindow': '最小化',
   'app.toggleMaximizeWindow': '最大化または元に戻す',
+  'app.menu': 'メニュー',
+  'app.checkForUpdates': 'アップデートを確認',
   'common.language': '言語',
   'common.close': '閉じる',
   'common.undo': '元に戻す',

@@ -19,7 +19,7 @@ Main先显示启动窗口，再准备平台组件与共享CA。`ApplicationStart
 
 ## 3. 自有窗口 chrome
 
-Windows/macOS BrowserWindow 均为 `frame:false`；Renderer 46px Window Header 是 drag region，左侧只保留 no-drag 的侧栏折叠按钮和 feature 名称，右侧依次是全局 Agent toggle 与 Minimize / Maximize-or-restore / Close。Agent toggle 只改变 Renderer Shell 布局；Close 经窄 Preload IPC 进入 `app.quit()` 的 guarded 系统代理恢复与 Core shutdown。
+Windows/macOS BrowserWindow 均为 `frame:false`；Renderer 46px Window Header 是 drag region，左侧只保留 no-drag 的侧栏折叠按钮和 feature 名称，右侧依次是 App 菜单、全局 Agent toggle 与 Minimize / Maximize-or-restore / Close。App 菜单（`shell.menu.trigger`）提供使用指南、检查更新、设置；检查更新进入 Settings Updates 并触发真实检查。菜单底部的版本块（`shell.menu.version`）显示 `getAppVersion()` 返回的当前 App 版本，不使用构建期常量，也不随更新检查状态变化。Agent toggle 只改变 Renderer Shell 布局；Close 经窄 Preload IPC 进入 `app.quit()` 的 guarded 系统代理恢复与 Core shutdown。
 
 feature 业务命令不进入 Header；Agent toggle 属于全局 Shell 控件。UpdateNotification 是 Header 下方的独立 overlay，不占 Header flex。
 

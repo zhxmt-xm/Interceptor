@@ -869,6 +869,10 @@ class DesktopApplication {
       },
     };
 
+    ipcMain.handle(DESKTOP_IPC_CHANNELS.appGetVersion, (event) => {
+      this.assertTrustedSender(event.senderFrame?.url);
+      return app.getVersion();
+    });
     ipcMain.handle(DESKTOP_IPC_CHANNELS.startupGetStage, () => this.startupStage);
 
     ipcMain.handle(DESKTOP_IPC_CHANNELS.uiLanguageSet, (event, language: unknown) => {

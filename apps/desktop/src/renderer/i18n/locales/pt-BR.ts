@@ -6,6 +6,8 @@ export const ptBRCatalog = {
   'app.coreStatusUnavailable': 'Status do Proxy Core indisponível',
   'app.minimizeWindow': 'Minimizar',
   'app.toggleMaximizeWindow': 'Maximizar ou restaurar',
+  'app.menu': 'Menu',
+  'app.checkForUpdates': 'Verificar atualizações',
   'common.language': 'Idioma',
   'common.close': 'Fechar',
   'common.undo': 'Desfazer',

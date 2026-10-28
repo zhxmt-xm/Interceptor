@@ -6,6 +6,8 @@ export const trCatalog = {
   'app.coreStatusUnavailable': 'Proxy Core durumu kullanılamıyor',
   'app.minimizeWindow': 'Küçült',
   'app.toggleMaximizeWindow': 'Büyüt veya geri yükle',
+  'app.menu': 'Menü',
+  'app.checkForUpdates': 'Güncellemeleri denetle',
   'common.language': 'Dil',
   'common.close': 'Kapat',
   'common.undo': 'Geri al',
