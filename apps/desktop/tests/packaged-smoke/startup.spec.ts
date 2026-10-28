@@ -551,6 +551,10 @@ test('packaged app starts with an isolated renderer and running core', async ({
       ).__refreshMarker).catch(() => 'reloaded')).toBe('kept');
     }
     await settleProxyReadiness(page);
+    if (process.platform === 'darwin') {
+      if (!appProcess.pid) throw new Error('Packaged Main PID is unavailable for the menu assertion.');
+      await assertPackagedMacosMenu(appProcess.pid);
+    }
     await workflowHostSafetyGuard?.captureProcessTrees();
 
     const nativeChromeHeight = await page.evaluate(() =>
@@ -1029,6 +1033,52 @@ async function settleProxyReadiness(page: Page): Promise<void> {
     await expect(page.getByText('System proxy off', { exact: true })).toBeVisible();
     await dialog.getByRole('button', { name: 'Cancel' }).click();
   }
+}
+
+/** Verify the packaged macOS menu follows the system language and exposes no View/Reload menu. */
+async function assertPackagedMacosMenu(processId: number): Promise<void> {
+  const { stdout: languages } = await execFileAsync(
+    '/usr/bin/defaults',
+    ['read', '-g', 'AppleLanguages'],
+    { encoding: 'utf8' },
+  );
+  const systemLocale = /"([^"]+)"/.exec(languages)?.[1] ?? 'en';
+  const expected = systemLocale.toLowerCase().startsWith('zh')
+    ? { edit: '编辑', window: '窗口', quit: '退出 Interceptor' }
+    : { edit: 'Edit', window: 'Window', quit: 'Quit Interceptor' };
+  const menuScript = (body: string): string => `
+tell application "System Events"
+  tell first application process whose unix id is ${processId}
+    ${body}
+  end tell
+end tell
+`;
+  const { stdout: titles } = await execFileAsync('/usr/bin/osascript', ['-e', menuScript(`
+    set titles to {}
+    repeat with barItem in menu bar items of menu bar 1
+      set end of titles to name of barItem as text
+    end repeat
+    set AppleScript's text item delimiters to "|"
+    set joined to titles as text
+    set AppleScript's text item delimiters to ""
+    return joined
+  `)], { encoding: 'utf8' });
+  expect(titles.trim().split('|')).toEqual([
+    'Apple',
+    'Interceptor',
+    expected.edit,
+    expected.window,
+  ]);
+
+  const { stdout: quitState } = await execFileAsync('/usr/bin/osascript', ['-e', menuScript(`
+    tell menu 1 of menu bar item 2 of menu bar 1
+      repeat with itemRef in menu items
+        if (name of itemRef as text) is "${expected.quit}" then return (enabled of itemRef as text)
+      end repeat
+    end tell
+    return "missing"
+  `)], { encoding: 'utf8' });
+  expect(quitState.trim()).toBe('true');
 }
 
 /** Confirm guarded system-proxy restore before any forced process fallback. */

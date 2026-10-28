@@ -74,6 +74,7 @@ import {
 import { TrustedRendererUrl } from './security/trusted-renderer-url';
 import { PackagedRendererProtocol } from './security/packaged-renderer-protocol';
 import { isBlockedPackagedShortcut } from './security/keyboard-guard';
+import { buildMacosMenuTemplate } from './menu/macos-menu';
 import { ToolCapabilitySettingsService } from './tool-capabilities/entry';
 import { McpDesktopService } from './mcp/entry';
 import { exportCollection, exportSavedCollection } from './composer/export-collection';
@@ -540,11 +541,11 @@ class DesktopApplication {
   private configurePackagedMenu(): void {
     if (!app.isPackaged) return;
     if (process.platform === 'darwin') {
-      Menu.setApplicationMenu(Menu.buildFromTemplate([
-        { role: 'appMenu' },
-        { role: 'editMenu' },
-        { role: 'windowMenu' },
-      ]));
+      // 菜单跟随系统语言；生产包不提供 View/Reload。
+      Menu.setApplicationMenu(Menu.buildFromTemplate(buildMacosMenuTemplate({
+        locale: app.getLocale(),
+        applicationName: app.name,
+      })));
       return;
     }
     Menu.setApplicationMenu(null);
