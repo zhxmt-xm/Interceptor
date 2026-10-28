@@ -3266,6 +3266,7 @@ export function installFakeInterceptor({
     }),
     getStartupStage: async () => 'ready',
     onStartupStageChange: () => () => undefined,
+    getAppVersion: async () => '0.1.1-alpha.1',
     onPlatformOperationConflict: () => () => undefined,
     getCoreProcessStatus: async () => fixture.capture.coreStatus,
     getCoreTrace: async (traceId) => ({
@@ -3503,12 +3504,27 @@ export function installFakeInterceptor({
       return updateStatus;
     },
     openDownloadedUpdate: async () => undefined,
+    cancelUpdateDownload: async () => {
+      if (updateStatus.state !== 'downloading') return updateStatus;
+      updateStatus = {
+        ...updateStatus,
+        state: 'available',
+        progress: null,
+        downloadedBytes: null,
+        bytesPerSecond: null,
+        etaSeconds: null,
+        message: 'Download canceled.',
+      };
+      return updateStatus;
+    },
+    copyUpdateDownloadLink: async () => undefined,
     openGuidebookInBrowser: async () => undefined,
     onUpdateStatusChange: () => () => undefined,
     closeApplication: async () => undefined,
     minimizeWindow: async () => undefined,
     toggleMaximizeWindow: async () => true,
     getSystemProxyStatus: async () => systemProxyStatus,
+    onSystemProxyStatusChange: () => () => undefined,
     getUpstreamSettings: async () => structuredClone(upstreamSnapshot),
     onUpstreamSettingsChanged: (listener) => {
       upstreamListeners.add(listener);

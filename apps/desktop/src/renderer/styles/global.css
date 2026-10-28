@@ -1,6 +1,11 @@
 :root {
-  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  /*
+   * 中文界面要求数字与汉字同源：Noto Sans SC 的拉丁部分来自 Source Sans，与汉字同一设计，
+   * 混排时字面高度、基线与视觉重心一致，不再回落 Windows 微软雅黑 / macOS 苹方。
+   * mono 首位保留 JetBrains Mono 供代码与数值对齐，CJK 仍由同一中文字面提供。
+   */
+  --font-ui: "Noto Sans SC Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", "Noto Sans SC Variable", ui-monospace, "SF Mono", Menlo, monospace;
 
   /* shared control metrics — mirrors design/app/app.css :root */
   --icon-button-size: 30px;

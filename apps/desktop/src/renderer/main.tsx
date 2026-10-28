@@ -1,5 +1,5 @@
-import './styles/fonts.css';
 import '@fontsource-variable/jetbrains-mono/wght.css';
+import '@fontsource-variable/noto-sans-sc/wght.css';
 import 'antd/dist/reset.css';
 import './styles/global.css';
 

@@ -48,7 +48,7 @@ HTTP breakpoint 仍使用整面板 `BreakpointInspector`，两条路径只共享
 `components/` 是扁平库，每个组件独立子目录（`Component.tsx` + `Component.module.css`）；含 Flyout（portal 锚定弹层）、ThemeSwitcher、LanguageSwitcher（侧栏底部）。`Tabs` 在容器放不下时把尾部项收进 `…` Flyout（隐藏测量层 + `ResizeObserver`），保证面板头高度固定。
 
 - Flyout统一使用Ant Popover的排版、定位、视口避让、触发、关闭和动画；Rules菜单、断点管理器及文件菜单均沿用原定位方式与默认间距。不增加CSS Anchor分支或修改第三方取整逻辑，顶部消息也沿用AntApp默认位置。
-- Inter在`styles/fonts.css`中按离散字重注册；JetBrains Mono由`main.tsx`导入原有`@fontsource-variable/jetbrains-mono/wght.css`，保留可变字重和完整字符覆盖。Monaco与原App一致，字体栈优先使用已注册的`JetBrains Mono Variable`。
+- 界面字体由`main.tsx`导入本地`@fontsource-variable/noto-sans-sc/wght.css`与`@fontsource-variable/jetbrains-mono/wght.css`：Noto Sans SC 的中拉同源字面同时覆盖数字与汉字，JetBrains Mono 保留可变等宽供代码与数值使用，两者都不请求外部字体。Monaco与原App一致，字体栈优先使用已注册的`JetBrains Mono Variable`。
 
 - `IconButton`可按调用点提供`--icon-button-hover-background`与`--icon-button-hover-color`，未提供仍使用`--hover`/`--text`。WebSocket消息断点用它保持armed黄色和Ant默认text按钮反馈，不改变共享默认主题；禁用态仍不响应hover。
 - `IconButton`统一padding为0、内部Lucide图标不收缩；`inline`档为18px按钮/14px图标/5px圆角，`Kv`只选择档位并控制行hover显隐，不能由调用方缩小按钮后留下浏览器默认padding。
@@ -123,7 +123,7 @@ Capture通过`capture.filter.group-count.<facet>`、`capture.filter.all-count.<f
 
 ## 8. 主题与语言
 
-Renderer在`styles/fonts.css`中复用`@fontsource-variable/inter`的本地WOFF2，按400/450/500/600/700离散字重注册Inter，不请求外部字体。550等中间字重遵守与设计一致的匹配规则；JetBrains Mono和控件尺寸由共享design token规定。
+Renderer 的 `--font-ui` 以 `"Noto Sans SC Variable"` 打头，`--font-mono` 为 `"JetBrains Mono Variable"` 并追加同一中文字面兜底；字体由 `main.tsx` 导入 `@fontsource-variable/noto-sans-sc` 与 `@fontsource-variable/jetbrains-mono` 的本地 WOFF2（OFL-1.1），不请求外部字体。Noto Sans SC 的拉丁部分来自 Source Sans，与汉字同一设计，混排的数字与汉字共享字面、基线与视觉重心；可变 `wght 100–900` 直接表达 450/550/600 等设计字重，不触发合成加粗。CJK 按 unicode-range 子集按需加载（101 个文件，约 4.3 MB），且不内联成 `data:` URL（production CSP 的 `font-src 'self'` 会拦截内联字体，`vite.renderer.config.ts` 因此保持字体独立文件输出）。控件尺寸由共享 design token 规定。
 
 四套时段主题由 `theme/theme.ts` + `styles/global.css` 驱动。
 

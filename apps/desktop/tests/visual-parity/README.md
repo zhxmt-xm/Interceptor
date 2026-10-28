@@ -249,7 +249,7 @@ Parity的Vite服务关闭浏览器日志向构建logger的重复转发，改由P
 - `ambiguous`：收窄到明确容器、逻辑控件或已选择的记录，不使用随机第一项。
 - `missing`：核对文字/selector、数据、交互完成状态及可见性。
 - `unstable`：核对布局、字体、异步内容或动画时刻，不挑更接近设计的读数。
-- 字体错误：检查 Google Fonts 或本地字体资源和现有网络环境，不能用 fallback 证明一致。
+- 字体错误：设计页与Renderer的界面字体是本地打包的 `Noto Sans SC Variable`，等宽与预览字体仍可能来自 Google Fonts；按报错侧检查对应资源与网络环境，不能用 fallback 证明一致。
 - Preload 方法缺失、持续 Loading：修正 fake 与正式契约的一致性，不在产品增加回退分支。
 - 只关闭本次拥有的服务；端口被其他任务占用时协调运行时间。
 - Linux 的字体与布局结果只作为该环境的诊断；不能冒充 Windows/macOS 权威验收。

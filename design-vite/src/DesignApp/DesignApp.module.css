@@ -10,8 +10,8 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-   --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-   --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+   --font-ui: "Noto Sans SC Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+   --font-mono: "JetBrains Mono Variable", "JetBrains Mono", "Noto Sans SC Variable", ui-monospace, "SF Mono", Menlo, monospace;
    --icon-button-size: 30px;
    --icon-button-icon-size: 15px;
    --icon-button-gap: 3px;

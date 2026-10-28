@@ -30,7 +30,7 @@ description: 'Create and iterate high-fidelity UI design mockups for the Interce
 2. **样式写在同名 `*.module.css`**：`vite.config.ts` 配了 `generateScopedName: '[local]'` 以保留语义类名，所以**全局 class 仍可能串扰**——新增类名前先 grep 是否撞名。令牌与 reset 在 `src/styles/`。
 3. **状态全部经 typed `DesignState`**：人点击 UI 与 `window.__setState(patch)` 驱动同一套状态，不允许只为截图加一条假路径。新增场景就往 `DesignState` 加字段，并在 `state/utils.ts` 的 `INITIAL_DESIGN_STATE` 给默认值。
 4. **图标一律用 `lucide-react`**：经 `src/fixtures/FixtureIcon.tsx` 的 `ICON_BY_ID` 映射。不手写 SVG sprite、不内联自定义 icon。lucide 没有完全对应的图形时，选语义最近的 lucide 图标，不要自己画。
-5. **生成**：用`node design-vite/shoot.mjs --out-dir="<独立目录>"`按本次受影响场景生成评审图，不清理历史证据目录。两趟——framed（唯一`1600×900`应用态）+ full（注入CSS展开滚动区）。初始化及重载确认Inter/JetBrains Mono各字重的FontFace实际加载，字体失败停止，不用fallback冒充确认效果。按需使用`compare-shots.mjs <原评审目录> --current-dir="<候选目录>" --out-dir="<独立差异目录>"`；主题/语言switcher由`shoot-scenes.mjs`生成。PNG及差异图只保留在被忽略的本地目录，评审后同步设计源码，不提交全量截图。README的少量展示图独立维护，不是parity基准。
+5. **生成**：用`node design-vite/shoot.mjs --out-dir="<独立目录>"`按本次受影响场景生成评审图，不清理历史证据目录。两趟——framed（唯一`1600×900`应用态）+ full（注入CSS展开滚动区）。初始化及重载确认`Noto Sans SC Variable`/JetBrains Mono各字重的FontFace实际加载，字体失败停止，不用fallback冒充确认效果。按需使用`compare-shots.mjs <原评审目录> --current-dir="<候选目录>" --out-dir="<独立差异目录>"`；主题/语言switcher由`shoot-scenes.mjs`生成。PNG及差异图只保留在被忽略的本地目录，评审后同步设计源码，不提交全量截图。README的少量展示图独立维护，不是parity基准。
 6. **评审**：用 `view_image` 逐张查看，按用户反馈改组件后重跑，直到定稿。
 
 ## 关键陷阱（务必遵守，均已踩过）
@@ -43,7 +43,7 @@ description: 'Create and iterate high-fidelity UI design mockups for the Interce
 - 元素级截图会卡「waiting for element to be stable」。→ 截图前注入 `*{transition:none!important;animation:none!important}`、把 `body` 改 `align-items:flex-start`、隐藏切换器，元素即稳定。
 - **CSS Grid 的 `1fr` 轨道默认 `min-width:auto`，会被 `nowrap` 文本（host/URL）撑破导致整页横向溢出**。所有可能被撑破的 `1fr` 写成 `minmax(0,1fr)`；容器加 `overflow:hidden` 兜底。
 - **VS Code 内置浏览器的 page 句柄频繁失效**（`Page ... not found`）。→ 截图走**终端脚本**，用 `chromium.launch({ channel: 'msedge' })`（系统 Edge，免下载），比 `open_browser_page` + `run_playwright_code` 稳。
-- 字体走 Google Fonts CDN（`Inter` + `JetBrains Mono`）。**不要换成 `@fontsource-variable` 的可变字体**，字重渲染与 CDN 静态字重对不上。
+- 界面字体用本地 `@fontsource-variable/noto-sans-sc`（与产品同一份 WOFF2，parity 才能对齐），`JetBrains Mono` 与 Android/Homepage 预览用的 `Inter` 仍走 Google Fonts CDN。**不要为了设计稿换成 CDN 版 Noto Sans SC**，字重渲染与本地可变字体对不上。
 - **改完要验证有没有改坏别的**：按受影响场景检查设计交互，必要时用本轮前后评审图手工比较；百分比不能替代具体差异检查。本地旧图、预览图与差异图不进入Git。产品还原使用独立的纯数据parity，不依赖这些图，也不要求Agent参与运行。
 
 ## 参考

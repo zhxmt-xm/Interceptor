@@ -71,24 +71,32 @@ test('settings.navigation keeps the active section across workspace navigation',
   );
 
   const fontEvidence = await page.evaluate(async () => {
-    const loaded = await document.fonts.load('550 12.5px "Inter"', 'Continue to Windows approval');
-    const faces = Array.from(document.fonts).filter((face) => face.family.replaceAll('"', '').replaceAll("'", '') === 'Inter');
+    const family = 'Noto Sans SC Variable';
+    const matches = (value: string) => value.replaceAll('"', '').replaceAll("'", '') === family;
+    const loaded = await document.fonts.load(`550 12.5px "${family}"`, 'Continue to Windows approval 已启用 1 条');
+    const faces = Array.from(document.fonts).filter((face) => matches(face.family));
     const fontUrls = Array.from(document.styleSheets).flatMap((sheet) => Array.from(sheet.cssRules)
       .filter((rule): rule is CSSFontFaceRule => rule instanceof CSSFontFaceRule)
-      .filter((rule) => rule.style.getPropertyValue('font-family').replaceAll('"', '').replaceAll("'", '') === 'Inter')
+      .filter((rule) => matches(rule.style.getPropertyValue('font-family')))
       .flatMap((rule) => Array.from(rule.style.getPropertyValue('src').matchAll(/url\(["']?([^"')]+)["']?\)/g),
         (match) => new URL(match[1]!, sheet.href ?? location.href).href)));
+    const digitFaces = await document.fonts.load(`550 12.5px "${family}"`, '1');
+    const hanFaces = await document.fonts.load(`550 12.5px "${family}"`, '条');
     return { fontFamily: getComputedStyle(document.body).fontFamily,
-      weights: [...new Set(faces.map((face) => face.weight))].sort((left, right) => Number(left) - Number(right)),
+      weights: [...new Set(faces.map((face) => face.weight))],
       loadedFaces: loaded.length, allLoaded: loaded.every((face) => face.status === 'loaded'),
+      digitFaces: digitFaces.length, hanFaces: hanFaces.length,
       fontUrls };
   });
   await writeFile(testInfo.outputPath('settings-fonts.json'), JSON.stringify(fontEvidence, null, 2), 'utf8');
   await page.screenshot({ path: testInfo.outputPath('settings-fonts.png') });
-  expect(fontEvidence.weights).toEqual(['400', '450', '500', '600', '700']);
+  expect(fontEvidence.weights).toEqual(['100 900']);
   expect(fontEvidence.loadedFaces).toBeGreaterThan(0);
   expect(fontEvidence.allLoaded).toBe(true);
-  expect(fontEvidence.fontFamily.replaceAll('"', '')).toMatch(/^Inter(?:,|$)/);
+  // 数字与汉字必须由同一可变字面提供，不能是数字走拉丁字体、汉字回落系统字体。
+  expect(fontEvidence.digitFaces).toBeGreaterThan(0);
+  expect(fontEvidence.hanFaces).toBeGreaterThan(0);
+  expect(fontEvidence.fontFamily.replaceAll('"', '')).toMatch(/^Noto Sans SC Variable(?:,|$)/);
   expect(fontEvidence.fontUrls.length).toBeGreaterThan(0);
   expect(fontEvidence.fontUrls.every((url) => url.startsWith('interceptor://app/'))).toBe(true);
   await screenshotStep('准备：fresh profile 已通过真实 App/Core/listener readiness，普通导航进入 Settings 默认 section。 / Arrange: a fresh profile passed real App/Core/listener readiness; normal navigation opens the default Settings section.');

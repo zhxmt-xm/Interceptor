@@ -1,6 +1,6 @@
 # Task List
 
-> Tracked commit: `172d1fc9`
+> Tracked commit: `19e7bdc3`
 > Homepage guidebook: `07645818`
 
 ## 维护规则
@@ -22,6 +22,176 @@
 - **14. Android USB 流量接入 · blocked**
   - 目标：Android 以 `VpnService` 创建 TUN，经 USB/`adb reverse` 接入 PC；Android 为唯一连接源站，PC 复用 Rules、Breakpoints 与 Capture。
   - 当前阻塞：物理 USB 拔线与重连、ARM64 或真实 16KiB 设备、带 DHCP 搜索域或 NAT64 的专用网络，以及 Windows 重启后的模拟器与最终包验收。
-  - 下一步：重启 Windows 后核对加速与模拟器并续验 Windows 流程；连接物理设备后验证拔线/重连与旧请求不重放；具备 ARM64 与专用网络后分别续验。
-  - 待修：`capture-{import,export}-menu{-dark}` 场景缺 Android toolbar 按钮，产生位置差异。
+  - 下一步：先处理下列不需要新硬件的本机项，再重启 Windows 后核对加速与模拟器并续验 Windows 流程；连接物理设备后验证拔线/重连与旧请求不重放；具备 ARM64 与专用网络后分别续验。
+  - 待修（本机可复现，不需要新硬件）：
+    - `capture-{import,export}-menu{-dark}` 场景缺 Android toolbar 按钮，产生位置差异。
+    - Desktop不持久化已确认的手机指纹，重启后需重新粘贴完整64位；手机侧已持久化PC pin。
+    - Desktop崩溃后残留的`tcp:39080`映射不在启动时回收，下次`--no-rebind`直接失败。
+    - `capture.android.single-device`与`capture.android.disconnect`只有spec，没有对应workflow。
+    - `AndroidDeviceService.status()`每次重新执行4–5条adb（含安装包`sha256sum`），需按版本与签名缓存。
+    - Core控制通道只有`session.hello`/`session.ready`，缺VPN状态上报与PC主动停止请求；协议改造与Android侧修复同见Android仓库Handover。
   - 约束：正式发版必须指定私有 Release asset、APK SHA-256 与签名证书 SHA-256，拒绝 debug 证书、换签和降级，见[发布架构](platform/release.md#21-android-apk-与-adb-runtime)。缺环境时保持 `blocked`，不伪造 Network 或绕过系统授权。本机环境见[测试文档](platform/testing.md#windows-android-local-environment)。
+
+- **23. 易用性缺陷清单（对照 Charles / Proxyman / Fiddler / Whistle）· 待实现**
+  - 目标：按下表逐条修复，一次只取一条，每条独立补文档、测试、验证与提交；本 item 不是一次性大改，完成一条就从本清单删除该行。
+  - 已验证范围：条目来自对 `apps/desktop/src/renderer`、`apps/proxy-core/src`、`apps/desktop/src/main`、`packages/core-protocol`、`packages/interceptor-tools` 与 `architecture/features/` 的只读核对；**未运行构建、unit 或 E2E**，标注「未实机」的条目只有代码推演。
+  - 优先级：`P0` 影响每天主流程；`P1` 主流产品都有；`P2` 打磨。建议开局顺序：A1–A3 → A4–A5 → A19/A20/J2 → C1 → H2。
+  - 逐条流程：先改对应 `architecture/features/*.md` 与 E2E 规格，再改代码，按 unit/integration → 真实 E2E 的顺序取结果；稳定行为写入 feature 文档，不在本文件保留完成记录。
+  - 移动端已定方案：Android 传输走 USB + `adb reverse`（实现归 item 14），iOS 走「电脑热点固定网段 + `.mobileconfig` 预置代理与根证书」；本清单只记产品层缺口，不重复实现传输，也不做 iOS Network Extension。
+  - **A. Capture 列表**
+    - `P0` A1 无 Replay/Resend：右键菜单与工具栏都没有，抓到的请求无法重发。
+    - `P0` A2 无 Copy as cURL。
+    - `P0` A3 无「发送到 Composer」：`core-protocol` 只有 `composer.send`，Capture → Composer 零通道，README 声称的能力不存在。
+    - `P0` A4 无多选：选择态是 `selectedId: string | null`，批量导出、批量删除、批量复制、批量重发全部做不到。
+    - `P0` A5 HAR/Archive 导出的 `selected` 档恒为 1 条。
+    - `P0` A6 搜索只匹配 `host + path`，header、body、status、method 都搜不到。
+    - `P1` A7 搜索无 debounce、无命中高亮、无历史、无预设收藏、无 quick-filter 语法。
+    - `P1` A8 facet 组内没有搜索框，host 多了只能 Show more。
+    - `P1` A9 无排序：表头是纯 `span`，顺序恒为 `startedAt`。
+    - `P1` A10 无列显隐、列宽、列顺序，只有容器查询自动隐列。
+    - `P1` A11 无开始时间列。
+    - `P1` A12 无 waterfall/耗时条。
+    - `P1` A13 无域名树/分组视图。
+    - `P2` A14 无 pin/bookmark/备注/颜色标记。
+    - `P1` A15 Size 列只显示一个数，request 与 response 不可分。
+    - `P2` A16 WS 行的 Time 显示 `open`/`closed` 而非耗时。
+    - `P1` A17 右键菜单无 Copy URL、Copy path、Save body、导出单条。
+    - `P1` A18 空态不区分「还没有流量」与「筛选后为空」，也不给清除筛选的按钮。
+    - `P0` A19 Clear 无确认、无进度、不可撤销。
+    - `P0` A20 Clear 失败静默：错误写进 `captureStore.error`，全 Renderer 无人渲染。
+    - `P1` A21 aborted/failed 行不显示失败原因，Status 显示 `—`、Time 显示 `···`。
+    - `P2` A22 分栏宽度、列表滚动位置不持久，只有 `showQueryParams` 落 localStorage。
+    - `P2` A23 从行建规则会跳走视图、建断点留在原地，同一入口两种心智。
+    - `P1` A24 导入的 HAR/Archive 与实时流量平铺，无来源徽标、无会话列。
+    - `P1` A25 `sessions.query` 已支持服务端过滤与游标分页，Renderer 恒发空 filter，能力闲置。
+    - `P2` A26 Inspector 页签是 `<span onClick>`，不可聚焦、无方向键。
+  - **B. 详情与正文**
+    - `P1` B1 详情内无 find：headers、JSON 树、hex、WS 帧、gRPC 消息都没有，Monaco 也未开 find。
+    - `P1` B2 无请求/响应 diff、无两条请求 compare。
+    - `P1` B3 Timing 只有 TTFB 与 download 两段，缺 DNS/TCP/TLS/排队分解。
+    - `P1` B4 TLS 版本/套件/ALPN/证书链要手动点 Probe，抓包本身不记录。
+    - `P2` B5 音视频不可预览，只能 Save。
+    - `P2` B6 文本/WS/gRPC 预览上限 2 MiB，图片 16 MiB。
+    - `P1` B7 WS 帧只有方向过滤，无搜索、无导出、无发送。
+    - `P1` B8 WS 帧 2s 轮询，切方向即清空重拉。
+    - `P2` B9 gRPC 消息无导出。
+    - `P2` B10 `multipart/form-data` 无 part 列表，按 binary 展示。
+    - `P1` B11 writer 积压超上限时整条正文被丢弃，UI 无任何提示。
+  - **C. 会话与存储**
+    - `P0` C1 抓包不落盘：内存 + `capture-temp/`，Core 退出或崩溃即清空，只能手动导出。
+    - `P0` C2 无「上次会话」恢复、无自动保存。
+    - `P1` C3 无多会话、无会话列、无切换器，`CaptureExchangeSummary` 不带 `sessionId`。
+    - `P2` C4 无会话对比。
+    - `P2` C5 Clear 只有 `all` scope，不能按会话清。
+    - `P1` C6 存储面板不显示真实磁盘占用，`databaseBytes` 硬编码 0。
+    - `P2` C7 无配额、无保留期、无自动清理。
+  - **D. 导入导出**
+    - `P1` D1 HAR 导入极窄：`httpVersion`、`response.content` 缺一即整份失败。
+    - `P1` D2 HAR 导入丢弃 cookies/queryString/timings/pages/headersSize 等字段。
+    - `P1` D3 HAR 导入错误英文原句直出，无字段定位提示。
+    - `P1` D4 Archive 不支持 ZIP64，无解压总量/压缩比上限（zip bomb 风险）。
+    - `P2` D5 规则/集合导出的 JSON 无 schema 版本号。
+    - `P2` D6 无「单条导出为 HAR」。
+  - **E. Rules**
+    - `P1` E1 无规则试跑、命中预览、效果解释。
+    - `P1` E2 无 regex 捕获替换（`$1`），只能整值改写。
+    - `P1` E3 map-local 只服务单个文件：无目录映射、无 fallback、无状态码/header 控制。
+    - `P2` E4 map-local 的 path 是纯文本框，没有文件选择器。
+    - `P2` E5 map-remote 不吞路径后缀，无通配/正则。
+    - `P2` E6 body action 是整段 textarea 替换，无 JSON 路径改写、无文件来源。
+    - `P1` E7 host 匹配提示写 `*.example.com`，但匹配只有 contains/exact/regex，该规则永不命中。
+    - `P1` E8 非法 regex 静默降级为「永不命中」，UI 无诊断。
+    - `P2` E9 目录没有启用开关。
+    - `P2` E10 无全局 Rules 总开关、无批量启停。
+    - `P2` E11 无优先级可视化，执行序 = DFS 顺序。
+    - `P1` E12 删规则、删目录无确认无撤销。
+    - `P1` E13 删掉最后一条规则后没有 Apply 入口，空规则集无法落盘。
+    - `P2` E14 命中数随 Capture Clear 归零、暂停录制时为 0，无「最近命中时间」。
+    - `P2` E15 无规则模板、无规则复制。
+  - **F. Breakpoints**
+    - `P1` F1 断点看不到原始 body：HTTP 停在 header 阶段，`bodyAvailable: false`，只能 Text/File 整段重写。
+    - `P1` F2 request 的 method/URL 不可编辑，模型支持但 UI 没接。
+    - `P2` F3 无超时、无自动释放提示。
+    - `P2` F4 WS 断点不能按 payload 内容过滤，高频连接连续弹暂停。
+    - `P2` F5 WS binary 替换要手写 hex，无内联校验。
+    - `P2` F6 断点队列无「跳过这一条」。
+    - `P2` F7 断点与 Rules 的优先级对用户不可见，只有 effect 标记。
+  - **G. Composer**
+    - `P1` G1 无 timeout 输入、无取消按钮。
+    - `P2` G2 不跟重定向。
+    - `P1` G3 TLS 固定 `rejectUnauthorized: false`，不显示证书是否可信、无证书链。
+    - `P2` G4 方法固定 7 种，不能手输。
+    - `P2` G5 Auth 只有 none/bearer/basic。
+    - `P1` G6 Body 无 multipart、无文件、无二进制。
+    - `P2` G7 无环境变量 `{{var}}`。
+    - `P2` G8 无 pre-request/post-response 脚本、无断言、无 Runner。
+    - `P1` G9 外部格式零导入：OpenAPI、Postman、cURL、HAR 都不行。
+    - `P2` G10 历史只在内存、上限 20、重启即失、点击只回填 method+URL。
+    - `P2` G11 无复制请求；删除集合/请求无确认。
+    - `P2` G12 KV 表只能逐行录，无批量粘贴。
+    - `P2` G13 无发送快捷键。
+    - `P2` G14 与 Capture 零联动，TLS probe 也只在 Capture 有入口。
+  - **H. 移动端接入与证书**
+    - `P1` H1 端口固定 8888，UI 无入口；被占用时只能改系统。
+    - `P1` H2 只绑 `127.0.0.1`：iOS 没有 USB 反向通道，Wi-Fi 代理是唯一入口，因此 LAN 监听不是可选项；需要显式开关、风险提示与开启后的自检。
+    - `P1` H3 iOS 无任何接入路径：定方案为「电脑热点固定 SSID 与网段 + `.mobileconfig`（Wi-Fi payload 预置 Manual 代理 + 根证书 payload）+ 引导打开全信任」，需覆盖生成、二维码分发、装后自检、退出时还原手机代理提醒。
+    - `P1` H4 Android 传输由 item 14 承担，本项只补产品层：通道选择器、连接自检、换网或拔线后的重连提示，不在两处重复实现传输。
+    - `P1` H5 证书信任没有分档引导：可控 App 的 `networkSecurityConfig` 片段、模拟器可写 system、root 的 Magisk 系统 CA、未 root 三方包仅元数据，四档出路全无入口。
+    - `P1` H6 解密判定是全局二元开关：`mitmEnabled` 无法表达「这个 App 能解、那个只能看元数据」，需要 per-App/per-host 三档状态（已解密 / 仅元数据 / 解密失败）。
+    - `P1` H7 握手失败没有归因：不信任用户 CA、pinning、协议或连接问题三类混成一个错误码，需要分开并各给出口（装证书 / bypass 文档 / 查网络）。
+    - `P1` H8 口径未统一：文档与 UI 不得承诺「装证书就能抓所有 App」；须区分独立浏览器（信任用户 CA）与 App 内 WebView（用宿主 App 的 NSC）；iOS 不走系统代理的流量与蜂窝不可见，需要包级视图时指向 Wireshark + `rvictl`，不在产品内实现。
+    - `P1` H9 SSL 解密只有排除名单，没有「只解密这几个域名」的白名单。
+    - `P2` H10 CA 有效期 3 年，无到期提醒、无续签流程。
+    - `P2` H11 无 mTLS 客户端证书。
+    - `P2` H12 无 TLS 版本/密码套件配置项。
+    - `P2` H13 无 QUIC/HTTP3 捕获（已明确不在范围）。
+    - `P2` H14 无 DNS spoofing / host 映射，只有 map-remote。
+    - `P2` H15 bypass 列表只读，不能编辑。
+    - `P2` H16 上游代理无账号密码字段，只能塞进 proxyUrl userinfo。
+    - `P2` H17 无「紧急重置系统代理」入口；journal 丢失时可能自指死锁（未实机）。
+    - `P2` H18 无 single-instance 锁，第二个实例只能靠端口冲突失败。
+  - **I. 设置 / 诊断 / 更新 / 首次使用**
+    - `P1` I1 首次使用 4 个手动动作且无向导：`firstRun.*` 文案还在，组件已不存在。
+    - `P2` I2 UAC 弹在没有任何解释的 splash 阶段。
+    - `P2` I3 `appearance` 分区仍是占位面板，语言/主题实际在 Sidebar，重复且割裂。
+    - `P1` I4 Privacy 面板写「Capture on launch = Off by default」，实际冷启动就录制。
+    - `P1` I5 无统一体检页：证书是否信任、代理是否生效、哪个客户端没走代理，全靠自己猜。
+    - `P1` I6 Diagnostics 状态栏写 `retention 7d`，Core 无淘汰、也无清理命令，日志只增不减。
+    - `P2` I7 Diagnostics 过滤只有 process/level/outcome，无搜索、无时间范围。
+    - `P2` I8 无自动安装更新，只能 Download → Open installer 两步。
+    - `P2` I9 硬编码英文散落：HAR 警告、`retention 7d`、部分错误串。
+  - **J. 全局交互与一致性**
+    - `P1` J1 打包态 Windows 直接 `Menu.setApplicationMenu(null)`，macOS 只有 app/edit/window。
+    - `P0` J2 全应用无快捷键：没有 Ctrl/Cmd+F、上下键换行、Esc、Replay。
+    - `P2` J3 无命令面板。
+    - `P1` J4 错误消息 `describeError` 原样直出，没有下一步指引。
+    - `P1` J5 破坏性操作口径不一致：Settings 的 Clear 有确认，Capture/Rules/Composer 没有。
+    - `P2` J6 视图尺寸、滚动、展开状态大量不持久。
+    - `P2` J7 空态/加载态/失败态写法不统一。
+    - `P1` J8 Agent 与 Capture 无右键联动（「解释这条请求」「帮我写这条规则」）。
+    - `P2` J9 MCP/Agent 能力多于 UI（timeout、批量命令），界面落后于接口。
+  - **K. 性能与容量**
+    - `P1` K1 Renderer 常驻全部 summary；每批事件重建 id→index Map 并全量重跑筛选。
+    - `P2` K2 无列表规模上限，Core 全内存。
+    - `P2` K3 详情 300ms 节流依赖整条 summary 引用，流式请求期间持续重拉。
+    - `P2` K4 搜索每键全量重算。
+  - **L. 文档与实现不一致（与上表同源，修完对应条目时一并改文案）**
+    - L1 同 A3：README 写「Send a captured request to Composer」。
+    - L2 同 A21：README 说 aborted 行显示失败原因。
+    - L3 同 I4：Privacy「Capture on launch = Off by default」。
+    - L4 同 I6：Diagnostics「retention 7d」。
+    - L5 `rules.md` 说一键生成 scheme+host+path 三个 exact，代码只生成一个 `url` exact。
+    - L6 同 E7：规则 host 提示 `*.example.com`。
+    - L7 `App.tsx` 注释写 custom 断点需要「超时策略」，产品无此能力。
+  - 移动端边界（不在承诺范围）：iOS 不做 Network Extension，蜂窝与不走系统代理的 App 不可见；Android 未 root 时三方 release 包只有元数据；两端都不处理 pinning 与 QUIC。
+  - 约束：清单条目只描述问题与验收方向，不代表已排期；实现时按 `architecture/features/` 与 E2E 规格先行，不跳过真实 E2E 证据。
+
+- **25. macOS 中文字形与打包字体验证 · 待 macOS**
+  - 目标：在真实 macOS packaged App 里确认 `Noto Sans SC Variable` 从 `interceptor://app/` 本地加载，数字与汉字混排的字面、基线与视觉重心与 Windows 一致。
+  - 下一步：在 macOS 构建并打开 Capture、Inspector、Statusbar 与 Settings，对照 `1小时15分`、`12 毫秒`、`3 / 5 条` 等混排文本；保留 `settings.navigation` 的 `settings-fonts.json/png` 与亮/暗截图。
+  - 约束：必须用真实 macOS App，不用 Windows 结果代替；字体不得走外部 CDN。
+
+- **26. 设计稿预渲染的字体度量缓存导致 parity 亚像素差异 · 待定位**
+  - 现状：`breakpoint-*` 场景的 `Rule set` / `Rule appended` chip 在设计稿里比 Renderer 宽 `1/64` px。两边平台字体、字号、字重、字距与父容器宽度一致；在同一设计页内重新整形同一文本后宽度与 Renderer 相同，说明设计稿在字体就绪前预渲染的文本保留了旧度量。
+  - 下一步：定位设计稿预渲染与字体加载顺序，找到可复用的重排时机（在 `parity.mjs` 测量前强制重排已验证无效），不能放宽 parity 容差或修改产品样式。
+  - 约束：`capture-{import,export}-menu{-dark}` 与 `settings-updates-*` 的同批差异属于既有设计缺口，不在本条范围。
