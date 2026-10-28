@@ -16,6 +16,8 @@ const REQUESTS = [
   { path: '/demo/acme/profile', body: { name: 'Demo user', plan: 'team' } },
   { path: '/demo/acme/health', body: { ok: true } },
 ] as const;
+/** 系统后台流量也会进入 Capture；先用本 demo 的前缀收窄，再断言行数。 */
+const DEMO_FILTER = '/demo/acme/';
 
 function requestThroughProxy(proxyPort: number, url: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -55,7 +57,8 @@ test('demo.capture selects real traffic and reads the response', async ({
   }
 
   await startRecording(desktopApp);
-  await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill('');
+  const keywordFilter = getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter);
+  await keywordFilter.fill(DEMO_FILTER);
   await expect(getByAutomationId(page, AUTOMATION_IDS.capture.list)).toBeVisible();
 
   await demo.start();
@@ -76,7 +79,7 @@ test('demo.capture selects real traffic and reads the response', async ({
     en: 'Filter the stream by path or host.',
     zh: '按 Path 或 Host 过滤流量。',
   });
-  await getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter).fill('/orders');
+  await keywordFilter.fill('/orders');
   await expect.poll(
     () => getByAutomationIdPrefix(page, AUTOMATION_ID_PREFIXES.captureRequestRow).count(),
   ).toBe(1);

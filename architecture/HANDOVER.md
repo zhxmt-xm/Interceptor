@@ -26,12 +26,6 @@
   - 待修：`capture-{import,export}-menu{-dark}` 场景缺 Android toolbar 按钮，产生位置差异。
   - 约束：正式发版必须指定私有 Release asset、APK SHA-256 与签名证书 SHA-256，拒绝 debug 证书、换签和降级，见[发布架构](platform/release.md#21-android-apk-与-adb-runtime)。缺环境时保持 `blocked`，不伪造 Network 或绕过系统授权。本机环境见[测试文档](platform/testing.md#windows-android-local-environment)。
 
-- **20. macOS packaged 刷新保护与 demo 渲染验证 · 待 macOS**
-  - 目标：在 macOS packaged App 验证 Cmd+R、F5、Cmd+Shift+R 不 reload，应用菜单无 View/Reload，app/edit/window 菜单正常；开发态 Cmd+R/HMR 保留。
-  - 当前：Windows packaged smoke 已覆盖 Ctrl+R/F5/Ctrl+Shift+R；macOS 菜单与快捷键尚未执行；demo 的 PingFang SC/Helvetica Neue 字体和 ffmpeg arm64 二进制尚未验证。
-  - 下一步：在 macOS 跑 packaged smoke 的 refresh 断言，检查菜单栏与 Copy/Paste/Quit；跑一个 demo feature，确认字幕字体、1440×810 APNG 和 FFMPEG_PATH；必要时补 arm64 处理。
-  - 约束：必须用真实 macOS packaged App，不用 Windows 结果代替；无机器时保持待验证，不伪造。
-
 - **22. Updates 下载/通知 macOS E2E · 待 macOS**
   - 目标：在真实 macOS packaged App 上执行 `settings.updates.download-open` 与 `settings.update-notification`，覆盖 DMG 打开、中断/卸载与更高的真实 Release。
   - 现状：两条 workflow 的 Windows MSI 分支已验收；macOS 分支当前 skip，DMG 挂载与卸载断言尚未实现。
