@@ -40,7 +40,9 @@ design-vite/
 - 状态统一由 typed `DesignStateProvider` / `window.__setState(patch)` 驱动。人点击 UI 与截图脚本必须驱动同一套状态，不允许只为截图加一条假路径。
 - `reduceDesignState` 在收到 `view` 时会重置浮层类瞬态字段；`shoot.mjs` 的重置态也必须列全每个瞬态字段，漏一个就会让某场景的浮层泄漏进之后所有截图。
 - `src/fixtures/generated/*` 是**定稿的静态 DOM 快照**，描述旧稿抢救下来的结构；改设计时直接改它或改对应组件，已不存在再生成它的脚本。
-- 所有视觉取值以 [design-system/README.md](./design-system/README.md) 为准；设计稿与代码都引用同一套 token。字体走 Google Fonts CDN。
+- 所有视觉取值以 [design-system/README.md](./design-system/README.md) 为准；设计稿与代码都引用同一套 token。
+- 字体与产品同源：`@fontsource-variable/noto-sans-sc` + `@fontsource-variable/jetbrains-mono`，由 `main.tsx` 导入，不走 CDN。
+- 标签文本写成单个字符串字面量。JSX 里 `Rule {expr}` 会拆成两个相邻文本节点，Chromium 分两段整形、各自取整到 1/64 px，parity 会报比产品宽 1/64 px。
 - 设计稿要完整实现用户可见的状态与交互（展开、选择、菜单、loading、empty、warning、disabled、成功/失败）；网络、Core、IPC、持久化用 fixture/adapter 模拟，不复制业务后端。
 - 这些是**设计资产**，非产品运行代码；落地到 `apps/desktop` 后保留供回归比对。
 

@@ -190,8 +190,3 @@
   - 目标：在真实 macOS packaged App 里确认 `Noto Sans SC Variable` 从 `interceptor://app/` 本地加载，数字与汉字混排的字面、基线与视觉重心与 Windows 一致。
   - 下一步：在 macOS 构建并打开 Capture、Inspector、Statusbar 与 Settings，对照 `1小时15分`、`12 毫秒`、`3 / 5 条` 等混排文本；保留 `settings.navigation` 的 `settings-fonts.json/png` 与亮/暗截图。
   - 约束：必须用真实 macOS App，不用 Windows 结果代替；字体不得走外部 CDN。
-
-- **26. 设计稿预渲染的字体度量缓存导致 parity 亚像素差异 · 待定位**
-  - 现状：`breakpoint-*` 场景的 `Rule set` / `Rule appended` chip 在设计稿里比 Renderer 宽 `1/64` px。两边平台字体、字号、字重、字距与父容器宽度一致；在同一设计页内重新整形同一文本后宽度与 Renderer 相同，说明设计稿在字体就绪前预渲染的文本保留了旧度量。
-  - 下一步：定位设计稿预渲染与字体加载顺序，找到可复用的重排时机（在 `parity.mjs` 测量前强制重排已验证无效），不能放宽 parity 容差或修改产品样式。
-  - 约束：`capture-{import,export}-menu{-dark}` 与 `settings-updates-*` 的同批差异属于既有设计缺口，不在本条范围。
