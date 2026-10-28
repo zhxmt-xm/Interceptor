@@ -17,6 +17,11 @@ import {
   cancelOpenedWindowsInstaller,
   readWindowsMsiInstallerProcesses,
 } from '../../fixtures/ui/windows-msi-installer';
+import {
+  detachMountedInstallerVolume,
+  listMountedVolumeNames,
+  waitForMountedInstallerVolume,
+} from '../../fixtures/ui/macos-dmg-installer';
 
 interface NotificationMetrics {
   readonly viewportWidth: number;
@@ -125,8 +130,8 @@ function expectCompactNotification(metrics: NotificationMetrics, settingsActionH
   expect(Math.abs(metrics.settingsActionHeight - settingsActionHeight)).toBeLessThanOrEqual(0.5);
 }
 
-test.skip(process.platform !== 'win32',
-  'The real installer notification flow is verified on Windows.');
+test.skip(process.platform !== 'win32' && process.platform !== 'darwin',
+  'Real update download and installer verification run on Windows and macOS.');
 test.skip(!process.env.INTERCEPTOR_E2E_APP_PATH,
   'The real update notification requires a packaged App through INTERCEPTOR_E2E_APP_PATH.');
 
@@ -184,29 +189,60 @@ test('settings.update-notification opens and dismisses the real installer notifi
   await getByAutomationId(page, AUTOMATION_IDS.shell.workspace.settings).click();
   await expect(status).toHaveAttribute('data-state', 'downloaded');
 
-  // 用户操作：从通知打开安装器，只允许本次下载的 MSI，并在原生窗口取消。
-  // User action: open the installer from the notification, only for this MSI, then cancel the native window.
+  // 用户操作：从通知打开安装包，只允许本次下载的产物。Windows 在原生窗口取消 MSI；macOS 挂载 DMG 后核对并卸载。
+  // User action: open the verified installer from the notification. Windows cancels the MSI window; macOS mounts the DMG, verifies it, then detaches.
   const downloadsDirectory = path.join(desktopApp.userDataDirectory, 'updates/downloads');
-  const installDirectory = path.join(process.env.LOCALAPPDATA!, 'Programs', 'Interceptor');
-  const installTreeBefore = await listTree(installDirectory);
   const files = (await readdir(downloadsDirectory, { withFileTypes: true }))
     .filter((entry) => entry.isFile())
     .map((entry) => entry.name);
   expect(files).toHaveLength(1);
   const installerPath = path.join(downloadsDirectory, files[0]!);
-  const knownProcessIds = (await readWindowsMsiInstallerProcesses()).map((process) => process.processId);
-  await notificationAction.click();
-  const cancellation = await cancelOpenedWindowsInstaller({
-    knownProcessIds,
-    expectedInstallerPath: installerPath,
-    windowTimeoutMs: 120_000,
-    exitTimeoutMs: 120_000,
-  });
-  expect(cancellation.closed).toBe(true);
-  expect(cancellation.exited).toBe(true);
-  expect(await listTree(installDirectory)).toEqual(installTreeBefore);
-  await expect(notice).toHaveAttribute('data-state', 'downloaded');
-  await screenshotStep('用户操作：从通知打开并取消安装器 / User action: open from the notification and cancel the installer');
+  let installerWindow: Record<string, unknown> | null = null;
+  let diskImage: Record<string, unknown> | null = null;
+  let installationUnchanged = true;
+  if (process.platform === 'win32') {
+    const installDirectory = path.join(process.env.LOCALAPPDATA!, 'Programs', 'Interceptor');
+    const installTreeBefore = await listTree(installDirectory);
+    const knownProcessIds = (await readWindowsMsiInstallerProcesses()).map((process) => process.processId);
+    await notificationAction.click();
+    const cancellation = await cancelOpenedWindowsInstaller({
+      knownProcessIds,
+      expectedInstallerPath: installerPath,
+      windowTimeoutMs: 120_000,
+      exitTimeoutMs: 120_000,
+    });
+    expect(cancellation.closed).toBe(true);
+    expect(cancellation.exited).toBe(true);
+    installationUnchanged = JSON.stringify(installTreeBefore) === JSON.stringify(await listTree(installDirectory));
+    expect(installationUnchanged).toBe(true);
+    await expect(notice).toHaveAttribute('data-state', 'downloaded');
+    installerWindow = {
+      title: cancellation.window.title,
+      closed: cancellation.closed,
+      exited: cancellation.exited,
+      actions: cancellation.actions,
+      buttons: cancellation.buttons,
+      openedDownloadedInstaller: cancellation.commandLine.toLowerCase().includes(installerPath.toLowerCase()),
+    };
+    await screenshotStep('用户操作：从通知打开并取消安装器 / User action: open from the notification and cancel the installer');
+  } else {
+    const knownVolumes = await listMountedVolumeNames();
+    await notificationAction.click();
+    const mounted = await waitForMountedInstallerVolume({ knownVolumes });
+    expect(mounted.applicationVersion).toBe(initial.latestVersion);
+    expect(mounted.executableArchitectures)
+      .toContain(process.arch === 'x64' ? 'x86_64' : 'arm64');
+    await detachMountedInstallerVolume(mounted);
+    diskImage = {
+      volumeName: mounted.volumeName,
+      applicationVersion: mounted.applicationVersion,
+      executableArchitectures: mounted.executableArchitectures,
+      mounted: true,
+      detached: true,
+    };
+    await expect(notice).toHaveAttribute('data-state', 'downloaded');
+    await screenshotStep('用户操作：从通知挂载 DMG、核对版本并卸载 / User action: mount the DMG from the notification, verify its version and detach it');
+  }
 
   // 业务断言：Dismiss 只隐藏通知，Settings 的动作仍可用。
   // Business assertion: Dismiss hides only the notification while the Settings action remains usable.
@@ -218,8 +254,6 @@ test('settings.update-notification opens and dismisses the real installer notifi
 
   // 证据：只保留尺寸、布尔结论与版本；fixture 负责 trace、正常 Close、进程、8888 与宿主恢复。
   // Evidence: dimensions, boolean outcomes and versions only; the fixture owns trace, Close, processes, 8888 and host recovery.
-  const installDirectoryUnchanged =
-    JSON.stringify(installTreeBefore) === JSON.stringify(await listTree(installDirectory));
   const evidencePath = testInfo.outputPath('update-notification.json');
   await writeFile(evidencePath, JSON.stringify({
     checkedAt: initial.lastCheckedAt,
@@ -230,15 +264,9 @@ test('settings.update-notification opens and dismisses the real installer notifi
     notificationHiddenWhileDownloading: true,
     busyActionDisabled: 'covered-by-component-test',
     sharedStoreAcrossWorkspaces: true,
-    installerWindow: {
-      title: cancellation.window.title,
-      closed: cancellation.closed,
-      exited: cancellation.exited,
-      actions: cancellation.actions,
-      buttons: cancellation.buttons,
-      openedDownloadedInstaller: cancellation.commandLine.toLowerCase().includes(installerPath.toLowerCase()),
-    },
-    installDirectoryUnchanged,
+    installerWindow,
+    diskImage,
+    installDirectoryUnchanged: installationUnchanged,
     dismissedKeepsSettingsAction: true,
     appStillRunning: !page.isClosed(),
   }, null, 2), 'utf8');

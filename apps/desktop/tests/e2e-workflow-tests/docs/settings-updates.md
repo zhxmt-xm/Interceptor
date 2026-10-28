@@ -853,7 +853,7 @@ Local诚实显示unsupported；packaged匿名请求固定仓库，HTTP 404或请
 
 **策略**：native-ui；匿名更新，仅packaged且存在真实可匿名访问的新release时可执行
 
-实现入口为[updates-download-open.workflow.ts](../workflows/settings/updates-download-open.workflow.ts)。被测App必须低于真实已发布版本，但代码是当前源码：可用独立`INTERCEPTOR_BUILD_IDENTIFIER`和更低的`INTERCEPTOR_BUILD_VERSION`构建release-grade包，源码版本、Fuses和Android签名门禁不变。真实检查不是`available`时记录前提并跳过，不把检查失败算作下载/打开通过。当前实现覆盖Windows MSI的打开与原生取消；macOS DMG 的挂载/卸载分支随macOS验收补齐。
+实现入口为[updates-download-open.workflow.ts](../workflows/settings/updates-download-open.workflow.ts)。被测App必须低于真实已发布版本，但代码是当前源码：可用独立`INTERCEPTOR_BUILD_IDENTIFIER`和更低的`INTERCEPTOR_BUILD_VERSION`构建release-grade包，源码版本、Fuses和Android签名门禁不变。真实检查不是`available`时记录前提并跳过，不把检查失败算作下载/打开通过。Windows覆盖MSI的打开与原生取消；macOS覆盖DMG挂载、卷内App版本核对与`hdiutil detach`卸载，不安装或替换当前App。
 
 ### Steps
 
@@ -861,9 +861,9 @@ Local诚实显示unsupported；packaged匿名请求固定仓库，HTTP 404或请
 2. 无需GitHub授权，进入Updates点击 `settings.updates.check`，等待真实Available和目标Asset API metadata；若实际返回404或请求失败，记录本workflow前提不满足，不把检查失败路径算作下载/打开通过。
 3. 点击 `settings.updates.copy-link`，核对系统剪贴板为固定仓库的浏览器下载 URL（如 `https://github.com/zhxmt-xm/Interceptor/releases/download/v<version>/<asset>`）；该 URL 不通过 UpdateStatus、进度属性或动作暴露（Release notes 若含纯文本链接不受此限制）。
 4. 点击 `settings.updates.download`，观察 state=downloading；`settings.updates.progress` 的 `data-progress`、`data-downloaded-bytes` 单调不减，`data-total-bytes` 恒定，`data-bytes-per-second` 与 `data-eta-seconds` 可读；下载期间 `settings.updates.download` 不存在，UI 不允许重复下载。
-5. 等待 size 和 SHA-256 校验、fsync 和原子 rename 完成，状态为 Downloaded；下载目录只剩本次 MSI 且无 `.part` 残留，文件字节数等于 `data-total-bytes`。
-6. 点击 `settings.updates.open-installer`，核对新出现的 msiexec 命令行只含本次下载成功的 MSI/DMG。
-7. 通过原生安装器窗口取消；若出现“确定要取消安装”的确认，选择确认取消。不安装/修改当前 App，安装器进程退出且默认安装目录未变化，当前 App 仍运行。
+5. 等待 size 和 SHA-256 校验、fsync 和原子 rename 完成，状态为 Downloaded；下载目录只剩本次MSI/DMG且无 `.part` 残留，文件字节数等于 `data-total-bytes`。
+6. 点击 `settings.updates.open-installer`：Windows核对新出现的 msiexec 命令行只含本次下载成功的MSI；macOS等待新挂载卷出现，核对卷内 `Interceptor.app` 的 `CFBundleShortVersionString` 等于目标版本，并用 `lipo -archs` 确认可执行文件包含当前架构（x64→`x86_64`，arm64→`arm64`）。
+7. Windows通过原生安装器窗口取消，安装器进程退出且默认安装目录未变化；macOS用 `hdiutil detach` 卸载本轮卷并确认卷消失。不安装/修改当前 App，当前 App 仍运行。
 8. 保存 evidence 并 Close。
 9. 验证 App 销毁并清测试下载目录。
 10. 删除 profile。
@@ -883,7 +883,7 @@ Local诚实显示unsupported；packaged匿名请求固定仓库，HTTP 404或请
 
 1. packaged App + 独立 profile；真实检查进入 Available，记录 current/latest。
 2. 点击 `settings.updates.download`，在 `settings.updates.cancel` 可用后立即点击。
-3. 断言状态回到 Available，下载目录没有 `.part` 和 `.msi`，没有可打开的安装器，App 仍运行。
+3. 断言状态回到 Available，下载目录没有 `.part` 和本平台安装包（`.msi`/`.dmg`），没有可打开的安装器，App 仍运行。
 4. 保存 evidence 并 Close；验证 Main/Core/Worker 退出、8888 释放和宿主恢复。
 
 ### 预期效果
@@ -897,7 +897,7 @@ Local诚实显示unsupported；packaged匿名请求固定仓库，HTTP 404或请
 
 执行时需要packaged App和可匿名访问的新release。不注入Update store或伪造状态，也不把404失败检查作为通知下载通过。布局契约见[更新通知按钮](../../../../../architecture/features/settings/updates.md#更新通知按钮)。
 
-实现入口为[update-notification.workflow.ts](../workflows/settings/update-notification.workflow.ts)。通知根为`settings.update-notification`并带`data-state`，动作为`settings.update-notification.action`，Dismiss为`settings.update-notification.dismiss`；通知在`downloading`时按契约隐藏，因此busy禁用由组件测试覆盖，不把不可观察的瞬时状态写成E2E结论。当前实现覆盖Windows；macOS通知布局在同平台验收时补齐。
+实现入口为[update-notification.workflow.ts](../workflows/settings/update-notification.workflow.ts)。通知根为`settings.update-notification`并带`data-state`，动作为`settings.update-notification.action`，Dismiss为`settings.update-notification.dismiss`；通知在`downloading`时按契约隐藏，因此busy禁用由组件测试覆盖，不把不可观察的瞬时状态写成E2E结论。通知布局与真实下载/打开在Windows和macOS共用同一份断言；Windows取消MSI安装器，macOS挂载DMG核对版本后卸载。
 
 ### Steps
 
@@ -906,7 +906,7 @@ Local诚实显示unsupported；packaged匿名请求固定仓库，HTTP 404或请
 3. 经公共automation ID点击通知中的真实Download动作；记录原始尺寸与截图，不以翻译文案或CSS class定位控件。
 4. 确认Settings Updates和Header notification共享同一状态，不重复创建任务。
 5. 等待下载完成进入Downloaded，确认notification文案/action同步，Open同样使用32px紧凑规格，普通Settings Open installer按钮保持34px。
-6. 点击notification的Open installer action并取消安装器。
+6. 点击notification的Open installer action；Windows取消MSI安装器，macOS核对版本与可执行文件架构后卸载本轮DMG。
 7. 返回各workspace，确认available/downloaded显示通知、其余状态隐藏；下载期间通知不存在，点击Dismiss后通知隐藏但Settings动作仍可用。busy时通知动作禁用不在此断言。
 8. 保存evidence并Close。
 9. 验证Main/Core/Worker全退、8888释放、完整WinINet/journal恢复和本次下载临时文件清理。

@@ -13,8 +13,8 @@ import {
   waitForTerminalUpdateStatus,
 } from '../../fixtures/ui/update-panel';
 
-test.skip(process.platform !== 'win32',
-  'Native MSI download cancellation is verified on Windows.');
+test.skip(process.platform !== 'win32' && process.platform !== 'darwin',
+  'Real update download and installer verification run on Windows and macOS.');
 test.skip(!process.env.INTERCEPTOR_E2E_APP_PATH,
   'Installer cancellation requires a packaged App through INTERCEPTOR_E2E_APP_PATH.');
 
@@ -70,7 +70,8 @@ test('settings.updates.download-cancel cancels an in-flight real download', asyn
   await expect(status).toHaveAttribute('data-state', 'available');
   const names = await readdir(downloadsDirectory).catch(() => []);
   expect(names.filter((name) => String(name).includes('.part'))).toEqual([]);
-  expect(names.filter((name) => String(name).toLowerCase().endsWith('.msi'))).toEqual([]);
+  const assetExtension = process.platform === 'win32' ? '.msi' : '.dmg';
+  expect(names.filter((name) => String(name).toLowerCase().endsWith(assetExtension))).toEqual([]);
   await expect(getByAutomationId(page, AUTOMATION_IDS.settings.updates.openInstaller))
     .toHaveCount(0);
   expect(page.isClosed()).toBe(false);
