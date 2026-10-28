@@ -261,6 +261,7 @@ Main 创建 frameless `BrowserWindow` 时以 `useContentSize: true` 配置 `1600
 最小窗口仍为 `880 × 560`；`1600 × 900` 是 fresh profile 与 Design/Parity 的唯一初始基线。
 
 Packaged App 在 `onReady` 只安装 app/edit/window 菜单：Windows/Linux 设为 null，macOS 不含 View/Reload；
+macOS 菜单文案跟随系统语言（中文/英文，其余回退英文），role 继续提供行为与快捷键。
 每个窗口在 `app.isPackaged` 时用 `before-input-event` 拦截 F5、Ctrl/Cmd+R、Ctrl/Cmd+Shift+R 和 DevTools
 快捷键。开发态保留 reload/HMR；`will-navigate` / `will-redirect` 仍只放行精确 Vite origin 或 packaged
 entry，程序化 `loadURL` / `reload()` 不受影响。
