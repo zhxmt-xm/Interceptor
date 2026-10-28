@@ -980,11 +980,11 @@ async function prepareDesignPage() {
   await page.waitForFunction(() => window.__monacoReady === true, null, { timeout: 120_000 });
   await page.evaluate(async () => {
     const fonts = [
-      ...[400, 450, 500, 600, 700].map(weight => `${weight} 12px "Inter"`),
+      ...[400, 450, 500, 600, 700].map(weight => `${weight} 12px "Noto Sans SC Variable"`),
       ...[400, 500, 600].map(weight => `${weight} 12px "JetBrains Mono"`),
     ];
     for (const font of fonts) {
-      const faces = await document.fonts.load(font, 'Interceptor');
+      const faces = await document.fonts.load(font, 'Interceptor 已启用 1 条');
       if (faces.length === 0 || faces.some(face => face.status !== 'loaded')) {
         throw new Error(`Design font unavailable: ${font}`);
       }

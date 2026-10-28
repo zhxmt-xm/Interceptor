@@ -33,6 +33,9 @@ export default defineConfig(({ command }) => ({
   plugins: [react(), contentSecurityPolicy(command === 'serve')],
   build: {
     license: { fileName: 'renderer-licenses.txt' },
+    // CSP 的 font-src 只允许 self；字体子集一旦内联成 data: URL 会被拦截并回落到系统字体，
+    // 所以字体始终输出为独立文件（Noto Sans SC 按 unicode-range 拆成 101 个子集）。
+    assetsInlineLimit: (filePath) => (/\.(woff2?|ttf|otf|eot)$/.test(filePath) ? false : undefined),
   },
 }));
 

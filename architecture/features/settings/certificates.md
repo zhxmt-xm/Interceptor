@@ -2,7 +2,7 @@
 
 ## 2. 证书与 HTTPS MITM
 
-证书面板使用Renderer的Inter字体，按400/450/500/600/700离散字重注册已有本地资源，不增加外部字体请求；其余排版沿用[Renderer规范](../../platform/renderer.md)和[设计系统](../../../design-vite/design-system/README.md)。
+证书面板沿用Renderer的 `--font-ui`（本地 Noto Sans SC，数字与汉字同源），不增加外部字体请求；其余排版沿用[Renderer规范](../../platform/renderer.md)和[设计系统](../../../design-vite/design-system/README.md)。
 
 ### 2.1 三对密钥
 

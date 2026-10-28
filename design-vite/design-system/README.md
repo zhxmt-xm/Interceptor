@@ -12,8 +12,10 @@
 - Model Provider 使用可枚举的品牌 Logo map：已知品牌图形与推荐色来自 `simple-icons`（CC0-1.0），
   仅用于准确标识服务，不改形、不暗示合作；Custom / unknown Provider 使用 Lucide Bot fallback。品牌商标权
   不因图标数据许可而转移，新增品牌时仍需复核对应 brand guideline。
-- 字体:`Inter`(界面) + `JetBrains Mono`(URL、header、数值等技术文本);数值列用 `font-variant-numeric: tabular-nums`。
-  - 设计侧Inter按400/450/500/600/700、JetBrains Mono按400/500/600离散字重注册，控件仍使用各自550/640等既有声明。Renderer以现有依赖的WOFF2离线提供，Inter保留离散注册，JetBrains Mono按用户确认保留原可变字重注册与字符子集；分别核对实际FontFace和度量，不因设计差异自动改App。
+- 字体:`Noto Sans SC`(界面,拉丁来自 Source Sans,与汉字同一设计) + `JetBrains Mono`(URL、header、数值等技术文本);数值列用 `font-variant-numeric: tabular-nums`。
+  - 界面字体必须是中拉同源:数字与汉字来自同一字面,混排时的字面高度、基线与视觉重心才一致;以拉丁字体打头会让 Windows 汉字回落到微软雅黑、macOS 回落到苹方。
+  - 设计侧与Renderer都导入同一份 `@fontsource-variable/noto-sans-sc`(可变 `wght 100–900`,CJK 按 unicode-range 子集)与 `@fontsource-variable/jetbrains-mono` 本地 WOFF2,离线可用;450/550/640 等字重由可变字体直接表达,不依赖合成加粗。分别核对实际FontFace和度量,不因设计差异自动改App。
+  - 设计稿里的 Android/Homepage 预览仍用各自的 `Inter`,不属于桌面端界面字体。
 
 ## 目录
 

@@ -47,7 +47,7 @@ description: "Verify implemented React UI against the design SPA using standalon
 - **Renderer 走真实 Preload 契约**:harness 在 `page.goto()` 前用 `addInitScript` 注入完整 fake `window.interceptor`；业务组件照常调用窄 API，不包含 parity fixture、`import.meta.env.DEV` 数据分支或测试 setter。
 - **状态通过真实 UI 建立**:主题在导航前写 localStorage，view/选中行/tab/表单通过 Playwright 点击、选择和输入完成；不要暴露 `window.__setView/__setTheme` 之类业务侧测试后门。
 - **设计稿是可编程 SPA**:`design-vite/` 暴露 `window.__setState({view,theme,sidebar,…})`，harness 通过 `design-preview.mjs` 起它的 preview server。
-- **设计字体必须实际加载**：先逐字重调用`document.fonts.load()`，确认Inter与JetBrains Mono返回非空且全部FontFace为loaded，再重新计算Monaco字体。`document.fonts.ready`在下载失败后也会resolve；失败时停止测量，不以fallback产生布局结论，不替换字体或改基准掩盖问题。
+- **设计字体必须实际加载**：先按字重调用`document.fonts.load()`，样本同时包含拉丁、数字与汉字，确认`Noto Sans SC Variable`与`JetBrains Mono`返回非空且全部FontFace为loaded，再重新计算Monaco字体。`document.fonts.ready`在下载失败后也会resolve；失败时停止测量，不以fallback产生布局结论，不替换字体或改基准掩盖问题。
 - **元素靠明确语义配对**：优先复用唯一文本、现有selector、公共automation ID或`data-parity`；重复控件在配置中限定容器或记录，不通过选第一项规避歧义，不为工具改造批量增加产品属性。
 
 ## 加一个新 view(零改 harness)
@@ -69,7 +69,7 @@ description: "Verify implemented React UI against the design SPA using standalon
 
 ## 已知陷阱(都真实踩过)
 
-1. **行高与实际字体**：`<AntApp>`的`.ant-app`会用token `lineHeight`覆盖body；shell根`.app`当前按用户确认保留原App的`1.23`，不因设计使用`normal`就自动覆盖。两者不等价，不能用近似倍数代替字体度量。先核对实际FontFace和字重注册，再比较几何；当前Renderer的Inter已按离散字重注册，不能照搬历史Inter Variable场景的行高经验。
+1. **行高与实际字体**：`<AntApp>`的`.ant-app`会用token `lineHeight`覆盖body；shell根`.app`当前按用户确认保留原App的`1.23`，不因设计使用`normal`就自动覆盖。两者不等价，不能用近似倍数代替字体度量。先核对实际FontFace和字重注册，再比较几何；当前设计与Renderer加载同一份可变`Noto Sans SC`(`font-weight: 100 900`)，不能照搬历史离散字重或Inter场景的行高经验。
 2. **高度链断裂**:`.ant-app` 没有 `height:100%` → `.app{height:100%}` 塌缩成内容高 → app 不填满窗口、`flex:1` 的 spring 失效(底部元素浮空)。→ 给 `<AntApp className>` 设 `height:100%`。
 3. **画布边界**：设计页额外卡片装饰在测量前明确去除，两边各自相对内容画布。整体错位仍要报告，不能从目标差值反推并扣除。
 4. **字体声明不等于实际字体**：同名字体也不保证资源字节或字重注册相同。Renderer保留原依赖注册的`JetBrains Mono Variable`和可变字重，设计侧仍按400/500/600加载；分别检查实际FontFace，不为消除差异改字体注册或删除声明。相同文字拆成多个文本节点也可能产生逐段舍入差异，应先核对文本结构，不以字距或宽度补偿，也不把数据差异自动当成产品故障。

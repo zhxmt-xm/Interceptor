@@ -326,7 +326,7 @@ macOS定向用例同在`tools-certificates.workflow.ts`，名称含`rejects over
 
 macOS保留十个section、键盘和跨workspace往返；App Containers按产品已有unsupported状态检查Search、Enable all、Disable all不出现并截图，不要求Windows专属控件。新增Upstream section通过正式导航验证共享编辑器，其网络流程独立验收。Windows专属断言不变。macOS启动等待boot退出，产品Close后预留120秒供用户处理原生代理恢复授权；不自动批准、不输入密码，实际恢复与进程/8888/journal检查保持。
 
-离线字体检查：进入默认Certificates后保存`settings-fonts.json/png`，确认`Inter`只注册设计的400/450/500/600/700、550字重请求实际加载非空FontFace，CSSOM中的Inter字体URL均来自`interceptor://app/`。不切换应用语言，不要求英文显示文案；Resource Timing不能代替CSSOM与实际FontFace检查，其他字体的内嵌`data:`资源不在此URL断言范围。
+离线字体检查：进入默认Certificates后保存`settings-fonts.json/png`，确认界面字体是本地`Noto Sans SC Variable`（可变`100 900`，550字重请求实际加载非空FontFace），数字样本与汉字样本都由该字面提供，CSSOM中的字体URL均来自`interceptor://app/`。不切换应用语言，不要求英文显示文案；Resource Timing不能代替CSSOM与实际FontFace检查，其他字体的内嵌`data:`资源不在此URL断言范围。
 
 ### Steps
 
