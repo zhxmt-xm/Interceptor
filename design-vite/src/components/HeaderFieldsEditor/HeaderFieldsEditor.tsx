@@ -63,7 +63,7 @@ export function HeaderFieldsEditor({
                   className={styles.headerFieldsEditorEffect}
                   data-effect={field.ruleEffect}
                 >
-                  Rule {field.ruleEffect === 'append' ? 'appended' : 'set'}
+                  {field.ruleEffect === 'append' ? 'Rule appended' : 'Rule set'}
                 </span>
               ) : null}
             </span>
