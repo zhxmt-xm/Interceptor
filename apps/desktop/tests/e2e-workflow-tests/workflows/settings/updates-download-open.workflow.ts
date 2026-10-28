@@ -20,9 +20,15 @@ import {
   cancelOpenedWindowsInstaller,
   readWindowsMsiInstallerProcesses,
 } from '../../fixtures/ui/windows-msi-installer';
+import {
+  detachMountedInstallerVolume,
+  listMountedVolumeNames,
+  readMacosClipboardText,
+  waitForMountedInstallerVolume,
+} from '../../fixtures/ui/macos-dmg-installer';
 
-test.skip(process.platform !== 'win32',
-  'Native MSI download and installer cancellation are verified on Windows.');
+test.skip(process.platform !== 'win32' && process.platform !== 'darwin',
+  'Real update download and installer verification run on Windows and macOS.');
 test.skip(!process.env.INTERCEPTOR_E2E_APP_PATH,
   'Anonymous installer download requires a packaged App through INTERCEPTOR_E2E_APP_PATH.');
 
@@ -54,9 +60,13 @@ test('settings.updates.download-open downloads, verifies and opens the real inst
 
   // 用户操作：复制固定浏览器下载链接；剪贴板由 Main 写入，Renderer 不接收 URL。
   // User action: copy the fixed browser download URL written by Main; Renderer never receives it.
-  const expectedDownloadUrl = `https://github.com/zhxmt-xm/Interceptor/releases/download/v${initial.latestVersion}/Interceptor-${initial.latestVersion}-win32-x64.msi`;
+  const assetPlatform = process.platform === 'win32' ? 'win32' : 'darwin';
+  const assetExtension = process.platform === 'win32' ? '.msi' : '.dmg';
+  const expectedDownloadUrl = `https://github.com/zhxmt-xm/Interceptor/releases/download/v${initial.latestVersion}/Interceptor-${initial.latestVersion}-${assetPlatform}-${process.arch}${assetExtension}`;
   await getByAutomationId(page, AUTOMATION_IDS.settings.updates.copyLink).click();
-  await expect.poll(() => readWindowsClipboardText()).toBe(expectedDownloadUrl);
+  await expect.poll(async () => process.platform === 'win32'
+    ? readWindowsClipboardText()
+    : readMacosClipboardText()).toBe(expectedDownloadUrl);
 
   // 用户操作：显式点击 Download，采样速度/剩余时间与进度后等待校验与原子落盘完成。
   // User action: click Download; sample speed/ETA and progress, then wait for verification and the atomic rename.
@@ -110,41 +120,73 @@ test('settings.updates.download-open downloads, verifies and opens the real inst
   expect(samples.at(-1)!.progress).toBeGreaterThan(samples[0]!.progress);
   await screenshotStep('用户操作：显式下载并等待校验完成 / User action: download explicitly and wait for verification');
 
-  // 业务断言：只剩本次下载的 MSI，没有 .part 残留，尺寸与声明的 totalBytes 一致。
-  // Business assertion: only this MSI remains, with no .part residue and the declared byte size.
+  // 业务断言：只剩本次下载的安装包，没有 .part 残留，尺寸与声明的 totalBytes 一致。
+  // Business assertion: only this installer remains, with no .part residue and the declared byte size.
   const names = (await readdir(downloadsDirectory, { withFileTypes: true }))
     .filter((entry) => entry.isFile())
     .map((entry) => entry.name);
   expect(names).toHaveLength(1);
-  expect(names[0]!.toLowerCase().endsWith('.msi')).toBe(true);
+  expect(names[0]!.toLowerCase().endsWith(assetExtension)).toBe(true);
   expect(names.filter((name) => name.includes('.part'))).toEqual([]);
   const installerPath = path.join(downloadsDirectory, names[0]!);
   expect((await stat(installerPath)).size).toBe(totalBytes);
 
-  // 用户操作：打开安装器；只允许本次完整校验的 MSI，并在原生窗口取消，不安装或修改当前 App。
-  // User action: open the installer; only this verified MSI may open, then cancel it in the native window without installing.
-  const installDirectory = path.join(process.env.LOCALAPPDATA!, 'Programs', 'Interceptor');
-  const installTreeBefore = await listTree(installDirectory);
-  const knownProcessIds = (await readWindowsMsiInstallerProcesses()).map((process) => process.processId);
-  await getByAutomationId(page, AUTOMATION_IDS.settings.updates.openInstaller).click();
-  const cancellation = await cancelOpenedWindowsInstaller({
-    knownProcessIds,
-    expectedInstallerPath: installerPath,
-    windowTimeoutMs: 120_000,
-    exitTimeoutMs: 120_000,
-  });
-  expect(cancellation.closed).toBe(true);
-  expect(cancellation.exited).toBe(true);
-  expect(cancellation.commandLine.toLowerCase()).toContain(installerPath.toLowerCase());
-  expect(await listTree(installDirectory)).toEqual(installTreeBefore);
-  await expect(status).toHaveAttribute('data-state', 'downloaded');
+  // 用户操作：打开安装包；只允许本次完整校验的产物。Windows 在原生窗口取消 MSI；macOS 挂载 DMG 后核对并卸载。
+  // User action: open the verified installer. Windows cancels the MSI window; macOS mounts the DMG, verifies it, then detaches.
+  const openInstaller = getByAutomationId(page, AUTOMATION_IDS.settings.updates.openInstaller);
+  let installerWindow: Record<string, unknown> | null = null;
+  let diskImage: Record<string, unknown> | null = null;
+  let installationUnchanged = true;
+  if (process.platform === 'win32') {
+    const installDirectory = path.join(process.env.LOCALAPPDATA!, 'Programs', 'Interceptor');
+    const installTreeBefore = await listTree(installDirectory);
+    const knownProcessIds = (await readWindowsMsiInstallerProcesses()).map((process) => process.processId);
+    await openInstaller.click();
+    const cancellation = await cancelOpenedWindowsInstaller({
+      knownProcessIds,
+      expectedInstallerPath: installerPath,
+      windowTimeoutMs: 120_000,
+      exitTimeoutMs: 120_000,
+    });
+    expect(cancellation.closed).toBe(true);
+    expect(cancellation.exited).toBe(true);
+    expect(cancellation.commandLine.toLowerCase()).toContain(installerPath.toLowerCase());
+    installationUnchanged = JSON.stringify(installTreeBefore) === JSON.stringify(await listTree(installDirectory));
+    expect(installationUnchanged).toBe(true);
+    await expect(status).toHaveAttribute('data-state', 'downloaded');
+    installerWindow = {
+      title: cancellation.window.title,
+      closed: cancellation.closed,
+      exited: cancellation.exited,
+      actions: cancellation.actions,
+      buttons: cancellation.buttons,
+      openedDownloadedInstaller: cancellation.commandLine.toLowerCase().includes(installerPath.toLowerCase()),
+    };
+    await screenshotStep('用户操作：打开本次安装器并在原生窗口取消 / User action: open this installer and cancel the native window');
+  } else {
+    const knownVolumes = await listMountedVolumeNames();
+    await openInstaller.click();
+    const mounted = await waitForMountedInstallerVolume({ knownVolumes });
+    expect(mounted.applicationVersion).toBe(initial.latestVersion);
+    // Release 必须为当前架构提供对应二进制，不能把另一种架构打进 DMG。
+    expect(mounted.executableArchitectures)
+      .toContain(process.arch === 'x64' ? 'x86_64' : 'arm64');
+    await detachMountedInstallerVolume(mounted);
+    diskImage = {
+      volumeName: mounted.volumeName,
+      applicationVersion: mounted.applicationVersion,
+      executableArchitectures: mounted.executableArchitectures,
+      mounted: true,
+      detached: true,
+    };
+    await expect(status).toHaveAttribute('data-state', 'downloaded');
+    await expect(openInstaller).toBeEnabled();
+    await screenshotStep('用户操作：挂载 DMG、核对版本并卸载 / User action: mount the DMG, verify its version and detach it');
+  }
   expect(page.isClosed()).toBe(false);
-  await screenshotStep('用户操作：打开本次安装器并在原生窗口取消 / User action: open this installer and cancel the native window');
 
   // 证据：只保留版本、采样和布尔结论；fixture 负责 trace、正常 Close、进程、8888 与宿主恢复。
   // Evidence: versions, samples and boolean outcomes only; the fixture owns trace, Close, processes, 8888 and host recovery.
-  const installDirectoryUnchanged =
-    JSON.stringify(installTreeBefore) === JSON.stringify(await listTree(installDirectory));
   const evidencePath = testInfo.outputPath('updates-download-open.json');
   await writeFile(evidencePath, JSON.stringify({
     checkedAt: initial.lastCheckedAt,
@@ -163,15 +205,9 @@ test('settings.updates.download-open downloads, verifies and opens the real inst
       partFiles: names.filter((name) => name.includes('.part')),
     },
     samples,
-    installerWindow: {
-      title: cancellation.window.title,
-      closed: cancellation.closed,
-      exited: cancellation.exited,
-      actions: cancellation.actions,
-      buttons: cancellation.buttons,
-      openedDownloadedInstaller: cancellation.commandLine.toLowerCase().includes(installerPath.toLowerCase()),
-    },
-    installDirectoryUnchanged,
+    installerWindow,
+    diskImage,
+    installDirectoryUnchanged: installationUnchanged,
     appStillRunning: !page.isClosed(),
   }, null, 2), 'utf8');
   await testInfo.attach('updates-download-open.json', {

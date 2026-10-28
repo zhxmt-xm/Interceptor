@@ -94,10 +94,13 @@ npm run test:e2e:workflow --workspace @interceptor/desktop -- workflows/settings
 ```powershell
 $env:INTERCEPTOR_BUILD_IDENTIFIER = 'updates-previous-alpha'
 $env:INTERCEPTOR_BUILD_VERSION = '0.1.1-alpha.0'
+# release签名APK及对应证书SHA-256；debug证书会被发布门禁拒绝
+$env:INTERCEPTOR_ANDROID_APK = '<Interceptor-Android>/app/build/outputs/apk/release/app-release.apk'
+$env:INTERCEPTOR_ANDROID_SIGNER_SHA256 = '<release signer sha256>'
 npm run package
 $env:INTERCEPTOR_E2E_APP_PATH = 'C:\code\Interceptor\apps\desktop\out\updates-previous-alpha\Interceptor-win32-x64\Interceptor.exe'
 npm run test:e2e:workflow --workspace @interceptor/desktop -- workflows/settings/updates-download-open.workflow.ts workflows/settings/update-notification.workflow.ts --screenshots
-Remove-Item Env:INTERCEPTOR_BUILD_VERSION, Env:INTERCEPTOR_BUILD_IDENTIFIER
+Remove-Item Env:INTERCEPTOR_BUILD_VERSION, Env:INTERCEPTOR_BUILD_IDENTIFIER, Env:INTERCEPTOR_ANDROID_APK, Env:INTERCEPTOR_ANDROID_SIGNER_SHA256
 ```
 
 被测App是本地release-grade构建而不是已发布产物；匿名检查、下载和安装包仍来自真实公开Release。非packaged或真实检查不是`available`时，workflow记录前提并跳过，不把检查失败算作下载通过。若宿主直连GitHub不可用，可只给本次E2E进程设置`NODE_USE_ENV_PROXY=1`和`HTTPS_PROXY`，让被测App的Main经宿主代理访问固定Release来源；不改产品代码，也不改变匿名请求断言。`settings.updates.download-cancel`要求下载在点击取消时仍未完成；若下载先完成则记录前提并跳过，不把“已下载完”算作取消通过。
