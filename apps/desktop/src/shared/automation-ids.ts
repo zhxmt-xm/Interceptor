@@ -20,6 +20,13 @@ export const AUTOMATION_IDS = {
       guidebook: 'shell.workspace.guidebook',
       settings: 'shell.workspace.settings',
     },
+    menu: {
+      trigger: 'shell.menu.trigger',
+      guidebook: 'shell.menu.guidebook',
+      updates: 'shell.menu.updates',
+      settings: 'shell.menu.settings',
+      version: 'shell.menu.version',
+    },
     window: {
       minimize: 'shell.window.minimize',
       maximizeRestore: 'shell.window.maximize-restore',

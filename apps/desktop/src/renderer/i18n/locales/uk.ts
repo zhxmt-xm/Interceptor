@@ -6,6 +6,8 @@ export const ukCatalog = {
   'app.coreStatusUnavailable': 'Стан Proxy Core недоступний',
   'app.minimizeWindow': 'Згорнути',
   'app.toggleMaximizeWindow': 'Розгорнути або відновити',
+  'app.menu': 'Меню',
+  'app.checkForUpdates': 'Перевірити оновлення',
   'common.language': 'Мова',
   'common.close': 'Закрити',
   'common.undo': 'Скасувати',

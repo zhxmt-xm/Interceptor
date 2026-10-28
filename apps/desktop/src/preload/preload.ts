@@ -23,6 +23,7 @@ import {
 } from '../shared/desktop-api';
 
 const api: InterceptorDesktopApi = {
+  getAppVersion: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.appGetVersion),
   getStartupStage: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.startupGetStage),
   onStartupStageChange: (listener) => {
     const handler = (_event: Electron.IpcRendererEvent, stage: ApplicationStartupStage): void => listener(stage);

@@ -6,6 +6,8 @@ export const ruCatalog = {
   'app.coreStatusUnavailable': 'Состояние Proxy Core недоступно',
   'app.minimizeWindow': 'Свернуть',
   'app.toggleMaximizeWindow': 'Развернуть или восстановить',
+  'app.menu': 'Меню',
+  'app.checkForUpdates': 'Проверить обновления',
   'common.language': 'Язык',
   'common.close': 'Закрыть',
   'common.undo': 'Отменить',

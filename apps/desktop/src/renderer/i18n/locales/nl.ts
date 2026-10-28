@@ -6,6 +6,8 @@ export const nlCatalog = {
   'app.coreStatusUnavailable': 'Status van Proxy Core niet beschikbaar',
   'app.minimizeWindow': 'Minimaliseren',
   'app.toggleMaximizeWindow': 'Maximaliseren of herstellen',
+  'app.menu': 'Menu',
+  'app.checkForUpdates': 'Controleren op updates',
   'common.language': 'Taal',
   'common.close': 'Sluiten',
   'common.undo': 'Ongedaan maken',

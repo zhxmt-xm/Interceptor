@@ -6,6 +6,8 @@ export const koCatalog = {
   'app.coreStatusUnavailable': '프록시 코어 상태를 확인할 수 없음',
   'app.minimizeWindow': '최소화',
   'app.toggleMaximizeWindow': '최대화 또는 복원',
+  'app.menu': '메뉴',
+  'app.checkForUpdates': '업데이트 확인',
   'common.language': '언어',
   'common.close': '닫기',
   'common.undo': '실행 취소',

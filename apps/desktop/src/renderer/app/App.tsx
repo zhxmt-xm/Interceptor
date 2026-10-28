@@ -57,6 +57,7 @@ import { tlsPassthroughCoveringPattern } from '../features/settings/utils';
 import { UiPreferencesActions } from '../features/settings/data/uiPreferencesActions';
 import { UpstreamSettingsActions } from '../features/settings/data/upstreamSettingsStore';
 import { createAppTheme, type ThemeMode } from '../theme/theme';
+import { AppMenu } from '../components/AppMenu/AppMenu';
 import { WindowControls } from '../components/WindowControls/WindowControls';
 import styles from './App.module.css';
 import { BreakpointCreatedMessage } from './BreakpointCreatedMessage/BreakpointCreatedMessage';
@@ -107,6 +108,7 @@ export function App(): React.JSX.Element {
   const [collapsed, setCollapsed] = useState(true);
   const [themeMode, setThemeMode] = useState<ThemeMode>(readInitialTheme);
   const [settingsSection, setSettingsSection] = useState('certificates');
+  const [appVersion, setAppVersion] = useState<string | null>(null);
   const [agentPanelOpen, setAgentPanelOpen] = useState(false);
   const [tlsPassthroughTarget, setTlsPassthroughTarget] =
     useState<TlsPassthroughNavigationTarget | null>(null);
@@ -117,6 +119,14 @@ export function App(): React.JSX.Element {
   }));
   const language = resolveLanguageId(i18n.resolvedLanguage ?? i18n.language);
   const languageDefinition = getLanguageDefinition(language);
+  // 版本来自打包后的 App，不在构建期写死；失败时保留占位符，不影响菜单其他项。
+  useEffect(() => {
+    let active = true;
+    void window.interceptor.getAppVersion()
+      .then((version) => { if (active) setAppVersion(version); })
+      .catch(() => { if (active) setAppVersion(null); });
+    return () => { active = false; };
+  }, []);
   // The boot screen owns startup feedback, so the readiness dialog stays out of its way.
   const toggleCollapse = (): void => setCollapsed((value) => !value);
   const toggleAgentPanel = (): void => setAgentPanelOpen((value) => !value);
@@ -317,6 +327,16 @@ export function App(): React.JSX.Element {
         >
           {t(VIEW_LABEL_KEYS[view])}
         </span>
+        <AppMenu
+          version={appVersion}
+          onOpenGuidebook={() => setView('guidebook')}
+          onCheckForUpdates={() => {
+            setSettingsSection('updates');
+            setView('settings');
+            void UpdateActions.check();
+          }}
+          onOpenSettings={() => setView('settings')}
+        />
         <AgentPanelToggle open={agentPanelOpen} onToggle={toggleAgentPanel} />
         <WindowControls />
       </header>

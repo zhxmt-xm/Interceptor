@@ -6,6 +6,8 @@ export const zhTWCatalog = {
   'app.coreStatusUnavailable': '無法取得 Proxy Core 狀態',
   'app.minimizeWindow': '最小化',
   'app.toggleMaximizeWindow': '最大化或還原',
+  'app.menu': '選單',
+  'app.checkForUpdates': '檢查更新',
   'common.language': '語言',
   'common.close': '關閉',
   'common.undo': '復原',

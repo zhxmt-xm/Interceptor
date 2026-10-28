@@ -4,6 +4,8 @@ export const commonEnglishMessages = {
   'app.coreStatusUnavailable': 'Proxy Core status unavailable',
   'app.minimizeWindow': 'Minimize',
   'app.toggleMaximizeWindow': 'Maximize or restore',
+  'app.menu': 'Menu',
+  'app.checkForUpdates': 'Check for updates',
   'common.language': 'Language',
   'common.close': 'Close',
   'common.undo': 'Undo',

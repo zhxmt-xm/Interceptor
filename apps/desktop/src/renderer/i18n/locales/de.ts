@@ -6,6 +6,8 @@ export const deCatalog = {
   'app.coreStatusUnavailable': 'Status von Proxy Core nicht verfügbar',
   'app.minimizeWindow': 'Minimieren',
   'app.toggleMaximizeWindow': 'Maximieren oder wiederherstellen',
+  'app.menu': 'Menü',
+  'app.checkForUpdates': 'Nach Updates suchen',
   'common.language': 'Sprache',
   'common.close': 'Schließen',
   'common.undo': 'Rückgängig',

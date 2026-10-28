@@ -6,6 +6,8 @@ export const zhCNCatalog = {
   'app.coreStatusUnavailable': '代理核心状态不可用',
   'app.minimizeWindow': '最小化',
   'app.toggleMaximizeWindow': '最大化或还原',
+  'app.menu': '菜单',
+  'app.checkForUpdates': '检查更新',
   'common.language': '语言',
   'common.close': '关闭',
   'common.undo': '撤销',
