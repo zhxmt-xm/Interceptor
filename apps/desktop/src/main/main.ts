@@ -71,6 +71,7 @@ import {
   completeApplicationStartupFailure,
   resumeApplicationAfterShutdownFailure,
 } from './lifecycle/application-shutdown';
+import { readShutdownIpcSnapshot } from './lifecycle/shutdown-ipc';
 import { TrustedRendererUrl } from './security/trusted-renderer-url';
 import { PackagedRendererProtocol } from './security/packaged-renderer-protocol';
 import { isBlockedPackagedShortcut } from './security/keyboard-guard';
@@ -847,6 +848,10 @@ class DesktopApplication {
           this.assertTrustedSender(event.senderFrame?.url);
           if (this.startupStage !== 'ready' && !startupChannels.includes(channel)) {
             throw new Error('Interceptor is still preparing its services.');
+          }
+          if (this.quitting) {
+            const snapshot = readShutdownIpcSnapshot(channel);
+            if (snapshot !== null) return snapshot;
           }
           return this.applicationActionGate.run(async () => {
             const startedAt = Date.now();
