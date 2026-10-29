@@ -185,8 +185,3 @@
     - L7 `App.tsx` 注释写 custom 断点需要「超时策略」，产品无此能力。
   - 移动端边界（不在承诺范围）：iOS 不做 Network Extension，蜂窝与不走系统代理的 App 不可见；Android 未 root 时三方 release 包只有元数据；两端都不处理 pinning 与 QUIC。
   - 约束：清单条目只描述问题与验收方向，不代表已排期；实现时按 `architecture/features/` 与 E2E 规格先行，不跳过真实 E2E 证据。
-
-- **25. macOS 中文字形与打包字体验证 · 待 macOS**
-  - 目标：在真实 macOS packaged App 里确认 `Noto Sans SC Variable` 从 `interceptor://app/` 本地加载，数字与汉字混排的字面、基线与视觉重心与 Windows 一致。
-  - 下一步：在 macOS 构建并打开 Capture、Inspector、Statusbar 与 Settings，对照 `1小时15分`、`12 毫秒`、`3 / 5 条` 等混排文本；保留 `settings.navigation` 的 `settings-fonts.json/png` 与亮/暗截图。
-  - 约束：必须用真实 macOS App，不用 Windows 结果代替；字体不得走外部 CDN。
