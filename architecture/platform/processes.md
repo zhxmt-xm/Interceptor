@@ -184,7 +184,8 @@ macOS 使用`~/Library/Application Support/Interceptor Platform/system-proxy/jou
 
 用户Enable/Restore冲突立即返回当前operation，不留请求；Core故障由SystemProxyService
 合并必要恢复，等待已开始的操作明确结算。正常退出先询问平台是否仍忙，忙时拒绝本次Quit且不自动重放；允许退出后
-通过Action Gate拒绝新IPC、排空已接受命令，再调用平台stop恢复代理。平台与Core停止完成后Main调用`app.exit(0)`
+通过Action Gate拒绝新IPC、排空已接受命令，再调用平台stop恢复代理。退出开始后到达的只读断点快照请求
+直接返回空快照，不交给Gate拒绝，避免Renderer的取数在日志里留下shutdown错误。平台与Core停止完成后Main调用`app.exit(0)`
 结束进程，不再触发第二次`app.quit()`，因此退出不等待Renderer页面卸载、iframe/网页加载或调试器断开。完整参与者、当场比较表、正常启动、崩溃重启、正常退出、启动失败与
 Core 故障时序见 [../features/settings/README.md](../features/settings/README.md) §3.2。
 
