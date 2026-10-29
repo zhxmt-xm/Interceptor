@@ -1,5 +1,5 @@
 .group {
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 .groupOpen .groupChevron {
   transform: rotate(0deg);
@@ -81,7 +81,10 @@
   color: var(--text);
 }
 .groupBody {
-  padding: 2px 0 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 3px 0 0;
 }
 .groupEmpty {
   margin: 0;
@@ -96,7 +99,6 @@
   gap: 8px;
   width: 100%;
   height: 26px;
-  margin-bottom: 3px;
   padding: 0 8px 0 28px;
   border: 0;
   border-radius: 7px;

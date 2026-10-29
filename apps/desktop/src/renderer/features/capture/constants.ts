@@ -66,6 +66,9 @@ export const EMPTY_FILTER: CaptureFilter = {
   ruleIds: [],
 };
 
+/** 没有任何 facet 生效时只展开第一个分组。 */
+export const DEFAULT_EXPANDED_FACETS: CaptureFacetId[] = ['application'];
+
 /** 每组 facet 默认最多显示的条目数，其余折叠到 Show more 之后。 */
 export const FACET_COLLAPSED_LIMIT = 8;
 

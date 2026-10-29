@@ -1,7 +1,9 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 import { cx } from '../../../components';
-import { splitKvTextLines } from '../utils';
+import type { KvTextSegment } from '../utils';
+
+import { requestKvLineMeasurement } from './kvLineMeasurement';
 import styles from './KvValue.module.css';
 
 interface KvValueProps {
@@ -14,49 +16,74 @@ interface KvValueProps {
 export function KvValue({ value, accent, inactive, children }: KvValueProps): React.JSX.Element {
   const hostRef = useRef<HTMLSpanElement>(null);
   const [wrapped, setWrapped] = useState<{ value: string; lines: string[] } | null>(null);
-  const lines = typeof value === 'string' ? wrapped?.value === value ? wrapped.lines : [value] : null;
+  // 最近一次已渲染的测量输入（原文/可用宽度/动作宽度）；输入没变就不必再强制布局。
+  const measuredKeyRef = useRef<string | null>(null);
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const segmentsRef = useRef<{ value: string; segments: readonly KvTextSegment[] } | null>(null);
+  const segmentsFor = (text: string): readonly KvTextSegment[] => {
+    const cached = segmentsRef.current;
+    if (cached?.value === text) {
+      return cached.segments;
+    }
+    const segments = [
+      ...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text),
+    ];
+    segmentsRef.current = { value: text, segments };
+    return segments;
+  };
+  const scheduleRef = useRef<() => void>(() => {});
+  scheduleRef.current = () => {
+    const host = hostRef.current;
+    const nextValue = valueRef.current;
+    if (!host || typeof nextValue !== 'string') {
+      return;
+    }
+    requestKvLineMeasurement({
+      host,
+      value: nextValue,
+      isCurrent: (key) => measuredKeyRef.current === key,
+      segments: () => segmentsFor(nextValue),
+      resolve: ({ key, lines }) => {
+        measuredKeyRef.current = key;
+        const resolvedValue = valueRef.current;
+        if (typeof resolvedValue !== 'string') {
+          return;
+        }
+        setWrapped((current) => current?.value === resolvedValue
+          && current.lines.length === lines.length
+          && current.lines.every((line, index) => line === lines[index])
+          ? current
+          : { value: resolvedValue, lines });
+      },
+    });
+  };
+  const lines = typeof value === 'string'
+    ? wrapped?.value === value ? wrapped.lines : [value]
+    : null;
 
   useLayoutEffect(() => {
     const host = hostRef.current;
-    if (!host || typeof value !== 'string') return;
-    const reflow = () => {
-      const width = host.getBoundingClientRect().width;
-      const lastLine = host.lastElementChild;
-      if (width === 0 || !lastLine) return;
-      const gap = Number.parseFloat(getComputedStyle(lastLine).columnGap);
-      const actionsWidth = Array.from(lastLine.children).reduce(
-        (total, action) => total + action.getBoundingClientRect().width + gap, 0,
-      );
-      const measure = document.createElement('span');
-      measure.className = styles.measure!;
-      measure.setAttribute('aria-hidden', 'true');
-      measure.textContent = value;
-      measure.style.width = `${Math.max(0, width - actionsWidth)}px`;
-      host.append(measure);
-      let nextLines: string[];
-      try {
-        const range = document.createRange();
-        nextLines = splitKvTextLines(value, (start, end) => {
-          range.setStart(measure.firstChild!, start);
-          range.setEnd(measure.firstChild!, end);
-          return range.getBoundingClientRect().top;
-        });
-      } finally {
-        measure.remove();
-      }
-      setWrapped((current) => current?.value === value
-        && current.lines.length === nextLines.length
-        && current.lines.every((line, index) => line === nextLines[index])
-        ? current : { value, lines: nextLines });
+    if (!host) {
+      return;
+    }
+    const schedule = (): void => scheduleRef.current();
+    // 字体加载会改变换行位置，但几何尺寸不变；清掉 key 强制重算一次。
+    const reload = (): void => {
+      measuredKeyRef.current = null;
+      scheduleRef.current();
     };
-    reflow();
-    const observer = new ResizeObserver(reflow);
+    schedule();
+    const observer = new ResizeObserver(schedule);
     observer.observe(host);
-    for (const action of host.lastElementChild?.children ?? []) observer.observe(action);
-    document.fonts.addEventListener('loadingdone', reflow);
+    const lastLine = host.lastElementChild;
+    for (const action of lastLine?.children ?? []) {
+      observer.observe(action);
+    }
+    document.fonts.addEventListener('loadingdone', reload);
     return () => {
       observer.disconnect();
-      document.fonts.removeEventListener('loadingdone', reflow);
+      document.fonts.removeEventListener('loadingdone', reload);
     };
   }, [value, children]);
 

@@ -59,12 +59,14 @@ flowchart LR
 - Clear 成功把 `rows` 置空时，facet snapshot 必须立即同步为空；节流只约束非空实时更新，不能让列表
     已显示 `0 of 0` 时分栏仍短暂保留旧 app id、选项与计数。
 - 产品按钮、Agent和MCP的Clear都在Main取得清理开始时间，并只在`capture.cleanup{all}`成功后广播
-    `capture:reset { clearedBefore }`。Renderer统一以该时间边界清空rows、selection与Rules hits；旧分页和
-    `startedAt <= clearedBefore`的迟到事件不得回填，清理开始后到达的新流量仍可进入当前视图。并发Clear乱序完成时
-    cutoff只允许单调增加；旧reset不得再次删除较新cutoff之后已经进入Store的rows。
+    `capture:reset { clearedBefore }`。Renderer统一以该时间边界清空rows、selection、搜索、全部facet、
+    facet展开状态（回到只展开Application）与Rules hits；旧分页和`startedAt <= clearedBefore`的迟到事件
+    不得回填，清理开始后到达的新流量仍可进入当前视图。并发Clear乱序完成时cutoff只允许单调增加；旧reset
+    不得再次删除较新cutoff之后已经进入Store的rows。
 - 哨兵值用 `\u0000` 前缀（`UNKNOWN_FACET_VALUE` / `FAILED_FACET_VALUE` / `PENDING_FACET_VALUE`），
   与真实 host、状态码字符串不可能碰撞。
-- 搜索仍只匹配 `host + path`，是独立维度，不计入 `hasActiveFilter` 的 badge。
+- 搜索仍只匹配 `host + path`，是独立维度，不计入 `hasActiveFilter` 的 badge；工具栏的“清空筛选”只重置
+  facet，完整 Clear 记录会同时重置搜索与全部 facet，列表回到未过滤状态。
 
 #### 10.1.1 Body effect evidence
 

@@ -506,11 +506,19 @@ export function headersToRows(headers: CaptureHeader[]): KvRow[] {
   ]);
 }
 
+/** 可缓存的 grapheme 分段；换行测量只关心片段边界，不修改原文。 */
+export interface KvTextSegment {
+  readonly index: number;
+  readonly segment: string;
+}
+
 export function splitKvTextLines(
   value: string,
   lineTop: (start: number, end: number) => number,
+  segments: readonly KvTextSegment[] = [
+    ...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(value),
+  ],
 ): string[] {
-  const segments = [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(value)];
   if (segments.length === 0) return [''];
   const lines: string[] = [];
   let first = 0;

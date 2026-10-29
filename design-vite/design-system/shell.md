@@ -10,6 +10,7 @@
 - **Capture 筛选分栏**（list 左侧，`208px`，`--filter` 底）：Capture 的**唯一筛选入口**。
   - 顶部一行 `40px` 与右侧列表工具栏同轨，内放 `30px` 搜索框（`--panel` 底、左内边距放大镜、右侧 clear），只做自由文本过滤。
   - 下方为可滚动的 facet 分组，**顺序严格跟随 list 表头**（App → Method → Path·Host → Status → Proto → Type），最后接不属于列的 `Rule`：`Application / Method / Host / Status / Protocol / Content type / Rule`。分组头 `28px`，左侧 chevron（折叠时 `-90deg`）、大写分组名、右侧 mono 条目数。
+  - **间距**：分组头、条目与相邻分组之间统一 3px；展开分组不再在底部叠加额外留白，最后一个条目到下一分组头与条目之间一致。
   - **展开规则**：凡是有非 `All` 值生效的分组自动展开；一个都没有时只展开第一个分组。不预设“常用分组”，也不一次展开多组。
   - 条目 `26px`，左侧语义标记（应用 `15px` 系统图标、host 锁图标、Method 徽标、Status 圆点）+ 名称 + 右对齐 mono 计数，**直接点击即生效**，选中用 `--accent-soft` 底 + `--accent` 字。每组首行固定为 `All`，点它清空该组；**`All` 不加任何前置占位，它的文字左边缘与下方条目的最左侧元素（应用图标 / method 框 / 状态圆点）对齐**。组内多选为 OR，组间为 AND。超过 8 条的分组末尾给 `Show N more`。
   - **协议分组区分 HTTP 小版本**：`HTTP/2` / `HTTP/1.1` / `HTTP/1.0` / `WebSocket` / `TLS tunnel`，不再把所有 1.x 归为 `H1`；名称本身已表达版本，不再额外加 mono 标签。
