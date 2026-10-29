@@ -136,6 +136,16 @@ test('capture.clear-facets clears rows, selection and facets in one visible tran
     highlights: [{ target: clearFilters, label: '1' }],
   });
 
+  // Clear 记录同时重置搜索与 facet；先制造两条都会隐藏新流量的条件。
+  // Clear also resets the search and facets; create both conditions before clearing.
+  await getOption.click();
+  await expect(getOption).toHaveAttribute('aria-pressed', 'true');
+  const keywordFilter = getByAutomationId(page, AUTOMATION_IDS.capture.keywordFilter);
+  await keywordFilter.fill(requestPath);
+  await expect(keywordFilter).toHaveValue(requestPath);
+  await expect(clearFilters).toBeEnabled();
+  await expect(requestRow).toBeVisible();
+
   // Clear完成后只等待列表业务结果，再原始读取selection与facet，禁止auto-retry掩盖600ms旧快照。
   // After Clear, wait only for the list result, then read selection and facets raw so auto-retry cannot hide the stale 600 ms snapshot.
   await getByAutomationId(page, AUTOMATION_IDS.capture.clear).click();
@@ -148,6 +158,9 @@ test('capture.clear-facets clears rows, selection and facets in one visible tran
     ).count(),
     methodGroupCount: (await methodGroupCount.textContent())?.trim() ?? null,
     getOptions: await getOption.count(),
+    keyword: await keywordFilter.inputValue(),
+    clearFiltersDisabled: await clearFilters.isDisabled(),
+    clearFiltersOpacity: await clearFilters.evaluate((element) => getComputedStyle(element).opacity),
     groupCounts: Object.fromEntries(await Promise.all(CAPTURE_FACET_IDS.map(async (facet) => [
       facet,
       (await getByAutomationId(page, AutomationIdFactory.captureFacetGroupCount(facet)).textContent())?.trim(),
@@ -158,8 +171,19 @@ test('capture.clear-facets clears rows, selection and facets in one visible tran
     inspector: 0,
     methodGroupCount: '0',
     getOptions: 0,
+    keyword: '',
+    clearFiltersDisabled: true,
+    clearFiltersOpacity: '0.35',
     groupCounts: Object.fromEntries(CAPTURE_FACET_IDS.map((facet) => [facet, '0'])),
   });
+  // Clear 同时复位展开状态：没有生效筛选时只展开第一个分组。
+  // Clear also resets expansion: with no active filter only the first group stays open.
+  for (const facet of ['method', 'status', 'type'] as const) {
+    await expect(getByAutomationId(page, AutomationIdFactory.captureFacetToggle(facet)))
+      .toHaveAttribute('aria-expanded', 'false');
+  }
+  await expect(getByAutomationId(page, AutomationIdFactory.captureFacetToggle('application')))
+    .toHaveAttribute('aria-expanded', 'true');
   expectedExchangeCount = 0;
   await captureStep('Clear移除记录、详情和计数 / Clear removes records, selection and counts', {
     highlights: [{ target: getByAutomationId(page, AUTOMATION_IDS.capture.clear), label: '1' }],

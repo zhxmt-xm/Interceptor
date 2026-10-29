@@ -334,6 +334,14 @@ test('capture facets, Clear and breakpoint menu stay stable end to end', async (
   await clear.click();
   await expect(rows).toHaveCount(0);
 
+  // Clear 后没有生效筛选：只保留 Application 展开，避免上一次的多个分组各留一组 0 行。
+  // After Clear no filter is active: only Application stays expanded instead of keeping every previously opened group.
+  for (const facet of ['method', 'status', 'type'] as const) {
+    await expect(getByAutomationId(page, AutomationIdFactory.captureFacetToggle(facet)))
+      .toHaveAttribute('aria-expanded', 'false');
+  }
+  await expect(getByAutomationId(page, AutomationIdFactory.captureFacetToggle('application')))
+    .toHaveAttribute('aria-expanded', 'true');
   const groupCount = await getByAutomationId(
     page,
     AutomationIdFactory.captureFacetGroupCount('method'),
@@ -344,6 +352,15 @@ test('capture facets, Clear and breakpoint menu stay stable end to end', async (
   ).toBe('0');
   expect.soft(await getOption.count()).toBe(0);
   expect.soft(await postOption.count()).toBe(0);
+
+  expectedExchangeCount = 0;
+  await captureStep('Clear同步清空Capture与筛选计数 / Clear Capture and facet counts together', {
+    highlights: [{ target: clear, label: '1' }],
+  });
+  // 重新展开 Status/Content type 后，Pending 入口仍为 0 行且可交互。
+  // Re-opened Status/Content type still expose the Pending entries at count 0.
+  await openFacet('status');
+  await openFacet('type');
   await expect(applicationPending).toBeVisible();
   await expect(statusPending).toBeVisible();
   await expect(typePending).toBeVisible();
@@ -354,10 +371,6 @@ test('capture facets, Clear and breakpoint menu stay stable end to end', async (
       AutomationIdFactory.captureFacetOptionCount(facet, PENDING_FACET_VALUE),
     )).toHaveText('0');
   }
-  expectedExchangeCount = 0;
-  await captureStep('Clear同步清空Capture与筛选计数 / Clear Capture and facet counts together', {
-    highlights: [{ target: clear, label: '1' }],
-  });
   expect(desktopApp.matchesSystemProxyEvidence(await desktopApp.readSystemProxySettings(), proxyJournal.original)).toBe(true);
   await expect(access(desktopApp.systemProxyJournalPath())).rejects.toMatchObject({ code: 'ENOENT' });
 

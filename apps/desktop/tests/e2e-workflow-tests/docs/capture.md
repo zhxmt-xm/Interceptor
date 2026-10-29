@@ -618,13 +618,13 @@ Protocol facet使用规范化协议值；H1、WebSocket与TLS tunnel互不混淆
 1. 创建独立profile、trace与loopback origin，启动真实Electron并等待App、Core与8888；通过真实UI开始Recording。
 2. 开始Recording后通过Settings → Proxy → Restore恢复journal中的original，确认完整系统值匹配且journal已移除；回到Capture核对控件显示Paused、Keyword为空，再正常Clear本profile临时数据。展开Method，经8888显式发送原自产GET并选中该行，不再点击Recording或重新启用系统代理。每次截图前后读取完整列表和七组计数：仅该行，前六组为1、未命中规则的Rule为0；残留外部连接污染时失败，不用Keyword隐藏。保留原GET非零计数及清空前实际计数记录；Paused只是此处UI显示，不作为Core停录证据。
 3. 核对清空筛选按钮disabled且opacity为0.35；真实点击GET option后按钮enabled且opacity为1。点击清空筛选，GET恢复`aria-pressed=false`、按钮重新disabled且opacity为0.35；自产请求和Inspector仍可见，不把清空筛选实现为清空记录。
-4. 在facet快照完成更新后点击`capture.clear`，等待Capture行数量变为0。
-5. 不使用Playwright auto-retry，直接在同一断言点读取全部facet组头计数、GET option数量与当前选中行数量；必须全部为0。Application、Status、Content type仍保留Pending 0入口，但组头不能因此显示1。
+4. 在facet快照完成更新后重新选中GET option，并在Keyword输入`/e2e/capture/clear-facets`，确认清空筛选按钮enabled且自产请求仍可见；点击`capture.clear`，等待Capture行数量变为0。
+5. 不使用Playwright auto-retry，直接在同一断言点读取全部facet组头计数、GET option数量、Keyword值与清空筛选按钮状态；组头与option必须为0，Keyword为空，清空筛选disabled且opacity为0.35，选中行数量为0。Method/Status/Content type收起，Application保持展开；Application的Pending 0入口仍存在，但组头不能因此显示1。
 6. 保存Clear前后原始DOM快照、trace、日志与metadata；正常Close并验证Main/Core退出、8888释放、系统代理恢复和profile删除。
 
 ### 预期效果
 
-Clear是空rows的同步边界：列表、selection与facet snapshot在同一次可见状态推进中归零，不允许facet继续显示旧count/options最多600ms。
+Clear是空rows的同步边界：列表、selection、搜索、facet选择、facet展开状态与facet snapshot在同一次可见状态推进中归零，不允许facet继续显示旧count/options最多600ms，也不允许旧关键词或facet继续隐藏后续流量。没有生效筛选时只展开第一个分组。
 
 <a id="capture-breakpoint-menu-hierarchy"></a>
 ## `capture.breakpoint-menu-hierarchy`
@@ -717,7 +717,7 @@ Tunnel入口导航到实际覆盖当前host的最具体持久化pattern；Settin
 5. 在GET Capture行触发原生`contextmenu`。从该行公开exchange ID构造`capture.create-rule.<exchangeId>.block`与`.breakpoint`；等待两者可见，轮询动画结束后的bounding boxes并要求文本左缘差<1px。Hover Breakpoint automation ID，确认二级菜单的只读文本`This endpoint`可见，再按Escape关闭。
 6. 显式proxy客户端发送`POST /e2e/facets/post-second`并取得origin 200；等待`capture.filter.option-count.method.POST`文本变成2，然后再次原始读取DOM顺序，仍必须是GET、POST。
 7. 让origin gate暂不返回`GET /e2e/facets/pending`。等待该Capture行出现，并确认Status Pending与Content type Pending count均为1；点击Status Pending后只保留该进行中行。释放origin response并取得200，等待Pending count回0，但三个Pending option必须继续存在；取消Status筛选。
-8. 计数刚刷新后立即点击`capture.clear`；等待所有`capture.request-row.*`数量变为0。随后不使用Playwright auto-retry，直接读取`capture.filter.group-count.method`原始文本并要求为0，同时直接读取GET/POST option数量并要求均为0；三个永久Pending option仍存在且count=0。
+8. 计数刚刷新后立即点击`capture.clear`；等待所有`capture.request-row.*`数量变为0。随后不使用Playwright auto-retry，直接读取`capture.filter.group-count.method`原始文本并要求为0，同时直接读取GET/POST option数量并要求均为0。Method/Status/Content type收起、Application保持展开；重新展开Status与Content type后三个永久Pending option仍存在且count=0。
 9. 附加`capture-facet-state.json`、最终截图、trace、Main/Renderer日志和metadata。fixture进入Settings→Proxy；若`settings.proxy.restore`存在则点击并等待消失，然后正常Close，验证Main/Core PID退出、8888可重新bind并删除profile。
 
 ### 预期效果
@@ -726,7 +726,7 @@ Tunnel入口导航到实际覆盖当前host的最具体持久化pattern；Settin
 
 ### 验收要求
 
-- POST计数反超后仍保持GET、POST顺序；Breakpoint与Block左缘差小于1px；Clear后rows和facet同步清空。
+- POST计数反超后仍保持GET、POST顺序；Breakpoint与Block左缘差小于1px；Clear后rows和facet同步清空，展开状态回到只展开Application。
 - 三段行为及销毁、系统代理恢复均须通过。selector、UAC、构建或fixture失败不算产品故障。
 
 <a id="capture-detail-body-fill"></a>
@@ -904,7 +904,7 @@ Default/Raw/Tree/Hex语义准确；真实body range与显示一致；非法内�
 
 **策略**：shared
 
-Inspector 宽度由 `capture.inspector.splitter` 调整，并通过 `--capture-inspector-width` 作用于列表与 Inspector 的网格轨道。默认 `448px`；最小 `360px`；筛选分栏收起时最大为 `app.main.clientWidth − 512 − 1`（列表最小宽 512 加 1px 轨道）。窗口缩小时 Renderer 的 `ResizeObserver` 按新的容器宽度重新 clamp，窗口放大后保持当前宽度、不自动扩张。
+Inspector 宽度由 `capture.inspector.splitter` 调整，并通过 `.panes` 的 inline `grid-template-columns` 作用于列表与 Inspector 的网格轨道；拖拽期间直接改写该轨道，`pointerup` 才提交 `captureStore.inspectorWidth`。默认 `448px`；最小 `360px`；筛选分栏收起时最大为 `app.main.clientWidth − 512 − 1`（列表最小宽 512 加 1px 轨道）。窗口缩小时 Renderer 的 `ResizeObserver` 按新的容器宽度重新 clamp，窗口放大后保持当前宽度、不自动扩张。
 
 ### Steps
 

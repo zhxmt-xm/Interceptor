@@ -336,7 +336,7 @@ button.ib { padding: 0; border: 0; background: transparent; }
 .cfilters-scroll::-webkit-scrollbar { width: 8px; }
 .cfilters-scroll::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 4px; background: transparent; background-clip: content-box; }
 .cfilters-scroll:hover::-webkit-scrollbar-thumb { background: var(--border-2); background-clip: content-box; }
-.fgrp { margin-bottom: 4px; }
+.fgrp { margin-bottom: 3px; }
 .fgrp-h { display: flex; align-items: center; height: 28px; padding: 0 4px 0 8px; border-radius: 7px; color: var(--text-2); }
 .fgrp-h:hover { background: var(--hover); color: var(--text); }
 .fgrp-toggle { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: transparent; color: inherit; font-family: var(--font-ui); font-size: 12px; font-weight: 600; text-align: left; cursor: pointer; }
@@ -350,9 +350,9 @@ button.ib { padding: 0; border: 0; background: transparent; }
 .fgrp-clear svg { width: 12px; height: 12px; }
 .fgrp.applied .fgrp-h:hover .fgrp-c { display: none; }
 .fgrp.applied .fgrp-h:hover .fgrp-clear { display: flex; }
-.fgrp-b { display: none; padding: 2px 0 6px; }
-.fgrp.on > .fgrp-b { display: block; }
-.fitem { display: flex; align-items: center; gap: 8px; height: 26px; margin-bottom: 3px; padding: 0 8px 0 28px; border-radius: 7px; color: var(--text-2); font-size: 12px; cursor: pointer; }
+.fgrp-b { display: none; flex-direction: column; gap: 3px; padding: 3px 0 0; }
+.fgrp.on > .fgrp-b { display: flex; }
+.fitem { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 8px 0 28px; border-radius: 7px; color: var(--text-2); font-size: 12px; cursor: pointer; }
 .fitem:hover { background: var(--hover); color: var(--text); }
 .fitem.on { background: var(--accent-soft); color: var(--accent); font-weight: 560; }
 .fitem-n { min-width: 0; overflow: hidden; font-family: var(--font-mono); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }

@@ -10,6 +10,7 @@ import { resetCaptureData } from '../../data/useCaptureData';
 import { useRulesStore } from '../../../rules/data/rulesStore';
 import {
   CAPTURE_FACET_IDS,
+  DEFAULT_EXPANDED_FACETS,
   EMPTY_FILTER,
   FAILED_FACET_VALUE,
   PENDING_FACET_VALUE,
@@ -49,6 +50,8 @@ describe('captureStore clear timeline', () => {
       rows: [],
       indexById: new Map(),
       selectedId: null,
+      filter: EMPTY_FILTER,
+      expandedFacets: DEFAULT_EXPANDED_FACETS,
       listScrollTop: 0,
       inspectorTab: 'headers',
       inspectorWidth: 500,
@@ -126,6 +129,22 @@ describe('captureStore clear timeline', () => {
       captureEvent('after-clear', 101),
     ]);
     expect(useCaptureStore.getState().rows.map((row) => row.id)).toEqual(['after-clear']);
+  });
+
+  it('clears the search and every facet together with the captured rows', () => {
+    const store = useCaptureStore.getState();
+    store.setSearch('example.test');
+    store.toggleFacetValue('method', 'GET');
+    store.toggleFacetValue('host', 'example.test');
+    store.toggleFacetExpanded('method');
+    store.toggleFacetExpanded('status');
+
+    resetCaptureData({ clearedBefore: 100 });
+
+    const cleared = useCaptureStore.getState();
+    expect(cleared.rows).toEqual([]);
+    expect(cleared.filter).toEqual(EMPTY_FILTER);
+    expect(cleared.expandedFacets).toEqual(DEFAULT_EXPANDED_FACETS);
   });
 
   it('keeps workspace position and inspector state while Capture is unmounted', () => {

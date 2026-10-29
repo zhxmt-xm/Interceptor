@@ -242,7 +242,7 @@ npm exec --no --workspace @interceptor/desktop -- playwright test --config tests
 | `capture.filter-group-selection` | Option选择保持facet分组展开 | shared |
 | `capture.filter.protocol` | All/H1/H2/WS协议筛选 | shared |
 | `capture.facet-stable-ordering` | Facet计数变化不改变首次出现顺序 | privileged UI |
-| `capture.clear-facets` | Clear时列表、selection与facet snapshot同步归零 | privileged UI |
+| `capture.clear-facets` | Clear时列表、selection、搜索、facet选择、展开状态与facet snapshot同步归零 | privileged UI |
 | `capture.breakpoint-menu-hierarchy` | Block/Breakpoint同组对齐并可展开二级菜单 | privileged UI |
 | `capture.breakpoint-submenu-lifecycle` | 根菜单与Breakpoint二级菜单的hover、翻转和dismiss lifecycle | privileged UI |
 | `capture.navigate-tls-passthrough` | 从TLS tunnel跳到最具体的覆盖pattern并短暂高亮 | privileged UI |

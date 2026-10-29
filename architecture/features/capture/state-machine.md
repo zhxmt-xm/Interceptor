@@ -203,7 +203,9 @@ Playground手动入口：Capture Lab的HTTP分组提供`h2-error-goaway-client`�
 
 - `RequestList`表头与`RequestRow`使用`20/66/minmax(0,1fr)/52/40/44/48/52px`列轨道、gap10px、左右padding14px；表头补偿实际scrollbar宽度。文字使用自然行高，表头34px、请求行52px。
 - 容器500px档隐藏Proto/Type，380px档再隐藏Size/Time并将Method列设为62px；Path可缩小和省略，不设置撑破列表的最小宽度。
-- `CaptureListbar`清除筛选按钮使用`--text-3`，禁用opacity0.35，hover沿用共享IconButton。清除筛选不清除记录或Inspector；Clear记录才同时清空列表、Inspector及facet计数。
+- `CaptureListbar`清除筛选按钮使用`--text-3`，禁用opacity0.35，hover沿用共享IconButton。清除筛选不清除记录或Inspector；Clear记录才同时清空列表、Inspector、搜索、全部facet与facet计数，并把展开状态复位到只展开Application。
+- facet分组头`28px`、条目`26px`；组头到首条、条目之间、最后一个条目到下一分组头统一为`3px`，展开分组底部不再叠加额外padding或margin。
+- 筛选分栏与Inspector splitter拖拽期间只写目标节点的真实尺寸，`pointerup`才提交`captureStore`；拖拽不重建Capture视图。`KvValue`的换行测量在同一帧合并成一次布局，并按“原文 + 可用宽度 + 动作宽度”跳过未变化的行，不能在每次`pointermove`逐行强制布局。
 
 #### UTF-8预览截断
 

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 import type { CaptureExchangeSummary } from '../../../../shared/desktop-api';
-import { EMPTY_FILTER } from '../constants';
+import { DEFAULT_EXPANDED_FACETS, EMPTY_FILTER } from '../constants';
 import { CAPTURE_FACET_FIELDS, type CaptureState } from '../interfaces';
 import { buildIndex } from '../utils';
 
@@ -24,7 +24,7 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
   filter: EMPTY_FILTER,
   filtersOpen: true,
   filterPanelWidth: 200,
-  expandedFacets: ['application'],
+  expandedFacets: DEFAULT_EXPANDED_FACETS,
   clearedBefore: 0,
   capturing: false,
   loading: false,
@@ -127,6 +127,10 @@ export const useCaptureStore = create<CaptureState>((set, get) => ({
         rows,
         indexById: buildIndex(rows),
         selectedId: null,
+        // 清空记录后不能留下会继续隐藏新流量的旧筛选；Clear 与清空筛选是两条独立命令。
+        filter: EMPTY_FILTER,
+        // 没有生效筛选时只展开第一个分组，避免 Clear 后保留上一次手动展开的多组空列表。
+        expandedFacets: DEFAULT_EXPANDED_FACETS,
         listScrollTop: 0,
         clearedBefore,
         syncRevision: state.syncRevision + 1,
