@@ -35,15 +35,10 @@
 - **23. 易用性缺陷清单（对照 Charles / Proxyman / Fiddler / Whistle）· 待实现**
   - 目标：按下表逐条修复，一次只取一条，每条独立补文档、测试、验证与提交；本 item 不是一次性大改，完成一条就从本清单删除该行。
   - 已验证范围：条目来自对 `apps/desktop/src/renderer`、`apps/proxy-core/src`、`apps/desktop/src/main`、`packages/core-protocol`、`packages/interceptor-tools` 与 `architecture/features/` 的只读核对；**未运行构建、unit 或 E2E**，标注「未实机」的条目只有代码推演。
-  - 优先级：`P0` 影响每天主流程；`P1` 主流产品都有；`P2` 打磨。建议开局顺序：A1–A3 → A4–A5 → A19/A20/J2 → C1 → H2。
+  - 优先级：`P0` 影响每天主流程；`P1` 主流产品都有；`P2` 打磨。建议开局顺序：25 → 26 → 27 → A6 → A19/A20/J2 → C1 → H2；A1 已拆成 item 24，A2 已拆成 item 25，A3 已拆成 item 26，A4/A5 已拆成 item 27，批量操作拆成 item 28。
   - 逐条流程：先改对应 `architecture/features/*.md` 与 E2E 规格，再改代码，按 unit/integration → 真实 E2E 的顺序取结果；稳定行为写入 feature 文档，不在本文件保留完成记录。
   - 移动端已定方案：Android 传输走 USB + `adb reverse`（实现归 item 14），iOS 走「电脑热点固定网段 + `.mobileconfig` 预置代理与根证书」；本清单只记产品层缺口，不重复实现传输，也不做 iOS Network Extension。
   - **A. Capture 列表**
-    - `P0` A1 无 Replay/Resend：右键菜单与工具栏都没有，抓到的请求无法重发。
-    - `P0` A2 无 Copy as cURL。
-    - `P0` A3 无「发送到 Composer」：`core-protocol` 只有 `composer.send`，Capture → Composer 零通道，README 声称的能力不存在。
-    - `P0` A4 无多选：选择态是 `selectedId: string | null`，批量导出、批量删除、批量复制、批量重发全部做不到。
-    - `P0` A5 HAR/Archive 导出的 `selected` 档恒为 1 条。
     - `P0` A6 搜索只匹配 `host + path`，header、body、status、method 都搜不到。
     - `P1` A7 搜索无 debounce、无命中高亮、无历史、无预设收藏、无 quick-filter 语法。
     - `P1` A8 facet 组内没有搜索框，host 多了只能 Show more。
@@ -131,6 +126,7 @@
     - `P2` G12 KV 表只能逐行录，无批量粘贴。
     - `P2` G13 无发送快捷键。
     - `P2` G14 与 Capture 零联动，TLS probe 也只在 Capture 有入口。
+    - `P1` G15 只能直连源站，不能经 Interceptor 代理发送：Rules/Breakpoints 不生效、请求也不进入 Capture，无法用 Composer 验证规则效果（与 E1 同源，共用 item 24 的代理客户端）。
   - **H. 移动端接入与证书**
     - `P1` H1 端口固定 8888，UI 无入口；被占用时只能改系统。
     - `P1` H2 只绑 `127.0.0.1`：iOS 没有 USB 反向通道，Wi-Fi 代理是唯一入口，因此 LAN 监听不是可选项；需要显式开关、风险提示与开启后的自检。
@@ -176,7 +172,7 @@
     - `P2` K3 详情 300ms 节流依赖整条 summary 引用，流式请求期间持续重拉。
     - `P2` K4 搜索每键全量重算。
   - **L. 文档与实现不一致（与上表同源，修完对应条目时一并改文案）**
-    - L1 同 A3：README 写「Send a captured request to Composer」。
+    - L1 同 item 26：README 写「Send a captured request to Composer」。
     - L2 同 A21：README 说 aborted 行显示失败原因。
     - L3 同 I4：Privacy「Capture on launch = Off by default」。
     - L4 同 I6：Diagnostics「retention 7d」。
@@ -185,3 +181,56 @@
     - L7 `App.tsx` 注释写 custom 断点需要「超时策略」，产品无此能力。
   - 移动端边界（不在承诺范围）：iOS 不做 Network Extension，蜂窝与不走系统代理的 App 不可见；Android 未 root 时三方 release 包只有元数据；两端都不处理 pinning 与 QUIC。
   - 约束：清单条目只描述问题与验收方向，不代表已排期；实现时按 `architecture/features/` 与 E2E 规格先行，不跳过真实 E2E 证据。
+
+- **24. Capture 重放（Replay）· 待实现**
+  - 目标：Capture 请求行右键提供 Replay，把该 Exchange 的客户端原始请求经本地 8888（Mockttp）重发一次，由正常管线产生新的 Capture 行；Rules、Breakpoints、上游代理与 TLS passthrough 照常生效。
+  - 语义：重放客户端原始请求（`sessions.detail` 中未带 `ruleEffect` 的请求头 + `requestBodyEffect.originalBody`），规则重新执行；保持原协议 h1/h2。新行只能由 `ExchangeTracker.beginRequest()` 创建，不合成记录、不绕过代理直连。
+  - 前置检查（返回 `ok:false` + `reason`，不发请求）：代理未监听、非 HTTP 行（WS/gRPC/Tunnel）、HTTPS 未解密或 host 在 passthrough 名单、请求正文丢失（`requestBytes > 0` 或 framing 头表明有正文但没有 body ref）或截断（`truncated`）。无正文的 GET 是合法状态，正常重放且不发 body；`available:false` 不能单独作为拒绝条件。HTTPS 未解密时给 HTTPS Setup 出口。
+  - 原样重放（硬验收标准）：URL、headers、body 全部用捕获原值，不规范化、不删除、不重排、不重编码。h1 请求行用捕获的 absolute URL（原客户端经代理本就是 absolute-form）；h2 用捕获的 `:method`/`:path`/`:scheme`/`:authority`，不从 URL 重拼。headers 含 hop-by-hop 一律保留（名字、值、顺序、大小写）；`content-length`/`transfer-encoding` 原样，不做二选一；`expect: 100-continue` 原样，Node 实测立即发 body；`upgrade` 原样，WS 行仍拒绝重放。
+  - 仅 3 处非内容差异，且源站所见不变：原 HTTP/1.0 升级为 1.1（Node 不支持发 1.0）；原请求没有 `host` 时用 `setHost:false` 不发（避免 Node 注入代理地址；h2 只有 `:authority` 时不添加）；原请求没有 `connection` 时 Node 必加 `Connection: close`（hop-by-hop，Mockttp 不转发）。原请求本身有 `host` 和 `connection` 时三者都不触发。
+  - 发送实现用 Node 原生 `http`/`https`/`http2`，与 `ComposerService` 同一套写法，不引入 axios（axios 默认跟随重定向、自动加默认头、无法控制 framing 与 CONNECT 隧道）。保真度按端到端语义（method/URL/正文编码字节/端到端头），不追求 header 顺序与 framing 字节一致。
+  - 入口：只做右键菜单；工具栏按钮、多选批量、编辑后重发、快捷键分别归 item 27、item 26、J2，不在本条实现。
+  - 改动：`core-protocol` 新增 `capture.replay`；Core 新模块 `replay/`（代理客户端：HTTP absolute-form、HTTPS CONNECT+TLS、h2 ALPN）；`proxy/entry.ts` 暴露只读监听端口与按 host 的解密判定；Main IPC + Preload + `desktop-api`；`RequestContextMenu` + `App` action + i18n 15 份 catalog + automation id；`capture/contract.md`、`capture/renderer-data.md`、`docs/capture.md` 规格与 `workflows/capture/replay.workflow.ts`。
+  - 共用：代理客户端与 item 26 的直连发送共用同一个原件发送类（method/url/headers/body bytes/protocol + 目标地址）；item 26 只是目标换成源站。item 23 G15（Composer 经代理发送）复用同一实现。
+  - 验证：Core integration 用真实 listener + origin，断言新行 method/url/正文、origin 收到的 method/URL/header 名值与正文编码字节和原始一致（hop-by-hop 除外）、Rules 重放时再次命中、各拒绝原因；真实 E2E 从录制到右键 Replay，断言新行与源行同 method/path、origin 恰好两条且 header 名值与正文编码字节一致、WS 行禁用、暂停录制提示，并保留 trace 与进程/8888/宿主恢复。
+  - 约束：录制暂停时仍可重放但列表不新增行，需提示；重放行归属 Interceptor 自身，属预期。
+
+- **25. Copy as cURL（原 23-A2）· 待实现**
+  - 目标：Capture 列表行右键提供 `Copy as cURL`，把该行的客户端原始请求（规则执行前）序列化成一条直连源站的命令写入剪贴板。
+  - 取值：`summary.method`、`detail.url`；headers 取 `detail.requestHeaders` 中 `!isPseudo && !ruleEffect` 的行，保持原顺序、值、大小写与重复；body 取 `requestBodyEffect.originalBody`（仅 `originalState === 'available'`），无 effect 时取 `requestBody`。wire header 本身就是原始值，没有独立的 original 字段；`ruleEffect` 是规则效果标注而非线上 header，`remove` 行照抄会把已删的头加回来。
+  - 生成：`curl [-X METHOD | --head] '<url>' -H '<name>: <value>' … --data-binary '<body>'`；URL 固定加 `--path-as-is --globoff`，阻止 curl 合并 `../` 与展开 `{}`/`[]`；空值 header 写 `-H '<name>;'`（写成 `-H '<name>:'` 会被 curl 当成删除）；正文含 `0x00` 时改 `printf '%b' '…\x00…' | curl … --data-binary @-`；参数用单引号包裹，内部 `'` 写 `'\''`；正文被截断时按已捕获字节复制，不补。
+  - 一致性边界：命令直连源站、不经 8888；与主流一致，不抑制 curl 默认头（捕获里有同名 header 时覆盖 curl 内置值，捕获里没有时才由 curl 补 `Host`/`User-Agent`/`Accept`/`Content-Type`），不强制协议版本，不保留 chunk 边界，不带 trailer，TLS 由 curl 自行握手。承诺请求内容一致，不承诺线缆一致。
+  - 入口：只做行右键；仅 HTTP/1.1、HTTP/2 行可用，WebSocket 与未解密 TLS 隧道置灰。工具栏、批量、快捷键分别归 item 27、item 26、J2。
+  - 改动：`RequestContextMenu` 加菜单项；`RequestList`/`CaptureMain` 接 `getExchangeDetail` + `readBody` + `navigator.clipboard`；新增纯函数（建议 `features/capture/utils/curl.ts`）；1 个 i18n key 与 15 份 catalog；`automation-ids`；`renderer-data.md` 与 E2E 规格。
+  - 验证：真实 E2E 用自产 POST，右键复制后断言剪贴板命令的 method/URL/header/body 与抓包一致；含 `0x00` 的正文断言管道形式；WS 行置灰。
+  - 约束：与 item 24 Replay 分工不同——本条直连、不重放、不产生新 Capture 行；Replay 经 8888 执行 Rules。
+
+- **26. Capture → Composer（原 23-A3）· 待实现**
+  - 目标：Capture 行右键 `Send to Composer`，把该行客户端原始请求加载成 Composer 文档；未编辑时 Send 按原件无改动发出，且 Composer 支持二进制正文。
+  - 取值：与 item 25 同口径——`summary.method`、`detail.url`、`!isPseudo && !ruleEffect` 的请求头、`requestBodyEffect.originalBody`（`available` 时）或 `requestBody`。不应用规则，不取规则后的头/正文。
+  - 无改动发送：未编辑的文档由 Core 直接读原始字节发送，跳过 `buildContent` 的 charset/content-encoding 重编码与 `buildOutgoingHeaders` 的对象合并；header 名称/值/重复原样，顺序不承诺（与 item 24 一致）；Node 默认头按 item 24 的 3 处差异处理。编辑后才切回现有文本路径，按 charset/content-encoding 重新编码。
+  - 共用：与 item 24 共用同一个原件发送类——输入 method/url/headers/body bytes/protocol 与目标（本地 8888 或源站直连），item 24 走代理，本条直连；item 23 G15 的 Composer 经代理发送复用同一实现。
+  - 二进制：`CollectionRequest.bodyType` 增加二进制档，正文以字节引用保存，不进 `bodyText`；Body pane 显示大小/哈希并提供 Save/Replace，不挂 Monaco；替换走文件，不经过文本编码。
+  - 持久化：二进制正文放 Core 侧的 content-addressed blob（workspace 或 app 管理的文件），集合 JSON 只存引用、不内联 base64；Capture Clear 与重启后引用仍可读；集合导出/导入对二进制正文的行为单独定义，不静默丢正文。
+  - 入口：只做行右键；工具栏、批量、快捷键归 item 27/J2。与 item 25 并存：25 复制命令，本条加载草稿。
+  - 改动：`core-protocol` 的 `composer.send`（原件发送与二进制正文）、`CollectionRequest`（二进制档）、Composer store 与 `BodyPane`、`RequestContextMenu` + App action + i18n + automation id、Main 的 `toComposerRequest` 校验；`capture/contract.md`、`composer.md` 与 E2E 规格。
+  - 验证：真实 E2E 抓一条文本与一条二进制 POST，右键加载到 Composer 直接 Send，origin 收到的 method/URL/header 名值与正文编码字节和源请求一致；编辑后走文本路径；不经 8888、Rules/Breakpoints 不生效属预期。
+  - 约束：Composer 直连不产生 Capture 行；要经 8888 与 Rules 用 item 24。不做 multipart 表单编辑器。
+
+- **27. Capture 多选与导出（原 23-A4/A5）· 待实现**
+  - 目标：Capture 列表支持多选；导出只保留「全量 / 选中」两档，删除 `filter` 档，`selected` 导出全部选中行，一并解决 A5 的「恒 1 条」。
+  - 选择模型：`selectedId: string | null` → `selectedIds` 集合 + `activeId`；store 提供 `selectOnly` / `toggle` / `selectRange` / `selectAllVisible` / `clear`；详情、`useExchangeDetail`、WebSocket 与断点面板跟 `activeId`。
+  - 列表：首列 checkbox，表头三态全选只作用于当前可见行；行从 `<button>` 改为可容纳 checkbox 的结构；`RequestList` 与 `RequestRow` 两处 `grid-template-columns` 及 500/380px 容器查询同步加列。改动限定在这两个组件、CSS 与 parity，不动虚拟化、Inspector 布局和断点逻辑。
+  - 点击：普通点击只选当前行并打开详情；Ctrl/Cmd 切换；Shift 区间；点 checkbox 只改选择、不改 `activeId`；右键未选中行先只选该行，右键已选中行保留多选。
+  - 导出：`HarTransferDialog` 去掉 `filter` 档、`formatFilter` 计数与相关文案/automation id，只留全量与选中；`buildScope` 接 `selectedIds`，count/disabled/guard 同步；Archive 导出也收敛为 `all/selected`，`archive.export.start` 增加 scope，Core 只打包选中 exchange；脱敏选项仍只对 HAR 显示。
+  - 边界：选中行被过滤掉时保留选择，导出包含隐藏的选中行；新流量不自动选中；Clear 清空选择。
+  - 不做：批量删除、批量复制、批量重放归 item 28；`Ctrl/Cmd+A`、`Esc` 等快捷键归 J2。
+  - 验证：真实 E2E 多选两条导出 HAR，断言只有这两条；全量档断言全部；`filter` 档与文案消失；点击/勾选/Ctrl/Shift 语义；Archive 选中档只含选中行。
+  - 约束：先把选择模型与导出路打通，行结构改动以不扩散到其它行为准。
+
+- **28. Capture 批量操作（删除 / 复制 / 重放）· 待实现**
+  - 目标：在 item 27 的多选之上提供批量命令；不阻塞 item 27。
+  - 批量删除：目前没有单条删除，需要新增 `capture.delete`（Core 删除 exchange、正文引用与规则命中），并定确认与撤销口径。
+  - 批量复制：复用 item 25 的单条生成器，按选中顺序输出多条命令；含 `0x00` 的正文按 item 25 的管道规则。
+  - 批量重放：依赖 item 24 的原件发送与拒绝原因；逐条串行，失败逐条标记，不并发压垮代理。
+  - 顺序：等 item 24、25 落地后按需实现，不与 27 混做。
