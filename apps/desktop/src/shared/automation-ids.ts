@@ -131,6 +131,8 @@ export const AUTOMATION_IDS = {
     },
     enableMitm: 'capture.enable-mitm',
     clear: 'capture.clear',
+    /** 重放结果提示（成功/失败/录制暂停）。 */
+    replayNotice: 'capture.replay-notice',
     importMenu: 'capture.import-menu',
     exportMenu: 'capture.export-menu',
     android: {
@@ -650,6 +652,11 @@ export class AutomationIdFactory {
   /** Identify one request-derived Breakpoint scope in the row context submenu. */
   static captureCreateBreakpoint(exchangeId: string, scope: string): string {
     return `capture.create-breakpoint.${exchangeId}.${scope}`;
+  }
+
+  /** Identify the Replay command for one captured exchange in the row context menu. */
+  static captureReplay(exchangeId: string): string {
+    return `capture.replay.${exchangeId}`;
   }
 
   /** Identify one Capture facet group by its semantic field. */

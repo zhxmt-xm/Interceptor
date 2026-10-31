@@ -1475,6 +1475,20 @@ class DesktopApplication {
       return toRendererCaptureUsage(result.payload);
     });
 
+    // 重放一条已录制的请求；前置检查失败以 ok:false + reason 返回，不升级成 RPC 错误。
+    ipcMain.handle(
+      DESKTOP_IPC_CHANNELS.captureReplay,
+      async (event, exchangeId: unknown) => {
+        this.assertTrustedSender(event.senderFrame?.url);
+        assertString(exchangeId, 'Exchange ID');
+        const result = await this.coreRuntime.request({
+          type: 'capture.replay',
+          payload: { exchangeId },
+        });
+        return result.payload;
+      },
+    );
+
     // 启动代理捕获：可选端口，未指定由 Core 选默认监听端口。
     ipcMain.handle(
       DESKTOP_IPC_CHANNELS.captureStart,

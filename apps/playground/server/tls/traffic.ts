@@ -43,9 +43,11 @@ interface TlsRunDefinition {
 /** 复用同一H2连接的受控流量，客户端stream仍由Node原生API负责。 */
 interface Http2RunOptions {
   readonly session?: http2.ClientHttp2Session;
-  readonly response?: Omit<TlsRunDefinition, 'kind' | 'onOriginStream'>;
+  readonly response?: Partial<Omit<TlsRunDefinition, 'kind' | 'onOriginStream'>>;
   readonly onStream?: (stream: ClientHttp2Stream) => void;
   readonly onOriginStream?: (stream: http2.ServerHttp2Stream) => void;
+  /** 保留该 run 的响应定义，供同一 runId 的重放请求复用同一响应。 */
+  readonly retainRun?: boolean;
 }
 
 /** HTTP 请求、响应及承载它们的 TLS 连接事实。 */
@@ -83,6 +85,8 @@ export class TlsTrafficRunner {
   readonly #outboundSockets = new Set<net.Socket>();
   /** 按 runId 保存 origin 收到的请求，避免用客户端发送意图代替接收事实。 */
   readonly #requestByRunId = new Map<string, TrafficRequestFact>();
+  /** origin 实际收到的全部请求，按到达顺序保留，供重放等跨 run 断言使用。 */
+  readonly #receivedRequests: TrafficRequestFact[] = [];
   /** 各 run 独立的响应定义，供 origin 按实际收到的 runId 选择。 */
   readonly #runById = new Map<string, TlsRunDefinition>();
   /** origin 接受的 TCP 连接，用于最终销毁，包括未完成 TLS 的连接。 */
@@ -157,6 +161,11 @@ export class TlsTrafficRunner {
     return this.#completedHandshakes;
   }
 
+  /** 返回 origin 实际收到的全部请求，按到达顺序；供跨 run 的接收事实断言。 */
+  receivedRequests(): readonly TrafficRequestFact[] {
+    return this.#receivedRequests;
+  }
+
   /**
    * 汇总活跃与已关闭 stream 的解密后入站字节；只握手应为零。
    * 必须读取 bytesRead，不能监听 data 计数：H2 原生 parser 会直接消费 TLS stream。
@@ -213,7 +222,7 @@ export class TlsTrafficRunner {
     } catch (error) {
       return failedExecution(attempt, 'h2', error);
     } finally {
-      this.#runById.delete(runId);
+      if (!options.retainRun) this.#runById.delete(runId);
       this.#requestByRunId.delete(runId);
     }
   }
@@ -410,6 +419,7 @@ export class TlsTrafficRunner {
   async runTls(
     draft: TlsTrafficRequestDraft,
     proxyPort: number,
+    options: Pick<Http2RunOptions, 'response' | 'retainRun'> = {},
   ): Promise<TrafficExecution> {
     const runId = crypto.randomUUID();
     const targetHost = normalizeTargetHost(draft.targetHost, this.#originPort);
@@ -449,6 +459,7 @@ export class TlsTrafficRunner {
         responseBody: Buffer.from(JSON.stringify({ mode: draft.mode, secure: true }, null, 2)),
         responseHeaders: { 'content-type': 'application/json' },
         responseTrailers: {},
+        ...options.response,
       });
       const headers = { ...draft.headers, 'x-playground-run-id': runId };
       const exchange = draft.mode === 'https-h2'
@@ -466,7 +477,7 @@ export class TlsTrafficRunner {
     } catch (error) {
       return failedExecution(attempt, 'tls', error);
     } finally {
-      this.#runById.delete(runId);
+      if (!options.retainRun) this.#runById.delete(runId);
       this.#requestByRunId.delete(runId);
     }
   }
@@ -504,14 +515,17 @@ export class TlsTrafficRunner {
     incoming.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
     incoming.on('error', () => undefined);
     incoming.on('end', () => {
+      const fact = requestFact(
+        Buffer.concat(chunks),
+        stringHeaders(incoming.headers),
+        incoming.method ?? 'GET',
+        incoming.url ?? '/',
+        `https://${this.targetHost()}${incoming.url ?? '/'}`,
+      );
+      // 无 runId 的请求（例如重放）也要留下接收事实，不能只依赖场景 run 的映射。
+      this.#receivedRequests.push(fact);
       if (runId !== undefined) {
-        this.#requestByRunId.set(runId, requestFact(
-          Buffer.concat(chunks),
-          stringHeaders(incoming.headers),
-          incoming.method ?? 'GET',
-          incoming.url ?? '/',
-          `https://${this.targetHost()}${incoming.url ?? '/'}`,
-        ));
+        this.#requestByRunId.set(runId, fact);
       }
       if (run === undefined || Buffer.isBuffer(run.responseBody)) respond();
     });

@@ -17,6 +17,8 @@ import styles from './RequestList.module.css';
 const ROW_HEIGHT = 52;
 
 export interface RequestListProps {
+  /** 把这条已录制的请求经本地代理原样重发。 */
+  onReplay: (summary: CaptureExchangeSummary) => void;
   onCreateRequestRule: (
     summary: CaptureExchangeSummary,
     actionType: RuleActionType,
@@ -31,6 +33,7 @@ export interface RequestListProps {
 
 /** 虚拟化请求表格：表头 + 行；命令与筛选都在列表工具栏与筛选分栏里。 */
 export function RequestList({
+  onReplay,
   onCreateRequestRule,
   onCreateBreakpoint,
 }: RequestListProps): React.JSX.Element {
@@ -100,6 +103,7 @@ export function RequestList({
     <RequestContextMenu
       target={contextMenuTarget}
       onClose={() => setContextMenuTarget(null)}
+      onReplay={onReplay}
       onCreateRule={onCreateRequestRule}
       onCreateBreakpoint={onCreateBreakpoint}
     >

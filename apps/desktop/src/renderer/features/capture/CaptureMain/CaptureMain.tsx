@@ -14,6 +14,7 @@ import { HttpsDecryptionDialog } from '../HttpsDecryptionDialog/HttpsDecryptionD
 import { RequestInspector } from '../RequestInspector/RequestInspector';
 import { RequestList } from '../RequestList/RequestList';
 import { useCaptureStore } from '../data/captureStore';
+import { useReplayRequest } from '../data/useReplayRequest';
 import { refreshLinkStatus } from '../data/useCaptureData';
 import styles from './CaptureMain.module.css';
 
@@ -101,6 +102,7 @@ export function CaptureMain({
   onOpenRules,
   onViewTlsPassthroughPattern,
 }: CaptureMainProps): React.JSX.Element {
+  const replayRequest = useReplayRequest();
   const inspectorWidth = useCaptureStore((state) => state.inspectorWidth);
   const setInspectorWidth = useCaptureStore((state) => state.setInspectorWidth);
   const filterPanelWidth = useCaptureStore((state) => state.filterPanelWidth);
@@ -206,6 +208,7 @@ export function CaptureMain({
               : 'minmax(0, 1fr)' }}
           >
             <RequestList
+              onReplay={replayRequest}
               onCreateRequestRule={onCreateRequestRule}
               onCreateBreakpoint={onCreateBreakpoint}
             />

@@ -182,6 +182,15 @@ export function protocolLabel(protocol: string): string {
   return value;
 }
 
+/** 判断该行是否提供 Replay：只支持 HTTP/1.x 与 HTTP/2，且请求已不再处于上传阶段。 */
+export function canReplayExchange(summary: CaptureExchangeSummary): boolean {
+  const protocol = protocolLabel(summary.protocol);
+  if (protocol !== 'h1' && protocol !== 'h2') {
+    return false;
+  }
+  return summary.state !== 'pending' && summary.state !== 'request-complete';
+}
+
 /** 把 protocol 归一为筛选分栏的 Protocol facet 值；与列表 Proto 列不同，这里区分 HTTP/1.1 与 HTTP/1.0。 */
 export function protocolFacetValue(protocol: string): string {
   const value = protocol.toLowerCase();

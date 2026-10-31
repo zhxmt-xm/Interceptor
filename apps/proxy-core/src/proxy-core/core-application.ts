@@ -45,6 +45,7 @@ import { TransferService } from './transfer/entry';
 import { ProxyService } from './proxy/entry';
 import { CaptureEventQueue } from './proxy/internal/capture-event-queue';
 import { decodeBodyStream } from './proxy/utils';
+import { ReplayService } from './replay/entry';
 import { RuleService } from './rules/entry';
 import { BreakpointQueue } from './rules/internal/breakpoint-queue';
 import { CaptureService } from './capture/entry';
@@ -120,6 +121,8 @@ export class CoreApplication implements CoreRpcHost {
   private readonly httpMessageService: HttpMessageService;
   /** 主动构造并发送 HTTP 请求。 */
   private readonly composerService: ComposerService;
+  /** 把已录制的请求经本地代理原样重发。 */
+  private readonly replayService: ReplayService | null;
   /** Keep this Core generation's outgoing TLS/H2 responses intact through transport EOF. */
   private readonly http2ClientService: Http2ClientService;
   /** 按需执行只握手 TLS 探测。 */
@@ -224,6 +227,9 @@ export class CoreApplication implements CoreRpcHost {
       this.diagnosticsService ?? undefined,
     );
     this.http2ClientService = new Http2ClientService(this.coreDiagnostics);
+    this.replayService = this.captureService && this.proxyService
+      ? new ReplayService(this.captureService, this.proxyService, this.coreDiagnostics)
+      : null;
     this.proxyService?.attachDiagnostics(this.coreDiagnostics);
     this.captureService?.attachDiagnostics(this.coreDiagnostics);
     this.ruleService?.attachDiagnostics(this.coreDiagnostics);
@@ -768,6 +774,22 @@ export class CoreApplication implements CoreRpcHost {
             this.captureCleanupInProgress = false;
           }
         });
+      case 'capture.replay': {
+        const replayService = this.replayService;
+        if (!replayService) {
+          throw commandError({
+            code: 'internal',
+            message: 'Capture replay is not available.',
+            retryable: false,
+          });
+        }
+        return {
+          type: 'capture.replayed',
+          payload: await this.coreDiagnostics.action('capture.replay', () =>
+            replayService.replay(command.payload.exchangeId, abortSignal),
+          ),
+        };
+      }
       case 'har.export.start':
         return this.withHar((harService) => ({
           type: 'transfer.job',

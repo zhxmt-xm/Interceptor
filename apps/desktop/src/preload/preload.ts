@@ -272,6 +272,8 @@ const api: InterceptorDesktopApi = {
   getCaptureUsage: () =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.captureGetUsage),
   clearCapture: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.captureClear),
+  replayCapture: (exchangeId) =>
+    ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.captureReplay, exchangeId),
   startCapture: (port) =>
     ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.captureStart, port),
   stopCapture: () => ipcRenderer.invoke(DESKTOP_IPC_CHANNELS.captureStop),
