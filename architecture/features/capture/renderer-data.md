@@ -162,3 +162,11 @@ Core decode接收调用方的输出预算：文本2 MiB、图片16 MiB，不以�
 **预览截断不等于数据丢失。** 预览上限只作用于Inspector单次拉取的字节数，不截断Core保存的正文；存储写入仍受6.3节的积压及磁盘错误边界约束。
 超出时 UI 明确显示预览大小与完整大小，用户可经 **Save body**（`body.export.start`）把完整编码正文
 流式写到自选文件，该路径不受预览上限限制。
+
+### 10.4 请求重放
+
+- 入口只在请求行右键菜单，位于 Rules 分组之前；工具栏、多选批量、编辑后重发与快捷键分别归 A4、A3、J2，不在本条实现。
+- 菜单项只在 HTTP 行（`h1`/`h2`）且状态不是 `pending`/`request-complete` 时可用；WS、gRPC、Tunnel 行禁用。
+- 点击后调用 `window.interceptor.replayCapture(exchangeId)`：成功只弹提示，新行由事件批次进入列表并自动跟随到底部；失败按 `reason` 映射提示，`https-not-decrypted` 提供打开 HTTPS Setup 的出口。
+- 录制暂停时仍可重放，但列表不会新增行，提示中说明这一点。
+- Renderer 只传 `exchangeId`，不组装请求、不读正文；原始请求由 Core 从 Capture 存储读取（见 [contract.md](contract.md) 9.4）。

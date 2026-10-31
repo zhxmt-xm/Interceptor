@@ -8,6 +8,7 @@ import type {
   CaptureExchangeSummary,
   CaptureHeader,
   CaptureHeaderRuleEffect,
+  CaptureReplayOutcome,
   Collection,
   CollectionNode,
   ComposerTiming,
@@ -114,6 +115,7 @@ export type {
   CaptureExchangeSummary,
   CaptureHeader,
   CaptureHeaderRuleEffect,
+  CaptureReplayOutcome,
   ComposerTiming,
   ComposerTlsInfo,
   TlsCertificate,
@@ -611,6 +613,7 @@ export const DESKTOP_IPC_CHANNELS = {
   guidebookOpenBrowser: 'guidebook:open-browser',
   captureGetUsage: 'capture:get-usage',
   captureClear: 'capture:clear',
+  captureReplay: 'capture:replay',
   captureStart: 'capture:start',
   captureStop: 'capture:stop',
   captureGetStatus: 'capture:get-status',
@@ -780,6 +783,8 @@ export interface InterceptorDesktopApi {
   ): () => void;
   getCaptureUsage(): Promise<CaptureUsage>;
   clearCapture(): Promise<CaptureUsage>;
+  /** 把一条已录制的请求经本地代理原样重发；成功只表示请求已交给代理。 */
+  replayCapture(exchangeId: string): Promise<CaptureReplayOutcome>;
   startCapture(port?: number): Promise<CaptureStatus>;
   stopCapture(): Promise<CaptureStatus>;
   getCaptureStatus(): Promise<CaptureStatus>;

@@ -9,6 +9,7 @@ import {
   Globe,
   MapPin,
   Pause,
+  Repeat,
   Reply,
   Settings2,
   type LucideIcon,
@@ -25,7 +26,7 @@ import {
   AutomationIdFactory,
 } from '../../../../shared/automation-ids';
 import type { BreakpointScope } from '../../rules/interfaces';
-import { displayPath } from '../utils';
+import { canReplayExchange, displayPath } from '../utils';
 import styles from './RequestContextMenu.module.css';
 
 export interface RequestContextMenuTarget {
@@ -36,6 +37,8 @@ interface RequestContextMenuProps {
   readonly target: RequestContextMenuTarget | null;
   readonly children: ReactElement;
   readonly onClose: () => void;
+  /** 把这条已录制的请求经本地代理原样重发。 */
+  readonly onReplay: (summary: CaptureExchangeSummary) => void;
   readonly onCreateRule: (
     summary: CaptureExchangeSummary,
     actionType: RuleActionType,
@@ -59,6 +62,7 @@ export function RequestContextMenu({
   target,
   children,
   onClose,
+  onReplay,
   onCreateRule,
   onCreateBreakpoint,
 }: RequestContextMenuProps): React.JSX.Element {
@@ -158,6 +162,18 @@ export function RequestContextMenu({
   });
   const items: MenuProps['items'] = [
     {
+      key: 'replay',
+      icon: <Repeat size={16} strokeWidth={1.9} />,
+      disabled: summary === null || !canReplayExchange(summary),
+      label: label(
+        t('capture.replay'),
+        summary ? `${summary.method} · ${displayPath(summary.path, true)}` : '',
+        undefined,
+        summary ? AutomationIdFactory.captureReplay(summary.id) : undefined,
+      ),
+    },
+    { type: 'divider' },
+    {
       key: 'title',
       disabled: true,
       label: (
@@ -230,6 +246,11 @@ export function RequestContextMenu({
 
   const createFromKey = (key: string): void => {
     if (!summary) return;
+    if (key === 'replay') {
+      onReplay(summary);
+      onClose();
+      return;
+    }
     const nameTarget = `${summary.host ?? ''}${displayPath(summary.path, true)}` || summary.method;
     if (key.startsWith('breakpoint:')) {
       const scope = key.slice('breakpoint:'.length) as BreakpointScope | 'custom';

@@ -281,6 +281,19 @@ export class ProxyService {
     };
   }
 
+  /**
+   * 判断该 host 的 HTTPS 连接当前是否会被 MITM 解密。
+   * 调用方：capture.replay 前置检查——不解密时重放只留下 Tunnel 行。
+   */
+  interceptsHost(hostname: string): boolean {
+    if (!this.tlsConfig.mitm) {
+      return false;
+    }
+    const host = hostname.toLowerCase();
+    return !this.tlsConfig.passthroughHosts.some((pattern) =>
+      ProxyUtils.matchesPassthroughPattern(host, pattern));
+  }
+
   /** `*` 匹配全部 hostname（含 IP 与 localhost），因此 MITM 关闭等价于全量 passthrough。 */
   private static toPassthroughRules(
     config: ProxyTlsConfig,

@@ -62,6 +62,7 @@ interface CaptureEventSink {
 | `grpc.messages` | gRPC envelope 分页 |
 | `proxy.start` / `proxy.status` / `proxy.setRecording` | 生命周期；Renderer 的 Stop 映射为 `setRecording{false}` |
 | `capture.cleanup` | Clear |
+| `capture.replay` | 按 `exchangeId` 把已录制的请求经本地代理原样重发（见 9.4） |
 
 `proxy.stop` 不对 Renderer 开放常规入口，仅在 Main 的紧急修复路径中调用。
 
@@ -78,3 +79,40 @@ interface CaptureEventSink {
 **Inspector分组折叠契约**：General、headers/trailers、request line、query、body、timing与cookies各自持有独立展开状态。标题是实际接收点击的button，使用`aria-expanded`表达状态、`aria-controls`指向由`useId()`生成的唯一正文id；正文折叠时保持挂载，只切`hidden`，避免BodyViewer等内部状态因收起而销毁。稳定automation ID由调用处按业务语义传给共享`SectionHeader`，共享primitive不硬编码feature ID。
 
 WebSocket 与 gRPC 的意图 API 把 payload 原样转交，Core protocol 只校验 RPC 信封 / version / 关联字段，不对 payload 做运行时语义校验。
+
+### 9.4 请求重放
+
+`capture.replay { exchangeId }` 让 Core 把一条已录制的 HTTP 请求经本地代理原样重发一次。Renderer 只传 `exchangeId`；原始请求本来就在 Capture 存储里，正文不经 IPC 搬运。
+
+**取原始请求**
+
+| 内容 | 来源 |
+| --- | --- |
+| method / url | `detail.summary.method`、`detail.url` |
+| 请求头 | `detail.requestHeaders` 中未带 `ruleEffect` 的行，保持原顺序与大小写 |
+| 请求正文 | 有 `requestBodyEffect` 时用 `originalBody`（`originalState === 'available'`），否则用 `requestBody` |
+| 完整性 | `getExchangeBodySnapshot(exchangeId, 'request').complete` 且 `truncated !== true` |
+
+**原样发送**
+
+- h1 请求行用捕获的 absolute URL；h2 用捕获的 `:method`/`:path`/`:scheme`/`:authority`。h2 伪首部按 `:method`/`:path`/`:scheme`/`:authority` 的固定顺序重建，值取自捕获，顺序可能与原始请求不同。
+- 请求头全部原样，包括 hop-by-hop；`content-length`/`transfer-encoding` 不做二选一；`expect: 100-continue` 原样。
+- 正文按线上编码字节流式发送，不解压、不重编码。
+
+只有 3 处非内容差异：HTTP/1.0 升级为 1.1；原请求没有 `host` 时 `setHost:false` 不补；原请求没有 `connection` 时 Node 补 `Connection: close`（hop-by-hop，代理不转发）。
+
+**前置检查与失败原因**
+
+| reason | 条件 |
+| --- | --- |
+| `not-found` | exchange 已不存在 |
+| `unsupported-exchange` | WS / gRPC / Tunnel / 非 HTTP 协议 |
+| `proxy-not-listening` | 代理 listener 未监听 |
+| `https-not-decrypted` | HTTPS 且该 host 未解密（含 passthrough 名单） |
+| `request-body-unavailable` | 正文仍在写入、未捕获或已丢失 |
+| `request-body-truncated` | 正文被截断 |
+| `send-failed` | 连接代理、CONNECT 或写 socket 失败 |
+
+失败只返回 `ok:false`，不发请求。发送之后的失败（源站 reset、超时）由新行的 `state`/`errorCode` 呈现，不算命令失败。
+
+**新行归属正常管线**：`ReplayService` 不写 Capture、不造 summary、不碰事件队列；新行只能由 `ExchangeTracker.beginRequest()` 创建。

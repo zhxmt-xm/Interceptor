@@ -667,3 +667,19 @@ export function closePeer(
     socket.close();
   }
 }
+
+/**
+ * 判断 hostname 是否命中 TLS passthrough 名单。
+ *
+ * 名单只允许 exact 与 `*.suffix` 两种形状（见 workspace 的规范化），
+ * 与 Mockttp 的 URLPattern 匹配保持一致：`*.example.com` 只匹配子域。
+ */
+export function matchesPassthroughPattern(
+  hostname: string,
+  pattern: string,
+): boolean {
+  if (pattern.startsWith('*.')) {
+    return hostname.endsWith(pattern.slice(1));
+  }
+  return hostname === pattern;
+}

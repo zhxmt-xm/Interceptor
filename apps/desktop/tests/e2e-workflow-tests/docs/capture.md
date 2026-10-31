@@ -144,6 +144,61 @@ USB异常不把受控流量绕过PC发送；重连创建新会话且不重放；
 
 手动格式化后的Copy按文本语义归一化CRLF/LF，再同时核对完整长度与SHA-256；初始未格式化Copy、截断边界及网络正文仍保留原字节断言，不把格式化副本当成线上正文。
 
+<a id="capture-replay"></a>
+## `capture.replay`
+
+**策略**：真实Electron；真实8888代理与loopback origin；原样重放，不注入Store或直接调用Preload
+
+### Steps
+
+1. fresh profile启动真实Electron/Core/8888，经公开Recording控件开始录制。
+2. 通过`httpTrafficRunner.requestThroughProxy`发一条自产POST：固定path、`x-e2e-replay: original`头、固定正文；origin收到一次。
+3. 在Capture用Keyword定位该行，真实右键打开菜单，确认Replay项可用；点击后列表出现第二条同method/path的行，原行仍在。
+4. 两端完整比较：origin收到的两次请求在method、path、端到端header与正文上一致（hop-by-hop除外）；App内两条记录的General（URL/method/status）、请求header（名大小写不敏感）、请求正文、响应header与响应正文逐项一致。
+5. 断言禁用入口：WebSocket行右键Replay不可用，不通过Store或Preload绕过；Tunnel与gRPC行的同类拒绝由Core integration覆盖。
+6. 暂停Recording后再Replay同一行：请求仍到达origin，但列表不新增行，界面提示录制已暂停。
+7. 保存trace、origin证据与截图；产品Close后核对Main/Core/Worker、8888、系统代理与CA恢复。
+
+### 预期效果
+
+重放复用原始请求内容并经正常代理管线产生新行；禁用行与失败原因可解释；录制暂停时不伪造记录。
+
+<a id="capture-replay-https"></a>
+## `capture.replay.https`
+
+**策略**：真实Electron；共享CA + Certificates UI开启MITM；真实TLS origin；HTTPS与HTTP/2各重放一次
+
+### Steps
+
+1. fresh profile启动真实Electron/Core/8888，经公开Recording控件开始录制；复用已安装且受信任的共享CA，经Certificates UI开启MITM并添加`localhost`源站例外。
+2. `tls-mitm-h1`经8888发出真实HTTPS请求，Capture出现唯一H1行；右键Replay，断言新增同path的H1行，origin两次请求的method/path/端到端header/正文完全一致，App两条记录的请求与响应逐项一致（响应使用固定Date与`retainRun`保持同一响应）。
+3. `tls-mitm-h2`同样发出真实HTTP/2请求；右键Replay，断言新增H2行，origin与App两端同样完整一致（伪首部顺序不参与比较）。
+4. 断言重放提示为sent，Renderer无页面错误；保存截图与origin接收证据。
+5. 经Certificates UI关闭MITM后重放同一H1行：断言失败提示、行数与origin均不增加，证明未解密时拒绝发送。
+6. `finally`经Certificates UI移除`localhost`例外并回到Capture；产品Close后核对Main/Core/Worker、8888与宿主恢复。
+
+### 预期效果
+
+HTTPS与HTTP/2重放都经真实MITM管线，origin收到与源请求一致的内容，协议与抓包一致。
+
+<a id="capture-replay-effects"></a>
+## `capture.replay.effects`
+
+**策略**：真实Electron；真实Breakpoint规则与Block规则；重放必须重新命中
+
+### Steps
+
+1. fresh profile启动真实Electron/Core/8888，经Recording控件开始录制。
+2. 经8888发POST `/e2e/replay/breakpoint`，通过Rules UI创建并应用只匹配该POST的Breakpoint规则；右键源行Replay，断言新行`data-breakpoint-state=head`且`data-rule-id`指向该断点规则、origin仍只有一条。
+3. 选中挂起行并Continue unmodified，断言origin收到第二条，且origin与App两端的完整请求/响应与源记录一致。
+4. 先通过Rules UI创建并应用`x-replay-rule: applied`的Header改写规则，再经8888发POST `/e2e/replay/rewrite`并Replay；两次请求都被改写，origin与App两端完整一致，新行Inspector出现规则效果标记，Rule facet 对该规则的计数为2。
+5. 经8888发POST `/e2e/replay/block`；从行右键Block创建规则，在Rules启用并Apply；右键源行Replay，断言新行出现但origin仍只有一条（被规则拦下）。
+6. 保存截图与origin观测；产品Close后核对Main/Core/Worker、8888与宿主恢复。
+
+### 预期效果
+
+Rules与Breakpoints在重放时重新执行，与普通流量一致；挂起与拦截都有origin侧证据。
+
 本文件定义 Capture 工作区的完整 E2E 流程。每条 workflow 都独立启动 Electron、独占 profile、trace 和 loopback fixture，并从 fresh App 写到 Close/destroy。
 
 <a id="capture-https-setup-position"></a>

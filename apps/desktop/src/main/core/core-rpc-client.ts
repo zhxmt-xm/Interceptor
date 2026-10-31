@@ -64,6 +64,7 @@ export class CoreRpcClient {
     'websocket.breakpoint.disable': 'websocket.breakpoint.state',
     'capture.status': 'capture.status',
     'capture.cleanup': 'capture.status',
+    'capture.replay': 'capture.replayed',
     'transfer.job.cancel': 'transfer.job',
     'transfer.job.get': 'transfer.job',
     'proxy.start': 'proxy.status',

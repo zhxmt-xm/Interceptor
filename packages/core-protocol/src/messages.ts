@@ -325,6 +325,17 @@ export interface CaptureCleanupCommand {
   };
 }
 
+/**
+ * 重放一条已录制的 HTTP 请求：Renderer 只给 exchangeId，
+ * 原始请求头与正文由 Core 从 Capture 存储读取并经本地代理原样重发。
+ */
+export interface CaptureReplayCommand {
+  type: 'capture.replay';
+  payload: {
+    exchangeId: string;
+  };
+}
+
 export interface HarExportStartCommand {
   type: 'har.export.start';
   payload: {
@@ -578,6 +589,7 @@ export type CoreCommand =
   | DiagnosticsExportStartCommand
   | CaptureStatusCommand
   | CaptureCleanupCommand
+  | CaptureReplayCommand
   | HarExportStartCommand
   | HarImportStartCommand
   | ArchiveExportStartCommand
@@ -1011,6 +1023,26 @@ export interface CaptureStatusResult {
   };
 }
 
+/** 重放前置检查的失败原因；发送之后的失败由新行状态与 errorCode 呈现。 */
+export type CaptureReplayFailureReason =
+  | 'not-found'
+  | 'unsupported-exchange'
+  | 'proxy-not-listening'
+  | 'https-not-decrypted'
+  | 'request-body-unavailable'
+  | 'request-body-truncated'
+  | 'send-failed';
+
+/** 重放结果：ok 只表示请求已交给本地代理，新行由事件批次进入列表。 */
+export type CaptureReplayOutcome =
+  | { ok: true }
+  | { ok: false; reason: CaptureReplayFailureReason; message?: string };
+
+export interface CaptureReplayResult {
+  type: 'capture.replayed';
+  payload: CaptureReplayOutcome;
+}
+
 export type TransferJobKind =
   | 'har-export'
   | 'har-import'
@@ -1127,6 +1159,7 @@ export type CoreResult =
   | DiagnosticsIngestedResult
   | DiagnosticsPageResult
   | CaptureStatusResult
+  | CaptureReplayResult
   | TransferJobResult
   | ProxyStatusResult
   | AndroidStatusResult
@@ -1177,6 +1210,8 @@ export type CoreResultForCommand<T extends CoreCommand> =
                       ? CaptureStatusResult
                       : T extends CaptureCleanupCommand
                         ? CaptureStatusResult
+                        : T extends CaptureReplayCommand
+                          ? CaptureReplayResult
                         : T extends HarExportStartCommand
                           ? TransferJobResult
                           : T extends HarImportStartCommand
